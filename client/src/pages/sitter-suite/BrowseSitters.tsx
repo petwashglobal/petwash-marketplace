@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Star, MapPin, Calendar, Shield } from "lucide-react";
 import { useLocation } from "wouter";
-import { GlassmorphismCard } from "@/components/luxury/GlassmorphismCard";
-import { LuxuryButton } from "@/components/luxury/LuxuryButton";
+import { GlassmorphismCard, LuxuryButton } from "@/components/luxury/GlassmorphismCard";
 
 interface Sitter {
   id: number;
