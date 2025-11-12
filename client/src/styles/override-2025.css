@@ -1,29 +1,105 @@
-/* override-2025.css — enforce pure white + large-display fixes */
+/* override-2025.css — NUCLEAR ENFORCEMENT: Pure White Background, Zero Breaches */
 
-/* 1) Always-light canvas */
-:root { color-scheme: light; }
+/* ========================================================================
+   LEVEL 1: ROOT ENFORCEMENT - Always-light canvas
+   ======================================================================== */
+:root { 
+  color-scheme: light !important;
+  background: #fff !important;
+  background-color: #fff !important;
+}
+
 html, body {
   background: #fff !important;
   background-color: #fff !important;
+  background-image: none !important;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
 }
 
-/* 2) Nuke any theme or component tinting */
-*,
-*::before,
-*::after {
+/* ========================================================================
+   LEVEL 2: UNIVERSAL NUKE - Every element defaults to white
+   ======================================================================== */
+* {
   background-image: none !important;
-  box-shadow: none !important;
+  background-blend-mode: normal !important;
 }
 
-/* 3) Keep elements transparent unless they are layout sections */
-:where(.app, .main, .page, .section, .container, .wrapper, header, nav, main, footer) {
+*:not(img):not(video):not(canvas):not(svg):not(path):not(circle):not(rect):not(line):not(polygon):not(polyline):not(button):not(.lucide):not([class*="icon"]) {
   background: #fff !important;
   background-color: #fff !important;
 }
 
-/* 4) Logo must be clean on white */
+*::before,
+*::after {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* ========================================================================
+   LEVEL 3: LAYOUT CONTAINERS - Force white on all structural elements
+   ======================================================================== */
+:where(
+  .app, .main, .page, .section, .container, .wrapper,
+  header, nav, main, footer, article, aside,
+  div, section, form, fieldset,
+  .content, .inner, .body, .layout
+) {
+  background: #fff !important;
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+/* ========================================================================
+   LEVEL 4: FRAMEWORK OVERRIDES - Kill all framework backgrounds
+   ======================================================================== */
+:where(
+  .MuiPaper-root, .chakra-card, .ant-layout, .ant-card, .v-card,
+  .card, .panel, .tile, .sheet, .dialog, .modal, .drawer,
+  .accordion, .collapsible, .dropdown, .popover, .tooltip
+) {
+  background: #fff !important;
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+/* ========================================================================
+   LEVEL 5: TAILWIND NUCLEAR OVERRIDE - Kill ALL bg- classes
+   ======================================================================== */
+[class*="bg-"]:not([class*="bg-white"]):not([class*="bg-transparent"]):not(button):not([role="button"]):not([class*="icon"]) {
+  background: #fff !important;
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+/* Override specific Tailwind patterns */
+.bg-gradient-to-r, .bg-gradient-to-l, .bg-gradient-to-t, .bg-gradient-to-b,
+.bg-gradient-to-br, .bg-gradient-to-bl, .bg-gradient-to-tr, .bg-gradient-to-tl {
+  background: #fff !important;
+  background-image: none !important;
+}
+
+/* ========================================================================
+   LEVEL 6: GRADIENT ANNIHILATION - Remove ALL gradients everywhere
+   ======================================================================== */
+:where(.overlay, .backdrop, .gradient, .bg, .bg-wrap, .hero-bg, .section-bg) {
+  background: #fff !important;
+  background-image: none !important;
+}
+
+/* Kill linear/radial gradients globally */
+[style*="linear-gradient"],
+[style*="radial-gradient"],
+[style*="conic-gradient"] {
+  background: #fff !important;
+  background-image: none !important;
+}
+
+/* ========================================================================
+   LEVEL 7: LOGO & MEDIA ELEMENTS - Keep clean on white
+   ======================================================================== */
 :where(.logo, .navbar-logo, .site-logo, .brand-logo) img,
 :where(.logo, .navbar-logo, .site-logo, .brand-logo) svg {
   background: transparent !important;
@@ -33,25 +109,166 @@ html, body {
   mix-blend-mode: normal !important;
 }
 
-/* 5) Common framework containers that often add gray cards */
-:where(.MuiPaper-root, .chakra-card, .ant-layout, .ant-card, .v-card, .card, .panel, .tile) {
+:where(img, video, canvas, iframe, svg) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* ========================================================================
+   LEVEL 8: BUTTON EXCEPTION - Allow button colors (interactive elements)
+   ======================================================================== */
+button, 
+[role="button"],
+[type="button"],
+[type="submit"],
+.btn,
+.button {
+  /* Buttons are exempt - they NEED colors for UX */
+  background: initial;
+  background-color: initial;
+  background-image: initial;
+}
+
+/* But enforce white on button containers */
+.button-group,
+.button-container,
+.actions {
   background: #fff !important;
+  background-color: #fff !important;
 }
 
-/* 6) Kill auto dark modes */
+/* ========================================================================
+   LEVEL 9: DARK MODE ANNIHILATION - Force light mode always
+   ======================================================================== */
 @media (prefers-color-scheme: dark) {
-  html, body,
-  :where(.app, .main, .page, .section, .container, .wrapper) { background: #fff !important; color: #000 !important; }
+  *, *::before, *::after {
+    background: #fff !important;
+    background-color: #fff !important;
+    background-image: none !important;
+    color: #000 !important;
+  }
+  
+  html, body {
+    background: #fff !important;
+    background-color: #fff !important;
+    color: #000 !important;
+  }
 }
 
-/* 7) Large display - iPad Pro and desktops */
+.dark, [data-theme="dark"], [data-mode="dark"] {
+  background: #fff !important;
+  background-color: #fff !important;
+  color: #000 !important;
+}
+
+/* ========================================================================
+   LEVEL 10: LARGE DISPLAY FIXES - iPad Pro and Desktop
+   ======================================================================== */
 @media screen and (min-width: 1100px) {
-  html, body { transform: none !important; zoom: 1 !important; overflow-x: hidden !important; }
-  :where(.hero, .pricing-section, .header, .footer) { max-width: 100vw !important; background: #fff !important; }
+  html, body {
+    transform: none !important;
+    zoom: 1 !important;
+    overflow-x: hidden !important;
+    background: #fff !important;
+  }
+  
+  :where(.hero, .pricing-section, .header, .footer, .banner) {
+    max-width: 100vw !important;
+    background: #fff !important;
+    background-image: none !important;
+  }
 }
 
-/* 8) Safety: remove stray overlays and gradients */
-:where(.overlay, .backdrop, .gradient, .bg, .bg-wrap) { background: transparent !important; }
+/* ========================================================================
+   LEVEL 11: SPECIFIC COMPONENT OVERRIDES - Known violators
+   ======================================================================== */
+/* Avatar backgrounds - keep them (they're character features) */
+.avatar-head,
+.avatar-body,
+[class*="avatar"] {
+  /* Avatars are exempt */
+  background: initial;
+  background-color: initial;
+}
 
-/* 9) Avoid accidental page-level background on images or media */
-:where(img, video, canvas, iframe) { background: transparent !important; }
+/* Charts and data viz - white background */
+[class*="recharts"],
+[class*="chart"] {
+  background: #fff !important;
+  background-color: #fff !important;
+}
+
+/* Headers - force white */
+.header,
+[class*="header"],
+.navbar,
+[class*="navbar"] {
+  background: #fff !important;
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+/* Footers - force white */
+.footer,
+[class*="footer"] {
+  background: #fff !important;
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+/* Dashboard cards */
+.dashboard-card,
+[class*="dashboard"],
+.stat-card,
+[class*="metric"] {
+  background: #fff !important;
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+/* ========================================================================
+   LEVEL 12: INLINE STYLE OVERRIDE - Nuclear option for inline styles
+   ======================================================================== */
+[style] {
+  background: #fff !important;
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+/* Re-exempt interactive and media elements from inline style override */
+button[style],
+[role="button"][style],
+img[style],
+video[style],
+svg[style],
+canvas[style],
+.avatar-head[style],
+.avatar-body[style],
+[class*="icon"][style],
+.lucide[style] {
+  background: initial !important;
+  background-color: initial !important;
+  background-image: initial !important;
+}
+
+/* ========================================================================
+   LEVEL 13: BOX SHADOW REMOVAL - Clean aesthetic
+   ======================================================================== */
+* {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* ========================================================================
+   LEVEL 14: FINAL SAFETY NET - Catch-all for any missed elements
+   ======================================================================== */
+body > *,
+#root > *,
+#app > *,
+[id*="root"] > *,
+[id*="app"] > * {
+  background: #fff !important;
+  background-color: #fff !important;
+  background-image: none !important;
+}
