@@ -880,20 +880,25 @@ router.post('/ceo/request-voucher', validateFirebaseToken, requireCEO, async (re
       ipAddress: req.ip
     });
 
-    // Send SMS verification code to CEO's mobile
-    const smsMessage = `🔐 PetWash™ Security Alert\n\nFree voucher issuance request:\n₪${amount} for ${recipientName}\n\nYour verification code: ${verificationCode}\n\nValid for 5 minutes.\n\nIf you didn't request this, contact security immediately.`;
+    // Send WhatsApp verification code to CEO (out-of-band 2FA security channel)
+    const whatsappMessage = `🔐 PetWash™ Security Alert\n\nFree voucher issuance request:\n₪${amount} for ${recipientName}\n\nYour verification code: ${verificationCode}\n\nValid for 5 minutes.\n\nIf you didn't request this, contact security immediately.`;
 
     try {
-      const { SmsService } = await import('../smsService');
-      await SmsService.sendSMS(CEO_MOBILE, smsMessage);
+      const { WhatsAppService } = await import('../services/WhatsAppService');
+      // Send via WhatsApp to CEO's phone (out-of-band 2FA channel)
+      await WhatsAppService.sendMessage({
+        to: CEO_MOBILE,
+        message: whatsappMessage,
+        language: 'he',
+      });
       
-      logger.info('[CEO Security] 2FA code sent to CEO mobile', { 
+      logger.info('[CEO Security] 2FA code sent to CEO WhatsApp', { 
         requestId: requestRef.id,
         recipientEmail,
         amount
       });
-    } catch (smsError) {
-      logger.error('[CEO Security] Failed to send 2FA SMS', smsError);
+    } catch (whatsappError) {
+      logger.error('[CEO Security] Failed to send 2FA WhatsApp', whatsappError);
       // Continue anyway - user can still use the code if they received it
     }
 

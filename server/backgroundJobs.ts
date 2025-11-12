@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { storage } from './storage';
 import { EmailService } from './emailService';
-import { SmsService } from './smsService';
+import { GoogleMessagingService } from './services/GoogleMessagingService';
 import { db } from './lib/firebase-admin';
 import EscrowService from './services/EscrowService';
 import { createBirthdayVoucher, hasBirthdayVoucherThisYear } from './birthdayVoucher';
@@ -451,14 +451,15 @@ export class BackgroundJobProcessor {
         }
       }
 
-      // Send SMS reminder if needed
+      // Send push notification reminder if needed (replaces SMS)
       if (reminder.reminderType === 'sms' || reminder.reminderType === 'both') {
         if (!reminder.smsSent) {
-          smsSuccess = await SmsService.sendAppointmentReminder({
-            reminderId: String(reminderId),
-            customerData,
-            appointmentData,
-            dryRun: false
+          smsSuccess = await GoogleMessagingService.sendAppointmentReminder({
+            userId: customerData.userId || customerData.id,
+            email: customerData.email,
+            appointmentDate: new Date(appointmentData.appointmentDate),
+            location: appointmentData.location,
+            serviceType: appointmentData.serviceType,
           });
         }
       }
@@ -1179,13 +1180,14 @@ export class BackgroundJobProcessor {
       });
     }
 
-    // Test SMS reminder
+    // Test push notification reminder (replaces SMS)
     if (reminder.reminderType === 'sms' || reminder.reminderType === 'both') {
-      results.smsResult = await SmsService.sendAppointmentReminder({
-        reminderId: String(reminderId),
-        customerData,
-        appointmentData,
-        dryRun: true // Test mode
+      results.smsResult = await GoogleMessagingService.sendAppointmentReminder({
+        userId: customerData.userId || customerData.id,
+        email: customerData.email,
+        appointmentDate: new Date(appointmentData.appointmentDate),
+        location: appointmentData.location,
+        serviceType: appointmentData.serviceType,
       });
     }
 

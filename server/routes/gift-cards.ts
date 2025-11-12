@@ -4,7 +4,7 @@ import { eVouchers, eVoucherRedemptions } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { QRCodeService } from '../qrCode';
 import { EmailService } from '../emailService';
-import { SmsService } from '../smsService';
+import { GoogleMessagingService } from '../services/GoogleMessagingService';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
 import { z } from 'zod';

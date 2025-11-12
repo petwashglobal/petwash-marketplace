@@ -117,23 +117,45 @@ export async function sendInsuranceAlerts(alerts: InsuranceAlert[]): Promise<voi
         message = `Hi ${contractorName}, your insurance policy expires in ${daysUntilExpiry} days. Please plan to renew and upload your updated policy. Visit: petwash.co.il/contractor/dashboard`;
       }
 
-      // Send SMS alert
+      // Send multi-channel alert (WhatsApp + Email via Google services)
       try {
-        await sendSMS(phoneNumber, message);
-        logger.info('[InsuranceMonitoring] SMS alert sent', {
+        await WhatsAppService.sendInsuranceExpirationAlert({
+          contractorPhone: phoneNumber,
+          contractorName,
+          daysUntilExpiry,
+          policyNumber: alert.policyNumber,
+          language: 'he',
+        });
+        logger.info('[InsuranceMonitoring] WhatsApp alert sent', {
           contractorId,
           phoneNumber,
           alertType,
         });
-      } catch (smsError) {
-        logger.error('[InsuranceMonitoring] Failed to send SMS alert', {
+      } catch (whatsappError) {
+        logger.error('[InsuranceMonitoring] Failed to send WhatsApp alert', {
           contractorId,
-          error: smsError,
+          error: whatsappError,
         });
       }
 
-      // TODO: Send email alert (SendGrid)
-      // TODO: Send push notification (Firebase)
+      // Send email alert via SendGrid
+      try {
+        await GoogleMessagingService.sendEmail({
+          to: email,
+          subject,
+          html: `<h2>${subject}</h2><p>${message}</p>`,
+        });
+        logger.info('[InsuranceMonitoring] Email alert sent', {
+          contractorId,
+          email,
+          alertType,
+        });
+      } catch (emailError) {
+        logger.error('[InsuranceMonitoring] Failed to send email alert', {
+          contractorId,
+          error: emailError,
+        });
+      }
 
       logger.info('[InsuranceMonitoring] Alert sent to contractor', {
         contractorId,
