@@ -1,66 +1,63 @@
-import twilio from 'twilio';
-import { logger } from '../lib/logger';
-
-let connectionSettings: any;
-
-async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-  }
-
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=twilio',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-
-  if (!connectionSettings || (!connectionSettings.settings.account_sid || !connectionSettings.settings.api_key || !connectionSettings.settings.api_key_secret)) {
-    throw new Error('Twilio not connected');
-  }
-  return {
-    accountSid: connectionSettings.settings.account_sid,
-    apiKey: connectionSettings.settings.api_key,
-    apiKeySecret: connectionSettings.settings.api_key_secret,
-    phoneNumber: connectionSettings.settings.phone_number
-  };
-}
-
-export async function getTwilioClient() {
-  const { accountSid, apiKey, apiKeySecret } = await getCredentials();
-  return twilio(apiKey, apiKeySecret, {
-    accountSid: accountSid
-  });
-}
-
-export async function getTwilioFromPhoneNumber() {
-  const { phoneNumber } = await getCredentials();
-  return phoneNumber;
-}
-
 /**
  * WhatsApp Service for Employee Communication
+ * Uses Meta WhatsApp Business API (NOT Twilio)
  * Preferred communication method for all PetWash employees globally
  */
+
+import { logger } from '../lib/logger';
+
 export class WhatsAppService {
+  private static readonly WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
+  private static readonly PHONE_NUMBER_ID = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+  private static readonly ACCESS_TOKEN = process.env.META_WHATSAPP_ACCESS_TOKEN;
+  
+  /**
+   * Send WhatsApp message via Meta Business API
+   */
+  static async sendMessage(params: {
+    to: string;
+    message: string;
+    language?: 'he' | 'en';
+  }): Promise<boolean> {
+    try {
+      if (!this.PHONE_NUMBER_ID || !this.ACCESS_TOKEN) {
+        logger.warn('[WhatsApp] Meta WhatsApp not configured - skipping message');
+        return false;
+      }
+      
+      const response = await fetch(
+        `${this.WHATSAPP_API_URL}/${this.PHONE_NUMBER_ID}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.ACCESS_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: params.to,
+            type: 'text',
+            text: {
+              body: params.message,
+            },
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`WhatsApp API error: ${response.statusText}`);
+      }
+      
+      logger.info('[WhatsApp] Message sent successfully', { to: params.to });
+      return true;
+    } catch (error) {
+      logger.error('[WhatsApp] Failed to send message', error);
+      return false;
+    }
+  }
+  
   /**
    * Send expense approval notification via WhatsApp
-   * @param supervisorPhone - Supervisor's WhatsApp number (E.164 format: +972XXXXXXXXX)
-   * @param employeeName - Employee who submitted the expense
-   * @param expenseId - Expense ID
-   * @param amount - Total amount in ILS
-   * @param category - Expense category
-   * @param description - Expense description
    */
   static async sendExpenseApprovalNotification(params: {
     supervisorPhone: string;
@@ -71,175 +68,91 @@ export class WhatsAppService {
     description: string;
     language?: 'he' | 'en';
   }): Promise<boolean> {
-    try {
-      const client = await getTwilioClient();
-      const fromNumber = await getTwilioFromPhoneNumber();
-      
-      // WhatsApp numbers need 'whatsapp:' prefix
-      const from = `whatsapp:${fromNumber}`;
-      const to = `whatsapp:${params.supervisorPhone}`;
-      
-      // Bilingual message - Hebrew primary with English brand touches
-      const messageHebrew = `
-🐾 *PetWash™ - אישור הוצאה נדרש*
-
-שלום! הוצאה חדשה ממתינה לאישורך.
-
-📋 *פרטי ההוצאה:*
-• מספר: ${params.expenseId}
-• עובד: ${params.employeeName}
-• קטגוריה: ${params.category}
-• תיאור: ${params.description}
-• סכום: ₪${params.amount.toFixed(2)}
-
-✅ אנא היכנס למערכת לאישור או דחיה.
-
-_PetWash Ltd - Premium Organic Pet Care Platform_ 🐕
-      `.trim();
-      
-      const messageEnglish = `
-🐾 *PetWash™ - Expense Approval Required*
-
-Hello! A new expense is awaiting your approval.
-
-📋 *Expense Details:*
-• ID: ${params.expenseId}
-• Employee: ${params.employeeName}
-• Category: ${params.category}
-• Description: ${params.description}
-• Amount: ₪${params.amount.toFixed(2)}
-
-✅ Please log in to approve or reject.
-
-_PetWash Ltd - Premium Organic Pet Care Platform_ 🐕
-      `.trim();
-      
-      const message = params.language === 'en' ? messageEnglish : messageHebrew;
-      
-      await client.messages.create({
-        from,
-        to,
-        body: message,
-      });
-      
-      logger.info('[WhatsApp] Expense approval notification sent', {
-        expenseId: params.expenseId,
-        supervisorPhone: params.supervisorPhone.substring(0, 8) + '***', // Log partial phone for privacy
-      });
-      
-      return true;
-    } catch (error) {
-      logger.error('[WhatsApp] Failed to send expense notification', error);
-      return false;
-    }
+    const message = params.language === 'he'
+      ? `🐾 *Pet Wash™ - אישור הוצאה נדרש*\n\n` +
+        `עובד: ${params.employeeName}\n` +
+        `קטגוריה: ${params.category}\n` +
+        `סכום: ₪${params.amount.toFixed(2)}\n` +
+        `תיאור: ${params.description}\n\n` +
+        `מזהה הוצאה: ${params.expenseId}`
+      : `🐾 *Pet Wash™ - Expense Approval Required*\n\n` +
+        `Employee: ${params.employeeName}\n` +
+        `Category: ${params.category}\n` +
+        `Amount: ₪${params.amount.toFixed(2)}\n` +
+        `Description: ${params.description}\n\n` +
+        `Expense ID: ${params.expenseId}`;
+    
+    return await this.sendMessage({
+      to: params.supervisorPhone,
+      message,
+      language: params.language,
+    });
   }
-
+  
   /**
-   * Send expense status update to employee
-   * @param employeePhone - Employee's WhatsApp number (E.164 format)
-   * @param expenseId - Expense ID
-   * @param status - 'approved' | 'rejected'
-   * @param approverName - Name of approver
-   * @param rejectionReason - Optional rejection reason
+   * Send booking confirmation via WhatsApp
    */
-  static async sendExpenseStatusUpdate(params: {
-    employeePhone: string;
-    expenseId: string;
-    status: 'approved' | 'rejected';
-    approverName: string;
-    rejectionReason?: string;
+  static async sendBookingConfirmation(params: {
+    customerPhone: string;
+    bookingId: string;
+    serviceType: string;
+    appointmentDate: Date;
+    location: string;
     language?: 'he' | 'en';
   }): Promise<boolean> {
-    try {
-      const client = await getTwilioClient();
-      const fromNumber = await getTwilioFromPhoneNumber();
-      
-      const from = `whatsapp:${fromNumber}`;
-      const to = `whatsapp:${params.employeePhone}`;
-      
-      const statusEmoji = params.status === 'approved' ? '✅' : '❌';
-      const statusTextHe = params.status === 'approved' ? 'אושרה' : 'נדחתה';
-      const statusTextEn = params.status === 'approved' ? 'Approved' : 'Rejected';
-      
-      const messageHebrew = `
-${statusEmoji} *PetWash™ - עדכון סטטוס הוצאה*
-
-ההוצאה שלך ${statusTextHe}!
-
-📋 מספר הוצאה: ${params.expenseId}
-👤 אושר על ידי: ${params.approverName}
-${params.rejectionReason ? `📝 סיבה: ${params.rejectionReason}` : ''}
-
-_PetWash Ltd - Premium Organic Pet Care Platform_ 🐕
-      `.trim();
-      
-      const messageEnglish = `
-${statusEmoji} *PetWash™ - Expense Status Update*
-
-Your expense has been ${statusTextEn.toLowerCase()}!
-
-📋 Expense ID: ${params.expenseId}
-👤 Approved by: ${params.approverName}
-${params.rejectionReason ? `📝 Reason: ${params.rejectionReason}` : ''}
-
-_PetWash Ltd - Premium Organic Pet Care Platform_ 🐕
-      `.trim();
-      
-      const message = params.language === 'en' ? messageEnglish : messageHebrew;
-      
-      await client.messages.create({
-        from,
-        to,
-        body: message,
-      });
-      
-      logger.info('[WhatsApp] Expense status update sent', {
-        expenseId: params.expenseId,
-        status: params.status,
-        employeePhone: params.employeePhone.substring(0, 8) + '***',
-      });
-      
-      return true;
-    } catch (error) {
-      logger.error('[WhatsApp] Failed to send status update', error);
-      return false;
-    }
+    const formattedDate = params.appointmentDate.toLocaleDateString(params.language === 'he' ? 'he-IL' : 'en-US');
+    const formattedTime = params.appointmentDate.toLocaleTimeString(params.language === 'he' ? 'he-IL' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    
+    const message = params.language === 'he'
+      ? `🐾 *Pet Wash™ - אישור הזמנה*\n\n` +
+        `תודה על ההזמנה!\n\n` +
+        `שירות: ${params.serviceType}\n` +
+        `תאריך: ${formattedDate}\n` +
+        `שעה: ${formattedTime}\n` +
+        `מיקום: ${params.location}\n\n` +
+        `מספר הזמנה: ${params.bookingId}`
+      : `🐾 *Pet Wash™ - Booking Confirmation*\n\n` +
+        `Thank you for your booking!\n\n` +
+        `Service: ${params.serviceType}\n` +
+        `Date: ${formattedDate}\n` +
+        `Time: ${formattedTime}\n` +
+        `Location: ${params.location}\n\n` +
+        `Booking ID: ${params.bookingId}`;
+    
+    return await this.sendMessage({
+      to: params.customerPhone,
+      message,
+      language: params.language,
+    });
   }
-
+  
   /**
-   * Send general team notification
-   * @param recipients - Array of WhatsApp numbers
-   * @param message - Message to send
+   * Send insurance expiration alert via WhatsApp
    */
-  static async sendTeamNotification(params: {
-    recipients: string[];
-    message: string;
+  static async sendInsuranceExpirationAlert(params: {
+    contractorPhone: string;
+    contractorName: string;
+    daysUntilExpiry: number;
+    policyNumber: string;
+    language?: 'he' | 'en';
   }): Promise<boolean> {
-    try {
-      const client = await getTwilioClient();
-      const fromNumber = await getTwilioFromPhoneNumber();
-      const from = `whatsapp:${fromNumber}`;
-      
-      // Send to all recipients
-      const sendPromises = params.recipients.map(async (recipient) => {
-        const to = `whatsapp:${recipient}`;
-        await client.messages.create({
-          from,
-          to,
-          body: params.message,
-        });
-      });
-      
-      await Promise.all(sendPromises);
-      
-      logger.info('[WhatsApp] Team notification sent', {
-        recipientCount: params.recipients.length,
-      });
-      
-      return true;
-    } catch (error) {
-      logger.error('[WhatsApp] Failed to send team notification', error);
-      return false;
-    }
+    const message = params.language === 'he'
+      ? `🚨 *Pet Wash™ - תזכורת ביטוח*\n\n` +
+        `שלום ${params.contractorName},\n\n` +
+        `פוליסת הביטוח שלך (${params.policyNumber}) תפוג בעוד ${params.daysUntilExpiry} ימים.\n\n` +
+        `אנא חדש את הביטוח מיד כדי להמשיך לעבוד עם Pet Wash™.`
+      : `🚨 *Pet Wash™ - Insurance Reminder*\n\n` +
+        `Hello ${params.contractorName},\n\n` +
+        `Your insurance policy (${params.policyNumber}) expires in ${params.daysUntilExpiry} days.\n\n` +
+        `Please renew immediately to continue working with Pet Wash™.`;
+    
+    return await this.sendMessage({
+      to: params.contractorPhone,
+      message,
+      language: params.language,
+    });
   }
 }
