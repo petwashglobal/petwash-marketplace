@@ -1,18 +1,10 @@
-Contact: mailto:support@petwash.co.il
-Expires: 2026-10-17T23:59:59.000Z
-Preferred-Languages: he, en
-Canonical: https://petwash.co.il/.well-known/security.txt
+Contact: mailto:security@petwash.co.il
+Expires: 2026-12-31T23:59:59.000Z
+Preferred-Languages: en, he
+Canonical: https://www.petwash.co.il/.well-known/security.txt
+Policy: https://www.petwash.co.il/security-policy
+Hiring: https://www.petwash.co.il/careers
 
-# Pet Wash™ Security Contact Information
-# 
-# If you discover a security vulnerability, please report it to:
-# - Email: support@petwash.co.il
-# - Subject: [SECURITY] Vulnerability Report
-#
-# Please include:
-# - Description of the vulnerability
-# - Steps to reproduce
-# - Potential impact
-# - Your contact information (optional)
-#
-# We take security seriously and will respond within 48 hours.
+# Pet Wash™ Security Team
+# We appreciate responsible disclosure of security vulnerabilities
+# Response time: Within 48 hours
