@@ -2414,9 +2414,9 @@ self.addEventListener('notificationclick', (event) => {
     try {
       logger.info('SendGrid webhook received');
       
-      // Verify HMAC signature for security
-      const signature = req.get('X-Twilio-Email-Event-Webhook-Signature');
-      const timestamp = req.get('X-Twilio-Email-Event-Webhook-Timestamp');
+      // Verify HMAC signature for security (SendGrid Event Webhook API)
+      const signature = req.get('X-Twilio-Email-Event-Webhook-Signature'); // SendGrid header name
+      const timestamp = req.get('X-Twilio-Email-Event-Webhook-Timestamp'); // SendGrid header name
       
       if (!signature || !timestamp) {
         logger.error('SendGrid webhook: Missing signature or timestamp');
@@ -2487,27 +2487,6 @@ self.addEventListener('notificationclick', (event) => {
     }
   }
 
-  // Helper function to process SMS events (Twilio webhook data)
-  async function processSmsEvent(event: any): Promise<void> {
-    try {
-      const { MessageSid, MessageStatus, To: phoneNumber, EventType } = event;
-      
-      // TODO: Implement getCommunicationLogByMessageId and getCommunicationLogsByPhone in storage
-      // For now, just log the event
-      logger.info(`SMS webhook event received: ${EventType || MessageStatus} for ${phoneNumber}`, {
-        MessageSid,
-        MessageStatus,
-        EventType
-      });
-      
-      // This is a simplified implementation - full webhook tracking needs additional storage methods
-      
-    } catch (error: unknown) {
-      logger.error('Error processing SMS event', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
 
   // CRITICAL: Unsubscribe route for legal compliance (GDPR/Israeli law)
   app.get('/unsubscribe', async (req, res) => {
@@ -10948,7 +10927,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
 
       // TODO: Send WhatsApp/Email notifications to attendees
-      // This will be implemented with Twilio WhatsApp Business API
+      // This will be implemented with Meta WhatsApp Business API
 
       res.json({
         success: true,

@@ -102,7 +102,7 @@ export default function PrivacyPolicy() {
               </p>
               <ul className="list-disc list-inside space-y-2 mr-6">
                 <li><strong>{isHebrew ? 'עם הצד השני:' : 'With the Other Party:'}</strong> {isHebrew ? 'בעלים רואים פרופילי שמרטפים (שם, תמונה, ביוגרפיה, ביקורות). שמרטפים רואים פרטי חיות מחמד ומידע ליצירת קשר בעת אישור הזמנה.' : 'Owners see sitter profiles (name, photo, bio, reviews). Sitters see pet details and contact information upon booking confirmation.'}</li>
-                <li><strong>{isHebrew ? 'ספקי שירות:' : 'Service Providers:'}</strong> {isHebrew ? 'Nayax (תשלומים), Firebase (אימות), SendGrid (דוא"ל), Twilio (SMS), Google Cloud (אחסון)' : 'Nayax (payments), Firebase (authentication), SendGrid (email), Twilio (SMS), Google Cloud (storage)'}</li>
+                <li><strong>{isHebrew ? 'ספקי שירות:' : 'Service Providers:'}</strong> {isHebrew ? 'Nayax (תשלומים), Firebase (אימות), SendGrid (דוא"ל), Meta WhatsApp Business (הודעות), Google Cloud (אחסון)' : 'Nayax (payments), Firebase (authentication), SendGrid (email), Meta WhatsApp Business (messaging), Google Cloud (storage)'}</li>
                 <li><strong>{isHebrew ? 'רשויות חוקיות:' : 'Legal Authorities:'}</strong> {isHebrew ? 'כאשר נדרש על ידי חוק או לצורכי אכיפת חוק' : 'When required by law or for law enforcement purposes'}</li>
                 <li><strong>{isHebrew ? 'בעלי רישיון פוטנציאליים:' : 'Potential Franchisees:'}</strong> {isHebrew ? 'נתוני שוק מצטברים (לא מזהים אישי)' : 'Aggregated market data (non-personally identifiable)'}</li>
               </ul>
