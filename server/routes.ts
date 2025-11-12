@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq, and, or, desc, gte, sql } from "drizzle-orm";
@@ -11029,6 +11030,16 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     } catch (error: any) {
       logger.error('[PersonalizedGreeting] Failed', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // CRITICAL: SPA History Fallback - Serve index.html for all non-API GET requests
+  // This allows direct navigation to /signin, /login, etc. to work in production
+  // Must be BEFORE error handler, AFTER all API routes
+  app.get('*', (req: Request, res: Response) => {
+    // Only serve index.html for non-API routes
+    if (!req.path.startsWith('/api/')) {
+      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
     }
   });
 
