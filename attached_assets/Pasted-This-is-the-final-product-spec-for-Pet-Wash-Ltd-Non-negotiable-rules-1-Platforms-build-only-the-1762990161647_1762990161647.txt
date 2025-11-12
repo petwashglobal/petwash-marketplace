@@ -1,0 +1,94 @@
+This is the final product spec for Pet Wash Ltd.
+
+Non negotiable rules:
+1. Platforms: build only these 6. No more, no less.
+   1) Pet Wash K9000 Stations (PetWash Hub)
+   2) Walk My Pet (Uber style walkers)
+   3) The Sitter Suite (Airbnb style sitters, pet at host or at owner)
+   4) PetTrek (Uber style pet transport)
+   5) Groomers Marketplace
+   6) Shared Pet Services foundation
+
+2. Pure white background everywhere on the site and app. 
+   No gradient backgrounds, no big colored blocks behind content, no color behind logo. 
+   Colors only for small elements (buttons, tags, icons). Brand feeling must be Apple level clean.
+
+3. The PetWash logo must always be displayed on clean white with TM and no box or card behind it.
+
+4. Architecture:
+   - One global super app with 6 independent business units.
+   - Shared services: Auth, Users, Pets, Booking, Availability, Payments, Wallet, Reviews, Messaging, Notifications.
+   - Each platform has its own routes, menus, settings, and dashboards, but all share the same user account.
+   - Codebase in TypeScript end to end. Strict typing and ESLint enabled.
+
+5. Navigation and UX requirements:
+   - Hamburger menu must show each of the 6 platforms as a main item.
+   - Each platform opens into multi level navigation, not a one pager.
+     Example for Walk My Pet:
+       Walk My Pet
+         - Overview
+         - Book a walk
+         - My upcoming walks
+         - Live tracking
+         - My walkers
+         - Memberships and subscriptions
+         - Safety and rules
+         - Help
+     Example for The Sitter Suite:
+       The Sitter Suite
+         - Find a sitter
+         - List your home as a sitter
+         - My bookings
+         - Messages
+         - Reviews
+         - Payouts and earnings
+         - Safety and insurance
+         - Help
+     Do a similar deep menu for K9000, PetTrek, Groomers.
+
+6. Booking engine (this is critical):
+   Use one shared BookingService for all platforms with support for:
+   - Search by date, time, location and platform.
+   - Real availability checks with no double booking.
+   - Time zone safe start and end times.
+   - States: draft -> pending payment -> confirmed -> in progress -> completed -> cancelled.
+   - Auto cancellation rules and refund rules.
+   - Stripe Connect for marketplace payouts (user pays PetWash, PetWash pays provider minus fee).
+   - Nayax integration only for K9000 station bookings and kiosk use.
+   - Each booking is linked to:
+       user_id, provider_id, platform_id, location_id, pet_id, booking_items, payment_status, payout_status.
+
+7. Performance and scaling:
+   - Design for at least 200 concurrent users now, capable of scaling much higher.
+   - All APIs should respond in under 200ms under normal load.
+   - Add a simple /health endpoint that returns 200 so Replit and other hosting can check status.
+
+8. Frontend tech:
+   - React + TypeScript.
+   - Use a modern component library (for example shadcn or similar) but keep styling very clean.
+   - Fully responsive: mobile first, then tablet, then laptop, then 27 inch monitor.
+   - No horizontal scroll on any resolution. Pricing cards and booking forms must adapt, not be cut off.
+
+9. Backoffice and dashboards:
+   - Global PetWash admin dashboard (for Nir and team) with views by platform:
+       * live bookings
+       * revenue per platform
+       * active users and providers
+       * station status for K9000
+   - Provider dashboards:
+       * walkers see their schedule, earnings, ratings
+       * sitters see calendar, bookings and payouts
+       * drivers (PetTrek) see trips and payouts
+       * groomers see appointments and history
+
+10. Data model (high level tables to implement in SQL or Prisma):
+   - users, pets, providers, platforms, locations, stations (for K9000), vehicles (for PetTrek),
+     bookings, booking_items, availability_slots, payments, payouts, reviews, messages, notifications, memberships.
+
+11. Migration from current system:
+   - Do not break current published app.
+   - Implement new navigation and booking engine behind feature flags, then swap when tested.
+
+Goal:
+This platform must feel like a mix of Uber, Airbnb and Booking.com but for pets, under one Pet Wash Ltd super app. 
+Do not build quick one pagers. Build real sections, flows and dashboards for each platform.

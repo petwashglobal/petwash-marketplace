@@ -69,13 +69,12 @@ Pet Wash Ltd operates as a **super-app ecosystem** with 6+ independent business 
 ### Tenant Keys:
 ```typescript
 enum Platform {
-  K9000 = 'k9000',
-  SITTER_SUITE = 'sitter_suite',
-  WALK_MY_PET = 'walk_my_pet',
-  PETTREK = 'pettrek',
-  GROOMING = 'grooming',
-  VET_ON_DEMAND = 'vet_on_demand',
-  PLUSH_LAB = 'plush_lab'
+  K9000 = 'k9000',                    // Pet Wash K9000 Stations (PetWash Hub)
+  WALK_MY_PET = 'walk_my_pet',        // Uber-style dog walking
+  SITTER_SUITE = 'sitter_suite',      // Airbnb-style pet sitting
+  PETTREK = 'pettrek',                // Uber-style pet transport
+  GROOMERS = 'groomers',              // Grooming marketplace
+  SHARED_SERVICES = 'shared_services' // Shared Pet Services foundation
 }
 ```
 
