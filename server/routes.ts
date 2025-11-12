@@ -128,7 +128,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Development: serve from dist/public for Vite HMR
   if (process.env.NODE_ENV === 'development') {
     app.use('/assets', express.static('dist/public/assets', {
+      immutable: true,
+      maxAge: '365d',
       setHeaders: (res, path) => {
+        // Vite-bundled assets with hashes are immutable
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+        
         if (path.endsWith('.js')) {
           res.set('Content-Type', 'application/javascript; charset=utf-8');
         } else if (path.endsWith('.css')) {
@@ -140,8 +145,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Serve attached assets (images, files, etc.) - PRIORITY FIRST
   app.use('/attached_assets', express.static('attached_assets', {
+    maxAge: '7d', // Cache images for 7 days
     setHeaders: (res, path) => {
       logger.info(`SERVING IMAGE: ${path}`);
+      
+      // Optimize caching for static images
+      res.set('Cache-Control', 'public, max-age=604800'); // 7 days
+      
       if (path.endsWith('.jpeg') || path.endsWith('.jpg')) {
         res.set('Content-Type', 'image/jpeg');
       } else if (path.endsWith('.png')) {
@@ -173,10 +183,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/admin/', verifyAppCheckTokenOptional);
   
   // ========================================================================
-  // 🏥 HEALTH CHECK ENDPOINT - Simple status endpoint for monitoring
+  // 🏥 HEALTH CHECK ENDPOINTS - Status monitoring for uptime services
   // ========================================================================
+  
+  // Public health check (no auth required)
   app.get('/status', (req, res) => {
-    res.json({
+    res.set('Cache-Control', 'no-store').json({
       ok: true,
       status: 'healthy',
       service: 'Pet Wash™ API',
@@ -187,13 +199,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get('/api/status', (req, res) => {
-    res.json({
+    res.set('Cache-Control', 'no-store').json({
       ok: true,
       status: 'healthy',
       service: 'Pet Wash™ API',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
+    });
+  });
+
+  // Private health check (requires X-Health-Key header for monitoring services)
+  app.get('/_health', (req, res) => {
+    const healthKey = process.env.HEALTH_KEY;
+    
+    // If HEALTH_KEY is configured, require it
+    if (healthKey && req.headers['x-health-key'] !== healthKey) {
+      return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    }
+    
+    res.set('Cache-Control', 'no-store').json({
+      ok: true,
+      status: 'healthy',
+      service: 'Pet Wash™ API',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      memory: process.memoryUsage(),
+      pid: process.pid,
     });
   });
 

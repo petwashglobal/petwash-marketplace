@@ -89,4 +89,29 @@ Crawl-delay: 1
   logger.info('Robots.txt served', { userAgent: req.headers['user-agent'] });
 });
 
+/**
+ * GET /.well-known/security.txt - Security vulnerability disclosure endpoint
+ * RFC 9116 compliant security.txt file for responsible disclosure
+ */
+router.get('/.well-known/security.txt', (req, res) => {
+  const baseUrl = process.env.BASE_URL || 'https://www.petwash.co.il';
+  
+  const securityTxt = `Contact: mailto:security@petwash.co.il
+Expires: 2026-12-31T23:59:59.000Z
+Preferred-Languages: en, he
+Canonical: ${baseUrl}/.well-known/security.txt
+Policy: ${baseUrl}/security-policy
+Hiring: ${baseUrl}/careers
+
+# Pet Wash™ Security Team
+# We appreciate responsible disclosure of security vulnerabilities
+# Response time: Within 48 hours
+`;
+
+  res.header('Content-Type', 'text/plain; charset=utf-8');
+  res.send(securityTxt);
+  
+  logger.info('security.txt served', { userAgent: req.headers['user-agent'] });
+});
+
 export default router;
