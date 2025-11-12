@@ -1,0 +1,57 @@
+/* override-2025.css — enforce pure white + large-display fixes */
+
+/* 1) Always-light canvas */
+:root { color-scheme: light; }
+html, body {
+  background: #fff !important;
+  background-color: #fff !important;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+/* 2) Nuke any theme or component tinting */
+*,
+*::before,
+*::after {
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* 3) Keep elements transparent unless they are layout sections */
+:where(.app, .main, .page, .section, .container, .wrapper, header, nav, main, footer) {
+  background: #fff !important;
+  background-color: #fff !important;
+}
+
+/* 4) Logo must be clean on white */
+:where(.logo, .navbar-logo, .site-logo, .brand-logo) img,
+:where(.logo, .navbar-logo, .site-logo, .brand-logo) svg {
+  background: transparent !important;
+  filter: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  mix-blend-mode: normal !important;
+}
+
+/* 5) Common framework containers that often add gray cards */
+:where(.MuiPaper-root, .chakra-card, .ant-layout, .ant-card, .v-card, .card, .panel, .tile) {
+  background: #fff !important;
+}
+
+/* 6) Kill auto dark modes */
+@media (prefers-color-scheme: dark) {
+  html, body,
+  :where(.app, .main, .page, .section, .container, .wrapper) { background: #fff !important; color: #000 !important; }
+}
+
+/* 7) Large display - iPad Pro and desktops */
+@media screen and (min-width: 1100px) {
+  html, body { transform: none !important; zoom: 1 !important; overflow-x: hidden !important; }
+  :where(.hero, .pricing-section, .header, .footer) { max-width: 100vw !important; background: #fff !important; }
+}
+
+/* 8) Safety: remove stray overlays and gradients */
+:where(.overlay, .backdrop, .gradient, .bg, .bg-wrap) { background: transparent !important; }
+
+/* 9) Avoid accidental page-level background on images or media */
+:where(img, video, canvas, iframe) { background: transparent !important; }
