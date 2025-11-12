@@ -2,7 +2,8 @@ import { db } from '../db';
 import { providerApplications } from '@shared/schema';
 import { eq, and, sql, lt } from 'drizzle-orm';
 import { logger } from '../lib/logger';
-import { sendSMS } from '../lib/twilio';
+import { GoogleMessagingService } from './GoogleMessagingService';
+import { WhatsAppService } from './WhatsAppService';
 
 /**
  * Insurance Policy Expiration Monitoring Service (2026 Spec)
