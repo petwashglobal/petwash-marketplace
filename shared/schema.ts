@@ -10,7 +10,9 @@ import {
   decimal,
   boolean,
   serial,
-  date
+  date,
+  real,
+  unique
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -6368,3 +6370,555 @@ export * from "./schema-gemini-watchdog";
 export * from "./schema-integrations";
 export * from "./schema-payroll";
 export * from "./schema-compliance";
+
+// ============================================================================
+// SUPER-APP SCHEMA - 6 PLATFORMS (K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers, Shared Services)
+// ============================================================================
+
+// Platform types enum
+export const platformEnum = z.enum([
+  'k9000',
+  'walk_my_pet',
+  'sitter_suite',
+  'pettrek',
+  'groomers',
+  'shared_services'
+]);
+
+export type Platform = z.infer<typeof platformEnum>;
+
+// Booking status enum
+export const bookingStatusEnum = z.enum([
+  'draft',
+  'pending_payment',
+  'pending_provider',
+  'confirmed',
+  'declined',
+  'in_progress',
+  'completed',
+  'cancelled',
+  'disputed',
+  'refunded'
+]);
+
+// ===== PLATFORMS TABLE =====
+export const platforms = pgTable("platforms", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  nameHe: varchar("name_he"),
+  description: text("description"),
+  descriptionHe: text("description_he"),
+  isActive: boolean("is_active").default(true),
+  platformFeePercent: decimal("platform_fee_percent", { precision: 5, scale: 2 }),
+  stripeConnectEnabled: boolean("stripe_connect_enabled").default(false),
+  nayaxEnabled: boolean("nayax_enabled").default(false),
+  settings: jsonb("settings"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ===== PETS TABLE =====
+export const pets = pgTable("pets", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  name: varchar("name").notNull(),
+  species: varchar("species").notNull(),
+  breed: varchar("breed"),
+  age: integer("age"),
+  dateOfBirth: date("date_of_birth"),
+  weight: decimal("weight", { precision: 6, scale: 2 }),
+  gender: varchar("gender"),
+  size: varchar("size"),
+  color: varchar("color"),
+  microchipId: varchar("microchip_id"),
+  photoUrl: varchar("photo_url"),
+  allergies: text("allergies"),
+  medications: text("medications"),
+  specialNeeds: text("special_needs"),
+  vetName: varchar("vet_name"),
+  vetPhone: varchar("vet_phone"),
+  vaccinationStatus: varchar("vaccination_status").default("unknown"),
+  lastVaccinationDate: date("last_vaccination_date"),
+  nextVaccinationDate: date("next_vaccination_date"),
+  temperament: varchar("temperament"),
+  goodWithKids: boolean("good_with_kids"),
+  goodWithDogs: boolean("good_with_dogs"),
+  goodWithCats: boolean("good_with_cats"),
+  notes: text("notes"),
+  lastWashDate: timestamp("last_wash_date"),
+  lastWalkDate: timestamp("last_walk_date"),
+  lastGroomDate: timestamp("last_groom_date"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("pet_user_idx").on(table.userId),
+}));
+
+// ===== PROVIDERS TABLE =====
+export const providers = pgTable("providers", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  platformId: varchar("platform_id").notNull().references(() => platforms.id),
+  businessName: varchar("business_name"),
+  bio: text("bio"),
+  bioHe: text("bio_he"),
+  photoUrl: varchar("photo_url"),
+  languages: text("languages").array(),
+  verificationStatus: varchar("verification_status").default("pending"),
+  verificationDocuments: jsonb("verification_documents"),
+  backgroundCheckStatus: varchar("background_check_status").default("pending"),
+  backgroundCheckDate: timestamp("background_check_date"),
+  insuranceProvider: varchar("insurance_provider"),
+  insurancePolicyNumber: varchar("insurance_policy_number"),
+  insuranceExpiryDate: date("insurance_expiry_date"),
+  insuranceDocumentUrl: varchar("insurance_document_url"),
+  averageRating: decimal("average_rating", { precision: 3, scale: 2 }).default("0"),
+  totalReviews: integer("total_reviews").default(0),
+  totalBookings: integer("total_bookings").default(0),
+  completionRate: decimal("completion_rate", { precision: 5, scale: 2 }).default("0"),
+  isAvailable: boolean("is_available").default(true),
+  acceptingNewClients: boolean("accepting_new_clients").default(true),
+  serviceRadius: integer("service_radius"),
+  stripeConnectAccountId: varchar("stripe_connect_account_id"),
+  stripeOnboardingComplete: boolean("stripe_onboarding_complete").default(false),
+  payoutEnabled: boolean("payout_enabled").default(false),
+  totalEarnings: decimal("total_earnings", { precision: 12, scale: 2 }).default("0"),
+  pendingPayouts: decimal("pending_payouts", { precision: 12, scale: 2 }).default("0"),
+  platformData: jsonb("platform_data"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userPlatformUnique: uniqueIndex("provider_user_platform_unique").on(table.userId, table.platformId),
+  platformIdx: index("provider_platform_idx").on(table.platformId),
+  userIdx: index("provider_user_idx").on(table.userId),
+  verificationIdx: index("provider_verification_idx").on(table.verificationStatus),
+}));
+
+// ===== LOCATIONS TABLE =====
+export const locations = pgTable("locations", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id"),
+  providerId: integer("provider_id").references(() => providers.id),
+  type: varchar("type").notNull(),
+  name: varchar("name"),
+  addressLine1: varchar("address_line1").notNull(),
+  addressLine2: varchar("address_line2"),
+  city: varchar("city").notNull(),
+  state: varchar("state"),
+  country: varchar("country").default("IL"),
+  postalCode: varchar("postal_code"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  googlePlaceId: varchar("google_place_id"),
+  phone: varchar("phone"),
+  email: varchar("email"),
+  instructions: text("instructions"),
+  isDefault: boolean("is_default").default(false),
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("location_user_idx").on(table.userId),
+  typeIdx: index("location_type_idx").on(table.type),
+  geoIdx: index("location_geo_idx").on(table.latitude, table.longitude),
+}));
+
+// ===== STATIONS TABLE =====
+export const stations = pgTable("stations", {
+  id: serial("id").primaryKey(),
+  stationCode: varchar("station_code").notNull().unique(),
+  locationId: integer("location_id").references(() => locations.id).notNull(),
+  franchiseId: integer("franchise_id"),
+  name: varchar("name").notNull(),
+  nameHe: varchar("name_he"),
+  description: text("description"),
+  descriptionHe: text("description_he"),
+  photoUrls: text("photo_urls").array(),
+  status: varchar("status").default("operational"),
+  isActive: boolean("is_active").default(true),
+  iotDeviceId: varchar("iot_device_id"),
+  iotStatus: jsonb("iot_status"),
+  lastHeartbeat: timestamp("last_heartbeat"),
+  pricePerWash: decimal("price_per_wash", { precision: 10, scale: 2 }),
+  pricePerMinute: decimal("price_per_minute", { precision: 10, scale: 2 }),
+  features: text("features").array(),
+  operatingHours: jsonb("operating_hours"),
+  totalWashes: integer("total_washes").default(0),
+  totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default("0"),
+  averageUsageMinutes: integer("average_usage_minutes"),
+  lastMaintenanceDate: date("last_maintenance_date"),
+  nextMaintenanceDate: date("next_maintenance_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  statusIdx: index("station_status_idx").on(table.status),
+  locationIdx: index("station_location_idx").on(table.locationId),
+}));
+
+// ===== VEHICLES TABLE =====
+export const vehicles = pgTable("vehicles", {
+  id: serial("id").primaryKey(),
+  providerId: integer("provider_id").references(() => providers.id).notNull(),
+  make: varchar("make").notNull(),
+  model: varchar("model").notNull(),
+  year: integer("year").notNull(),
+  color: varchar("color"),
+  licensePlate: varchar("license_plate").notNull().unique(),
+  vin: varchar("vin"),
+  type: varchar("type").notNull(),
+  capacity: integer("capacity"),
+  features: text("features").array(),
+  sizeSupport: text("size_support").array(),
+  registrationDocumentUrl: varchar("registration_document_url"),
+  insuranceDocumentUrl: varchar("insurance_document_url"),
+  inspectionDocumentUrl: varchar("inspection_document_url"),
+  verificationStatus: varchar("verification_status").default("pending"),
+  insuranceProvider: varchar("insurance_provider"),
+  insurancePolicyNumber: varchar("insurance_policy_number"),
+  insuranceExpiryDate: date("insurance_expiry_date"),
+  lastInspectionDate: date("last_inspection_date"),
+  nextInspectionDate: date("next_inspection_date"),
+  totalTrips: integer("total_trips").default(0),
+  averageRating: decimal("average_rating", { precision: 3, scale: 2 }).default("0"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  providerIdx: index("vehicle_provider_idx").on(table.providerId),
+  verificationIdx: index("vehicle_verification_idx").on(table.verificationStatus),
+}));
+
+// ===== BOOKINGS TABLE =====
+export const bookings = pgTable("bookings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingNumber: varchar("booking_number").notNull().unique(),
+  platformId: varchar("platform_id").notNull().references(() => platforms.id),
+  userId: varchar("user_id").notNull(),
+  providerId: integer("provider_id").references(() => providers.id),
+  pickupLocationId: integer("pickup_location_id").references(() => locations.id),
+  dropoffLocationId: integer("dropoff_location_id").references(() => locations.id),
+  stationId: integer("station_id").references(() => stations.id),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  duration: integer("duration"),
+  timezone: varchar("timezone").default("Asia/Jerusalem"),
+  status: varchar("status").default("draft").notNull(),
+  paymentStatus: varchar("payment_status").default("pending"),
+  paymentIntentId: varchar("payment_intent_id"),
+  paymentMethod: varchar("payment_method"),
+  payoutStatus: varchar("payout_status").default("pending"),
+  payoutDate: timestamp("payout_date"),
+  subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull(),
+  platformFee: decimal("platform_fee", { precision: 12, scale: 2 }).default("0"),
+  providerPayout: decimal("provider_payout", { precision: 12, scale: 2 }).default("0"),
+  discount: decimal("discount", { precision: 12, scale: 2 }).default("0"),
+  total: decimal("total", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency").default("ILS"),
+  serviceType: varchar("service_type"),
+  serviceDescription: text("service_description"),
+  specialRequests: text("special_requests"),
+  platformData: jsonb("platform_data"),
+  cancellationReason: text("cancellation_reason"),
+  cancelledBy: varchar("cancelled_by"),
+  cancelledAt: timestamp("cancelled_at"),
+  refundAmount: decimal("refund_amount", { precision: 12, scale: 2 }),
+  refundProcessedAt: timestamp("refund_processed_at"),
+  customerReviewId: integer("customer_review_id"),
+  providerReviewId: integer("provider_review_id"),
+  confirmedAt: timestamp("confirmed_at"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  platformProviderTimeIdx: index("booking_platform_provider_time_idx").on(table.platformId, table.providerId, table.startTime),
+  platformUserStatusIdx: index("booking_platform_user_status_idx").on(table.platformId, table.userId, table.status),
+  statusIdx: index("booking_status_idx").on(table.status),
+  dateIdx: index("booking_date_idx").on(table.startTime),
+}));
+
+// ===== BOOKING PETS JOIN TABLE =====
+export const bookingPets = pgTable("booking_pets", {
+  id: serial("id").primaryKey(),
+  bookingId: varchar("booking_id").references(() => bookings.id, { onDelete: 'cascade' }).notNull(),
+  petId: integer("pet_id").references(() => pets.id).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  bookingPetUnique: uniqueIndex("booking_pet_unique").on(table.bookingId, table.petId),
+  bookingIdx: index("booking_pet_booking_idx").on(table.bookingId),
+  petIdx: index("booking_pet_pet_idx").on(table.petId),
+}));
+
+// ===== BOOKING ITEMS TABLE =====
+export const bookingItems = pgTable("booking_items", {
+  id: serial("id").primaryKey(),
+  bookingId: varchar("booking_id").references(() => bookings.id, { onDelete: 'cascade' }).notNull(),
+  itemType: varchar("item_type").notNull(),
+  name: varchar("name").notNull(),
+  nameHe: varchar("name_he"),
+  description: text("description"),
+  quantity: integer("quantity").default(1),
+  unitPrice: decimal("unit_price", { precision: 12, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 12, scale: 2 }).notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  bookingIdx: index("booking_item_booking_idx").on(table.bookingId),
+}));
+
+// ===== AVAILABILITY SLOTS TABLE =====
+export const availabilitySlots = pgTable("availability_slots", {
+  id: serial("id").primaryKey(),
+  providerId: integer("provider_id").references(() => providers.id, { onDelete: 'cascade' }).notNull(),
+  platformId: varchar("platform_id").notNull().references(() => platforms.id),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  timezone: varchar("timezone").default("Asia/Jerusalem"),
+  isRecurring: boolean("is_recurring").default(false),
+  recurrenceRule: varchar("recurrence_rule"),
+  recurrenceEnd: timestamp("recurrence_end"),
+  status: varchar("status").default("available"),
+  bookingId: varchar("booking_id").references(() => bookings.id),
+  bufferBefore: integer("buffer_before").default(0),
+  bufferAfter: integer("buffer_after").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  providerTimeIdx: index("availability_provider_time_idx").on(table.providerId, table.startTime),
+  statusIdx: index("availability_status_idx").on(table.status),
+}));
+
+// ===== PAYMENTS TABLE =====
+export const superAppPayments = pgTable("super_app_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingId: varchar("booking_id").references(() => bookings.id).notNull(),
+  userId: varchar("user_id").notNull(),
+  gateway: varchar("gateway").notNull(),
+  gatewayTransactionId: varchar("gateway_transaction_id"),
+  paymentIntentId: varchar("payment_intent_id"),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency").default("ILS"),
+  status: varchar("status").default("pending"),
+  paymentMethod: varchar("payment_method"),
+  cardBrand: varchar("card_brand"),
+  cardLast4: varchar("card_last4"),
+  refundAmount: decimal("refund_amount", { precision: 12, scale: 2 }),
+  refundReason: text("refund_reason"),
+  refundedAt: timestamp("refunded_at"),
+  metadata: jsonb("metadata"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  bookingIdx: index("super_app_payment_booking_idx").on(table.bookingId),
+  userIdx: index("super_app_payment_user_idx").on(table.userId),
+  statusIdx: index("super_app_payment_status_idx").on(table.status),
+}));
+
+// ===== PAYOUTS TABLE =====
+export const superAppPayouts = pgTable("super_app_payouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  providerId: integer("provider_id").references(() => providers.id).notNull(),
+  bookingId: varchar("booking_id").references(() => bookings.id),
+  stripePayoutId: varchar("stripe_payout_id"),
+  stripeTransferId: varchar("stripe_transfer_id"),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  platformFee: decimal("platform_fee", { precision: 12, scale: 2 }).notNull(),
+  netAmount: decimal("net_amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency").default("ILS"),
+  status: varchar("status").default("pending"),
+  failureReason: text("failure_reason"),
+  scheduledFor: timestamp("scheduled_for"),
+  processedAt: timestamp("processed_at"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  providerIdx: index("super_app_payout_provider_idx").on(table.providerId),
+  statusIdx: index("super_app_payout_status_idx").on(table.status),
+}));
+
+// ===== REVIEWS TABLE =====
+export const superAppReviews = pgTable("super_app_reviews", {
+  id: serial("id").primaryKey(),
+  bookingId: varchar("booking_id").references(() => bookings.id).notNull(),
+  platformId: varchar("platform_id").notNull().references(() => platforms.id),
+  reviewerId: varchar("reviewer_id").notNull(),
+  reviewerType: varchar("reviewer_type").notNull(),
+  revieweeId: varchar("reviewee_id").notNull(),
+  revieweeType: varchar("reviewee_type").notNull(),
+  rating: integer("rating").notNull(),
+  title: varchar("title"),
+  comment: text("comment"),
+  commentHe: text("comment_he"),
+  categories: jsonb("categories"),
+  photoUrls: text("photo_urls").array(),
+  videoUrls: text("video_urls").array(),
+  isVerifiedPurchase: boolean("is_verified_purchase").default(true),
+  providerResponse: text("provider_response"),
+  providerRespondedAt: timestamp("provider_responded_at"),
+  isReported: boolean("is_reported").default(false),
+  reportReason: text("report_reason"),
+  moderationStatus: varchar("moderation_status").default("approved"),
+  helpfulCount: integer("helpful_count").default(0),
+  notHelpfulCount: integer("not_helpful_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  bookingIdx: index("super_app_review_booking_idx").on(table.bookingId),
+  platformIdx: index("super_app_review_platform_idx").on(table.platformId),
+  revieweeIdx: index("super_app_review_reviewee_idx").on(table.revieweeId),
+  ratingIdx: index("super_app_review_rating_idx").on(table.rating),
+}));
+
+// ===== MESSAGES TABLE =====
+export const superAppMessages = pgTable("super_app_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: varchar("conversation_id").notNull(),
+  bookingId: varchar("booking_id").references(() => bookings.id),
+  platformId: varchar("platform_id").notNull().references(() => platforms.id),
+  senderId: varchar("sender_id").notNull(),
+  recipientId: varchar("recipient_id").notNull(),
+  content: text("content").notNull(),
+  messageType: varchar("message_type").default("text"),
+  attachments: jsonb("attachments"),
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  deliveredAt: timestamp("delivered_at"),
+  isSystemMessage: boolean("is_system_message").default(false),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  conversationIdx: index("super_app_message_conversation_idx").on(table.conversationId),
+  senderIdx: index("super_app_message_sender_idx").on(table.senderId),
+  recipientIdx: index("super_app_message_recipient_idx").on(table.recipientId),
+  createdIdx: index("super_app_message_created_idx").on(table.createdAt),
+}));
+
+// ===== NOTIFICATIONS TABLE =====
+export const superAppNotifications = pgTable("super_app_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  type: varchar("type").notNull(),
+  platformId: varchar("platform_id").references(() => platforms.id),
+  title: varchar("title").notNull(),
+  titleHe: varchar("title_he"),
+  body: text("body").notNull(),
+  bodyHe: text("body_he"),
+  channels: text("channels").array(),
+  pushSent: boolean("push_sent").default(false),
+  emailSent: boolean("email_sent").default(false),
+  smsSent: boolean("sms_sent").default(false),
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  actionUrl: varchar("action_url"),
+  actionType: varchar("action_type"),
+  bookingId: varchar("booking_id").references(() => bookings.id),
+  relatedId: varchar("related_id"),
+  metadata: jsonb("metadata"),
+  scheduledFor: timestamp("scheduled_for"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("super_app_notification_user_idx").on(table.userId),
+  typeIdx: index("super_app_notification_type_idx").on(table.type),
+  readIdx: index("super_app_notification_read_idx").on(table.isRead),
+}));
+
+// ===== MEMBERSHIPS TABLE =====
+export const memberships = pgTable("memberships", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  platformId: varchar("platform_id").notNull().references(() => platforms.id),
+  planName: varchar("plan_name").notNull(),
+  planType: varchar("plan_type").notNull(),
+  price: decimal("price", { precision: 12, scale: 2 }).notNull(),
+  billingInterval: varchar("billing_interval").notNull(),
+  currency: varchar("currency").default("ILS"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  status: varchar("status").default("active"),
+  bookingsPerInterval: integer("bookings_per_interval"),
+  bookingsUsed: integer("bookings_used").default(0),
+  startDate: timestamp("start_date").notNull(),
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAt: timestamp("cancel_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("membership_user_idx").on(table.userId),
+  platformIdx: index("membership_platform_idx").on(table.platformId),
+  statusIdx: index("membership_status_idx").on(table.status),
+}));
+
+// Zod Schemas for Super-App Tables
+export const insertPlatformSchema = createInsertSchema(platforms);
+export type InsertPlatform = z.infer<typeof insertPlatformSchema>;
+export type SelectPlatform = typeof platforms.$inferSelect;
+
+export const insertPetSchema = createInsertSchema(pets).omit({ id: true });
+export type InsertPet = z.infer<typeof insertPetSchema>;
+export type SelectPet = typeof pets.$inferSelect;
+
+export const insertProviderSchema = createInsertSchema(providers).omit({ id: true });
+export type InsertProvider = z.infer<typeof insertProviderSchema>;
+export type SelectProvider = typeof providers.$inferSelect;
+
+export const insertLocationSchema = createInsertSchema(locations).omit({ id: true });
+export type InsertLocation = z.infer<typeof insertLocationSchema>;
+export type SelectLocation = typeof locations.$inferSelect;
+
+export const insertStationSchema = createInsertSchema(stations).omit({ id: true });
+export type InsertStation = z.infer<typeof insertStationSchema>;
+export type SelectStation = typeof stations.$inferSelect;
+
+export const insertVehicleSchema = createInsertSchema(vehicles).omit({ id: true });
+export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
+export type SelectVehicle = typeof vehicles.$inferSelect;
+
+export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true });
+export type InsertBooking = z.infer<typeof insertBookingSchema>;
+export type SelectBooking = typeof bookings.$inferSelect;
+
+export const insertBookingPetSchema = createInsertSchema(bookingPets).omit({ id: true });
+export type InsertBookingPet = z.infer<typeof insertBookingPetSchema>;
+export type SelectBookingPet = typeof bookingPets.$inferSelect;
+
+export const insertBookingItemSchema = createInsertSchema(bookingItems).omit({ id: true });
+export type InsertBookingItem = z.infer<typeof insertBookingItemSchema>;
+export type SelectBookingItem = typeof bookingItems.$inferSelect;
+
+export const insertAvailabilitySlotSchema = createInsertSchema(availabilitySlots).omit({ id: true });
+export type InsertAvailabilitySlot = z.infer<typeof insertAvailabilitySlotSchema>;
+export type SelectAvailabilitySlot = typeof availabilitySlots.$inferSelect;
+
+export const insertSuperAppPaymentSchema = createInsertSchema(superAppPayments).omit({ id: true });
+export type InsertSuperAppPayment = z.infer<typeof insertSuperAppPaymentSchema>;
+export type SelectSuperAppPayment = typeof superAppPayments.$inferSelect;
+
+export const insertSuperAppPayoutSchema = createInsertSchema(superAppPayouts).omit({ id: true });
+export type InsertSuperAppPayout = z.infer<typeof insertSuperAppPayoutSchema>;
+export type SelectSuperAppPayout = typeof superAppPayouts.$inferSelect;
+
+export const insertSuperAppReviewSchema = createInsertSchema(superAppReviews).omit({ id: true });
+export type InsertSuperAppReview = z.infer<typeof insertSuperAppReviewSchema>;
+export type SelectSuperAppReview = typeof superAppReviews.$inferSelect;
+
+export const insertSuperAppMessageSchema = createInsertSchema(superAppMessages).omit({ id: true });
+export type InsertSuperAppMessage = z.infer<typeof insertSuperAppMessageSchema>;
+export type SelectSuperAppMessage = typeof superAppMessages.$inferSelect;
+
+export const insertSuperAppNotificationSchema = createInsertSchema(superAppNotifications).omit({ id: true });
+export type InsertSuperAppNotification = z.infer<typeof insertSuperAppNotificationSchema>;
+export type SelectSuperAppNotification = typeof superAppNotifications.$inferSelect;
+
+export const insertMembershipSchema = createInsertSchema(memberships).omit({ id: true });
+export type InsertMembership = z.infer<typeof insertMembershipSchema>;
+export type SelectMembership = typeof memberships.$inferSelect;
