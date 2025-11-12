@@ -160,8 +160,8 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
       status: 'production',
       backend: true,
       frontend: false,
-      notes: 'Twilio-powered, bilingual, expense approval notifications',
-      notesHe: 'מופעל Twilio, דו-לשוני, התראות אישור הוצאות',
+      notes: 'Meta WhatsApp Business API, bilingual, expense approval notifications',
+      notesHe: 'Meta WhatsApp Business API, דו-לשוני, התראות אישור הוצאות',
     },
     {
       name: 'Automated Bookkeeping',

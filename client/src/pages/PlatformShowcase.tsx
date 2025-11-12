@@ -133,7 +133,7 @@ export default function PlatformShowcase() {
         "Passport KYC Verification - Google Vision MRZ parsing with admin approval",
         "Digital Wallet Cards - Apple Wallet + Google Wallet for loyalty",
         "QR Code Redemption - E-gift voucher validation at stations",
-        "WhatsApp Business - Twilio-powered bilingual messaging",
+        "WhatsApp Business - Meta WhatsApp Business API with bilingual messaging",
         "Email Marketing - SendGrid luxury templates with CSV exports",
         "Document Signing - E-signature system for legal contracts",
         "Social Platform - Instagram-style 'PetWash Circle' with AI moderation"
