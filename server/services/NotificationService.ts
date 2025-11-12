@@ -1,4 +1,4 @@
-import { SmsService } from "../smsService";
+import { GoogleMessagingService } from "./GoogleMessagingService";
 import { EmailService } from "../emailService";
 import admin from "firebase-admin";
 
@@ -91,17 +91,23 @@ class NotificationService {
   private async sendSMSNotification(notification: Omit<Notification, "id" | "read" | "createdAt">): Promise<void> {
     try {
       const userDoc = await this.db.collection("users").doc(notification.userId).get();
-      const phoneNumber = userDoc.data()?.phone;
+      const email = userDoc.data()?.email;
 
-      if (!phoneNumber) {
-        console.log("[NotificationService] No phone number for user:", notification.userId);
+      if (!email) {
+        console.log("[NotificationService] No email for user:", notification.userId);
         return;
       }
 
-      await SmsService.sendSMS(phoneNumber, `${notification.title}\n${notification.message}`);
-      console.log("[NotificationService] SMS sent to:", phoneNumber);
+      // Send via push notification (replaces SMS with Google FCM)
+      await GoogleMessagingService.sendPushNotification({
+        userId: notification.userId,
+        title: notification.title,
+        body: notification.message,
+        data: notification.data,
+      });
+      console.log("[NotificationService] Push notification sent to:", notification.userId);
     } catch (error) {
-      console.error("[NotificationService] Error sending SMS:", error);
+      console.error("[NotificationService] Error sending push notification:", error);
     }
   }
 

@@ -10,7 +10,7 @@ import { QRCodeService } from "./qrCode";
 // Nayax Firestore service now loaded dynamically in routes (no static import needed)
 import { SmartReceiptService } from "./smartReceiptService";
 import { EmailService } from "./emailService";
-import { SmsService } from "./smsService";
+import { GoogleMessagingService } from "./services/GoogleMessagingService";
 import kycRoutes from "./routes/kyc";
 import stationsRoutes from "./routes/stations";
 import enterpriseRoutes from "./routes/enterprise";
@@ -2463,47 +2463,6 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // CRITICAL: Twilio SMS webhook endpoint with signature validation
-  app.post('/api/webhooks/twilio', express.urlencoded({ extended: false }), async (req, res) => {
-    try {
-      logger.info('Twilio webhook received');
-      
-      // Verify Twilio signature for security
-      const twilioSignature = req.get('X-Twilio-Signature');
-      const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-      
-      if (!twilioSignature) {
-        logger.error('Twilio webhook: Missing signature');
-        return res.status(401).json({ error: 'Missing signature' });
-      }
-      
-      // Verify signature if auth token is available
-      const authToken = process.env.TWILIO_AUTH_TOKEN;
-      if (authToken) {
-        const twilioValidator = require('twilio').validateRequest;
-        const isValidSignature = twilioValidator(
-          authToken,
-          twilioSignature,
-          url,
-          req.body
-        );
-        
-        if (!isValidSignature) {
-          logger.error('Twilio webhook: Invalid signature');
-          return res.status(401).json({ error: 'Invalid signature' });
-        }
-      }
-      
-      // Process SMS event
-      await processSmsEvent(req.body);
-      
-      res.status(200).json({ received: true });
-      
-    } catch (error) {
-      logger.error('Twilio webhook error', error);
-      res.status(500).json({ error: 'Webhook processing failed' });
-    }
-  });
 
   // Helper function to process email events (SendGrid webhook data)
   async function processEmailEvent(event: any): Promise<void> {

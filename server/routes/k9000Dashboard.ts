@@ -29,7 +29,7 @@ import {
 import { eq, and, desc, sql, gte, lt } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
-import { SmsService } from '../smsService';
+import { GoogleMessagingService } from '../services/GoogleMessagingService';
 import { NayaxSparkService } from '../services/NayaxSparkService';
 
 const router = express.Router();
@@ -253,16 +253,18 @@ router.post('/dashboard/stop', async (req, res) => {
       // Critical failure - still report to admin
     }
     
-    // 3. Send SMS alert to technician
+    // 3. Send WhatsApp alert to technician (replaces SMS)
     if (process.env.TECH_PHONE_NUMBER) {
       try {
-        await SmsService.sendSMS({
+        const { WhatsAppService } = await import('../services/WhatsAppService');
+        await WhatsAppService.sendMessage({
           to: process.env.TECH_PHONE_NUMBER,
-          message: `🛑 K9000 EMERGENCY STOP\n${station.location}\nReason: ${reason || 'Manual stop'}\nTime: ${new Date().toLocaleString('en-IL')}`
+          message: `🛑 K9000 EMERGENCY STOP\n${station.location}\nReason: ${reason || 'Manual stop'}\nTime: ${new Date().toLocaleString('he-IL')}`,
+          language: 'he',
         });
       } catch (error) {
-        logger.error('[K9000 Dashboard] Failed to send SMS alert', { error, stationId });
-        failures.push('SMS alert failed');
+        logger.error('[K9000 Dashboard] Failed to send WhatsApp alert', { error, stationId });
+        failures.push('WhatsApp alert failed');
       }
     }
     
