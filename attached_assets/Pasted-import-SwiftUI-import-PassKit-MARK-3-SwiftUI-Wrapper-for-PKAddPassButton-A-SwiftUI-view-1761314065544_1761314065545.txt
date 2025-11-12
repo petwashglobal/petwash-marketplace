@@ -1,0 +1,81 @@
+import SwiftUI
+import PassKit
+
+// MARK: - 3. SwiftUI Wrapper for PKAddPassButton
+
+/// A SwiftUI view that displays the official "Add to Apple Wallet" button.
+struct AddToWalletButton: UIViewRepresentable {
+    
+    // The action closure to run when the user taps the button.
+    let action: () -> Void
+    
+    func makeUIView(context: Context) -> PKAddPassButton {
+        // 1. Create the native PassKit button with the desired style
+        let button = PKAddPassButton(addPassButtonStyle: .black)
+        
+        // 2. Set the target and action to hook into the SwiftUI action closure
+        button.addTarget(context.coordinator, action: #selector(Coordinator.buttonTapped), for: .touchUpInside)
+        
+        // 3. Optional: Customize the appearance (only available on PKAddPassButton, not PKPaymentButton)
+        // button.addPassButtonStyle = .whiteOutline // Example of changing style
+        
+        return button
+    }
+    
+    func updateUIView(_ uiView: PKAddPassButton, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    // MARK: - Coordinator
+    
+    class Coordinator: NSObject {
+        var parent: AddToWalletButton
+        
+        init(_ parent: AddToWalletButton) {
+            self.parent = parent
+        }
+        
+        @objc func buttonTapped() {
+            // Call the SwiftUI action closure
+            parent.action()
+        }
+    }
+}
+
+// MARK: - 4. Complete SwiftUI View Example
+
+struct WalletIntegrationView: View {
+    // You must hold a reference to the presenter to act as the delegate for PKAddPassesViewController
+    @State private var presenter: WalletPassPresenter?
+    
+    var body: some View {
+        VStack {
+            Text("Your Pet Wash Loyalty Card is Ready!")
+                .font(.title)
+                .padding(.bottom, 50)
+
+            // Conditional rendering of the button is a best practice
+            if PKAddPassesViewController.canAddPasses() {
+                AddToWalletButton {
+                    // This is the action called when the user taps the button
+                    // Find the current UIViewController to present the Wallet screen
+                    if let rootVC = UIApplication.shared.windows.first?.rootViewController {
+                        
+                        // Initialize and store the presenter
+                        self.presenter = WalletPassPresenter(presentingVC: rootVC)
+                        
+                        // Start the process
+                        self.presenter?.beginAddPassProcess()
+                    }
+                }
+                .frame(height: 50) // Adjust the required size
+                .padding(.horizontal, 40)
+            } else {
+                Text("Please open this page on an iPhone to add to Wallet.")
+                    .foregroundColor(.gray)
+            }
+        }
+    }
+}

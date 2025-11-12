@@ -1,0 +1,88 @@
+# קוד Python (סביבת Backend) - מערכת לתחזוקה חזויה (Predictive Maintenance)
+
+# --- ייבוא ספריות חיוניות ---
+# 'requests' לצורך שליחת התראות (למשל, לטכנאי בישראל)
+# 'scikit-learn' (פיקטיבי) עבור מודל ה-AI המאומן
+# 'datetime' לניהול זמן ישראל
+import requests
+import json
+from datetime import datetime, timezone, timedelta
+
+# הגדרת אזור הזמן של ישראל (חשוב לדיווחים מדויקים)
+IST = timezone(timedelta(hours=3))
+
+# --- מודל AI פיקטיבי: במציאות, זה יהיה מודל מאומן ---
+# נניח שזהו מודל 'למידת מכונה' שאומן לזהות דפוסים המובילים לכשל
+class MaintenancePredictor:
+    def __init__(self):
+        # במציאות: טעינת מודל מאומן (למשל, מודל רגרסיה או סיווג)
+        pass 
+        
+    def predict_failure_risk(self, data):
+        # 0.9 = סכנה גבוהה, 0.1 = סכנה נמוכה
+        
+        # --- ההיגיון המעניין של ה-AI ---
+        # אם לחץ המים נמוך מהרגיל, והמשאבה פועלת זמן רב מדי (מעיד על סתימה או שחיקה)
+        if data['water_pressure'] < 4.5 and data['pump_run_time'] > 180:
+            return 0.95 # סיכון כשל גבוה מאוד
+        
+        # אם הטמפרטורה גבוהה באופן חריג (מעיד על קצר או עומס יתר)
+        if data['temp_celsius'] > 70 and data['washes_count'] % 50 == 0:
+            return 0.8  # סיכון גבוה
+            
+        return 0.15 # סיכון נמוך
+
+MAINTENANCE_MODEL = MaintenancePredictor() # אתחול המודל
+
+# --- פונקציית הליבה: ניתוח נתונים והוצאת התראה ---
+def analyze_wash_data(machine_id, telemetry_data):
+    
+    # 1. ניתוח סיכון באמצעות ה-AI
+    risk_score = MAINTENANCE_MODEL.predict_failure_risk(telemetry_data)
+    
+    # 2. הגדרת סף התראה (הגיוני ל-$AIoT$)
+    RISK_THRESHOLD = 0.8
+    
+    # 3. אם הסיכון חצה את הסף - הפעלת התרעת חירום
+    if risk_score >= RISK_THRESHOLD:
+        
+        now_ist = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S")
+        
+        alert_message = f"""
+        🚨 התרעת חירום - כשל חזוי (ישראל) 🚨
+        
+        מכונה ID: {machine_id}
+        מיקום: ירושלים (לדוגמה)
+        שעת דיווח: {now_ist} (זמן ישראל)
+        ציון סיכון AI: {risk_score:.2f} (גבוה)
+        
+        נתונים חריגים: לחץ מים: {telemetry_data['water_pressure']} בר, זמן משאבה: {telemetry_data['pump_run_time']} שניות.
+        
+        נדרש טיפול דחוף למניעת השבתה!
+        """
+        
+        # 4. שליחת התראה לצוות הטכני בישראל (דרך API סמס או WhatsApp)
+        send_tech_alert(alert_message)
+        
+        return {"status": "ALERT_SENT", "risk": risk_score}
+    
+    return {"status": "OK", "risk": risk_score}
+
+
+# --- פונקציה לדוגמה לשליחת התראה ---
+def send_tech_alert(message):
+    # במציאות: קריאת API למערכת כמו Zapier, Twilio, או ספק שירות סמס ישראלי
+    print("\n" + "="*50)
+    print("שולח התראת תחזוקה לטכנאי...")
+    print(message)
+    print("="*50 + "\n")
+    # requests.post("https://api.sms-service.co.il/send", json={"text": message, "to": "+9725XXXXXXX"})
+
+# --- דוגמאות שימוש ---
+# מקרה 1: פעולה רגילה
+regular_data = {'water_pressure': 6.0, 'pump_run_time': 90, 'temp_celsius': 45, 'washes_count': 123}
+print("ניתוח נתונים רגיל:", analyze_wash_data("Machine-TLV-001", regular_data))
+
+# מקרה 2: סיכון כשל חזוי (הלחץ נמוך והמשאבה עובדת קשה)
+failure_risk_data = {'water_pressure': 4.0, 'pump_run_time': 200, 'temp_celsius': 60, 'washes_count': 150}
+print("ניתוח נתונים חזוי:", analyze_wash_data("Machine-TLV-001", failure_risk_data))

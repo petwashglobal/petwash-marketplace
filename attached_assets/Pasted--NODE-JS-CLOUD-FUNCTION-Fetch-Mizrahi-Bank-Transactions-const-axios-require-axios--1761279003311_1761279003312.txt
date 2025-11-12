@@ -1,0 +1,52 @@
+// --- NODE.JS CLOUD FUNCTION: Fetch Mizrahi Bank Transactions ---
+
+const axios = require('axios'); // For making secure API calls
+const YOUR_AGGREGATOR_URL = 'https://api.your-aggregator.com/mizrahi/transactions'; // כתובת האגרגטור
+const YOUR_AGGREGATOR_TOKEN = process.env.AGGREGATOR_SECRET_KEY; // המפתח הסודי שלכם
+
+exports.fetchMizrahiAccountData = admin.functions.https.onCall(async (data, context) => {
+    
+    // 1. CRITICAL: Security Check - Only internal staff/system can run this function
+    if (context.auth.token.role !== 'admin' && context.auth.token.role !== 'finance') {
+        throw new functions.https.HttpsError('permission-denied', 'Only finance roles can pull bank data.');
+    }
+
+    try {
+        // 2. Call the aggregator's API to fetch transaction data
+        const response = await axios.get(YOUR_AGGREGATOR_URL, {
+            headers: { 
+                'Authorization': `Bearer ${YOUR_AGGREGATOR_TOKEN}`,
+                'x-bank-account-id': 'YOUR_PETWASH_BUSINESS_ACCOUNT_ID' // מזהה החשבון במזרחי
+            },
+            params: { from_date: data.lastPullDate }
+        });
+        
+        const transactions = response.data.transactions;
+
+        // 3. Save / Reconcile transactions in Firestore
+        const batch = db.batch();
+        transactions.forEach(tx => {
+            const txRef = db.collection('bank_transactions').doc(tx.id);
+            batch.set(txRef, {
+                date: tx.date,
+                description: tx.description,
+                amount: tx.amount,
+                reconciled: false, // Flag for the AI Bookkeeping process
+                // ...
+            });
+        });
+
+        await batch.commit();
+        console.log(`Successfully pulled and saved ${transactions.length} transactions from Mizrahi Bank.`);
+        
+        // 4. Trigger the AI Bookkeeping process automatically (The amazing part!)
+        // This links directly to the AI classification code from התשובה הקודמת!
+        await firebase.functions().httpsCallable('classifyNewTransactions')({ count: transactions.length });
+
+        return { success: true, count: transactions.length };
+
+    } catch (error) {
+        console.error("Mizrahi Bank Integration Error:", error.message);
+        throw new functions.https.HttpsError('unavailable', 'Bank service integration failed.');
+    }
+});

@@ -1,0 +1,271 @@
+// main.dart - Best Code for Cross-Platform Workflow/Email App (Flutter 2025)
+
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const LuxuryWorkflowApp());
+}
+
+// -----------------------------------------------------------------------------
+// VITAL INFO: FRAMEWORK & LANGUAGE
+// -----------------------------------------------------------------------------
+// Framework: Flutter (Google)
+// Language:  Dart
+// Why:       Single codebase for iOS/Android, excellent for custom, "luxury" UI.
+// Goal:      Minimalist, Dark Mode compatible, responsive email/workflow layout.
+// -----------------------------------------------------------------------------
+
+class LuxuryWorkflowApp extends StatelessWidget {
+  const LuxuryWorkflowApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // 1. Theme Setup for Luxury/Minimalist Look
+    // Uses high contrast and elegant primary colors.
+    return MaterialApp(
+      title: 'Luxury Workflow',
+      debugShowCheckedModeBanner: false, // Hide debug banner for clean look
+      
+      // Light Mode Theme (Subtle and clean)
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueGrey, // Elegant and non-distracting
+          brightness: Brightness.light,
+          primary: const Color(0xFF1E88E5), // Soft Blue
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF5F5F5), // Light gray background
+        useMaterial3: true,
+      ),
+      
+      // Dark Mode Theme (High-contrast luxury) - TRENDY IN 2025
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueGrey,
+          brightness: Brightness.dark,
+          primary: const Color(0xFF64B5F6), // Lighter Blue for visibility
+        ),
+        scaffoldBackgroundColor: Colors.black, // True black for AMOLED screens
+        cardColor: const Color(0xFF1E1E1E), // Dark container color
+        useMaterial3: true,
+      ),
+      
+      themeMode: ThemeMode.system, // Automatically switch to system preference
+      
+      home: const WorkflowHomePage(),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// CORE LAYOUT: RESPONSIVE TWO-PANE VIEW
+// -----------------------------------------------------------------------------
+
+class WorkflowHomePage extends StatelessWidget {
+  const WorkflowHomePage({super.key});
+  
+  // Mock data for the email list
+  final List<Map<String, String>> mockEmails = const [
+    {'sender': 'CEO', 'subject': 'Q3 Strategy Approval', 'time': '10:30 AM'},
+    {'sender': 'Client Project', 'subject': 'Review Final Mockups', 'time': '9:15 AM'},
+    {'sender': 'Marketing', 'subject': 'New Campaign Metrics', 'time': 'Yesterday'},
+    {'sender': 'The Board', 'subject': 'Urgent: Meeting Agenda', 'time': '2 days ago'},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    // Check if the screen is wide (Tablet/Desktop) or narrow (Phone)
+    final isWideScreen = MediaQuery.of(context).size.width > 700;
+
+    if (isWideScreen) {
+      // WIDE SCREEN: Two-Pane Layout (List on left, detail on right)
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Inbox', style: TextStyle(fontWeight: FontWeight.w300)),
+          backgroundColor: Theme.of(context).cardColor,
+          elevation: 0.5,
+        ),
+        body: Row(
+          children: [
+            // Left Pane (The Email List)
+            SizedBox(
+              width: 300, 
+              child: EmailListView(emails: mockEmails)
+            ),
+            // Divider for a clean separation
+            const VerticalDivider(width: 1, thickness: 1),
+            // Right Pane (The Detail View)
+            const Expanded(
+              child: EmailDetailView(
+                sender: 'CEO', 
+                subject: 'Q3 Strategy Approval', 
+                body: 'Please review the attached strategy document before the end of day. This is a top-priority workflow task.'
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // NARROW SCREEN (Mobile): Single-Pane Layout
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Inbox', style: TextStyle(fontWeight: FontWeight.w300)),
+          // Added a search action for mobile workflow
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () { /* TODO: Implement Search Workflow */ },
+            ),
+          ],
+        ),
+        body: EmailListView(emails: mockEmails),
+      );
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// TEMPLATE COMPONENT: ELEGANT EMAIL LIST ITEM
+// -----------------------------------------------------------------------------
+
+class EmailListView extends StatelessWidget {
+  final List<Map<String, String>> emails;
+  
+  const EmailListView({super.key, required this.emails});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      itemCount: emails.length,
+      itemBuilder: (context, index) {
+        final email = emails[index];
+        return Container(
+          decoration: BoxDecoration(
+            // Subtle selection indicator (e.g., for the currently viewed item)
+            border: Border(left: BorderSide(
+              color: index == 0 ? Theme.of(context).primaryColor : Colors.transparent, 
+              width: 4
+            )),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            // Use a circle avatar with the first initial for a clean look
+            leading: CircleAvatar(
+              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+              child: Text(
+                email['sender']![0], 
+                style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold),
+              ),
+            ),
+            title: Text(
+              email['subject']!, 
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)
+            ),
+            subtitle: Text(
+              email['sender']!, 
+              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color)
+            ),
+            trailing: Text(
+              email['time']!, 
+              style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)
+            ),
+            onTap: () {
+              // TODO: Navigate to detail view on mobile / update detail pane on wide screen
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// TEMPLATE COMPONENT: MINIMALIST DETAIL VIEW
+// -----------------------------------------------------------------------------
+
+class EmailDetailView extends StatelessWidget {
+  final String sender;
+  final String subject;
+  final String body;
+
+  const EmailDetailView({
+    super.key, 
+    required this.sender, 
+    required this.subject, 
+    required this.body
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          // Subject Header
+          Text(
+            subject,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w400, // Elegant, lighter weight
+              color: Theme.of(context).textTheme.titleLarge?.color
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Sender Info (Subtle)
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Theme.of(context).primaryColor,
+                child: Text(sender[0]),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'From: $sender',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 32),
+          // Email Body
+          Text(
+            body,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 40),
+          // **Workflow Action Buttons (Luxury Template Feature)**
+          // Clean, primary-colored CTAs for workflow action.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('Approve Task'),
+                onPressed: () { /* TODO: Implement workflow logic */ },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(width: 16),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.reply),
+                label: const Text('Reply Securely'),
+                onPressed: () { /* TODO: Implement reply action */ },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  side: BorderSide(color: Theme.of(context).primaryColor),
+                  foregroundColor: Theme.of(context).primaryColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

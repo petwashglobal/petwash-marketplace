@@ -1,0 +1,54 @@
+// package.json (Conceptual - main dependencies for 2025 best practices)
+{
+  "name": "israeli-expense-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "start": "react-native start",
+    "test": "jest",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-native": "0.73.6", // Or newer stable version for 2025
+    "@react-navigation/native": "^6.x",
+    "@react-navigation/native-stack": "^6.x",
+    "react-native-safe-area-context": "^4.x",
+    "react-native-screens": "^3.x",
+    "@reduxjs/toolkit": "^2.x", // For robust state management
+    "react-redux": "^9.x",
+    "axios": "^1.x", // For API calls
+    "moment": "^2.x", // Date handling, consider alternatives like 'date-fns'
+    "react-native-camera": "^4.x", // For receipt capture
+    "react-native-image-picker": "^7.x", // For gallery access
+    "@react-native-async-storage/async-storage": "^1.x", // For offline/local storage
+    "react-native-mmkv": "^2.x", // Faster, encrypted local storage alternative
+    "react-native-localize": "^3.x", // For locale-specific formatting
+    "react-native-maps": "^1.x", // For mileage tracking (if needed)
+    "react-native-background-geolocation": "^4.x", // For advanced mileage (enterprise)
+    "react-native-document-picker": "^9.x", // For PDF/document uploads
+    "react-native-uuid": "^2.x" // For generating unique IDs
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@babel/preset-env": "^7.20.0",
+    "@babel/runtime": "^7.20.0",
+    "@react-native/babel-preset": "0.73.21",
+    "@react-native/eslint-config": "0.73.2",
+    "@react-native/metro-config": "0.73.5",
+    "@react-native/typescript-config": "0.73.2",
+    "@types/react": "^18.2.6",
+    "@types/react-test-renderer": "^18.0.0",
+    "babel-jest": "^29.6.3",
+    "eslint": "^8.19.0",
+    "jest": "^29.6.3",
+    "prettier": "2.8.8",
+    "react-test-renderer": "18.2.0",
+    "typescript": "5.0.4"
+  },
+  "jest": {
+    "preset": "react-native"
+  }
+}

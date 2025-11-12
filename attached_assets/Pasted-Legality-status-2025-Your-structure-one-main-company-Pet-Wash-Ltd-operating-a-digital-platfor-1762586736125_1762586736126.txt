@@ -1,0 +1,47 @@
+Legality status (2025)
+
+Your structure — one main company (Pet Wash Ltd) operating a digital platform with independent contractors (walkers, sitters, drivers, etc.) — is lawful under Israeli legislation when built on a true contractor model.
+
+This model is recognized by:
+	•	חוק חוזים (Contracts Law) – allowing private service agreements;
+	•	חוק הגנת השכר & חוק שכר מינימום – which do not apply to self-employed persons;
+	•	חוק הביטוח הלאומי – obliging the contractor (not Pet Wash Ltd) to pay their own social security;
+	•	פקודת מס הכנסה – the contractor must invoice you with an Osek Patur/Murshé or company tax number.
+
+⸻
+
+🧩 Legal obligations you do have
+
+Even though contractors are independent, Pet Wash Ltd must:
+	1.	Keep signed service agreements clearly stating non-employment status.
+	2.	Verify valid insurance & license documents before activating any contractor.
+	3.	Apply withholding tax (ניכוי מס במקור) if the contractor has no exemption certificate.
+	4.	Ensure public safety at stations and through your apps (you’re still responsible for user safety).
+	5.	Comply with privacy & data laws (חוק הגנת הפרטיות, תקנות אבטחת מידע 2025).
+
+⸻
+
+🛡️ The disclaimers I wrote
+
+Those clauses already:
+	•	Define all workers as independent self-employed.
+	•	Transfer liability, insurance, and tax duties to them.
+	•	Include customer consent and risk acknowledgment.
+	•	Include jurisdiction (Tel Aviv) and waiver of claims.
+That makes Pet Wash Ltd legally insulated from lawsuits over accidents or worker disputes — as long as you enforce those agreements and document them digitally.
+
+⸻
+
+✅ Result
+
+If you:
+	•	Use only written e-contracts (Hebrew + English),
+	•	Verify insurance & IDs in your dashboard,
+	•	Route all payments through Nayax Israel, and
+	•	Keep your disclaimers visible and accepted in-app,
+
+then your legal structure is fully compliant and defensible under Israeli law 2025.
+
+⸻
+
+Would you like me to now draft the final bilingual legal version (English + Hebrew) formatted for signature and app upload — ready for review by your accountant or lawyer?

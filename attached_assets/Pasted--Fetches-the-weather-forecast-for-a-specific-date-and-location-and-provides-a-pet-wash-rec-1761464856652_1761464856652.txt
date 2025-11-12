@@ -1,0 +1,51 @@
+/**
+ * Fetches the weather forecast for a specific date and location 
+ * and provides a pet wash recommendation.
+ * @param {string} city - The city name for the forecast.
+ * @param {string} targetDate - The wash date in 'YYYY-MM-DD' format.
+ * @returns {string} The weather recommendation text.
+ */
+async function getWashWeather(city, targetDate) {
+    try {
+        const response = await fetch(`${API_BASE_URL}?q=${city}&appid=${WEATHER_API_KEY}&units=metric`);
+        const data = await response.json();
+
+        if (data.cod !== "200" || !data.list) {
+            return `<span class="alert">Error: City not found or API error.</span>`;
+        }
+        
+        // OpenWeatherMap provides data in 3-hour intervals, we check the closest one.
+        // We'll look for a forecast on the target day.
+        const targetDayForecast = data.list.find(item => {
+            const forecastDate = item.dt_txt.split(' ')[0];
+            return forecastDate === targetDate;
+        });
+
+        if (!targetDayForecast) {
+            return `Forecast unavailable for ${targetDate}.`;
+        }
+
+        const temp = targetDayForecast.main.temp;
+        const description = targetDayForecast.weather[0].description;
+        
+        let recommendation = '';
+        
+        // --- PET WASH PLANNING LOGIC ---
+        if (description.includes('rain') || description.includes('shower')) {
+            recommendation = '☔ **HIGH RAIN RISK!** Postpone the wash.';
+        } else if (temp < 10) {
+            recommendation = `🥶 **TOO COLD (${temp}°C)!** Consider an indoor wash.`;
+        } else if (temp > 30) {
+            recommendation = `☀️ **VERY HOT (${temp}°C)!** Wash early and keep pet cool.`;
+        } else {
+            recommendation = `✅ **IDEAL WASH DAY!** ${temp}°C and ${description}.`;
+        }
+        // -------------------------------
+
+        return recommendation;
+
+    } catch (error) {
+        console.error("Weather API Fetch Error:", error);
+        return `<span class="alert">Failed to load weather data. Check API Key.</span>`;
+    }
+}

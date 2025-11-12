@@ -1,0 +1,17 @@
+Hello Replit Team,
+This message provides the final, unified blueprint for The Sitter Suite—our new concierge booking feature. This is a high-value marketplace with a unique financial model.
+CONCEPT: THE REVOLUTIONARY MARKETPLACE MODEL
+Our platform is structured like Airbnb/Booking.com, where every transaction is split immediately. This protects our revenue, simplifies taxes, and enables massive scale.
+1. TRANSACTION REGISTER / AGD STAMPED: We use Firestore to create an immutable record (BOOKINGS collection) of every deal. All status changes and financial events are time-stamped (serverTimestamp()) for auditability, essential for compliance and growth.
+2. THE BROKER CUT (5%): Our small, hidden commission (5% of the base service fee) is deducted directly from the Sitter's payout, while a visible 10% "Platform Service Fee" is charged to the owner to cover operating costs (payment processing, insurance, Gemini AI usage). This keeps our service affordable and non-greedy for market entry.
+3. NAYAX/CRYPTO PAYMENT INTEGRATION: We must implement a Split Payment architecture (via Stripe Connect, Nayax, etc.). The final charged amount is instantly split: your 5% cut is secured immediately as profit, and the Sitter's 95% is held for post-job payout. The system must also be designed to support future payment in leading crypto currencies (BTC, stablecoins) by integrating specialized payment APIs, future-proofing the payment stack.
+FINAL CODE IMPLEMENTATION AND DATA REQUIREMENTS
+Please confirm the use of the following code logic, as detailed in our previous conversations:
+1. STATIC BRAND NAME (Frontend): The name must be hard-coded to prevent translation.
+<SubMenuItem key="sitter-suite" text="The Sitter Suite" onClick={openConciergeHub} />
+2. FINANCIAL CALCULATION (Backend): Use the provided calculateTransparentFees() function to determine the exact sitterPayoutCents and petwash_profit before calling the payment gateway.
+3. SMART LEAD / AI TRIAGE: The Gemini function must continue to capture the urgent request details and assign the urgencyScore: 3 for critical, last-minute leads, triggering instant push notifications to local sitters.
+4. HIGH-ALERT SAFETY: The Sitter's dashboard must prominently display a persistent, non-dismissible RED ALERT BANNER if any pet profile shows an allergies[*].highAlertFlag: true. This ensures the luxury standard of care and trust.
+INTELLECTUAL PROPERTY (IP) NOTE:
+We have created a unique, valuable system (AI Triage + Luxury Booking Model). Please be aware that steps are being taken to protect this concept (potential Patent Application) as it is a core commercial innovation. Security and confidentiality during implementation are paramount.
+Thank you.

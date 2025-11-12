@@ -1,0 +1,95 @@
+# Deployment Optimization - Exclude unnecessary files from deployment image
+# This file reduces deployment size from 8+ GiB to under the limit
+
+# Development dependencies
+node_modules/.cache
+.npm
+.yarn
+
+# Test files and coverage
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+coverage
+.nyc_output
+vitest.config.ts
+
+# Development tools
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+docs/
+examples/
+
+# Build artifacts (will be rebuilt in deployment)
+dist
+build
+.vite
+.cache
+
+# Environment files
+.env.local
+.env.development
+.env.test
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Source maps (dev only)
+*.map
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Development scripts
+scripts/dev-*
+scripts/test-*
+
+# Large media files (use CDN in production)
+attached_assets/stock_images/
+public/dev-*
+
+# Backup files
+*.bak
+*.backup
+
+# Database dumps (not needed in deployment)
+*.sql
+*.dump
+
+# Certificate files (use secrets instead)
+*.pem
+*.key
+*.cert
+
+# Service account files (use environment variables)
+*-service-account.json
+gcs-service-account.json
+
+# Development configuration
+.replit
+replit.nix

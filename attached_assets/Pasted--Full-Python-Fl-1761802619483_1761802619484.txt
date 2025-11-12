@@ -1,0 +1,268 @@
+# ==============================================================================
+# 🌟 Full Python/Flask Code: Tiered Loyalty Program System (2025-2026)
+# ==============================================================================
+
+from flask import Flask, request, jsonify, render_template
+from flask_sqlalchemy import SQLAlchemy
+from flask_admin import Admin
+from flask_admin.contrib.sqla import ModelView
+from datetime import datetime
+import json
+
+# --- 1. FLASK APPLICATION AND DATABASE SETUP ---
+app = Flask(__name__)
+# שימוש ב-SQLite פשוט עבור Replit/Demo. בסביבת Production יש להשתמש ב-PostgreSQL/MySQL
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///loyalty_db.sqlite3'
+app.config['SECRET_KEY'] = 'a_very_secret_key_for_2026'
+app.config['FLASK_ADMIN_SWATCH'] = 'flatly'
+
+db = SQLAlchemy(app)
+admin = Admin(app, name='Loyalty Admin Dashboard 🚀', template_mode='bootstrap3')
+
+
+# --- 2. DATABASE MODELS (ORM) ---
+class Customer(db.Model):
+    """מודל לניהול פרטי הלקוח וסטטוס הנאמנות שלו."""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    phone = db.Column(db.String(20), unique=True, nullable=True)
+    total_spent = db.Column(db.Float, default=0.0)
+    points = db.Column(db.Integer, default=0)
+    tier = db.Column(db.String(20), default='Bronze')
+    
+    # 2025-2026 Feature: last_activity for churn prediction/re-engagement
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Customer {self.email}>'
+
+class Transaction(db.Model):
+    """מודל לתיעוד כל העסקאות לצבירת נקודות."""
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    points_earned = db.Column(db.Integer, nullable=False)
+    transaction_date = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship for easy lookup
+    customer = db.relationship('Customer', backref=db.backref('transactions', lazy=True))
+
+    def __repr__(self):
+        return f'<Transaction {self.id} for Cust {self.customer_id}>'
+
+class Reward(db.Model):
+    """מודל לניהול פרסי המועדון."""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    points_cost = db.Column(db.Integer, nullable=False)
+    min_tier = db.Column(db.String(20), default='Bronze') # Feature: Tier restriction
+
+    def __repr__(self):
+        return f'<Reward {self.name}>'
+
+# --- 3. LOYALTY LOGIC ---
+TIER_RULES = {
+    'Bronze': {'min_spent': 0, 'multiplier': 1},
+    'Silver': {'min_spent': 500, 'multiplier': 1.5},
+    'Gold':   {'min_spent': 2000, 'multiplier': 2}
+}
+
+def calculate_points_and_tier(customer, amount):
+    """
+    מחשב נקודות חדשות ומעדכן את רמת הלקוח (Tier).
+    זהו קוד 'מניע הנאמנות' (Loyalty Engine).
+    """
+    
+    # 1. חישוב נקודות: 10 נקודות לדולר/שקל בבסיס
+    base_points = int(amount * 10)
+    
+    # 2. החלת מכפיל Tier נוכחי
+    multiplier = TIER_RULES.get(customer.tier)['multiplier']
+    points_earned = int(base_points * multiplier)
+    
+    # 3. עדכון נתוני לקוח
+    customer.total_spent += amount
+    customer.points += points_earned
+    customer.last_activity = datetime.utcnow()
+    
+    # 4. בדיקת עדכון Tier
+    new_tier = customer.tier
+    for tier_name, rule in TIER_RULES.items():
+        if customer.total_spent >= rule['min_spent']:
+            new_tier = tier_name
+            
+    # עדכון Tier אם השתנה
+    if new_tier != customer.tier:
+        print(f"🎉 הלקוח {customer.name} שודרג מ-{customer.tier} ל-{new_tier}!")
+        customer.tier = new_tier
+        
+    return points_earned
+
+# --- 4. API ENDPOINTS (FOR MOBILE APPS - iOS/ANDROID) ---
+
+@app.route('/api/v1/customer/<int:customer_id>', methods=['GET'])
+def get_customer_status(customer_id):
+    """API לשליפת סטטוס לקוח ספציפי (לשימוש באפליקציות מובייל)."""
+    customer = Customer.query.get(customer_id)
+    if not customer:
+        return jsonify({"error": "Customer not found"}), 404
+        
+    return jsonify({
+        "id": customer.id,
+        "name": customer.name,
+        "email": customer.email,
+        "points": customer.points,
+        "tier": customer.tier,
+        "total_spent": customer.total_spent,
+        "rewards_available": Reward.query.filter(Reward.points_cost <= customer.points, Reward.min_tier == customer.tier).count()
+    })
+
+@app.route('/api/v1/transaction', methods=['POST'])
+def record_transaction():
+    """API לרישום עסקה חדשה ועדכון נקודות (מערכת קופה/POS)."""
+    data = request.json
+    
+    # Input validation
+    if not all(k in data for k in ('customer_id', 'amount')):
+        return jsonify({"error": "Missing customer_id or amount"}), 400
+        
+    customer = Customer.query.get(data['customer_id'])
+    amount = data['amount']
+    
+    if not customer:
+        return jsonify({"error": "Customer not found"}), 404
+    if amount <= 0:
+        return jsonify({"error": "Amount must be positive"}), 400
+        
+    # עדכון נקודות ורמה
+    points_earned = calculate_points_and_tier(customer, amount)
+    
+    # יצירת אובייקט עסקה
+    new_transaction = Transaction(
+        customer_id=customer.id, 
+        amount=amount, 
+        points_earned=points_earned
+    )
+    
+    try:
+        db.session.add(new_transaction)
+        db.session.commit()
+        return jsonify({
+            "message": "Transaction recorded successfully",
+            "points_earned": points_earned,
+            "new_points_total": customer.points,
+            "new_tier": customer.tier
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+@app.route('/api/v1/redeem', methods=['POST'])
+def redeem_reward():
+    """API לפדיון פרס באמצעות נקודות (אפליקציית מובייל)."""
+    data = request.json
+    
+    if not all(k in data for k in ('customer_id', 'reward_id')):
+        return jsonify({"error": "Missing customer_id or reward_id"}), 400
+        
+    customer = Customer.query.get(data['customer_id'])
+    reward = Reward.query.get(data['reward_id'])
+    
+    if not customer or not reward:
+        return jsonify({"error": "Customer or Reward not found"}), 404
+        
+    if customer.points < reward.points_cost:
+        return jsonify({"error": "Insufficient points"}), 400
+
+    # 2026 Feature: Tier Restriction check
+    if TIER_RULES[customer.tier]['min_spent'] < TIER_RULES[reward.min_tier]['min_spent']:
+         return jsonify({"error": f"Reward requires {reward.min_tier} tier or higher."}), 403
+
+    # פדיון
+    customer.points -= reward.points_cost
+    
+    try:
+        db.session.commit()
+        # יש לשלוח כאן קוד קופון/אישור למייל/מובייל של הלקוח
+        return jsonify({
+            "message": f"Successfully redeemed '{reward.name}' for {reward.points_cost} points.",
+            "new_points_total": customer.points
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+
+# --- 5. ADMIN DASHBOARD SETUP (UI/VISUALS) ---
+
+# התאמה אישית של תצוגת ה-Admin
+class CustomerView(ModelView):
+    column_list = ('id', 'name', 'email', 'tier', 'points', 'total_spent', 'last_activity')
+    column_searchable_list = ('name', 'email', 'phone')
+    column_filters = ('tier', 'last_activity')
+    can_export = True
+    
+class TransactionView(ModelView):
+    column_list = ('id', 'customer_id', 'customer', 'amount', 'points_earned', 'transaction_date')
+    column_searchable_list = ('customer.email', 'customer.name')
+    column_filters = ('transaction_date', 'points_earned')
+    can_export = True
+
+admin.add_view(CustomerView(Customer, db.session, name='Customers & Status 🧑‍💻'))
+admin.add_view(TransactionView(Transaction, db.session, name='Transactions 🧾'))
+admin.add_view(ModelView(Reward, db.session, name='Rewards Catalog 🎁'))
+
+
+# --- 6. DASHBOARD HOME PAGE (The Visuals!) ---
+@app.route('/')
+def index():
+    """דף הבית של הדאשבורד."""
+    
+    # KPI's for 2025-2026 Dashboard
+    total_customers = Customer.query.count()
+    total_points = db.session.query(db.func.sum(Customer.points)).scalar() or 0
+    total_spent_lifetime = db.session.query(db.func.sum(Customer.total_spent)).scalar() or 0
+    
+    # Tier Distribution
+    tier_data = db.session.query(Customer.tier, db.func.count(Customer.id)).group_by(Customer.tier).all()
+    tier_counts = dict(tier_data)
+    
+    # 2025-2026 Churn/Engagement Metric: Customers with no activity in 90 days
+    ninety_days_ago = datetime.utcnow() - datetime.timedelta(days=90)
+    stale_customers = Customer.query.filter(Customer.last_activity < ninety_days_ago).count()
+    
+    # 
+    
+    # For Replit, we use a simple render template
+    return render_template('dashboard.html', 
+        total_customers=total_customers,
+        total_points=f"{total_points:,.0f}",
+        total_spent=f"{total_spent_lifetime:,.2f}",
+        tier_counts=tier_counts,
+        stale_customers=stale_customers
+    )
+
+# --- BOILERPLATE FOR INITIALIZATION AND RUNNING ---
+
+@app.before_first_request
+def create_tables():
+    """יוצר את טבלאות ה-DB ומכניס נתוני דמו."""
+    db.create_all()
+    
+    if not Customer.query.first():
+        print("🛠️ מכניס נתוני דמו ראשוניים...")
+        db.session.add(Customer(name='אורי ישראלי', email='uri@example.com', phone='050-1111111', total_spent=150.0, points=1500))
+        db.session.add(Customer(name='נועה כהן', email='noa@example.com', phone='052-2222222', total_spent=700.0, points=10500, tier='Silver'))
+        db.session.add(Reward(name='קופון 20% הנחה', points_cost=500))
+        db.session.add(Reward(name='מוצר חינם (Gold)', points_cost=5000, min_tier='Gold'))
+        db.session.commit()
+        print("🛠️ נתוני דמו הוזנו בהצלחה. ה-DB מוכן.")
+
+
+if __name__ == '__main__':
+    # אם אתה משתמש ב-Replit, ודא שהקובץ dashboard.html קיים
+    print("🔥 מפעיל את מערכת Loyalty Program...")
+    # נדרש קובץ HTML פשוט בשם templates/dashboard.html
+    app.run(host='0.0.0.0', port=5000)
+

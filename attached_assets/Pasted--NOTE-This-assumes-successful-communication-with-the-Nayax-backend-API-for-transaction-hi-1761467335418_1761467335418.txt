@@ -1,0 +1,130 @@
+// **NOTE:** This assumes successful communication with the Nayax backend API 
+// for transaction history, gift card balance, and loyalty points.
+
+const LOYALTY_HUB = {
+    PET_NAME: "Luna", // Personalized to the owner's primary pet
+    WASH_GOAL_DAYS: 14, // Target frequency: wash every 14 days
+    currentLoyaltyTier: 'Gold', // Tier affects discount percentage
+    washHistory: [
+        { date: '2025-10-15', cost: 12.00, pointsEarned: 12, stationID: 'K9000-A' }
+    ],
+    eGiftBalance: 25.00, // Balance redeemed via Nayax QR
+    DISCOUNT_MAP: { 'Bronze': 0.05, 'Silver': 0.10, 'Gold': 0.15 } // Tier discounts
+};
+
+// --- Loyalty Hub Functions ---
+
+/**
+ * Calculates the next recommended wash date based on history.
+ */
+function getNextWashReminder() {
+    const lastWashDate = new Date(LOYALTY_HUB.washHistory[0].date);
+    const nextDueDate = new Date(lastWashDate);
+    nextDueDate.setDate(nextDueDate.getDate() + LOYALTY_HUB.WASH_GOAL_DAYS);
+    
+    // Check if the next due date is in the future
+    if (nextDueDate > new Date()) {
+        const daysUntilDue = Math.ceil((nextDueDate - new Date()) / (1000 * 60 * 60 * 24));
+        return {
+            date: nextDueDate.toISOString().split('T')[0],
+            message: `Your pet is due for a wash in ${daysUntilDue} days.`,
+            isDue: (daysUntilDue <= 3) // Set reminder 3 days out
+        };
+    }
+    return { date: 'Today', message: 'Ready to wash!', isDue: true };
+}
+
+
+/**
+ * Generates the Nayax QR Code redemption link for the eGift balance.
+ * This is a simulated function, as the real Nayax link is generated on their platform.
+ * @param {number} amount - The amount to load onto the station credit.
+ */
+function generateNayaxRedeemQR(amount) {
+    // In a real system, this hits the Nayax API to generate a unique, single-use token:
+    // const uniqueToken = await nayaxAPI.generateGiftCardRedemptionToken(LOYALTY_HUB.eGiftBalance);
+    const uniqueToken = `NAYAX-GIFT-CODE-${Date.now()}`; 
+
+    const redeemURL = `https://yourdomain.com/redeem?token=${uniqueToken}&amount=${amount.toFixed(2)}`;
+    
+    // Create a data URL for a simple QR code (using a small library or service)
+    // For this demonstration, we return the URL only.
+    return {
+        url: redeemURL,
+        message: `Scan this QR at the K9000 station to instantly load $${amount.toFixed(2)} credit from your digital gift card.`,
+        amount: amount
+    };
+}
+
+
+/**
+ * Calculates the member's current discount.
+ */
+function calculateMemberDiscount() {
+    const discount = LOYALTY_HUB.DISCOUNT_MAP[LOYALTY_HUB.currentLoyaltyTier] || 0;
+    return (discount * 100).toFixed(0);
+}
+
+
+// --- UI RENDERING (Executed on load) ---
+function renderLoyaltyHub() {
+    const hubDiv = document.getElementById('loyaltyHub');
+    const washReminder = getNextWashReminder();
+    const discountPct = calculateMemberDiscount();
+    const qrData = generateNayaxRedeemQR(Math.min(10, LOYALTY_HUB.eGiftBalance)); // Max $10 redeemable at once
+
+    // Dynamically update the digital wallet/gift card display
+    document.getElementById('giftBalance').textContent = `$${LOYALTY_HUB.eGiftBalance.toFixed(2)}`;
+    document.getElementById('loyaltyTier').textContent = LOYALTY_HUB.currentLoyaltyTier;
+    document.getElementById('tierDiscount').textContent = `${discountPct}%`;
+
+    // Dynamic Wash Reminder
+    document.getElementById('washReminder').innerHTML = `
+        <span class="${washReminder.isDue ? 'alert' : 'info'}">
+            ${washReminder.message} Next Due: ${washReminder.date}
+        </span>
+    `;
+
+    // QR Code Redemption Block
+    document.getElementById('qrCodeRedeemer').innerHTML = `
+        <p class="qr-message">${qrData.message}</p>
+        <button onclick="copyToClipboard('${qrData.url}')">
+            Copy QR Link to Digital Wallet
+        </button>
+        <p class="qr-note">Tap the button, add to Apple/Google Wallet for a 1-tap Nayax redeem!</p>
+    `;
+    
+    // Trigger the digital calendar reminder sync
+    if (washReminder.isDue) {
+        // Automatically prompt the user to add the event to their device calendar
+        // (Uses the iCalendar or CalDAV standard, simulated here)
+        syncToDigitalCalendar(washReminder.date, LOYALTY_HUB.PET_NAME);
+    }
+}
+
+
+// --- Helper for Digital Wallet Integration ---
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Nayax Redemption Link copied! Paste it into your Digital Wallet's 'Notes' or create a quick pass.");
+    });
+}
+
+// --- Digital Wallet/Calendar Sync (Best UX) ---
+function syncToDigitalCalendar(dueDate, petName) {
+    const title = `Wash Due: ${petName} at K9000 Station`;
+    const details = `Time to look paw-some! Redeem your loyalty discount at the station.`;
+    
+    // --- Advanced Code for Calendar Integration (Simulated) ---
+    // The link below uses a common format supported by Google, Outlook, and Apple calendars
+    const calendarLink = `data:text/calendar;charset=utf8,BEGIN:VCALENDAR%0AVERSION:2.0%0ABEGIN:VEVENT%0ASUMMARY:${encodeURIComponent(title)}%0ADTSTART:${dueDate.replace(/-/g, '')}%0ADTEND:${dueDate.replace(/-/g, '')}%0ADESCRIPTION:${encodeURIComponent(details)}%0AEND:VEVENT%0AEND:VCALENDAR`;
+    
+    // This is the code that immediately downloads or opens the calendar event:
+    // window.open(calendarLink); // Uncomment this in a real environment
+    
+    console.log(`[Calendar Sync]: Event created for ${dueDate}`);
+}
+
+// Start the hub when the page is ready
+// document.addEventListener('DOMContentLoaded', renderLoyaltyHub); // Uncomment in a real file
+// renderLoyaltyHub(); // Running immediately for demo

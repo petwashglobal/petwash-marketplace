@@ -1,0 +1,287 @@
+/******************************************************************
+ 🧠 PET WASH™ LTD — MASTER PERFORMANCE & STABILITY CODE 2025
+ Combines: Logging, Security, Rate-Limit, Graceful Shutdown,
+ Error Boundaries, Smart Retry, Circuit Breaker, Offline Queue,
+ PWA Cache, Metrics, and Remote Feature Flags.
+******************************************************************/
+
+/* ========================= SERVER SIDE ========================= */
+
+import express from "express";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import compression from "compression";
+import bodyParser from "body-parser";
+import pino from "pino";
+import pinoHttp from "pino-http";
+import { randomUUID } from "crypto";
+
+/* --- LOGGER + REQUEST ID --- */
+export const logger = pino({
+  level: process.env.LOG_LEVEL || "info",
+  formatters: { level: (label) => ({ level: label }) },
+  timestamp: pino.stdTimeFunctions.isoTime,
+});
+export const requestIdAndLogs = pinoHttp({
+  logger,
+  genReqId: (req) => req.headers["x-request-id"] as string || randomUUID(),
+  customProps: (req, res) => ({ user: (req as any).user?.uid ?? null }),
+});
+
+/* --- SECURITY HEADERS + CORS --- */
+export const security = [
+  helmet({
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": [
+          "'self'",
+          "https://www.gstatic.com",
+          "https://www.google.com",
+          "https://www.googleapis.com",
+        ],
+        "connect-src": [
+          "'self'",
+          "https://securetoken.googleapis.com",
+          "https://www.googleapis.com",
+          "https://identitytoolkit.googleapis.com",
+        ],
+        "frame-src": ["'self'", "https://accounts.google.com"],
+        "img-src": ["'self'", "data:"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+      },
+    },
+  }),
+  cors({
+    origin: ["https://petwash.co.il", "https://www.petwash.co.il"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
+  }),
+];
+
+/* --- RATE LIMIT --- */
+export const apiLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/* --- EXPRESS APP --- */
+const app = express();
+app.use(requestIdAndLogs);
+app.use(security);
+app.use(compression());
+app.use(bodyParser.json({ limit: "1mb" }));
+app.use("/api", apiLimiter);
+
+app.get("/healthz", (_, res) => res.status(200).send("ok"));
+app.get("/readyz", (_, res) => res.status(200).send("ready"));
+
+/* --- CIRCUIT BREAKER --- */
+let failures = 0,
+  openUntil = 0;
+app.use((req, res, next) => {
+  if (Date.now() < openUntil) return res.status(503).send("please try again");
+  res.on("finish", () => {
+    const fail = res.statusCode >= 500;
+    failures = fail ? failures + 1 : Math.max(0, failures - 1);
+    if (failures >= 20) {
+      openUntil = Date.now() + 15_000;
+      failures = 0;
+    }
+  });
+  next();
+});
+
+/* --- GRACEFUL SHUTDOWN --- */
+const graceful = (server: import("http").Server) => {
+  const shutdown = (signal: string) => async () => {
+    logger.warn({ signal }, "graceful shutdown start");
+    server.close(() => {
+      logger.warn("http server closed");
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+  ["SIGINT", "SIGTERM"].forEach((s) => process.on(s as any, shutdown(s)));
+};
+const server = app.listen(process.env.PORT || 5000, () =>
+  logger.info("server up")
+);
+graceful(server);
+
+/* ======================== SHARED UTILITIES ======================== */
+
+/* --- SMART RETRY --- */
+export async function retry<T>(
+  fn: () => Promise<T>,
+  opts: { tries?: number; min?: number } = {}
+) {
+  const tries = opts.tries ?? 5,
+    min = opts.min ?? 200;
+  let e;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      e = err;
+      await new Promise((r) => setTimeout(r, Math.min(5000, min * 2 ** i)));
+    }
+  }
+  throw e;
+}
+
+/* --- GLOBAL ERROR HANDLER --- */
+export function handleError(err: any, context: string) {
+  console.error(`ERROR @ ${context}:`, err);
+  fetch("/api/logError", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      context,
+      message: err.message,
+      stack: err.stack,
+    }),
+  }).catch(() => {});
+}
+
+/* ========================= CLIENT SIDE ========================= */
+
+/* --- REACT ERROR BOUNDARY --- */
+export class AppErrorBoundary extends React.Component<
+  React.PropsWithChildren,
+  { error?: Error }
+> {
+  state = { error: undefined as Error | undefined };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div role="alert" style={{ padding: 16 }}>
+        <h2>Something went wrong</h2>
+        <p>We’ve logged this and are fixing it. Try again or refresh.</p>
+        <button onClick={() => location.reload()}>Reload</button>
+      </div>
+    );
+  }
+}
+
+/* --- OFFLINE QUEUE --- */
+type Job = {
+  url: string;
+  method?: string;
+  body?: any;
+  headers?: Record<string, string>;
+};
+const KEY = "pw_offline_jobs";
+
+export const enqueue = (job: Job) => {
+  const q: Job[] = JSON.parse(localStorage.getItem(KEY) || "[]");
+  q.push(job);
+  localStorage.setItem(KEY, JSON.stringify(q));
+};
+export const flush = async () => {
+  const q: Job[] = JSON.parse(localStorage.getItem(KEY) || "[]");
+  const remaining: Job[] = [];
+  for (const j of q) {
+    try {
+      await fetch(j.url, {
+        method: j.method || "POST",
+        body: JSON.stringify(j.body),
+        headers: {
+          "content-type": "application/json",
+          ...(j.headers || {}),
+        },
+      });
+    } catch {
+      remaining.push(j);
+    }
+  }
+  localStorage.setItem(KEY, JSON.stringify(remaining));
+};
+window.addEventListener("online", flush);
+
+/* --- SERVICE WORKER (cache-first assets, stale-while-revalidate pages) --- */
+// public/sw.js
+const STATIC = "static-v1";
+self.addEventListener("install", (e) => {
+  e.waitUntil(
+    caches
+      .open(STATIC)
+      .then((c) => c.addAll(["/", "/favicon.ico", "/manifest.webmanifest"]))
+  );
+});
+self.addEventListener("fetch", (e) => {
+  const { request } = e;
+  if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  if (/\.(js|css|png|jpg|svg|woff2?)$/.test(url.pathname)) {
+    e.respondWith(
+      caches.match(request).then(
+        (r) =>
+          r ||
+          fetch(request).then((res) => {
+            const copy = res.clone();
+            caches.open(STATIC).then((c) => c.put(request, copy));
+            return res;
+          })
+      )
+    );
+    return;
+  }
+  e.respondWith(
+    (async () => {
+      const cache = await caches.open(STATIC);
+      const cached = await cache.match(request);
+      const fresh = fetch(request).then((res) => {
+        cache.put(request, res.clone());
+        return res;
+      });
+      return cached || fresh;
+    })()
+  );
+});
+if ("serviceWorker" in navigator)
+  navigator.serviceWorker.register("/sw.js");
+
+/* --- METRICS (Web Vitals + Long Tasks) --- */
+import {
+  onCLS,
+  onFID,
+  onLCP,
+  onINP,
+  onTTFB,
+} from "web-vitals/attribution";
+const send = (m: any) =>
+  navigator.sendBeacon?.("/api/metrics", JSON.stringify(m));
+[onCLS, onFID, onLCP, onINP, onTTFB].forEach((fn) => fn(send));
+new PerformanceObserver((list) => {
+  for (const e of list.getEntries())
+    if (e.duration > 50) send({ name: "long-task", value: e.duration });
+}).observe({ entryTypes: ["longtask"] as any });
+
+/* --- FEATURE FLAGS (Firebase Remote Config) --- */
+import {
+  getRemoteConfig,
+  fetchAndActivate,
+  getValue,
+} from "firebase/remote-config";
+import { initializeApp } from "firebase/app";
+const firebaseApp = initializeApp({
+  apiKey: "YOUR_API_KEY",
+  authDomain: "petwash.co.il",
+  projectId: "petwash",
+});
+const rc = getRemoteConfig(firebaseApp);
+rc.settings.minimumFetchIntervalMillis = 3600000;
+fetchAndActivate(rc);
+export const flag = (key: string) => getValue(rc, key).asString();
+
+/* ======================= END OF MASTER CODE ======================= */

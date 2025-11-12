@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pet Wash — E-Sign (Single-File 2025)</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #0f172a;
+    --muted: #475569;
+    --ink: #0f172a;
+    --brand: #16a34a;
+    --border: #e2e8f0;
+    --shadow: 0 10px 30px rgba(2,8,23,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1220;
+      --fg: #e2e8f0;
+      --muted: #94a3b8;
+      --ink: #e2e8f0;
+      --border: #1f2937;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  * { box-sizing: border-box }
+  body {
+    margin: 0; font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+    background: var(--bg); color: var(--fg);
+  }
+  .wrap {
+    max-width: 920px; margin: 32px auto; padding: 16px; 
+  }
+  .card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 16px; 
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  header.hero { padding: 20px 22px; border-bottom: 1px solid var(--border); }
+  header.hero h1 { margin: 0 0 4px; font-size: 22px; }
+  header.hero p { margin: 0; color: var(--muted); }
+
+  .grid { display: grid; gap: 18px; padding: 18px; }
+  @media (min-width: 780px) {
+    .grid { grid-template-columns: 1.1fr .9fr; }
+  }
+
+  .group { background: transparent; border: 1px dashed var(--border); border-radius: 12px; padding: 14px; }
+  .group h3 { margin: 0 0 8px; font-size: 16px; }
+  .muted { color: var(--muted); font-size: 14px; }
+
+  .es-pad { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: #fff; }
+  @media (prefers-color-scheme: dark) { .es-pad { background: #0f172a; } }
+  .es-pad canvas { display:block; width:100%; height:240px; touch-action:none; background: transparent; }
+  .es-toolbar {
+    display:flex; gap:8px; align-items:center; justify-content:space-between; padding:8px; border-top:1px solid var(--border);
+    background: linear-gradient(180deg, rgba(148,163,184,.12), transparent);
+  }
+  .left, .right { display:flex; gap:8px; align-items:center; }
+  .btn {
+    appearance:none; border:1px solid var(--border); background:#fff; color:#0f172a;
+    padding:8px 12px; border-radius:10px; font-weight:600; cursor:pointer; transition: .15s transform;
+  }
+  .btn:active { transform: translateY(1px) }
+  .btn.secondary { background: transparent; color: var(--fg) }
+  .btn.brand { background: var(--brand); border-color: transparent; color: white; }
+  .chip { font-size:12px; color: var(--muted); }
+  .es-pad[data-dirty="false"] .chip::after { content:"— empty"; }
+  .es-pad[data-dirty="true"]  .chip::after { content:"— inked"; color: var(--brand); }
+
+  label.row { display:block; margin: 10px 0; }
+  input[type="text"], input[type="email"] {
+    width:100%; padding:10px 12px; border:1px solid var(--border); background:transparent;
+    border-radius:10px; color: var(--fg);
+  }
+  .checks { display:grid; gap:8px; margin-top: 8px; }
+  .checks label { display:flex; gap:10px; align-items:center; }
+  .checks input { width:18px; height:18px; }
+
+  .footer {
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;
+    padding: 14px 18px; border-top:1px solid var(--border);
+  }
+  code.small { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color: var(--muted) }
+
+  .notice { padding:10px 12px; border:1px solid var(--border); border-radius:10px; background: rgba(22,163,74,.07); color: var(--fg); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <header class="hero">
+        <h1>Service Agreement — E-Signature</h1>
+        <p class="muted">Sign with your finger, Apple Pencil, S-Pen, mouse, or trackpad. Works offline, generates a signed PDF + audit hash.</p>
+      </header>
+
+      <div class="grid">
+        <!-- SIGN AREA -->
+        <section class="group">
+          <h3>Draw Signature</h3>
+          <div class="es-pad" data-dirty="false">
+            <canvas id="sig"></canvas>
+            <div class="es-toolbar">
+              <div class="left">
+                <button class="btn secondary" id="undo" type="button">Undo</button>
+                <button class="btn secondary" id="clear" type="button">Clear</button>
+                <span class="chip">Status </span>
+              </div>
+              <div class="right">
+                <select id="ink" class="btn secondary" title="Ink color">
+                  <option value="#0f172a">Ink: Black</option>
+                  <option value="#1f2937">Ink: Charcoal</option>
+                  <option value="#111827">Ink: Jet</option>
+                  <option value="#16a34a">Ink: Emerald</option>
+                  <option value="#2563eb">Ink: Azure</option>
+                </select>
+                <select id="thick" class="btn secondary" title="Stroke thickness">
+                  <option value="1">Thin</option>
+                  <option value="1.5" selected>Medium</option>
+                  <option value="2">Thick</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <p class="muted" style="margin:8px 0 0">Tip: Rotate your phone to landscape for more room.</p>
+        </section>
+
+        <!-- DETAILS -->
+        <section class="group">
+          <h3>Signer Details</h3>
+          <label class="row">
+            <span class="muted">Full name</span>
+            <input id="name" type="text" placeholder="Your legal name" autocomplete="name">
+          </label>
+          <label class="row">
+            <span class="muted">Email</span>
+            <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+          </label>
+          <div class="checks" id="checks">
+            <label><input type="checkbox" id="cb-terms"> I agree to the Terms</label>
+            <label><input type="checkbox" id="cb-privacy"> I agree to the Privacy Policy</label>
+          </div>
+          <div class="notice" id="statusBox" hidden></div>
+        </section>
+      </div>
+
+      <div class="footer">
+        <div>
+          <button class="btn brand" id="finish" type="button">Finish & Download PDF</button>
+          <button class="btn secondary" id="png" type="button" title="Export PNG only">Export PNG</button>
+        </div>
+        <div>
+          <code class="small" id="audit">Audit: —</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- jsPDF for client-side PDF creation -->
+  <script type="module">
+    import { jsPDF } from "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js";
+
+    const $ = (s, r=document)=>r.querySelector(s);
+    const padEl = $(".es-pad"); 
+    const canvas = $("#sig");
+    const ctx = canvas.getContext("2d", { desynchronized: true });
+    let dpr = Math.max(1, devicePixelRatio || 1);
+
+    const state = {
+      strokes: [],
+      points: [],
+      drawing: false,
+      baseWidth: 1.5,
+      ink: getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#0f172a"
+    };
+
+    const resize = () => {
+      const r = canvas.getBoundingClientRect();
+      const w = Math.max(700, Math.round(r.width * dpr));
+      const h = Math.max(240, Math.round(240 * dpr));
+      canvas.width = w;
+      canvas.height = h;
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(dpr, dpr);
+      redraw();
+    };
+    const redraw = () => {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      const save = state.strokes.slice();
+      state.strokes = [];
+      for (const s of save) {
+        for (let i=1;i<s.length;i++) drawSeg(s[i-1], s[i], s[i].w);
+        state.strokes.push(s);
+      }
+      updateDirty();
+    };
+    const updateDirty = () => {
+      padEl.dataset.dirty = String(state.strokes.length>0);
+    };
+
+    const xy = (e) => {
+      const r = canvas.getBoundingClientRect();
+      return {
+        x: (e.clientX - r.left),
+        y: (e.clientY - r.top),
+        p: e.pressure>0 ? e.pressure : .5,
+        t: Date.now()
+      };
+    };
+
+    const drawSeg = (a,b,w) => {
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = state.ink;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    };
+
+    const addPoint = (e, draw=false) => {
+      const p = xy(e);
+      // Adaptive width: base * pressure plus velocity dampening
+      let w = state.baseWidth + p.p * 2.2;
+      const pts = state.points;
+      if (pts.length>0) {
+        const a = pts[pts.length-1];
+        const dt = Math.max(1,(p.t-a.t));
+        const dx = p.x - a.x, dy=p.y-a.y;
+        const v = Math.sqrt(dx*dx+dy*dy)/dt; // px per ms
+        w *= (1.25 - Math.min(.9, v*1.2));   // faster => thinner
+      }
+      p.w = Math.max(0.8, Math.min(4.5, w));
+      state.points.push(p);
+      if (draw && state.points.length>1) drawSeg(state.points.at(-2), state.points.at(-1), p.w);
+    };
+
+    // Pointer events
+    canvas.style.touchAction = "none";
+    canvas.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      state.points = [];
+      addPoint(e);
+      state.drawing = true;
+    }, {passive:false});
+    addEventListener("pointermove", e => {
+      if (!state.drawing) return;
+      addPoint(e, true);
+    }, {passive:false});
+    const end = () => {
+      if (!state.drawing) return;
+      state.drawing = false;
+      if (state.points.length) state.strokes.push([...state.points]);
+      state.points = [];
+      updateDirty();
+    };
+    addEventListener("pointerup", end);
+    addEventListener("pointercancel", end);
+    addEventListener("resize", () => { dpr = Math.max(1, devicePixelRatio||1); resize(); });
+
+    // Controls
+    $("#clear").onclick = () => { state.strokes=[]; redraw(); };
+    $("#undo").onclick = () => { state.strokes.pop(); redraw(); };
+    $("#ink").oninput = (e) => { state.ink = e.target.value; };
+    $("#thick").oninput = (e) => { state.baseWidth = parseFloat(e.target.value); };
+
+    // Initialize
+    resize();
+
+    // Export helpers
+    const canvasToBlob = (bg="transparent") => {
+      // draw strokes onto a temp canvas at CSS pixel size for crisp export
+      const cssW = Math.round(canvas.width / dpr);
+      const cssH = Math.round(canvas.height / dpr);
+      const off = new OffscreenCanvas(cssW, cssH);
+      const octx = off.getContext("2d");
+      if (bg !== "transparent") { octx.fillStyle = bg; octx.fillRect(0,0,cssW,cssH); }
+      // replay strokes
+      for (const s of state.strokes) {
+        for (let i=1;i<s.length;i++) {
+          octx.lineCap="round"; octx.lineJoin="round";
+          octx.strokeStyle = state.ink; octx.lineWidth = s[i].w;
+          octx.beginPath(); octx.moveTo(s[i-1].x, s[i-1].y); octx.lineTo(s[i].x, s[i].y); octx.stroke();
+        }
+      }
+      return off.convertToBlob({type:"image/png"});
+    };
+
+    const sha256 = async (blob) => {
+      const buf = await blob.arrayBuffer();
+      const hash = await crypto.subtle.digest("SHA-256", buf);
+      return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");
+    };
+
+    const download = (blob, name) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+    };
+
+    const ipLike = () => (window?.navigator?.connection?.ip || "0.0.0.0");
+    const ua = navigator.userAgent;
+
+    // PNG export
+    $("#png").onclick = async () => {
+      if (state.strokes.length===0) return alert("Please sign first.");
+      const png = await canvasToBlob("transparent");
+      const digest = await sha256(png);
+      $("#audit").textContent = `Audit: ${digest.slice(0,16)}… (SHA-256)`;
+      download(png, `signature-${Date.now()}.png`);
+      toast(`PNG exported. Audit hash set.`);
+    };
+
+    // PDF export with metadata
+    $("#finish").onclick = async () => {
+      const name = $("#name").value.trim();
+      const email = $("#email").value.trim();
+      const ok = $("#cb-terms").checked && $("#cb-privacy").checked;
+
+      if (!name) return alert("Please enter your legal name.");
+      if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) return alert("Please enter a valid email.");
+      if (!ok) return alert("You must agree to the Terms and Privacy Policy.");
+      if (state.strokes.length===0) return alert("Please draw your signature.");
+
+      const png = await canvasToBlob("#ffffff");
+      const digest = await sha256(png);
+      $("#audit").textContent = `Audit: ${digest}`;
+
+      const ts = new Date();
+      const meta = {
+        title: "Service Agreement",
+        signer: { name, email },
+        when: ts.toISOString(),
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        locale: navigator.language || "en",
+        ua, ip: ipLike(), audit_sha256: digest
+      };
+
+      // Create PDF
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      doc.setProperties({ title: "Signed Agreement", subject: "Pet Wash — E-Signature" });
+
+      // Title
+      doc.setFont("helvetica","bold"); doc.setFontSize(18);
+      doc.text("Pet Wash — Service Agreement (Signed)", 40, 50);
+
+      // Meta
+      doc.setFont("helvetica","normal"); doc.setFontSize(11);
+      const lines = [
+        `Signer: ${name} <${email}>`,
+        `Signed at: ${ts.toLocaleString()} (${meta.tz})`,
+        `Locale: ${meta.locale}`,
+        `User-Agent: ${ua}`,
+        `Audit (SHA-256): ${digest}`
+      ];
+      let y = 80; for (const ln of lines) { doc.text(ln, 40, y); y += 16; }
+
+      // Signature image
+      const imgUrl = URL.createObjectURL(png);
+      const img = await (await fetch(imgUrl)).blob();
+      const buf = await img.arrayBuffer();
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      doc.setFont("helvetica","bold"); doc.text("Signature:", 40, y+20);
+      doc.addImage(`data:image/png;base64,${b64}`, "PNG", 40, y+30, 300, 120, undefined, "FAST");
+      URL.revokeObjectURL(imgUrl);
+
+      // Footer
+      doc.setFont("helvetica","normal"); doc.setFontSize(10);
+      doc.text("This PDF contains an embedded raster of the drawn signature and an audit hash for tamper detection.", 40, 780);
+      doc.text("Verify the SHA-256 hash of the signature PNG against your records if needed.", 40, 796);
+
+      const pdf = doc.output("blob");
+      download(pdf, `PetWash-Signed-${Date.now()}.pdf`);
+      toast("PDF generated. Keep the file for your records.");
+      $("#statusBox").hidden = false;
+      $("#statusBox").textContent = "Signed successfully. A PDF has been downloaded. (Audit hash set above.)";
+    };
+
+    function toast(msg){
+      const n = document.createElement("div");
+      n.textContent = msg;
+      n.style.position="fixed"; n.style.left="50%"; n.style.bottom="24px"; n.style.transform="translateX(-50%)";
+      n.style.background="rgba(17,24,39,.95)"; n.style.color="#fff";
+      n.style.padding="10px 14px"; n.style.borderRadius="10px"; n.style.boxShadow="0 8px 30px rgba(0,0,0,.35)";
+      n.style.zIndex=9999; n.style.fontWeight=600;
+      document.body.appendChild(n);
+      setTimeout(()=>{ n.style.opacity="0"; n.style.transition="opacity .35s"; setTimeout(()=>n.remove(), 350); }, 2000);
+    }
+  </script>
+</body>
+</html>

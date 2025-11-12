@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Loyalty Dashboard 2026 📈</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootswatch/3.3.7/flatly/bootstrap.min.css">
+    <style>
+        body { padding-top: 20px; text-align: right; }
+        .jumbotron { background-color: #f7f9fc; padding: 20px; border-radius: 8px; }
+        .kpi-box { background-color: #ffffff; border: 1px solid #e0e0e0; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .kpi-title { font-size: 1.2em; color: #777; margin-bottom: 5px; }
+        .kpi-value { font-size: 2.5em; font-weight: bold; color: #007bff; }
+        .tier-list li { margin-bottom: 5px; list-style-type: none; border-bottom: 1px dotted #eee; padding-bottom: 5px;}
+        .tier-list span { font-weight: bold; margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="jumbotron">
+            <h1 class="text-primary">✨ Loyalty Program Dashboard 2026 ✨</h1>
+            <p>מערכת ניהול נאמנות מבוססת API (למובייל) ומדרגות (Tiers).</p>
+            <p><a class="btn btn-success btn-lg" href="/admin/" role="button">עבור לפאנל הניהול המלא</a></p>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <div class="kpi-title">סה"כ לקוחות</div>
+                    <div class="kpi-value">{{ total_customers }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <div class="kpi-title">סה"כ נקודות שהונפקו</div>
+                    <div class="kpi-value">{{ total_points }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <div class="kpi-title">הכנסה מצטברת (LTV)</div>
+                    <div class="kpi-value">₪{{ total_spent }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-box" style="background-color: #fff3cd; border-color: #ffeeba;">
+                    <div class="kpi-title text-danger">לקוחות רדומים (90+ ימים)</div>
+                    <div class="kpi-value text-danger">{{ stale_customers }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="kpi-box">
+                    <h4 class="text-info">📊 התפלגות מדרגות (Tiers)</h4>
+                    <ul class="tier-list">
+                        {% for tier, count in tier_counts.items() %}
+                            <li>
+                                <span class="label label-primary">{{ tier }}</span> 
+                                <span class="pull-left">{{ count }} לקוחות</span>
+                                <div class="clearfix"></div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="kpi-box">
+                    <h4 class="text-warning">⚙️ דרישות המערכת ל-2026</h4>
+                    <p><strong>פונקציונליות מובייל:</strong> APIs ייעודיים לרישום עסקאות ופדיון פרסים.</p>
+                    <p><strong>חיזוי נטישה:</strong> מעקב אוטומטי אחר זמן פעילות אחרונה.</p>
+                    <p><strong>ויזואליזציה (Visuals):</strong> ממשק ניהול Flask-Admin מובנה.</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="text-center" style="margin-top: 30px;">
+            <p>&copy; Loyalty Engine 2025 - 2026. Built with Python & Flask.</p>
+        </footer>
+
+    </div>
+</body>
+</html>

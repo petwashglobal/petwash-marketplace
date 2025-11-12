@@ -1,0 +1,62 @@
+// File: MainActivity.kt
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
+import retrofit2.Retrofit
+import retrofit2.converter.moshi.MoshiConverterFactory
+
+class MainActivity : ComponentActivity() {
+    // 1. Initialize Retrofit to communicate with the API
+    private val retrofit = Retrofit.Builder()
+        .baseUrl("https://api.openweathermap.org/") // Base URL for the API
+        .addConverterFactory(MoshiConverterFactory.create())
+        .build()
+    
+    // 2. Create an instance of the service interface
+    private val weatherService = retrofit.create(WeatherService::class.java)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            WeatherAppScreen(weatherService)
+        }
+    }
+}
+
+// 3. The Composable UI function (Jetpack Compose)
+@Composable
+fun WeatherAppScreen(service: WeatherService) {
+    var weatherData by remember { mutableStateOf("Loading AI forecast...") }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            try {
+                // Example location: London (Latitude: 51.5, Longitude: 0.1)
+                val forecast = service.getCurrentWeather(
+                    lat = 51.5074, 
+                    lon = 0.1278
+                )
+                // This is where you would add your AI *planner* logic
+                val plannerAdvice = if (forecast.main.temp > 25) {
+                    "It's a hot day for planning! Stay hydrated for your activities."
+                } else {
+                    "Weather is moderate. Plan your day as usual."
+                }
+                
+                weatherData = "Current Temp: ${forecast.main.temp}°C\n" +
+                              "Condition: ${forecast.weather.firstOrNull()?.description ?: "N/A"}\n" +
+                              "Planner Advice: $plannerAdvice"
+            } catch (e: Exception) {
+                weatherData = "Error fetching data: ${e.message}"
+            }
+        }
+    }
+
+    // Simple display of the fetched data
+    Text(text = weatherData)
+}

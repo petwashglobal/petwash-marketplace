@@ -1,0 +1,65 @@
+// --- C# Script attached to the Avatar (Human/Dog) GameObject ---
+
+using UnityEngine;
+
+public class AvatarController : MonoBehaviour
+{
+    // The Animator component controls all blending and transitions
+    private Animator avatarAnimator;
+    
+    // Hashing is best practice for performance over string lookup
+    private readonly int walkingHash = Animator.StringToHash("IsWalking");
+    private readonly int barkHash = Animator.StringToHash("TriggerBark");
+    
+    // --- Initialization ---
+    void Start()
+    {
+        // Get the Animator component from the 3D model
+        avatarAnimator = GetComponent<Animator>();
+        
+        // Ensure the component was found
+        if (avatarAnimator == null)
+        {
+            Debug.LogError("Animator component not found on Avatar!");
+        }
+    }
+
+    // --- Animation Control Functions (Called from UI or Input) ---
+    
+    // Example 1: Toggle a continuous state (e.g., walking/idle)
+    public void SetWalkingState(bool isWalking)
+    {
+        if (avatarAnimator != null)
+        {
+            avatarAnimator.SetBool(walkingHash, isWalking);
+        }
+    }
+
+    // Example 2: Trigger a one-shot action (e.g., barking, waving)
+    public void TriggerBarkAnimation()
+    {
+        if (avatarAnimator != null)
+        {
+            avatarAnimator.SetTrigger(barkHash);
+        }
+    }
+
+    // --- Real-time Facial/Lip-Sync (Using Blend Shapes) ---
+    
+    // Assumes your model uses a Skinned Mesh Renderer for blend shapes (morph targets)
+    public void SetLipSync(float blendValue)
+    {
+        // Find the Skinned Mesh Renderer component
+        SkinnedMeshRenderer meshRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
+        if (meshRenderer != null)
+        {
+            // The index must match the name of the blend shape (e.g., "Mouth_Open")
+            int blendShapeIndex = meshRenderer.sharedMesh.GetBlendShapeIndex("Mouth_Open");
+            if (blendShapeIndex != -1)
+            {
+                // Value is typically 0 (closed) to 100 (fully open)
+                meshRenderer.SetBlendShapeWeight(blendShapeIndex, blendValue * 100f);
+            }
+        }
+    }
+}

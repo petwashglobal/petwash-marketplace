@@ -1,0 +1,114 @@
+/* --- Base Styles & Mobile-First Reset --- */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+}
+
+header, main {
+    padding: 20px;
+}
+
+/* --- Modal Overlay & Centering (Hidden by default) --- */
+.modal-overlay {
+    /* Full screen overlay to block interaction with the background */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85); /* Dark, semi-transparent backdrop */
+    z-index: 1000;
+    
+    /* Centering the modal using Flexbox */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    /* Creative Fade-in Animation */
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* State for when the modal is active/visible */
+.modal-overlay.active {
+    opacity: 1;
+}
+
+/* --- Modal Content Box --- */
+.modal-content {
+    background: #ffffff;
+    color: #333;
+    padding: 20px 25px;
+    margin: 20px; /* Space from the edge of the screen on mobile */
+    border-radius: 12px;
+    max-width: 90%; /* Mobile: takes up most of the screen width */
+    width: 450px; /* Desktop: fixed maximum width */
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    
+    /* Creative Pop-up Animation (scales in) */
+    transform: scale(0.9);
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Active state for animation */
+.modal-overlay.active .modal-content {
+    transform: scale(1);
+}
+
+/* --- Close Button --- */
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 30px;
+    color: #888;
+    cursor: pointer;
+    line-height: 1;
+    padding: 10px; /* Large tap target for mobile (44x44) */
+    transition: color 0.2s;
+}
+
+.close-button:hover, .close-button:focus {
+    color: #333;
+    outline: none;
+}
+
+/* --- Form and CTA Styling --- */
+input[type="email"] {
+    width: 95%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+.cta-button {
+    width: 100%;
+    padding: 15px;
+    background-color: #ff6b6b; /* Creative color */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.cta-button:hover {
+    background-color: #ff4747;
+}
+
+/* --- Desktop/Tablet Optimization (Optional Media Query) --- */
+/* The layout is already responsive, but this can fine-tune for large screens */
+@media (min-width: 768px) {
+    .modal-content {
+        padding: 30px 40px;
+    }
+}

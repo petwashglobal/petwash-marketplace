@@ -1,0 +1,134 @@
+# === Google Cloud API Keys v2 — create + restrict + fetch key string ===
+# Prereqs: gcloud CLI authenticated to the correct project with Owner/Editor or apikeys.keys.create.
+
+# -------------------------
+# Vars (edit these)
+# -------------------------
+PROJECT_ID="signinpetwash"                   # your Firebase/GCP project id
+PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
+LOCATION="global"                            # API Keys are global-only
+KEY_ID_BROWSER="petwash-browser-2025"        # RFC-1034 id; lowercase, max 63 chars
+KEY_ID_SERVER="petwash-server-2025"
+
+# Referrers for the browser key
+read -r -d '' REFERRERS << 'JSON'
+[
+  "https://petwash.co.il/*",
+  "https://www.petwash.co.il/*",
+  "https://hub.petwash.co.il/*",
+  "https://signinpetwash.firebaseapp.com/*",
+  "https://pet-wash-nl-nirhadad1.replit.app/*",
+  "http://localhost:5000/*"
+]
+JSON
+
+# Allowed Google APIs for the browser key
+read -r -d '' API_TARGETS_BROWSER << 'JSON'
+[
+  {"service":"identitytoolkit.googleapis.com"},
+  {"service":"firebaseauth.googleapis.com"},
+  {"service":"firestore.googleapis.com"},
+  {"service":"firebaseinstallations.googleapis.com"},
+  {"service":"firebasedynamiclinks.googleapis.com"},
+  {"service":"firebasehosting.googleapis.com"}
+]
+JSON
+
+# Server key allowed IPs (replace with your Replit/host static egress if applicable)
+read -r -d '' ALLOWED_IPS << 'JSON'
+{
+  "allowedIps": [
+    "203.0.113.10/32",
+    "203.0.113.11/32"
+  ]
+}
+JSON
+
+ACCESS_TOKEN="$(gcloud auth print-access-token)"
+PARENT="projects/${PROJECT_NUMBER}/locations/${LOCATION}"
+
+# -------------------------
+# 1) Create Browser API Key (restricted by HTTP referrers + API list)
+# -------------------------
+curl -sS -X POST \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "https://apikeys.googleapis.com/v2/${PARENT}/keys?keyId=${KEY_ID_BROWSER}" \
+  -d "{
+    \"displayName\": \"PetWash Browser Key 2025\",
+    \"restrictions\": {
+      \"browserKeyRestrictions\": { \"allowedReferrers\": ${REFERRERS} },
+      \"apiTargets\": ${API_TARGETS_BROWSER}
+    }
+  }" | jq '.name' -r | tee /tmp/petwash_browser_key_name.txt
+
+BROWSER_KEY_NAME="$(cat /tmp/petwash_browser_key_name.txt)"
+
+# Fetch the actual key string to use in front-end (VITE_FIREBASE_API_KEY)
+curl -sS -X POST \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "https://apikeys.googleapis.com/v2/${BROWSER_KEY_NAME}/keyString" | jq -r '.keyString' | tee /tmp/petwash_browser_api_key.txt
+
+# -------------------------
+# 2) Create Server API Key (restricted by IPs; no referrers)
+#    TIP: Attach only the APIs your server needs (Identity Toolkit, Firestore, etc.)
+# -------------------------
+read -r -d '' API_TARGETS_SERVER << 'JSON'
+[
+  {"service":"identitytoolkit.googleapis.com"},
+  {"service":"firestore.googleapis.com"}
+]
+JSON
+
+curl -sS -X POST \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "https://apikeys.googleapis.com/v2/${PARENT}/keys?keyId=${KEY_ID_SERVER}" \
+  -d "{
+    \"displayName\": \"PetWash Server Key 2025\",
+    \"restrictions\": {
+      \"serverKeyRestrictions\": ${ALLOWED_IPS},
+      \"apiTargets\": ${API_TARGETS_SERVER}
+    }
+  }" | jq '.name' -r | tee /tmp/petwash_server_key_name.txt
+
+SERVER_KEY_NAME="$(cat /tmp/petwash_server_key_name.txt)"
+
+curl -sS -X POST \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "https://apikeys.googleapis.com/v2/${SERVER_KEY_NAME}/keyString" | jq -r '.keyString' | tee /tmp/petwash_server_api_key.txt
+
+# -------------------------
+# 3) (Optional) Patch restrictions later (add/remove referrers or APIs)
+# -------------------------
+# Example: add hub.petwash.co.il referrer to the Browser key and keep API list the same.
+PATCH_BODY="$(jq -n \
+  --argjson referrers "${REFERRERS}" \
+  --argjson apis "${API_TARGETS_BROWSER}" \
+  '{restrictions:{browserKeyRestrictions:{allowedReferrers:$referrers}, apiTargets:$apis}}')"
+
+curl -sS -X PATCH \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "https://apikeys.googleapis.com/v2/${BROWSER_KEY_NAME}?updateMask=restrictions" \
+  -d "${PATCH_BODY}" | jq '.'
+
+# -------------------------
+# 4) (Optional) List keys / Delete a key
+# -------------------------
+curl -sS -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  "https://apikeys.googleapis.com/v2/${PARENT}/keys" | jq '.keys[].name'
+
+# Delete (IRREVERSIBLE): replace NAME with a value from the list above
+# curl -sS -X DELETE -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+#  "https://apikeys.googleapis.com/v2/projects/${PROJECT_NUMBER}/locations/global/keys/KEY_ID"
+
+# -------------------------
+# Outputs
+# -------------------------
+echo "Browser key resource: ${BROWSER_KEY_NAME}"
+echo "Browser key string  : $(cat /tmp/petwash_browser_api_key.txt)"
+echo "Server key resource : ${SERVER_KEY_NAME}"
+echo "Server key string   : $(cat /tmp/petwash_server_api_key.txt)"

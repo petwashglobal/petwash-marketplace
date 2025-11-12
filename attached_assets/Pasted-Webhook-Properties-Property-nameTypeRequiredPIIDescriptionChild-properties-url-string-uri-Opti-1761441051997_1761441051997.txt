@@ -1,0 +1,308 @@
+Webhook Properties
+
+
+
+
+
+Property nameTypeRequiredPIIDescriptionChild properties
+url
+string<uri>
+Optional
+Not PII
+The URL of the webhook configuration request
+
+portInTargetUrl
+string<uri>
+Optional
+Not PII
+The complete webhook url that will be called when a notification event for port in request or port in phone number happens
+
+portOutTargetUrl
+string<uri>
+Optional
+Not PII
+The complete webhook url that will be called when a notification event for a port out phone number happens.
+
+notificationsOf
+array[string]
+Optional
+Not PII
+A list to filter what notification events to receive for this account and its sub accounts. If it is an empty list, then it means that there are no filters for the notifications events to send in each webhook and all events will get sent.
+
+portInTargetDateCreated
+string<date-time>
+Optional
+Not PII
+Creation date for the port in webhook configuration
+
+portOutTargetDateCreated
+string<date-time>
+Optional
+Not PII
+Creation date for the port out webhook configuration
+
+Webhook types
+
+
+
+
+
+Use the following webhooks associated with port-in request or port-in phone number events.
+
+Notification events
+
+
+
+
+
+Resource	Event	Description
+PortIn request	PortInWaitingForSignature	A Letter of Authorization (LOA) has been generated for the port-in request and is waiting to be signed.
+PortInInProgress	The port-in request has been submitted to the losing carrier and is progressing normally.
+PortInCompleted	All phone numbers in the port-in request have been canceled or successfully ported to Twilio.
+PortInActionRequired	Something happened with the port-in request that requires an action. For example: a phone number has been rejected by the losing carrier.
+PortInCanceled	All phone numbers in the port-in request have been canceled or the port-in request itself.
+PortIn PhoneNumber	PortInPhoneNumberWaitingForSignature	A Letter of Authorization (LOA) has been generated for the port-in request and this number is part of it and is waiting to be signed.
+PortInPhoneNumberSubmitted	The phone number has been submitted to the losing carrier for port approval.
+PortInPhoneNumberPending	The phone number port has been accepted by the losing carrier.
+PortInPhoneNumberCompleted	The phone number in the port-in request has been successfully ported to Twilio.
+PortInPhoneNumberRejected	The phone number has been rejected by the losing carrier.
+PortInPhoneNumberCanceled	The phone number was canceled during the port-in process.
+Webhook API
+
+
+
+
+
+Configure a webhook to receive the notifications of a port-in request or updates to an existing request. Requests overwrite any existing configurations.
+
+
+(information)
+Info
+The Webhook configuration is tied to the account used to create the port-in request or its parent account.
+Example request
+
+
+
+
+
+Configure Webhook
+
+
+
+
+
+Report code block
+
+
+Copy code block
+$ curl -X POST 'https://numbers.twilio.com/v1/Porting/Configuration/Webhook' \
+--header 'Content-Type: application/json' \
+--data '{
+    "port_in_target_url": "https://www.example.com/port-in",
+    "port_out_target_url": "https://www.example.com/port-out",
+    "notifications_of": [
+       "PortInWaitingForSignature",
+       "PortInInProgress",
+       "PortInCompleted",
+       "PortInActionRequired",
+       "PortInCanceled",
+       "PortInPhoneNumberWaitingForSignature",
+       "PortInPhoneNumberSubmitted",
+       "PortInPhoneNumberPending",
+       "PortInPhoneNumberCompleted",
+       "PortInPhoneNumberRejected",
+       "PortInPhoneNumberCanceled",
+       "PortOutPhoneNumberCompleted"
+    ]
+}' \
+-u $TWILIO_ACCOUNT_SID:$TWILIO_AUTH_TOKEN
+Output
+
+
+Copy output
+{
+  "port_in_target_url": "https://www.webhook1.com/",
+  "port_out_target_url": "https://www.webhook2.com/",
+  "notifications_of": [
+    "PortInWaitingForSignature",
+    "PortInInProgress",
+    "PortInCompleted",
+    "PortInActionRequired",
+    "PortInCanceled",
+    "PortInPhoneNumberWaitingForSignature",
+    "PortInPhoneNumberSubmitted",
+    "PortInPhoneNumberPending",
+    "PortInPhoneNumberCompleted",
+    "PortInPhoneNumberRejected",
+    "PortInPhoneNumberCanceled",
+    "PortOutPhoneNumberCompleted"
+  ],
+  "url": "https://numbers.twilio.com/v1/Porting/Configuration/Webhook"
+}
+Get webhook configuration
+
+
+
+
+
+GET https://numbers.twilio.com/v1/Porting/Configuration/Webhook
+
+Retrieve the current webhook configuration.
+
+Example request
+
+
+
+
+
+Get Webhook
+
+
+
+
+
+Report code block
+
+
+Copy code block
+// Download the helper library from https://www.twilio.com/docs/node/install
+const twilio = require("twilio"); // Or, for ESM: import twilio from "twilio";
+
+// Find your Account SID and Auth Token at twilio.com/console
+// and set the environment variables. See http://twil.io/secure
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken);
+
+async function fetchPortingWebhookConfigurationFetch() {
+  const webhook = await client.numbers.v1.webhook.fetch();
+
+  console.log(webhook.url);
+}
+
+fetchPortingWebhookConfigurationFetch();
+Response
+
+
+
+Copy response
+{
+  "port_in_target_url": "https://www.example.com/port-in",
+  "port_out_target_url": "https://www.example.com/port-out",
+  "notifications_of": [
+    "PortInWaitingForSignature",
+    "PortInInProgress",
+    "PortInCompleted",
+    "PortInActionRequired",
+    "PortInCanceled",
+    "PortInExpired",
+    "PortInPhoneNumberWaitingForSignature",
+    "PortInPhoneNumberSubmitted",
+    "PortInPhoneNumberPending",
+    "PortInPhoneNumberCompleted",
+    "PortInPhoneNumberRejected",
+    "PortOutPhoneNumberCompleted"
+  ],
+  "port_in_target_date_created": "2024-05-14T13:49:04Z",
+  "port_out_target_date_created": "2024-05-14T13:49:07Z",
+  "url": "https://numbers.twilio.com/v1/Porting/Configuration/Webhook"
+}
+Delete webhook configuration
+
+
+
+
+
+Delete a specific webhook configuration. It could take a few minutes for this action to take effect since the configuration may be cached.
+
+HTTP Method: DELETE Path: https://numbers.twilio.com/v1/Porting/Configuration/Webhook/{webhook_type}
+
+Parameters
+
+
+
+
+
+Parameter	Description
+webhook_type	Can be PORT_IN
+Example request
+
+
+
+
+
+
+
+Copy code block
+curl -X DELETE 'https://numbers.twilio.com/v1/Porting/Configuration/Webhook/{webhook_type}' \
+-u $TWILIO_ACCOUNT_SID:$TWILIO_AUTH_TOKEN
+Example response
+
+
+
+
+
+HTTP status code: 204 No content
+
+Receive the webhook
+
+
+
+
+
+Use the following webhooks associated with port-in request or port-in phone number events.
+
+
+(warning)
+Warning
+When you create a webhook you must use a public URL that can be reached by Twilio.
+Port In webhook
+
+
+
+
+
+The port in webhook sends the following request body in a POST HTTP request and expects to receive an HTTP 200 OK response.
+
+
+
+Copy code block
+{
+  "port_in_request_sid": "port_in_request_sid",
+  "port_in_phone_number_sid": "port_in_phone_number_sid",
+  "last_date_updated": "2024‑01‑25 00:00:00.000",
+  "phone_number": "+1800XXXXXXX",
+  "status": "waiting_for_signature",
+  "portable": "true",
+  "not_portable_reason_code": null,
+  "not_portable_reason": null,
+  "rejection_reason": null,
+  "rejection_reason_code": null
+}
+Field	Description
+port_in_request_sid	The SID of the port-in request
+port_in_phone_number_sid	The SID of the port-in phone number if the event is for a phone number otherwise it should be null.
+last_date_updated	The date for the last time that the status of the port-in request or port-in phone number was updated.
+phone_number	The phone number in e164 format if this is an event for a phone number. Otherwise, this is null.
+status	The current status of the port-in request or port-in phone number.
+portable	If the event is for a phone number, this field is a Boolean describing whether the number is portable or not.
+not_portable_reason_code	If the number is not portable, it shows the not portable reason code.
+not_portable_reason	If the number is not portable, it shows the not portable reason.
+rejection_reason	If the number was rejected by the vendor, it shows the rejection reason.
+rejection_reason_code	If the number was rejected by the vendor, it shows the rejection reason code.
+Retry policy
+
+
+
+
+
+Twilio retries each webhook request up to 10 times. The backoff interval doubles after each retry. Retries begin 5 minutes after the first attempt and stop after 21 hours.
+
+Webhooks security
+
+
+
+
+
+Twilio uses webhooks to notify your application about events occurring in your Twilio products, sending these updates to the URL you configured. To safeguard the communication between Twilio and your web application, Twilio supports encryption and cryptographically signs its requests. These signatures ensure the authenticity of requests from Twilio. You can verify a request's legitimacy by following the guidelines in the Twilio Security documentation.
+

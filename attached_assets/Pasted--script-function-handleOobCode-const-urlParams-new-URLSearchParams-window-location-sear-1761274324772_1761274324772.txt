@@ -1,0 +1,80 @@
+<script>
+  function handleOobCode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    const actionCode = urlParams.get('oobCode');
+
+    // Display a loading message
+    document.getElementById('status-message').innerText = 'Loading...';
+    
+    // Check if the actionCode (oobCode) is present
+    if (!actionCode) {
+      document.getElementById('status-message').innerText = 'Error: Missing action code. Please check your link.';
+      return;
+    }
+
+    switch (mode) {
+      case 'resetPassword':
+        // Handle password reset
+        handleResetPassword(auth, actionCode);
+        break;
+      
+      case 'verifyEmail':
+        // Handle email verification
+        handleVerifyEmail(auth, actionCode);
+        break;
+      
+      case 'recoverEmail':
+        // Handle email recovery
+        // Add your logic for email recovery here if needed
+        document.getElementById('status-message').innerText = 'Email recovery is not yet configured.';
+        break;
+        
+      default:
+        // Unknown mode
+        document.getElementById('status-message').innerText = 'Error: Invalid action requested.';
+        break;
+    }
+  }
+
+  // --- Password Reset Logic ---
+  function handleResetPassword(auth, actionCode) {
+    // 1. Verify the code first
+    auth.verifyPasswordResetCode(actionCode)
+      .then((email) => {
+        // Code is valid! Prompt the user for a new password
+        const newPassword = prompt(`The action code is valid for ${email}. Please enter your new password:`);
+
+        if (newPassword) {
+          // 2. Apply the new password
+          return auth.confirmPasswordReset(actionCode, newPassword);
+        } else {
+          throw new Error("Password reset cancelled by user.");
+        }
+      })
+      .then(() => {
+        // Success!
+        document.getElementById('status-message').innerText = 'Success! Your password has been reset. You can now sign in.';
+      })
+      .catch((error) => {
+        // Error handling
+        document.getElementById('status-message').innerText = `Password Reset Error: ${error.message}. Please try again or contact support.`;
+      });
+  }
+
+  // --- Email Verification Logic ---
+  function handleVerifyEmail(auth, actionCode) {
+    auth.applyActionCode(actionCode)
+      .then(() => {
+        // Success!
+        document.getElementById('status-message').innerText = 'Success! Your email address has been verified. You can now sign in.';
+      })
+      .catch((error) => {
+        // Error handling
+        document.getElementById('status-message').innerText = `Email Verification Error: ${error.message}. The link may be expired.`;
+      });
+  }
+
+  // Run the handler when the page loads
+  handleOobCode();
+</script>

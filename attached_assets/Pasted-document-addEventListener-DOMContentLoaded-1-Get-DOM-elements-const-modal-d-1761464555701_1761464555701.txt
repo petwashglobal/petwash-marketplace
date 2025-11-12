@@ -1,0 +1,68 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Get DOM elements
+    const modal = document.getElementById('creativeModal');
+    const openBtn = document.getElementById('openPopupBtn');
+    const closeBtn = document.getElementById('closePopupBtn');
+    const modalContent = modal.querySelector('.modal-content');
+
+    // 2. Function to show the modal (with accessibility focus control)
+    const showModal = () => {
+        modal.style.display = 'flex';
+        // Use a slight delay to allow display:flex to apply before transition starts
+        setTimeout(() => {
+            modal.classList.add('active');
+            // Accessibility: Trap focus inside the modal and focus the close button
+            closeBtn.focus(); 
+        }, 10);
+        // Accessibility: Hide main content from screen readers
+        document.querySelector('main').setAttribute('aria-hidden', 'true');
+        document.querySelector('header').setAttribute('aria-hidden', 'true');
+    };
+
+    // 3. Function to hide the modal
+    const hideModal = () => {
+        modal.classList.remove('active');
+        // Wait for the CSS transition to finish before setting display: none
+        modal.addEventListener('transitionend', function handler() {
+            if (!modal.classList.contains('active')) {
+                modal.style.display = 'none';
+                // Accessibility: Restore focus to the trigger button
+                openBtn.focus();
+                // Accessibility: Show main content to screen readers
+                document.querySelector('main').removeAttribute('aria-hidden');
+                document.querySelector('header').removeAttribute('aria-hidden');
+            }
+            modal.removeEventListener('transitionend', handler);
+        });
+    };
+
+    // 4. Event Listeners for Opening/Closing
+    openBtn.addEventListener('click', showModal);
+    closeBtn.addEventListener('click', hideModal);
+
+    // 5. Close by clicking the overlay (the area outside the pop-up box)
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            hideModal();
+        }
+    });
+
+    // 6. Close by pressing the 'Escape' key (Essential for accessibility and desktop UX)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            hideModal();
+        }
+    });
+
+    // 7. (Optional) Creative Trigger: Show pop-up after 5 seconds
+    // setTimeout(showModal, 5000); 
+
+    // 8. (Optional) Creative Trigger: Exit-Intent (Desktop only)
+    document.addEventListener('mouseleave', (e) => {
+         // Check if the pop-up is already visible or if it's a mobile device (touch)
+         if (!modal.classList.contains('active') && window.innerWidth > 768 && e.clientY < 10) {
+             // e.clientY < 10 detects mouse moving toward the top of the browser
+             // showModal();
+         }
+    });
+});

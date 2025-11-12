@@ -1,0 +1,266 @@
+// App/components/LoyaltyHub.js
+
+import React, { useState } from 'react';
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity, Platform, Dimensions } from 'react-native';
+import { Card, Title, Subheading, useTheme, ProgressBar, Button } from 'react-native-paper';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient'; // Requires install: npm install react-native-linear-gradient
+
+const { width } = Dimensions.get('window');
+
+// --- MOCK DATA ---
+const LOYALTY_DATA = {
+  currentTier: 'Gold',
+  points: 1250,
+  nextTier: 'Platinum',
+  pointsToNextTier: 750,
+  tierProgress: 0.625, // 1250 / 2000 (Gold Max)
+  challenges: [
+    { id: 1, title: 'Book next month’s wash', points: 150, icon: 'calendar-check-outline', complete: false },
+    { id: 2, title: 'Refer a friend (success)', points: 500, icon: 'account-plus-outline', complete: false },
+    { id: 3, title: 'Write a service review', points: 100, icon: 'star-circle-outline', complete: true },
+  ],
+  tierPerks: {
+    Silver: ['Priority Waitlist Access', '10% Birthday Discount'],
+    Gold: ['2X Points on all Services', 'Dedicated Support Line', 'Free Paw Moisturizer Add-on'],
+    Platinum: ['Free Express Wash Every Month', 'Guaranteed Holiday Booking', 'Early Access to New Products'],
+  }
+};
+
+// --- WIDGET 1: TIER STATUS VISUALIZER (The "WOW" Factor) ---
+const TierStatusVisualizer = ({ data }) => {
+  const theme = useTheme();
+  const nextTierProgress = Math.min(data.tierProgress, 1);
+  const tierColorMap = {
+    Silver: ['#BDBDBD', '#E0E0E0'],
+    Gold: ['#FFC107', '#FFD54F'],
+    Platinum: ['#4DB6AC', '#80CBC4'], // Teal/Mint for a fresh, premium look
+  };
+  const gradientColors = tierColorMap[data.currentTier] || ['#90CAF9', '#BBDEFB']; // Default Blue
+
+  return (
+    <Card style={styles.statusCard}>
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.tierHeaderGradient}
+      >
+        <Text style={styles.tierTitle}>⭐ {data.currentTier} Member</Text>
+        <Text style={styles.pointsDisplay}>{data.points} Points</Text>
+      </LinearGradient>
+
+      <Card.Content style={styles.progressSection}>
+        <Title style={{ color: theme.colors.text }}>Your Journey to {data.nextTier}</Title>
+        
+        {/* Animated Progress Bar */}
+        <ProgressBar
+          progress={nextTierProgress}
+          color={theme.colors.accent}
+          style={styles.progressBar}
+        />
+        
+        <View style={styles.progressLabels}>
+          <Text style={{ color: theme.colors.caption }}>{data.points} / {data.points + data.pointsToNextTier} Points</Text>
+          <Text style={styles.pointsToNext}>
+            **{data.pointsToNextTier}** to {data.nextTier}
+          </Text>
+        </View>
+        <Button mode="contained" icon="gift" style={styles.redeemButton}>
+          Redeem Rewards
+        </Button>
+      </Card.Content>
+    </Card>
+  );
+};
+
+// --- WIDGET 2: GAMIFIED DAILY/WEEKLY CHALLENGES ---
+const ChallengeWidget = ({ challenges }) => {
+  const theme = useTheme();
+
+  return (
+    <Card style={[styles.widgetCard, { backgroundColor: theme.colors.surface }]}>
+      <Card.Content>
+        <Title style={{ color: theme.colors.text, marginBottom: 15 }}>✅ Loyalty Quests (Gamification)</Title>
+        {challenges.map(challenge => (
+          <View key={challenge.id} style={styles.challengeItem}>
+            <View style={styles.challengeLeft}>
+              <Icon
+                name={challenge.icon}
+                size={24}
+                color={challenge.complete ? theme.colors.primary : theme.colors.disabled}
+                style={{ marginRight: 10 }}
+              />
+              <View>
+                <Text style={[styles.challengeTitle, { color: theme.colors.text, textDecorationLine: challenge.complete ? 'line-through' : 'none' }]}>
+                  {challenge.title}
+                </Text>
+                <Text style={styles.challengePoints}>
+                  {challenge.complete ? 'Completed' : `+${challenge.points} Points`}
+                </Text>
+              </View>
+            </View>
+            {!challenge.complete && (
+              <Button mode="outlined" onPress={() => console.log('Start Challenge', challenge.id)}>
+                Go
+              </Button>
+            )}
+            {challenge.complete && (
+                <Icon name="check-circle" size={24} color={theme.colors.success} />
+            )}
+          </View>
+        ))}
+      </Card.Content>
+    </Card>
+  );
+};
+
+// --- WIDGET 3: AI-POWERED PERSONALIZED PERKS ---
+const PersonalizedPerksWidget = ({ perks }) => {
+    const theme = useTheme();
+    return (
+        <Card style={[styles.widgetCard, { backgroundColor: theme.colors.surface }]}>
+            <Card.Content>
+                <Title style={{ color: theme.colors.text, marginBottom: 15 }}>🧠 Personalized Perks (AI-Driven)</Title>
+                <View style={styles.perkContainer}>
+                    {perks.map((perk, index) => (
+                        <View key={index} style={styles.perkItem}>
+                            <Icon name="tag-multiple" size={20} color={theme.colors.notification} style={{ marginRight: 8 }} />
+                            <Text style={{ color: theme.colors.text, flexShrink: 1 }}>{perk}</Text>
+                        </View>
+                    ))}
+                    <Button 
+                        mode="text" 
+                        onPress={() => console.log('View full list of all tiers')} 
+                        style={{ marginTop: 10 }}
+                        labelStyle={{color: theme.colors.primary}}
+                    >
+                        View All Tier Benefits
+                    </Button>
+                </View>
+            </Card.Content>
+        </Card>
+    );
+};
+
+
+// --- MAIN SCREEN COMPONENT ---
+const LoyaltyHub = () => {
+  const theme = useTheme();
+  const currentPerks = LOYALTY_DATA.tierPerks[LOYALTY_DATA.currentTier];
+
+  return (
+    <ScrollView style={[styles.scrollView, { backgroundColor: theme.colors.background }]}>
+      <View style={styles.container}>
+        
+        <TierStatusVisualizer data={LOYALTY_DATA} />
+
+        <ChallengeWidget challenges={LOYALTY_DATA.challenges} />
+        
+        <PersonalizedPerksWidget perks={currentPerks} />
+
+      </View>
+    </ScrollView>
+  );
+};
+
+// --- STYLES (Modern Aesthetics and Graphics) ---
+const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+  },
+  container: {
+    padding: 20,
+  },
+  widgetCard: {
+    marginBottom: 20,
+    borderRadius: 16,
+    elevation: 4,
+  },
+  // Tier Status Styles
+  statusCard: {
+    marginBottom: 25,
+    borderRadius: 20, // Rounded edges for modern feel
+    overflow: 'hidden',
+    elevation: 6, // Deeper shadow for main element
+  },
+  tierHeaderGradient: {
+    padding: 25,
+    alignItems: 'center',
+  },
+  tierTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: 'white',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  pointsDisplay: {
+    fontSize: 48,
+    fontWeight: '300',
+    color: 'white',
+    marginTop: 5,
+  },
+  progressSection: {
+    paddingVertical: 20,
+  },
+  progressBar: {
+    height: 10,
+    borderRadius: 5,
+    marginVertical: 10,
+  },
+  progressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  pointsToNext: {
+    fontWeight: 'bold',
+    color: '#388E3C', // Always a strong success color
+  },
+  redeemButton: {
+      borderRadius: 25,
+      paddingVertical: 5,
+  },
+  // Challenge Widget Styles
+  challengeItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E0E0E0',
+  },
+  challengeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
+  challengeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  challengePoints: {
+    fontSize: 12,
+    color: '#FF9800', // Distinct color for reward points
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  // Personalized Perks Styles
+  perkContainer: {
+      paddingVertical: 5,
+  },
+  perkItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 10,
+      backgroundColor: 'rgba(255, 165, 0, 0.1)', // Light, subtle highlight
+      padding: 8,
+      borderRadius: 8,
+  }
+});
+
+export default LoyaltyHub;

@@ -1,0 +1,142 @@
+/* Pet Wash Floating Icons - 3 Widget Stack */
+/* Order: Accessibility (top), WhatsApp (middle), PetWash AI (bottom) */
+
+.pw-float-stack {
+  position: fixed;
+  right: 16px; /* CLOSER TO EDGE ON MOBILE */
+  z-index: 9999;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.pw-float {
+  position: fixed;
+  right: 16px; /* CLOSER TO EDGE ON MOBILE */
+  z-index: 9999;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: none;
+  cursor: pointer;
+  outline: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  pointer-events: auto;
+  animation: slideInRight 150ms ease-out;
+}
+
+/* Desktop - 24px from edge */
+@media (min-width: 640px) {
+  .pw-float-stack {
+    right: 24px;
+  }
+  
+  .pw-float {
+    right: 24px;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.pw-float:hover {
+  transform: scale(1.05); /* SMOOTH HOVER SCALE */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.pw-float:active {
+  transform: scale(0.95);
+}
+
+/* Accessibility - Top (160px from bottom) - Solid Black */
+#pw-a11y {
+  bottom: 160px;
+  background: #000;
+  color: #fff;
+}
+
+/* WhatsApp - Middle (88px from bottom) - Green #25D366 */
+#pw-wa {
+  bottom: 88px;
+  background: #25D366;
+  color: #fff;
+}
+
+/* PetWash AI - Bottom (16px from bottom) - Premium Blue Gradient */
+#pw-ai {
+  bottom: 16px;
+  background: linear-gradient(135deg, #0B57D0 0%, #4E8DF7 100%);
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+#pw-ai:hover {
+  box-shadow: 0 4px 20px rgba(11, 87, 208, 0.5);
+  transform: scale(1.08);
+}
+
+/* RTL Support */
+[dir="rtl"] .pw-float {
+  right: auto;
+  left: 16px; /* CLOSER TO EDGE ON MOBILE */
+}
+
+[dir="rtl"] .pw-float-stack {
+  right: auto;
+  left: 16px; /* CLOSER TO EDGE ON MOBILE */
+}
+
+/* Desktop RTL - 24px from edge */
+@media (min-width: 640px) {
+  [dir="rtl"] .pw-float-stack {
+    left: 24px;
+  }
+  
+  [dir="rtl"] .pw-float {
+    left: 24px;
+  }
+}
+
+/* Focus states for accessibility */
+.pw-float:focus-visible {
+  outline: 3px solid #0B57D0;
+  outline-offset: 2px;
+}
+
+#pw-a11y:focus-visible {
+  outline-color: #fff;
+}
+
+#pw-wa:focus-visible {
+  outline-color: #25D366;
+}
+
+#pw-ai:focus-visible {
+  outline-color: #0B57D0;
+}
+
+/* Safe area insets for iPhone notch/home indicator */
+@supports (bottom: env(safe-area-inset-bottom)) {
+  #pw-a11y {
+    bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+  }
+  
+  #pw-wa {
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+  
+  #pw-ai {
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+}

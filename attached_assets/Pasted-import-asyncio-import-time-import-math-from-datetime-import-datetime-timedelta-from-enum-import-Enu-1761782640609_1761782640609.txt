@@ -1,0 +1,198 @@
+import asyncio
+import time
+import math
+from datetime import datetime, timedelta
+from enum import Enum
+
+# --- CONFIGURATION (CRITICAL FINANCIAL/GEOLOCATION CONSTANTS) ---
+COMMISSION_RATE_TRANSPORT = 0.20 # 20% for PetTrek service
+BASE_FARE = 5.00 # USD/ILS equivalent
+RATE_PER_KM = 1.50
+RATE_PER_MINUTE = 0.25
+SURGE_MULTIPLIER_ACTIVE = 1.5 # Example surge pricing for high demand
+
+class TripStatus(Enum):
+    REQUESTED = 'REQUESTED'
+    ACCEPTED = 'ACCEPTED'
+    IN_PROGRESS = 'IN_PROGRESS'
+    COMPLETED = 'COMPLETED'
+    CANCELED = 'CANCELED'
+
+# --- MOCK GEOLOCATION AND AUTH SERVICES ---
+class GeoService:
+    @staticmethod
+    def calculate_distance_time(start_coords, end_coords):
+        """MOCK: Calls Google Maps/Geoapify API for distance and ETA."""
+        # Returns [Distance in km, Time in minutes]
+        distance = math.sqrt((start_coords[0]-end_coords[0])**2 + (start_coords[1]-end_coords[1])**2) * 100
+        time_minutes = distance * 2 # Mock 2 minutes per km
+        return distance, time_minutes
+
+    @staticmethod
+    def find_nearby_drivers(coordinates, radius=2):
+        """MOCK: Queries a geo-indexed database for vetted, available drivers."""
+        # In production, returns drivers within a 2km radius who are toggled 'ONLINE'
+        driver_pool = [f"Driver_{i}" for i in range(1, 10)]
+        random.shuffle(driver_pool)
+        return driver_pool[:3] # Returns 3 nearest drivers
+
+class Database:
+    @staticmethod
+    def get_driver_vehicle_data(driver_id):
+        """Fetches driver's vetted status and vehicle capacity."""
+        # Ensure only drivers with clear vehicle inspection status are included.
+        return {"vetted_status": True, "capacity": "Large"}
+
+# ====================================================================
+# MODULE 1: PETTREK FARE ESTIMATION AND DYNAMIC PRICING
+# ====================================================================
+
+class FareEstimator:
+    """Calculates the fare and commission based on ride-sharing principles."""
+
+    @staticmethod
+    def get_fare_estimate(start_coords, end_coords, is_peak_time=False):
+        distance, time_minutes = GeoService.calculate_distance_time(start_coords, end_coords)
+        
+        # 1. Base Cost Calculation
+        distance_cost = distance * RATE_PER_KM
+        time_cost = time_minutes * RATE_PER_MINUTE
+        
+        subtotal = BASE_FARE + distance_cost + time_cost
+        
+        # 2. Dynamic Pricing (Surge)
+        if is_peak_time:
+            subtotal *= SURGE_MULTIPLIER_ACTIVE
+            
+        # 3. Commission Calculation (CRITICAL)
+        platform_fee = subtotal * COMMISSION_RATE_TRANSPORT # 20% retained
+        final_fare = subtotal
+        
+        return {
+            "estimated_fare": round(final_fare, 2),
+            "driver_payout_estimate": round(final_fare * (1 - COMMISSION_RATE_TRANSPORT), 2),
+            "platform_commission": round(platform_fee, 2),
+            "distance_km": round(distance, 2)
+        }
+
+# ====================================================================
+# MODULE 2: PETTREK DISPATCH AND RIDE LIFECYCLE
+# ====================================================================
+
+class DispatchService:
+    """Manages the real-time matching and trip state."""
+
+    @staticmethod
+    def request_ride(owner_id, pet_size, start_coords, end_coords):
+        """
+        Endpoint: Initiates a ride request and dispatches to drivers.
+        """
+        nearest_drivers = GeoService.find_nearby_drivers(start_coords)
+        
+        if not nearest_drivers:
+            return {"status": "FAILED", "detail": "No drivers available near you."}
+            
+        # 1. Create Trip Record
+        trip_id = f"TRK-{int(time.time())}"
+        
+        # 2. Dispatch to the 3 nearest drivers simultaneously
+        DispatchService.send_push_notification(nearest_drivers, trip_id, "New PetTrek Ride!")
+        
+        # 3. Trip Record Initialization
+        trip_record = {
+            "trip_id": trip_id,
+            "owner_id": owner_id,
+            "status": TripStatus.REQUESTED.value,
+            "start_time": datetime.now(),
+            "fare_estimate": FareEstimator.get_fare_estimate(start_coords, end_coords),
+            "dispatched_to": nearest_drivers
+        }
+        return {"status": "DISPATCHING", "trip_id": trip_id, "dispatched_count": len(nearest_drivers)}
+
+    @staticmethod
+    def accept_ride(driver_id, trip_id):
+        """
+        Endpoint: Driver accepts the ride.
+        """
+        # CRITICAL CHECK: Verify driver is VETTED and vehicle matches pet size
+        driver_data = Database.get_driver_vehicle_data(driver_id)
+        
+        if not driver_data.get("vetted_status"):
+             return {"status": "REJECTED", "detail": "Driver security status insufficient."}
+        
+        # Update trip status and notify owner
+        # MOCK: Database update to TripStatus.ACCEPTED
+        return {"status": TripStatus.ACCEPTED.value, "driver_id": driver_id}
+
+    @staticmethod
+    def end_ride_and_pay(trip_id, actual_end_coords):
+        """
+        Endpoint: Completes the ride, calculates final fare, and triggers payout.
+        """
+        # 1. Calculate Final Fare based on actual route/time
+        # In a real system, this uses the saved GPS stream data
+        final_fare = FareEstimator.get_fare_estimate(trip_id, actual_end_coords)['estimated_fare'] 
+        
+        # 2. Commission Finalization (20% retained)
+        platform_fee = final_fare * COMMISSION_RATE_TRANSPORT
+        driver_payout = final_fare * (1 - COMMISSION_RATE_TRANSPORT)
+        
+        # 3. Trigger Escrow Payout
+        # EscrowManager.transfer_payout_with_fee(driver_id, driver_payout)
+        
+        return {"status": TripStatus.COMPLETED.value, "final_fare": final_fare, "platform_fee": platform_fee}
+
+
+    # MOCK PUSH NOTIFICATION
+    @staticmethod
+    def send_push_notification(recipients, trip_id, message):
+        print(f"\n[PUSH NOTIFICATION SENT]: {message} to {len(recipients)} drivers.")
+
+
+# ====================================================================
+# FRONTEND API CALL STRUCTURES
+# ====================================================================
+
+# These functions represent the specific API endpoints the mobile app will call.
+
+def api_get_fare_estimate(user_lat, user_lon, dropoff_lat, dropoff_lon):
+    return FareEstimator.get_fare_estimate((user_lat, user_lon), (dropoff_lat, dropoff_lon))
+
+def api_initiate_ride(owner_id, start_coords, end_coords):
+    return DispatchService.request_ride(owner_id, "Medium", start_coords, end_coords)
+
+def api_driver_toggle_online(driver_id):
+    # Driver toggles availability (updates geo-indexed database)
+    # db.update_driver_status(driver_id, 'ONLINE')
+    return {"status": "Ready for requests."}
+
+
+# ====================================================================
+# DEMO EXECUTION
+# ====================================================================
+
+if __name__ == "__main__":
+    
+    owner_start = (32.0853, 34.7818) # Tel Aviv
+    owner_end = (32.0950, 34.7900)
+    
+    print("--- 1. PETTREK: FARE ESTIMATION ---")
+    estimate = api_get_fare_estimate(owner_start[0], owner_start[1], owner_end[0], owner_end[1])
+    
+    print(f"Distance: {estimate['distance_km']} km")
+    print(f"Estimated Fare (Final): ${estimate['estimated_fare']}")
+    print(f"Platform Commission (20%): ${estimate['platform_commission']}")
+    
+    print("\n--- 2. PETTREK: RIDE REQUEST AND ACCEPTANCE ---")
+    
+    # 2A: Owner requests a ride
+    request_response = api_initiate_ride("Owner_A", owner_start, owner_end)
+    print(f"Ride Request Status: {request_response['status']} (Trip ID: {request_response['trip_id']})")
+    
+    # 2B: Driver accepts the ride
+    driver_accept_response = DispatchService.accept_ride("Driver_1", request_response['trip_id'])
+    print(f"Driver Acceptance Status: {driver_accept_response['status']}")
+    
+    # 2C: Ride ends and Payout is triggered
+    end_response = DispatchService.end_ride_and_pay(request_response['trip_id'], owner_end)
+    print(f"Trip Completion: {end_response['status']} | Final Fare Secured.")

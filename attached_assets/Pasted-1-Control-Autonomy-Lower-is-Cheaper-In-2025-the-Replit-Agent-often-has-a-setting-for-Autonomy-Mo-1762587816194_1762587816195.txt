@@ -1,0 +1,19 @@
+1. Control Autonomy (Lower is Cheaper)
+In 2025, the Replit Agent often has a setting for Autonomy Mode. This controls how much work the AI tries to complete on its own without asking you for approval.
+• High Autonomy (Expensive): The Agent tries to figure everything out, make changes across many files, and only stops when it thinks the entire task is done. This can lead to a lot of wasted tokens if the AI misunderstands the goal early on.
+• Lower Autonomy (Cheaper): The Agent asks for more permissions and approvals after small, successful steps.
+The Advanced Tip:
+Use Low Autonomy when tackling a large, ambiguous, or complex feature (like a database integration). This forces the Agent to stop and ask for approval after each small, successful step (a "checkpoint"). By selectively approving only the correct changes, you prevent the Agent from wasting tokens on a long sequence of incorrect edits in subsequent steps.
+2. Separate "Planning" from "Execution" Tokens
+The Replit Agent often uses Plan Mode to outline its work. You must use this strategically, as the planning conversation itself also consumes tokens.
+• Inefficient: Using the Plan Mode, getting the plan, then saying "Okay, execute the plan" in the same chat. (The AI has to re-read the long plan in the same context, consuming redundant tokens.)
+• Efficient:
+1. Use the Agent to generate the plan.
+2. Once you approve the plan, start a brand new, clean chat/prompt (this resets the context window).
+3. In the new chat, simply say: "Implement the following steps: [Paste the specific plan steps from the old chat here]."
+The Advanced Tip:
+Avoid long chat histories. By starting a new conversation for the execution, you clear the old, bulky context (like the planning conversation and initial back-and-forth), giving the Agent a smaller, focused input to process for the actual code generation, saving tokens.
+3. The "Pre-Built Component" Strategy
+The most expensive tokens are those used for code that is not unique to your business logic.
+• Expensive: Asking the Agent: "Build me a user registration form with email validation, hashing, and JWT token generation." (All of this is standard, boilerplate code).
+• Cheap: Use a pre-built Replit template or a simple component library for common, non-unique features like authentication, payment processing, or a basic chat window.

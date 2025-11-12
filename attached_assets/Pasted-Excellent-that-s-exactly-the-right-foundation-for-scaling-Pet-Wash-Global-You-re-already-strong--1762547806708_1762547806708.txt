@@ -1,0 +1,87 @@
+Excellent — that’s exactly the right foundation for scaling Pet Wash™ Global.
+You’re already strong on the physical Pet Wash Hub™ and e-Gift logic — now the goal is to make the remaining seven digital platforms operate with the same reliability, automation, and legal perfection across countries.
+
+Below is your master operational logic plan, written as one open text so your programmers, finance team, and compliance managers can copy directly. It merges business flow, taxation, invoicing, employee management, and cross-border compliance into one unified ecosystem ready for 2026.
+
+⸻
+
+PET WASH™ GLOBAL – SMART LOGIC AND OPERATIONAL ARCHITECTURE
+
+Core principle: One secure ecosystem, many platforms — every transaction verified, logged, invoiced, and compliant in Israel and worldwide.
+
+⸻
+
+Pet Wash Hub™ remains the anchor platform and payment core. It handles all Nayax Israel transactions, receipts, e-Gift and package sales, and the global Pet Wash Wallet. All other platforms—Walk My Pet™, The Sitter Suite™, PetTrek™, Paw Finder™, The Plush Lab™, K9000 Cloud™, and Enterprise—connect to the Hub through a shared API layer and write their financial events to the same Ledger and Payments microservice.
+
+Each module runs as its own scalable service with separate workers, queues, and database schema but under one identity and wallet system. Firebase Auth and Nayax Israel serve as the single sources of truth for login, identity, and payments. The ledger sits in the center of the ecosystem and creates an immutable double-entry record for every movement of funds, credits, and taxes.
+
+FRONT END LOGIC
+All platforms share a unified design system. The user logs in once and moves freely between modules. The interface reads from a single user profile and wallet. Each platform shows data relevant to that service—bookings, rides, avatars, or IoT status—but payments, receipts, and loyalty remain centralized. The UI retrieves booking and payment history through one common API so customers and employees see consistent data everywhere.
+
+BACK END AND DATA MANAGEMENT
+All operational data—bookings, users, provider records, KYC files, invoices, and receipts—is stored in structured collections by module. The data is time-stamped, encrypted, and immutable. Transactions reference their Nayax Israel transaction ID and internal booking ID. Receipts and invoices are generated instantly in PDF or digital form and stored in a cloud archive with a seven-year retention period for Israeli law and longer if required by other jurisdictions.
+
+For performance and safety, every heavy operation (payment, invoice creation, notification, ledger posting) runs asynchronously in a job queue. This means the customer never experiences delays even when thousands of users operate simultaneously. Each module has its own queue and can be scaled horizontally, ensuring zero downtime when traffic spikes.
+
+ADMIN AND EMPLOYEE DASHBOARDS
+Each department accesses one unified admin portal with modular panels: Operations, Finance, Trust & Safety, Legal, and Technical. Permissions are role-based. Employees only see what they need:
+– Operations handle bookings and support tickets.
+– Finance views ledger summaries, tax reports, and reconciliation.
+– Legal reviews KYC, disputes, and provider onboarding.
+All actions are logged with before-after values and time stamps for audit integrity.
+
+AUTOMATED DOCUMENTATION – INVOICES, RECEIPTS, RECORDS
+When any transaction completes through Nayax Israel, the platform automatically issues:
+	1.	Customer receipt – shows amount, VAT or tax rate, payment method, and unique invoice number.
+	2.	Provider statement – shows gross amount, commission, withheld tax if any, and net payable.
+	3.	Ledger entry – double-entry posting with tax tagging.
+	4.	Export entry – summarized data sent nightly to the accounting platform (Xero or NetSuite).
+
+Invoices follow Israeli electronic invoice standards with sequential numbering per legal entity. For international branches, local numbering and language rules apply. The system detects user location and issues the correct document automatically.
+
+Each invoice includes these legal fields: entity name and number, VAT number, payment date, service type, total, VAT amount, total after VAT, Nayax Israel transaction ID, and internal ledger reference. Digital signature certificates ensure authenticity.
+
+TAX AND EXPENSE MANAGEMENT
+The Tax engine calculates VAT or GST based on jurisdiction and service type. For Israel, standard VAT applies to all taxable services. For cross-border transactions, place-of-supply rules determine tax liability. The engine stores tax rates in a versioned registry for audit transparency.
+
+Expenses for employees, operations, and contractors flow through the same ledger. Employees submit receipts through the admin app; AI categorizes each expense (fuel, cleaning supplies, maintenance, marketing, etc.). The system automatically marks deductible items for VAT reclaim and posts them to the appropriate cost center.
+
+Payouts to service providers include withholding tax where required. Providers can upload tax certificates; the system adjusts their rates automatically. For international contractors, the platform applies the correct withholding percentage based on double-tax treaties.
+
+SMART ACCOUNTING AND COMPLIANCE
+At the end of each day, reconciliation runs automatically. The system imports Nayax Israel’s settlement file and matches every transaction. Finance receives a daily report showing:
+– Total revenue per platform
+– Tax collected
+– Provider payables
+– Refunds and chargebacks
+– Wallet balances and liabilities
+
+At month end, consolidated financial statements are generated per entity. These include profit and loss, balance sheet, and tax liability summary. All data exports in standard accounting formats for submission to auditors or tax authorities.
+
+Compliance is automatic:
+– Israeli VAT and income tax exports meet Misrad HaMisim digital filing format.
+– GDPR and Israeli privacy law compliance for data storage and deletion.
+– PCI DSS compliance inherited from Nayax Israel.
+– ISO 27001 level data security with encryption and restricted access.
+
+EMPLOYEES, PAYROLL, AND COST CONTROL
+The system tracks employee hours and commissions through the same ledger. Salaries, bonuses, and expense reimbursements are paid through Nayax Israel or integrated bank connectors. The platform calculates employer contributions and deducts tax automatically. Reports are ready for accountant submission each pay period.
+
+To minimize tax exposure and operational cost, most variable workforce members (walkers, sitters, trainers, drivers) operate as independent verified providers, not salaried staff. This model follows the Uber and Airbnb global framework. The ledger distinguishes contractor payments from payroll for accounting accuracy.
+
+ZERO-ERROR LEGAL AND DATA SAFETY LOGIC
+Every financial and legal event in the system is immutable. Changes require an audit trail and cannot overwrite original records. All system time stamps use UTC for global synchronization. KYC data is encrypted and stored separately from operational data to protect privacy. Automated validation checks run nightly to detect missing receipts, incorrect VAT rates, or mismatched ledger balances. Alerts go to finance before any filing deadline.
+
+GLOBAL READINESS
+When Pet Wash™ launches in new countries, a new legal entity record is added with its own tax configuration, invoice prefix, and reporting currency. All entities share the same codebase but operate legally separate. The ledger supports multi-currency conversions at official daily exchange rates. Corporate consolidation runs at head office level to produce group statements in AUD or USD.
+
+BUSINESS CONTINUITY AND RESILIENCE
+Every module is backed up daily. Database snapshots and file archives (invoices, receipts, logs) are replicated to two data centers. Failover systems ensure that a regional outage never stops payments or access. Nayax Israel’s gateway has redundant connectivity to ensure 24/7 uptime.
+
+FUTURE-PROOF AUTOMATION
+All modules support AI automation for data validation, fraud detection, and financial forecasting. The AI engine checks for duplicate payments, abnormal provider behavior, or missing invoices. Predictive analytics estimate tax liability and cash flow to help reduce surprises and optimize working capital.
+
+⸻
+
+This unified architecture ensures that Pet Wash Hub™ remains perfect as it is and every other platform operates under the same trusted, automated, and fully compliant framework.
+Every booking, receipt, and payment flows through Nayax Israel, recorded in a zero-error ledger, reconciled daily, auditable by any authority, and optimized to save tax, prevent waste, and protect the company legally in Israel and across every global market where Pet Wash™ operates.

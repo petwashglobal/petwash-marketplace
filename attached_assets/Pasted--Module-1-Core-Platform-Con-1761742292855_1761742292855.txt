@@ -1,0 +1,224 @@
+# ====================================================================
+# Module 1: Core Platform Configuration and Global Management
+# ====================================================================
+
+class GlobalConfig:
+    """Manages system-wide settings, regulatory compliance, and localization."""
+    
+    def __init__(self):
+        self.supported_countries = ["USA", "ISR", "UK", "AUS", "CAN"]
+        self.default_currency = "USD"
+        self.global_commission_rate = 0.20 # 20%
+        self.vetting_partners = {
+            "ISR": "Israeli_ID_Verification_API",
+            "USA": "US_Background_Check_API",
+            # ... other country-specific partners
+        }
+
+    def get_local_settings(self, ip_address):
+        """Determines country based on IP and retrieves localized settings."""
+        country_code = self.determine_country_from_ip(ip_address)
+        
+        # --- Specific Rule Implementation ---
+        if country_code == "ISR":
+            return {
+                "country": "Israel",
+                "currency": "ILS",
+                "default_language": "Hebrew",
+                "vetting_api": self.vetting_partners["ISR"],
+            }
+        
+        # Default for unmatched IP/Country
+        return {
+            "country": "Global",
+            "currency": self.default_currency,
+            "default_language": "English",
+            "vetting_api": self.vetting_partners.get(country_code, "Generic_ID_Check"),
+        }
+
+    def determine_country_from_ip(self, ip_address):
+        """Simulates external geo-IP lookup service."""
+        # IF IP matches Israeli range, return "ISR"
+        # ELSE return generic lookup result
+        if ip_address.startswith("109.253.") or ip_address.startswith("82.81."):
+             return "ISR" # Simplified check
+        return "USA" # Default for demonstration
+
+# ====================================================================
+# Module 2: Security, Vetting, and Fraud Detection
+# ====================================================================
+
+class SecurityManager:
+    """Handles all security protocols, including ID verification and fraud detection."""
+
+    def __init__(self, config: GlobalConfig):
+        self.config = config
+        self.fraud_keywords = ["off platform", "bank transfer", "cash payment", "personal email"]
+
+    def perform_sitter_vetting(self, user_id, id_scan_data, country_code):
+        """Step-by-step sitter verification process."""
+        
+        # 1. Official ID Scan Verification
+        vetting_api = self.config.get_local_settings(user_id.ip_address).get("vetting_api")
+        id_verified, id_details = self.call_external_id_api(vetting_api, id_scan_data)
+        
+        if not id_verified:
+            return False, "ID failed verification or forgery detected."
+
+        # 2. National Background Check
+        background_check_clean = self.call_external_background_check(country_code, id_details)
+        if not background_check_clean:
+            self.flag_user(user_id, "Failed background check")
+            return False, "Background check failed."
+
+        # 3. Two-Factor Authentication Setup
+        self.enforce_two_factor_setup(user_id)
+        
+        return True, "Sitter successfully vetted and approved."
+
+    def monitor_direct_messages(self, sender_id, recipient_id, message_content):
+        """Detects fraudulent activity in real-time chat."""
+        for keyword in self.fraud_keywords:
+            if keyword in message_content.lower():
+                self.alert_support(sender_id, "Fraudulent keyword detected in chat.")
+                self.suspend_chat_access(sender_id)
+                return True
+        return False
+
+# ====================================================================
+# Module 3: Booking and Calendar Logic
+# ====================================================================
+
+class BookingEngine:
+    """Manages availability, requests, escrow, and payment."""
+
+    def __init__(self, config: GlobalConfig):
+        self.config = config
+
+    def check_availability(self, sitter_id, service_type, start_date, end_date):
+        """Checks the Sitter's Advanced Calendar for block-offs and capacity."""
+        
+        sitter_calendar = self.load_sitter_calendar(sitter_id)
+        
+        # 1. Check blocked dates/times
+        if sitter_calendar.is_blocked(start_date, end_date):
+            return False, "Sitter has manually blocked these dates."
+
+        # 2. Check Capacity (Boarding only)
+        if service_type == "Boarding":
+            current_bookings = self.get_active_bookings(sitter_id, start_date, end_date)
+            max_capacity = sitter_calendar.get_max_capacity()
+            
+            if len(current_bookings) >= max_capacity:
+                return False, "Sitter is at maximum boarding capacity."
+
+        return True, "Sitter is available."
+
+    def calculate_price(self, sitter_id, service_type, start_date, end_date, local_currency):
+        """Calculates final price including dynamic pricing and service fees."""
+        
+        base_rate = self.get_sitter_base_rate(sitter_id, service_type)
+        
+        # Apply Dynamic/Holiday Pricing
+        if self.is_holiday_period(start_date, end_date, self.config.get_local_settings(sitter_id.ip_address).get("country")):
+            rate_multiplier = 1.50 # 50% Holiday Surge
+        else:
+            rate_multiplier = 1.0
+        
+        subtotal = base_rate * self.calculate_duration(start_date, end_date) * rate_multiplier
+        
+        platform_fee = subtotal * self.config.global_commission_rate
+        total_price = subtotal + platform_fee
+        
+        return total_price, platform_fee
+
+    def process_payment(self, booking_id, total_amount, currency):
+        """Initiates secure payment and moves funds into the Escrow account."""
+        
+        payment_gateway.charge(total_amount, currency)
+        self.move_to_escrow(booking_id, total_amount)
+        
+        return True, "Payment secured and funds in escrow."
+
+    def release_payment(self, booking_id, sitter_id):
+        """Releases sitter portion after successful booking completion."""
+        
+        if self.check_service_completion(booking_id):
+            sitter_payout = self.get_escrow_amount(booking_id) - self.get_platform_fee(booking_id)
+            payment_gateway.transfer(sitter_payout, sitter_id.wallet_address)
+            self.log_transaction(booking_id, "Payment Released")
+            return True
+        return False
+
+# ====================================================================
+# Module 4: Review and Trust System
+# ====================================================================
+
+class ReviewAndTrust:
+    """Manages the integrity of the review system and sitter reputation."""
+
+    def process_owner_review(self, booking_id, sitter_id, rating, text_review, private_feedback):
+        """Submits and processes a new owner review."""
+        
+        # 1. Update Public Score
+        sitter_stats = self.get_sitter_stats(sitter_id)
+        sitter_stats.update_rating(rating)
+        
+        # 2. Check for Trust Badges
+        if sitter_stats.total_bookings >= 50 and sitter_stats.years_active >= 1:
+            self.grant_badge(sitter_id, "Long Sitter")
+        
+        if sitter_stats.five_star_percentage >= 0.95 and sitter_stats.safety_incidents == 0:
+            self.grant_badge(sitter_id, "Trusted Sitter")
+
+        # 3. Log Private Feedback (for internal quality control only)
+        self.log_internal_feedback(sitter_id, private_feedback)
+        
+        self.notify_sitter(sitter_id, "You have a new review!")
+
+
+# ====================================================================
+# Main Execution Flow Example
+# ====================================================================
+
+# Initialize Global Configuration
+global_config = GlobalConfig()
+security_manager = SecurityManager(global_config)
+booking_engine = BookingEngine(global_config)
+trust_system = ReviewAndTrust()
+
+# ----------------- Step 1: Vetting a New Sitter -----------------
+# User from Israel connects (IP check triggers Israeli settings)
+new_sitter_id = User(ip_address="109.253.5.10") 
+id_scan_data = "encrypted_id_image_data"
+is_approved, message = security_manager.perform_sitter_vetting(new_sitter_id, id_scan_data, "ISR")
+
+if is_approved:
+    print(f"Sitter Vetting Status: APPROVED. Message: {message}")
+else:
+    print(f"Sitter Vetting Status: DENIED. Message: {message}")
+
+# ----------------- Step 2: Booking Process -----------------
+sitter_id = "Approved_Sitter_44"
+owner_id = "Owner_22"
+start_date = "2025-12-24" # Holiday surge potential
+end_date = "2025-12-27"
+service = "Boarding"
+ip_used = "4.4.4.4" # Non-Israeli IP
+
+is_available, message = booking_engine.check_availability(sitter_id, service, start_date, end_date)
+
+if is_available:
+    # Uses default currency (USD) and holiday multiplier
+    total_cost, fee = booking_engine.calculate_price(sitter_id, service, start_date, end_date, "USD")
+    print(f"Booking Cost: {total_cost} USD (Fee: {fee} USD)")
+    
+    # Process payment and hold in escrow
+    payment_status, pay_message = booking_engine.process_payment("BOOKING_999", total_cost, "USD")
+
+# ----------------- Step 3: Global Expansion (Dynamic Settings) -----------------
+# Simulating a user connect from Israel IP
+israel_settings = global_config.get_local_settings("109.253.5.10") 
+print(f"\nIsrael IP User Settings: {israel_settings}")
+# Output will confirm: 'country': 'Israel', 'currency': 'ILS', 'default_language': 'Hebrew'
+

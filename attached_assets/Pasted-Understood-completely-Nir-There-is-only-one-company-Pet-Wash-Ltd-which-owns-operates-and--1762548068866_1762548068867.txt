@@ -1,0 +1,148 @@
+Understood completely, Nir.
+✅ There is only one company — Pet Wash™ Ltd — which owns, operates, and manages all platforms, brands, and activities worldwide.
+No subsidiaries or external entities will ever be mentioned or invented. Every system, brand, app, and payment flow must always sit under Pet Wash™ Ltd as the single corporate head.
+
+Here’s the corrected and final smart global management logic plan, reflecting that structure truthfully and keeping every operation, employee, and platform tied to Pet Wash™ Ltd — legally, technically, and financially.
+
+⸻
+
+PET WASH™ LTD – 2025 SMART GLOBAL MANAGEMENT MASTER PLAN
+
+Head company: Pet Wash™ Ltd
+Registered jurisdiction: Israel
+Global operational coverage: All current and future territories operate directly under Pet Wash™ Ltd with no subsidiaries.
+Core principle: One company, one legal entity, one ledger, one trust system, one payment gateway (Nayax Israel).
+
+⸻
+
+1. STRUCTURE AND CONTROL
+Pet Wash™ Ltd owns and operates all platforms:
+Pet Wash Hub™, Walk My Pet™, The Sitter Suite™, PetTrek™, Paw Finder™, The Plush Lab™, K9000 Cloud™, and Enterprise Solutions.
+All share one unified codebase, one global database, one payments and accounting system, and one compliance framework.
+
+All brand data and operations are managed through the Pet Wash™ Global Operations Hub, the single command center used by management, finance, legal, and support teams.
+
+⸻
+
+2. PAYMENTS AND BANKING
+All transactions from every platform flow exclusively through Nayax Israel, which acts as the single payment processor and acquirer for Pet Wash™ Ltd.
+No other processors or merchant accounts are used.
+
+Payments from users are authorized, captured, and reconciled directly to the Pet Wash™ Ltd merchant account.
+Refunds, chargebacks, and payouts are handled inside the same ledger with full legal traceability.
+Every transaction links a Nayax transaction ID with an internal ledger ID, enabling zero-error reconciliation.
+
+All invoices, receipts, and tax reporting originate from Pet Wash™ Ltd under its Israeli registration number and VAT obligations.
+When the company operates services in other countries, it does so as a foreign-registered business under the same parent name, never as a new entity.
+
+⸻
+
+3. TAX, LEGAL, AND ACCOUNTING
+The accounting system, ledger, and tax engine all belong to Pet Wash™ Ltd.
+All taxes (VAT / מע״מ) are filed through the Israeli Tax Authority (Misrad HaMisim).
+For cross-border transactions, the system calculates local VAT or GST but reports them centrally through the Pet Wash™ Ltd accounts department.
+
+Bookkeeping follows IFRS 15 and Israeli corporate law.
+Every booking and payment is recorded instantly and backed up daily.
+Invoices are sequential, digitally signed, and stored for seven years as required by Israeli regulation.
+
+⸻
+
+4. EMPLOYEES AND PROVIDERS
+Every employee, contractor, and service provider worldwide works directly under Pet Wash™ Ltd.
+Each profile in the admin system carries a verified KYC record, signed agreement, and tax status (employee / independent contractor).
+Payroll, commissions, and bonuses are issued from the same ledger through Nayax Israel or approved bank transfers from Pet Wash™ Ltd’s corporate account.
+
+All hours, trips, and tasks are tracked automatically using GPS and Waze integration, generating auditable logs for salary and expense reimbursement.
+
+⸻
+
+5. PLATFORM AND BACK-END LOGIC
+Every digital service connects to one Payments & Ledger microservice and one User Identity service.
+Modules (wash, walk, sit, train, transport, gift, IoT, enterprise) run independently for stability but share the same database cluster and API gateway.
+This guarantees consistent data and full compliance.
+
+Each service creates real-time events—bookings, authorizations, captures, invoices, and receipts—all stored under the same Pet Wash™ Ltd ledger.
+Nothing can be modified without a time-stamped audit entry.
+
+⸻
+
+6. ADMIN STATION ID & WAZE INTEGRATION
+Every wash station, mobile unit, or driver is assigned a permanent Station ID registered to Pet Wash™ Ltd.
+That ID stores: address, GPS coordinates, maintenance history, and assigned employee.
+
+The system integrates directly with Waze and Google Maps APIs.
+For each job, the backend generates a Waze link to the destination so drivers and users can navigate instantly.
+All routes, ETAs, and mileage are recorded and linked to the job record for analytics and expense reporting.
+
+⸻
+
+7. OPERATIONS DASHBOARD
+All departments log into one admin portal:
+Operations | Finance | Trust & Safety | IoT Monitoring | Customer Support.
+Every admin action is recorded under the Pet Wash™ Ltd audit ledger.
+Data is segmented by module for clarity but governed under one authority.
+
+⸻
+
+8. SMART INVOICES AND RECORDS
+When a transaction completes, the system issues:
+• A customer receipt showing Pet Wash™ Ltd as the seller.
+• A digital invoice with VAT number and Nayax reference.
+• A provider statement if applicable.
+All documents are stored automatically and retrievable anytime.
+The finance team exports summarized journals daily to the accounting platform and locks the data after reconciliation.
+
+⸻
+
+9. COST CONTROL AND TAX EFFICIENCY
+Expense submissions, fuel logs, and maintenance costs are processed through one ledger.
+AI categorizes deductible expenses and flags personal or non-deductible ones before submission, helping save tax legally.
+Vehicle mileage captured through Waze generates automatic expense claims, linked to each driver’s profile for accurate deduction.
+
+All service providers outside payroll operate as verified independent contractors, minimizing employer tax while staying fully compliant with Israeli law.
+
+⸻
+
+10. COMPLIANCE AND AUDIT INTEGRITY
+Pet Wash™ Ltd follows:
+– Israeli Corporate Law and VAT Regulations
+– GDPR and Israeli Privacy Protection Law
+– PCI DSS standards (inherited from Nayax Israel)
+– ISO 27001 data security controls.
+
+All databases are encrypted at rest and backed up daily in two regions.
+Immutable logs protect the company legally; every invoice, refund, and admin change carries a cryptographic hash for proof of integrity.
+
+⸻
+
+11. GLOBAL OPERATIONS UNDER ONE LEGAL ENTITY
+When Pet Wash™ Ltd provides services abroad, it registers locally as a foreign company branch, keeping the same brand, ledger, and payment infrastructure.
+All profits and taxes flow transparently to the main Israeli entity.
+This ensures uniform compliance, clear financial control, and lower administrative overhead.
+
+⸻
+
+12. WAZE AND LOCATION INTELLIGENCE
+Waze data feeds live into the analytics engine.
+The system learns driving times, station congestion, and regional demand to optimize scheduling and station placement.
+Managers see on the admin map which stations are busy or idle in real time.
+
+⸻
+
+13. FUTURE-PROOF LOGIC
+AI modules monitor trends and predict revenue, maintenance needs, and energy use.
+Predictive analytics help adjust marketing and pricing to each city while keeping all accounting under Pet Wash™ Ltd’s legal and tax structure.
+All new platforms or partnerships plug directly into the same wallet, ledger, and trust layers—no duplicates, no new entities.
+
+⸻
+
+14. STRATEGIC SUMMARY
+Everything—software, hardware, employees, payments, invoices, data, and tax—belongs entirely to Pet Wash™ Ltd.
+All operations worldwide run through one gateway (Nayax Israel), one ledger, and one compliance framework.
+Every action is time-stamped, traceable, legally correct, and optimized for efficiency, security, and minimal tax exposure.
+The result is a single global company with zero confusion, zero risk, and maximum operational intelligence.
+
+⸻
+
+This is the final and factual structure — one company, Pet Wash™ Ltd, legally and operationally the head of all platforms, managing everything worldwide with full trust, verified payments, and absolute compliance.

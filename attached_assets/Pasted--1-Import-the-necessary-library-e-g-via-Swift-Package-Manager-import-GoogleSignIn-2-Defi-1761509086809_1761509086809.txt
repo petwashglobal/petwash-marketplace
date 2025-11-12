@@ -1,0 +1,57 @@
+// 1. Import the necessary library (e.g., via Swift Package Manager)
+import GoogleSignIn
+
+// 2. Define the Backend Service (Example using a Protocol/Class)
+protocol PetWashAuthService {
+    func signInWithGoogle(idToken: String, authCode: String, completion: @escaping (Result<String, Error>) -> Void)
+}
+
+// 3. The Core Sign-In Logic (e.g., in a ViewModel or ViewController)
+
+class GoogleSignInManager: ObservableObject {
+    // IMPORTANT: This must be your Web Application Client ID from the Google Cloud Console.
+    private let serverClientID = "YOUR_WEB_APPLICATION_CLIENT_ID_FROM_GOOGLE_CONSOLE" 
+    private let authService: PetWashAuthService = YourAPIService() // Your backend service class
+
+    func signInWithGoogle(presenting: UIViewController) {
+        
+        // 1. Configuration: Request necessary scopes and the crucial serverAuthCode
+        let config = GIDConfiguration(clientID: "YOUR_IOS_CLIENT_ID_FROM_GOOGLE_CONSOLE")
+        
+        // Request the one-time server auth code for your backend
+        let signInConfig = GIDConfiguration(
+            clientID: config.clientID,
+            serverClientID: serverClientID, // Pass your secure Web Client ID
+            scopes: ["email", "profile"]   // Request minimal scopes
+        )
+
+        // 2. Perform Sign-In
+        GIDSignIn.sharedInstance.signIn(with: signInConfig, presenting: presenting) { user, error in
+            guard let user = user else {
+                print("Google Sign-In Error: \(error?.localizedDescription ?? "Unknown")")
+                return
+            }
+            
+            // 3. Securely obtain the ID Token and Authorization Code
+            guard let idToken = user.idToken?.tokenString,
+                  let authCode = user.serverAuthCode else {
+                print("Authentication data is missing.")
+                return
+            }
+
+            print("✅ iOS: Successfully received ID Token and Auth Code.")
+            
+            // 4. Send the ID Token and Auth Code to your backend for final authentication
+            self.authService.signInWithGoogle(idToken: idToken, authCode: authCode) { result in
+                switch result {
+                case .success(let petWashToken):
+                    print("🎉 Success! Pet Wash Ltd Auth Token: \(petWashToken)")
+                    // Save petWashToken securely and navigate user to the main app
+                case .failure(let apiError):
+                    print("Backend Auth Error: \(apiError.localizedDescription)")
+                    // Handle API error
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,46 @@
+Yeah… sounds like they broke the foundation, not just one screen.
+If the login page is dead, that usually means one of three things went wrong during their last push:
+	1.	Auth routes or Firebase config got overwritten (wrong env vars or deleted redirect URIs).
+	2.	Frontend routing paths changed — the SignIn component is missing or not properly exported in React.
+	3.	Deployment cache or build mismatch — they published an old or incomplete build after adding PetTrek.
+
+Let’s get you back up fast.
+
+Here’s what to tell your Replit dev in one clean copy-paste message (no boxes, you can paste directly):
+
+⸻
+
+Please restore the PetWash™ platform to stable production version immediately. The current deployment broke all login and authentication screens — nothing loads or responds.
+Required actions step by step:
+	1.	Rollback to last stable build:
+	•	Restore commit from before PetTrek test deployment.
+	•	Verify /auth/signin, /auth/signup, /auth/reset routes render correctly.
+	2.	Re-verify Firebase configuration:
+	•	Check all .env secrets exist:
+FIREBASE_API_KEY
+FIREBASE_AUTH_DOMAIN
+FIREBASE_PROJECT_ID
+FIREBASE_STORAGE_BUCKET
+FIREBASE_MESSAGING_SENDER_ID
+FIREBASE_APP_ID
+	•	Make sure “Authorized Domains” inside Firebase console include:
+petwash.co.il and www.petwash.co.il
+	3.	Fix the login flow:
+	•	Re-enable SignIn.tsx component in router.
+	•	Ensure all OAuth providers (Google, Apple) have correct redirect URIs.
+	•	Test login on desktop Safari, Chrome, and iOS.
+	4.	Redeploy cleanly:
+	•	Run npm run build
+	•	Then npm run start
+	•	Publish only when all checks pass.
+	5.	Post-fix validation:
+	•	Test full auth (signup, login, logout, forgot password).
+	•	Confirm sessions persist and no console errors appear.
+	•	Confirm loyalty dashboard still connects to Firebase after login.
+
+Please don’t push new PetTrek or unrelated code until authentication is fully stable and verified live.
+
+⸻
+
+Once they confirm the login is fixed, I’ll give you the follow-up version for final stability hardening (caching, auto-reconnect, and AI error-recovery).
+Would you like me to prepare that next?

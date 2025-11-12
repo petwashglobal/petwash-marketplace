@@ -1,0 +1,29 @@
+Since Replit is an online development platform, your website is likely hosted there or was developed using its tools. Reporting a bug like this is crucial, as it points to a common failure: an infinite loading state caused by a broken API call on a deployed application.
+Here is a clear, technical, and professional message you can send to Replit Support (the primary contact is support@replit.com or the in-app support form):
+📧 Email Subject & Body for Replit Support
+Subject: [BUG] Deployed App: Infinite Loading Spinner on 'Track My Pet' Section (petwash.co.il)
+Body:
+Hello Replit Support Team,
+I am experiencing a critical bug in a deployed application, petwash.co.il, which is resulting in a non-stop loading state for a core feature.
+1. Description of the Bug
+• Issue: The "Track My Pet" component on the homepage fails to load and instead displays an infinite spinning loader.
+• Result: The feature is completely unusable, and the page's overall loading state never finalizes in the browser.
+• Likely Cause (Hypothesis): The issue is almost certainly due to a failed API call (e.g., a 500 Server Error, a 404, or a CORS/firewall block) preventing the front-end from receiving the necessary data to dismiss the spinner.
+2. Steps to Reproduce
+1. Open the website in a mobile browser (Chrome/Safari): https://petwash.co.il
+2. Scroll down to the white card labeled "Track My Pet."
+3. Observe that the purple loading spinner persists indefinitely.
+3. Environment Details
+• Affected URL: https://petwash.co.il
+• Device: [Your Phone Model, e.g., iPhone 14 Pro]
+• Operating System: [Your OS Version, e.g., iOS 17.5]
+• Browser: [Your Browser and Version, e.g., Mobile Safari]
+• Repl Link (if applicable): [Paste the link to your Replit project here]
+4. Supporting Evidence
+• Screenshot: [Attach the image you provided, showing the persistent spinner]
+• Console Errors: [If you can check the developer console, mention any 404/500 errors or failed XHR/Fetch requests you see in the Network tab.]
+Please investigate the deployment environment to determine why the critical API call for the "Track My Pet" component is failing, or if a resource is being blocked.
+Thank you for your assistance.
+Best regards,
+[Your Name]
+[Your Replit Username]

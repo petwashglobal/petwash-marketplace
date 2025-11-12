@@ -1,0 +1,75 @@
+# Replit Deployment Ignore File
+# Exclude files and directories that shouldn't be uploaded during deployment
+
+# Dependencies (Replit will reinstall from package.json)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Build outputs
+# CRITICAL: server/public MUST be included for production (Express serves from here)
+# dist/public can be excluded (source build output, gets copied to server/public)
+dist/
+build/
+.next/
+out/
+
+# Development files
+.env.local
+.env.development
+.DS_Store
+*.log
+*.swp
+*.swo
+*~
+
+# Testing
+coverage/
+.nyc_output/
+
+# Cache directories
+.cache/
+.vite/
+.turbo/
+.parcel-cache/
+
+# Backup files
+*.tar.gz
+*.zip
+gcs-service-account.json
+petwash-backup-*.tar.gz
+firestore-restore/
+
+# Large test assets excluded (but keep required brand assets)
+# Exclude temporary uploaded files but keep official brand assets
+attached_assets/Pasted-*
+attached_assets/*_17*.jpeg
+attached_assets/*_17*.png
+attached_assets/*_17*.jpg
+attached_assets/*.zip
+attached_assets/*.tar.gz
+
+# Documentation (not needed in production)
+docs/
+*.md
+!README.md
+
+# Mobile app backup (not part of web deployment)
+mobile-app-backup/
+android-weather-planner/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Git
+.git/
+.gitignore

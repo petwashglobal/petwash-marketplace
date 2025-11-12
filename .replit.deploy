@@ -1,0 +1,43 @@
+# Replit Deployment Configuration
+# Optimized for production deployment with size reduction
+
+# Build command - clean install production dependencies only
+build = """
+  echo "🚀 Starting optimized production build..."
+  
+  # Remove development dependencies to reduce image size
+  rm -rf node_modules/.cache
+  rm -rf .vite
+  rm -rf dist
+  
+  # Install production dependencies only
+  npm ci --production=false
+  
+  # Build the application
+  npm run build
+  
+  # Clean up unnecessary files post-build
+  rm -rf node_modules/@types
+  rm -rf node_modules/typescript
+  rm -rf node_modules/vitest
+  rm -rf node_modules/@vitest
+  
+  echo "✅ Production build complete - optimized for deployment"
+"""
+
+# Run command
+run = "npm start"
+
+# Deployment configuration
+[deployment]
+# Exclude large development files
+ignorePaths = [
+  "node_modules/.cache",
+  ".vite",
+  "coverage",
+  "*.test.ts",
+  "*.test.tsx",
+  "vitest.config.ts",
+  "scripts/dev-*",
+  "attached_assets/stock_images"
+]

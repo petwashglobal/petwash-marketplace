@@ -1,0 +1,303 @@
+On this page
+
+
+Page Tools
+
+Verify API
+
+
+
+
+As part of Twilio's account security offerings, the Twilio Verify API makes it simple to add user verification to your web application. The API supports the following channels:
+
+SMS
+Passkeys
+Silent Network Auth
+Automatic Channel Selection
+Voice
+WhatsApp
+Email
+TOTP (authenticator apps like Authy and Google Authenticator)
+Push and Silent Device Approval
+For more information on Verify, see our product page
+
+.
+
+Base URL
+
+
+
+
+
+All URLs referenced in the documentation have the following base:
+
+
+
+Copy code block
+https://verify.twilio.com/v2/
+The Twilio REST API is served over HTTPS. To ensure data privacy, unencrypted HTTP is not supported.
+
+Authentication
+
+
+
+
+
+To authenticate requests to the Twilio APIs, Twilio supports HTTP Basic authentication
+
+. Use your API key as the username and your API key secret as the password. You can create an API key either in the Twilio Console or using the API.
+
+Note: Twilio recommends using API keys for authentication in production apps. For local testing, you can use your Account SID as the username and your Auth token as the password. You can find your Account SID and Auth Token in the Twilio Console
+
+.
+
+Learn more about Twilio API authentication.
+
+
+
+Copy code block
+curl -X POST https://verify.twilio.com/v2/Services \
+    -d FriendlyName=MyServiceName \
+    -u $TWILIO_API_KEY:$TWILIO_API_KEY_SECRET
+User Verification Workflow
+
+
+
+
+
+This guide shows the 3 steps to completing a basic one-time passcode (OTP) verification. Follow the links for more documentation on advanced features such as service configuration, custom codes, rate limiting, PSD2 compliance, and more.
+
+Step 1: Create a Verification Service
+
+
+
+
+
+Report code block
+
+
+Copy code block
+// Download the helper library from https://www.twilio.com/docs/node/install
+const twilio = require("twilio"); // Or, for ESM: import twilio from "twilio";
+
+// Find your Account SID and Auth Token at twilio.com/console
+// and set the environment variables. See http://twil.io/secure
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken);
+
+async function createService() {
+  const service = await client.verify.v2.services.create({
+    friendlyName: "My First Verify Service",
+  });
+
+  console.log(service.sid);
+}
+
+createService();
+Response
+
+
+
+Copy response
+{
+  "sid": "VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "account_sid": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "friendly_name": "My First Verify Service",
+  "code_length": 4,
+  "lookup_enabled": false,
+  "psd2_enabled": false,
+  "skip_sms_to_landlines": false,
+  "dtmf_input_required": false,
+  "tts_name": "name",
+  "do_not_share_warning_enabled": false,
+  "custom_code_enabled": true,
+  "push": {
+    "include_date": false,
+    "apn_credential_sid": "CRaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "fcm_credential_sid": null
+  },
+  "totp": {
+    "issuer": "test-issuer",
+    "time_step": 30,
+    "code_length": 3,
+    "skew": 2
+  },
+  "whatsapp": {
+    "msg_service_sid": "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "from": "whatsapp:+1234567890"
+  },
+  "passkeys": {
+    "relying_party": {
+      "id": "www.mydomain.com",
+      "name": "My domain",
+      "origins": [
+        "www.mydomain.com",
+        "www.login.mydomain.com"
+      ]
+    },
+    "authenticator_attachment": "",
+    "discoverable_credentials": null,
+    "user_verification": "discouraged"
+  },
+  "default_template_sid": "HJaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "verify_event_subscription_enabled": false,
+  "date_created": "2015-07-30T20:00:00Z",
+  "date_updated": "2015-07-30T20:00:00Z",
+  "url": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "links": {
+    "verification_checks": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/VerificationCheck",
+    "verifications": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Verifications",
+    "rate_limits": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/RateLimits",
+    "messaging_configurations": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/MessagingConfigurations",
+    "entities": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Entities",
+    "webhooks": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Webhooks",
+    "access_tokens": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/AccessTokens"
+  }
+}
+Create a Service in one of two ways:
+
+In the Twilio Verify Console
+
+Using the API (code sample on this page)
+A Verification Service is the set of common configurations used to create and check verifications. This includes features like:
+
+Friendly Name (used in the Verification message templates, except in countries with brand restrictions
+
+)
+Code Length
+...and more
+One verification service can be used to send multiple verification tokens, it is not necessary to create a new service each time.
+
+Step 2: Send a Verification Token
+
+
+
+
+
+Report code block
+
+
+Copy code block
+// Download the helper library from https://www.twilio.com/docs/node/install
+const twilio = require("twilio"); // Or, for ESM: import twilio from "twilio";
+
+// Find your Account SID and Auth Token at twilio.com/console
+// and set the environment variables. See http://twil.io/secure
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken);
+
+async function createVerification() {
+  const verification = await client.verify.v2
+    .services("VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    .verifications.create({
+      channel: "sms",
+      to: "+15017122661",
+    });
+
+  console.log(verification.status);
+}
+
+createVerification();
+Response
+
+
+
+Copy response
+{
+  "sid": "VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "service_sid": "VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "account_sid": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "to": "+15017122661",
+  "channel": "sms",
+  "status": "pending",
+  "valid": false,
+  "date_created": "2015-07-30T20:00:00Z",
+  "date_updated": "2015-07-30T20:00:00Z",
+  "lookup": {},
+  "amount": null,
+  "payee": null,
+  "send_code_attempts": [
+    {
+      "time": "2015-07-30T20:00:00Z",
+      "channel": "SMS",
+      "attempt_sid": "VLaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "sna": null,
+  "url": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Verifications/VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}
+This will send a token to the end user through the specified channel. Newly created verifications will show a status of pending. Supported channels are:
+
+sms, see the Verify SMS Overview
+call
+email, checkout the guide Send Email Verifications with Verify and Twilio SendGrid
+whatsapp, see the Verify WhatsApp Overview
+Learn more about how to turn phone number input into E.164 format
+
+ or how to customize the verification message.
+
+Verification documentation.
+
+Step 3: Check the Verification Token
+
+
+
+
+
+Report code block
+
+
+Copy code block
+// Download the helper library from https://www.twilio.com/docs/node/install
+const twilio = require("twilio"); // Or, for ESM: import twilio from "twilio";
+
+// Find your Account SID and Auth Token at twilio.com/console
+// and set the environment variables. See http://twil.io/secure
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken);
+
+async function createVerificationCheck() {
+  const verificationCheck = await client.verify.v2
+    .services("VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    .verificationChecks.create({
+      code: "123456",
+      to: "+15017122661",
+    });
+
+  console.log(verificationCheck.status);
+}
+
+createVerificationCheck();
+Response
+
+
+
+Copy response
+{
+  "sid": "VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "service_sid": "VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "account_sid": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "to": "+15017122661",
+  "channel": "sms",
+  "status": "approved",
+  "valid": true,
+  "amount": null,
+  "payee": null,
+  "sna_attempts_error_codes": [],
+  "date_created": "2015-07-30T20:00:00Z",
+  "date_updated": "2015-07-30T20:00:00Z"
+}
+This will check whether the user-provided token is correct.
+
+Token	Status in response
+Correct	approved
+Incorrect	pending
+VerificationCheck documentation.
+
+
+(information)
+Info
+You made it through the Verify API Overview. To protect your service against fraud, view our guidance on Preventing Toll Fraud when using Verify.

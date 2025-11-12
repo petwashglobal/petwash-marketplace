@@ -1,0 +1,76 @@
+{
+  "pricing": {
+    "currency": "ILS",
+    "symbol": "₪",
+    "services": {
+      "single_wash": {
+        "price": 55,
+        "description": "Single self-service pet wash session",
+        "includes": [
+          "Organic shampoo",
+          "Conditioner",
+          "Flea treatment option",
+          "Disinfectant",
+          "2-speed dryer",
+          "Instant hot water"
+        ]
+      },
+      "package_3": {
+        "washes": 3,
+        "description": "3-wash package with discount",
+        "note": "Better value than single washes"
+      },
+      "package_5": {
+        "washes": 5,
+        "description": "5-wash package with maximum discount",
+        "note": "Best value option"
+      }
+    }
+  },
+  "discounts": {
+    "legal_categories": {
+      "seniors": {
+        "age": "65+",
+        "documentation": "ID card showing age",
+        "legal_basis": "Israeli senior citizen benefits law"
+      },
+      "disability": {
+        "requirement": "Disability ID card (תעודת נכה)",
+        "documentation": "Official Israeli disability certification",
+        "legal_basis": "Equal Rights for People with Disabilities Law"
+      },
+      "golden_age": {
+        "description": "Golden age beneficiaries",
+        "documentation": "Official golden age card"
+      },
+      "retirees": {
+        "requirement": "Retired with official documentation",
+        "documentation": "Retirement certificate or pension proof"
+      },
+      "loyalty": {
+        "tiers": ["Bronze", "Silver", "Gold", "Platinum"],
+        "description": "Progressive discount system based on usage"
+      }
+    },
+    "verification": {
+      "required": true,
+      "method": "Present valid ID/documentation at station or during signup",
+      "privacy": "Documents verified but not stored permanently"
+    }
+  },
+  "payment_methods": {
+    "accepted": [
+      "Nayax QR code",
+      "Credit cards",
+      "Debit cards",
+      "Digital wallets",
+      "E-vouchers",
+      "Gift cards"
+    ]
+  },
+  "notes": {
+    "ai_usage": "Use for customer inquiries only",
+    "updates": "Contact admin when prices change",
+    "legal": "All discounts comply with Israeli consumer protection laws"
+  }
+}

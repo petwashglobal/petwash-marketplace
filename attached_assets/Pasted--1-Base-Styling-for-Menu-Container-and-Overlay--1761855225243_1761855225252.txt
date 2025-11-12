@@ -1,0 +1,72 @@
+/*
+ * ----------------------------------------
+ * 1. Base Styling for Menu Container and Overlay
+ * ----------------------------------------
+ */
+.side-menu-container {
+    /* * CRITICAL FIX: Ensures the container takes up the entire screen 
+     * and is positioned relative to the viewport.
+     */
+    position: fixed; 
+    top: 0;
+    left: 0;
+    width: 100vw; /* Full Viewport Width */
+    height: 100vh; /* Full Viewport Height */
+    z-index: 9999; /* Ensure it is on top of everything */
+    
+    /* Initially hide the entire menu component */
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0.3s, opacity 0.3s;
+}
+
+/* * ----------------------------------------
+ * 2. The Dark Overlay (The part that was missing/too narrow)
+ * ----------------------------------------
+ */
+.menu-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%; /* Spans the full menu container width */
+    height: 100%; /* Spans the full menu container height */
+    background: rgba(0, 0, 0, 0.7); /* Dark, semi-transparent background */
+}
+
+/* * ----------------------------------------
+ * 3. The Actual White Menu Panel
+ * ----------------------------------------
+ */
+.menu-content {
+    /* Position relative to the full-screen container */
+    position: absolute; 
+    top: 0;
+    left: 0; 
+    
+    /* Ensure the visible panel is wide enough for content */
+    width: 80%; /* Takes 80% of the screen width for a common mobile drawer feel */
+    max-width: 400px; /* Optional: cap the width on large tablets/desktops */
+
+    height: 100%;
+    background-color: white; /* White background for the menu items */
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+
+    /* Animation: slide the panel off-screen when hidden */
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+}
+
+/* * ----------------------------------------
+ * 4. Activation State (The key to showing the menu)
+ * ----------------------------------------
+ */
+.side-menu-container.is-open {
+    visibility: visible;
+    opacity: 1;
+}
+
+.side-menu-container.is-open .menu-content {
+    /* Slide the panel into view */
+    transform: translateX(0); 
+}

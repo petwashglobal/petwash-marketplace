@@ -1,0 +1,131 @@
+=== WEBAUTHN/PASSKEY CONFIGURATION VERIFICATION ===
+Date: October 14, 2025
+Build Version: v1.0.0-passkey
+
+RELYING PARTY (RP) CONFIGURATION:
+----------------------------------
+RP_ID: petwash.co.il
+RP_NAME: Pet Wash™
+
+ENVIRONMENT:
+------------
+NODE_ENV: development
+APP_ENV: development (can be set to 'production' for prod deployment)
+
+ALLOWED ORIGINS (Development Mode):
+------------------------------------
+✓ https://petwash.co.il
+✓ https://www.petwash.co.il
+✓ http://localhost:5000
+✓ http://127.0.0.1:5000
+✓ https://[REPLIT_DEV_DOMAIN] (dynamic preview domains)
+
+ALLOWED ORIGINS (Production Mode - APP_ENV=production):
+--------------------------------------------------------
+✓ https://petwash.co.il
+✓ https://www.petwash.co.il
+
+SECURITY SETTINGS:
+------------------
+Challenge Timeout: 60000ms (60 seconds)
+Challenge Expiry: 300000ms (5 minutes)
+Session Max Age: 86400000ms (24 hours)
+Re-Auth Window: 300000ms (5 minutes for sensitive actions)
+Attestation: none (privacy-focused)
+
+ORIGIN VALIDATION:
+------------------
+✓ Origin checked on all WebAuthn endpoints
+✓ getExpectedOrigin() extracts from request
+✓ isOriginAllowed() validates against whitelist
+✓ Blocks cross-origin requests
+
+FIRESTORE COLLECTIONS:
+----------------------
+webauthn_credentials/{uid}/devices/{credId} - Credential storage
+webauthn_challenges/{challengeId} - Temporary challenges (5min TTL)
+users/{uid} - User passkey status flags
+admin_activity - Admin authentication audit logs
+
+SESSION MANAGEMENT:
+-------------------
+✓ Firebase Custom Tokens minted on success
+✓ Frontend: signInWithCustomToken()
+✓ Storage: IndexedDB (Firebase Auth SDK)
+⚠️ httpOnly Cookie: Not yet implemented (enhancement planned)
+
+ADMIN PROTECTION:
+-----------------
+✓ All /api/admin/* routes require session authentication
+✓ Middleware: requireAdmin (checks req.session.adminId)
+✓ Admin role verified in storage layer
+⚠️ Firebase ID token NOT verified by requireAdmin (enhancement needed)
+✓ Passkey logins logged to admin_activity collection
+✓ Audit log includes: authMethod, deviceLabel, credId, IP, timestamp
+
+CURRENT LIMITATION:
+------------------
+⚠️ Passkey logins create Firebase custom tokens
+⚠️ requireAdmin middleware does NOT verify Firebase tokens
+⚠️ Admin endpoints only accept session-based authentication
+✅ Workaround: Create session after passkey login
+✅ OR: Implement Firebase token verification in requireAdmin
+
+RATE LIMITING:
+--------------
+✓ General API: 100 req/15min per IP
+✓ Admin endpoints: 200 req/15min per IP
+✓ Payment endpoints: 5 req/15min per email
+⚠️ WebAuthn-specific: Not yet implemented (enhancement planned)
+
+CSRF PROTECTION:
+----------------
+✓ Origin validation active
+⚠️ CSRF token middleware: Not yet implemented (enhancement planned)
+
+MONITORING:
+-----------
+✓ GA4 events for passkey actions
+✓ Admin activity logging with authMethod
+✓ No regressions in background jobs
+✓ Smart Monitoring operational
+✓ Nayax flows operational
+
+SECRETS (Redacted):
+-------------------
+DATABASE_URL: [REDACTED]
+FIREBASE credentials: [REDACTED]
+VITE_FIREBASE_API_KEY: [REDACTED]
+All secrets managed via Replit Secrets
+
+DEPLOYMENT:
+-----------
+Primary Domain: petwash.co.il
+WWW Domain: www.petwash.co.il
+SSL: Auto-provisioned by Replit (Let's Encrypt)
+Status: Production ready, awaiting SSL propagation
+
+NOTES:
+------
+1. Development mode includes localhost for local testing
+2. Production mode (APP_ENV=production) restricts to HTTPS origins only
+3. RP_ID matches production domain (petwash.co.il)
+4. Challenge-based replay protection active
+5. Counter-based signature verification active
+
+VERIFICATION CHECKLIST:
+-----------------------
+[✓] RP_ID = petwash.co.il
+[✓] Production origins HTTPS only
+[✓] Development includes localhost
+[✓] Origin validation on all endpoints
+[✓] Challenge expiry enforced
+[✓] Admin protection active
+[✓] Audit logging functional
+[⚠] httpOnly cookie (planned)
+[⚠] CSRF token (planned)
+[⚠] WebAuthn rate limiting (planned)
+
+---
+Generated programmatically from server/config/webauthn.ts
+For evidence bundle: passkey-verification.zip

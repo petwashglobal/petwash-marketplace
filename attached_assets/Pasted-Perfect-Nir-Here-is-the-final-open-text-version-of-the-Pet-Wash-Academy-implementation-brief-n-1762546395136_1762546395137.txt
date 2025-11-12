@@ -1,0 +1,40 @@
+Perfect, Nir. Here is the final, open-text version of the Pet Wash Academy™ implementation brief — no boxes, no tables, written as one continuous developer document that your programmer can read, understand, and build directly from.
+Everything below includes full logic, integrations, and alignment with your existing booking system used for walkers and sitters.
+
+⸻
+
+PET WASH ACADEMY™ – FULL DEVELOPMENT BRIEF
+
+Pet Wash Academy™ is a new integrated platform under the Pet Wash™ ecosystem. It connects pet owners with certified professional trainers for personalized sessions, both in person and online. The platform must follow the same user experience, payment flow, and data logic as the existing Pet Wash booking system used for dog walkers and pet sitters, ensuring consistency and code reusability.
+
+The goal is to expand the Pet Wash ecosystem into a complete pet lifestyle service hub, uniting washing, care, walking, and training under one system. The developer must build this new section as a modular extension that works inside the same database and booking architecture.
+
+The main new menu item will be added to the hamburger or bottom navigation menu as “🎓 Pet Wash Academy”. The route path should be /academy. This page will list all verified trainers, display their profiles, and allow instant booking and payment. The interface must look and behave exactly like the existing booking modules for walkers and sitters, using the same payment gateway (Nayax or Pet Wash Wallet).
+
+Each trainer will have a professional profile including photo, name, short biography, list of specialties, certifications, years of experience, hourly rate, service area, and availability schedule. Trainers can mark themselves available for sessions at the customer’s home, public parks, or Pet Wash station locations. Ratings and reviews from previous users will appear on each profile, and verified trainers will have a gold badge with the word “Certified”.
+
+The database should extend the current structure with two new models called “trainers” and “trainer_bookings”. Trainers will include all standard user metadata and status fields, connected to user authentication through Firebase Auth (like walkers and sitters). Trainer bookings will connect users and trainers through foreign keys and store session date, duration, payment status, and confirmation details. The system should reuse the same booking confirmation, cancellation, and reschedule logic already active for other Pet Wash services.
+
+The backend will include the following endpoints:
+Public: get list of all trainers, get a single trainer by ID, and search trainers by specialty or location.
+Authenticated users: book trainer session, get list of user’s bookings, and cancel an existing booking.
+Admin: add new trainer, update trainer profile, approve or remove trainers, and delete if needed.
+All endpoints must use the same authentication and validation middleware already in place in the platform to ensure full compatibility with your main codebase.
+
+Frontend components will mirror the current booking architecture and design style. Create new components for trainer list, trainer profile, booking form, and user bookings page. The booking form will use the same calendar and payment logic as dog walkers. Confirmation, reminders, and notifications will use Firebase Cloud Messaging, and all payments will pass through the Pet Wash Wallet and Nayax integrations exactly as before.
+
+In the mobile application (React Native / Expo), add a new tab in the bottom navigation labeled “Academy” with a graduation-cap icon. It should open the same flow as the web version, allowing users to view available trainers, open profiles, choose date and time, and confirm payment directly through the app. The entire flow must reuse as much of the existing booking component logic as possible to reduce redundancy.
+
+Design guidelines follow the Pet Wash color palette of emerald-teal, gold, and white. Use clean luxury UI with subtle glass-morphism effects and rounded trainer cards showing their photo, rating, price per hour, and “Book Now” button. The page background can include a soft watermark of the Pet Wash Academy™ logo. The UI transitions should match the same animation speed and feel as the walker and sitter sections to maintain brand consistency.
+
+Notifications will be automatic. After each successful booking, both user and trainer receive real-time notifications and confirmation emails. The trainer’s calendar updates instantly to prevent double bookings. The user receives a reminder one hour before the scheduled session. Payments will be instantly captured through the same payment logic currently used on Pet Wash bookings.
+
+For verification and quality assurance, each trainer must upload an identification document and at least one training certificate or license. These documents will be stored in Firebase Storage. Once reviewed and approved by an admin, the system will mark the trainer as verified. The verified status will automatically display a gold “Certified” badge on their profile.
+
+The admin panel should have a new section titled “Academy”. Inside it, there will be filters for “Pending Approvals”, “Active Trainers”, and “Suspended Trainers”. Admins can manually approve trainers, modify availability, and control payouts. Payouts and commissions will follow the same logic as existing bookings (for example, 80% to the trainer, 20% to the platform, adjustable through admin settings).
+
+Marketing copy to display on the landing page and app introduction screens:
+English: “Train smarter, love deeper. Book certified trainers instantly inside Pet Wash Academy™ – where technology meets trust.”
+Hebrew: “אימון חכם, אהבה עמוקה יותר. הזמינו מאמנים מוסמכים ישירות מתוך האפליקציה ב-Pet Wash Academy™ – המקום שבו טכנולוגיה ואמון נפגשים.”
+
+This document provides the complete logic, naming, flow, and structure for Pet Wash Academy™. The developer only needs to extend the existing Pet Wash booking system, replicate its logic for a new service type called “trainer”, and connect it to the same database, payment, and notification systems. The front end, mobile app, and admin dashboard should follow the same layout patterns already approved for the current Pet Wash ecosystem.

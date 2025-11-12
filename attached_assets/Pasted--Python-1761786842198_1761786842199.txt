@@ -1,0 +1,282 @@
+# ==============================================================================
+# 🌟 שלד קוד Python להגשה אוטומטית לרשויות (מס הכנסה, מע"מ) - מותאם ל-2025
+# ==============================================================================
+import requests
+import json
+import base64
+from datetime import datetime
+
+# --- 1. הגדרות ואישורים (חובה לשמור בסודות/Secrets ב-Replit) ---
+# כתובות ה-API של רשות המסים (Production Endpoints)
+TOKEN_URL = "https://openapi.taxes.gov.il/shaam/longtimetoken/oauth2/token" 
+INVOICE_API_URL = "https://api.taxes.gov.il/shaam/production/Invoices/" 
+
+# אישורים שקיבלת מהרשות (חובה להחליף בערכים האמיתיים)
+CLIENT_ID = "YOUR_CLIENT_ID_HERE" 
+CLIENT_SECRET = "YOUR_CLIENT_SECRET_HERE" 
+SCOPE = "invoice" 
+
+
+def get_access_token():
+    """פונקציה לקבלת Access Token באמצעות OAuth2 Client Credentials"""
+    
+    # יצירת מחרוזת אימות Base64
+    credentials = f"{CLIENT_ID}:{CLIENT_SECRET}".encode('utf-8')
+    base64_auth = base64.b64encode(credentials).decode('utf-8')
+    
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": f"Basic {base64_auth}"
+    }
+    
+    data = {
+        "grant_type": "client_credentials",
+        "scope": SCOPE
+    }
+    
+    print("... מנסה להתחבר לרשות המסים ולקבל אסימון גישה...")
+    try:
+        response = requests.post(TOKEN_URL, headers=headers, data=data, timeout=10)
+        response.raise_for_status()
+        
+        token_data = response.json()
+        return token_data.get("access_token")
+    
+    except requests.exceptions.RequestException as e:
+        print(f"❌ שגיאת בקשת טוקן: {e}")
+        # הצגת תוכן התשובה במקרה של שגיאה לקבלת פרטים נוספים מהרשות
+        if 'response' in locals() and response.text:
+             print(f"תוכן שגיאה: {response.text}")
+        return None
+
+
+# --- 2. מודול חשבונית ישראל (מע"מ B2B 20,000 ₪+) ---
+def create_invoice_json(data):
+    """בניית מבנה ה-JSON הנדרש לשליחת חשבונית לקבלת מספר הקצאה."""
+    
+    # פורמט JSON בסיסי מחייב - חובה לוודא שכל השדות תואמים לדרישות ITA
+    invoice_json = {
+        "invoice_id": str(data.get("invoice_id")),
+        "invoice_type": data.get("invoice_type", 1), # 1 = חשבונית מס
+        "vat_number": data.get("supplier_vat_id"), # מזהה מנפיק
+        "union_vat_number": "000000000", # שדה חובה
+        "customer_vat_number": data.get("customer_vat_id"), # מזהה לקוח
+        "action": 1, # 1 = בקשת הקצאה חדשה
+        "amount_before_vat": data.get("amount_before_vat"), 
+        "vat_amount": data.get("vat_amount"),
+        "invoice_date": data.get("invoice_date"), # YYYY-MM-DD
+        "total_amount": data.get("amount_before_vat") + data.get("vat_amount"),
+        # ... הוסף כאן שדות חובה נוספים כגון סוג לקוח, סוג חשבון, פרטי סניף ...
+    }
+    return invoice_json
+
+
+def submit_for_allocation_number(access_token, invoice_data):
+    """שולחת את בקשת הקצאת המספר לרשות המסים."""
+    
+    if not access_token:
+        print("❌ לא ניתן לבצע הגשה - אין אסימון גישה.")
+        return False
+        
+    invoice_json_data = create_invoice_json(invoice_data)
+    
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    
+    print(f"... שולח בקשת הקצאה לחשבונית {invoice_data['invoice_id']}...")
+    try:
+        response = requests.post(INVOICE_API_URL, headers=headers, json=invoice_json_data, timeout=15)
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        if result.get("allocation_number"):
+            print(f"✅ הצלחה! מספר הקצאה: {result['allocation_number']}")
+            # כאן צריך להיות קוד לעדכון מספר ההקצאה בבסיס הנתונים שלך.
+            return result
+        else:
+            # הרשות החזירה 200 אבל אין מספר הקצאה, ייתכן שיש שגיאות עסקיות בתוך ה-JSON
+            print(f"⚠️ הבקשה הצליחה, אך אין מספר הקצאה: {result}")
+            return result
+
+    except requests.exceptions.HTTPError as errh:
+        # שגיאות API כגון 400 (Bad Request - פורמט JSON שגוי/נתונים חסרים)
+        print(f"❌ שגיאת HTTP בהגשה: {errh}")
+        print(f"תוכן תשובה מהרשות: {response.text}")
+        return False
+    except requests.exceptions.RequestException as e:
+        print(f"❌ שגיאה כללית במהלך הבקשה: {e}")
+        return False
+
+
+# --- 3. מודול יצירת קובץ PCN874 (דיווח מע"מ חודשי) ---
+
+def create_pcn874_file(transactions, reporting_period):
+    """
+    יצירת קובץ PCN874 לדיווח מע"מ תקופתי.
+    
+    הקובץ הוא פורמט טקסטואלי קבוע המחולק לחלקים: כותרת, עסקאות, כותרת תחתונה.
+    יש לוודא שאורך השדות והמקודדים תואמים לדרישות 874.
+    """
+    
+    # דוגמה לנתוני כותרת (יש להחליף בנתונים אמיתיים)
+    supplier_vat = "512345678"
+    report_type = "M" # M=חודשי, T=דו חודשי
+    
+    # פורמט תקופה: YYYYMM
+    period = reporting_period 
+    
+    # יצירת קו הכותרת (Header Record)
+    header = f"H|{supplier_vat}|{period}|{report_type}|{datetime.now().strftime('%Y%m%d%H%M%S')}\n"
+    
+    transaction_records = ""
+    total_records = 0
+    
+    # יצירת קווי עסקאות (Transaction Records)
+    # יש לחזור כאן על כל תנועת תשומות/תפוקות שנאספה ע"י ה-AI
+    for tx in transactions:
+        
+        # הקוד מניח שקיים שדה 'allocation_number'
+        allocation_num = tx.get('allocation_number', '') # שדה הקצאה (חובה ל-B2B 20K+)
+        
+        # סוג התנועה (X=תפוקות/מכירות, T=תשומות/קניות)
+        record_type = tx.get('record_type') 
+        
+        # קו העסקה: דוגמה לפורמט (יש לוודא רוחב שדות מדויק)
+        line = f"D|{record_type}|{tx['vat_id_other']}|{tx['invoice_num']}|{tx['date']}|{tx['amount']}|{tx['vat_amount']}|{allocation_num}\n"
+        transaction_records += line
+        total_records += 1
+
+    # יצירת קו סיכום (Footer Record)
+    footer = f"F|{total_records}\n"
+    
+    full_content = header + transaction_records + footer
+    
+    file_name = f"PCN874_{supplier_vat}_{period}.txt"
+    with open(file_name, "w", encoding="windows-1255") as f:
+        f.write(full_content)
+        
+    print(f"✅ קובץ PCN874 נוצר בהצלחה: {file_name}")
+    # קובץ זה דורש הגשה ידנית/אוטומטית דרך מערכת ה-SHAAM
+    return file_name
+
+# --- 4. מודול יצירת קובץ 856 (ניכויים/מס הכנסה) ---
+
+def create_form856_file(payments, reporting_year):
+    """
+    יצירת קובץ ניכויים חודשי/שנתי (טופס 856).
+    
+    הקובץ מפרט ניכוי מס במקור שנוכה מספקים שאינם חברות.
+    זהו קובץ טקסט מובנה בעל רוחב שדות קבוע.
+    """
+    
+    # דוגמה לנתוני כותרת (יש להחליף בנתונים אמיתיים)
+    filer_id = "512345678"
+    
+    # יצירת קו כותרת: רוחב שדה מחייב 
+    header = f"HEADER{filer_id:0>9}{reporting_year}00\n"
+    
+    payment_records = ""
+    total_records = 0
+
+    # יצירת קווי תשלום לספקים
+    for p in payments:
+        # זהו קו לדוגמה, יש לוודא רוחב שדות קבוע (Fixed-Width)
+        line = (
+            f"DETAIL"
+            f"{p['supplier_id']: <9}" # תעודת זהות/ח.פ. של הספק
+            f"{p['payment_date']: <8}" # תאריך תשלום YYYYMMDD
+            f"{p['gross_amount']:0>10}" # סכום ברוטו (מיושר לאפסים ורוחב קבוע)
+            f"{p['withholding_tax']:0>8}" # סכום ניכוי מס
+            f"{'0' * 50}\n" # שדות ריקים נדרשים נוספים 
+        )
+        payment_records += line
+        total_records += 1
+
+    # יצירת קו סיכום
+    footer = f"FOOTER{total_records:0>7}{'0' * 100}\n" 
+
+    full_content = header + payment_records + footer
+    
+    file_name = f"Form856_{filer_id}_{reporting_year}.txt"
+    with open(file_name, "w", encoding="windows-1255") as f:
+        f.write(full_content)
+        
+    print(f"✅ קובץ 856 נוצר בהצלחה: {file_name}")
+    return file_name
+
+
+# ==============================================================================
+# 🚀 הרצת המערכת - דוגמה ל-Workflow
+# ==============================================================================
+
+def run_automated_submission_workflow():
+    
+    # --- שלב 1: השגת אסימון גישה ---
+    access_token = get_access_token()
+    if not access_token:
+        print("🛑 עצירת התהליך: כשל באותנטיקציה מול רשות המסים.")
+        return
+
+    print(f"✅ אסימון גישה התקבל בהצלחה: {access_token[:20]}...")
+    
+    # --- שלב 2: הגשת חשבוניות אלקטרוניות (מע"מ 20,000 ₪+) ---
+    
+    # נתוני בדיקה (יש להחליף בשליפה מבסיס הנתונים שלך!)
+    invoices_to_submit = [
+        {
+            "invoice_id": 1001,
+            "supplier_vat_id": "512345678",
+            "customer_vat_id": "518765432",
+            "amount_before_vat": 25000.00,
+            "vat_amount": 4250.00,
+            "invoice_date": "2025-01-20"
+        },
+        # ... כאן נכנסות שאר החשבוניות שעברו סיווג AI ודורשות הקצאה ...
+    ]
+    
+    updated_invoices = []
+    for inv in invoices_to_submit:
+        result = submit_for_allocation_number(access_token, inv)
+        if result and result.get("allocation_number"):
+            inv['allocation_number'] = result['allocation_number']
+        updated_invoices.append(inv)
+        
+    print("-----------------------------------------")
+    
+    # --- שלב 3: יצירת דוח מע"מ חודשי (PCN874) ---
+    # כאן נכנסים גם הנתונים של חשבוניות ה-B2B וגם כל יתר התנועות (קניות/מכירות)
+    
+    # דוגמה לנתוני PCN874 (כולל הנתון של מספר ההקצאה מהשלב הקודם)
+    pcn874_transactions = [
+        {'record_type': 'X', 'vat_id_other': '518765432', 'invoice_num': 1001, 'date': '20250120', 'amount': 25000.00, 'vat_amount': 4250.00, 'allocation_number': 'A9B8C7D6E5'}, # החשבונית שהוגשה
+        {'record_type': 'T', 'vat_id_other': '600000000', 'invoice_num': 2005, 'date': '20250125', 'amount': 1000.00, 'vat_amount': 170.00, 'allocation_number': ''} # חשבונית קטנה/רכישה
+        # ...
+    ]
+    
+    pcn_file = create_pcn874_file(pcn874_transactions, "202501")
+    # קובץ זה מוכן לשליחה דרך ממשק ההגשה של מע"מ
+    print("-----------------------------------------")
+
+
+    # --- שלב 4: יצירת דוח ניכויים (טופס 856) ---
+    
+    # נתוני תשלומים לספקים פרטיים (יש להחליף בשליפה מבסיס הנתונים שלך!)
+    payments_data = [
+        {'supplier_id': '123456789', 'payment_date': '20250130', 'gross_amount': 5000, 'withholding_tax': 100},
+        # ...
+    ]
+    
+    form856_file = create_form856_file(payments_data, "2025")
+    # קובץ זה מוכן לשליחה דרך ממשק ההגשה של מס הכנסה
+    print("-----------------------------------------")
+    
+    # דרישות ביטוח לאומי (מבט"ל) דורשות מודול נוסף ומורכב לטיפול בשכר ואינן כלולות כאן.
+    print("✅ סיום תהליך עבודה. הקבצים נוצרו. נדרשת השלמה למודול מבט\"ל ושליחת הנתונים ל-API.")
+
+
+# --- הפעלה ראשית ---
+if __name__ == "__main__":
+    run_automated_submission_workflow()

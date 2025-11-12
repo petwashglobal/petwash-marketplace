@@ -1,0 +1,55 @@
+// MANDATE: Update client/src/auth/biometrics.ts (or equivalent Passkey/WebAuthn wrapper)
+
+import { Alert } from 'react-native'; // Or equivalent web/alert
+import { AuditLedgerService } from './AuditLedgerService'; // Your secure service
+import { currentUser } from './AuthService'; // Assume user is logged in
+
+/**
+ * Executes biometric authentication and logs failure details to the immutable Audit Ledger.
+ * This is the final diagnostic step for WebAuthn errors.
+ * @returns Promise<boolean> True if the WebAuthn challenge is successfully met.
+ */
+export async function authenticatePasskeyLogin(): Promise<boolean> {
+  try {
+    // Attempt the secure WebAuthn authentication call (e.g., navigator.credentials.get)
+    const credential = await navigator.credentials.get({ 
+        mediation: 'silent', 
+        publicKey: { /* ... WebAuthn Challenge Params ... */ }
+    });
+
+    // Successfully authenticated
+    return true; 
+    
+  } catch (error: any) {
+    
+    // --- MANDATORY AUDIT AND ERROR REPORTING ---
+    const rawErrorMessage = error.name || 'Unknown WebAuthn Error'; 
+    const isUserCanceled = rawErrorMessage === 'NotAllowedError';
+
+    // 1. LOG FAILURE TO THE IMMUTABLE AUDIT LEDGER (Protocol 3)
+    await AuditLedgerService.record({
+      eventType: 'AUTH_BIOMETRIC_FAILURE',
+      userId: currentUser.id, 
+      metadata: { 
+          errorType: rawErrorMessage,             // e.g., NotAllowedError, SecurityError
+          errorMessage: error.message || 'N/A',   // Detailed message string
+          deviceId: currentUser.deviceId, 
+          // Log if the user simply cancelled the prompt
+          isCanceled: isUserCanceled 
+      }
+    });
+
+    // 2. Alert the user based on specific error types
+    if (isUserCanceled) {
+        Alert.alert('Authentication Failed', 'You canceled the Face ID prompt. Please use your email and password.');
+    } else if (rawErrorMessage === 'NotSupportedError') {
+        // Device lacks the necessary hardware/software support
+        Alert.alert('Biometrics Unavailable', 'This device does not fully support secure Face/Touch ID login.');
+    } else {
+        // CATCH-ALL: This is the critical diagnostic failure.
+        Alert.alert('Login Error', 'A security error occurred. Please report this error and use email login.');
+    }
+    
+    return false;
+  }
+}

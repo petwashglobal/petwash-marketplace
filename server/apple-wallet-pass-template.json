@@ -1,0 +1,74 @@
+{
+  "formatVersion": 1,
+  "passTypeIdentifier": "pass.com.petwash.loyalty",
+  "teamIdentifier": "PETWASH_TEAM_ID",
+  "webServiceURL": "https://petwash.co.il/api/wallet/apple",
+  "authenticationToken": "vxwxd7J8AlNNFPS8k0a0FfUFtq0ewzFDC",
+  "serialNumber": "PWS-10001",
+  "barcode": {
+    "message": "PWS-10001",
+    "format": "PKBarcodeFormatQR",
+    "messageEncoding": "iso-8859-1"
+  },
+  "organizationName": "Pet Wash™️",
+  "description": "Pet Wash™️ VIP Loyalty Card",
+  "logoText": "Pet Wash™️",
+  "foregroundColor": "rgb(255, 255, 255)",
+  "backgroundColor": "rgb(102, 126, 234)",
+  "storeCard": {
+    "headerFields": [
+      {
+        "key": "tier",
+        "label": "Tier",
+        "value": "PLATINUM"
+      }
+    ],
+    "primaryFields": [
+      {
+        "key": "balance",
+        "label": "Loyalty Points",
+        "value": 250,
+        "numberStyle": "PKNumberStyleDecimal"
+      }
+    ],
+    "secondaryFields": [
+      {
+        "key": "membername",
+        "label": "Member",
+        "value": "VIP Customer"
+      }
+    ],
+    "auxiliaryFields": [
+      {
+        "key": "discount",
+        "label": "Current Discount",
+        "value": "20%"
+      }
+    ],
+    "backFields": [
+      {
+        "key": "rewards_details",
+        "label": "Loyalty Program",
+        "value": "5-tier loyalty system:\n• New: 0% (0 pts)\n• Silver: 10% (1000 pts)\n• Gold: 15% (3000 pts)\n• Platinum: 20% (6000 pts)\n• Diamond: 25% (10000 pts)"
+      },
+      {
+        "key": "terms",
+        "label": "Terms & Conditions",
+        "value": "Valid at all Pet Wash™️ stations. Points earned on every purchase. Non-transferable. Visit petwash.co.il for details."
+      },
+      {
+        "key": "contact",
+        "label": "Contact Us",
+        "value": "Phone: 054-9833355\nWebsite: petwash.co.il\nEmail: support@petwash.co.il"
+      }
+    ]
+  },
+  "locations": [
+    {
+      "latitude": 32.0853,
+      "longitude": 34.7818,
+      "relevantText": "Welcome to Pet Wash! Show this pass for exclusive discounts."
+    }
+  ],
+  "relevantDate": "2025-12-31T23:59:59Z"
+}

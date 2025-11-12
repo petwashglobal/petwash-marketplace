@@ -1,0 +1,126 @@
+# ====================================================================
+# A. DYNAMIC QR CODE REDEMPTION FLOW (Your Main Server-Side Logic)
+#    This script handles the Nayax server calling YOUR server after a QR scan.
+# ====================================================================
+
+# 1. Configuration (Obtained from Nayax Developer Hub)
+NAYAX_API_KEY = "YOUR_SECURE_API_KEY"
+CORTINA_INQUIRY_URL = "https://api.nayax.com/cortina/dynamicqr/inquiry" 
+K9000_LOYALTY_DB = connect_to_loyalty_database() 
+
+def handle_nayax_qr_inquiry(request_data):
+    """
+    Function triggered by Nayax Server after a user scans a QR code.
+    It checks our custom loyalty database for redemption and authorizes the vend.
+    """
+    transaction_id = request_data.get('transactionId')
+    qr_code_id = request_data.get('qrCodeData') # This is the e-gift/loyalty ID
+    requested_amount = request_data.get('amount')
+    machine_id = request_data.get('deviceId')
+
+    print(f"--- Received Inquiry for TX {transaction_id} on K9000 {machine_id} ---")
+
+    # --- YOUR CUSTOM LOYALTY/E-GIFT LOGIC ---
+    redemption_status, available_balance = K9000_LOYALTY_DB.check_balance(qr_code_id)
+    
+    # 2. Authorization Logic
+    if redemption_status == "VALID" and available_balance >= requested_amount:
+        # Deduct from e-gift/loyalty balance
+        K9000_LOYALTY_DB.process_deduction(qr_code_id, requested_amount)
+        
+        # 3. Send Success Response back to Nayax (This starts the K9000 wash)
+        nayax_response = {
+            "ResponseCode": "000",
+            "TransactionStatus": "APPROVED",
+            "AuthCode": "LOYALTY-AUTH-" + str(transaction_id)
+        }
+        return nayax_response
+    else:
+        # 4. Send Decline Response
+        nayax_response = {
+            "ResponseCode": "051", # Example decline code (Insufficient funds/Invalid)
+            "TransactionStatus": "DECLINED",
+            "StatusMessage": "Insufficient Loyalty Balance or Invalid Coupon"
+        }
+        return nayax_response
+
+# ====================================================================
+# B. HARDWARE MONITORING AND FAULT REPORTING (Polling Nayax APIs)
+#    This script runs periodically to check the state of the K9000 Nayax reader.
+# ====================================================================
+
+# 5. API Endpoints for Reporting (Lynx API / Management APIs)
+LYNX_GET_DEVICE_URL = "https://api.nayax.com/lynx/v1/devices/{device_id}" 
+LYNX_GET_TRANSACTIONS_URL = "https://api.nayax.com/lynx/v1/transactions" 
+
+def monitor_nayax_device_health(device_id):
+    """
+    Retrieves the physical health status of the Nayax Reader.
+    """
+    # Use requests library to make a secure GET call to Nayax API
+    response = requests.get(LYNX_GET_DEVICE_URL.format(device_id=device_id), 
+                            headers={"Authorization": f"Bearer {NAYAX_API_KEY}"})
+    
+    if response.status_code == 200:
+        data = response.json()
+        print(f"Device ID {device_id} Status: {data.get('ConnectionStatus')}")
+        print(f"Last Firmware: {data.get('FirmwareVersion')}")
+        if data.get('ConnectionStatus') != 'Online':
+             send_alert_to_maintenance("Nayax Reader is offline!")
+        return data
+    else:
+        print(f"Error retrieving device health: {response.text}")
+        return None
+
+def report_failed_transactions():
+    """
+    Pulls recent transactions to check for failed attempts.
+    """
+    # Filters to get only DECLINED transactions from the last 24 hours
+    response = requests.get(LYNX_GET_TRANSACTIONS_URL, 
+                            params={'status': 'DECLINED', 'timeframe': '24h'},
+                            headers={"Authorization": f"Bearer {NAYAX_API_KEY}"})
+    
+    if response.status_code == 200:
+        declined_transactions = response.json()
+        for tx in declined_transactions:
+            # Nayax provides specific Decline Codes (e.g., 051 for Insufficient Funds)
+            reason_code = tx.get('declineReasonCode')
+            if reason_code in ["005", "041", "043"]: # Example: Do Not Honor, Lost Card, Stolen Card
+                print(f"--- FRAUD ALERT --- Transaction ID {tx.get('id')} declined for security reason: {reason_code}")
+                # You would log this in your own fraud monitoring system
+        return len(declined_transactions)
+    else:
+        print("Error retrieving transaction report.")
+        return 0
+
+# ====================================================================
+# C. LOYALTY CARD CREATION (Initial Setup)
+#    This function is used once when a new customer registers for your loyalty program.
+# ====================================================================
+
+LYNX_CREATE_CARD_URL = "https://api.nayax.com/lynx/v1/cards"
+
+def create_nayax_loyalty_id(customer_name, unique_loyalty_id):
+    """
+    Creates a new 'card' entry in the Nayax Core system to represent the loyalty ID.
+    This ensures Nayax can recognize the ID when it's scanned.
+    """
+    card_data = {
+        "CardHolderName": customer_name,
+        "CardUniqueIdentifier": unique_loyalty_id,
+        "CardType": 33, # Prepaid Card type
+        "CardPhysicalType": 943237560 # QR Code type
+        # ... other required fields
+    }
+    
+    response = requests.post(LYNX_CREATE_CARD_URL, 
+                             json=card_data,
+                             headers={"Authorization": f"Bearer {NAYAX_API_KEY}"})
+    
+    if response.status_code == 201:
+        print(f"Successfully created Nayax ID for {customer_name}.")
+        return response.json()
+    else:
+        print(f"Failed to create Nayax ID: {response.text}")
+        return None

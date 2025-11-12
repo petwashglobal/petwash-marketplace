@@ -1,0 +1,78 @@
+// src/utils/financialUtils.ts
+
+import 'moment/locale/he'; // Import Hebrew locale for Moment
+
+/**
+ * @constant DEFAULT_ISRAELI_VAT_RATE
+ * @description The current default Israeli VAT rate (מע"מ).
+ * @remarks This should ideally be fetched from a backend AppConfig for real-time updates.
+ */
+export const DEFAULT_ISRAELI_VAT_RATE = 0.17; // 17%
+
+/**
+ * @function calculateIsraeliVAT
+ * @description Calculates the VAT amount and net amount from a gross (total) amount
+ * based on the specified Israeli VAT rate.
+ * @param {number} grossAmountILS - The total amount in ILS (כולל מע"מ).
+ * @param {number} [vatRate=DEFAULT_ISRAELI_VAT_RATE] - The VAT rate to apply.
+ * @returns {{ netAmountILS: number, vatAmountILS: number }}
+ */
+export function calculateIsraeliVAT(
+  grossAmountILS: number,
+  vatRate: number = DEFAULT_ISRAELI_VAT_RATE
+): { netAmountILS: number; vatAmountILS: number } {
+  if (grossAmountILS <= 0 || vatRate < 0) {
+    return { netAmountILS: 0, vatAmountILS: 0 };
+  }
+
+  // Handle case where VAT is not applicable (e.g., some services, zero-rated items)
+  if (vatRate === 0) {
+    return { netAmountILS: grossAmountILS, vatAmountILS: 0 };
+  }
+
+  // Net Amount (סכום ללא מע"מ) = Gross Amount / (1 + VAT Rate)
+  const netAmount = grossAmountILS / (1 + vatRate);
+  // VAT Amount (סכום מע"מ) = Gross Amount - Net Amount
+  const vatAmount = grossAmountILS - netAmount;
+
+  // Ensure two decimal places for currency precision
+  return {
+    netAmountILS: parseFloat(netAmount.toFixed(2)),
+    vatAmountILS: parseFloat(vatAmount.toFixed(2)),
+  };
+}
+
+/**
+ * @function formatCurrencyILS
+ * @description Formats a number as an Israeli Shekel (ILS) currency string.
+ * @param {number} amount - The numeric amount to format.
+ * @returns {string} Formatted currency string (e.g., "₪ 1,234.56").
+ */
+export function formatCurrencyILS(amount: number): string {
+  // 'he-IL' for Hebrew (Israel) locale, 'ILS' for Israeli New Shekel
+  return new Intl.NumberFormat('he-IL', {
+    style: 'currency',
+    currency: 'ILS',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+/**
+ * @function getLocalizedDate
+ * @description Returns a localized date string suitable for Israel (DD/MM/YYYY).
+ * @param {Moment | Date | string} date - The date to format.
+ * @returns {string} Formatted date string.
+ */
+export function getLocalizedDate(date: Moment | Date | string): string {
+  return moment(date).locale('he').format('DD/MM/YYYY');
+}
+
+/**
+ * @function generateUniqueId
+ * @description Generates a unique ID (UUID v4).
+ * @returns {string} A unique ID.
+ */
+export function generateUniqueId(): string {
+  return uuid.v4() as string;
+}

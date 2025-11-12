@@ -1,0 +1,86 @@
+// Backend Technologies: Node.js with Express.js, google-auth-library
+const express = require('express');
+const { OAuth2Client } = require('google-auth-library');
+const router = express.Router();
+
+// SECURE: Load credentials from environment variables (NEVER hardcode)
+const WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID;
+const WEB_CLIENT_SECRET = process.env.GOOGLE_WEB_CLIENT_SECRET;
+
+// The client is configured with null redirect URI for the 'postmessage' (native app) flow
+const client = new OAuth2Client(WEB_CLIENT_ID, WEB_CLIENT_SECRET, 'postmessage');
+
+/**
+ * @route POST /api/auth/google/mobile
+ * @description Exchanges the serverAuthCode for access tokens and creates a Pet Wash session.
+ * * This endpoint is the core of your Biometric/OAuth architecture.
+ */
+router.post('/auth/google/mobile', async (req, res) => {
+    
+    const { authCode, idToken } = req.body; 
+
+    if (!authCode || !idToken) {
+        return res.status(400).send({ message: 'Missing Authorization Code or ID Token.' });
+    }
+    
+    try {
+        // 1. VERIFY ID TOKEN (The crucial security step)
+        // This verifies the token came from Google and was intended for your app.
+        const ticket = await client.verifyIdToken({
+            idToken: idToken,
+            audience: [WEB_CLIENT_ID], 
+        });
+        const payload = ticket.getPayload();
+        
+        // 2. CODE EXCHANGE (The critical server-side step)
+        // Exchange the one-time code for the long-lived refresh token
+        const { tokens } = await client.getToken(authCode);
+
+        // 3. EXTRACT USER DATA
+        const googleId = payload.sub; // The user's immutable Google ID
+        const email = payload.email;
+        const name = payload.name;
+
+        // 4. PET WASH LTD USER MANAGEMENT (Drizzle ORM for type-safe ops)
+        let user = await Drizzle.findUserByGoogleId(googleId);
+
+        if (!user) {
+            // New user, create account and assign Bronze tier automatically (Loyalty Ecosystem)
+            user = await Drizzle.createUser({ 
+                googleId, 
+                email, 
+                name,
+                loyaltyTier: 'Bronze', // Initial tiering
+                // Store Refresh Token ONLY if you need offline access to Google APIs (e.g., Calendar)
+                googleRefreshToken: tokens.refresh_token 
+            });
+            console.log(`🔑 New Pet Wash user: ${email} registered with Bronze tier.`);
+        }
+        
+        // 5. ISSUE PET WASH LTD SECURE TOKEN (JWT)
+        // Generate your platform's secure session token for authenticated API access
+        const petWashAuthToken = generateSecureJWT(user.id);
+
+        // 6. Respond to the mobile client
+        res.status(200).send({ 
+            success: true, 
+            token: petWashAuthToken,
+            user: { 
+                id: user.id, 
+                email: user.email,
+                loyaltyTier: user.loyaltyTier 
+            }
+        });
+
+    } catch (error) {
+        // Log all errors to Winston/Sentry for real-time monitoring
+        Winston.error('Google OAuth Exchange Failed', { code: authCode, error: error.message });
+        res.status(500).send({ message: 'Secure login failed. Please contact support.' });
+    }
+});
+
+// Helper function (e.g., JWT signing)
+const generateSecureJWT = (userId) => {
+    // Implement using jsonwebtoken library with a strong secret key
+    return jwt.sign({ sub: userId, type: 'AUTH' }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};

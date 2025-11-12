@@ -1,0 +1,10 @@
+The user wants a single, clean, body of text for the Replit developer, reiterating the dual benefit of the The Sitter Suite™ service (Pet Sitting + House Guarding) in a highly appealing, marketing-focused way, without any additional formatting or conversational wrappers.
+THE SITTER SUITE™: MANDATE FOR SERVICE DESCRIPTION & BOOKING UI
+CORE BUSINESS SHIFT: The The Sitter Suite™ service must be marketed and presented not merely as "Pet Sitting," but as an Exclusive House-Guard Sitting & Pet Wellness Solution. The UI/UX for booking this service must immediately highlight this dual-benefit value proposition to align with our 7-Star luxury brand.
+MARKETING COPY FOR IMPLEMENTATION:
+"The Sitter Suite™: Beyond Pet Sitting – Exclusive Property Management and Pet Wellness"
+"When you travel, securing the peace of mind of your home is paramount. The Sitter Suite™ by PetWash is your guarantee. This service combines certified, loving care for your pet with professional House-Guard Sitting to maintain and secure your property. Our sitters provide the ultimate home court advantage for your furry family, ensuring they remain happy and in their familiar routine (food, water, fun, personalized walks). Crucially, they deliver an essential deterrent effect by providing 24/7 human presence in your home. They manage your property essentials: watering plants, feeding aquarium fish, collecting mail, and monitoring basic systems. You return not just to a happy pet, but to a maintained, secure, and ready-to-use home. This is quiet luxury: complete peace of mind, guaranteed."
+UI/BOOKING MANDATES:
+• Booking Flow: The initial booking screen must feature two distinct value columns side-by-side: Pet Care & Wellness (e.g., Personalized Walks, Routine Stability) and Home & Property Guard (e.g., 24/7 Presence, Plant Watering, Mail Collection).
+• Media: The service page must feature professional, glamorous imagery that shows not just a sitter playing with a dog, but a sitter tidying plants or checking the mail, visually reinforcing the House-Guard benefit.
+• Pricing: Pricing must be positioned as a premium Security & Wellness Investment, not just a pet-sitting fee.

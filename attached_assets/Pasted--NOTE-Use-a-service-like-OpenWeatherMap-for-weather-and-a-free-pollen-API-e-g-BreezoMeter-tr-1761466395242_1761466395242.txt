@@ -1,0 +1,113 @@
+// NOTE: Use a service like OpenWeatherMap (for weather) and a free pollen API (e.g., BreezoMeter trial) 
+// for a real implementation. The URLs below are placeholders for clarity.
+const WEATHER_API_ENDPOINT = 'YOUR_WEATHER_API_ENDPOINT'; 
+const ALLERGEN_API_ENDPOINT = 'YOUR_ALLERGEN_API_ENDPOINT';
+
+// --- Placeholder/Mock Data ---
+// In a real app, this data would come from the database (user inputs or smart collar data)
+let petCareMetrics = {
+    daysSinceLastWash: 7, 
+    washFrequencyTarget: 14, // Wash every 2 weeks
+    coatCondition: 'good' // 'good', 'matted', 'shedding'
+};
+
+// --- CORE INTELLIGENCE FUNCTION ---
+
+async function getSmartRecommendation() {
+    const location = document.getElementById('petLocation').value;
+    const recBox = document.getElementById('smartRecommendation');
+    
+    recBox.innerHTML = "Fetching real-time data...";
+    recBox.className = 'recommendation-box'; // Reset styling
+
+    // --- 1. Fetch External Contextual Data (Mock API Calls) ---
+    const weatherData = await fetchExternalData(WEATHER_API_ENDPOINT, { q: location, days: 3 });
+    const allergenData = await fetchExternalData(ALLERGEN_API_ENDPOINT, { location: location });
+
+    // Assuming we only care about the *next* day's forecast
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDate = tomorrow.toISOString().split('T')[0];
+    
+    // --- 2. Extract Key Metrics ---
+    // Mock extraction logic based on hypothetical API response structures
+    const tomorrowTemp = weatherData.forecast.temperature; // e.g., 22
+    const isRainingTomorrow = weatherData.forecast.rainChance > 40; // e.g., true/false
+    const pollenLevel = allergenData.pollen.index; // e.g., 5 (scale of 1-10)
+
+    // --- 3. Update Data Snapshot for Partner/User Trust ---
+    document.getElementById('weatherStatus').textContent = `${tomorrowTemp}°C, Rain Chance: ${weatherData.forecast.rainChance}%`;
+    document.getElementById('allergenStatus').textContent = `${pollenLevel} (High/Low)`;
+
+
+    // --- 4. Decision Engine (The Impressive Logic) ---
+    let recommendationText = '';
+    let recommendationClass = 'status-ideal';
+    let washDate = tomorrowDate;
+
+    const daysOverdue = petCareMetrics.daysSinceLastWash > petCareMetrics.washFrequencyTarget;
+    
+    // Condition 1: High Priority (Overdue + good weather)
+    if (daysOverdue && !isRainingTomorrow && pollenLevel < 7) {
+        recommendationText = `🚀 **WASH ASAP!** Buster is ${petCareMetrics.daysSinceLastWash - petCareMetrics.washFrequencyTarget} days overdue. Tomorrow is PERFECT: ${tomorrowTemp}°C, low allergens.`;
+        recommendationClass = 'status-ideal';
+        
+    // Condition 2: Postpone Due to External Risk
+    } else if (isRainingTomorrow) {
+        recommendationText = `⚠️ **POSTPONE WASH.** ☔ High chance of rain tomorrow (${weatherData.forecast.rainChance}%). Best day is currently [Future Safe Day].`;
+        recommendationClass = 'status-warn';
+
+    // Condition 3: Postpone Due to Health Risk (High Allergens)
+    } else if (pollenLevel >= 7) {
+        recommendationText = `🚨 **SKIN ALERT.** Pollen is VERY high (${pollenLevel}). Postpone wash for 2 days to avoid skin irritation. A quick wipe is recommended.`;
+        recommendationClass = 'status-warn';
+        washDate = 'Postponed';
+
+    // Condition 4: Routine Wash
+    } else {
+        recommendationText = `👍 **OPTIMAL WINDOW.** Tomorrow is a great day for a routine wash: ${tomorrowTemp}°C, low pollen. Scheduled wash is good to go.`;
+        recommendationClass = 'status-ideal';
+    }
+
+    // --- 5. Render Final Recommendation ---
+    recBox.className = `recommendation-box ${recommendationClass}`;
+    recBox.innerHTML = recommendationText + (washDate !== 'Postponed' ? `<br><br><button onclick="scheduleWash('${washDate}')">Confirm Wash for ${washDate}</button>` : '');
+}
+
+
+// --- Utility for Mocking API Calls (In a real app, this would be a real API handler) ---
+function fetchExternalData(url, params) {
+    // This is a placeholder that simulates a real-time API call
+    return new Promise(resolve => {
+        setTimeout(() => {
+            if (url === WEATHER_API_ENDPOINT) {
+                // Mock Weather Data: 70% chance of rain, 18°C
+                resolve({ 
+                    forecast: { 
+                        temperature: 18, 
+                        rainChance: Math.floor(Math.random() * 100), 
+                        isOptimalTemp: true 
+                    } 
+                });
+            } else if (url === ALLERGEN_API_ENDPOINT) {
+                // Mock Allergen Data: Pollen index 2 (Low)
+                resolve({ 
+                    pollen: { 
+                        index: Math.floor(Math.random() * 5) + 1, // Range 1-5
+                        risk: 'low' 
+                    } 
+                });
+            }
+        }, 1000); // Simulate 1-second network delay
+    });
+}
+
+// Placeholder for the scheduling function (from previous answer, simplified)
+function scheduleWash(date) {
+    alert(`Wash confirmed for ${date}! This would now write to your cloud calendar.`);
+}
+
+// Initial state setup
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('smartRecommendation').innerHTML = 'Click "Analyze" to begin Coat Planning.';
+});

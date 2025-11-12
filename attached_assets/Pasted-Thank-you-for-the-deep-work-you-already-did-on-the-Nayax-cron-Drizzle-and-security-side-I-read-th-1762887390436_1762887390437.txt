@@ -1,0 +1,211 @@
+Thank you for the deep work you already did on the Nayax cron, Drizzle, and security side. I read through the logs you left and I clearly see:
+	•	You identified the missing tables (jobOffers, paymentIntents, etc) and created them safely with SQL instead of forcing an unsafe db:push.
+	•	You found and fixed the amountCents bug where totalCharge was decimal instead of integer cents.
+	•	You corrected the auto-void logic to use bookingId properly.
+	•	You implemented and then improved the IP allowlist for Nayax webhooks and got the AutoVoid cron running cleanly in production.
+
+This is exactly the level I want for Pet Wash Ltd. Below is a single technical message with concrete next steps, operational tips, and some 2025 grade code patterns that you can directly use or adapt.
+
+⸻
+
+OPERATIONAL PRIORITIES
+	1.	Database migrations and safety
+
+	•	Continue to avoid global unsafe db:push in production.
+	•	Prefer targeted changes: generated SQL migrations, reviewed, applied one by one.
+	•	Keep a short runbook: how to create a new table, how to roll back, how to restore from backup.
+
+	2.	Backups and restore
+
+	•	Daily Postgres backup to GCS with SHA-256 verification and 30 day retention, plus weekly archives for 7 years.
+	•	Monthly test restore to confirm backups are usable.
+
+	3.	Monitoring and alerts
+
+	•	Keep structured logs (JSON) and send them to Sentry or similar.
+	•	Critical alerts: IoT station offline beyond threshold, Nayax webhook failures, cron errors, and high latency queries.
+	•	Set a small auto heal loop for known transient issues (for example: restart a worker if a particular error repeats).
+
+	4.	Webhook security
+
+	•	Enforce IP allowlist for all Nayax and payment webhooks using CIDR aware checks.
+	•	Add logging for blocked IPs to a dedicated security log channel.
+
+	5.	Multi role system
+
+	•	Everything is under Pet Wash Ltd, but with multiple roles: HQ admin, franchise owner, local manager, dispatcher, driver, sitter, walker, technician, and end user.
+	•	Please continue to grow the RBAC system so each role only sees what it should, and permissions are consistent across all platforms (Hub, Walk My Pet, Sitter, Academy, etc).
+
+⸻
+
+CURRENCY AND AMOUNTS (ISRAEL FIRST, GLOBAL READY)
+
+For Israel we work with ILS and two decimal places, but the system will be global later. I want a clean minor unit converter used everywhere amounts are passed to payment gateways or stored as cents.
+
+TypeScript utility for currency minor units (ILS, USD, EUR, JPY etc):
+
+// server/utils/currency.ts
+export function toMinorUnit(amountDecimal: string | number, currency = ‘ILS’): number {
+const minorUnits: Record<string, number> = {
+ILS: 2,
+USD: 2,
+EUR: 2,
+JPY: 0
+};
+const units = minorUnits[currency] ?? 2;
+const n = typeof amountDecimal === ‘string’ ? parseFloat(amountDecimal) : amountDecimal;
+if (Number.isNaN(n)) {
+throw new Error(‘Invalid amountDecimal’);
+}
+return Math.round(n * Math.pow(10, units));
+}
+
+Usage example in NayaxJobDispatchPaymentService or similar:
+
+const amountCents = toMinorUnit(params.totalCharge, ‘ILS’);
+
+This keeps all amounts consistent as integer minor units and prepares us for multi currency when we open franchises abroad.
+
+⸻
+
+IP ALLOWLIST MIDDLEWARE (NAYAX AND OTHER PAYMENT WEBHOOKS)
+
+I want a clean, reusable IP allowlist middleware that uses proper IP/CIDR matching and can be shared by Nayax and any future payment providers.
+
+Node + Express middleware using ipaddr.js (which is already in the dependencies):
+
+// server/middleware/ipAllowlist.ts
+import { Request, Response, NextFunction } from ‘express’;
+import * as ipaddr from ‘ipaddr.js’;
+
+const allowedCidrs = (process.env.NAYAX_ALLOWED_IPS || ‘’)
+.split(’,’)
+.map(s => s.trim())
+.filter(Boolean);
+
+export function ipAllowlist(req: Request, res: Response, next: NextFunction) {
+const raw = req.headers[‘x-forwarded-for’]?.toString().split(’,’)[0].trim()
+|| req.socket.remoteAddress
+|| ‘’;
+try {
+const ip = raw.includes(’:’) && raw.includes(’.’) ? raw.split(’:’).pop() as string : raw;
+const addr = ipaddr.parse(ip);
+const ok = allowedCidrs.some(cidr => {
+const [range, bits] = cidr.split(’/’);
+return ipaddr.parse(range).match(addr, parseInt(bits, 10));
+});
+if (!ok) {
+return res.status(403).send(‘Forbidden’);
+}
+return next();
+} catch {
+return res.status(400).send(‘Bad IP’);
+}
+}
+
+Apply this middleware to all Nayax and payment webhook routes:
+
+app.post(’/webhooks/nayax’, ipAllowlist, nayaxHandler);
+
+If there are other Nayax routes, please also apply ipAllowlist there so all payment entry points are covered.
+
+⸻
+
+PUSH NOTIFICATIONS (ANDROID + IOS, 2025 STANDARD)
+
+We have users, sitters, walkers, drivers, franchise owners, technicians and HQ. We need reliable push across Android and iOS using Firebase Cloud Messaging with one server side function.
+
+Server side Node function for sending push:
+
+// server/actions/sendPush.ts
+import admin from ‘firebase-admin’;
+
+if (!admin.apps.length) {
+admin.initializeApp({
+credential: admin.credential.cert(
+JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT as string)
+)
+});
+}
+
+export async function sendPush(
+token: string,
+title: string,
+body: string,
+data: Record<string, string> = {}
+) {
+const message: admin.messaging.Message = {
+token,
+notification: { title, body },
+android: { priority: ‘high’ },
+apns: { headers: { ‘apns-priority’: ‘10’ } },
+data
+};
+return admin.messaging().send(message);
+}
+
+Then clients on Android and iOS use the standard Firebase SDKs to register a device token and we store it per user in the database. This supports 2025 mobile push best practice.
+
+⸻
+
+SQL TABLE DEFINITIONS (JOB OFFERS AND PAYMENT INTENTS)
+
+You already created tables with SQL. For clarity and documentation, here is a minimal baseline schema that matches the logic we discussed. Please adjust names and columns if you already created them differently, but the idea is:
+
+CREATE TABLE job_offers (
+id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+booking_id uuid NOT NULL,
+status varchar(32) NOT NULL,
+created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE payment_intents (
+id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+booking_id uuid NOT NULL,
+amount_cents int NOT NULL,
+currency varchar(3) NOT NULL DEFAULT ‘ILS’,
+status varchar(32) NOT NULL,
+created_at timestamptz DEFAULT now()
+);
+
+These should align with how NayaxJobDispatchPaymentService and the cron job link jobOffers and paymentIntents. The main thing is that bookingId links consistently.
+
+⸻
+
+FRANCHISE ONBOARDING AND GLOBAL STRUCTURE
+
+At the business level, everything sits under Pet Wash Ltd as the head company. Under this we have multiple operational brands and platforms: self service stations (K9000), Walk My Pet, Pet sitter suite, Pet Trainer Academy, Drivers and logistics, and so on. All are using the same core architecture.
+
+I would like you to start thinking and designing for:
+	1.	Franchise onboarding flow
+
+	•	A single online flow where a potential franchisee in any country can apply.
+	•	Secure upload of documents, company registration, ID and basic KYC.
+	•	AI based parsing of the application (for example using Gemini or similar) to flag good candidates and prepare a structured review for HQ.
+
+	2.	Multi tenant RBAC
+
+	•	Clear separation between HQ, country level, franchise operator, and staff roles.
+	•	Same login identity but role based views and permissions.
+	•	This will let us operate Israel, and then later any other country, under one unified global brain.
+
+	3.	IoT mapping
+
+	•	Every K9000 unit should be addressable as its own device identity, with telemetry, location, and owner mapping in the database.
+	•	This will be the backbone for predictive maintenance, SLAs, and revenue sharing with franchisees.
+
+⸻
+
+SHORT TERM ACTION LIST
+	1.	Normalize currency handling using the toMinorUnit helper everywhere amountCents is set.
+	2.	Ensure the IP allowlist middleware is used for all Nayax and payment related routes.
+	3.	Document the new tables and keep a simple migration history (even if manually described) so future changes are safe.
+	4.	Add a basic runbook for: restarting the auto void cron, running a test payment, and verifying the jobOffers/paymentIntents data path end to end.
+	5.	When time allows, start sketching the data model for franchise entities and per country separation inside the same database.
+
+We are building something that is not just a website but a full intelligent operations system with K9000 hardware, multiple platforms (walkers, sitters, trainers, drivers, franchisees) and all of this under one Pet Wash Ltd octopus.
+
+Thank you again for the work you have already done on the cron, Drizzle, Nayax security and infrastructure. These changes and ideas are meant to support you and give you a clear direction as we move into a 2025–2026 standard for this platform.
+
+Best regards,
+Nir

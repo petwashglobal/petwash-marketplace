@@ -1,0 +1,450 @@
+import {
+  pgTable,
+  text,
+  varchar,
+  timestamp,
+  jsonb,
+  index,
+  uniqueIndex,
+  integer,
+  decimal,
+  boolean,
+  serial,
+  date
+} from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// Session storage table (mandatory for Replit Auth)
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table (mandatory for Replit Auth)
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().notNull(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  phone: varchar("phone"),
+  dateOfBirth: varchar("date_of_birth"),
+  country: varchar("country").default("IL"),
+  gender: varchar("gender"),
+  language: varchar("language").default("en"),
+  loyaltyTier: varchar("loyalty_tier").default("new"), // new, regular, verified_senior, verified_disability
+  isClubMember: boolean("is_club_member").default(false),
+  isSeniorVerified: boolean("is_senior_verified").default(false), // תעודת גימלאים verified
+  isDisabilityVerified: boolean("is_disability_verified").default(false), // תעודת נכה verified
+  idVerificationStatus: varchar("id_verification_status").default("none"), // none, pending, approved, rejected
+  idDocumentUrl: varchar("id_document_url"), // תעודת זהות upload
+  hasUsedNewMemberDiscount: boolean("has_used_new_member_discount").default(false),
+  currentDiscountType: varchar("current_discount_type").default("none"), // none, general_member, verified_senior, verified_disability
+  maxDiscountPercent: integer("max_discount_percent").default(5), // 5% general, 10% verified only
+  totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0").notNull(),
+  washBalance: integer("wash_balance").default(0).notNull(),
+  giftCardBalance: decimal("gift_card_balance", { precision: 10, scale: 2 }).default("0").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Customer table (for custom authentication system)
+export const customers = pgTable("customers", {
+  id: serial("id").primaryKey(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  email: varchar("email").unique().notNull(),
+  phone: varchar("phone"),
+  password: varchar("password").notNull(), // hashed password
+  dateOfBirth: date("date_of_birth"),
+  country: varchar("country").default("Israel"),
+  gender: varchar("gender"),
+  petType: varchar("pet_type"),
+  profilePictureUrl: varchar("profile_picture_url"),
+  loyaltyProgram: boolean("loyalty_program").default(true),
+  reminders: boolean("reminders").default(true),
+  marketing: boolean("marketing").default(false),
+  termsAccepted: boolean("terms_accepted").default(false),
+  isVerified: boolean("is_verified").default(false),
+  loyaltyTier: varchar("loyalty_tier").default("bronze"), // bronze, silver, gold, platinum
+  totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0"),
+  washBalance: integer("wash_balance").default(0),
+  lastLogin: timestamp("last_login"),
+  authProvider: varchar("auth_provider").default("email"), // email, google, apple, facebook
+  authProviderId: varchar("auth_provider_id"), // for OAuth providers
+  resetPasswordToken: varchar("reset_password_token"),
+  resetPasswordExpires: timestamp("reset_password_expires"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Customer pet information
+export const customerPets = pgTable("customer_pets", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").references(() => customers.id).notNull(),
+  name: varchar("name").notNull(),
+  breed: varchar("breed").notNull(),
+  age: integer("age"),
+  weight: varchar("weight"),
+  specialRequirements: text("special_requirements"),
+  allergies: text("allergies"),
+  notes: text("notes"),
+  washFrequency: varchar("wash_frequency").default("monthly"), // weekly, biweekly, monthly, custom
+  lastWashDate: timestamp("last_wash_date"),
+  nextWashDue: timestamp("next_wash_due"),
+  nextVaccinationDate: timestamp("next_vaccination_date"),
+  vaccinationNotes: text("vaccination_notes"),
+  reminderEnabled: boolean("reminder_enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Wash packages
+export const washPackages = pgTable("wash_packages", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  nameHe: varchar("name_he").notNull(),
+  description: text("description"),
+  descriptionHe: text("description_he"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  washCount: integer("wash_count").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// E-Vouchers (modern 2025-2026 secure voucher system)
+export const eVouchers = pgTable("e_vouchers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  codeHash: text("code_hash").notNull().unique(), // SHA256 hash of code (never store plaintext)
+  codeLast4: text("code_last4").notNull(), // For UI display only
+  type: text("type").notNull(), // FIXED or STORED_VALUE
+  currency: text("currency").notNull().default("ILS"),
+  initialAmount: decimal("initial_amount", { precision: 12, scale: 2 }).notNull(),
+  remainingAmount: decimal("remaining_amount", { precision: 12, scale: 2 }).notNull(),
+  status: text("status").notNull().default("ISSUED"), // ISSUED, CLAIMED, ACTIVE, REDEEMED, EXPIRED, CANCELLED
+  purchaserEmail: text("purchaser_email"),
+  recipientEmail: text("recipient_email"),
+  recipientName: text("recipient_name"),
+  recipientPhone: text("recipient_phone"),
+  personalMessage: text("personal_message"),
+  purchaserUid: text("purchaser_uid"), // Firebase UID (optional)
+  ownerUid: text("owner_uid"), // Bound user after claim; NULL until claimed
+  nayaxTxId: text("nayax_tx_id"), // Origin purchase reference
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  activatedAt: timestamp("activated_at", { withTimezone: true }),
+  deliveryMethod: text("delivery_method"), // email, sms, whatsapp, buyme, partner
+  deliveryStatus: text("delivery_status").default("pending"), // pending, sent, delivered, failed
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  partnerChannel: text("partner_channel"), // buyme, visa_rewards, mastercard_rewards, amex_rewards, insurance, airline
+  partnerReference: text("partner_reference"), // Partner's transaction ID
+});
+
+// E-Voucher redemptions ledger (append-only)
+export const eVoucherRedemptions = pgTable("e_voucher_redemptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  voucherId: varchar("voucher_id").notNull().references(() => eVouchers.id, { onDelete: 'cascade' }),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  locationId: text("location_id"), // Station ID
+  nayaxSessionId: text("nayax_session_id"), // Redemption/payment session
+  kycType: text("kyc_type"), // If discount stack checks are needed
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// E-Voucher events/audit trail
+export const eVoucherEvents = pgTable("e_voucher_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  voucherId: varchar("voucher_id").notNull().references(() => eVouchers.id, { onDelete: 'cascade' }),
+  eventType: text("event_type").notNull(), // ISSUED, CLAIMED, ACTIVATED, REDEEMED, PARTIAL_REDEEM, EXPIRED, CANCELLED
+  meta: jsonb("meta"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Partnership Integrations (BuyMe, Visa, MC, Amex, Insurance, Airlines)
+export const partnershipIntegrations = pgTable("partnership_integrations", {
+  id: serial("id").primaryKey(),
+  partnerName: varchar("partner_name").notNull(), // "BuyMe.co.il", "Visa Rewards", "MasterCard Priceless", "Amex Israel", etc.
+  partnerType: varchar("partner_type").notNull(), // gift_platform, card_loyalty, insurance, airline, influencer
+  status: varchar("status").notNull().default("proposed"), // proposed, in_negotiation, active, paused, terminated
+  apiEndpoint: text("api_endpoint"),
+  apiKey: text("api_key"), // Encrypted
+  webhookUrl: text("webhook_url"),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }), // Percentage
+  monthlyMinimum: decimal("monthly_minimum", { precision: 10, scale: 2 }),
+  contractStartDate: date("contract_start_date"),
+  contractEndDate: date("contract_end_date"),
+  contactPerson: varchar("contact_person"),
+  contactEmail: varchar("contact_email"),
+  contactPhone: varchar("contact_phone"),
+  notes: text("notes"),
+  metadata: jsonb("metadata"), // Partner-specific configuration
+  isActive: boolean("is_active").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Partner Voucher Sales (tracking sales through partners)
+export const partnerVoucherSales = pgTable("partner_voucher_sales", {
+  id: serial("id").primaryKey(),
+  partnerId: integer("partner_id").references(() => partnershipIntegrations.id).notNull(),
+  voucherId: varchar("voucher_id").references(() => eVouchers.id),
+  saleAmount: decimal("sale_amount", { precision: 10, scale: 2 }).notNull(),
+  commissionAmount: decimal("commission_amount", { precision: 10, scale: 2 }).notNull(),
+  partnerTransactionId: varchar("partner_transaction_id"),
+  customerEmail: varchar("customer_email"),
+  saleDate: timestamp("sale_date").defaultNow(),
+  settledDate: timestamp("settled_date"),
+  status: varchar("status").default("pending"), // pending, settled, disputed
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User Behavior Tracking (GDPR-compliant anonymous analytics)
+export const userBehaviorEvents = pgTable("user_behavior_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(), // Anonymous session tracking
+  userId: varchar("user_id"), // Optional, only if user consents
+  eventType: varchar("event_type").notNull(), // page_view, click, purchase, error, etc.
+  eventCategory: varchar("event_category"), // navigation, commerce, engagement, error
+  eventLabel: varchar("event_label"),
+  eventValue: integer("event_value"),
+  pageUrl: text("page_url"),
+  referrer: text("referrer"),
+  userAgent: text("user_agent"),
+  deviceType: varchar("device_type"), // mobile, tablet, desktop
+  language: varchar("language"),
+  country: varchar("country"),
+  metadata: jsonb("metadata"),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  retentionUntil: timestamp("retention_until").notNull(), // 7-year compliance
+});
+
+// Bug & Error Tracking (AI-assisted)
+export const bugReports = pgTable("bug_reports", {
+  id: serial("id").primaryKey(),
+  reportType: varchar("report_type").notNull(), // auto, user_reported, ai_detected
+  severity: varchar("severity").notNull(), // critical, high, medium, low
+  status: varchar("status").default("open"), // open, investigating, in_progress, resolved, closed
+  title: text("title").notNull(),
+  description: text("description"),
+  stackTrace: text("stack_trace"),
+  errorMessage: text("error_message"),
+  affectedUrl: text("affected_url"),
+  affectedFeature: varchar("affected_feature"),
+  userAgent: text("user_agent"),
+  reproducibilityRate: decimal("reproducibility_rate", { precision: 5, scale: 2 }), // AI-calculated
+  affectedUsersCount: integer("affected_users_count").default(0),
+  firstOccurrence: timestamp("first_occurrence").defaultNow(),
+  lastOccurrence: timestamp("last_occurrence").defaultNow(),
+  occurrenceCount: integer("occurrence_count").default(1),
+  aiSuggestedFix: text("ai_suggested_fix"), // Gemini AI suggestion
+  aiConfidenceScore: decimal("ai_confidence_score", { precision: 5, scale: 2 }), // 0-100
+  assignedTo: varchar("assigned_to"),
+  resolvedAt: timestamp("resolved_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Influencer Collaborations
+export const influencerCollaborations = pgTable("influencer_collaborations", {
+  id: serial("id").primaryKey(),
+  influencerName: varchar("influencer_name").notNull(),
+  platform: varchar("platform").notNull(), // instagram, tiktok, youtube, facebook
+  handle: varchar("handle").notNull(), // @username
+  followerCount: integer("follower_count"),
+  engagementRate: decimal("engagement_rate", { precision: 5, scale: 2 }), // Percentage
+  collaborationType: varchar("collaboration_type"), // sponsored_post, story, reel, review, long_term
+  status: varchar("status").default("proposed"), // proposed, negotiating, active, completed, cancelled
+  dealValue: decimal("deal_value", { precision: 10, scale: 2 }),
+  paymentTerms: text("payment_terms"),
+  deliverables: text("deliverables"),
+  promoCode: varchar("promo_code").unique(), // Custom promo code for influencer
+  promoCodeDiscount: integer("promo_code_discount"), // Percentage
+  trackingLink: text("tracking_link"),
+  campaignStartDate: date("campaign_start_date"),
+  campaignEndDate: date("campaign_end_date"),
+  views: integer("views").default(0),
+  clicks: integer("clicks").default(0),
+  conversions: integer("conversions").default(0),
+  revenue: decimal("revenue", { precision: 10, scale: 2 }).default("0"),
+  roi: decimal("roi", { precision: 5, scale: 2 }), // Return on Investment
+  contactEmail: varchar("contact_email"),
+  contactPhone: varchar("contact_phone"),
+  notes: text("notes"),
+  contractUrl: text("contract_url"),
+  metadata: jsonb("metadata"),
+  isActive: boolean("is_active").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Wash history
+export const washHistory = pgTable("wash_history", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  packageId: integer("package_id").references(() => washPackages.id),
+  washCount: integer("wash_count").default(1),
+  originalPrice: decimal("original_price", { precision: 10, scale: 2 }).notNull(),
+  discountApplied: decimal("discount_applied", { precision: 5, scale: 2 }).default("0"),
+  finalPrice: decimal("final_price", { precision: 10, scale: 2 }).notNull(),
+  paymentMethod: varchar("payment_method"),
+  status: varchar("status").default("completed"), // pending, completed, cancelled
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Coupons/Discounts
+export const coupons = pgTable("coupons", {
+  id: serial("id").primaryKey(),
+  code: varchar("code").unique().notNull(),
+  description: text("description"),
+  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }),
+  isActive: boolean("is_active").default(true),
+  validFrom: timestamp("valid_from").defaultNow(),
+  validUntil: timestamp("valid_until"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User coupon usage
+export const userCoupons = pgTable("user_coupons", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  couponId: integer("coupon_id").references(() => coupons.id).notNull(),
+  usedAt: timestamp("used_at").defaultNow(),
+});
+
+// Nayax pending transactions table
+export const pendingTransactions = pgTable("pending_transactions", {
+  id: varchar("id").primaryKey(),
+  packageId: integer("package_id").notNull().references(() => washPackages.id),
+  customerEmail: varchar("customer_email"),
+  customerName: varchar("customer_name"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("ILS"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  voucherCode: varchar("voucher_code", { length: 16 }),
+  qrCodeData: text("qr_code_data"),
+  isGiftCard: boolean("is_gift_card").notNull().default(false),
+  recipientEmail: varchar("recipient_email"),
+  recipientName: varchar("recipient_name"),
+  recipientPhone: varchar("recipient_phone"),
+  personalMessage: text("personal_message"),
+  deliveryMethod: varchar("delivery_method").default("email"), // email, sms, whatsapp
+  partnerChannel: varchar("partner_channel"), // buyme, visa, mastercard, amex
+  createdAt: timestamp("created_at").defaultNow(),
+  paidAt: timestamp("paid_at"),
+  nayaxTransactionId: varchar("nayax_transaction_id"),
+  nayaxReference: varchar("nayax_reference"),
+});
+
+// Nayax Spark API transactions (complete payment lifecycle)
+export const nayaxTransactions = pgTable("nayax_transactions", {
+  id: varchar("id").primaryKey(),
+  
+  // Legacy fields (maintain backward compatibility)
+  pendingTransactionId: varchar("pending_transaction_id").references(() => pendingTransactions.id),
+  merchantId: varchar("merchant_id"),
+  voucherId: varchar("voucher_id"), // Store voucher ID without foreign key constraint
+  paymentMethod: varchar("payment_method"), // card, apple_pay, google_pay
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("ILS"),
+  status: varchar("status").notNull().default("pending"), // pending, authorized, captured, failed, refunded
+  
+  // Customer information
+  customerEmail: varchar("customer_email"),
+  customerPhone: varchar("customer_phone"),
+  
+  // Transaction metadata
+  transactionType: varchar("transaction_type"), // voucher_purchase, wash_payment, top_up
+  locationId: varchar("location_id"), // Physical station or online
+  terminalId: varchar("terminal_id"),
+  
+  // Nayax-specific fields
+  nayaxOperatorId: varchar("nayax_operator_id"),
+  nayaxSessionId: varchar("nayax_session_id"),
+  nayaxPaymentId: varchar("nayax_payment_id"),
+  nayaxAuthCode: varchar("nayax_auth_code"),
+  nayaxReference: varchar("nayax_reference"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  authorizedAt: timestamp("authorized_at"),
+  capturedAt: timestamp("captured_at"),
+  refundedAt: timestamp("refunded_at"),
+  
+  // Additional fields
+  metadata: jsonb("metadata"),
+  errorMessage: text("error_message"),
+});
+
+// Export type inference
+export type Session = typeof sessions.$inferSelect;
+export type InsertSession = typeof sessions.$inferInsert;
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+
+export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = typeof customers.$inferInsert;
+
+export type CustomerPet = typeof customerPets.$inferSelect;
+export type InsertCustomerPet = typeof customerPets.$inferInsert;
+
+export type WashPackage = typeof washPackages.$inferSelect;
+export type InsertWashPackage = typeof washPackages.$inferInsert;
+
+export type EVoucher = typeof eVouchers.$inferSelect;
+export type InsertEVoucher = typeof eVouchers.$inferInsert;
+
+export type EVoucherRedemption = typeof eVoucherRedemptions.$inferSelect;
+export type InsertEVoucherRedemption = typeof eVoucherRedemptions.$inferInsert;
+
+export type EVoucherEvent = typeof eVoucherEvents.$inferSelect;
+export type InsertEVoucherEvent = typeof eVoucherEvents.$inferInsert;
+
+export type PartnershipIntegration = typeof partnershipIntegrations.$inferSelect;
+export type InsertPartnershipIntegration = typeof partnershipIntegrations.$inferInsert;
+
+export type PartnerVoucherSale = typeof partnerVoucherSales.$inferSelect;
+export type InsertPartnerVoucherSale = typeof partnerVoucherSales.$inferInsert;
+
+export type UserBehaviorEvent = typeof userBehaviorEvents.$inferSelect;
+export type InsertUserBehaviorEvent = typeof userBehaviorEvents.$inferInsert;
+
+export type BugReport = typeof bugReports.$inferSelect;
+export type InsertBugReport = typeof bugReports.$inferInsert;
+
+export type InfluencerCollaboration = typeof influencerCollaborations.$inferSelect;
+export type InsertInfluencerCollaboration = typeof influencerCollaborations.$inferInsert;
+
+export type WashHistory = typeof washHistory.$inferSelect;
+export type InsertWashHistory = typeof washHistory.$inferInsert;
+
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = typeof coupons.$inferInsert;
+
+export type UserCoupon = typeof userCoupons.$inferSelect;
+export type InsertUserCoupon = typeof userCoupons.$inferInsert;
+
+export type PendingTransaction = typeof pendingTransactions.$inferSelect;
+export type InsertPendingTransaction = typeof pendingTransactions.$inferInsert;
+
+export type NayaxTransaction = typeof nayaxTransactions.$inferSelect;
+export type InsertNayaxTransaction = typeof nayaxTransactions.$inferInsert;
+
+// Zod schemas for validation
+export const insertUserSchema = createInsertSchema(users);
+export const insertCustomerSchema = createInsertSchema(customers);
+export const insertWashPackageSchema = createInsertSchema(washPackages);
+export const insertEVoucherSchema = createInsertSchema(eVouchers);
+export const insertPartnershipSchema = createInsertSchema(partnershipIntegrations);
+export const insertBugReportSchema = createInsertSchema(bugReports);
+export const insertInfluencerSchema = createInsertSchema(influencerCollaborations);

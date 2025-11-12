@@ -1,0 +1,39 @@
+// 1. Dependency: You must first add the necessary dependency to your build.gradle (app) file.
+// implementation("com.google.ai.client.generativeai:generativeai:x.x.x") 
+
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.Content
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+// --- The Core AI Function ---
+suspend fun getAvatarResponse(userMessage: String, context: List<Content>): String = withContext(Dispatchers.IO) {
+    // 2. Initialize the AI Model (using the 'gemini-2.5-flash' model for fast, multimodal chat)
+    val generativeModel = GenerativeModel(
+        modelName = "gemini-2.5-flash",
+        apiKey = "YOUR_GEMINI_API_KEY" // **SECURITY NOTE: Do NOT hardcode in production apps.**
+    )
+
+    // 3. Create the Chat Session, including history (for conversation context)
+    val chat = generativeModel.startChat(
+        history = context // Pass in previous messages for conversational memory
+    )
+
+    // 4. Send the user's message and stream the response (for real-time animation of the avatar)
+    val response = chat.sendMessage(userMessage)
+    
+    // 5. Return the AI's generated text response
+    return@withContext response.text ?: "Sorry, I am having trouble connecting to the network."
+}
+
+// -------------------------------------------------------------------------
+// **GRAPHICS & AVATAR INTEGRATION (Conceptual):**
+// 
+// For "best graphics," the AI response text above would be routed to a
+// third-party 3D avatar SDK (like Ready Player Me, D-ID, or a custom Unity/Unreal Engine
+// component) which handles:
+// 1. **Text-to-Speech (TTS):** Converting the 'response.text' into audio.
+// 2. **Lip-Sync & Animation:** Driving the 3D avatar's mouth movements and facial expressions
+//    using the generated audio and text as input.
+// 3. **Rendering:** Displaying the high-fidelity 3D avatar on the iOS/Android screen.
+// -------------------------------------------------------------------------

@@ -1,0 +1,50 @@
+import GoogleSignIn
+import AuthenticationServices // For Passkey integration later
+
+// 1. Define the Web Client ID (Web Application type)
+// This is the Client ID of your Node.js backend.
+private let SERVER_CLIENT_ID = "YOUR_WEB_APPLICATION_CLIENT_ID_FROM_GOOGLE_CONSOLE"
+private let IOS_CLIENT_ID = "YOUR_IOS_CLIENT_ID_FROM_GOOGLE_CONSOLE"
+
+// 2. The Core Sign-In Function
+func signInWithGoogle(presenting: UIViewController) {
+    
+    // Configuration: Request the crucial serverAuthCode for your backend
+    let signInConfig = GIDConfiguration(
+        clientID: IOS_CLIENT_ID,
+        serverClientID: SERVER_CLIENT_ID, // Use the Web Client ID here
+        scopes: ["email", "profile"]
+    )
+    
+    GIDSignIn.sharedInstance.signIn(with: signInConfig, presenting: presenting) { user, error in
+        guard let user = user, error == nil else {
+            print("Google Sign-In Error: \(error?.localizedDescription ?? "Unknown")")
+            return
+        }
+        
+        // 3. Securely obtain the ID Token and Authorization Code
+        guard let idToken = user.idToken?.tokenString,
+              let authCode = user.serverAuthCode else {
+            print("Authentication data is missing (ID Token or Auth Code).")
+            return
+        }
+
+        print("✅ iOS: Received ID Token and Auth Code. Sending to backend.")
+        
+        // 4. Success! Send to your Pet Wash Ltd Node.js Backend
+        YourPetWashAPIService.signInWithGoogle(idToken: idToken, authCode: authCode) { result in
+            switch result {
+            case .success(let petWashToken):
+                print("🎉 Pet Wash Auth Token Received.")
+                // Save petWashToken and transition
+                
+                // 5. IMMEDIATE NEXT STEP: Prompt user for Passkey creation
+                // ASAuthorizationController is the native API for your WebAuthn compliance
+                PetWashPasskeyManager.registerNewPasskey() 
+                
+            case .failure(let apiError):
+                print("Backend Auth Error: \(apiError.localizedDescription)")
+            }
+        }
+    }
+}

@@ -1,0 +1,90 @@
+{
+  "system_name": "Autonomous_Booking_Engine_2026",
+  "architecture_model": "Headless_Microservices_Event_Driven_Architecture (EDA)",
+  "global_mandate": {
+    "scalability": "Serverless-First (AWS Lambda/Google Cloud Functions) for automated, cost-efficient scaling.",
+    "responsiveness": "Event-Driven Architecture (Kafka/SQS) for real-time asynchronous updates (e.g., instant inventory changes).",
+    "security": "Zero-Trust Security model between all Microservices (JWT/mTLS).",
+    "observability": "Centralized Monitoring (Prometheus/Grafana) and Distributed Tracing (Jaeger) for all services."
+  },
+  "core_microservices": [
+    {
+      "service_name": "Identity_Authentication_Service",
+      "purpose": "Global User Management and Security.",
+      "database": "PostgreSQL (for strict transactionality/User PII)",
+      "endpoints": [
+        "POST /api/v1/auth/login",
+        "POST /api/v1/auth/token_refresh"
+      ]
+    },
+    {
+      "service_name": "Inventory_Availability_Service",
+      "purpose": "The single source of truth for real-time availability (e.g., available sitters, walk slots).",
+      "database": "Redis (Caching) + PostgreSQL (Source of Truth)",
+      "concurrency_control": "Optimistic Locking/Saga Pattern to prevent double-bookings.",
+      "endpoints": [
+        "GET /api/v1/inventory/query?sku={service_id}&dates={range}",
+        "POST /api/v1/inventory/reserve"
+      ]
+    },
+    {
+      "service_name": "Pricing_Service",
+      "purpose": "Calculates final price, taxes, and fees based on real-time factors.",
+      "database": "DynamoDB (for high-volume rate lookups)",
+      "features": [
+        "Dynamic_Pricing_Algorithm (ML-based, adjusts rates for peak demand/seasonality)",
+        "Tax_Engine (VAT/Sales Tax calculation based on user jurisdiction/Israel VAT rules)",
+        "Fee_Calculation (Platform commission, insurance, cleaning fees)"
+      ]
+    },
+    {
+      "service_name": "Booking_Order_Service",
+      "purpose": "Creates and manages the lifecycle of the booking transaction (the core order record).",
+      "database": "PostgreSQL (Transactional Integrity)",
+      "features": [
+        "POST /api/v1/bookings (Initiate Transaction)",
+        "PATCH /api/v1/bookings/{id}/cancel (Cancel Booking)",
+        "Webhook_Emitter (sends 'Booking_Confirmed' event to other services)"
+      ]
+    },
+    {
+      "service_name": "Payment_Gateway_Service",
+      "purpose": "Handles all financial flow, tokens, and settlement.",
+      "database": "Vault (Secure token storage)",
+      "features": [
+        "Credit_Card_Tokenization (PCI-DSS Compliance)",
+        "Escrow_Management (Holds funds until service completion)",
+        "Payout_Processing (Disburses funds to Sitters/Drivers; integrates with Payout Ledger)"
+      ]
+    },
+    {
+      "service_name": "Notification_Communication_Service",
+      "purpose": "Manages all user communication.",
+      "database": "MongoDB (for flexible message/template storage)",
+      "features": [
+        "Push_Notification_API (FCM/APNS integration)",
+        "Email_SMS_Messaging",
+        "Real_Time_Chat_Service (WebSockets for Owner/Sitter inbox)"
+      ]
+    },
+    {
+      "service_name": "AI_Vetting_Personalization_Service",
+      "purpose": "Non-core logic and intelligence.",
+      "database": "Elasticsearch (for fast profile search/matching)",
+      "features": [
+        "AI_Risk_Scoring (Sitter Vetting and Trust Assessment)",
+        "AI_Matchmaking (Suggests best Sitter based on pet profile and past user behavior)",
+        "Predictive_Scaling (Uses ML to predict peak loads and scale services proactively)"
+      ]
+    }
+  ],
+  "transaction_workflow": "Saga_Pattern_and_Event_Sourcing",
+  "workflow_steps": [
+    "1. Client_Request (Frontend calls Pricing_Service)",
+    "2. Inventory_Check (Pricing_Service calls Inventory_Availability_Service)",
+    "3. Booking_Create (Booking_Order_Service generates transaction ID)",
+    "4. Payment_Debit (Payment_Service charges card and holds funds in escrow)",
+    "5. Event_Emit (Booking_Order_Service emits 'BOOKING_CONFIRMED' event via Kafka)",
+    "6. Notification_Fanout (Notification_Service sends confirmation email/push to all involved parties)"
+  ]
+}

@@ -1,0 +1,164 @@
+import math
+import random
+from datetime import datetime, timedelta
+
+# --- CONFIGURATION (CRITICAL FINANCIAL/GEOLOCATION CONSTANTS) ---
+COMMISSION_RATE_TRANSPORT = 0.20 # 20% retained by Pet Wash™️
+DRIVER_SPLIT = 1.0 - COMMISSION_RATE_TRANSPORT # 80% to driver
+BASE_FARE = 6.00 # Minimum charge
+RATE_PER_KM = 1.60 # Standard distance rate
+RATE_PER_MINUTE = 0.30 # Standard time rate
+PET_SURCHARGE = 2.00 # Flat fee for specialized pet transport
+FUEL_INDEX = 1.05 # MOCK: 5% adjustment based on daily fuel costs/economic factors
+
+class PetTrekPricing:
+    @staticmethod
+    def get_dynamic_multiplier(demand_requests: int, available_drivers: int, is_bad_weather: bool) -> float:
+        """
+        Calculates the real-time surge multiplier (1.0 = no surge).
+        Adopts Uber's logic: Price increases to balance severe supply-demand imbalance.
+        """
+        
+        # 1. Calculate Demand-to-Supply Ratio
+        ratio = demand_requests / max(1, available_drivers) # Ensure no division by zero
+        
+        # 2. Base Surge Logic (Exponential increase based on ratio)
+        if ratio >= 3.0:    # 3x demand vs supply
+            multiplier = 2.0  # 100% surge (2.0x)
+        elif ratio >= 1.5:  # 1.5x demand vs supply
+            multiplier = 1.35 # 35% surge
+        else:
+            multiplier = 1.0
+            
+        # 3. Add External/Non-Supply Factors (e.g., fuel, weather)
+        if is_bad_weather:
+            multiplier += 0.15 # 15% added for severe weather/traffic risk
+            
+        return round(multiplier * FUEL_INDEX, 2)
+
+
+    @staticmethod
+    def calculate_upfront_fare(trip_details: dict, demand_data: dict) -> dict:
+        """
+        Calculates the final upfront price shown to the rider.
+        """
+        distance_km = trip_details['distance_km']
+        time_minutes = trip_details['time_minutes']
+        
+        # 1. Calculate the core variable cost
+        core_fare = (BASE_FARE + PET_SURCHARGE) + \
+                    (distance_km * RATE_PER_KM) + \
+                    (time_minutes * RATE_PER_MINUTE)
+        
+        # 2. Apply Dynamic Multiplier (Supply/Demand/Fuel)
+        multiplier = PetTrekPricing.get_dynamic_multiplier(
+            demand_data['requests'], 
+            demand_data['available_drivers'], 
+            demand_data['is_bad_weather']
+        )
+        final_fare_pre_tax = core_fare * multiplier
+        
+        # 3. Commission Split (Driver Payout)
+        platform_fee = final_fare_pre_tax * COMMISSION_RATE_TRANSPORT
+        driver_payout = final_fare_pre_tax * DRIVER_SPLIT
+        
+        return {
+            "final_fare": round(final_fare_pre_tax, 2),
+            "surge_multiplier": multiplier,
+            "platform_commission": round(platform_fee, 2),
+            "driver_payout": round(driver_payout, 2),
+            "currency": "USD/ILS equivalent"
+        }
+
+# ====================================================================
+# MODULE 2: DISPATCH, LOGISTICS, AND PAYOUT
+# ====================================================================
+
+class PetTrekDispatch:
+    
+    # --- Geolocation / Matching ---
+    @staticmethod
+    def find_best_driver(request_coords: tuple) -> str:
+        """
+        Unique Code: Optimizes matching based on driver ETA and pet-friendly vehicle type.
+        """
+        # MOCK: In production, this uses the Bipartite Graph / Hungarian Algorithm
+        # to match based on the lowest weighted score: (ETA * 0.6) + (Rating * 0.4)
+        
+        nearest_vetted_drivers = GeoService.find_nearby_drivers(request_coords)
+        if not nearest_vetted_drivers:
+            return None
+            
+        # Select the driver with the lowest weighted score
+        # MOCK: Assuming Driver 1 is the best match
+        return nearest_vetted_drivers[0] 
+
+    # --- Payout and Settlement ---
+    @staticmethod
+    def process_trip_completion(trip_id: str, final_fare: float, driver_id: str):
+        """
+        Calculates final settlement and pushes earnings to the driver's ledger.
+        """
+        
+        platform_cut = final_fare * COMMISSION_RATE_TRANSPORT
+        driver_earnings = final_fare * DRIVER_SPLIT
+        
+        # 1. Log Transaction
+        db.log_revenue(trip_id, platform_cut)
+        
+        # 2. Update Driver Ledger (The Uber Model)
+        driver_ledger.add_credit(driver_id, driver_earnings)
+        
+        return {"status": "Settled", "earnings_added": round(driver_earnings, 2)}
+
+    @staticmethod
+    def trigger_driver_payout(driver_id: str, payout_option: str):
+        """
+        CRITICAL: Triggers immediate or weekly payout based on driver choice.
+        """
+        current_balance = driver_ledger.get_balance(driver_id)
+        
+        if current_balance <= 0:
+            return {"status": "FAILED", "detail": "Balance is zero."}
+
+        if payout_option == "INSTANT":
+            # Instant Cash Out: Available 24/7. Subtract small fee (e.g., $1.10)
+            instant_fee = 1.10
+            net_transfer = current_balance - instant_fee
+            
+            payment_gateway.transfer(driver_id, net_transfer, "INSTANT_PAY")
+            driver_ledger.clear_balance(driver_id)
+            return {"status": "INSTANT_PAID", "fee": instant_fee}
+
+        elif payout_option == "WEEKLY":
+            # Weekly Cycle: Free, processed automatically every Monday
+            payment_gateway.transfer(driver_id, current_balance, "WEEKLY_DEPOSIT")
+            driver_ledger.clear_balance(driver_id)
+            return {"status": "WEEKLY_PAID", "detail": "Scheduled Tuesday deposit initiated."}
+
+# ====================================================================
+# FRONTEND API & LOGISTICS ENHANCEMENTS
+# ====================================================================
+
+# Data structure for the multi-stop, multi-item request
+class TransportRequest(BaseModel):
+    pickup_coords: tuple
+    dropoff_coords: tuple
+    pet_size: str # Small, Medium, Large (affects vehicle matching)
+    
+    # New Logistic Fields: Diversion/Item Collection
+    divert_items: Optional[List[str]] = None # e.g., ["Pet Food Bag", "New Collar"]
+    is_pet_wash_pickup: bool = False # High-priority logistic flag
+
+# MOCK Classes for Ledger/Gateway
+class driver_ledger:
+    balance = {}
+    @staticmethod
+    def add_credit(d, c): driver_ledger.balance[d] = driver_ledger.balance.get(d, 0) + c
+    @staticmethod
+    def get_balance(d): return driver_ledger.balance.get(d, 0)
+    @staticmethod
+    def clear_balance(d): driver_ledger.balance[d] = 0
+class payment_gateway:
+    @staticmethod
+    def transfer(d, c, t): print(f"[TRANSFER]: {t} of ${c} to {d}")

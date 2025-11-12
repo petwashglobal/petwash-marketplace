@@ -1,0 +1,78 @@
+{
+  "project_name": "PetWash_Loyalty_PawConnect_Module",
+  "version": "1.0.0-alpha.2025",
+  "required_standard": "7-Star_Luxury_CrossPlatform_2025",
+  
+  "vision": "To implement a premium social and support hub for loyalty members, reinforcing the Pet Wash™ brand with a highly polished, seamless, and performant user experience (UX) across all devices (iOS, Android, Web/Desktop).",
+  
+  "architecture_requirements": {
+    "frontend": {
+      "framework": "React_Native",
+      "tooling": "Expo (for ease of deployment/testing) + NativeWind (Tailwind CSS for React Native)",
+      "styling_standard": "Minimalist, Dark-Theme Centric (LUX_BLUE, LUX_ACCENT) with high contrast for accessibility. Must use subtle micro-interactions (Moti or equivalent) for 'luxury influx' animations.",
+      "responsiveness": "Mandatory. Must adhere to responsive design principles to look perfect on phone, tablet, and laptop (via React Native for Web)."
+    },
+    "backend": {
+      "pattern": "Microservices_Architecture",
+      "services_required": [
+        "Auth_Service (Handles user validation, tokens)",
+        "Chat_Service (High-speed, real-time message routing)",
+        "Feed_Service (Handles post creation, storage, and retrieval of media/text)",
+        "Notification_Service (Handles geo-targeted and individual push notifications)"
+      ],
+      "realtime_protocol": "WebSockets (e.g., Socket.IO) or Managed Service (e.g., Firebase Realtime/Firestore) for Chat/Feed updates.",
+      "database": "PostgreSQL (for structured user/loyalty data) + MongoDB/NoSQL (for flexible, media-heavy posts/messages)."
+    },
+    "security": {
+      "protocol": "Zero_Trust_Architecture",
+      "authentication": "JWT (JSON Web Tokens) for all microservice communication and client-server validation."
+    }
+  },
+
+  "core_features_to_implement": {
+    "section_name": "Paw-Connect (7-Star Community)",
+    "placement": "Hamburger Menu (Under 'Free Services & Community Perks')",
+    
+    "feature_1_support_chat": {
+      "name": "Direct_Support_Chat",
+      "type": "External_Communication",
+      "details": "Dedicated chat channel to Pet Wash™ Support Team (+972549833355). Must integrate with a professional help desk system (e.g., Zendesk API). Must not use the M2M chat database.",
+      "requirement": "Real-time, persistent history, high-priority routing."
+    },
+    
+    "feature_2_inbox": {
+      "name": "7-Star_Luxury_Inbox",
+      "type": "Internal_Communication",
+      "details": "Central hub for Member-to-Member (M2M) DMs. Must enforce a strict 'Opt-in/Approval' flow: User A must send a contact request to User B before chat is enabled.",
+      "requirement": "Read receipts, high-quality media sharing, and smooth scroll/load performance."
+    },
+    
+    "feature_3_paw_finder": {
+      "name": "Paw_Finder_Missing_Pet_Assistance",
+      "type": "Community_Alert_Board (Highest Priority)",
+      "fields_required": [
+        {"key": "pet_photo_url", "type": "string", "description": "Cloud storage URL of the high-res pet photo."},
+        {"key": "pet_name", "type": "string"},
+        {"key": "pet_type", "type": "enum", "values": ["Dog", "Cat", "Other"]},
+        {"key": "pet_breed", "type": "string"},
+        {"key": "last_seen_area", "type": "string", "description": "Detailed address/geocode for mapping."},
+        {"key": "owner_contact", "type": "string", "description": "Mobile/Email (user choice)."},
+        {"key": "post_status", "type": "enum", "values": ["Missing", "Resolved"]},
+        {"key": "owner_user_id", "type": "string", "description": "Link to the posting user."}
+      ],
+      "resolve_logic": "Implemented via a luxury, two-step confirmation button (as designed in the previous component code) that toggles the 'post_status' to 'Resolved' and archives the post from the main view."
+    },
+
+    "feature_4_social_linking": {
+        "name": "External_Share_Integration",
+        "details": "Paw-Finder posts and Community Events must have one-tap sharing. This utilizes native device share sheets to pre-populate posts for external social platforms.",
+        "platforms": ["Facebook", "Instagram", "TikTok"],
+        "requirement": "Must generate a beautiful, Pet Wash™ branded shareable image asset for visual platforms (IG/TikTok) that overlays key 'Missing' info."
+    }
+  },
+
+  "code_review_notes": [
+    "The previously provided React Native component for 'PawFinderResolveButton' is approved for styling and logic flow. The programmer must use NativeWind/Moti (or equivalents) to ensure this level of luxury is consistent across ALL UI components.",
+    "Ensure the application state management (e.g., Redux Toolkit, Zustand, or Flutter BLoC/Provider) is architecturally sound and scalable."
+  ]
+}

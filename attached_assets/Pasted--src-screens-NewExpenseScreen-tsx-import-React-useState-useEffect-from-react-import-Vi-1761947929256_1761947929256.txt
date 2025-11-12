@@ -1,0 +1,319 @@
+// src/screens/NewExpenseScreen.tsx
+
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, StyleSheet, Alert, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { useAppDispatch, useAppSelector } from '../store/hooks'; // Custom hooks for Redux
+import { submitNewExpense, processReceiptWithOCR } from '../store/slices/expensesSlice';
+import { ExpenseCategory } from '../types';
+import { calculateIsraeliVAT, formatCurrencyILS, getLocalizedDate } from '../utils/financialUtils';
+import moment from 'moment';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker'; // For image capture
+
+const NewExpenseScreen: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const appConfig = useAppSelector(state => state.expenses.appConfig);
+  const loading = useAppSelector(state => state.expenses.loading);
+
+  const [totalAmountInput, setTotalAmountInput] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory>('Other');
+  const [expenseDate, setExpenseDate] = useState<moment.Moment>(moment());
+  const [receiptImageUri, setReceiptImageUri] = useState<string | null>(null);
+  const [ocrProcessing, setOcrProcessing] = useState<boolean>(false);
+
+  // Derived state for VAT calculations
+  const totalAmountILS = parseFloat(totalAmountInput) || 0;
+  const { netAmountILS, vatAmountILS } = calculateIsraeliVAT(totalAmountILS, appConfig?.currentIsraeliVatRate);
+
+  useEffect(() => {
+    // If OCR processing is done and data is received, update form fields
+    // This would be more complex in a real app, mapping OCR output to form fields
+  }, [ocrProcessing]);
+
+  const handleChoosePhoto = () => {
+    Alert.alert(
+      "בחר תמונה",
+      "כיצד תרצה להוסיף קבלה?",
+      [
+        { text: "מצלמה", onPress: () => captureImage('camera') },
+        { text: "גלריה", onPress: () => captureImage('library') },
+        { text: "ביטול", style: "cancel" }
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const captureImage = async (type: 'camera' | 'library') => {
+    const options = {
+      mediaType: 'photo',
+      quality: 0.7,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      saveToPhotos: false,
+    };
+
+    let result;
+    if (type === 'camera') {
+      result = await launchCamera(options);
+    } else {
+      result = await launchImageLibrary(options);
+    }
+
+    if (result.didCancel) {
+      console.log('User cancelled image picker');
+    } else if (result.errorCode) {
+      console.log('ImagePicker Error: ', result.errorMessage);
+    } else if (result.assets && result.assets.length > 0) {
+      const uri = result.assets[0].uri;
+      setReceiptImageUri(uri);
+      if (uri) {
+        setOcrProcessing(true);
+        // Dispatch OCR processing action
+        dispatch(processReceiptWithOCR(uri))
+          .unwrap()
+          .then((ocrData) => {
+            // Update form with OCR data
+            setTotalAmountInput(ocrData.totalAmountILS?.toString() || totalAmountInput);
+            setExpenseDate(ocrData.date || expenseDate);
+            // Optionally, try to set category based on OCR vendor name
+            Alert.alert("OCR נשלם", "פרטי קבלה מולאו אוטומטית.");
+          })
+          .catch((error) => {
+            console.error('OCR failed:', error);
+            Alert.alert("שגיאת OCR", "לא הצלחנו לעבד את הקבלה באופן אוטומטי.");
+          })
+          .finally(() => {
+            setOcrProcessing(false);
+          });
+      }
+    }
+  };
+
+  const handleSubmitExpense = () => {
+    if (totalAmountILS <= 0) {
+      Alert.alert("שגיאה", "אנא הזן סכום חוקי.");
+      return;
+    }
+    if (!receiptImageUri) {
+      Alert.alert("שגיאה", "אנא צרף תמונה של הקבלה.");
+      return;
+    }
+
+    // This data will be sent to the backend
+    const expenseToSubmit = {
+      employeeId: 'current-logged-in-employee-id', // From auth state
+      businessId: 'your-company-id',
+      date: expenseDate,
+      totalAmountILS: totalAmountILS,
+      // netAmountILS and vatAmountILS will be calculated by thunk or backend for consistency
+      vatRate: appConfig?.currentIsraeliVatRate || DEFAULT_ISRAELI_VAT_RATE,
+      category: selectedCategory,
+      description: description,
+      receiptImageUris: [receiptImageUri], // Assuming one image for simplicity
+    };
+
+    dispatch(submitNewExpense(expenseToSubmit))
+      .unwrap()
+      .then((responseExpense) => {
+        Alert.alert("הוצאה נשלחה", `הוצאה עבור ${formatCurrencyILS(responseExpense.totalAmountILS)} נשלחה בהצלחה!`);
+        // Reset form or navigate
+        setTotalAmountInput('');
+        setDescription('');
+        setReceiptImageUri(null);
+        setSelectedCategory('Other');
+        setExpenseDate(moment());
+      })
+      .catch((error) => {
+        Alert.alert("שגיאה בשליחת הוצאה", error);
+      });
+  };
+
+  const categories: ExpenseCategory[] = ['Travel', 'Meals', 'OfficeSupplies', 'Training', 'Accommodation', 'Mileage', 'Entertainment', 'Other'];
+
+  return (
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>הגשת הוצאה חדשה</Text>
+
+      <Text style={styles.label}>תאריך ההוצאה:</Text>
+      <TouchableOpacity onPress={() => {/* Open Date Picker */}} style={styles.datePickerButton}>
+        <Text style={styles.datePickerText}>{getLocalizedDate(expenseDate)}</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.label}>סכום כולל (₪):</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+        value={totalAmountInput}
+        onChangeText={setTotalAmountInput}
+        placeholder="הכנס סכום כולל (Gross Amount)"
+        placeholderTextColor="#999"
+        textAlign="right" // For Hebrew
+      />
+
+      <View style={styles.detailRow}>
+        <Text style={styles.detailText}>מע"מ ({Math.round((appConfig?.currentIsraeliVatRate || DEFAULT_ISRAELI_VAT_RATE) * 100)}%):</Text>
+        <Text style={styles.detailValue}>{formatCurrencyILS(vatAmountILS)}</Text>
+      </View>
+      <View style={styles.detailRow}>
+        <Text style={styles.detailText}>סכום נטו (ללא מע"מ):</Text>
+        <Text style={styles.detailValue}>{formatCurrencyILS(netAmountILS)}</Text>
+      </View>
+
+      <Text style={styles.label}>תיאור ההוצאה:</Text>
+      <TextInput
+        style={styles.input}
+        value={description}
+        onChangeText={setDescription}
+        placeholder="לדוגמה: ארוחת צהריים עם לקוח"
+        placeholderTextColor="#999"
+        multiline
+        textAlign="right" // For Hebrew
+      />
+
+      <Text style={styles.label}>קטגוריה:</Text>
+      <View style={styles.categoryContainer}>
+        {categories.map((cat) => (
+          <TouchableOpacity
+            key={cat}
+            style={[styles.categoryButton, selectedCategory === cat && styles.selectedCategoryButton]}
+            onPress={() => setSelectedCategory(cat)}
+          >
+            <Text style={[styles.categoryButtonText, selectedCategory === cat && styles.selectedCategoryButtonText]}>{cat}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.label}>צרף קבלה:</Text>
+      <TouchableOpacity style={styles.uploadButton} onPress={handleChoosePhoto}>
+        {receiptImageUri ? (
+          <Image source={{ uri: receiptImageUri }} style={styles.receiptImage} />
+        ) : (
+          <Text style={styles.uploadButtonText}>צלם או בחר קבלה</Text>
+        )}
+      </TouchableOpacity>
+      {ocrProcessing && <Text style={styles.ocrStatusText}>מעבד קבלה (OCR)...</Text>}
+
+      <Button
+        title={loading === 'pending' ? "שולח..." : "שלח הוצאה"}
+        onPress={handleSubmitExpense}
+        disabled={loading === 'pending' || ocrProcessing}
+      />
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#f8f8f8',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'right', // For Hebrew
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    marginTop: 15,
+    textAlign: 'right', // For Hebrew
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: 'right', // For Hebrew
+  },
+  detailRow: {
+    flexDirection: 'row-reverse', // RTL for Hebrew
+    justifyContent: 'space-between',
+    marginBottom: 5,
+    paddingHorizontal: 5,
+  },
+  detailText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  detailValue: {
+    fontSize: 15,
+    color: '#007bff',
+  },
+  categoryContainer: {
+    flexDirection: 'row-reverse', // RTL for Hebrew
+    flexWrap: 'wrap',
+    marginBottom: 15,
+  },
+  categoryButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    marginHorizontal: 4,
+    marginVertical: 4,
+    backgroundColor: '#fff',
+  },
+  selectedCategoryButton: {
+    backgroundColor: '#007bff',
+    borderColor: '#007bff',
+  },
+  categoryButtonText: {
+    color: '#333',
+    fontSize: 14,
+  },
+  selectedCategoryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  uploadButton: {
+    backgroundColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 150,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderStyle: 'dashed',
+  },
+  uploadButtonText: {
+    color: '#555',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  receiptImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+    resizeMode: 'cover',
+  },
+  datePickerButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  ocrStatusText: {
+    textAlign: 'center',
+    fontStyle: 'italic',
+    color: '#777',
+    marginBottom: 10,
+  }
+});
+
+export default NewExpenseScreen;

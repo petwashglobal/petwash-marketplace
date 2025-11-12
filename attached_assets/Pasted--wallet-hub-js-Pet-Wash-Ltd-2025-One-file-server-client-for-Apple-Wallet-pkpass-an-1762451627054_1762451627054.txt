@@ -1,0 +1,414 @@
+/**
+ * wallet-hub.js — Pet Wash Ltd (2025)
+ * One-file server + client for Apple Wallet (.pkpass) and Google Wallet Save URL
+ * Premium UX, consent, and AI-ish monitoring to infer success/failure signals.
+ *
+ * DEPENDENCIES (install once):
+ *   npm i express helmet compression cors dotenv passkit-generator google-auth-library jsonwebtoken node-forge nanoid useragent
+ *
+ * REQUIRED FILES / SETTINGS (via .env):
+ *   APPLE_PASS_TEAM_ID=YOUR_APPLE_TEAM_ID
+ *   APPLE_PASS_PASS_TYPE_ID=pass.com.yourcompany.petwash.loyalty
+ *   APPLE_PASS_CERT_PATH=./certs/apple-pass-cert.pem
+ *   APPLE_PASS_KEY_PATH=./certs/apple-pass-key.pem
+ *   APPLE_PASS_KEY_PASSPHRASE=YOUR_PEM_PASSPHRASE  # optional if none, leave blank
+ *   GOOGLE_SERVICE_ACCOUNT_JSON=./google/service-account.json
+ *   GOOGLE_WALLET_ISSUER_ID=issuerId
+ *   GOOGLE_LOYALTY_CLASS_ID=issuerId.petwash_loyalty  # must exist in Google Wallet Console
+ *   BASE_PUBLIC_URL=https://petwash.co.il              # your production origin
+ *   BRAND_DISPLAY_NAME=Pet Wash Ltd
+ */
+
+import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
+import express from 'express';
+import helmet from 'helmet';
+import compression from 'compression';
+import cors from 'cors';
+import Passbook from 'passkit-generator';
+import { GoogleAuth } from 'google-auth-library';
+import jwt from 'jsonwebtoken';
+import useragent from 'useragent';
+import { nanoid } from 'nanoid';
+
+const cfg = {
+  baseUrl: process.env.BASE_PUBLIC_URL || 'http://localhost:5050',
+  apple: {
+    teamId: process.env.APPLE_PASS_TEAM_ID,
+    passTypeId: process.env.APPLE_PASS_PASS_TYPE_ID,
+    certPath: process.env.APPLE_PASS_CERT_PATH,
+    keyPath: process.env.APPLE_PASS_KEY_PATH,
+    keyPassphrase: process.env.APPLE_PASS_KEY_PASSPHRASE || undefined,
+  },
+  google: {
+    saPath: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+    issuerId: process.env.GOOGLE_WALLET_ISSUER_ID,
+    classId: process.env.GOOGLE_LOYALTY_CLASS_ID, // e.g. issuerId.petwash_loyalty
+  },
+  brand: process.env.BRAND_DISPLAY_NAME || 'Pet Wash Ltd',
+  port: process.env.PORT || 5050,
+};
+
+const app = express();
+
+// ---------- Security & perf ----------
+app.disable('x-powered-by');
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      'script-src': ["'self'", "'unsafe-inline'"],
+      'img-src': ["'self'", 'data:', 'https:'],
+      'connect-src': ["'self'", cfg.baseUrl],
+      'frame-ancestors': ["'self'"],
+    }
+  }
+}));
+app.use(compression());
+app.use(cors({ origin: cfg.baseUrl, credentials: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false }));
+
+// ---------- Minimal assets (logo placeholder if missing) ----------
+const assetsDir = path.resolve('./assets');
+if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir);
+const logoPng = path.join(assetsDir, 'logo.png');
+if (!fs.existsSync(logoPng)) {
+  // 1x1 transparent placeholder
+  const tiny = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAA' +
+    'AAC0lEQVR42mP8/x8AAwMB/aqxq08AAAAASUVORK5CYII=', 'base64');
+  fs.writeFileSync(logoPng, tiny);
+}
+
+// ---------- In-memory event store (lightweight AI-ish monitor) ----------
+/**
+ * We infer outcomes using:
+ * - server-side UA for Apple Pass installer (contains 'Passbook' on iOS add)
+ * - download counts and 2-second visibility changes after click (client beacons)
+ * - Google Save redirect/ping with token
+ * - fallback user confirm button (client) if we can’t infer
+ */
+const telemetry = {
+  clicks: new Map(),    // token -> { kind, when }
+  beacons: [],          // { type, token, ts, extra }
+  downloads: [],        // { kind, token, ua, ip, ts }
+  googleSaves: [],      // { token, ts, ua, ip }
+};
+
+const log = (level, msg, extra = {}) => {
+  console[level] && console[level](
+    JSON.stringify({ t: new Date().toISOString(), level, msg, ...extra })
+  );
+};
+
+// ---------- Client page ----------
+app.get('/', (_req, res) => {
+  res.type('html').send(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>${cfg.brand} · Digital Wallet</title>
+<style>
+  :root {
+    --bg:#0f1220; --panel:#14182b; --brand:#66e3ff; --accent:#8b5cf6; --ok:#34d399; --muted:#9aa3b2; --txt:#f8fafc;
+  }
+  body { margin:0; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter; background: linear-gradient(120deg,#0b1022 0%,#1b0933 100%); color:var(--txt); }
+  .wrap { max-width:960px; margin:0 auto; padding:32px 16px 80px; }
+  .card { background: linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+          border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:20px; backdrop-filter: blur(8px); }
+  h1 { font-size:28px; margin:0 0 6px; }
+  p { color:var(--muted); margin:6px 0 20px; }
+  .row { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+  .pass { padding:18px; border-radius:14px; background: linear-gradient(145deg,#131731,#0d1227);
+          border:1px solid rgba(255,255,255,.06); display:flex; gap:16px; align-items:center; }
+  .pass img { width:56px; height:56px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+  .btn { appearance:none; border:0; background:linear-gradient(90deg,var(--brand),var(--accent));
+         color:#0b0f19; font-weight:700; padding:12px 16px; border-radius:12px; cursor:pointer; }
+  .btn:disabled { filter:grayscale(100%); opacity:.5; cursor:not-allowed; }
+  .muted { color:var(--muted); font-size:13px; }
+  .consent { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; }
+  .consent .panel { width:min(520px,92vw); background:var(--panel); border:1px solid rgba(255,255,255,.12);
+                    border-radius:16px; padding:20px; }
+  .pill { display:inline-block; font-size:12px; color:#0b0f19; background:var(--ok); padding:4px 10px; border-radius:999px; font-weight:700; }
+  .foot { margin-top:20px; font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Digital Wallet Cards — ${cfg.brand}</h1>
+    <p>Add your <strong>VIP Loyalty</strong> card to your mobile wallet. We’ll ask for your consent, then the card opens in your wallet app.</p>
+
+    <div class="row">
+      <div class="pass">
+        <img src="/logo" alt="logo" />
+        <div style="flex:1">
+          <div>Apple Wallet (iPhone/iPad)</div>
+          <div class="muted">Looks like a premium credit-style card. Signed & secure.</div>
+        </div>
+        <button class="btn" id="appleBtn">Add to Apple Wallet</button>
+      </div>
+
+      <div class="pass">
+        <img src="/logo" alt="logo" />
+        <div style="flex:1">
+          <div>Google Wallet (Android)</div>
+          <div class="muted">Tap to save to Google Wallet with your Google account.</div>
+        </div>
+        <button class="btn" id="googleBtn">Save to Google Wallet</button>
+      </div>
+    </div>
+
+    <div class="foot">Tip: If your wallet doesn’t open, check pop-up permissions and try again.</div>
+  </div>
+</div>
+
+<div class="consent" id="consent">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <strong>Confirm & Consent</strong>
+      <span class="pill">Required</span>
+    </div>
+    <p>By continuing, you allow <strong>${cfg.brand}</strong> to create a digital loyalty pass for your personal use and
+    open your mobile wallet to add it. We’ll log anonymous technical events (no sensitive data) to ensure it worked.</p>
+    <label style="display:flex;gap:10px;align-items:flex-start;">
+      <input type="checkbox" id="agree" />
+      <span>I agree to add the card and open my wallet app.</span>
+    </label>
+    <div style="display:flex; gap:10px; margin-top:16px">
+      <button class="btn" id="proceed">Continue</button>
+      <button class="btn" style="background:#333;color:#fff" id="cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const consent = document.getElementById('consent');
+  const agree = document.getElementById('agree');
+  const proceed = document.getElementById('proceed');
+  const cancel = document.getElementById('cancel');
+  let pendingKind = null; // 'apple' | 'google'
+  let token = null;
+
+  const showConsent = (kind) => {
+    pendingKind = kind;
+    agree.checked = false;
+    consent.style.display = 'flex';
+  };
+  const hideConsent = () => { consent.style.display = 'none'; pendingKind = null; };
+
+  const beacon = (type, extra) => {
+    try { navigator.sendBeacon('/b', JSON.stringify({ type, token, extra, ts: Date.now() })); }
+    catch { fetch('/b', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, token, extra, ts: Date.now() })}); }
+  };
+
+  // Visibility heuristic: if tab loses focus shortly after click -> likely wallet opened
+  let clickTs = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (token && Date.now() - clickTs < 5000 && document.hidden) {
+      beacon('visibility-hidden', { dt: Date.now() - clickTs });
+    }
+  });
+
+  const goApple = async () => {
+    const r = await fetch('/wallet/apple/prepare', { method:'POST' });
+    const j = await r.json();
+    token = j.token;
+    clickTs = Date.now();
+    beacon('apple-click', {});
+    // Start download; iOS installer UA will hit server; client also pings
+    window.location.href = '/wallet/apple/download?token=' + encodeURIComponent(token);
+    setTimeout(() => beacon('apple-post-2s', {}), 2000);
+  };
+
+  const goGoogle = async () => {
+    const r = await fetch('/wallet/google/prepare', { method:'POST' });
+    const j = await r.json();
+    token = j.token;
+    clickTs = Date.now();
+    beacon('google-click', {});
+    // Open Save URL
+    const w = window.open(j.saveUrl, '_blank');
+    if (!w) beacon('popup-blocked', {});
+    setTimeout(() => beacon('google-post-2s', {}), 2000);
+  };
+
+  proceed.onclick = () => {
+    if (!agree.checked) return alert('Please confirm consent to continue.');
+    hideConsent();
+    if (pendingKind === 'apple') goApple();
+    if (pendingKind === 'google') goGoogle();
+  };
+  cancel.onclick = hideConsent;
+
+  document.getElementById('appleBtn').onclick = () => showConsent('apple');
+  document.getElementById('googleBtn').onclick = () => showConsent('google');
+})();
+</script>
+</body>
+</html>`);
+});
+
+// Logo endpoint
+app.get('/logo', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.type('png').send(fs.readFileSync(path.join(assetsDir, 'logo.png')));
+});
+
+// ---------- Telemetry beacons ----------
+app.post('/b', express.text({ type: '*/*' }), (req, res) => {
+  try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    telemetry.beacons.push({ ...body, ip: req.ip });
+    log('info', 'beacon', body);
+  } catch (e) {
+    log('error', 'beacon-parse-fail', { err: String(e) });
+  }
+  res.status(204).end();
+});
+
+// ---------- Apple Wallet generation ----------
+const loadAppleCreds = () => {
+  const cert = fs.readFileSync(cfg.apple.certPath);
+  const key = fs.readFileSync(cfg.apple.keyPath);
+  return { cert, key };
+};
+
+const appleSessions = new Map(); // token -> { createdAt }
+
+app.post('/wallet/apple/prepare', (_req, res) => {
+  const token = nanoid();
+  appleSessions.set(token, { createdAt: Date.now() });
+  telemetry.clicks.set(token, { kind: 'apple', when: Date.now() });
+  res.json({ token });
+});
+
+app.get('/wallet/apple/download', async (req, res) => {
+  const token = String(req.query.token || '');
+  if (!appleSessions.has(token)) return res.status(400).send('Invalid token');
+
+  // Heuristic: record UA/IP for Apple installer
+  const ag = useragent.parse(req.headers['user-agent'] || '');
+  telemetry.downloads.push({ kind: 'apple', token, ts: Date.now(), ip: req.ip, ua: ag.toString() });
+  log('info', 'apple-download', { token, ua: ag.toString() });
+
+  try {
+    const { cert, key } = loadAppleCreds();
+
+    const pass = Passbook.createPass({
+      model: null,
+      certificates: {
+        wwdr: cert,           // many providers embed WWDR with signerCert in 2025 SDKs
+        signerCert: cert,
+        signerKey: key,
+        signerKeyPassphrase: cfg.apple.keyPassphrase,
+      },
+      overrides: {
+        passTypeIdentifier: cfg.apple.passTypeId,
+        teamIdentifier: cfg.apple.teamId,
+        serialNumber: `PW-${Date.now()}`,
+        description: `${cfg.brand} VIP Loyalty`,
+        organizationName: cfg.brand,
+        foregroundColor: 'rgb(255,255,255)',
+        backgroundColor: 'rgb(16,20,44)',
+      }
+    });
+
+    // Credit-card style fields
+    pass.headerFields.add({ key: 'member', value: 'VIP Platinum', label: 'Tier' });
+    pass.primaryFields.add({ key: 'name', value: 'Nir Hadad', label: 'Member' });
+    pass.secondaryFields.add({ key: 'points', value: '256', label: 'Points' });
+    pass.backFields.add({ key: 'terms', label: 'Terms', value: 'Non-transferable. © ' + new Date().getFullYear() + ' ' + cfg.brand });
+
+    // Images
+    pass.images.add('logo', fs.readFileSync(path.join(assetsDir, 'logo.png')));
+
+    res.set({
+      'Content-Type': 'application/vnd.apple.pkpass',
+      'Content-Disposition': 'attachment; filename="petwash-loyalty.pkpass"',
+      'Cache-Control': 'no-store',
+    });
+
+    const stream = pass.stream();
+    stream.on('error', (e) => {
+      log('error', 'pkpass-stream-error', { err: String(e) });
+      if (!res.headersSent) res.status(500).end('Pass error');
+    });
+    stream.pipe(res);
+  } catch (e) {
+    log('error', 'apple-generate-fail', { err: String(e) });
+    res.status(500).send('Failed to create pass');
+  }
+});
+
+// ---------- Google Wallet (Save URL) ----------
+const googleSessions = new Map(); // token -> { saveUrl }
+
+app.post('/wallet/google/prepare', async (_req, res) => {
+  try {
+    const token = nanoid();
+    telemetry.clicks.set(token, { kind: 'google', when: Date.now() });
+
+    const sa = JSON.parse(fs.readFileSync(cfg.google.saPath, 'utf8'));
+    const objectId = `${cfg.google.classId.split('.')[0]}.${'obj_' + token}`; // issuerId.obj_token
+
+    const loyaltyObject = {
+      id: objectId,
+      classId: cfg.google.classId,
+      state: 'active',
+      accountId: 'PW-' + token.slice(0, 6),
+      accountName: 'Nir Hadad',
+      barcode: { type: 'qrCode', value: 'PW-' + token, alternateText: 'PetWash Member' },
+      loyaltyPoints: { label: 'Points', balance: { string: '256' } },
+      images: [{ sourceUri: { uri: cfg.baseUrl + '/logo' } }],
+      issuerName: cfg.brand,
+    };
+
+    const payload = {
+      iss: sa.client_email,
+      aud: 'google',
+      typ: 'savetowallet',
+      iat: Math.floor(Date.now() / 1000),
+      payload: { loyaltyObjects: [loyaltyObject] }
+    };
+
+    const signedJwt = jwt.sign(payload, sa.private_key, { algorithm: 'RS256' });
+    const saveUrl = `https://pay.google.com/gp/v/save/${signedJwt}`;
+
+    googleSessions.set(token, { saveUrl, createdAt: Date.now() });
+    res.json({ token, saveUrl });
+  } catch (e) {
+    log('error', 'google-prepare-fail', { err: String(e) });
+    res.status(500).json({ error: 'Failed to create Google save URL' });
+  }
+});
+
+// Optional: capture a ping when user returns (if you link a "Back to app" button after save)
+app.get('/wallet/google/ping', (req, res) => {
+  const token = String(req.query.token || '');
+  const ag = useragent.parse(req.headers['user-agent'] || '');
+  telemetry.googleSaves.push({ token, ts: Date.now(), ip: req.ip, ua: ag.toString() });
+  log('info', 'google-ping', { token, ua: ag.toString() });
+  res.type('txt').send('ok');
+});
+
+// ---------- Health & simple diagnostics ----------
+app.get('/health', (_req, res) => res.json({ ok: true, brand: cfg.brand, t: Date.now() }));
+
+app.get('/telemetry', (_req, res) => {
+  res.json({
+    clicks: telemetry.clicks.size,
+    beacons: telemetry.beacons.slice(-20),
+    downloads: telemetry.downloads.slice(-20),
+    googleSaves: telemetry.googleSaves.slice(-20),
+  });
+});
+
+// ---------- Start ----------
+app.listen(cfg.port, () => {
+  log('info', 'wallet-hub-started', { port: cfg.port, baseUrl: cfg.baseUrl, brand: cfg.brand });
+});

@@ -1,0 +1,47 @@
+Technical Fix (Conceptual Caddyfile Syntax)
+1. Ensure the Domain is Listed for Automatic TLS
+www.petwash.co.il {
+# This automatically requests and manages a Let's Encrypt certificate for the domain.
+# The certificate must be served correctly by the Replit environment.
+tls {
+# Optional: Specify the email for renewal notifications
+email admin@petwash.co.il
+}
+
+# Proxy requests back to the internal application port (e.g., 8080 or the Replit port)
+reverse_proxy localhost:8080
+}
+
+2. (Optional but good practice) Remove or correct the reference to the Replit domain certificate.
+6 minutes ago
+Optimized Agent memory
+"The deployed web server for www.petwash.co.il is incorrectly serving an SSL certificate issued for the Common Name picard.replit.dev. Please check the custom domain configuration for www.petwash.co.il in the deployment settings. This needs to be re-verified/re-linked to trigger the automated system to provision and serve the correct Let's Encrypt certificate for the custom domain
+5 minutes ago
+I added the dns at host its thus Picard , renew it remove it and reinstall it
+Fix the fault now with architect
+2 minutes ago
+It's verified and saved with right dns setting I've checked
+It's you caused it always issues
+1 minute ago
+I understand the domain is verified with correct DNS. Let me check the application logs and configuration to see if there's anything preventing the correct certificate from being served:
+Checked console and system logs
+I checked the application logs - the app is running perfectly with no SSL or deployment configuration errors. The SSL certificate issue you're experiencing is not caused by the application code - it's a Replit platform infrastructure issue.
+
+What's Happening
+Your custom domain www.petwash.co.il is verified and the DNS is correct, but Replit's certificate provisioning system hasn't switched from the default picard.replit.dev certificate to a Let's Encrypt certificate for your domain.
+
+Why I Can't Fix This
+SSL certificates are managed by Replit's infrastructure, not by application code
+I don't have access to modify deployment/certificate settings
+The architect tool analyzes and reviews code - it cannot fix platform-level certificate provisioning issues
+This requires intervention from Replit's platform team
+What You Need to Do
+Since the domain is verified but the certificate isn't updating, you need to contact Replit Support directly:
+
+Go to Help in Replit
+Open a support ticket explaining:
+Domain www.petwash.co.il is verified
+DNS records are correct
+Certificate is still showing picard.replit.dev instead of Let's Encrypt for your domain
+Request manual certificate provisioning
+The recent work I completed (adding walker/sitter profiles and GPS tracking) didn't touch any deployment, domain, or SSL configuration - those features are all frontend/backend application code that don't affect certificate serving.

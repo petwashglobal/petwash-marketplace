@@ -1,0 +1,84 @@
+// src/types/index.ts
+
+import { Moment } from 'moment'; // Or use native Date objects with 'date-fns'
+
+/**
+ * @description Represents a single expense submitted by an employee.
+ * @remarks Tailored for Israeli financial reporting (ILS, VAT).
+ */
+export interface Expense {
+  id: string; // Unique ID for the expense (UUID)
+  employeeId: string; // ID of the employee who submitted the expense
+  businessId: string; // ID of the business/company
+  date: Moment; // Date of the expense (using Moment for consistency)
+  // Amounts in Israeli Shekels (₪)
+  totalAmountILS: number; // Gross amount, as appears on receipt (כולל מע"מ)
+  netAmountILS: number; // Net amount (ללא מע"מ)
+  vatAmountILS: number; // VAT amount (סכום מע"מ)
+  vatRate: number; // Applied VAT rate (e.g., 0.17 for 17%)
+  currency: 'ILS'; // Explicitly Israeli Shekel
+  category: ExpenseCategory; // Pre-defined categories
+  description: string; // User-provided description
+  // Proof of expense
+  receiptImageUris: string[]; // URIs to uploaded receipt images (can be multiple)
+  receiptTextData?: string; // OCR extracted text from receipt (optional)
+  // Compliance & Status
+  status: 'Draft' | 'Pending' | 'Approved' | 'Rejected' | 'Reimbursed';
+  vatStatus: 'Eligible' | 'Not Eligible' | 'ReviewedForReclaim'; // For Israeli VAT reclaim
+  policyViolations: PolicyViolation[]; // List of policy issues
+  rejectionReason?: string; // If status is Rejected
+  approverId?: string; // ID of the manager who approved/rejected
+  submissionDate: Moment;
+  lastUpdated: Moment;
+}
+
+/**
+ * @description Pre-defined categories for expenses.
+ * @remarks Should be configurable by the backend.
+ */
+export type ExpenseCategory = 
+  | 'Travel' // נסיעות
+  | 'Meals'  // ארוחות
+  | 'OfficeSupplies' // ציוד משרדי
+  | 'Training' // הכשרה
+  | 'Accommodation' // לינה
+  | 'Mileage' // קילומטראז'
+  | 'Entertainment' // בידור/אירוח
+  | 'Other'; // אחר
+
+/**
+ * @description Represents a rule violation for an expense.
+ */
+export interface PolicyViolation {
+  id: string;
+  ruleCode: 'MAX_AMOUNT' | 'FORBIDDEN_VENDOR' | 'MISSING_RECEIPT' | 'DUPLICATE_EXPENSE';
+  messageHE: string; // Message in Hebrew
+  messageEN: string; // Message in English
+  isCritical: boolean; // Does it prevent submission?
+}
+
+/**
+ * @description Represents an employee user.
+ */
+export interface Employee {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  managerId?: string; // For approval flows
+  roles: ('employee' | 'manager' | 'admin')[];
+  // Employee-specific financial settings
+  dailyMealAllowanceILS: number;
+  // Other relevant Israeli IDs like Teudat Zehut, if needed for HR/payroll integration
+  // idNumber?: string;
+}
+
+/**
+ * @description Configuration for the application, typically from backend.
+ */
+export interface AppConfig {
+  currentIsraeliVatRate: number; // e.g., 0.17
+  maxMealAllowanceILS: number;
+  forbiddenVendors: string[];
+  // ... other global settings
+}

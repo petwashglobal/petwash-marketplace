@@ -1,0 +1,124 @@
+{
+  "project_mandate": "PetWash Group Full Autonomous Business Mandate (Excluding K9000)",
+  "architecture_standard": "Microservices, Serverless-First, Polyglot Persistence (2026)",
+  "global_financial_policy": {
+    "separation": "Autonomous P&L, Dedicated Ledger (SQL/NoSQL) and Banking for Each of 7 Platforms",
+    "compliance": "Israel VAT (17%) Calculation and e-Invoicing on Platform Commission/Revenue Component Only",
+    "user_data_isolation": "Dedicated User Data Tables for each platform; only 'Identity Service' is shared."
+  },
+  "global_ux_mandate": {
+    "aesthetic": "7-Star Luxury, Pure White (#FFFFFF) Canvas with Neomorphism 2.0 Depth",
+    "iconography": "Systemic Minimalist Line Art, Rounded Corners (SVG format)",
+    "responsiveness": "Fluid Adaptive Layout for All Screen Sizes (Mobile-First, Tablet Multi-Column)",
+    "notifications": "Unified Push Notification Service for Critical/Transactional Alerts"
+  },
+  "autonomous_platforms": [
+    {
+      "platform_name": "The Sitter Suite™",
+      "us_model": "Airbnb/Rover",
+      "financial_model": "Commission-Based Marketplace + Owner Booking Fee",
+      "dedicated_departments": {
+        "domain_engineering": "Booking, Scheduling, & Availability Microservices (PostgreSQL)",
+        "trust_safety_operations": "AI Vetting Engine, 24/7 Dispute Resolution, Policy Enforcement",
+        "compliance_finance": "Escrow Management, Commission Payout Ledger, Sitter Tax Reporting Tools",
+        "product_ux": "Policy Acceptance UI, Personalized Owner/Sitter Dashboard"
+      },
+      "unique_services": {
+        "booking": "AI Matchmaking based on Pet Temperament/Needs; Dynamic Pricing",
+        "compliance": "Digital Contract Enforcement (Liability Waivers, Insurance Disclosure, House Instructions)",
+        "communication": "Encrypted In-App Messaging with AI keyword triaging for emergencies"
+      }
+    },
+    {
+      "platform_name": "Walk My Pet™",
+      "us_model": "Wag! (ASAP Model)",
+      "financial_model": "Commission + Dynamic Pricing Surcharge",
+      "dedicated_departments": {
+        "domain_engineering": "Geospatial Indexing & Dispatch Microservices (Redis/PostGIS)",
+        "logistics_ops": "Walker Certification, Supply Management, Real-Time Safety Monitoring",
+        "compliance_finance": "Dynamic Pricing Engine, Walker Payout Ledger",
+        "product_ux": "Walker App UI (Hands-Free Operation, Activity Card Submission)"
+      },
+      "unique_services": {
+        "logistics": "H3 Geospatial Algorithm for <5s Walker Match",
+        "safety": "Live GPS Route Tracking, AI Route Deviation Alerts",
+        "reporting": "Mandatory GPS-Validated Check-In/Out and Digital Activity Card"
+      }
+    },
+    {
+      "platform_name": "PetTrek™",
+      "us_model": "Uber/Lyft (Specialized Fleet)",
+      "financial_model": "Commission + Dynamic Pricing Surcharge + Specialized Fee",
+      "technical_divergence": "High-Complexity Commercial Logistics Stack (Separate from Walk/Sitter)",
+      "dedicated_departments": {
+        "logistics_fleet_operations": "Vehicle & Asset Service (IoT Telematics, Maintenance Scheduling, Licensing)",
+        "driver_vetting_compliance": "Commercial CDL/Insurance Verification, Specialized Pet Transport Training",
+        "dispatch_optimization": "ML-Powered Multi-Stop Route Planning & Geofencing Enforcement",
+        "compliance_finance": "Expense Ledger Integration (Mileage/Fuel/Tolls) & Driver Payouts"
+      },
+      "unique_services": {
+        "vehicle_monitoring": "IoT Integration for real-time speed, braking, and vehicle health",
+        "safety": "Driver App for hands-free operation and secure pet loading confirmation",
+        "auditing": "Transaction audit trail links specific vehicle, driver, route, and insurance policy"
+      }
+    },
+    {
+      "platform_name": "Pet Wash Hub™",
+      "us_model": "Subscription Aggregator",
+      "financial_model": "Subscription/Membership Fees + Affiliate Revenue",
+      "dedicated_departments": {
+        "domain_engineering": "Subscription Management & Billing Microservices",
+        "membership_ops": "Loyalty Program Management & Retention",
+        "compliance_finance": "Recurring Revenue Ledger (MRR/ARR Tracking)"
+      },
+      "unique_services": {
+        "loyalty": "Gamified Points accumulation across all PetWash services",
+        "billing": "Automated recurring payment processing and dunning management"
+      }
+    },
+    {
+      "platform_name": "Paw Finder™",
+      "us_model": "Pet Amber Alert / Community Platform",
+      "financial_model": "Free Service (Cost Center / Freemium Upsells)",
+      "dedicated_departments": {
+        "domain_engineering": "AI Image Recognition & Geospatial Alert Microservices (NoSQL)",
+        "community_ops": "User Moderation and Report Vetting",
+        "compliance_finance": "Cost Center Ledger (Tracks operational costs only)"
+      },
+      "unique_services": {
+        "detection": "AI-powered image analysis for rapid pet matching",
+        "alerting": "Instant geo-fenced community alerts pushed to all PetWash users"
+      }
+    },
+    {
+      "platform_name": "The Plush Lab™",
+      "us_model": "Midjourney/Dall-E",
+      "financial_model": "Freemium (Free Avatars + Premium Image Pack Sales)",
+      "dedicated_departments": {
+        "domain_engineering": "Generative AI API & High-Performance Computing Microservices",
+        "content_ops": "AI Model Training, Style Management, and Content Moderation",
+        "compliance_finance": "Digital Product Sales Ledger (VAT applied to premium sales)",
+        "product_ux": "Simplified Image Upload & Editing Canvas UI"
+      },
+      "unique_services": {
+        "ai_engine": "Custom fine-tuned generative model for pet photography styles",
+        "virality": "No Sign-Up required for basic free generation"
+      }
+    },
+    {
+      "platform_name": "Enterprise",
+      "us_model": "Uber/Franchise Model",
+      "financial_model": "Licensing Fees (Upfront) + Royalty Fees (Recurring Revenue Share)",
+      "dedicated_departments": {
+        "domain_engineering": "Multi-Tenant BI/Analytics Data Warehouse",
+        "business_development": "Franchise Sales, Legal Compliance, and Partner Onboarding",
+        "compliance_finance": "Royalty Revenue Ledger & Multi-Currency Management",
+        "product_ux": "Executive Dashboard for Franchisees (KPIs, Geo-Reporting, P&L Summary)"
+      },
+      "unique_services": {
+        "global_system": "Multi-Currency and multi-language support built into the core framework",
+        "transparency": "Real-time, audited performance metrics pushed to franchisees"
+      }
+    }
+  ]
+}

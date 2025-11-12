@@ -1,0 +1,17 @@
+🚀 The 2025 Pet Marketplace Architecture: Open Flow Edition
+The system is built on four interconnected layers: Mobile Apps, Real-Time Layer, Backend Logic, and Financial Management.
+I. 📱 Mobile Apps (User & Sitter/Driver)
+The best code for 2025 mobile applications focuses entirely on declarative UI frameworks for performance, maintainability, and fast development cycles.
+• User/Client App: Built using SwiftUI for iOS and Jetpack Compose for Android. This app focuses on seamless booking, high-precision map tracking, and transparent Sitter profile viewing.
+• Sitter/Driver App: Also built using SwiftUI for iOS and Jetpack Compose for Android. The key difference lies in the functionality: this app handles real-time Status Toggles (Online/Offline), instant Job Dispatch alerts, and the Earning Dashboard view.
+II. 🧠 Backend Logic & Data Flow (The System Brain)
+The backend must be a Microservices Architecture using high-performance languages.
+• API & Core Logic: The system uses Node.js (NestJS) or Python (FastAPI). These frameworks are chosen for their speed in handling high-volume I/O operations (like constant GPS pings).
+• Database: PostgreSQL with the PostGIS extension is the mandatory best practice for 2025. It provides transactional safety for accounting records and ultra-fast geospatial search capabilities needed to find the nearest Sitter efficiently.
+• Payments & Accounting: The entire financial flow relies on Stripe Connect. This service handles the secure collection from the User, automatically deducts the platform's commission, and transfers the net amount to the Sitter/Driver's account. This system automatically provides necessary tax documentation (like 1099 forms).
+III. 💻 CORE CODE CONCEPTS: Open & Transparent Logic
+The core "best code" is defined by how transparently and effectively it handles location, matching, and money.
+1. Pet Transport (Uber Model) - Real-Time Code
+The system uses WebSockets (Socket.io) as the dedicated layer for instantaneous, low-latency communication.
+A. Sitter/Driver Location Reporting (Kotlin Concept):
+The Android (Kotlin) app utilizes a background service to constantly stream GPS data when a job is active, ensuring the User sees the live, open-air location of their pet's transport.

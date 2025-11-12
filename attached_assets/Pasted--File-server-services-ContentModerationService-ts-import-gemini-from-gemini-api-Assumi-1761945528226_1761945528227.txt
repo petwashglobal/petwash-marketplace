@@ -1,0 +1,64 @@
+// File: server/services/ContentModerationService.ts
+
+import { gemini } from 'gemini-api'; // Assuming a secure, enterprise Gemini API for moderation
+import * as Blacklist from './BlacklistedTerms.json'; // Local file for quick, known checks
+
+/**
+ * Executes a 2-stage, multi-lingual moderation check on all user-submitted text.
+ * @param text The user's input (chat message, post caption, comment).
+ * @returns { isAllowed: boolean, reason: string }
+ */
+export async function moderateContent(text: string): Promise<{ isAllowed: boolean, reason: string }> {
+    const normalizedText = text.toLowerCase().trim();
+    
+    // --- STAGE 1: LOCAL BLACKLIST (Fast Check) ---
+    // Check for explicit, known slurs/abuse in Hebrew and other languages.
+    // Example terms in Blacklist.json: ["זבל", "מסריח", "fuck you", "cunt", "asshole", "בן זונה"]
+    // **MANDATORY ADDITION:** Include sensitive political/demographic terms: ["שמאלנים", "ספרדים", "אשכנזים"]
+    
+    const isBlacklisted = Blacklist.terms.some(term => normalizedText.includes(term));
+
+    if (isBlacklisted) {
+        return { isAllowed: false, reason: 'Explicit Blacklist Violation.' };
+    }
+
+    // --- STAGE 2: AI-POWERED SENTIMENT & INTENT ANALYSIS (Deep Check) ---
+    // Use an advanced LLM (like Gemini) to check for nuanced or evolving abusive language.
+    // This is the **24/7 AI monitoring** that inserts code/updates the system.
+
+    const prompt = `Analyze the following text for abusive, hateful, or harassing intent, 
+    even if the words are subtle or veiled. The platform is a 7-Star Luxury Pet Community, 
+    and any language that can hurt, offend, or cause division (including political/demographic slurs) 
+    is strictly forbidden. Return 'ALLOWED' or 'SUSPEND' with a brief reason.
+    Text: "${text}"`;
+
+    const aiResponse = await gemini.generateContent({ 
+        model: 'gemini-2.5-flash', 
+        contents: prompt 
+    });
+    
+    const moderationResult = aiResponse.text.trim().toUpperCase();
+
+    if (moderationResult.includes('SUSPEND') || moderationResult.includes('NOT ALLOWED')) {
+        // Log the AI-flagged term to a database queue for human review and potential addition to the Blacklist.json.
+        // This is the "insert code that keep update for works that can’t be used" mechanism.
+        logNewAbusiveTerm(text, 'AI_FLAGGED_ABUSE', aiResponse.text);
+        
+        return { isAllowed: false, reason: `AI Moderation Flagged: ${aiResponse.text}` };
+    }
+
+    return { isAllowed: true, reason: 'Content Approved' };
+}
+
+// Implement this check before ANY user data is saved or displayed (chat/posts/comments)
+// Example usage in the K9000 post route:
+/*
+app.post('/api/pawportal/post', async (req, res) => {
+    const { isAllowed, reason } = await moderateContent(req.body.caption);
+    
+    if (!isAllowed) {
+        return res.status(403).json({ error: 'Content violation. Suspension risk.', details: reason });
+    }
+    // ... proceed to save post ...
+});
+*/

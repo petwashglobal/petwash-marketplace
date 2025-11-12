@@ -1,0 +1,105 @@
+// **NOTE:** Replace 'YOUR_OPENWEATHERMAP_API_KEY' and 'YOUR_CITY_NAME' with actual values
+const WEATHER_API_KEY = 'YOUR_OPENWEATHERMAP_API_KEY';
+const API_BASE_URL = 'https://api.openweathermap.org/data/2.5/forecast';
+
+let petData = {
+    'Buster': {
+        vaccines: [
+            { name: 'Distemper', date: '2024-10-20', nextDue: '2027-10-20' },
+            { name: 'Parvovirus', date: '2024-10-20', nextDue: '2027-10-20' }
+        ],
+        washes: [
+            // { pet: 'Buster', date: '2025-10-27', weather: '...' }
+        ]
+    }
+};
+
+// --- VACCINE FUNCTIONS ---
+
+function renderVaccines() {
+    const list = document.getElementById('vaccineList');
+    list.innerHTML = '';
+    
+    // Simple logic to check if a vaccine is due soon (within 60 days)
+    const now = new Date();
+    
+    petData.Buster.vaccines.forEach(v => {
+        const nextDue = new Date(v.nextDue);
+        const daysLeft = Math.ceil((nextDue - now) / (1000 * 60 * 60 * 24));
+        
+        let status = '';
+        if (daysLeft < 60) {
+            status = `<span class="alert"> (Due in ${daysLeft} days!)</span>`;
+        }
+        
+        const listItem = document.createElement('li');
+        listItem.innerHTML = `
+            <strong>${v.name}:</strong> Last: ${v.date}, Next Due: ${v.nextDue} ${status}
+        `;
+        list.appendChild(listItem);
+    });
+}
+
+function addVaccine(petName, name, nextDue) {
+    if (petData[petName]) {
+        petData[petName].vaccines.push({ 
+            name: name, 
+            date: new Date().toISOString().slice(0, 10), // Today's date
+            nextDue: nextDue 
+        });
+        renderVaccines();
+    }
+}
+
+// --- CALENDAR & WASH FUNCTIONS ---
+
+function renderWashCalendar() {
+    const calendarDiv = document.getElementById('washCalendar');
+    calendarDiv.innerHTML = '';
+    
+    if (petData.Buster.washes.length === 0) {
+        calendarDiv.innerHTML = '<p>No washes scheduled yet.</p>';
+        return;
+    }
+
+    petData.Buster.washes.forEach(wash => {
+        const item = document.createElement('div');
+        item.className = 'wash-item';
+        item.innerHTML = `
+            <div>Wash for <strong>${wash.pet}</strong> on <strong>${wash.date}</strong></div>
+            <div class="weather-display" id="weather-${wash.date}">
+                ${wash.weather || 'Fetching weather...'}
+            </div>
+        `;
+        calendarDiv.appendChild(item);
+    });
+}
+
+async function scheduleWash(petName, date) {
+    // Check if wash is already scheduled
+    if (petData[petName].washes.some(w => w.date === date)) {
+        alert(`Wash already scheduled for ${date}!`);
+        return;
+    }
+
+    // Add the wash to the data
+    petData[petName].washes.push({ pet: petName, date: date, weather: 'Checking forecast...' });
+    renderWashCalendar();
+
+    // Fetch and update the weather asynchronously
+    const city = document.getElementById('cityInput').value || 'London';
+    const weatherText = await getWashWeather(city, date);
+    
+    // Update the weather status in the data and the UI
+    const washIndex = petData[petName].washes.findIndex(w => w.date === date);
+    if (washIndex !== -1) {
+        petData[petName].washes[washIndex].weather = weatherText;
+        document.getElementById(`weather-${date}`).innerHTML = weatherText;
+    }
+}
+
+// Initial render when the page loads
+window.onload = () => {
+    renderVaccines();
+    renderWashCalendar();
+};

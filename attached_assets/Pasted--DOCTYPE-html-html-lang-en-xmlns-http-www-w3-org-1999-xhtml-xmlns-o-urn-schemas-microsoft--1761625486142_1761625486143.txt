@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="x-apple-disable-message-reformatting">
+    <title>Luxury Workflow Notification</title>
+    <style>
+        /* ---------------------------------------------------------------------- */
+        /* VITAL INFO: BASE STYLES & LUXURY AESTHETIC */
+        /* ---------------------------------------------------------------------- */
+        body { margin: 0; padding: 0; word-spacing: normal; background-color: #f7f7f7; }
+        table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        
+        /* Typography: Elegant and Highly Legible */
+        h1 { margin: 0; font-family: Helvetica, Arial, sans-serif; font-size: 28px; line-height: 32px; color: #1e293b; font-weight: 300; } /* Lighter weight for luxury feel */
+        p { margin: 0; font-family: Helvetica, Arial, sans-serif; font-size: 16px; line-height: 24px; color: #334155; }
+        a { color: #0f172a; text-decoration: none; }
+
+        /* Button Style */
+        .button {
+            display: inline-block; padding: 12px 24px; border-radius: 4px; 
+            font-weight: bold; font-size: 15px; line-height: 20px; text-decoration: none; 
+            white-space: nowrap; mso-padding-alt: 0; 
+        }
+
+        /* ---------------------------------------------------------------------- */
+        /* KEY TREND: MOBILE RESPONSIVENESS (Mobile-First) */
+        /* ---------------------------------------------------------------------- */
+        @media screen and (max-width: 600px) {
+            .column-container { max-width: 100% !important; }
+            .stack { display: block !important; width: 100% !important; }
+            .mobile-padding { padding: 20px !important; }
+            .mobile-header { font-size: 24px !important; line-height: 28px !important; }
+        }
+
+        /* ---------------------------------------------------------------------- */
+        /* KEY TREND: DARK MODE OPTIMIZATION (iOS/Android) */
+        /* ---------------------------------------------------------------------- */
+        :root {
+            color-scheme: light dark;
+            supported-color-schemes: light dark;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            body, .darkmode-bg { background-color: #1a1a1a !important; }
+            h1, p, a, .darkmode-text { color: #e2e8f0 !important; }
+            .darkmode-card { background-color: #2c2c2c !important; border: 1px solid #444 !important; }
+        }
+        
+        /* Android/Gmail specific dark mode styles */
+        [data-ogsc] body, [data-ogsc] .darkmode-bg { background-color: #1a1a1a !important; }
+        [data-ogsc] h1, [data-ogsc] p, [data-ogsc] a, [data-ogsc] .darkmode-text { color: #e2e8f0 !important; }
+        [data-ogsc] .darkmode-card { background-color: #2c2c2c !important; border: 1px solid #444 !important; }
+    </style>
+</head>
+
+<body style="margin:0;padding:0;width:100%;" class="darkmode-bg">
+    <center style="width:100%;background-color:#f7f7f7;" class="darkmode-bg">
+        <div style="max-width:600px;margin:0 auto;">
+            <table role="presentation" style="width:100%;max-width:600px;border-spacing:0;font-family:Helvetica,Arial,sans-serif;background-color:#ffffff;" class="column-container darkmode-card">
+                
+                <tr>
+                    <td style="padding:25px 30px;text-align:center;">
+                        <img src="[Your Logo URL]" alt="Luxury Brand" width="150" style="height:auto;border:0; max-width: 150px;"/>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding: 20px 30px 40px;" class="mobile-padding">
+                        <table role="presentation" style="width:100%;border-spacing:0;">
+                            <tr>
+                                <td style="padding-bottom: 20px;">
+                                    <h1 class="mobile-header darkmode-text">Action Required: Q3 Strategy Approval</h1>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding-bottom: 25px;">
+                                    <p class="darkmode-text">Dear [Recipient Name],</p>
+                                    <p style="padding-top: 15px;" class="darkmode-text">A critical workflow step requires your immediate attention. The final Q3 Strategy document has been updated and is awaiting your executive approval.</p>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td style="padding-bottom: 30px;">
+                                    <table role="presentation" style="width:100%;border-spacing:0;border:1px solid #e5e7eb; border-radius: 4px; padding: 15px 20px;" class="darkmode-card">
+                                        <tr>
+                                            <td style="font-family: Helvetica, Arial, sans-serif; font-size: 14px; line-height: 20px; color: #64748b; padding: 5px 0;" class="darkmode-text">
+                                                <strong style="color: #0f172a;" class="darkmode-text">Priority:</strong> High
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-family: Helvetica, Arial, sans-serif; font-size: 14px; line-height: 20px; color: #64748b; padding: 5px 0;" class="darkmode-text">
+                                                <strong style="color: #0f172a;" class="darkmode-text">Deadline:</strong> EOD, October 30
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-family: Helvetica, Arial, sans-serif; font-size: 14px; line-height: 20px; color: #64748b; padding: 5px 0;" class="darkmode-text">
+                                                <strong style="color: #0f172a;" class="darkmode-text">Originator:</strong> Jane Doe, Strategy Lead
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td style="padding-bottom: 30px; text-align: center;">
+                                    <a href="[Approval Link]" class="button"
+                                        style="background-color: #0f172a; color: #ffffff; border: 1px solid #0f172a;"
+                                        title="Approve Document">
+                                        <span style="mso-text-raise: 15px; display: inline-block;">APPROVE & VIEW</span>
+                                        </a>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>
+                                    <p style="font-size: 14px; color: #64748b;" class="darkmode-text">
+                                        This notification was sent via your secure workflow system. Please do not reply directly to this email.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td style="padding:20px 30px;text-align:center;font-size:12px;line-height:18px;color:#94a3b8;border-top:1px solid #e5e7eb;" class="darkmode-bg">
+                        <p style="margin:0;" class="darkmode-text">&copy; 2025 Luxury Corp. All rights reserved.</p>
+                        <p style="margin:10px 0 0;" class="darkmode-text">
+                            <a href="[Unsubscribe Link]" style="color:#94a3b8; text-decoration: underline;" class="darkmode-text">Unsubscribe</a> | 
+                            <a href="[Preference Center Link]" style="color:#94a3b8; text-decoration: underline;" class="darkmode-text">Preferences</a>
+                        </p>
+                    </td>
+                </tr>
+
+            </table>
+            </div>
+    </center>
+</body>
+</html>

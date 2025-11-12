@@ -1,0 +1,133 @@
+
+The following table shows some example scenarios and browser restrictions:
+
+Scenario	Restrictions
+Allow any URL in your site	You must set two URLs in the allowedReferers list.
+URL for the domain, without a subdomain, and with a wildcard for the path. For example:
+example.com/*
+A second URL that includes a wildcard for the subdomain and a wildcard for the path. For example:
+*.example.com/*
+Allow a specific URL	Add a URL with an exact path. For example:
+www.example.com/path
+www.example.com/path/path
+Allow any URL in a single subdomain or naked domain	You must set two URLs in the `allowedReferers` list to allow an entire domain.
+URL for the domain, without a trailing slash. For example:
+www.example.com
+sub.example.com
+example.com
+A second URL for the domain that includes a wildcard for the path. For example:
+www.example.com/*
+sub.example.com/*
+example.com/*
+Adding server restrictions
+
+You can specify one or more IP addresses of the callers, for example web servers or cron jobs, that are allowed to use your API key. You can specify the IP addresses in any of the following formats:
+
+IPv4 (198.51.100.1)
+IPv6 (2001:db8::1)
+A subnet using CIDR notation (198.51.100.0/24, 2001:db8::/64)
+The following example shows how to create an API key with a list of allowedIps:
+
+
+
+gcurl https://apikeys.googleapis.com/v2/projects/PROJECT_NUMBER/locations/global/keys  \
+  --request POST \
+  --data  '{
+    "displayName" : "API key with server restrictions with IPv4, IPv6 and CIDR",
+    "restrictions" : {
+      "serverKeyRestrictions": {
+        "allowedIps": ["198.51.100.1","198.51.100.0/24","2001:db8::1","2001:db8::/64"]
+      }
+    }
+  }'
+Adding Android restrictions
+
+You can restrict usage of an API key to only your Android apps. When you create or update an API key, provide the package name and the 20 byte SHA-1 fingerprint for each app.
+
+For example, assume that you ran the keytool utility and it created the following fingerprint:
+
+
+
+  Certificate fingerprint: SHA1: DA:39:A3:EE:5E:6B:4B:0D:32:55:BF:EF:95:60:18:90:AF:D8:07:09
+The following example shows how to create an API key with the fingerprint and and package name to the androidKeyRestrictions:
+
+
+
+gcurl https://apikeys.googleapis.com/v2/projects/PROJECT_NUMBER/locations/global/keys  \
+  --request POST \
+  --data  '{
+    "displayName" : "API key with Android restrictions",
+    "restrictions" : {
+      "androidKeyRestrictions": {
+        "allowedApplications": [
+          {
+            "sha1Fingerprint": "DA:39:A3:EE:5E:6B:4B:0D:32:55:BF:EF:95:60:18:90:AF:D8:07:09",
+            "packageName": "com.example.my.app"
+          }
+        ]
+      }
+    }
+  }'
+Adding iOS restrictions
+
+You can restrict usage of an API key to only your iOS apps by providing the bundle ID of each app when you create or update a key. The following example shows how to set the iosKeyRestrictions when creating an API key:
+
+
+
+gcurl https://apikeys.googleapis.com/v2/projects/PROJECT_NUMBER/locations/global/keys  \
+  --request POST \
+  --data  '{
+    "displayName" : "API key with iOS restrictions",
+    "restrictions" : {
+      "iosKeyRestrictions": {
+        "allowedBundleIds": ["com.example.my.app1", "com.example.my.app2"]
+      }
+    }
+  }'
+Adding API restrictions
+
+API restrictions allow you to specify which Google Cloud APIs can be called using the API key. We recommend that you add both client and API restrictions to all your API keys.
+
+You can specify one or more services in the API restrictions. The following example shows how to restrict the usage of a new API key to only the services translate.googleapis.com and datastore.googleapis.com:
+
+
+
+gcurl https://apikeys.googleapis.com/v2/projects/PROJECT_NUMBER/locations/global/keys  \
+  --request POST \
+  --data '{
+    "restrictions": {
+      "api_targets": [
+        {
+          "service": "translate.googleapis.com"
+        },
+        {
+          "service" : "datastore.googleapis.com"
+        }
+      ]
+    },
+  }'
+To get a list of services that are enabled in your Google Cloud project, use the gcloud services list command.
+
+In addition to restricting the API key for use to specific services, you can optionally specify the methods in each service to further restrict the API key. The following example shows how to restrict the previous key to only allowed methods of translate.googleapis.com:
+
+
+
+gcurl https://apikeys.googleapis.com/v2/projects/PROJECT_NUMBER/locations/global/keys/KEY_ID?updateMask=restrictions  \
+  --request PATCH \
+  --data '{
+    "restrictions": {
+      "api_targets": [
+        {
+          "service": "translate.googleapis.com"
+          "methods": [
+            "Get*",
+            "DetectLanguage"
+          ]
+        },
+        {
+          "service" : "datastore.googleapis.com"
+        }
+      ]
+    },
+    "etag": "ETAG"
+  }'

@@ -1,0 +1,42 @@
+import helmet from "helmet";
+import cors from "cors";
+
+export const security = [
+  helmet({
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+    crossOriginEmbedderPolicy: false, // set true if using COEP/SharedArrayBuffer
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": [
+          "'self'",
+          "'unsafe-inline'", // Required for Vite HMR in dev
+          "https://www.gstatic.com",
+          "https://www.google.com",
+          "https://www.googleapis.com",
+          "https://accounts.google.com",
+        ],
+        "connect-src": [
+          "'self'",
+          "https://securetoken.googleapis.com",
+          "https://www.googleapis.com",
+          "https://identitytoolkit.googleapis.com",
+          "https://firestore.googleapis.com",
+          "ws://localhost:*", // Vite HMR WebSocket
+          "wss://localhost:*",
+        ],
+        "frame-src": ["'self'", "https://accounts.google.com"],
+        "img-src": ["'self'", "data:", "https:"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+      },
+    },
+  }),
+  cors({
+    origin: process.env.NODE_ENV === "production" 
+      ? ["https://petwash.co.il", "https://www.petwash.co.il"]
+      : true, // Allow all origins in dev
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
+  }),
+];

@@ -1,0 +1,73 @@
+// BEST CODE: Backend API Endpoint for Pet Wash Activation and IP Validation
+const express = require('express');
+const app = express();
+const bodyParser = require('body-parser');
+
+app.use(bodyParser.json());
+
+// --- Security Configuration (The "Amazing Code" part) ---
+// Define the allowed IP addresses for your pet wash machines
+const ALLOWED_MACHINE_IPS = [
+    '203.0.113.10',   // Pet Wash Location 1 (Main IP)
+    '203.0.113.20',   // Pet Wash Location 2 (Backup IP)
+    '10.0.0.5'        // Example of a secure internal/private network IP
+];
+// -----------------------------------------------------
+
+/**
+ * Endpoint called by the Pet Wash Machine's local controller 
+ * (after scanning the user's Apple Wallet Pass)
+ */
+app.post('/api/petwash/activate', async (req, res) => {
+    
+    // 1. INPUT: Get data from the machine
+    const { serialNumber } = req.body;
+    
+    // IMPORTANT: Get the IP of the machine making the request
+    // This uses a common header if behind a proxy/load balancer, otherwise uses req.ip
+    const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+    // --- Core IP Validation Logic (Security Check) ---
+    if (!ALLOWED_MACHINE_IPS.includes(clientIP)) {
+        console.warn(`SECURITY ALERT: Unauthorized access attempt from IP: ${clientIP}`);
+        // Terminate the request immediately for security
+        return res.status(403).json({ error: 'Forbidden: Unauthorized Machine IP' });
+    }
+    // -------------------------------------------------
+
+    // 2. AUTHENTICATION: Validate the Apple Wallet Pass data (the Serial Number)
+    if (!serialNumber) {
+        return res.status(400).json({ error: 'Missing Wallet Pass Serial Number' });
+    }
+
+    try {
+        // --- Imagine your database/PassKit Service here ---
+        const userPass = await database.getPassBySerial(serialNumber);
+
+        if (!userPass || userPass.status !== 'ACTIVE' || userPass.credit <= 0) {
+            // Update the pass to show an error message on the user's phone
+            await passKitService.updatePassStatus(serialNumber, 'Error: No Credit');
+            return res.status(401).json({ error: 'Pass invalid or insufficient credit' });
+        }
+        
+        // 3. ACTION: Send the command to the physical machine
+        // This is a conceptual function that sends a signal (e.g., via MQTT or a local network call)
+        const success = await machineControl.startWashCycle(clientIP, userPass.washType); 
+        
+        if (success) {
+            // 4. CLEANUP: Deduct credit and send an update push notification to the user's phone
+            await database.deductCredit(serialNumber, 1);
+            await passKitService.updatePassStatus(serialNumber, 'Wash Started! Credit remaining: $XX.XX');
+
+            res.status(200).json({ status: 'Success', message: 'Wash cycle started.' });
+        } else {
+            res.status(500).json({ error: 'Failed to communicate with the pet wash machine.' });
+        }
+
+    } catch (e) {
+        console.error('Server error during activation:', e);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+// app.listen(3000, () => console.log('Pet Wash API running on port 3000'));

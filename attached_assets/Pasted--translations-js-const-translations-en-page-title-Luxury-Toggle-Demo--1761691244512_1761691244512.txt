@@ -1,0 +1,72 @@
+// translations.js
+
+const translations = {
+    "en": {
+        "page_title": "Luxury Toggle Demo",
+        "main_header": "Welcome to our Elegant, Global Experience",
+        "main_text": "This UI component ensures seamless language switching with high performance on all devices (Web, iOS, Android). The core logic is fast, leveraging data attributes for instant content replacement.",
+        "ux_note": "UX Principle: We use language codes (EN, ES, FR) in a compact segmented control for quick selection."
+    },
+    "es": {
+        "page_title": "Demostración de Conmutador de Lujo",
+        "main_header": "Bienvenido a Nuestra Elegante Experiencia Global",
+        "main_text": "Este componente de interfaz de usuario garantiza un cambio de idioma sin problemas con un alto rendimiento en todos los dispositivos (Web, iOS, Android). La lógica principal es rápida, aprovechando los atributos de datos para el reemplazo instantáneo del contenido.",
+        "ux_note": "Principio UX: Utilizamos códigos de idioma (EN, ES, FR) en un control segmentado compacto para una selección rápida."
+    },
+    "fr": {
+        "page_title": "Démo de Bascule de Luxe",
+        "main_header": "Bienvenue dans Notre Expérience Globale Élégante",
+        "main_text": "Ce composant d'interface utilisateur assure un changement de langue fluide avec des performances élevées sur tous les appareils (Web, iOS, Android). La logique de base est rapide, tirant parti des attributs de données pour un remplacement instantané du contenu.",
+        "ux_note": "Principe UX : Nous utilisons des codes de langue (EN, ES, FR) dans un contrôle segmenté compact pour une sélection rapide."
+    }
+};
+
+let currentLang = 'en'; // Default language
+
+function updateContent() {
+    const langData = translations[currentLang];
+
+    // Use querySelectorAll to efficiently find all elements with a translation key
+    document.querySelectorAll('[data-key]').forEach(element => {
+        const key = element.getAttribute('data-key');
+        if (langData && langData[key]) {
+            element.textContent = langData[key];
+        }
+    });
+
+    // Update the active state on the buttons
+    document.querySelectorAll('#language-switcher button').forEach(button => {
+        button.classList.remove('active');
+        if (button.getAttribute('data-lang') === currentLang) {
+            button.classList.add('active');
+        }
+    });
+}
+
+function changeLanguage(newLang) {
+    if (currentLang !== newLang && translations[newLang]) {
+        currentLang = newLang;
+        localStorage.setItem('language', newLang); // Save preference
+        updateContent();
+    }
+}
+
+// Initialization on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Check for a saved language preference
+    const savedLang = localStorage.getItem('language');
+    if (savedLang && translations[savedLang]) {
+        currentLang = savedLang;
+    }
+
+    // 2. Attach click listeners to all language buttons
+    document.querySelectorAll('#language-switcher button').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const newLang = event.target.getAttribute('data-lang');
+            changeLanguage(newLang);
+        });
+    });
+
+    // 3. Initial content update
+    updateContent();
+});

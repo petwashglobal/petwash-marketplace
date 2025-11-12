@@ -1,0 +1,100 @@
+modules = ["nodejs-20", "web", "postgresql-16"]
+run = ["npm", "run", "dev"] 
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["openssl", "pngquant", "optipng"]
+
+[deployment]
+deploymentTarget = "gce"
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[agent]
+integrations = ["javascript_database:1.0.0", "javascript_auth_all_persistance:1.0.0", "firebase_barebones_javascript:1.0.0", "javascript_log_in_with_replit:1.0.0", "hubspot:1.0.0", "twilio:1.0.0", "javascript_gemini_ai_integrations:1.0.0"]
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 33237
+externalPort = 8080
+
+[[ports]]
+localPort = 34893
+externalPort = 8099
+
+[[ports]]
+localPort = 37583
+externalPort = 3003
+
+[[ports]]
+localPort = 37623
+externalPort = 9000
+
+[[ports]]
+localPort = 39079
+externalPort = 5173
+
+[[ports]]
+localPort = 39603
+externalPort = 3001
+
+[[ports]]
+localPort = 39643
+externalPort = 3000
+
+[[ports]]
+localPort = 40043
+externalPort = 6800
+
+[[ports]]
+localPort = 40167
+externalPort = 4200
+
+[[ports]]
+localPort = 40985
+externalPort = 6000
+
+[[ports]]
+localPort = 41243
+externalPort = 8081
+
+[[ports]]
+localPort = 41251
+externalPort = 80
+
+[[ports]]
+localPort = 43971
+externalPort = 8000
+
+[[ports]]
+localPort = 45121
+externalPort = 3002
+
+[[ports]]
+localPort = 46315
+externalPort = 8008

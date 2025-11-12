@@ -1,0 +1,30 @@
+TO: PetWash Development Team
+SUBJECT: MANDATORY BUILD SPECIFICATIONS: 7-STAR UI/UX, AI Moderation, & Security
+GOAL: Implement the social hub, expense form, and security status pages to a 7-Star luxury standard for the PET WASH LTD (517145033) platform.
+1. 🖼️ UI/UX & Aesthetic Mandates (Cross-Project)
+The aesthetic must be a glamorous, metallic version of the trusted interfaces seen on Meta/Google/Apple, with zero compromise on speed or clarity.
+• Aesthetic Rule: ABSOLUTELY NO RED (#FF0000). Use deep, rich colors (charcoal, dark blue) with metallic gold/silver accents. All buttons must use gradients and shadows (not flat colors).
+• Mobile Menu Mandate: FORBIDDEN: Full-Screen Overlay. Must be a partial Slide-Out Drawer constrained to MAX 75% screen width to maintain user context.
+2. 📝 Employee Expense Form Mandate (Compliance & Ease)
+The form must be easy for the employee and compliant with Israeli tax law.
+• Receipt Upload (Core Requirement): Must capture an official Tax Invoice/Receipt.
+• UI/UX Mandate: Camera-First: Auto-open camera, use Auto-Crop to straighten the receipt, ensuring high quality.
+• Data Capture (Mandatory Function): Must capture Date, Gross Amount, Supplier Name, Category, and Reason.
+• UI/UX Mandate: OCR Smart-Fill: Must use OCR technology to auto-fill at least the Date and Amount from the receipt image to minimize typing.
+• Compliance (VAT Deduction): Must capture necessary details for VAT deduction (Supplier ID #).
+• UI/UX Mandate: Clear confirmation of successful upload and data extraction.
+3. 🛡️ PetWash Shield™ Security Status (New Dashboard View)
+Create a dedicated "Security Status" page in the admin dashboard to verify system health in a Meta-like trusted view.
+• Visual Standard: Replicate the clean, trusted look of the Meta Passkey screen (White checkmark on a shield against a clean background) using the mandated luxurious aesthetic.
+• Checks (Must return Green Checkmark):
+• Biometric Access Status
+• Keypad Access Status
+• Double-Spend Prevention (Checks SHA-256 hash ledger status).
+• Remote Emergency Stop (Checks Nayax API connection).
+4. 💬 The PetWash Circle Social Hub Mandate
+• Aesthetic/Function: Must look and feel like a secure, exclusive version of Instagram (Post feeds, Inbox/DM, Friend Requests).
+• AI Moderation Mandate: The Content Moderation Service must be integrated into all user text (Posts, Comments, DMs) to enforce a zero-tolerance policy.
+• Mandate: Filter all abuse in every language (including the politically/demographically sensitive terms previously specified).
+• Tech: Must use a two-stage LLM/Blacklist system that automatically learns and updates the filter list.
+5. 🔒 Credential Security (Final Rule)
+• API Keys (TikTok, Meta): Keys must NEVER be committed to source code. Keys must be stored in an enterprise Secrets Manager (e.g., Google Cloud Secret Manager) and injected securely at runtime.

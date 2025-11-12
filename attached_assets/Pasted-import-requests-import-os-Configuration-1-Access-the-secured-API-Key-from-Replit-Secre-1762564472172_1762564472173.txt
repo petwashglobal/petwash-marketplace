@@ -1,0 +1,72 @@
+import requests
+import os
+
+# --- Configuration ---
+# 1. Access the secured API Key from Replit Secrets
+API_KEY = os.environ.get('GOOGLE_WEATHER_API_KEY')
+
+# Example location (Caulfield North, VIC, Australia - based on current location)
+LATITUDE = -37.8732
+LONGITUDE = 145.0210
+
+# The Google Weather API endpoint for current conditions
+ENDPOINT = "https://weather.googleapis.com/v1/currentConditions:lookup"
+# ---------------------
+
+if not API_KEY:
+    print("Error: GOOGLE_WEATHER_API_KEY not found in Replit Secrets.")
+else:
+    # 2. Prepare the request details
+    # The Google Weather API uses POST requests for lookups
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    
+    # Body containing location data
+    payload = {
+        "location": {
+            "latitude": LATITUDE,
+            "longitude": LONGITUDE
+        }
+    }
+    
+    # URL including the API key as a query parameter
+    request_url = f"{ENDPOINT}?key={API_KEY}"
+    
+    print(f"Testing Google Weather API for coordinates: {LATITUDE}, {LONGITUDE}...")
+
+    # 3. Make the API request
+    try:
+        response = requests.post(request_url, headers=headers, json=payload)
+        data = response.json()
+
+        # 4. Process and check the response
+        if response.status_code == 200:
+            print("\n✅ API Test Successful!")
+            
+            # Extract key weather information
+            # Note: JSON structure may require careful navigation based on the API version
+            conditions = data.get('currentConditions')
+            
+            if conditions:
+                temp_data = conditions.get('temperature', {})
+                
+                current_temp = temp_data.get('value')
+                unit = temp_data.get('unit')
+                
+                # The 'conditions' array holds the description
+                condition = conditions.get('conditions', [{}])[0].get('description', 'N/A')
+                
+                print(f"Current Temperature: {current_temp} {unit}")
+                print(f"Conditions: {condition}")
+            else:
+                print("⚠️ Received status 200, but weather data was not found in the response.")
+            
+        else:
+            print(f"❌ API Request Failed. Status Code: {response.status_code}")
+            print(f"Error Details: {data}")
+
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Network Error: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")

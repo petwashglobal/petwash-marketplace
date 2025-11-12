@@ -1,0 +1,287 @@
+/* ============================================================================
+   Pet Wash™ — Auth Guardian 2025 (Single Paste File)
+   Drop this in your web app (e.g., /client/src/lib/auth-guardian-2025.ts) and
+   import it FIRST in your app entry. It hardens Firebase Auth across iOS/Android
+   mobile browsers, fixes common prod misconfigs, refreshes custom claims,
+   normalizes Google sign-in, and surfaces clear UX messages.
+
+   How to use:
+     1) Fill EXPECTED_* constants below (projectId, appId, apiKey, authDomain).
+     2) import './lib/auth-guardian-2025'  // no need to call anything
+     3) (Optional) wire route guards with AuthGuardian.routeGuard for admin pages.
+
+   This file is framework-agnostic (Vanilla/React/Vue/Svelte) and 2025-ready.
+   ============================================================================ */
+
+///////////////////////////
+// 0) EXPECTED CONSTANTS //
+///////////////////////////
+const EXPECTED = {
+  projectId: 'petwash-prod',          // <-- your PROD Firebase projectId
+  appId:     '1:1234567890:web:abcd', // <-- firebase appId for PROD
+  apiKey:    'AIzaSyXXXXXXX',         // <-- firebase apiKey for PROD
+  authDomain:'petwash.co.il',         // <-- custom domain used by Firebase Auth
+  adminEmails: [
+    'nirhadad1@gmail.com',            // you
+    'ceo@petwash.co.il'
+  ],
+  telemetryEndpoint: '/api/telemetry/auth', // receives JSON beacons (optional)
+  platformName: 'Pet Wash™',
+};
+
+/////////////////////////////////////////
+// 1) UTIL: Safe ESM dynamic Firebase  //
+/////////////////////////////////////////
+const FB = {
+  app:   () => import('https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js'),
+  auth:  () => import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js'),
+  perf:  () => import('https://www.gstatic.com/firebasejs/10.13.0/firebase-performance.js'),
+};
+
+/////////////////////////////
+// 2) LIGHTWEIGHT UI HELP  //
+/////////////////////////////
+const $banner = (() => {
+  let el: HTMLDivElement | null = null;
+  function ensure() {
+    if (el) return el;
+    el = document.createElement('div');
+    el.style.cssText = `
+      position:fixed;z-index:2147483647;inset:auto 12px 12px 12px;
+      background:linear-gradient(135deg,#0b65ff,#7b61ff);
+      color:#fff;padding:14px 16px;border-radius:12px;
+      font:600 14px/1.35 ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;
+      box-shadow:0 14px 40px rgba(0,0,0,.22);
+      display:none;gap:8px;align-items:center
+    `;
+    const btn = document.createElement('button');
+    btn.textContent = 'OK';
+    btn.style.cssText = `
+      margin-left:auto;background:#fff;color:#1a1f36;border:0;border-radius:10px;
+      padding:8px 12px;font-weight:700;cursor:pointer
+    `;
+    btn.onclick = () => (el!.style.display = 'none');
+    el.appendChild(btn);
+    document.body.appendChild(el);
+    return el;
+  }
+  function show(msg: string) {
+    const box = ensure();
+    box.firstChild?.nodeType === 3 && box.removeChild(box.firstChild as any);
+    const span = document.createElement('span');
+    span.textContent = msg;
+    box.insertBefore(span, box.lastChild);
+    box.style.display = 'flex';
+  }
+  return { show };
+})();
+
+///////////////////////////////////////////////
+// 3) TELEMETRY (fire-and-forget; optional)  //
+///////////////////////////////////////////////
+function beacon(event: string, detail: unknown) {
+  try {
+    const payload = JSON.stringify({
+      ts: new Date().toISOString(),
+      event,
+      detail,
+      ua: navigator.userAgent,
+      url: location.href,
+    });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(EXPECTED.telemetryEndpoint, new Blob([payload], { type: 'application/json' }));
+    } else {
+      fetch(EXPECTED.telemetryEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true });
+    }
+  } catch { /* no-op */ }
+}
+
+/////////////////////////////////////////
+// 4) GLOBAL ERROR MAPPER (Auth UX)    //
+/////////////////////////////////////////
+function friendlyAuthError(codeOrMsg: string) {
+  const t = (s: string) => s; // hook i18n if needed
+  const map: Record<string, string> = {
+    'auth/popup-closed-by-user': t('Sign-in was cancelled. Please try again.'),
+    'auth/cancelled-popup-request': t('Another sign-in is already in progress.'),
+    'auth/popup-blocked': t('Your browser blocked the sign-in window. Please allow popups and try again.'),
+    'auth/network-request-failed': t('Network issue. Check your connection and try again.'),
+    'auth/invalid-credential': t('Your session expired. Please sign in again.'),
+    'auth/unauthorized-domain': t('Domain is not authorized for sign-in. Ask support to add this domain.'),
+    'auth/internal-error': t('We had a hiccup. Please try again in a moment.'),
+  };
+  const hit = Object.keys(map).find(k => codeOrMsg.includes(k));
+  return hit ? map[hit] : t('Sign-in failed. Please try again.');
+}
+
+////////////////////////////////////////////////////
+// 5) CORE: Initialize, Validate, and Harden Auth //
+////////////////////////////////////////////////////
+const AuthGuardian = (() => {
+  let initialized = false;
+
+  async function init() {
+    if (initialized) return;
+    initialized = true;
+
+    // 5.1 Initialize Firebase app (without double-init)
+    const appMod = await FB.app();
+    const { initializeApp, getApps, getApp } = appMod as any;
+
+    const configFromWindow = (window as any).__FIREBASE_DEFAULTS__?.config || (window as any).firebaseConfig;
+    const cfg =
+      configFromWindow || {
+        apiKey: EXPECTED.apiKey,
+        projectId: EXPECTED.projectId,
+        appId: EXPECTED.appId,
+        authDomain: EXPECTED.authDomain,
+      };
+
+    const app = getApps().length ? getApp() : initializeApp(cfg);
+
+    // 5.2 Validate we are on the right Firebase project in PROD
+    const opts = (app as any).options || {};
+    const prodLike = location.hostname.endsWith('.co.il') || location.hostname.endsWith('.com');
+    const mismatch =
+      prodLike &&
+      (opts.projectId !== EXPECTED.projectId ||
+       opts.appId     !== EXPECTED.appId     ||
+       opts.apiKey    !== EXPECTED.apiKey    ||
+       (EXPECTED.authDomain && !location.hostname.endsWith(EXPECTED.authDomain)));
+
+    if (mismatch) {
+      const msg = `${EXPECTED.platformName}: configuration mismatch. This site points to "${opts.projectId}" but expected "${EXPECTED.projectId}". Sign-in may look unbranded (e.g., shows wrong project name) or fail.`;
+      console.warn(msg, { actual: opts, expected: EXPECTED });
+      $banner.show('Security check: finishing setup… Please refresh in a moment.');
+      beacon('auth.config_mismatch', { actual: opts, expected: EXPECTED });
+    }
+
+    // 5.3 Set up Auth with resilient popup/redirect handling
+    const authMod = await FB.auth();
+    const {
+      getAuth,
+      setPersistence,
+      browserLocalPersistence,
+      signInWithPopup,
+      GoogleAuthProvider,
+      onAuthStateChanged,
+      signInWithRedirect,
+      getRedirectResult,
+      signOut,
+    } = authMod as any;
+
+    const auth = getAuth();
+    await setPersistence(auth, browserLocalPersistence);
+
+    // 5.4 Normalize Google sign-in with automatic fallback
+    (window as any).signInWithGoogle = async () => {
+      try {
+        const prov = new GoogleAuthProvider();
+        prov.setCustomParameters({ prompt: 'select_account' });
+        // Prefer popup; fallback to redirect on iOS Safari/blocked popups
+        try {
+          const res = await signInWithPopup(auth, prov);
+          await refreshClaims(auth);
+          beacon('auth.signin_google_popup_ok', { uid: res.user.uid });
+          return res;
+        } catch (e: any) {
+          if (
+            /popup|blocked|by-user|cancelled|operation-not-supported/i.test(String(e?.code || e?.message))
+          ) {
+            beacon('auth.signin_google_popup_fallback_redirect', { reason: e?.code || e?.message });
+            await signInWithRedirect(auth, prov);
+            return; // flow continues after redirect
+          }
+          throw e;
+        }
+      } catch (e: any) {
+        const msg = friendlyAuthError(String(e?.code || e?.message || e));
+        $banner.show(msg);
+        beacon('auth.signin_google_error', { error: String(e?.code || e?.message || e) });
+        throw e;
+      }
+    };
+
+    // Handle post-redirect result (if any)
+    getRedirectResult(auth).catch((e: any) => {
+      const msg = friendlyAuthError(String(e?.code || e?.message || e));
+      $banner.show(msg);
+      beacon('auth.redirect_result_error', { error: String(e?.code || e?.message || e) });
+    });
+
+    // 5.5 Auto-refresh custom claims on first load and user changes
+    onAuthStateChanged(auth, async (user: any) => {
+      if (!user) return;
+      await refreshClaims(auth);
+    });
+
+    // 5.6 Optional: warm-up Performance (safe, low overhead)
+    try {
+      const perfMod = await FB.perf();
+      const { getPerformance } = perfMod as any;
+      getPerformance(); // initializes passively
+    } catch { /* ignore */ }
+  }
+
+  // Force-refresh token & surface admin status
+  async function refreshClaims(auth: any) {
+    try {
+      const u = auth.currentUser;
+      if (!u) return;
+      const res = await u.getIdTokenResult(true);
+      const isAdmin = Boolean(res.claims?.admin || EXPECTED.adminEmails.includes(u.email));
+      (window as any).__PW_IS_ADMIN__ = isAdmin;
+      beacon('auth.token_refreshed', { uid: u.uid, isAdmin });
+      // Helpful banner if user reached admin route without claims
+      const path = location.pathname.toLowerCase();
+      if (path.includes('/admin') && !isAdmin) {
+        $banner.show('Login succeeded, but your account has no admin access yet. Ask an administrator to grant access, then sign out and back in.');
+      }
+    } catch (e: any) {
+      beacon('auth.claims_refresh_error', { error: String(e?.code || e?.message || e) });
+    }
+  }
+
+  // Route guard helper for admin-only pages
+  async function routeGuard(opts: { adminOnly?: boolean; onDeny?: () => void } = {}) {
+    const authMod = await FB.auth();
+    const { getAuth } = authMod as any;
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      // not signed in
+      $banner.show('Please sign in to continue.');
+      (window as any).signInWithGoogle?.();
+      opts.onDeny?.();
+      return false;
+    }
+    const res = await user.getIdTokenResult(true);
+    const isAdmin = Boolean(res.claims?.admin || EXPECTED.adminEmails.includes(user.email));
+    if (opts.adminOnly && !isAdmin) {
+      $banner.show('This section is restricted to administrators.');
+      opts.onDeny?.();
+      return false;
+    }
+    return true;
+  }
+
+  // Public API
+  return { init, routeGuard };
+})();
+
+// 6) BOOT
+AuthGuardian.init().catch(e => {
+  console.error('AuthGuardian init failed', e);
+  beacon('auth.guardian_init_failed', { error: String(e?.message || e) });
+});
+
+// 7) OPTIONAL: auto-guard if URL includes /admin
+if (location.pathname.toLowerCase().includes('/admin')) {
+  AuthGuardian.routeGuard({ adminOnly: true, onDeny: () => {/* e.g., redirect */} });
+}
+
+// 8) OPTIONAL: expose helpers globally for UI bindings
+(window as any).PW = Object.assign((window as any).PW || {}, {
+  signInWithGoogle: (window as any).signInWithGoogle,
+  routeGuard: AuthGuardian.routeGuard,
+});

@@ -1,0 +1,107 @@
+Segment Integration
+
+
+
+
+SendGrid Marketing Campaigns has a native integration with Segment
+
+. This integration is bi-directional. It allows you to automatically stream your email events directly into Segment to be used inside your warehouse or other downstream destinations, and to send action-based data from Segment to your Marketing Campaigns account.
+
+Currently, you can integrate SendGrid Marketing Campaigns with Segment as either an Event Source or an Action Destination.
+
+Event Source: SendGrid will send email events to your Segment instance.
+Action Destination: Segment will send action information to your SendGrid Marketing Campaigns account.
+You need both a SendGrid and Segment account to create these Integrations.
+
+See below for instructions on how to create Integrations for SendGrid Event Sources and an Action Destination in Segment.
+
+Send email events from SendGrid Marketing Campaigns to Segment
+
+
+
+
+
+Creating a SendGrid Marketing Campaigns Event Source in Segment allows you to automatically stream your email events directly into Segment to help you get a unified view of customer interactions. For example, you can associate email opens and link clicks with your customers in Segment.
+
+To send SendGrid events to Segment, you first create a new Source in your Segment account, and then you create an Integration to Segment in your SendGrid account.
+
+Learn more about email events and Segment Sources:
+
+SendGrid email events and what they indicate about users' engagement.
+Segment Sources
+
+.
+Create a Source for Marketing Campaigns in Segment
+
+
+
+
+
+First, in your Segment account, add Marketing Campaigns as a Source:
+
+Navigate to the Sources page of your Segment workspace
+
+.
+If you have no sources configured, click Add source. If you already have sources configured, click Add More.
+Search for SendGrid Marketing Campaigns and click the SendGrid Marketing Campaigns tile.
+Click Add source.
+Give your Source a descriptive name to help you identify the Source in your workspace, such as "SendGrid Marketing Campaigns", and add any labels that may help you organize your workspace. Then, click Add source.
+Copy the Write Key from the Overview tab of your new Source. You will use this when completing the Integration in your SendGrid Marketing Campaigns account in the next section.
+Create an Integration to Segment in SendGrid Marketing Campaigns
+
+
+
+
+
+Next, in your SendGrid account, add Segment as an Integration:
+
+Navigate to the Integrations page of the Marketing Campaigns Console
+
+.
+From the Explore Apps tab, find the Segment tile and click Connect.
+Give your Integration a descriptive name, such as "Segment".
+Paste the write key that you copied from your Segment Source in the section above.
+Select the region you would like to sync your events to.
+Ensure the region you select aligns with the region of the Segment workspace in which you configured the Source, otherwise your email events won't sync to Segment. Unless you have specifically requested a Segment workspace in the EU, the region is "US".
+Select the email events you would like to sync to Segment and then click Add integration.
+Send Segment action data to SendGrid Marketing Campaigns
+
+
+
+
+
+SendGrid Marketing Campaigns is also available as a Segment Action Destination. In this case, Segment acts as the Source that sends data downstream into Marketing Campaigns.
+
+The Actions that are currently supported as part of this Action Destination are:
+
+Contact Upsert: Add or update a Contact in SendGrid
+For more information about this Action Destination and the data available to send, see SendGrid Marketing Campaigns Destination
+
+.
+
+Connect Segment to SendGrid Marketing Campaigns
+
+
+
+
+
+Before you connect Segment to your SendGrid Marketing Campaigns as a Destination, you need:
+
+A Segment account.
+A SendGrid API Key.
+The minimum access needed for the key is Custom Access with Full Access granted for the permissions listed under "Marketing"
+It will also work with Full Access, but a key with Full Access allows API access to all parts of your account except billing and email address validation.
+Make sure to copy the API key to use in the following setup steps.
+It is also recommended to have a SendGrid Marketing Campaigns Source in Segment.
+
+When you have the above prerequisites, complete the following steps:
+
+Navigate to the Destinations page of your Segment workspace
+
+.
+If you have no Destinations configured, click Add destination. If you already have Destinations configured, click Add More.
+Search for "SendGrid Marketing Campaigns" and click the SendGrid Marketing Campaigns (Actions) tile. (Be sure to click the tile that is under Destinations and that specifies Actions in the title.)
+Click Add Destination.
+Select the Source you would like to connect to this Destination and then click Next.
+Give your Destination a descriptive name to help you identify what it is (for example, "SendGrid Marketing Campaigns Actions instance"), and select how you would like to set up the Destination, and then click Add destination.
+In the Destination settings, paste the SendGrid API Key you created into the connection settings. Click Save Changes.

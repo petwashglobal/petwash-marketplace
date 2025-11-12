@@ -1,0 +1,96 @@
+import UIKit
+import PassKit
+
+// 🚨 IMPORTANT: Replace with your actual server endpoint
+let PASS_DOWNLOAD_ENDPOINT = "https://your-pet-wash-server.com/api/v1/pass/customerID_12345"
+
+class WalletPassPresenter: NSObject, PKAddPassesViewControllerDelegate {
+    
+    // The view controller that will present the native Wallet screen
+    private weak var presentingViewController: UIViewController?
+
+    init(presentingVC: UIViewController) {
+        self.presentingViewController = presentingVC
+        super.init()
+    }
+
+    /// Public method to begin the process of adding the pass to the Wallet.
+    func beginAddPassProcess() {
+        guard PKAddPassesViewController.canAddPasses() else {
+            print("❌ Device cannot add passes to Wallet.")
+            // Handle this error (e.g., show an alert)
+            return
+        }
+        
+        // Start the network request to download the .pkpass file
+        downloadPassFile()
+    }
+    
+    // MARK: - Network Request
+    
+    private func downloadPassFile() {
+        guard let url = URL(string: PASS_DOWNLOAD_ENDPOINT) else { return }
+        
+        // Use URLSession for modern asynchronous fetching
+        let task = URLSession.shared.dataTask(with: url) { [weak self] (data, response, error) in
+            // All UI must be handled on the main thread
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ Download Error: \(error.localizedDescription)")
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200, let data = data else {
+                    print("❌ Server Error or No Pass Data Received.")
+                    return
+                }
+                
+                // Process and present the downloaded data
+                self?.presentPass(data: data)
+            }
+        }
+        task.resume()
+    }
+
+    // MARK: - Pass Presentation
+    
+    private func presentPass(data: Data) {
+        do {
+            // 1. Create a PKPass object from the binary data
+            let pass = try PKPass(data: data)
+            
+            // 2. Check if the pass is ALREADY in the user's library
+            if PKPassLibrary().containsPass(pass) {
+                print("⚠️ Pass is already installed. Opening Wallet.")
+                // You can open Wallet directly if the pass is found
+                if let passURL = pass.passURL {
+                     UIApplication.shared.open(passURL)
+                }
+                return
+            }
+            
+            // 3. Create and present the native Wallet view controller
+            guard let addPassVC = PKAddPassesViewController(pass: pass) else {
+                print("❌ Failed to create PKAddPassesViewController.")
+                return
+            }
+            
+            addPassVC.delegate = self
+            self.presentingViewController?.present(addPassVC, animated: true)
+            
+        } catch {
+            print("🚨 ERROR: Failed to create PKPass from downloaded data.")
+            print("Details: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - PKAddPassesViewControllerDelegate
+    
+    // Required delegate method to dismiss the native Wallet view
+    func addPassesViewControllerDidFinish(_ controller: PKAddPassesViewController) {
+        controller.dismiss(animated: true) {
+            print("Wallet UI dismissed.")
+            // Optional: You can check the pass status again here if needed
+        }
+    }
+}

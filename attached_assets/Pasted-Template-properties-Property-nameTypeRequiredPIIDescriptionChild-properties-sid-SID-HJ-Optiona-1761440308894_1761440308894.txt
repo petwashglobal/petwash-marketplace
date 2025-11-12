@@ -1,0 +1,352 @@
+Template properties
+
+
+
+
+
+Property nameTypeRequiredPIIDescriptionChild properties
+sid
+SID<HJ>
+Optional
+Not PII
+A 34 character string that uniquely identifies a Verification Template.
+
+Pattern:
+^HJ[0-9a-fA-F]{32}$
+Min length:
+34
+Max length:
+34
+accountSid
+SID<AC>
+Optional
+Not PII
+The unique SID identifier of the Account.
+
+Pattern:
+^AC[0-9a-fA-F]{32}$
+Min length:
+34
+Max length:
+34
+friendlyName
+string
+Optional
+Not PII
+A descriptive string that you create to describe a Template. It can be up to 32 characters long.
+
+channels
+array[string]
+Optional
+Not PII
+A list of channels that support the Template. Can include: sms, voice.
+
+translations
+Optional
+Not PII
+An object that contains the different translations of the template. Every translation is identified by the language short name and contains its respective information as the approval status, text and created/modified date.
+
+Get a list of available templates
+
+
+
+
+
+GET https://verify.twilio.com/v2/Templates
+
+Query parameters
+
+
+
+
+
+Property nameTypeRequiredPIIDescription
+friendlyName
+string
+Optional
+Not PII
+String filter used to query templates with a given friendly name.
+
+pageSize
+integer<int64>
+Optional
+Not PII
+How many resources to return in each list page. The default is 50, and the maximum is 1000.
+
+Minimum:
+1
+Maximum:
+1000
+page
+integer
+Optional
+Not PII
+The page index. This value is simply for client state.
+
+Minimum:
+0
+pageToken
+string
+Optional
+Not PII
+The page token. This is provided by the API.
+
+Get a list of available templates
+
+
+
+
+
+Report code block
+
+
+Copy code block
+// Download the helper library from https://www.twilio.com/docs/node/install
+const twilio = require("twilio"); // Or, for ESM: import twilio from "twilio";
+
+// Find your Account SID and Auth Token at twilio.com/console
+// and set the environment variables. See http://twil.io/secure
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken);
+
+async function listVerificationTemplate() {
+  const templates = await client.verify.v2.templates.list({ limit: 20 });
+
+  templates.forEach((t) => console.log(t.translations));
+}
+
+listVerificationTemplate();
+Response
+
+
+
+Copy response
+{
+  "templates": [
+    {
+      "sid": "HJaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "account_sid": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "friendly_name": "Base Verification Template 2 with do not share",
+      "channels": [
+        "sms"
+      ],
+      "translations": {
+        "en": {
+          "is_default_translation": true,
+          "status": "approved",
+          "locale": "en",
+          "text": "Your {{friendly_name}} verification code is: {{code}}. Do not share this code with anyone.",
+          "date_updated": "2021-07-29T20:38:28.759979905Z",
+          "date_created": "2021-07-29T20:38:28.165602325Z"
+        }
+      }
+    },
+    {
+      "sid": "HJaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab",
+      "account_sid": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "friendly_name": "Base Verification Template 3",
+      "channels": [
+        "sms",
+        "voice"
+      ],
+      "translations": {
+        "en": {
+          "is_default_translation": true,
+          "status": "approved",
+          "locale": "en",
+          "text": "Your verification code is: {{code}}. Do not share it.",
+          "date_updated": "2021-07-29T20:38:28.759979905Z",
+          "date_created": "2021-07-29T20:38:28.165602325Z"
+        }
+      }
+    }
+  ],
+  "meta": {
+    "page": 0,
+    "page_size": 50,
+    "first_page_url": "https://verify.twilio.com/v2/Templates?PageSize=50&Page=0",
+    "previous_page_url": null,
+    "url": "https://verify.twilio.com/v2/Templates?PageSize=50&Page=0",
+    "next_page_url": null,
+    "key": "templates"
+  }
+}
+
+(information)
+Tip
+If you have jq
+
+ installed you can quickly see all of the English language templates with the following command:
+
+
+
+Copy code block
+curl -X GET "https://verify.twilio.com/v2/Templates" \
+  -u $TWILIO_ACCOUNT_SID:$TWILIO_AUTH_TOKEN \
+  | jq '.templates[] | {sid: .sid, template: .translations.en.text}'
+Set a default template for your Verify Service
+
+
+
+
+
+To set a default template for a new Service, set the default_template_sid parameter:
+
+Create a Service with a default template
+
+
+
+
+
+Report code block
+
+
+Copy code block
+// Download the helper library from https://www.twilio.com/docs/node/install
+const twilio = require("twilio"); // Or, for ESM: import twilio from "twilio";
+
+// Find your Account SID and Auth Token at twilio.com/console
+// and set the environment variables. See http://twil.io/secure
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken);
+
+async function createService() {
+  const service = await client.verify.v2.services.create({
+    defaultTemplateSid: "HJXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    friendlyName: "My Verify Service",
+  });
+
+  console.log(service.sid);
+}
+
+createService();
+Response
+
+
+
+Copy response
+{
+  "sid": "VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "account_sid": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "friendly_name": "My Verify Service",
+  "code_length": 4,
+  "lookup_enabled": false,
+  "psd2_enabled": false,
+  "skip_sms_to_landlines": false,
+  "dtmf_input_required": false,
+  "tts_name": "name",
+  "do_not_share_warning_enabled": false,
+  "custom_code_enabled": true,
+  "push": {
+    "include_date": false,
+    "apn_credential_sid": "CRaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "fcm_credential_sid": null
+  },
+  "totp": {
+    "issuer": "test-issuer",
+    "time_step": 30,
+    "code_length": 3,
+    "skew": 2
+  },
+  "whatsapp": {
+    "msg_service_sid": "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "from": "whatsapp:+1234567890"
+  },
+  "passkeys": {
+    "relying_party": {
+      "id": "www.mydomain.com",
+      "name": "My domain",
+      "origins": [
+        "www.mydomain.com",
+        "www.login.mydomain.com"
+      ]
+    },
+    "authenticator_attachment": "",
+    "discoverable_credentials": null,
+    "user_verification": "discouraged"
+  },
+  "default_template_sid": "HJXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "verify_event_subscription_enabled": false,
+  "date_created": "2015-07-30T20:00:00Z",
+  "date_updated": "2015-07-30T20:00:00Z",
+  "url": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "links": {
+    "verification_checks": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/VerificationCheck",
+    "verifications": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Verifications",
+    "rate_limits": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/RateLimits",
+    "messaging_configurations": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/MessagingConfigurations",
+    "entities": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Entities",
+    "webhooks": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Webhooks",
+    "access_tokens": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/AccessTokens"
+  }
+}
+Start a Verification with a specific template
+
+
+
+
+
+To send a verification with a specified template, include the TemplateSid (starts with HJ) as a parameter.
+
+Start a Verification with a template
+
+
+
+
+
+Report code block
+
+
+Copy code block
+// Download the helper library from https://www.twilio.com/docs/node/install
+const twilio = require("twilio"); // Or, for ESM: import twilio from "twilio";
+
+// Find your Account SID and Auth Token at twilio.com/console
+// and set the environment variables. See http://twil.io/secure
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken);
+
+async function createVerification() {
+  const verification = await client.verify.v2
+    .services("VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    .verifications.create({
+      channel: "sms",
+      templateSid: "HJXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      to: "+15017122661",
+    });
+
+  console.log(verification.status);
+}
+
+createVerification();
+Response
+
+
+
+Copy response
+{
+  "sid": "VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "service_sid": "VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "account_sid": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "to": "+15017122661",
+  "channel": "sms",
+  "status": "pending",
+  "valid": false,
+  "date_created": "2015-07-30T20:00:00Z",
+  "date_updated": "2015-07-30T20:00:00Z",
+  "lookup": {},
+  "amount": null,
+  "payee": null,
+  "send_code_attempts": [
+    {
+      "time": "2015-07-30T20:00:00Z",
+      "channel": "SMS",
+      "attempt_sid": "VLaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "sna": null,
+  "url": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Verifications/VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}

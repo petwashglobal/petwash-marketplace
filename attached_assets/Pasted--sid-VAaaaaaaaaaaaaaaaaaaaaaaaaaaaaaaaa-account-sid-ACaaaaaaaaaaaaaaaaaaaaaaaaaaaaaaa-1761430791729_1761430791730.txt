@@ -1,0 +1,55 @@
+{
+  "sid": "VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "account_sid": "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "friendly_name": "My First Verify Service",
+  "code_length": 4,
+  "lookup_enabled": false,
+  "psd2_enabled": false,
+  "skip_sms_to_landlines": false,
+  "dtmf_input_required": false,
+  "tts_name": "name",
+  "do_not_share_warning_enabled": false,
+  "custom_code_enabled": true,
+  "push": {
+    "include_date": false,
+    "apn_credential_sid": "CRaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "fcm_credential_sid": null
+  },
+  "totp": {
+    "issuer": "test-issuer",
+    "time_step": 30,
+    "code_length": 3,
+    "skew": 2
+  },
+  "whatsapp": {
+    "msg_service_sid": "MGaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "from": "whatsapp:+1234567890"
+  },
+  "passkeys": {
+    "relying_party": {
+      "id": "www.mydomain.com",
+      "name": "My domain",
+      "origins": [
+        "www.mydomain.com",
+        "www.login.mydomain.com"
+      ]
+    },
+    "authenticator_attachment": "",
+    "discoverable_credentials": null,
+    "user_verification": "discouraged"
+  },
+  "default_template_sid": "HJaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "verify_event_subscription_enabled": false,
+  "date_created": "2015-07-30T20:00:00Z",
+  "date_updated": "2015-07-30T20:00:00Z",
+  "url": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "links": {
+    "verification_checks": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/VerificationCheck",
+    "verifications": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Verifications",
+    "rate_limits": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/RateLimits",
+    "messaging_configurations": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/MessagingConfigurations",
+    "entities": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Entities",
+    "webhooks": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/Webhooks",
+    "access_tokens": "https://verify.twilio.com/v2/Services/VAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/AccessTokens"
+  }
+}

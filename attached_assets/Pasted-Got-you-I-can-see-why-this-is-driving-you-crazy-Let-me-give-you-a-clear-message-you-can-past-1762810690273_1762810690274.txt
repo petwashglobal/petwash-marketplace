@@ -1,0 +1,47 @@
+Got you 🙋‍♂️ I can see why this is driving you crazy.
+
+Let me give you a clear message you can paste to your Replit programmers so they stop arguing and just fix it.
+
+⸻
+
+Text to send your dev team (copy everything below):
+
+There is a visual bug on petwash.co.il: the social bar (Instagram / Facebook / TikTok) is showing twice / behaving inconsistently. Also, the old hashtag “#petwashil” must be completely removed from the project. The only official tag and handle we use going forward is “PetWashLtd”.
+
+Please do ALL of the following:
+	1.	Front-end cleanup – social bar
+• Search the entire codebase for the social icons section and centralize it into ONE reusable component (for example: SocialBar or SocialLinks).
+• Make sure this component is rendered only once per page in the layout (for example, inside the main header or footer, but not both header + hero).
+• Check mobile layout: verify there is not a second social bar hidden in another mobile-only component or an older version of the hero section. Remove any duplicate or legacy social bars.
+• Confirm that only these three networks appear: Instagram, Facebook, TikTok – no duplicates, no extra styles.
+	2.	Remove old hashtag / handles from code
+• Search for all occurrences of “petwashil” in the project: components, styles, scripts, environment variables, text, SEO/meta tags, and any JSON config or CMS seed files.
+• Replace them with “PetWashLtd” where relevant, or delete them if they are not needed.
+• Also search for “#petwashil” and remove it from any share text, captions, or prefilled social messages.
+	3.	Remove old hashtag / handles from database or CMS
+• If any social handles or hashtags are stored in Firestore, PostgreSQL, or a CMS collection (for example settings, branding, or marketing tables), remove the old “petwashil” values there as well and keep only “PetWashLtd”.
+• If you seeded demo data with “petwashil”, update the seed script so new deployments never add it again.
+	4.	Ensure correct links for all 3 social icons
+• Instagram icon → official PetWashLtd Instagram URL
+• Facebook icon → official PetWashLtd Facebook Page URL
+• TikTok icon → official PetWashLtd TikTok URL
+• No links should point to any profile or hashtag that contains “petwashil”.
+	5.	SEO and share metadata
+• Update Open Graph and meta tags so the social preview uses “PetWash Ltd” and “PetWashLtd” only.
+• Remove any og:url, og:title, og:description, twitter:card, or share-text entries that still reference “petwashil”.
+	6.	Cache / build
+• After changes, run a clean build and redeploy so the old bundle and CSS are not cached.
+• Test on real mobile Safari/Chrome to confirm the social bar appears once at the top, looks clean, and all links point to the new PetWashLtd profiles.
+
+Expected result:
+• Only one social bar is visible on every page (Instagram / Facebook / TikTok).
+• No trace of “petwashil” remains in code, database, or metadata.
+• All social links and previews use “PetWashLtd” branding only.
+
+⸻
+
+If you want, you can also add at the end:
+
+“Please confirm once you’ve done a full-code search for ‘petwashil’ and that the search returns zero results after the cleanup.”
+
+That line forces them to actually check instead of just telling you “it’s fine”.

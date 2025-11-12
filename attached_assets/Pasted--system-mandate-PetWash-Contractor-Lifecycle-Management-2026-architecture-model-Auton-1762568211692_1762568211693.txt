@@ -1,0 +1,87 @@
+{
+  "system_mandate": "PetWash_Contractor_Lifecycle_Management_2026",
+  "architecture_model": "Autonomous_Microservices_API_Driven_Onboarding",
+  "global_ux_mandate": {
+    "aesthetic": "7-Star Luxury, Pure White (#FFFFFF) Background, Minimalist Line-Art Icons",
+    "mobile_ui_flow": "Multi-Step Wizard with Animated Transitions (Liquid Glass Effect)",
+    "feedback": "Haptic_Vibration_Feedback on successful input/submission"
+  },
+  "onboarding_microservice_flow": [
+    {
+      "step_id": "A_IDENTITY_PROOFING",
+      "purpose": "Mandatory Zero-Trust Verification",
+      "required_input": ["Government_ID_Front_Back", "Live_Biometric_Photo"],
+      "processing_service": "KYC_Verification_Service (External API Integration)",
+      "technical_mandate": "AI_Liveness_Detection, OCR_Autofill, Continuous_KYC (pKYC) monitoring against sanctions lists."
+    },
+    {
+      "step_id": "B_CRIMINAL_VETTING",
+      "purpose": "National Coordinated Criminal History Check",
+      "required_input": ["Residential_History_10_Years", "Consent_Form_Digital_Signature"],
+      "processing_service": "Background_Check_Service (External API Integration)",
+      "technical_mandate": "Zero_Tolerance_Flagging for crimes against people/animals; automated resubmission based on local legal mandate."
+    },
+    {
+      "step_id": "C_SPECIALIZED_COMPLIANCE",
+      "purpose": "Role-Specific Vetting and Certification",
+      "roles": {
+        "SITTERS_WALKERS": {
+          "check": "Pet_First_Aid_Certification_Module (In-app mandatory test)",
+          "check_2": "Reference_Check_Service (Automated digital requests to provided contacts)"
+        },
+        "TRANSPORT_DRIVERS": {
+          "check": "Commercial_Driving_Record_Audit (10-Year Traffic History)",
+          "check_2": "Specialized_Pet_Transport_Training_Certification (Internal PetWash Course)"
+        }
+      },
+      "technical_mandate": "Digital_Badge_Issuance for successful completion, instantly visible on public profile."
+    }
+  ],
+  "contractor_management_domain": {
+    "microservice": "Contractor_Lifecycle_Service",
+    "functions": [
+      "Profile_Activation_Deactivation",
+      "Policy_Acceptance_Tracking",
+      "Insurance_Policy_Expiration_Alerts"
+    ],
+    "ai_system": {
+      "service_name": "AI_Trust_Scoring_Engine",
+      "inputs": ["Vetting_Status", "Review_Stars", "Policy_Violations_Flag"],
+      "output": "Transparent_Trust_Score (4.0-5.0 visible to Owners) and Internal_Risk_Score (for Management)."
+    }
+  },
+  "financial_management_domain": {
+    "microservice": "Payout_Ledger_Service",
+    "logic": "Dedicated and isolated financial ledger for contractor payments.",
+    "payout_engine_logic": [
+      {
+        "role": "PET_SITTER",
+        "basis": "Day/Hour Rate (Based on booking duration)",
+        "deductions": "Platform_Commission_Fee, Owner_Booking_Fee",
+        "escrow_release": "24_Hours_Post_Service_Completion"
+      },
+      {
+        "role": "PET_WALKER",
+        "basis": "Time/Distance (GPS-validated)",
+        "deductions": "Platform_Commission_Fee",
+        "tracking": "Check_In/Out_Time_Validation (Primary source for billing)"
+      },
+      {
+        "role": "TRANSPORT_DRIVER",
+        "basis": "Mileage/Base_Fare/Surcharge",
+        "deductions": "Platform_Commission_Fee, Expense_Audit_Integration (Automated toll/fuel reimbursement)",
+        "tracking": "Vehicle_Telematics_Validation (Primary source for billing and safety)"
+      }
+    ],
+    "contractor_dashboard_api": [
+      "GET /api/v1/contractor/{id}/earnings_summary (Real-time Payouts, Escrow Status)",
+      "GET /api/v1/contractor/{id}/tax_summary (Annual tax documentation generation)"
+    ]
+  },
+  "star_quality_review_system": {
+    "microservice": "Review_Reputation_Service",
+    "logic": "Two_Sided_Review (Owner rates Sitter/Driver; Sitter/Driver rates Pet/Owner)",
+    "ranking": "Weighted_Average_Star_Rating (Instantly updates Trust Score)",
+    "audit": "Automatic_Flagging_Service (Triggers review for specific keywords or low ratings (e.g., 'damaged', 'late'))"
+  }
+}

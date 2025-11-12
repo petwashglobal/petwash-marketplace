@@ -1,0 +1,174 @@
+# replit.yaml — Pet Wash™ Authentication & Security Infrastructure 2025–2026
+# Enterprise-grade configuration (Firebase + WebAuthn + Wallet + Alerts)
+
+modules:
+  # --- 1. Environment & Runtime ---
+  - name: core-env
+    run:
+      language: nodejs-20
+      build: npm ci
+      start: npm run start:prod
+    secrets:
+      - VITE_FIREBASE_API_KEY
+      - VITE_FIREBASE_AUTH_DOMAIN
+      - VITE_FIREBASE_PROJECT_ID
+      - VITE_FIREBASE_STORAGE_BUCKET
+      - VITE_FIREBASE_MESSAGING_SENDER_ID
+      - VITE_FIREBASE_APP_ID
+      - VITE_FIREBASE_MEASUREMENT_ID
+      - FIREBASE_ADMIN_SA
+      - VITE_WEBAUTHN_RP_ID
+      - VITE_ALLOWED_ORIGINS
+      - ALERT_EMAIL_FROM
+      - ALERT_EMAIL_TO
+      - SMTP_HOST
+      - SMTP_PORT
+      - SMTP_USER
+      - SMTP_PASS
+      - APPLE_WWDR_CERT
+      - APPLE_SIGNER_CERT
+      - APPLE_SIGNER_KEY
+      - APPLE_KEY_PASSPHRASE
+      - APPLE_PASS_TYPE_ID
+      - APPLE_TEAM_ID
+      - GOOGLE_WALLET_ISSUER_ID
+      - GOOGLE_WALLET_SERVICE_ACCOUNT
+      - JWT_SECRET
+      - SESSION_SECRET
+      - WEBSOCKET_API_KEY
+      - GA4_MEASUREMENT_ID
+      - GTM_CONTAINER_ID
+
+  # --- 2. Web Server (Express + WebAuthn + Alerts) ---
+  - name: backend
+    entrypoint: server/index.ts
+    run:
+      command: node dist/server/index.js
+    ports:
+      - 3000
+    env:
+      NODE_ENV: production
+      PORT: 3000
+    files:
+      - server/
+      - package.json
+      - tsconfig.json
+      - .env
+      - replit.yaml
+    dependencies:
+      express: latest
+      cors: latest
+      helmet: latest
+      firebase-admin: latest
+      firebase: latest
+      simplewebauthn: latest
+      node-fetch: latest
+      nodemailer: latest
+      geoip-lite: latest
+      dotenv: latest
+      zod: latest
+      pg: latest
+      ws: latest
+      jsonwebtoken: latest
+
+  # --- 3. Frontend (Vite + React 18 + TypeScript) ---
+  - name: frontend
+    entrypoint: client/src/main.tsx
+    run:
+      command: npm run build && npm run preview
+    env:
+      VITE_APP_ENV: production
+      VITE_API_URL: https://api.petwash.co.il
+      VITE_HUB_URL: https://hub.petwash.co.il
+    files:
+      - client/
+      - vite.config.ts
+      - package.json
+      - tsconfig.json
+    dependencies:
+      react: latest
+      react-dom: latest
+      react-router-dom: latest
+      typescript: latest
+      axios: latest
+      @simplewebauthn/browser: latest
+      @firebase/app: latest
+      @firebase/auth: latest
+      @firebase/firestore: latest
+      @firebase/analytics: latest
+
+  # --- 4. Continuous Security ---
+  - name: security
+    entrypoint: server/services/securityEvents.ts
+    cron:
+      schedule: "*/5 * * * *"
+      command: npm run audit:security
+    run:
+      command: node dist/server/services/securityEvents.js
+    dependencies:
+      nodemailer: latest
+      firebase-admin: latest
+      geoip-lite: latest
+
+networking:
+  domains:
+    - api.petwash.co.il
+    - hub.petwash.co.il
+    - status.petwash.co.il
+  https: true
+  cors:
+    allowOrigin:
+      - https://petwash.co.il
+      - https://hub.petwash.co.il
+      - https://www.petwash.co.il
+      - https://*.replit.dev
+    allowMethods: [GET, POST, PUT, DELETE, OPTIONS]
+    allowHeaders: [Content-Type, Authorization, X-Requested-With]
+
+security:
+  csp:
+    default-src: "'self'"
+    script-src: "'self'"
+    style-src: "'self' 'unsafe-inline'"
+    img-src: "'self' data: https:"
+    connect-src:
+      - "'self'"
+      - https://api.petwash.co.il
+      - https://hub.petwash.co.il
+  headers:
+    - Strict-Transport-Security: "max-age=63072000; includeSubDomains; preload"
+    - X-Content-Type-Options: nosniff
+    - X-Frame-Options: DENY
+    - Referrer-Policy: no-referrer
+    - Permissions-Policy: accelerometer=(), camera=(), geolocation=(), microphone=(), payment=()
+
+testing:
+  unit: npm run test
+  integration: npm run test:integration
+  e2e: npm run test:e2e
+  coverage: npm run coverage
+
+analytics:
+  ga4MeasurementId: ${GA4_MEASUREMENT_ID}
+  gtmContainerId: ${GTM_CONTAINER_ID}
+
+deployment:
+  autoscale:
+    min: 1
+    max: 4
+  healthcheck:
+    path: /health
+    interval: 60s
+  logs:
+    level: info
+    rotation: daily
+  alerts:
+    email: ${ALERT_EMAIL_TO}
+
+metadata:
+  project: Pet Wash™ Enterprise Platform
+  version: 2.6.0
+  author: Nir Hadad
+  description: |
+    Full-stack authentication and security architecture combining Firebase, WebAuthn Passkeys, Face ID,
+    Apple Wallet, Google Wallet, and real-time security alerts. Configured for Replit 2025–2026 production.

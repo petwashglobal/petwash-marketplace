@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    
+    <!-- iOS Optimized Viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- iOS Web App Configuration -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Pet Wash™️" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" href="/images/favicon-32x32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="/images/favicon-16x16.png" sizes="16x16">
+    
+    <!-- iOS Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+    
+    <!-- Android Chrome Icons -->
+    <link rel="icon" type="image/png" href="/images/android-chrome-192x192.png" sizes="192x192">
+    <link rel="icon" type="image/png" href="/images/android-chrome-512x512.png" sizes="512x512">
+    
+    <!-- iOS Safari Pinned Tab -->
+    <link rel="mask-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>" color="#2c5282" />
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#2c5282">
+    <meta name="msapplication-TileColor" content="#2c5282">
+    
+    <!-- Content Security Policy for HubSpot, Firebase, reCAPTCHA, Analytics & Marketing Pixels -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+        js.hs-scripts.com 
+        js.hscollectedforms.net 
+        js.hs-analytics.net 
+        *.hsforms.com 
+        *.hsformsdemo.com
+        *.googleapis.com
+        www.google.com
+        www.gstatic.com
+        www.recaptcha.net
+        www.googletagmanager.com
+        *.google-analytics.com
+        connect.facebook.net
+        *.facebook.com
+        analytics.tiktok.com
+        *.tiktok.com
+        www.clarity.ms
+        *.clarity.ms;
+      connect-src 'self' 
+        api.hsforms.com 
+        forms.hubspot.com 
+        track.hubspot.com 
+        *.hs-analytics.net
+        *.googleapis.com
+        *.firebaseio.com
+        *.cloudfunctions.net
+        firestore.googleapis.com
+        identitytoolkit.googleapis.com
+        securetoken.googleapis.com
+        www.google.com
+        www.recaptcha.net
+        *.google-analytics.com
+        *.analytics.google.com
+        *.googletagmanager.com
+        *.facebook.com
+        *.facebook.net
+        analytics.tiktok.com
+        *.tiktok.com
+        *.clarity.ms
+        ipapi.co
+        ip-api.com
+        ipinfo.io
+        api.bigdatacloud.net;
+      frame-src 'self' 
+        forms.hubspot.com 
+        *.hsforms.com
+        *.firebaseapp.com
+        www.google.com
+        www.recaptcha.net;
+      img-src 'self' data: blob: 
+        track.hubspot.com 
+        *.hs-analytics.net
+        *.googleapis.com
+        *.google-analytics.com
+        *.googletagmanager.com
+        *.tile.openstreetmap.org
+        unpkg.com;
+      style-src 'self' 'unsafe-inline' 
+        fonts.googleapis.com 
+        cdnjs.cloudflare.com
+        unpkg.com;
+      font-src 'self' 
+        fonts.gstatic.com 
+        cdnjs.cloudflare.com;
+    " />
+    
+    <title>Pet Wash™ - Premium Organic Pet Care | שטיפת חיות מחמד אורגנית פרימיום</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Israel's leading premium organic pet washing service. 4-tier loyalty program, AI-powered booking, Apple/Google Wallet integration. שירות שטיפת חיות מחמד אורגני פרימיום מוביל בישראל עם תוכנית נאמנות 4 רמות.">
+    <meta name="keywords" content="pet wash, dog wash, cat wash, organic pet care, Israel pet services, שטיפת כלבים, שטיפת חיות מחמד, שטיפה אורגנית, כלבים ישראל">
+    <meta name="author" content="Pet Wash™">
+    <meta name="robots" content="index, follow">
+    
+    <!-- OpenGraph Meta Tags (Facebook, WhatsApp, LinkedIn) -->
+    <meta property="og:title" content="Pet Wash™ - Premium Organic Pet Care">
+    <meta property="og:description" content="Israel's #1 premium organic pet washing service with K9000 smart stations. Book online, earn loyalty rewards, get weather-based recommendations.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://petwash.co.il">
+    <meta property="og:site_name" content="Pet Wash™">
+    <meta property="og:image" content="https://petwash.co.il/IMG_7114_1751624638881.jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Pet Wash™ - Premium Organic Pet Care">
+    <meta property="og:locale" content="he_IL">
+    <meta property="og:locale:alternate" content="en_US">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Pet Wash™ - Premium Organic Pet Care">
+    <meta name="twitter:description" content="Israel's #1 premium organic pet washing service with K9000 smart stations.">
+    <meta name="twitter:image" content="https://petwash.co.il/IMG_7114_1751624638881.jpeg">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://petwash.co.il/">
+    
+    <!-- Hreflang Tags for Bilingual Support -->
+    <link rel="alternate" hreflang="he" href="https://petwash.co.il/?lang=he">
+    <link rel="alternate" hreflang="en" href="https://petwash.co.il/?lang=en">
+    <link rel="alternate" hreflang="x-default" href="https://petwash.co.il/">
+    
+    <!-- Preload LCP Image - Critical for fastest possible render -->
+    <link rel="preload" as="image" href="/IMG_7114_1751624638881.jpeg" fetchpriority="high">
+    
+    <!-- Optimized Font Loading - Multi-language support (Hebrew, Arabic, English) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Rubik:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" as="style">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Rubik:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <!-- reCAPTCHA Preconnect - Fallback domain for content blockers/VPNs/China -->
+    <link rel="preconnect" href="https://www.recaptcha.net">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://www.google.com">
+    
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- iOS CSS Safe Areas -->
+    <style>
+      :root {
+        --safe-area-inset-top: env(safe-area-inset-top);
+        --safe-area-inset-right: env(safe-area-inset-right);
+        --safe-area-inset-bottom: env(safe-area-inset-bottom);
+        --safe-area-inset-left: env(safe-area-inset-left);
+      }
+      
+      body {
+        padding-top: var(--safe-area-inset-top);
+        padding-right: var(--safe-area-inset-right);
+        padding-bottom: var(--safe-area-inset-bottom);
+        padding-left: var(--safe-area-inset-left);
+      }
+      
+      /* iOS Touch Optimization */
+      * {
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      button, a, [role="button"] {
+        -webkit-touch-callout: default;
+        -webkit-tap-highlight-color: rgba(0, 122, 255, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Progressive Enhancement: Graceful Fallback for JavaScript Disabled -->
+    <noscript>
+      <style>
+        .needs-js { display: none !important; }
+        .no-js-warning {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          background: linear-gradient(135deg, #2c5282 0%, #1a365d 100%);
+          color: white;
+          padding: 20px;
+          text-align: center;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          z-index: 9999;
+        }
+        .no-js-warning h2 {
+          margin: 0 0 10px 0;
+          font-size: 24px;
+          font-weight: 600;
+        }
+        .no-js-warning p {
+          margin: 0 0 15px 0;
+          font-size: 16px;
+          line-height: 1.5;
+        }
+        .no-js-warning .instructions {
+          background: rgba(255,255,255,0.1);
+          padding: 15px;
+          border-radius: 8px;
+          margin: 15px auto;
+          max-width: 600px;
+        }
+        .no-js-warning .contact {
+          font-size: 14px;
+          opacity: 0.9;
+        }
+      </style>
+      <div class="no-js-warning">
+        <h2>🐾 JavaScript Required | נדרש JavaScript</h2>
+        <p>
+          <strong>English:</strong> Pet Wash™ requires JavaScript to provide the best experience.<br>
+          Please enable JavaScript in your browser settings to continue.
+        </p>
+        <p>
+          <strong>עברית:</strong> Pet Wash™ דורש JavaScript כדי לספק את החוויה הטובה ביותר.<br>
+          אנא הפעל JavaScript בהגדרות הדפדפן שלך כדי להמשיך.
+        </p>
+        <div class="instructions">
+          <p><strong>How to enable JavaScript:</strong></p>
+          <ul style="text-align: left; max-width: 500px; margin: 10px auto; line-height: 1.8;">
+            <li><strong>Chrome/Edge:</strong> Settings → Privacy & Security → Site Settings → JavaScript → Allowed</li>
+            <li><strong>Firefox:</strong> about:config → javascript.enabled → true</li>
+            <li><strong>Safari:</strong> Preferences → Security → Enable JavaScript</li>
+          </ul>
+        </div>
+        <p class="contact">
+          Need help? Contact us: <strong>Support@PetWash.co.il</strong> | <strong>+972-XX-XXX-XXXX</strong>
+        </p>
+      </div>
+    </noscript>
+    
+    <div id="root"></div>
+    
+    <!-- PRODUCTION FIX: Load Firebase config from server BEFORE app initializes -->
+    <!-- CRITICAL: Creates promise that main.tsx will await -->
+    <script>
+      // Create a promise that resolves when Firebase config is ready
+      window.__FIREBASE_CONFIG_READY__ = (async function initFirebaseConfig() {
+        try {
+          console.log('[Firebase Runtime Config] Fetching from server...');
+          const response = await fetch('/api/config/firebase');
+          if (response.ok) {
+            window.__FIREBASE_CONFIG__ = await response.json();
+            console.log('[Firebase Runtime Config] ✅ Loaded successfully', {
+              hasApiKey: !!window.__FIREBASE_CONFIG__.apiKey,
+              projectId: window.__FIREBASE_CONFIG__.projectId,
+              authDomain: window.__FIREBASE_CONFIG__.authDomain
+            });
+          } else {
+            console.error('[Firebase Runtime Config] ❌ HTTP', response.status, '- using fallback');
+            window.__FIREBASE_CONFIG__ = null;
+          }
+        } catch (error) {
+          console.error('[Firebase Runtime Config] ❌ Network error:', error, '- using fallback');
+          window.__FIREBASE_CONFIG__ = null;
+        }
+        
+        console.log('[Firebase Runtime Config] Ready - app can initialize');
+        return true;
+      })();
+    </script>
+    
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Google Analytics 4 - Lazy loaded after page interaction -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-B5W5GHJ5EN', {
+        send_page_view: false
+      });
+      
+      // Lazy load GA4 script after first user interaction or 3 seconds
+      const loadGA4 = () => {
+        if (!window.ga4Loaded) {
+          window.ga4Loaded = true;
+          const script = document.createElement('script');
+          script.src = 'https://www.googletagmanager.com/gtag/js?id=G-B5W5GHJ5EN';
+          script.async = true;
+          document.head.appendChild(script);
+        }
+      };
+      
+      // Load on first interaction
+      ['mousedown', 'touchstart', 'scroll', 'keydown'].forEach(event => {
+        window.addEventListener(event, loadGA4, { once: true, passive: true });
+      });
+      
+      // Fallback: load after 3 seconds
+      setTimeout(loadGA4, 3000);
+    </script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          // Register PWA service worker for offline support
+          navigator.serviceWorker.register('/service-worker.js')
+            .then((registration) => {
+              console.log('[PWA] Service Worker registered successfully:', registration.scope);
+            })
+            .catch((error) => {
+              console.log('[PWA] Service Worker registration failed:', error);
+            });
+          
+          // Register Firebase Cloud Messaging service worker for push notifications
+          navigator.serviceWorker.register('/firebase-messaging-sw.js')
+            .then((registration) => {
+              console.log('[FCM] Firebase Messaging Service Worker registered successfully:', registration.scope);
+            })
+            .catch((error) => {
+              console.log('[FCM] Firebase Messaging Service Worker registration failed:', error);
+            });
+        });
+      }
+    </script>
+    
+    <!-- Structured Data (JSON-LD) for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "@id": "https://petwash.co.il/#organization",
+      "name": "Pet Wash™",
+      "alternateName": "Pet Wash Israel",
+      "description": "Premium organic pet washing service in Israel with K9000 smart stations",
+      "url": "https://petwash.co.il",
+      "logo": "https://petwash.co.il/brand/petwash-logo-official.png",
+      "image": "https://petwash.co.il/IMG_7114_1751624638881.jpeg",
+      "email": "Support@PetWash.co.il",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "IL",
+        "addressLocality": "Israel"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 31.7683,
+        "longitude": 35.2137
+      },
+      "openingHoursSpecification": [{
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Sunday"],
+        "opens": "08:00",
+        "closes": "20:00"
+      }],
+      "priceRange": "₪₪₪",
+      "currenciesAccepted": "ILS",
+      "paymentAccepted": "Credit Card, Apple Pay, Google Pay",
+      "sameAs": [
+        "https://www.facebook.com/petwashltd",
+        "https://www.instagram.com/petwashltd",
+        "https://www.tiktok.com/@petwashltd"
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "reviewCount": "156",
+        "bestRating": "5",
+        "worstRating": "1"
+      }
+    }
+    </script>
+    
+    <!-- HubSpot Tracking Script -->
+    <script type="text/javascript" id="hs-script-loader" async defer src="//js.hs-scripts.com/46822710.js"></script>
+  </body>
+</html>

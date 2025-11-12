@@ -1,0 +1,195 @@
+import UIKit
+import PassKit
+
+// MARK: - PassKit Handling Class
+class AppleWalletPassManager: NSObject, PKAddPassesViewControllerDelegate {
+
+    // 🚨 IMPORTANT: Replace this with the URL to your server's .pkpass generation endpoint
+    private let passDownloadURL = "https://your-pet-wash-server.com/generate-pass/CUST12345"
+    
+    // A weak reference to the view controller that will present the native Wallet screen
+    private weak var presentingViewController: UIViewController?
+
+    init(presentingVC: UIViewController) {
+        self.presentingViewController = presentingVC
+        super.init()
+    }
+
+    /// Checks for Wallet availability and initiates the pass download process.
+    func startAddPassProcess() {
+        // 1. Check if the device can add passes to the Wallet
+        guard PKPassLibrary.isPassLibraryAvailable() else {
+            print("🚨 ERROR: Apple Wallet is not available on this device.")
+            // You may want to show an alert to the user here
+            return
+        }
+
+        // 2. Begin downloading the PKPass file from the server
+        downloadPassFile()
+    }
+
+    /// Downloads the PKPass data from the server endpoint.
+    private func downloadPassFile() {
+        guard let url = URL(string: passDownloadURL) else {
+            print("🚨 ERROR: Invalid Pass Download URL.")
+            return
+        }
+        
+        // Use a simple data task to fetch the binary .pkpass file
+        let task = URLSession.shared.dataTask(with: url) { [weak self] (data, response, error) in
+            // All UI updates MUST be performed on the main thread
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("🚨 ERROR: Download failed: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let data = data else {
+                    print("🚨 ERROR: No data received from server.")
+                    return
+                }
+                
+                // 3. Convert the downloaded binary data into a PKPass object
+                self?.handlePassData(data)
+            }
+        }
+        task.resume()
+    }
+
+    /// Converts the data and presents the native Wallet view controller.
+    private func handlePassData(_ data: Data) {
+        do {
+            let pass = try PKPass(data: data)
+            
+            // Optional: Check if the pass is already in the user's Wallet
+            if PKPassLibrary().containsPass(pass) {
+                print("Pass already exists in Wallet.")
+                return // Exit the process
+            }
+            
+            // 4. Create and present the native view controller
+            let addPassViewController = PKAddPassesViewController(pass: pass)
+            addPassViewController?.delegate = self
+            
+            self.presentingViewController?.present(addPassViewController!, animated: true)
+            
+        } catch {
+            print("🚨 ERROR: Failed to create PKPass from data. Is your .pkpass file valid and signed?")
+            print(error.localizedDescription)
+        }
+    }
+
+    // MARK: - PKAddPassesViewControllerDelegate
+
+    func addPassesViewControllerDidFinish(_ controller: PKAddPassesViewController) {
+        // 5. Dismiss the native "Add to Wallet" screen when the user is done
+        controller.dismiss(animated: true) {
+            print("User finished the Wallet interaction.")
+        }
+    }
+}
+
+
+// MARK: - SwiftUI / UIKit Integration Examples
+
+// --- OPTION A: Usage in a standard UIViewController (UIKit) ---
+/*
+class MyViewController: UIViewController {
+    var walletManager: AppleWalletPassManager?
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        let button = UIButton(type: .system)
+        button.setTitle("Add Pet Wash Card to Wallet", for: .normal)
+        button.addTarget(self, action: #selector(addButtonTapped), for: .touchUpInside)
+        // ... add button to view ...
+    }
+
+    @objc func addButtonTapped() {
+        // Initialize the manager, passing 'self' as the presenter
+        walletManager = AppleWalletPassManager(presentingVC: self)
+        walletManager?.startAddPassProcess()
+    }
+}
+*/
+
+// --- OPTION B: Wrapper for SwiftUI (Requires UIViewControllerRepresentable) ---
+/*
+import SwiftUI
+
+struct WalletButtonView: UIViewControllerRepresentable {
+    
+    // A function to be called when the button is tapped (e.g., in a parent SwiftUI view)
+    let triggerAction: (UIViewController) -> Void
+
+    func makeUIViewController(context: Context) -> UIViewController {
+        // Use a simple hosting controller to get a presenter context
+        let vc = UIViewController()
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+    
+    // This allows you to call the function from your SwiftUI button
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+    
+    class Coordinator: NSObject {
+        var parent: WalletButtonView
+        
+        init(parent: WalletButtonView) {
+            self.parent = parent
+        }
+        
+        @objc func buttonTapped(_ sender: UIButton) {
+            // Use the presenting view controller to call the action
+            if let vc = sender.findViewController() {
+                parent.triggerAction(vc)
+            }
+        }
+    }
+}
+
+// Helper to find the presenting view controller (often needed in SwiftUI wrappers)
+extension UIView {
+    func findViewController() -> UIViewController? {
+        if let nextResponder = self.next as? UIViewController {
+            return nextResponder
+        } else if let nextResponder = self.next as? UIView {
+            return nextResponder.findViewController()
+        } else {
+            return nil
+        }
+    }
+}
+
+struct ContentView: View {
+    @State private var walletManager: AppleWalletPassManager?
+
+    var body: some View {
+        VStack {
+            
+            WalletButtonView { presenterVC in
+                // 1. Initialize the manager on button tap
+                self.walletManager = AppleWalletPassManager(presentingVC: presenterVC)
+                
+                // 2. Start the Wallet process
+                self.walletManager?.startAddPassProcess()
+            }
+            .frame(width: 300, height: 50)
+            
+            // Optional: Use the native 'Add to Apple Wallet' button style
+            if PKAddPassesViewController.canAddPasses() {
+                PKAddPassButton(addPassButtonStyle: .black) {
+                    // Note: PKAddPassButton is only available in UIKit (PKAddPassButton is a UIView).
+                    // You would need to wrap the PKAddPassButton in a UIViewRepresentable for SwiftUI, 
+                    // and use its action handler to call your pass download logic.
+                    // The above WalletButtonView provides a custom wrapper.
+                }
+            }
+        }
+    }
+}
+*/

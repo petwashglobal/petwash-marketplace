@@ -1,0 +1,68 @@
+PET WASH™ GLOBAL ARCHITECTURE 2025
+
+Unified multi-service platform powered by Nayax Israel
+
+Pet Wash™ is a connected ecosystem made of several live entities: Pet Wash Stations, Pet Wash Academy (Trainers), Pet Sitter, Dog Walker, Pet Transport, and E-Gift. The platform must deliver one seamless user experience while managing each service as its own internal module. The entire system, from first login to payout, operates through Nayax Israel as the exclusive payment gateway and clearing partner.
+
+The guiding principle is one login, one wallet, one loyalty system, one tax engine, many services. The front end shows users a single dashboard where they can view and manage every activity—wash sessions, bookings, payments, and receipts—under their personal profile. Behind the scenes, each business unit runs independently through modular APIs that talk to one shared Payments and Ledger service connected directly to Nayax Israel.
+
+USER AND ACCESS LAYER
+All customers and service providers authenticate through Firebase Auth using single sign-on. Each profile contains personal details, verified ID, stored payment token from Nayax Israel, loyalty status, pets registered, and active bookings. Providers—trainers, sitters, walkers, drivers—log in through the same gateway but with different permission scopes. Admins and finance staff have elevated roles with two-factor authentication and full audit logging.
+
+FRONT END LOGIC
+Users see one dashboard called Pet Wash Hub. Sections include My Bookings, My Wallet, Loyalty Points, E-Gift, and Support. Bookings from all modules appear together with color coding by service type. The booking experience is unified: date selection, price quote, summary, payment, and confirmation screens are identical across modules. Loyalty and wallet balances update in real time.
+
+BACK END MODULE STRUCTURE
+Each module (Wash, Walker, Sitter, Trainer, Transport, Gift) remains logically separate for performance and reliability. Modules share the same schema style but live as individual micro-services communicating through an internal API gateway. Typical routes include createBooking, cancelBooking, updateStatus, and getBookings. All modules write financial events to the central Payments and Ledger service, never directly to Nayax. This ensures isolation—one module cannot overload another if traffic spikes.
+
+PAYMENTS AND LEDGER SERVICE POWERED BY NAYAX ISRAEL
+The Payments and Ledger service is the financial heart of the ecosystem. It performs tokenization, double-entry posting, wallet management, tax tagging, refunds, chargebacks, and payout scheduling. It is the only service allowed to interact with Nayax Israel’s VPOS Cloud API.
+
+Every transaction uses Nayax’s secure token model. The customer authorizes payment once, and the token is reused for subsequent bookings. No raw card data is stored anywhere in the Pet Wash environment. All requests to Nayax Israel are signed with your merchant credentials and transmitted over TLS 1.3. The service captures webhooks for authorization, capture, refund, settlement, and chargeback events.
+
+When a booking is initiated, the Payments and Ledger service authorizes the charge via Nayax Israel and records provisional ledger entries:
+– Customer liability decreases.
+– Provider receivable is created.
+– Platform commission and tax accruals are logged.
+When the service is delivered, the system captures the charge and marks revenue as realized. Cancellations within the grace window release the authorization. Partial or late-cancellation fees are processed automatically.
+
+DOUBLE-ENTRY LEDGER AND WALLET
+Every movement of money creates equal and opposite ledger entries. The ledger tracks cash, accounts payable to providers, unearned revenue for gift cards, tax payable, wallet liabilities, and loyalty points. Wallet top-ups and gift card sales increase liabilities, not revenue, until redeemed. Loyalty accruals are liabilities until used or expired.
+
+Refunds and chargebacks post exact reversals with full linkage to original entries. If a refund occurs after provider payout, the system books a negative payable to offset future settlements. All ledger data is immutable and timestamped.
+
+RECONCILIATION AND SETTLEMENTS
+At the end of each day the system retrieves settlement and transaction reports from Nayax Israel through their secure interface. Transactions are matched by gateway ID and internal ID. Variances or missing items go into an exceptions queue. Finance receives a daily reconciliation summary per module, per location, and per entity. Once balanced, the ledger day is locked to prevent edits.
+
+Providers are paid weekly through Nayax Israel or via linked bank accounts. The payout engine computes net earnings: gross revenue minus platform commission, minus withheld tax where required, plus tips, minus refunds. High-risk or new providers carry a small rolling reserve. Each payout triggers a statement listing bookings, taxes, deductions, and reserve movements.
+
+ACCOUNTING AND REPORTING
+The system posts summarized journal entries into the main accounting platform such as Xero or NetSuite. Journals include revenue by module, tax payable, provider payables, gateway clearing, wallet liabilities, and breakage income. The accounting connector runs nightly and marks exported batches as closed. Month-end procedures lock previous periods and allow only finance-role adjustments through journal entries.
+
+Each legal entity—Pet Wash Ltd (Israel), Pet Wash Australia Pty Ltd, and any future regional arm—maintains its own invoice numbering and tax configuration. Every ledger entry carries an entity ID for consolidation. Intercompany fees for brand or technology services are auto-calculated monthly and posted as internal journals.
+
+TAX ENGINE AND INVOICING
+A dedicated Tax engine determines applicable tax rules based on service type, location, and provider residency. In Israel, VAT is calculated at the statutory rate for all taxable services. For international regions, GST or local equivalents apply. Each transaction records tax rate, taxable base, and jurisdiction code. Invoices and credit notes are generated automatically in Hebrew or English with sequential numbers and embedded Nayax Israel transaction IDs. Gift cards are tax-exempt at sale and taxed upon redemption.
+
+NAYAX ISRAEL SPECIFICS
+All digital transactions route through Nayax Israel under your primary merchant ID. Physical Pet Wash Stations use unique terminal IDs to simplify reconciliation. Online services share the merchant account but include a field called service_category (WASH, WALK, SIT, TRAIN, TRANSPORT, GIFT) for reporting. The API integration uses the VPOS Cloud endpoints for authorize, capture, refund, void, settlement query, and transaction status. Webhooks must be verified for signature authenticity.
+Nayax Israel serves as the acquiring processor and settlement bank, depositing cleared funds into your main ILS merchant account daily or according to your settlement frequency. The platform’s ledger uses these reports to match deposits precisely.
+
+TAX AND REGULATORY COMPLIANCE
+VAT records are produced automatically for each transaction. Summaries by entity are exported monthly to the finance department for filing with the Israel Tax Authority. All receipts and invoices are compliant with Israeli e-invoice formatting standards and can be digitally signed if required. For international branches, local compliance connectors can be activated. Data retention follows seven-year legal requirement with encrypted storage.
+
+RISK AND SECURITY
+All API keys, tokens, and credentials are encrypted at rest. Finance and admin roles use two-factor authentication. PCI DSS scope is minimal because Nayax Israel handles card data. Sensitive fields like provider bank details are encrypted with a managed key vault. Every admin change is logged with before/after values and timestamp. Logs are immutable and archived.
+
+LOAD AND PERFORMANCE MANAGEMENT
+Each module uses its own worker pool and message queue so concurrent bookings across thousands of users do not block one another. Calls to Nayax Israel are asynchronous; the UI receives immediate “pending” status while background workers finalize authorization and capture. Circuit breakers and rate limiting protect against gateway downtime. The infrastructure scales automatically on Google Cloud functions and Neon Postgres with read/write separation.
+
+FINANCE AND ACCOUNTS TEAM OPERATIONS
+The accounts department has a dedicated admin interface showing daily cash flow, outstanding payables, refunds in process, chargebacks, and taxes collected. They can export reconciliation and VAT reports directly to Excel or to Xero. A finance lock prevents unauthorized edits to closed days. Senior finance staff approve large refunds or manual journal entries. Tax codes and commission rates can be configured without developer intervention.
+
+BUSINESS AND TAX SMART LOGIC FOR 2025
+All revenue recognition follows IFRS 15 logic. Gift card liabilities and loyalty liabilities age out per your policy. Multi-currency support allows the system to store transactional currency and functional currency with exchange rates from an official daily feed. Breakage income and FX gains or losses are booked automatically at month end. The platform uses AI-based anomaly detection to flag duplicate payments, unbalanced ledger entries, and mismatched VAT rates.
+
+⸻
+
+This unified architecture ensures that every Pet Wash™ service—Wash, Academy, Sitter, Walker, Transport, and Gift—operates independently yet harmoniously. Users see one premium interface, providers receive timely payments, the finance team gains precise reconciliations, and all money flows through Nayax Israel, delivering secure, compliant, and fully auditable financial operations ready for 2025 scale.

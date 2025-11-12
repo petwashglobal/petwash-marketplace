@@ -1,0 +1,88 @@
+Login
+
+/v1/users/login
+
+To authenticate yourself with WhatsApp Business API client, you must log in. To log in, send your username and password over basic authentication and receive a bearer token in response. Then, you then use the bearer token for authentication when sending requests to any WhatsApp Business API endpoint. Learn more about authentication to use the API.
+
+Before You Start
+
+The WhatsApp Business API client has a default account — the username of the account is admin and the password is secret. This account cannot be removed or deleted from the system. For security reasons, you are required to change the admin password on your first login.
+
+Password Recommendations
+
+We recommended you use strong passwords when creating new accounts and when setting new accounts' passwords, as per industry best practices.
+
+Passwords need to be between 8 and 64 characters long and have at least:
+
+one digit
+one uppercase character
+one lowercase character
+one special character from among !"#$%&\'()*+,-./:;<=>?@[]^_`{|}~
+Password complexity is enforced upon creating a new account or changing an existing account's password.
+
+Creating
+
+You authenticate yourself using basic authentication (username, password) when you log in. The Authorization is set in the HTTP header. The type is Basic and the credentials are a base64-encoded string consisting of the username and password joined with a colon (i.e., username:password).
+
+When your login request is received by the WhatsApp Business API client, your credentials are processed for validation.
+
+If successful, your token is generated. The response contains your token in the token field.
+If not successful, an error is returned.
+Examples
+
+First Login
+For security purposes, you are required to update the default admin password to a new password using the new_password field the first time you attempt to log in. If you try to log in with the default password and no new_password field information, the system returns an error.
+
+See passwords for our recommendations. Your first login should look like:
+
+  POST /v1/users/login
+  Authorization: Basic base64(username:password)
+  {
+  "new_password": "new-password"
+  }
+The cURL version looks like this:
+
+curl -k -X POST https://your-webapp-hostname:your-webapp-port/v1/users/login \
+  -w "\n%{http-code}\n" \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Basic base64(username:password)' \
+  -d '{"new_password" : "new-password"}'
+Standard Login
+The standard login for the WhatsApp Business API client looks like this:
+
+POST /v1/users/login
+Authorization: Basic base64(username:password)
+The cURL version looks like this:
+
+curl -X POST \
+  -H 'Authorization: Basic base64(username:password)' \
+  -H 'Content-Type: application/json' \
+  -d '{}' \
+  https://your-webapp-hostname:your-webapp-port/v1/users/login
+On success, a status of 200 OK is returned, along with the token and token expiration time. All generated tokens expire in 7 days. The response looks like the following example:
+
+{
+   "users": [{
+      "token": "eyJhbGciOHlXVCJ9.eyJ1c2VyIjoNTIzMDE2Nn0.mEoF0COaO00Z1cANo",
+      "expires_after": "2018-03-01 15:29:26+00:00"
+   }]
+}
+If the request is not successful, you see an HTTP status of 401 Unauthorized. This error generally means that the username and/or password that was sent with the login request is invalid, and thus the WhatsApp Business API client is unable to generate the token.
+
+If there are errors in the response, refer to the following for more information: WhatsApp Enterprise Client Error Codes and HTTP Status Codes.
+
+Returned Fields
+
+Field	Description
+token
+
+Required.
+
+Authentication token to be used for all other WhatsApp Business API calls. The token must be sent in the authorization header in the format:
+Authorization: Bearer <authentication-token>
+
+expires_after
+
+Required.
+
+Token expiration timestamp. By default, this is 7 days.

@@ -1,0 +1,86 @@
+{
+  "project_name": "PetWash Global Tech Expansion 2026",
+  "version": "1.0.0",
+  "status": "High-Priority Strategic Development",
+
+  // ------------------------------------------------------------------------------------------------
+  // CORE PRODUCT: THE SMART HUB (The "Best in the World" Dual Bay System)
+  // Non-Technical Goal: Ensure the hardware hub is truly smart, secure, and ready for high-volume use.
+  // ------------------------------------------------------------------------------------------------
+  "hardware_hub_requirements": {
+    "model_name": "DualBay Smart Wash Hub V3",
+    "feature_priority": [
+      {
+        "id": "A1",
+        "description": "Implement **End-to-End System Monitoring** (self-diagnostics for water, soap, and mechanical health).",
+        "goal": "Minimize downtime and maintenance costs for operators (franchisees)."
+      },
+      {
+        "id": "A2",
+        "description": "Ensure **Credit/Debit/Mobile Pay Integration** is seamless and supports multiple international currency/card processors.",
+        "goal": "Maximize revenue capture globally; reduce dependency on cash/tokens."
+      },
+      {
+        "id": "A3",
+        "description": "Finalize **Proprietary Dual-Bay Logic** to handle simultaneous use and resource allocation efficiently.",
+        "goal": "Secure the 'Dual Bay' competitive advantage and maximize machine throughput."
+      }
+    ]
+  },
+
+  // ------------------------------------------------------------------------------------------------
+  // TECHNOLOGY PLATFORM: THE CLOUD API (Bank-Grade Security & R&D Sales)
+  // Non-Technical Goal: Build a world-leader backend that can be sold/licensed to partners.
+  // ------------------------------------------------------------------------------------------------
+  "cloud_api_requirements": {
+    "api_name": "PetWash Global Operations API (GO-API)",
+    "security_level": "Bank Grade",
+    "feature_priority": [
+      {
+        "id": "B1",
+        "description": "Implement **ISO 27001-compliant security protocols** (tokenization, encryption at rest/in transit).",
+        "goal": "Achieve 'Bank Grade Security' to build trust with B2B partners and manage financial data securely."
+      },
+      {
+        "id": "B2",
+        "description": "Develop **Modular Licensing Structure** within the API for analytics, operator accounts, and hub control.",
+        "goal": "Easily sell 'Technology Development' licenses to interested third parties who want our tech without the hardware."
+      },
+      {
+        "id": "B3",
+        "description": "Build **Real-time Data Dashboard** for franchisees to view operational logs, revenue, and predictive maintenance alerts.",
+        "goal": "Provide skilled R&D assistance by giving operators advanced data tools to improve their business."
+      }
+    ]
+  },
+
+  // ------------------------------------------------------------------------------------------------
+  // GLOBAL GROWTH: FRANCHISE, PARTNERSHIPS & MARKETING
+  // Non-Technical Goal: Facilitate international expansion and big-brand-style collaborations.
+  // ------------------------------------------------------------------------------------------------
+  "market_strategy_requirements": {
+    "goal": "Follow world-leader tech marketing/growth practices.",
+    "feature_priority": [
+      {
+        "id": "C1",
+        "description": "Create a **Partner API Endpoint** for integration with external loyalty programs (e.g., Pet Insurance companies).",
+        "goal": "Allow 'Collaboration with Pet Insurance Companies' for co-branded deals and customer rewards."
+      },
+      {
+        "id": "C2",
+        "description": "Develop **Programmatic Ad Slot Management** on the Hub's screen/app interface.",
+        "goal": "Open up a new revenue stream by selling targeted ads (programmatic options) to relevant pet brands."
+      },
+      {
+        "id": "C3",
+        "description": "Integrate **Influencer/Celebrity Campaign Tracking** into website/app analytics.",
+        "goal": "Measure the effectiveness of 'VIP Famous People' and influencer marketing campaigns (Caleb with pet wash)."
+      },
+      {
+        "id": "C4",
+        "description": "Design **Multi-Language Support** for the Hub UI and Customer App (starting with 4 key languages beyond English).",
+        "goal": "Support the 'International Franchises Model' by making the product accessible in new markets."
+      }
+    ]
+  }
+}

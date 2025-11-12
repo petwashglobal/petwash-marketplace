@@ -1,0 +1,57 @@
+// Function that runs upon app launch
+async function GetAndDisplayPersonalizedGreeting(UserData) {
+    const UserName = UserData.getName();
+    const UserLanguage = UserData.getPreferredLanguage();
+    
+    const CurrentDate = new Date();
+    const CurrentHour = CurrentDate.getHours();
+    
+    let Occasion = "Standard Greeting";
+
+    // 1. Determine Occasion (Business Logic)
+    
+    // Check for Birthday
+    if (CurrentDate.getMonth() === UserData.getBirthMonth() && CurrentDate.getDate() === UserData.getBirthDay()) {
+        Occasion = "Birthday";
+    } 
+    // Check for Major Holiday (Requires External Calendar Service Call, mocked here)
+    else if (await CalendarAPI.checkIfTodayIsHoliday()) {
+        Occasion = "Major Holiday"; 
+    }
+    // Check for Time of Day
+    else if (CurrentHour >= 22 || CurrentHour < 5) {
+        Occasion = "Late Night Login"; 
+    } else if (CurrentHour >= 5 && CurrentHour < 12) {
+        Occasion = "Morning Login"; 
+    }
+    
+    // 2. Prepare Prompt for AI (The Smart Code)
+    
+    const SystemInstruction = "You are a friendly virtual assistant for a mobile app. Generate short, personalized, and direct greetings. Always address the user by their name and speak the requested language.";
+    
+    const Prompt = `
+        Generate one short, personalized greeting. 
+        User's Name: ${UserName}
+        Language: ${UserLanguage}
+        Current Occasion: ${Occasion}
+    `;
+
+    // 3. Call Gemini API (Mocked Call)
+    
+    try {
+        const Response = await GeminiAPI.generateContent({
+            model: "gemini-2.5-flash", 
+            systemInstruction: SystemInstruction,
+            contents: [Prompt]
+        });
+        
+        const GreetingText = Response.text.trim();
+        
+        // 4. Display the result on the UI (e.g., alert, text label)
+        DisplayOnScreen(GreetingText);
+        
+    } catch (error) {
+        console.error("Gemini API Error:", error);
+        DisplayOnScreen("Welcome back!"); // Fallback
+    }
+}

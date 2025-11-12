@@ -1,0 +1,141 @@
+{
+  "project_mandate": "PetWash Group Autonomous Platforms",
+  "architecture_standard": "Microservices (2026 Ready)",
+  "financial_separation_policy": "Full P&L and dedicated ledger for each Derive (Israel Tax Compliant)",
+  "shared_infrastructure": {
+    "identity_service": {
+      "technology": "OAuth 2.1 / OpenID Connect (OIDC)",
+      "purpose": "Single Sign-On (SSO) across all platforms"
+    },
+    "api_gateway": {
+      "technology": "GraphQL / RESTful API Gateway",
+      "purpose": "Routing to correct autonomous microservice backend"
+    },
+    "front_end": {
+      "technology": "React Native (Mobile) / Next.js (Web)",
+      "ux_standard": "Apple-style nested sliding menus"
+    }
+  },
+  "platforms": [
+    {
+      "name": "The Sitter Suite™",
+      "derive": "Pet Accommodation & Sitting",
+      "us_model": "Airbnb / Rover",
+      "microservices": [
+        {
+          "name": "Booking_Scheduling",
+          "database": "PostGIS/PostgreSQL",
+          "features": [
+            "Real-Time Atomic Availability",
+            "Advanced Multi-Pet/Multi-Service Scheduling",
+            "Mandatory Meet & Greet Logic"
+          ]
+        },
+        {
+          "name": "Payout_Finance",
+          "ledger": "Dedicated P&L Ledger",
+          "features": [
+            "Escrow Module (72hr withholding)",
+            "Israel_VAT_Module (17% on Platform Commission Fee only)",
+            "Automated Sitter Payouts"
+          ]
+        },
+        {
+          "name": "Trust_Safety",
+          "features": [
+            "AI-Powered Vetting Triage (Risk Scoring)",
+            "Digital Contract Acceptance (Liability/Policy)",
+            "Automated Policy Alerts (Expiration/Breach)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Walk My Pet™ & PetTrek™",
+      "derive": "Logistics & Transport",
+      "us_model": "Wag! / Uber",
+      "microservices": [
+        {
+          "name": "RealTime_Logistics",
+          "database": "PostGIS/Redis",
+          "features": [
+            "Geospatial Indexing for ASAP Dispatch (<5s latency)",
+            "WebSockets for High-Frequency GPS Pings",
+            "Live ETA & Route Tracking"
+          ]
+        },
+        {
+          "name": "Pricing_Engine",
+          "features": [
+            "Dynamic Pricing (ML-based on Supply/Demand/Weather)",
+            "Automated Commission Calculation",
+            "Fuel/Mileage Tracking (for PetTrek)"
+          ]
+        },
+        {
+          "name": "Walker_Driver_App",
+          "features": [
+            "GPS Geofencing for Check-In/Check-Out",
+            "Time-Stamped Photo Verification (Live)",
+            "AI Safety Alerts (Unusual Stops/Route Deviation)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shared_Utility_Services",
+      "derive": "Communication & Media",
+      "microservices": [
+        {
+          "name": "Notification_Service",
+          "technology": "APNs/FCM",
+          "features": [
+            "Unified Push Notifications",
+            "Targeted Priority Alerts (Critical vs. Marketing)"
+          ]
+        },
+        {
+          "name": "Inbox_Chat_Service",
+          "technology": "WebSockets / Real-Time Database",
+          "features": [
+            "Encrypted Sitter/Owner Chat",
+            "Full Audit Trail for Disputes"
+          ]
+        },
+        {
+          "name": "Media_Storage",
+          "technology": "S3/Cloud Storage",
+          "features": [
+            "Secure Tokenized Photo Access for Owners",
+            "Native Mobile Bulk Uploading"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Other_Autonomous_Derives",
+      "platforms": [
+        {
+          "name": "Pet Wash Hub™",
+          "focus": "Membership & Loyalty Automation",
+          "backend_type": "Subscription Management"
+        },
+        {
+          "name": "Paw Finder™",
+          "focus": "AI Image Recognition Engine",
+          "backend_type": "Dedicated GPU/Cloud Compute Service"
+        },
+        {
+          "name": "The Plush Lab™",
+          "focus": "Generative AI API Integration",
+          "backend_type": "High-Volume Cloud AI Service"
+        },
+        {
+          "name": "Enterprise",
+          "focus": "Global Franchise/Licensing",
+          "backend_type": "Multi-Tenant BI/Analytics Data Warehouse"
+        }
+      ]
+    }
+  ]
+}

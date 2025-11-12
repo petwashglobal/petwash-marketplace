@@ -1,0 +1,58 @@
+# BEST CODE: Python/Flask Backend for Programmatic Lead Generation (2025)
+
+from flask import Flask, request, redirect, url_for, render_template
+
+app = Flask(__name__)
+
+# --- CORE LEAD GENERATION FUNCTION ---
+@app.route('/programmatic/wash_offer')
+def programmatic_offer():
+    """
+    Analyzes programmatic parameters (passed via the ad click) 
+    and generates a personalized lead capture experience.
+    """
+    # 1. Capture the critical programmatic and location data
+    # (These parameters are dynamically inserted by the DSP/Ad Exchange)
+    geo_fence = request.args.get('geo')          # e.g., 'DogPark_A' or 'Vet_Clinic_B'
+    weather_cond = request.args.get('weather')   # e.g., 'Rain' or 'Sunny'
+    ad_id = request.args.get('adid')             # Unique identifier for the ad creative
+    
+    # 2. Determine the Lead Magnet/Offer (Personalization/Sophistication)
+    if weather_cond == 'Rain' and geo_fence:
+        # High-value, immediate offer for muddy dogs near a park
+        offer_title = f"Clean Up Today! Get 50% Off Your First Pet Wash near {geo_fence}!"
+        lead_magnet = "50_PERCENT_OFF_RAINY_DAY"
+        cta_button = "Claim Discount Now"
+    elif geo_fence:
+        # Standard offer for general local traffic
+        offer_title = f"Is Your Dog Dirty? Find the Nearest Pet Wash in {geo_fence}."
+        lead_magnet = "FREE_GUIDE_TO_CLEAN_COATS"
+        cta_button = "Download Our Free Pet Wash Guide"
+    else:
+        # Default fallback
+        offer_title = "Welcome to Our Self-Service Pet Wash!"
+        lead_magnet = "10_PERCENT_OFF_GENERIC"
+        cta_button = "Get 10% Off"
+
+    # 3. Render the dynamic lead capture form
+    return render_template('lead_capture_template.html', 
+                           title=offer_title,
+                           magnet=lead_magnet,
+                           button=cta_button,
+                           source_id=f"PROG-{ad_id}-{geo_fence}")
+
+# --- Lead Submission Handling ---
+@app.route('/submit_lead', methods=['POST'])
+def submit_lead():
+    email = request.form.get('email')
+    source_id = request.form.get('source_id')
+    
+    # **This is the best code for Lead Generation:**
+    # Store the email and the full programmatic source context (source_id)
+    database.save_lead_with_context(email, source_id, datetime.now()) 
+    
+    return redirect(url_for('thank_you'))
+
+# if __name__ == '__main__':
+#     app.run(debug=False)
+

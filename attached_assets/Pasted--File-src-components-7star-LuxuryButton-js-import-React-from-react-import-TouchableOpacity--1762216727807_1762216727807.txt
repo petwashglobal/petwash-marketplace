@@ -1,0 +1,77 @@
+// File: src/components/7star/LuxuryButton.js
+
+import React from 'react';
+import { TouchableOpacity, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons'; // Icon set
+import { MotiView } from 'moti'; // For smooth luxury animation
+import { styled } from 'nativewind'; // For 2025 responsive styling
+
+// 1. Define Prop Types (Crucial for preventing bugs)
+/**
+ * @typedef {object} LuxuryButtonProps
+ * @property {string} title
+ * @property {string} iconName
+ * @property {() => void} onPress
+ * @property {boolean} [isDisabled=false]
+ */
+
+// 2. Use styled for NativeWind integration for best performance
+const StyledTouchableOpacity = styled(TouchableOpacity);
+
+/**
+ * A highly polished, animated button component for key application actions.
+ * @param {LuxuryButtonProps} props
+ */
+const LuxuryButton = ({ title, iconName, onPress, isDisabled = false }) => {
+    
+    // 3. Use Moti for a subtle, initial "pop-in" animation (Luxury UX)
+    return (
+        <MotiView
+            from={{ opacity: 0, translateY: 10 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 500 }}
+            className="w-full mt-4" // Full width container
+        >
+            <StyledTouchableOpacity
+                onPress={onPress}
+                disabled={isDisabled}
+                // 4. Use NativeWind for all styling: clean, responsive, and platform-consistent
+                className={`
+                    flex-row items-center justify-center p-4 rounded-xl 
+                    shadow-lg transition-all duration-300
+                    ${isDisabled ? 'bg-gray-600 opacity-70' : 'bg-indigo-700 hover:bg-indigo-600 active:bg-indigo-800'}
+                `}
+                activeOpacity={0.7}
+            >
+                <Feather name={iconName} size={20} color="white" className="mr-3" />
+                <Text className="text-white text-lg font-bold">
+                    {title}
+                </Text>
+            </StyledTouchableOpacity>
+        </MotiView>
+    );
+};
+
+export default LuxuryButton;
+
+// --- Example Usage (How your programmer should implement it) ---
+/*
+import LuxuryButton from './components/7star/LuxuryButton';
+
+const MyScreen = () => {
+    const handleLogin = () => {
+        // Business logic here
+    };
+
+    return (
+        <View>
+            // ... other elements
+            <LuxuryButton 
+                title="Log In to Paw-Connect" 
+                iconName="lock" 
+                onPress={handleLogin} 
+            />
+        </View>
+    );
+};
+*/

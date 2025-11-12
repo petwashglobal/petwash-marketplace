@@ -1,0 +1,46 @@
+# Financial Escrow and Payout Manager (Python Pseudo-Code)
+
+class StayPetEscrow:
+    
+    HOLD_PERIOD_HOURS = 24
+    
+    def deposit_funds(self, booking_id, total_amount, owner_fee_rate, sitter_fee_rate):
+        """Action 1: Owner pays, funds are deposited and held."""
+        # Calculate platform revenue immediately
+        owner_fee = total_amount * owner_fee_rate 
+        gross_payout_to_escrow = total_amount - owner_fee
+        
+        # Action: Initiate payment through gateway and move net to Escrow
+        escrow_account.hold_funds(booking_id, gross_payout_to_escrow)
+        db.log_revenue(booking_id, owner_fee) # Owner fee is recorded instantly
+        
+        return True, "Funds secured in Escrow."
+
+    def release_payout(self, booking_id):
+        """Action 2: Funds released to Sitter after service completion."""
+        booking_details = db.fetch_booking_details(booking_id)
+        
+        # CRITICAL CHECK 1: Ensure service is complete and verified
+        if not booking_details.is_complete:
+            return False, "Service not yet marked complete."
+
+        # CRITICAL CHECK 2: Enforce 24-hour waiting period
+        if datetime.now() < booking_details.completion_timestamp + timedelta(hours=self.HOLD_PERIOD_HOURS):
+            return False, "24-hour safety hold is still active."
+            
+        # Calculate Sitter's final payment after commission
+        sitter_fee_rate = booking_details.sitter_fee_rate # E.g., 0.18 (18%)
+        
+        # Calculate gross amount received by Sitter before their fee
+        gross_amount_in_escrow = escrow_account.get_holding_amount(booking_id)
+        
+        sitter_final_payout = gross_amount_in_escrow * (1 - sitter_fee_rate) 
+        platform_commission_revenue = gross_amount_in_escrow * sitter_fee_rate
+
+        # Action: Transfer Sitter's share
+        payment_gateway.transfer(booking_details.sitter_account, sitter_final_payout)
+        
+        # Action: Transfer Platform's remaining revenue
+        db.log_revenue(booking_id, platform_commission_revenue)
+
+        return True, "Payout successfully completed."

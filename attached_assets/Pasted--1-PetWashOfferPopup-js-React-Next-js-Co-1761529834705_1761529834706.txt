@@ -1,0 +1,160 @@
+// ----------------------------------------------------
+// 1. PetWashOfferPopup.js (React/Next.js Component)
+// ----------------------------------------------------
+
+import React, { useState, useEffect } from 'react';
+import styled, { keyframes, css } from 'styled-components';
+
+// --- STYLING & ANIMATIONS (The 'Smooth' Factor) ---
+
+// Define the smooth entry animation (achieving the 'fast load' feel)
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const PopupContainer = styled.div`
+  /* Fixed positioning for full-screen mobile pop-up */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  
+  /* Applying the Dark Blue background from the Melton Waves ad */
+  background: #192A56; /* Deep Navy Blue */
+  padding: 20px;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+  
+  /* Apply animation for smooth entry */
+  animation: ${fadeIn} 0.4s ease-out forwards;
+  
+  /* Ensures it looks great on all mobile screens */
+  max-width: 100vw;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  
+  /* Hidden state controlled by the 'isOpen' prop */
+  ${props => !props.isOpen && css`
+    display: none;
+  `}
+`;
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  color: white; /* High contrast 'X' */
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px;
+  line-height: 1;
+`;
+
+const Title = styled.h2`
+  color: white;
+  font-size: clamp(24px, 7vw, 36px); /* Responsive font size */
+  font-weight: 800;
+  margin-bottom: 5px;
+  line-height: 1.1;
+`;
+
+const OfferHighlight = styled.span`
+  /* This is the high-contrast element you liked (the yellow) */
+  color: #FF5733; /* Vibrant Coral/Orange – Replacing the disliked yellow */
+  font-weight: 900;
+  display: block;
+  font-size: clamp(30px, 10vw, 48px);
+  font-style: italic; /* Use italic/script font for the 'handwritten' feel */
+  margin-top: -5px;
+  margin-bottom: 15px;
+`;
+
+const SubText = styled.p`
+  color: #E0E0E0;
+  font-size: clamp(14px, 3.5vw, 18px);
+  margin-bottom: 25px;
+  line-height: 1.4;
+`;
+
+const CTAButton = styled.a`
+  /* This color must offer maximum contrast to the Navy Blue background */
+  background: #FF5733; /* Vibrant Coral/Orange – Matches the highlight for consistency */
+  color: white;
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 15px 20px;
+  font-size: clamp(18px, 5vw, 22px);
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    background: #e64e2d; /* Slightly darker on hover/tap */
+  }
+`;
+
+const ConditionsText = styled.small`
+  display: block;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  margin-top: 10px;
+  font-size: 11px;
+`;
+
+
+// --- THE REACT COMPONENT ---
+
+const PetWashOfferPopup = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // useEffect to manage the display timing (The 'Intelligent Timing' UX)
+  useEffect(() => {
+    // Show the pop-up after a delay (e.g., 5 seconds) for better UX
+    const timer = setTimeout(() => {
+      setIsOpen(true);
+    }, 5000); // 5000ms delay
+
+    return () => clearTimeout(timer); // Cleanup
+  }, []);
+
+  const handleClose = () => {
+    setIsOpen(false);
+    // Optionally set a cookie here so the user doesn't see it again soon
+  };
+
+  return (
+    <PopupContainer isOpen={isOpen}>
+      <CloseButton onClick={handleClose}>
+        &times; {/* The clean, easy-to-tap 'X' */}
+      </CloseButton>
+
+      <Title>
+        THIS WEEK ONLY, GET A
+      </Title>
+      
+      <OfferHighlight>
+        FREE UPGRADE!
+      </OfferHighlight>
+      
+      <SubText>
+        Book any full service and get our premium deshedding treatment included—a \$30 value!
+      </SubText>
+      
+      <CTAButton href="https://petwash.co.il/booking" onClick={handleClose}>
+        CLAIM FREE UPGRADE NOW
+      </CTAButton>
+      
+      <ConditionsText>
+        *Conditions apply. Offer expires Sunday at midnight.
+      </ConditionsText>
+    </PopupContainer>
+  );
+};
+
+export default PetWashOfferPopup;

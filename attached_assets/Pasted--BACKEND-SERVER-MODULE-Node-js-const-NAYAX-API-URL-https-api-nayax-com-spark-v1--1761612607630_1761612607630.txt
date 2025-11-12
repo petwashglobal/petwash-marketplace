@@ -1,0 +1,84 @@
+// --- BACKEND SERVER MODULE (Node.js) ---
+
+const NAYAX_API_URL = "https://api.nayax.com/spark/v1"; // Example URL, check Nayax docs
+const API_KEY = "YOUR_NAYAX_API_KEY";
+const TERMINAL_ID = "YOUR_VPOS_TERMINAL_ID"; // The ID of the terminal on the K9000
+
+// Function 1: Authorize Payment and Start the Wash (using Spark/Lynx)
+async function startWashCycle(amount, customerToken, washType) {
+    console.log(`Attempting to authorize ${amount} and start wash type: ${washType}`);
+
+    // Step A: Initiate Payment Authorization via Spark API
+    const authResponse = await fetch(`${NAYAX_API_URL}/payment/authorize`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            TerminalId: TERMINAL_ID,
+            Amount: amount,
+            Currency: "ILS",
+            Token: customerToken, // Use a token for secure payment (stored after initial card swipe)
+            ExternalTransactionId: Date.now()
+        })
+    });
+
+    const authData = await authResponse.json();
+
+    if (authData.Status === 'AUTHORIZED') {
+        const transactionId = authData.TransactionId;
+
+        // Step B: Send Remote Command (Remote Vend) to the Nayax Terminal
+        // The terminal will communicate with the K9000 machine (e.g., via MDB or Marshall)
+        const vendResponse = await fetch(`${NAYAX_API_URL}/device/remotevend`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                TerminalId: TERMINAL_ID,
+                ProductCode: washType, // E.g., 'DOGWASH_PREMIUM'
+                TransactionId: transactionId
+            })
+        });
+
+        const vendData = await vendResponse.json();
+
+        if (vendData.Status === 'SUCCESS') {
+            // Step C: Confirm the transaction (Capture the fund)
+            await fetch(`${NAYAX_API_URL}/payment/settle`, { /* ... */ });
+            return { success: true, message: "Wash started successfully!" };
+        } else {
+            // If vend fails, must void/reverse the authorization (Step A)
+            await fetch(`${NAYAX_API_URL}/payment/void`, { /* ... */ });
+            return { success: false, message: "Payment authorized but machine failed to start." };
+        }
+    } else {
+        return { success: false, message: "Payment Declined: " + authData.DeclineReason };
+    }
+}
+
+// Function 2: Check Machine Status (using Lynx for Telemetry)
+async function getMachineStatus() {
+    const statusResponse = await fetch(`${NAYAX_API_URL}/device/status/${TERMINAL_ID}`, {
+        headers: { 'Authorization': `Bearer ${API_KEY}` }
+    });
+    const statusData = await statusResponse.json();
+    return {
+        isAvailable: statusData.State === 'Idle',
+        temperature: statusData.Telemetry.WaterTemp
+    };
+}
+
+// --- Loyalty/QR Redemption (using Cortina Logic via Server) ---
+// This requires a custom Cortina/Loyalty integration with Nayax's platform
+async function redeemQrCode(qrCode, terminalId) {
+    // 1. Send QR code to your backend
+    // 2. Your backend validates the QR code against your database
+    // 3. If valid, send a command via Nayax API (e.g., Remote Vend or custom Cortina command)
+    //    to the terminal to start the free/discounted wash.
+    console.log(`Validating and initiating service via QR code ${qrCode}`);
+    // ... API call to Nayax ...
+}

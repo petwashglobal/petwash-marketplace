@@ -1,0 +1,83 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == 'nirhadad1@gmail.com';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // File size limits
+    function isValidSize(maxSizeMB) {
+      return request.resource.size < maxSizeMB * 1024 * 1024;
+    }
+    
+    // File type validation
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isValidDocumentType() {
+      return request.resource.contentType.matches('image/.*') || 
+             request.resource.contentType.matches('application/pdf');
+    }
+    
+    // App Check enforcement helper
+    function isAppCheckVerified() {
+      return request.app != null;
+    }
+    
+    // KYC documents - users can upload, only admin can delete (App Check enforced)
+    match /users/{userId}/kyc/{fileName} {
+      allow read: if isAppCheckVerified() && isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow write: if isAppCheckVerified() && 
+                     isAuthenticated() && 
+                     isOwner(userId) && 
+                     isValidDocumentType() && 
+                     isValidSize(10); // 10 MB max
+      allow delete: if isAppCheckVerified() && isAdmin();
+    }
+    
+    // Profile images (App Check enforced)
+    match /users/{userId}/profile/{fileName} {
+      allow read: if isAppCheckVerified(); // Public profile images (but App Check verified)
+      allow write: if isAppCheckVerified() && 
+                     isAuthenticated() && 
+                     isOwner(userId) && 
+                     isValidImageType() && 
+                     isValidSize(5); // 5 MB max
+      allow delete: if isAppCheckVerified() && isAuthenticated() && isOwner(userId);
+    }
+    
+    // Pet images (App Check enforced)
+    match /users/{userId}/pets/{fileName} {
+      allow read: if isAppCheckVerified() && isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow write: if isAppCheckVerified() && 
+                     isAuthenticated() && 
+                     isOwner(userId) && 
+                     isValidImageType() && 
+                     isValidSize(5); // 5 MB max
+      allow delete: if isAppCheckVerified() && isAuthenticated() && isOwner(userId);
+    }
+    
+    // System backups - admin only (App Check enforced)
+    match /backups/{fileName} {
+      allow read: if isAppCheckVerified() && isAdmin();
+      allow write: if isAppCheckVerified() && isAdmin();
+    }
+    
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

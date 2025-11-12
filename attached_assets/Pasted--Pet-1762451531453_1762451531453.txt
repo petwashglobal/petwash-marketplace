@@ -1,0 +1,250 @@
+/********************************************************************************************
+ * Pet Wash™ — Admin Access: 2025 One-File Fix (Server + Client)
+ * Drop-in code to:
+ *  1) Elevate specific emails to "admin" using Firebase Custom Claims (idempotent)
+ *  2) Mirror role to Firestore for redundancy/analytics
+ *  3) Expose a secure bootstrap endpoint for first-time elevation
+ *  4) Provide a universal client guard for web/iOS/Android that refreshes tokens and gates UI
+ *
+ * Requirements:
+ *  - Firebase project already configured
+ *  - Node 18+ runtime for server side (Cloud Functions v2 / Express on Replit / Cloud Run)
+ *  - Set environment vars (see "CONFIGURATION" below)
+ *
+ * Notes:
+ *  - OAuth Consent Screen app name/branding (what Google shows during sign-in) must be set
+ *    in Google Cloud Console → APIs & Services → OAuth consent screen. Code can’t change that.
+ *  - This file is TypeScript; ts-node or build step recommended. Works in JS if you remove types.
+ ********************************************************************************************/
+
+/* --------------------------------- CONFIGURATION --------------------------------- */
+// ⬇️ Replace with your real Firebase config (client) and env (server)
+const PETWASH_BRAND = "Pet Wash™";
+const OWNER_EMAIL = "nirhadad1@gmail.com"; // First bootstrap admin (you).
+
+/** Server env (set in Replit/Cloud Run/Functions/Secrets): */
+const ENV = {
+  FIREBASE_SERVICE_ACCOUNT_JSON: process.env.FIREBASE_SERVICE_ACCOUNT_JSON ?? "",
+  PROJECT_ID: process.env.GCLOUD_PROJECT ?? process.env.FIREBASE_CONFIG?.match(/"projectId":"([^"]+)"/)?.[1],
+  // Optional IP allowlist for the bootstrap endpoint (comma-separated)
+  BOOTSTRAP_IPS: (process.env.PW_BOOTSTRAP_IPS ?? "").split(",").map(s => s.trim()).filter(Boolean),
+};
+
+/** Client Firebase config (public) – replace placeholders */
+const CLIENT_FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:xxxxxxxxxxxxxxxx",
+};
+
+/* ------------------------------- SERVER SECTION ---------------------------------- */
+/**
+ * Minimal Admin server that:
+ *  - initializes Firebase Admin SDK from service account JSON (env)
+ *  - exposes POST /admin/bootstrap  { email }
+ *  - sets custom claim { admin:true } and mirrors Firestore users/{uid}.role="admin"
+ *  - is idempotent and safe to re-run
+ *
+ * You can deploy this as:
+ *  - Cloud Functions v2 HTTPS function, OR
+ *  - Express server route (attach to your existing server)
+ */
+
+let adminInitOnce: boolean | undefined;
+let admin: typeof import("firebase-admin") | undefined;
+
+async function initAdmin() {
+  if (adminInitOnce) return;
+  const saJson = ENV.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!saJson) throw new Error("Missing FIREBASE_SERVICE_ACCOUNT_JSON secret.");
+  // Lazy import so this file can run in client bundles too (we never execute server bits there).
+  const _admin = await import("firebase-admin");
+  const creds = JSON.parse(saJson);
+  if (!_admin.apps.length) {
+    _admin.initializeApp({ credential: _admin.credential.cert(creds) });
+  }
+  admin = _admin;
+  adminInitOnce = true;
+}
+
+/** Core elevation routine (idempotent) */
+async function elevateToAdmin(email: string) {
+  await initAdmin();
+  if (!admin) throw new Error("Admin SDK not initialized.");
+
+  const auth = admin.auth();
+  const db = admin.firestore();
+
+  // Find or create the user
+  let user = await auth.getUserByEmail(email).catch(async () => {
+    // If user doesn’t exist yet, create disabled=false so they can sign in.
+    return await auth.createUser({ email, emailVerified: true, disabled: false });
+  });
+
+  // Set custom claims if missing
+  const currentClaims = user.customClaims || {};
+  if (!currentClaims.admin) {
+    await auth.setCustomUserClaims(user.uid, { ...currentClaims, admin: true });
+  }
+
+  // Mirror to Firestore (role + audit)
+  const ref = db.collection("users").doc(user.uid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) {
+      tx.set(ref, {
+        email,
+        role: "admin",
+        createdAt: admin!.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin!.firestore.FieldValue.serverTimestamp(),
+        audit: [{ at: admin!.firestore.FieldValue.serverTimestamp(), action: "elevate-admin" }],
+      });
+    } else {
+      tx.update(ref, {
+        role: "admin",
+        updatedAt: admin!.firestore.FieldValue.serverTimestamp(),
+        audit: admin!.firestore.FieldValue.arrayUnion({
+          at: admin!.firestore.FieldValue.serverTimestamp(),
+          action: "ensure-admin",
+        }),
+      });
+    }
+  });
+
+  // Re-fetch to return authoritative state
+  user = await auth.getUser(user.uid);
+  return { uid: user.uid, email: user.email, claims: user.customClaims, mirroredRole: "admin" };
+}
+
+/** Tiny input validator */
+function isEmail(str: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
+}
+
+/** Optional IP allowlist check */
+function ipAllowed(remoteIp: string | undefined): boolean {
+  if (!ENV.BOOTSTRAP_IPS.length) return true;
+  if (!remoteIp) return false;
+  return ENV.BOOTSTRAP_IPS.includes(remoteIp);
+}
+
+/** Express-compatible handler (can wrap in CF v2 onRequest as well) */
+export async function adminBootstrapHandler(req: any, res: any) {
+  try {
+    if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method Not Allowed" });
+
+    // Simple origin/IP guard for the bootstrap endpoint
+    const remoteIp = (req.headers["x-forwarded-for"]?.toString().split(",")[0] ?? req.socket?.remoteAddress ?? "").trim();
+    if (!ipAllowed(remoteIp)) return res.status(403).json({ ok: false, error: "Forbidden IP" });
+
+    const email = (req.body?.email || OWNER_EMAIL || "").trim().toLowerCase();
+    if (!isEmail(email)) return res.status(400).json({ ok: false, error: "Invalid email" });
+
+    const result = await elevateToAdmin(email);
+    return res.json({ ok: true, result, message: `✅ ${PETWASH_BRAND}: ${email} is admin.` });
+  } catch (err: any) {
+    return res.status(500).json({ ok: false, error: err?.message || "Internal error" });
+  }
+}
+
+/** For Cloud Functions v2 users (uncomment to deploy):
+import { onRequest } from "firebase-functions/v2/https";
+export const adminBootstrap = onRequest({ region: "us-central1" }, (req, res) => adminBootstrapHandler(req, res));
+*/
+
+/* ------------------------------- CLIENT SECTION ---------------------------------- */
+/**
+ * Universal auth helper that:
+ *  - Initializes Firebase client app
+ *  - After sign-in (any provider), **forces token refresh** to pull latest custom claims
+ *  - Checks claims.admin OR Firestore role
+ *  - Presents branded, helpful errors instead of “does not have admin access”
+ *  - Works on web/iOS/Android (Capacitor/React Native) and PWA
+ */
+
+type AuthCheckResult = {
+  ok: boolean;
+  reason?: string;
+  claims?: any;
+  role?: string;
+};
+
+export async function ensureAdminClientGuard(): Promise<AuthCheckResult> {
+  // Lazy import modular SDKs to keep bundle tight
+  const { initializeApp, getApps } = await import("firebase/app");
+  const { getAuth, onAuthStateChanged } = await import("firebase/auth");
+  const { getFirestore, doc, getDoc } = await import("firebase/firestore");
+
+  if (!getApps().length) initializeApp(CLIENT_FIREBASE_CONFIG);
+  const auth = getAuth();
+  const db = getFirestore();
+
+  // Wait for current user
+  const user = await new Promise<import("firebase/auth").User | null>((resolve) => {
+    const unsub = onAuthStateChanged(auth, (u) => { unsub(); resolve(u); });
+  });
+
+  if (!user) return { ok: false, reason: `${PETWASH_BRAND}: Please sign in to continue.` };
+
+  // Force token refresh to pull latest custom claims after elevation
+  const idToken = await user.getIdToken(true).catch(() => null);
+  if (!idToken) return { ok: false, reason: `${PETWASH_BRAND}: Could not refresh session. Please try again.` };
+
+  const claims = (await user.getIdTokenResult()).claims || {};
+  if (claims.admin === true) return { ok: true, claims, role: "admin" };
+
+  // Fallback: mirror check in Firestore
+  const snap = await getDoc(doc(db, "users", user.uid)).catch(() => null);
+  const role = (snap?.exists() && (snap.data() as any)?.role) || undefined;
+  if (role === "admin") return { ok: true, claims, role };
+
+  return {
+    ok: false,
+    claims,
+    role,
+    reason: `${PETWASH_BRAND}: Your account is verified but not yet granted admin access. Please contact support@petwash.co.il.`,
+  };
+}
+
+/** Example usage in your router/middleware (React/Next/Expo/Capacitor pseudo):
+import { ensureAdminClientGuard } from "./tools/admin-access-fix-2025";
+
+(async () => {
+  const gate = await ensureAdminClientGuard();
+  if (!gate.ok) {
+    toast.error(gate.reason);
+    router.replace("/login"); // or show a friendly screen
+  } else {
+    router.replace("/admin/dashboard");
+  }
+})();
+*/
+
+/* ------------------------- OPTIONAL QUICK BOOTSTRAP CLI -------------------------- */
+/**
+ * If you want to elevate an admin **once** from the terminal:
+ *  npx ts-node tools/admin-access-fix-2025.ts elevate nirhadad1@gmail.com
+ */
+if (require.main === module) {
+  (async () => {
+    const [cmd, emailArg] = process.argv.slice(2);
+    if (cmd === "elevate") {
+      const email = (emailArg || OWNER_EMAIL || "").trim().toLowerCase();
+      if (!isEmail(email)) {
+        console.error("❌ Provide a valid email: npx ts-node tools/admin-access-fix-2025.ts elevate user@example.com");
+        process.exit(1);
+      }
+      try {
+        const out = await elevateToAdmin(email);
+        console.log(`✅ ${PETWASH_BRAND}: Elevated ${out.email} (uid: ${out.uid})`);
+        process.exit(0);
+      } catch (e: any) {
+        console.error("❌ Elevation failed:", e?.message || e);
+        process.exit(2);
+      }
+    }
+  })();
+}

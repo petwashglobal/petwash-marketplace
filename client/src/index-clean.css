@@ -1,0 +1,341 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* LIGHT MODE ONLY - Dark mode completely disabled per user requirement */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  /* DARK MODE DISABLED - Force white background always, even if dark class is applied */
+  html,
+  html.dark,
+  body,
+  body.dark,
+  #root,
+  #root.dark {
+    background-color: #FFFFFF !important;
+    color: #1A1A1A !important;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-white text-black font-sans;
+    background: white !important;
+    color: black !important;
+  }
+  
+  html {
+    background: white !important;
+    color: black !important;
+  }
+
+  .rtl {
+    direction: rtl;
+    text-align: right;
+  }
+
+  .ltr {
+    direction: ltr;
+    text-align: left;
+  }
+
+  .hebrew {
+    direction: rtl;
+    text-align: right;
+  }
+
+  .english {
+    direction: ltr;
+    text-align: left;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .hero-section {
+    background: white !important;
+    color: black !important;
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .wash-package-card {
+    background: white !important;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .wash-package-card:hover {
+    border-color: #000000 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .gift-card {
+    background: white !important;
+    color: black !important;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+  }
+
+  .gift-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  }
+
+  .loyalty-card {
+    background: white !important;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .loyalty-card:hover {
+    border-color: #000000;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  }
+
+  .hamburger-trigger {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .social-icons a {
+    transition: all 0.2s ease;
+    width: 24.48px;
+    height: 24.48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+  }
+
+  .social-icons svg {
+    width: 24.48px;
+    height: 24.48px;
+  }
+
+  .social-instagram {
+    color: #E4405F !important;
+  }
+
+  .social-tiktok {
+    color: #000000 !important;
+  }
+
+  .social-facebook {
+    color: #1877F2 !important;
+  }
+
+  .social-icons a:hover {
+    transform: scale(1.1);
+  }
+
+  .logo-container {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .logo-container img {
+    height: 60px;
+    width: auto;
+    object-fit: contain;
+    filter: none !important;
+    opacity: 1 !important;
+  }
+
+  .pet-image {
+    border-radius: 20px;
+    max-width: 100%;
+    height: auto;
+    object-fit: cover;
+  }
+
+  .nav-link {
+    transition: color 0.2s ease;
+  }
+
+  .nav-link:hover {
+    color: #000000 !important;
+  }
+
+  .main-content {
+    background: white !important;
+  }
+
+  .section-background {
+    background: white !important;
+  }
+
+  .card-background {
+    background: white !important;
+  }
+
+  .button-background {
+    background: white !important;
+    border: 1px solid #000000;
+    color: #000000;
+  }
+
+  .button-background:hover {
+    background: #000000 !important;
+    color: white;
+  }
+
+  .button-primary {
+    background: #000000 !important;
+    color: white;
+  }
+
+  .button-primary:hover {
+    background: rgba(0, 0, 0, 0.9) !important;
+  }
+
+  .badge-background {
+    background: white !important;
+    border: 1px solid #e5e7eb;
+  }
+
+  .footer-background {
+    background: white !important;
+  }
+
+  .header-background {
+    background: white !important;
+  }
+
+  .modal-background {
+    background: white !important;
+  }
+
+  .overlay-background {
+    background: rgba(255, 255, 255, 0.95) !important;
+  }
+
+  /* Touch targets for accessibility */
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Skip to content link */
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: white !important;
+    color: black;
+    padding: 8px;
+    text-decoration: none;
+    border: 1px solid #000000;
+    border-radius: 4px;
+    z-index: 100;
+  }
+
+  .skip-link:focus {
+    top: 6px;
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .wash-package-card {
+      border-width: 3px;
+    }
+    
+    .button-background {
+      border-width: 2px;
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Override any remaining non-white backgrounds */
+  .bg-gray-50,
+  .bg-gray-100,
+  .bg-blue-50,
+  .bg-green-50,
+  .bg-purple-50,
+  .bg-orange-50,
+  .bg-primary,
+  .bg-secondary,
+  .bg-muted,
+  .bg-accent {
+    background: white !important;
+  }
+
+  /* Ensure all gradient backgrounds are white */
+  .bg-gradient-to-r,
+  .bg-gradient-to-l,
+  .bg-gradient-to-t,
+  .bg-gradient-to-b,
+  .bg-gradient-to-tr,
+  .bg-gradient-to-tl,
+  .bg-gradient-to-br,
+  .bg-gradient-to-bl {
+    background: white !important;
+  }
+
+  /* Override any color backgrounds */
+  [style*="background:"]:not([style*="background: white"]):not([style*="background: transparent"]):not([style*="background: none"]) {
+    background: white !important;
+  }
+}

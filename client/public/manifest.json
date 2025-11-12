@@ -1,0 +1,166 @@
+{
+  "name": "Pet Wash™",
+  "short_name": "Pet Wash",
+  "description": "Premium Organic Pet Care - Book & Manage Pet Washing Services",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#2c5282",
+  "scope": "/",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/brand/petwash-logo-official.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/brand/petwash-logo-official.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["lifestyle", "business", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Book Service",
+      "short_name": "Book",
+      "description": "Book pet washing service",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "My Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your bookings",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "AI Chat",
+      "short_name": "Chat",
+      "description": "Chat with Kenzo AI assistant",
+      "url": "/ai-chat",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Loyalty Card",
+      "short_name": "Loyalty",
+      "description": "View loyalty points and rewards",
+      "url": "/loyalty",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "image",
+          "accept": ["image/*"]
+        },
+        {
+          "name": "document",
+          "accept": ["application/pdf", ".doc", ".docx"]
+        }
+      ]
+    }
+  },
+  "file_handlers": [
+    {
+      "action": "/open-document",
+      "accept": {
+        "application/pdf": [".pdf"],
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+        "application/msword": [".doc"],
+        "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+petwash",
+      "url": "/handler?target=%s"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "widgets": [
+    {
+      "name": "Quick Book",
+      "description": "Quick booking widget",
+      "tag": "quick-book",
+      "type": "application/json",
+      "data": "/widgets/quick-book.json",
+      "screenshots": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "192x192",
+          "label": "Quick Book Widget"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "screenshots": [
+    {
+      "src": "/brand/petwash-logo-official.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Pet Wash™ Dashboard"
+    },
+    {
+      "src": "/brand/petwash-logo-official.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "platform": "narrow",
+      "label": "Pet Wash™ Mobile"
+    }
+  ],
+  "iarc_rating_id": ""
+}

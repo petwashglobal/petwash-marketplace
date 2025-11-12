@@ -1,0 +1,74 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+from typing import Optional
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+from passlib.context import CryptContext
+
+# Configuration Constants (Stored securely in Environment Variables)
+SECRET_KEY = "YOUR_SECURE_SECRET_KEY_HERE" # Must be long and complex
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30 # Short lifespan for tokens is best security practice
+
+# Password Hashing Context (CryptContext is the standard for FastAPI)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Pydantic Schemas for Request/Response
+class UserBase(BaseModel):
+    phone: str # Use phone number for utility services like Pet Wash
+    # Email is optional and should be stored securely
+
+class UserCreate(UserBase):
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+
+# --- CORE UTILITIES ---
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Creates a JWT (JSON Web Token) with a short expiry time."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire, "sub": data.get("phone")}) # 'sub' is subject (user ID)
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+# --- ROUTER (API ENDPOINTS) ---
+
+router = APIRouter()
+
+@router.post("/register", response_model=Token)
+async def register_user(user: UserCreate):
+    # MOCK: In production, check if user exists, hash password, and save to database
+    hashed_password = get_password_hash(user.password)
+    
+    # MOCK: Database Save (In a real system, this is where GDPR consent is logged)
+    # db.save_new_user(user.phone, hashed_password, consent_data)
+
+    access_token = create_access_token(
+        data={"phone": user.phone}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer", "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60}
+
+@router.post("/login", response_model=Token)
+async def login_for_access_token(user_form: UserCreate):
+    # MOCK: Fetch user from database using user_form.phone
+    
+    # MOCK: Verify password
+    if not verify_password(user_form.password, "MOCK_HASHED_PASSWORD"): # Replace with actual DB hash
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect credentials")
+
+    access_token = create_access_token(data={"phone": user_form.phone})
+    return {"access_token": access_token, "token_type": "bearer", "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60}

@@ -1,0 +1,253 @@
+// client/src/data/avatarPresets.ts
+export type AvatarPreset = {
+  id: string;
+  group: "Super Archetypes" | "Animal Legends" | "Stylized Sets";
+  label_en: string;
+  label_he: string;
+  slug: string;
+  thumb: string;               // /avatars/<file>.webp
+  style: "photoreal" | "comic-ink" | "stylized-toon" | "painterly" | "spider-verse";
+  prompt: string;              // main positive prompt
+  negatives?: string;          // safety / style negatives
+  palette?: string[];          // hex colors for UI swatches
+};
+
+export const AVATAR_PRESETS: AvatarPreset[] = [
+  // ===== Super Archetypes (inspired, no trademarks) =====
+  {
+    id: "super-solar-paragon",
+    group: "Super Archetypes",
+    label_en: "Solar Paragon (red/blue cape)",
+    label_he: "פרגון סולארי (אדום/כחול, גלימה)",
+    slug: "solar-paragon",
+    thumb: "/avatars/solar-paragon.webp",
+    style: "photoreal",
+    palette: ["#CE1126", "#0A3161", "#FFD200"],
+    prompt:
+      "heroic human, athletic physique, short dark hair, flowing cape, streamlined suit in deep red and royal blue with golden accents, strong jawline, optimistic expression, flying pose above city skyline at golden hour, volumetric backlight, global illumination, cinematic DOF",
+    negatives:
+      "logos, brand symbols, letter emblems, text, watermark, lowres, extra limbs"
+  },
+  {
+    id: "web-acrobat",
+    group: "Super Archetypes",
+    label_en: "Urban Acrobat (red/blue web motif)",
+    label_he: "אקרובט עירוני (אדום/כחול, קורי-עכביש)",
+    slug: "urban-acrobat",
+    thumb: "/avatars/urban-acrobat.webp",
+    style: "spider-verse",
+    palette: ["#C8102E", "#0033A0", "#111111"],
+    prompt:
+      "masked acrobatic hero mid-swing, athletic teen build, fitted suit with abstract web pattern (no logos), dynamic pose between skyscrapers, stylized halftone shading, motion blur streaks, bold rim light, comic outlines",
+    negatives:
+      "brand logos, copyright text, company names, extra fingers, deformed hands"
+  },
+  {
+    id: "gamma-titan",
+    group: "Super Archetypes",
+    label_en: "Gamma Titan (green powerhouse)",
+    label_he: "טיטאן גמא (ענק ירוק)",
+    slug: "gamma-titan",
+    thumb: "/avatars/gamma-titan.webp",
+    style: "photoreal",
+    palette: ["#2BB673", "#4E342E", "#0B3D0B"],
+    prompt:
+      "massive green-skinned powerhouse, thick musculature with realistic skin pores and veins, intense expression, torn casual shorts, studio lighting with dramatic shadows, subsurface scattering, detailed anatomy",
+    negatives:
+      "brand logos, specific character names, text, extra arms"
+  },
+  {
+    id: "nocturnal-vigil",
+    group: "Super Archetypes",
+    label_en: "Nocturnal Vigil (dark cape, cowl)",
+    label_he: "משגיח לילי (גלימה כהה, מסכה)",
+    slug: "nocturnal-vigil",
+    thumb: "/avatars/nocturnal-vigil.webp",
+    style: "comic-ink",
+    palette: ["#101317", "#3C3F46", "#7A7D85"],
+    prompt:
+      "brooding detective hero with cowl and long cape (no logos), perched on gothic rooftop in rain, moody noir palette, wet surfaces, rim light, inked linework with crosshatching",
+    negatives: "logos, text, low detail"
+  },
+  {
+    id: "amazon-champion",
+    group: "Super Archetypes",
+    label_en: "Amazon Champion (gold-red armor)",
+    label_he: "אלופת האמזונות (שריון זהב-אדום)",
+    slug: "amazon-champion",
+    thumb: "/avatars/amazon-champion.webp",
+    style: "photoreal",
+    palette: ["#D4AF37", "#A00022", "#1E2A5A"],
+    prompt:
+      "heroic warrior woman in elegant crimson and gold armor (no insignia), bracers, tiara-like headband, confident stance, island shoreline at sunrise, cinematic bokeh, soft hair dynamics",
+    negatives: "logos, text"
+  },
+  {
+    id: "storm-thunderer",
+    group: "Super Archetypes",
+    label_en: "Storm Thunderer (mythic hammer)",
+    label_he: "רעם הסערה (פטיש מיתולוגי)",
+    slug: "storm-thunderer",
+    thumb: "/avatars/storm-thunderer.webp",
+    style: "photoreal",
+    palette: ["#8E9AAF", "#C9ADA7", "#1B1E2B"],
+    prompt:
+      "mythic warrior with short beard, braided hair, sleeveless armor, heavy hammer emitting lightning, storm clouds and flying sparks, dramatic backlight, volumetric fog",
+    negatives: "logos, text"
+  },
+  {
+    id: "metal-claws",
+    group: "Super Archetypes",
+    label_en: "Metal Claws (rugged anti-hero)",
+    label_he: "טפרי מתכת (אנטי-גיבור קשוח)",
+    slug: "metal-claws",
+    thumb: "/avatars/metal-claws.webp",
+    style: "photoreal",
+    palette: ["#6B6E70", "#2B2D2F", "#B7B7B7"],
+    prompt:
+      "rugged anti-hero, sideburns, leather jacket, retractable metal claws (no logos), gritty bar interior, shallow depth of field, skin pore realism, cinematic teal-orange grade",
+    negatives: "brand names, text"
+  },
+  {
+    id: "tech-paladin",
+    group: "Super Archetypes",
+    label_en: "Tech Paladin (red/gold armor)",
+    label_he: "פאלדין טכנולוגי (שריון אדום/זהב)",
+    slug: "tech-paladin",
+    thumb: "/avatars/tech-paladin.webp",
+    style: "photoreal",
+    palette: ["#B11226", "#C49A00", "#1A1A1A"],
+    prompt:
+      "sleek powered armor hero in metallic red and brushed gold, chest light source, reflective PBR materials, HDRI studio lighting, subtle scratches, hovering flight pose, bokeh sparks",
+    negatives: "logos, company marks, text"
+  },
+
+  // ===== Animal Legends (photoreal / stylized pets & wildlife) =====
+  {
+    id: "regal-savannah-lion",
+    group: "Animal Legends",
+    label_en: "Regal Savannah Lion",
+    label_he: "אריה סוואנה מלכותי",
+    slug: "regal-savannah-lion",
+    thumb: "/avatars/regal-savannah-lion.webp",
+    style: "photoreal",
+    palette: ["#C99E66", "#7A5E3A", "#2A2015"],
+    prompt:
+      "photoreal male lion, detailed mane with strand-level fur, golden hour rim light, savannah grass, pupils sharp, natural color grading, 85mm portrait",
+    negatives: "cartoon eyes, lowres"
+  },
+  {
+    id: "loyal-sled-dog",
+    group: "Animal Legends",
+    label_en: "Loyal Sled Dog (husky)",
+    label_he: "כלב מזחלות נאמן (האסקי)",
+    slug: "loyal-sled-dog",
+    thumb: "/avatars/loyal-sled-dog.webp",
+    style: "photoreal",
+    palette: ["#AFC7D8", "#3F4E5A", "#E6EEF5"],
+    prompt:
+      "photoreal husky with blue eyes, snow crystals on fur, cold breath vapor, sharp whiskers, soft northern light, high-detail fur simulation",
+    negatives: "over-saturation, cartoon look"
+  },
+  {
+    id: "wise-silverback",
+    group: "Animal Legends",
+    label_en: "Wise Silverback",
+    label_he: "גורילה כסופה נבונה",
+    slug: "wise-silverback",
+    thumb: "/avatars/wise-silverback.webp",
+    style: "photoreal",
+    palette: ["#4B4F52", "#2A2E32", "#8A8F93"],
+    prompt:
+      "photoreal gorilla portrait, expressive eyes, skin folds and fine hair, studio Rembrandt lighting, shallow depth of field",
+    negatives: "cartoon features"
+  },
+  {
+    id: "space-rogue-raccoon",
+    group: "Animal Legends",
+    label_en: "Space Rogue Raccoon",
+    label_he: "דביבון חלל שובב",
+    slug: "space-rogue-raccoon",
+    thumb: "/avatars/space-rogue-raccoon.webp",
+    style: "stylized-toon",
+    palette: ["#5E5246", "#E07A5F", "#2D3142"],
+    prompt:
+      "stylized raccoon in orange utility vest, mischievous grin, big expressive eyes, starship corridor background, soft toon shading, high-detail fur clumps",
+    negatives: "logos, brand names"
+  },
+  {
+    id: "panther-of-night",
+    group: "Animal Legends",
+    label_en: "Panther of Night",
+    label_he: "פנתר הלילה",
+    slug: "panther-of-night",
+    thumb: "/avatars/panther-of-night.webp",
+    style: "photoreal",
+    palette: ["#0B0D12", "#1D2130", "#2C354A"],
+    prompt:
+      "sleek black panther with glossy coat, moonlit jungle, specular highlights on fur, muscular shoulders, cinematic blue rim light",
+    negatives: "flat lighting"
+  },
+  {
+    id: "golden-retriever-hero",
+    group: "Animal Legends",
+    label_en: "Golden Retriever Hero",
+    label_he: "גולדן רטריבר הרואי",
+    slug: "golden-retriever-hero",
+    thumb: "/avatars/golden-retriever-hero.webp",
+    style: "painterly",
+    palette: ["#E9CBA7", "#8D6E4A", "#F5E6D3"],
+    prompt:
+      "friendly golden retriever with soft painterly brushwork, warm ambient light, subtle fur texture, gentle smile, hero cape motif (no logos)",
+    negatives: "text, watermark"
+  },
+
+  // ===== Stylized Sets (for your UI quick-styles) =====
+  {
+    id: "comic-ink-pack",
+    group: "Stylized Sets",
+    label_en: "Comic-Ink (lines + halftone)",
+    label_he: "קומיק-דיו (קווי מתאר והלפטון)",
+    slug: "comic-ink-pack",
+    thumb: "/avatars/comic-ink-pack.webp",
+    style: "comic-ink",
+    prompt:
+      "bold black linework, crosshatching, halftone shading, limited palette, dynamic perspective, action lines",
+    negatives: "photoreal pores"
+  },
+  {
+    id: "spider-verse-pack",
+    group: "Stylized Sets",
+    label_en: "Spider-Verse Style (multi-shader)",
+    label_he: "ספיידר-וורס סטייל (רב-שיידר)",
+    slug: "spider-verse-pack",
+    thumb: "/avatars/spider-verse-pack.webp",
+    style: "spider-verse",
+    prompt:
+      "layered 2D+3D look, ink outlines, Ben-Day dots, painterly gradients, chromatic edges, stylized motion blur",
+    negatives: "brand logos"
+  }
+];
+
+// Legal safeguards: Block prompts containing brand/hero names or logos
+const BLOCKED_KEYWORDS = [
+  'superman', 'batman', 'spiderman', 'spider-man', 'ironman', 'iron man',
+  'wonder woman', 'hulk', 'thor', 'wolverine', 'marvel', 'dc comics',
+  'captain america', 'black panther', 'avengers', 'justice league',
+  'copyright', '©', '™', '®', 'logo', 'brand', 'trademark'
+];
+
+export function sanitizePrompt(prompt: string): { safe: boolean; sanitized: string } {
+  const lowercasePrompt = prompt.toLowerCase();
+  
+  for (const keyword of BLOCKED_KEYWORDS) {
+    if (lowercasePrompt.includes(keyword)) {
+      return { safe: false, sanitized: '' };
+    }
+  }
+  
+  // Ensure "no logos / no text" safety is always present
+  const sanitized = prompt + (prompt.includes('no logo') ? '' : ', no logos, no text, no watermarks');
+  
+  return { safe: true, sanitized };
+}

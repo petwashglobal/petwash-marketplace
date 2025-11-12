@@ -1,0 +1,177 @@
+Twilio SendGrid
+
+Build transactional and marketing email solutions with Twilio SendGrid.
+
+Let's build
+
+1
+TWILIO SERVERS
+2
+YOUR APP
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const msg = {
+  to: 'recipient@example.com',
+  from: 'sender@example.com',
+  subject: 'Ahoy!',
+  html: 'Ahoy, World!',
+};
+
+sgMail
+  .send(msg)
+  .then((error) => console.error(error));
+View complete examples
+
+3
+Ahoy, world!
+Take the next steps with Twilio SendGrid
+
+Send your first email
+
+Do more with email
+
+Get started with Marketing Campaigns
+
+Send your first email
+
+Get started with the Twilio SendGrid Mail Send API and the open-source SDKs. To send your first message, use the following sample code in your preferred programming language.
+
+C#
+Go
+Java
+Node.js
+PHP
+Python
+Ruby
+
+
+
+Copy code block
+using System;
+using System.Threading.Tasks;
+using SendGrid;
+using SendGrid.Helpers.Mail;
+
+class Program
+{
+    static async Task Main()
+    {
+        var apiKey = Environment.GetEnvironmentVariable("SENDGRID_API_KEY");
+        var client = new SendGridClient(apiKey);
+        var from = new EmailAddress("test@example.com", "Example User");
+        var subject = "Sending with Twilio SendGrid is Fun";
+        var to = new EmailAddress("test@example.com", "Example User");
+        var plainTextContent = "and easy to do anywhere, even with C#";
+        var htmlContent = "<strong>and easy to do anywhere, even with C#</strong>";
+        var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
+        var response = await client.SendEmailAsync(msg).ConfigureAwait(false);
+    }
+}
+Email API quickstarts
+To implement the previous code sample in your preferred programming language, jump to a quickstart for a full guide.
+
+C#
+
+Go
+
+Java
+
+Node.js
+
+PHP
+
+Python
+
+Ruby
+
+Do more with email
+
+Twilio SendGrid offers tools that build your email communications program. Gather data from and report on the effectiveness of your email campaigns. Add content and accept files through inbound email. Use Twilio SendGrid to send and receive email or integrate with a cloud partner for email processing.
+
+Beyond sending your first email
+Get started with the Email API
+[Set up domain authentication][domain-authentication]
+Review the SendGrid v3 API reference
+Review the Email glossary
+Send email
+Send email using SMTP
+Build an X-SMTPAPI Header
+Send email using Microsoft Azure
+Templates and dynamic data
+Send an email with Dynamic Templates
+Send personalized email messages
+Personalize messages with Handlebars
+Analytics and reporting
+Get started with the Event webhook
+Review the Event webhook reference
+Use the Email Activity Feed
+Review the SendGrid Engagement Quality API
+Account and settings
+API Keys
+
+Subusers
+
+Teammates
+
+Domain Authentication
+
+Single Sign-On (SSO)
+
+Parsing email
+Configure the Inbound Parse webhook
+Review Inbound Parse API
+SDKs and tools
+C#
+
+Go
+
+Java
+
+Node.js
+
+PHP
+
+Python
+
+Ruby
+
+OpenAPI
+
+Get started with Marketing Campaigns
+
+Create well-designed, personalized messages for your Marketing Campaigns.
+
+Build and send with Marketing Campaigns
+Send email using Marketing Campaigns
+Get started with automation
+Manage contacts
+Create and manage contacts
+Build your contact list
+Segment your contacts
+Use custom fields
+Design your messages
+Build templates with email designs
+[Design messages with the Design and Code Editor][design-and-code-editor]
+Add dynamic content with Handlebars in Marketing Campaigns
+Related products
+
+Build your customer engagement infrastructure that fits the unique requirements of your business with the other communication channels from Twilio.
+
+
+Messaging
+Send and receive Short Message Service (SMS), Multimedia Messaging Service (MMS), Rich Communication Services (RCS), or WhatsApp messages with Twilio Programmable Messaging.
+
+Product documentation
+
+
+Voice
+Send and receive voice calls through your app with Twilio Programmable Voice.
+
+Product documentation
+
+
+Flex
+Build your digital engagement center for sales and customer support teams with Twilio Flex.
+
+Product documentation
+

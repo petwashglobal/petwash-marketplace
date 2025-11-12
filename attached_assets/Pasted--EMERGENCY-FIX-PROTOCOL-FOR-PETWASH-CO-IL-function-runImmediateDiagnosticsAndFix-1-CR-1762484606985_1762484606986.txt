@@ -1,0 +1,73 @@
+// EMERGENCY_FIX_PROTOCOL_FOR_PETWASH_CO_IL
+
+function runImmediateDiagnosticsAndFix() {
+    // 1. CRITICAL SERVER ERROR FIX (Something went wrong)
+    
+    // 1.1 Check Replit Deployment Status
+    if (DomainStatus.isDown("petwash.co.il") || DomainStatus.isPending("petwash.co.il")) {
+        System.restartDeployment("petwash-il-nirhadad1.replit.app");
+        Log("RESTARTING_BACKEND_SERVICE_DUE_TO_FATAL_CRASH");
+    }
+
+    // 1.2 Access Backend Logs (Must check DB connection and memory usage)
+    const FatalErrors = ServerLogs.filter(log => log.level === "FATAL" || log.level === "ERROR_500");
+    if (FatalErrors.length > 0) {
+        if (FatalErrors.some(err => err.message.includes("Database connection timeout") || err.message.includes("ECONNREFUSED"))) {
+            Database.reconnect("Primary_Petwash_DB");
+            Log("DATABASE_RECONNECTED_CHECK_CONNECTION_STRING");
+        }
+        if (FatalErrors.some(err => err.message.includes("Memory limit exceeded") || err.message.includes("Out of memory"))) {
+            ServerConfig.increaseMemoryLimit("512MB");
+            Log("SERVER_MEMORY_LIMIT_INCREASED_CHECK_RESOURCE_ALLOCATION");
+        }
+    }
+    
+    // 1.3 Rollback to Last Stable Version if current commit is unstable
+    if (DeploymentHistory.lastSuccess() !== CurrentCommit) {
+        Git.checkout(DeploymentHistory.lastSuccess());
+        System.redeploy();
+        Log("ROLLED_BACK_TO_LAST_STABLE_COMMIT_DO_NOT_DEPLOY_UNTESTED_CODE");
+    }
+
+    // 2. RESOURCE LOADING FIX (Blue Question Marks / Broken Icons)
+
+    // 2.1 Verify Static File Paths
+    const MissingResources = FrontendAnalyzer.scanMissingFiles();
+    if (MissingResources.length > 0) {
+        MissingResources.forEach(file => {
+            if (file.path.startsWith("/assets/icons")) {
+                if (file.statusCode !== 200) {
+                    Log(`CRITICAL_MISSING_RESOURCE: ${file.path}`);
+                    FileServer.verifyExistence(file.path);
+                }
+            }
+        });
+        Log("MISSING_ASSETS_DETECTED_VERIFY_FILE_NAMES_AND_CASE_SENSITIVITY");
+    }
+
+    // 2.2 Force Clear Frontend Cache (Prevent cached broken files)
+    Frontend.forceCacheInvalidation("/css/*", "/js/*");
+    Log("FRONTEND_CACHE_INVALIDATED_BROWSER_CACHE_MIGHT_NEED_MANUAL_CLEARING");
+
+    // 3. CRITICAL FUNCTIONALITY CHECK (Login/Sign-in Flow)
+
+    // 3.1 Test Core API Endpoint
+    const LoginAPIStatus = API.testEndpoint("/api/v1/auth/login");
+    if (LoginAPIStatus.statusCode !== 200) {
+        if (LoginAPIStatus.statusCode === 500) {
+            Log("LOGIN_API_500_ERROR_CONFIRMED_ROOT_CAUSE_IS_SERVER_CRASH");
+        } else {
+            Log("LOGIN_API_FAILED_NON_500_CHECK_ROUTE_DEFINITIONS");
+        }
+    }
+
+    // 3.2 Frontend Button Binding Check
+    if (!document.getElementById("login-button").hasEventListener("click")) {
+        document.getElementById("login-button").attachEventListener("click", LoginHandlerFunction);
+        Log("LOGIN_BUTTON_HANDLER_RE_ATTACHED_WAS_IT_OVERWRITTEN");
+    }
+
+    Log("EMERGENCY_FIX_PROTOCOL_COMPLETE_IMMEDIATELY_CHECK_LIVE_SITE_AND_CONSOLE");
+}
+
+runImmediateDiagnosticsAndFix();

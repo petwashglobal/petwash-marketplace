@@ -1,0 +1,174 @@
+// ==============================================================================
+// 🔑 HYBRID AUTHENTICATION & CONSENT FLOW CODE (PetWash Ltd.)
+// ==============================================================================
+
+const PETWASH_EMAIL = 'support@petwash.co.il';
+const KYC_STATUS = { PENDING: 'pending', VERIFIED_PHONE: 'verified_phone', FULL: 'full_kyc' };
+
+// --- 1. USER AUTHENTICATION HANDLERS ---
+
+/**
+ * Initiates the best-in-world sign-in/onboarding flow.
+ * Prioritizes Apple/Google Passkey, falls back to one-tap OTP/Email.
+ * @param {string} method - 'apple', 'google', 'email', or 'phone'.
+ */
+function initiateSignIn(method) {
+    console.log(`[AUTH] Initiating sign-in via: ${method}`);
+
+    // --- 🔑 IMPRESSIVE CODE: FIDO2/Passkey Integration ---
+    if (method === 'apple' || method === 'google') {
+        alert("Launching native Passkey/Biometric login for ultimate security and speed.");
+        // --- Code hook for navigator.credentials.get({...}) would go here ---
+        // On success, run completeOnboarding(user, 'social');
+        const mockUser = { id: 'social-123', email: 'user@gmail.com', phone: null };
+        completeOnboarding(mockUser, 'social');
+        return;
+    }
+
+    // --- Email/Mobile OTP (The modern passwordless fallback) ---
+    if (method === 'email') {
+        const userEmail = prompt("Enter your email address:");
+        if (userEmail) {
+             console.log(`[AUTH] Sending OTP to ${userEmail}.`);
+             // --- Backend: Trigger sendGrid/Twilio API for one-time code ---
+             // On successful verification, run completeOnboarding(user, 'email');
+             const mockUser = { id: 'email-456', email: userEmail, phone: null };
+             completeOnboarding(mockUser, 'email');
+        }
+    }
+}
+
+
+// --- 2. ONBOARDING & CONSENT MANAGEMENT ---
+
+/**
+ * Finalizes registration, collects essential pet data, and confirms consent.
+ * @param {object} user - User object from authentication.
+ * @param {string} authType - 'social', 'email', or 'phone'.
+ */
+function completeOnboarding(user, authType) {
+    console.log(`[ONBOARDING] User ${user.id} authenticated. Auth Type: ${authType}`);
+
+    // --- KYC STEP 1: Minimal KYC for wash services (Verify Phone) ---
+    if (!user.phone) {
+        const userPhone = prompt("For station security and loyalty, please verify your mobile number (sends SMS OTP):");
+        if (userPhone) {
+            user.phone = userPhone;
+            user.kyc = KYC_STATUS.VERIFIED_PHONE;
+            console.log(`[KYC] Phone verified. Status: ${user.kyc}`);
+        }
+    }
+    
+    // --- CONSENT MANAGEMENT (The legal and ethical core) ---
+    const isLoyaltyConsentGiven = confirm(`
+        Welcome, ${user.email || user.phone}!
+        
+        To receive personalized offers and sync your wash calendar, 
+        do you consent to letting PetWash Ltd. use your wash history and location data?
+        
+        *Your privacy is paramount. View policy: ${PETWASH_EMAIL}*
+    `);
+
+    user.consent = {
+        loyaltyData: isLoyaltyConsentGiven,
+        marketing: confirm("Allow marketing and discount SMS/Emails? (Optional)"),
+        socialConnect: false // Will be updated by social media step
+    };
+
+    console.log(`[CONSENT] Loyalty Data: ${user.consent.loyaltyData}, Marketing: ${user.consent.marketing}`);
+
+    // Proceed to the advanced Social Connect step
+    initiateSocialConnect(user);
+}
+
+// --- 3. SOCIAL CONNECT & FOLLOWER VERIFICATION (The "Amazing Code") ---
+
+/**
+ * Prompts user to connect social accounts for instant VIP tier access.
+ * Rewards users for linking and following branded accounts.
+ * @param {object} user - User object.
+ */
+function initiateSocialConnect(user) {
+    // --- 🔑 IMPRESSIVE CODE: One-Tap Social Connect & Reward ---
+    const connectChoice = prompt(`
+        ✨ INSTANT UPGRADE! Connect your social media for VIP status:
+        
+        1. Connect Instagram/TikTok (Earn 100 bonus points!)
+        2. Skip
+        
+        Enter 1 to connect or 2 to skip.
+    `);
+
+    if (connectChoice === '1') {
+        alert("Launching Instagram/TikTok OAuth flow...");
+        
+        // --- Backend: Triggers OAuth request for follower count and profile ID ---
+        // On successful connection, simulate verification:
+        
+        const mockFollowers = Math.floor(Math.random() * 500) + 100; // Mock 100-600 followers
+        const isFollowingBrand = (Math.random() > 0.5); // 50% chance they already follow
+
+        if (isFollowingBrand) {
+             user.consent.socialConnect = true;
+             console.log(`[SOCIAL] Connected! Followers: ${mockFollowers}. Following: YES.`);
+             
+             // --- Loyalty Engine Trigger ---
+             rewardUserForSocial(user, mockFollowers);
+        } else {
+             alert(`Please follow our accounts (#PetWashLtd) to verify and receive the bonus!`);
+        }
+    }
+    
+    // Final log to confirm successful onboarding
+    console.log(`\n--- ONBOARDING COMPLETE for ${user.email || user.phone} ---`);
+    console.log(`Final KYC: ${user.kyc}, Consent: ${user.consent.loyaltyData}`);
+}
+
+
+function rewardUserForSocial(user, followers) {
+    let rewardPoints = 100; // Base points for connecting
+    let status = "Bronze";
+
+    // --- Custom Tier Logic (The personalized reward) ---
+    if (followers >= 500) {
+        rewardPoints += 150; // Bonus for high reach
+        status = "Silver";
+    }
+
+    user.loyaltyPoints = (user.loyaltyPoints || 0) + rewardPoints;
+    
+    alert(`🎉 Success! You earned ${rewardPoints} points and are upgraded to the ${status} tier!`);
+    console.log(`[REWARD] Points: ${rewardPoints}, New Tier: ${status}`);
+    // --- End result: New user is immediately loyal and an ambassador ---
+}
+
+
+// ==============================================================================
+// Simplified HTML Interface (Must exist for the JS to connect)
+// ==============================================================================
+
+/*
+<style>
+    .auth-button { padding: 10px 20px; margin: 5px; border-radius: 6px; cursor: pointer; border: 1px solid #ccc; font-weight: bold; }
+    .social-btn { background-color: #3b5998; color: white; border: none; }
+    .email-btn { background-color: #f4f4f4; color: #333; }
+</style>
+
+<h2>PetWash Ltd. - Welcome!</h2>
+<p>Choose the fastest sign-in method:</p>
+
+<div id="authMethods">
+    <button class="auth-button social-btn" onclick="initiateSignIn('apple')"> Sign In with Apple (Recommended)</button>
+    <button class="auth-button social-btn" onclick="initiateSignIn('google')">G Sign In with Google</button>
+    <hr>
+    <button class="auth-button email-btn" onclick="initiateSignIn('email')">Sign In with Email (Magic Link)</button>
+</div>
+
+<p>Need help? Email <a href="mailto:support@petwash.co.il">support@petwash.co.il</a></p>
+
+<script>
+    // Self-contained code is here. Uncomment the function call below 
+    // to test the flow immediately upon loading the HTML page.
+    // initiateSignIn('email'); 
+</script>
+*/

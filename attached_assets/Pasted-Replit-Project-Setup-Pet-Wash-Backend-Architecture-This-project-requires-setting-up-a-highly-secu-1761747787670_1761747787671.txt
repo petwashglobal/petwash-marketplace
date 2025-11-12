@@ -1,0 +1,32 @@
+Replit Project Setup: Pet Wash™️ Backend Architecture
+This project requires setting up a highly secure, modular backend service to manage two distinct business models: the high-trust Pet Stay marketplace and the asset-based Pet Wash utility. The core logic must be built using asynchronous Python to handle real-time API calls (IoT signals, payment gateways) without blocking the server.
+1. Project Dependencies (The requirements.txt file)
+We need the following key libraries for a robust, modern backend:
+• FastAPI or Django: This is the Core Web Framework, used for building asynchronous, high-performance API endpoints (e.g., /api/v1/booking/create).
+• SQLAlchemy or Django ORM: Used for Database Interaction, managing the secure user, sitter, and booking data.
+• requests or httpx: Used for External API Calls, communicating with vetting services, payment gateways, and the IoT wash stations.
+• python-jose: Used for Security, handling JSON Web Tokens (JWT) required for secure Two-Factor Authentication (2FA) and API access.
+2. Microservice Architecture Overview
+The backend should be logically split into two primary, interconnected services (microservices) to ensure stability and legal compliance.
+• API Gateway (Main Entry Point): Handles all incoming traffic and routes it to the correct service.
+• Booking Service (Pet Wash Stay): Manages all high-trust marketplace logic.
+• IoT Service (Pet Wash K9000): Manages the physical wash station assets.
+3. Core Business Logic Endpoints
+A. Booking Service (Pet Wash Stay) - High-Trust/Escrow
+This service implements the strict trust and revenue mandates.
+• /sitter/vetting/submit: This endpoint logic handles initiating the ID verification and Criminal History check flow using the SitterTrustStatus class.
+• /booking/price: This logic calculates the final price using Dynamic Pricing (surge multipliers) and applies the Owner Service Fee using the PricingOptimizer class.
+• /booking/deposit: This endpoint executes the payment and moves funds into the Escrow Account using the StayPetEscrow.deposit_funds() function.
+• /sitter/payout: This logic releases funds from escrow after the 24-hour hold and applies the Sitter Service Fee using the StayPetEscrow.release_payout() function.
+• /chat/monitor: This handles the AI-powered analysis of Direct Messages for fraud keywords and abuse using the FraudMonitor class.
+B. IoT Service (Pet Wash K9000) - Asset/Utility
+This service communicates directly with the physical wash stations.
+• /wash/payment/activate: This logic processes the direct, full payment (100% revenue) and sends the activation signal to the specific wash bay using the PetWashStationManager.handle_walk_in_payment() function.
+• /wash/status/live: This provides the real-time status of the two wash bays and chemical levels using the PetWashStationManager.get_real_time_status() function.
+• /wash/maintenance/alert: This receives alerts from the station when a Critical Level of soap/shampoo is reached, routing the alert to the Admin Dashboard via the PetWashStationManager.monitor_maintenance() function.
+4. Database Requirements
+The system requires secure SQL databases to hold sensitive, legally compliant data:
+• users Table: Holds login credentials (hashed), 2FA status, and basic profile info.
+• sitters_profile Table: Holds the results of the Vetting Check (status, clearance date), Trust Badge status, and payout account information.
+• bookings Table: Stores transaction records, Escrow Status, completion timestamps, and commission rates.
+• fraud_log Table: Stores records of all flagged chat messages and off-platform attempts.

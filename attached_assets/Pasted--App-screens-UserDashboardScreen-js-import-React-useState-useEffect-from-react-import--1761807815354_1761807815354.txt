@@ -1,0 +1,316 @@
+// App/screens/UserDashboardScreen.js
+
+import React, { useState, useEffect } from 'react';
+import { ScrollView, SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Switch, Platform } from 'react-native';
+import { Card, Title, Paragraph, Button, useTheme } from 'react-native-paper'; // Material Design (Android) / Cupertino (iOS) look with RN Paper
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { LineChart, ProgressCircle } from 'react-native-svg-charts'; // For micro-visualization
+
+// --- 1. CORE UTILITY COMPONENTS ---
+
+// Custom Card for Modular Widgets (Supports Dark Mode)
+const DashboardWidget = ({ title, children, actionIcon, onActionPress }) => {
+  const theme = useTheme();
+  return (
+    <Card style={[styles.widgetCard, { backgroundColor: theme.colors.surface }]}>
+      <Card.Content>
+        <View style={styles.widgetHeader}>
+          <Title style={{ color: theme.colors.text }}>{title}</Title>
+          {actionIcon && (
+            <TouchableOpacity onPress={onActionPress}>
+              <Icon name={actionIcon} size={24} color={theme.colors.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        {children}
+      </Card.Content>
+    </Card>
+  );
+};
+
+// --- 2. FEATURE WIDGET IMPLEMENTATIONS (MANY FEATURES) ---
+
+// Feature 1: Next Appointment Card (Actionable Insight)
+const NextAppointmentWidget = ({ nextBooking }) => {
+  const theme = useTheme();
+  if (!nextBooking) return <Paragraph>No upcoming bookings.</Paragraph>;
+
+  return (
+    <View>
+      <Paragraph style={{ color: theme.colors.text }}>
+        **{nextBooking.service}** at {nextBooking.time} on {nextBooking.date}
+      </Paragraph>
+      <View style={styles.buttonGroup}>
+        <Button mode="contained" onPress={() => console.log('Reschedule')} style={styles.smallButton}>
+          Reschedule
+        </Button>
+        <Button mode="outlined" onPress={() => console.log('Directions')} style={styles.smallButton}>
+          Directions
+        </Button>
+      </View>
+    </View>
+  );
+};
+
+// Feature 2: Loyalty Points & Status (Micro-visualization/Gamification)
+const LoyaltyWidget = ({ points, status, data }) => {
+  const theme = useTheme();
+  const progress = points / 1000; // Example max points
+  return (
+    <View style={styles.loyaltyContainer}>
+      <ProgressCircle
+        style={styles.progressCircle}
+        progress={progress}
+        progressColor={theme.colors.notification}
+        strokeWidth={8}
+      />
+      <View style={styles.loyaltyText}>
+        <Text style={[styles.mainMetric, { color: theme.colors.text }]}>{points}</Text>
+        <Text style={{ color: theme.colors.caption }}>Current Points</Text>
+        <Text style={[styles.statusTag, { backgroundColor: theme.colors.primary, color: 'white' }]}>{status} Member</Text>
+      </View>
+      <View style={styles.sparkline}>
+        {/* Sparkline chart for points history trend */}
+        <LineChart
+          style={{ height: 50 }}
+          data={data}
+          svg={{ stroke: theme.colors.accent, strokeWidth: 2 }}
+          contentInset={{ top: 5, bottom: 5 }}
+        />
+      </View>
+    </View>
+  );
+};
+
+// Feature 3: Quick Book Action
+const QuickBookWidget = () => (
+  <View style={styles.quickBookContainer}>
+    <Icon name="dog" size={30} color="#FF9800" />
+    <Text style={styles.quickBookText}>Ready for another wash?</Text>
+    <Button mode="contained" onPress={() => console.log('Go to Booking')} style={styles.quickBookButton}>
+      Book Now!
+    </Button>
+  </View>
+);
+
+// Feature 4: AI Personalized Tip/Suggestion
+const AITipWidget = ({ tip }) => {
+    const theme = useTheme();
+    return (
+        <View style={[styles.aiTipContainer, {borderColor: theme.colors.accent}]}>
+            <Icon name="robot-happy-outline" size={24} color={theme.colors.accent} />
+            <Text style={[styles.aiTipText, { color: theme.colors.text }]}>
+                **AI Pet Care Tip:** {tip}
+            </Text>
+        </View>
+    );
+};
+
+// Feature 5: Pet Health Summary (Data/Status)
+const PetHealthSummaryWidget = ({ petData }) => {
+    const theme = useTheme();
+    return (
+        <View style={styles.healthSummaryGrid}>
+            <View style={styles.metricItem}>
+                <Text style={[styles.metricValue, {color: theme.colors.text}]}>{petData.lastWeight} kg</Text>
+                <Text style={styles.metricLabel}>Last Weight</Text>
+            </View>
+            <View style={styles.metricItem}>
+                <Text style={[styles.metricValue, {color: theme.colors.text}]}>{petData.healthScore}%</Text>
+                <Text style={styles.metricLabel}>Health Score</Text>
+            </View>
+        </View>
+    );
+};
+
+
+// --- 3. MAIN DASHBOARD SCREEN ---
+
+const UserDashboardScreen = () => {
+  const [isDarkTheme, setIsDarkTheme] = useState(false); // Global Dark Mode Switch
+  const theme = useTheme();
+
+  // Mock Data (Replace with API calls)
+  const mockBooking = { service: 'Full Grooming', date: 'Fri, 15 Nov', time: '10:00 AM' };
+  const mockPointsData = [0, 50, 200, 350, 400];
+  const mockPetData = { lastWeight: 25.4, healthScore: 92, lastVisit: '2024-10-20' };
+  const mockAITip = "It's been 4 weeks since Rover's last nail trim. Schedule it now for optimal paw health!";
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* Header and Platform-Specific Settings */}
+        <View style={styles.header}>
+          <Text style={[styles.greeting, { color: theme.colors.onBackground }]}>
+            Welcome Back, **Nirhadad!** 👋
+          </Text>
+          <View style={styles.headerRight}>
+            <Icon name={Platform.OS === 'ios' ? 'apple' : 'android'} size={24} color={theme.colors.primary} />
+            <Text style={{ marginHorizontal: 8, color: theme.colors.caption }}>| </Text>
+            <Icon name="bell-outline" size={24} color={theme.colors.text} />
+            <Text style={{ marginHorizontal: 8, color: theme.colors.caption }}>| </Text>
+            <Icon name="theme-light-dark" size={24} color={theme.colors.text} />
+            <Switch
+              value={isDarkTheme}
+              onValueChange={() => setIsDarkTheme(!isDarkTheme)}
+              trackColor={{ false: '#767577', true: theme.colors.primary }}
+              thumbColor={isDarkTheme ? theme.colors.onPrimary : '#f4f3f4'}
+              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+            />
+          </View>
+        </View>
+        
+        {/* Feature Widgets - Modular and Responsive */}
+
+        <DashboardWidget title="Next Appointment" actionIcon="calendar-edit" onActionPress={() => console.log('Manage')}>
+          <NextAppointmentWidget nextBooking={mockBooking} />
+        </DashboardWidget>
+
+        <DashboardWidget title="Quick Action">
+          <QuickBookWidget />
+        </DashboardWidget>
+
+        <DashboardWidget title="Pet Loyalty Status" actionIcon="trophy" onActionPress={() => console.log('View Benefits')}>
+          <LoyaltyWidget points={400} status="Silver" data={mockPointsData} />
+        </DashboardWidget>
+        
+        <DashboardWidget title="Pet Health Snapshot" actionIcon="dog-service" onActionPress={() => console.log('Full Profile')}>
+            <PetHealthSummaryWidget petData={mockPetData} />
+        </DashboardWidget>
+        
+        <DashboardWidget title="Personalized Pet Care">
+            <AITipWidget tip={mockAITip} />
+        </DashboardWidget>
+
+        {/* Example: Bottom Navigation area for mobile */}
+        <View style={{ height: 100 }} />
+
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+// --- 4. STYLES (Modern & Clean Visual Look) ---
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  container: {
+    padding: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 5,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  widgetCard: {
+    marginBottom: 15,
+    borderRadius: 12,
+    elevation: 2, // Soft shadow for depth
+  },
+  widgetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    marginTop: 10,
+    justifyContent: 'flex-start',
+  },
+  smallButton: {
+    marginRight: 10,
+  },
+  // Loyalty Widget Styles
+  loyaltyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  progressCircle: {
+    width: 60,
+    height: 60,
+    marginRight: 15,
+  },
+  loyaltyText: {
+    flex: 1,
+    marginRight: 10,
+  },
+  mainMetric: {
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  statusTag: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sparkline: {
+    width: 80,
+    height: 50,
+  },
+  // Quick Book Styles
+  quickBookContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  quickBookText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  quickBookButton: {
+    minWidth: 100,
+  },
+  // AI Tip Styles
+  aiTipContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 10,
+    borderLeftWidth: 4, // Visual accent bar
+    borderRadius: 4,
+  },
+  aiTipText: {
+    marginLeft: 10,
+    fontSize: 14,
+    flexShrink: 1,
+  },
+  // Health Summary Styles
+  healthSummaryGrid: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      marginTop: 10,
+  },
+  metricItem: {
+      alignItems: 'center',
+  },
+  metricValue: {
+      fontSize: 20,
+      fontWeight: 'bold',
+  },
+  metricLabel: {
+      fontSize: 12,
+      color: '#A9A9A9',
+  }
+});
+
+export default UserDashboardScreen;
+

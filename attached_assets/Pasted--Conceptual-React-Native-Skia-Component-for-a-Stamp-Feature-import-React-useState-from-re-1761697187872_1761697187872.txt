@@ -1,0 +1,76 @@
+// Conceptual React Native / Skia Component for a Stamp Feature
+
+import React, { useState } from 'react';
+import { Canvas, Image, useImage, vec, rotate, transform } from "@shopify/react-native-skia";
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+
+const StampComponent = ({ baseImageUri, stampImageUri }) => {
+  const baseImage = useImage(baseImageUri);
+  const stampImage = useImage(stampImageUri);
+
+  // State to track the stamp's position, scale, and rotation
+  const [stampTransform, setStampTransform] = useState({
+    x: 100,
+    y: 100,
+    scale: 0.5,
+    rotation: 0,
+  });
+
+  // Unified gesture handler for drag, pinch (scale), and rotate
+  const gesture = Gesture.Simultaneous(
+    Gesture.Pan().onUpdate((e) => {
+      setStampTransform(prev => ({ 
+        ...prev, 
+        x: prev.x + e.changeX, 
+        y: prev.y + e.changeY 
+      }));
+    }),
+    Gesture.Pinch().onUpdate((e) => {
+      setStampTransform(prev => ({ 
+        ...prev, 
+        scale: prev.scale * e.scale 
+      }));
+    }),
+    // ... Rotation logic would also be here
+  );
+
+  if (!baseImage || !stampImage) {
+    return <Text>Loading Images...</Text>;
+  }
+
+  // Calculate the final transformation matrix for the stamp
+  const stampMatrix = transform([
+    { translateX: stampTransform.x },
+    { translateY: stampTransform.y },
+    { scale: stampTransform.scale },
+    // rotate is applied around the stamp's center
+    rotate(stampTransform.rotation, vec(stampImage.width / 2, stampImage.height / 2))
+  ]);
+  
+  // Render the Canvas
+  return (
+    <Canvas style={{ flex: 1 }}>
+        {/* Draw the base image first */}
+        <Image 
+            image={baseImage} 
+            x={0} 
+            y={0} 
+            width={baseImage.width} 
+            height={baseImage.height} 
+            fit="cover" 
+        />
+        
+        {/* Draw the stamp with the calculated transforms */}
+        <GestureDetector gesture={gesture}>
+            <Image 
+                image={stampImage} 
+                matrix={stampMatrix} 
+                width={stampImage.width} 
+                height={stampImage.height} 
+            />
+        </GestureDetector>
+    </Canvas>
+  );
+};
+
+export default StampComponent;

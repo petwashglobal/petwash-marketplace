@@ -1,0 +1,328 @@
+import asyncio
+import random
+import time
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Dict, List, Optional
+
+# --- DEPENDENCIES (MOCK IMPORTS FOR REPLIT) ---
+# In a real setup, these would be: from fastapi import *, from jose import *, etc.
+# We will define the essential classes below.
+
+# ====================================================================
+# CONFIGURATION AND GLOBAL STATE
+# ====================================================================
+
+SECRET_KEY = "SUPER_SECURE_KEY_FOR_JWT_32_CHAR_MIN"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+GLOBAL_COMMISSION_RATE = 0.24 # Pet Wash Stay gross take rate
+SERVICE_FEE_SITTER = 0.18    # 18% Sitter contribution
+SERVICE_FEE_OWNER = 0.06     # 6% Owner contribution
+
+# --- MOCK DATABASES & CACHES ---
+MOCK_USERS = {}
+MOCK_SITTERS = {} # Contains vetting status, base_rate, location, etc.
+MOCK_BOOKINGS = {}
+ACTIVE_WALKS = {} # Real-time cache for Walk My Pet GPS tracking
+LOGIN_ATTEMPT_CACHE = {} # LRUCache replacement for rate limiting
+
+class SitterStatus(Enum):
+    PENDING_VETTING = 10
+    ACTIVE = 100
+    SUSPENDED = 400
+
+class ServiceType(Enum):
+    HOME_BOARDING = 'Stay_SitterHome'
+    WALK_APPOINTMENT = 'Walk_Geo'
+    SELF_WASH_BAY = 'Wash_Station'
+
+
+# ====================================================================
+# MODULE 1: SECURITY, AUTHENTICATION, AND UTILITIES
+# (GDPR, Two-Factor Authentication, Rate Limiting)
+# ====================================================================
+
+# Placeholder for actual FastAPI/Pydantic models
+class BaseModel:
+    def dict(self): return self.__dict__
+    
+class UserCreate(BaseModel):
+    phone: str
+    password: str
+    dob: str # CRITICAL: Required for Age/Vetting check
+
+# Placeholder for secure password hashing
+def get_password_hash(password):
+    return "MOCK_HASHED_" + password 
+
+def verify_password(plain_password, hashed_password):
+    return hashed_password == ("MOCK_HASHED_" + plain_password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """MOCK: Creates a secure JSON Web Token (JWT)."""
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode = data.copy()
+    to_encode.update({"exp": expire, "sub": data.get("phone")})
+    # return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return "MOCK_JWT_TOKEN_" + str(int(time.time()))
+
+def check_login_rate_limit(phone_number: str):
+    """Unique Code: Prevents brute-force attacks on the login endpoint."""
+    MAX_ATTEMPTS = 5
+    BLOCK_TIME_SECONDS = 300
+    
+    record = LOGIN_ATTEMPT_CACHE.get(phone_number, {"attempts": 0, "blocked_until": 0})
+    
+    if record["blocked_until"] > time.time():
+        raise Exception(f"Too many attempts. Try in {int(record['blocked_until'] - time.time())}s.")
+        
+    return record # Return record to be updated after a failed attempt
+
+
+# ====================================================================
+# MODULE 2: PET WASH STAY™️ (HOSPITALITY MARKETPLACE - ESCROW)
+# ====================================================================
+
+class EscrowManager:
+    """Manages secure financial holds and sitter payouts."""
+    
+    @staticmethod
+    def calculate_commission(subtotal):
+        platform_fee = subtotal * SERVICE_FEE_SITTER
+        owner_fee = subtotal * SERVICE_FEE_OWNER
+        return platform_fee, owner_fee
+
+    @staticmethod
+    def deposit_booking(booking_id, subtotal):
+        """Action: Owner pays total cost, funds secured in Escrow."""
+        total_owner_cost = subtotal * (1 + SERVICE_FEE_OWNER)
+        
+        MOCK_BOOKINGS[booking_id] = {
+            "subtotal": subtotal,
+            "status": "PAID_PENDING_SERVICE",
+            "completion_timestamp": None,
+            "payout_hold_release": None,
+        }
+        return {"success": True, "total_cost": round(total_owner_cost, 2)}
+
+    @staticmethod
+    def release_payout(booking_id):
+        """Action: Releases funds to Sitter after the mandated 24-hour hold."""
+        booking = MOCK_BOOKINGS.get(booking_id)
+
+        if not booking or booking['status'] != 'SERVICE_COMPLETE':
+            return {"success": False, "detail": "Service not complete."}
+
+        # CRITICAL CHECK: Enforce 24-hour waiting period
+        if datetime.now() < booking['payout_hold_release']:
+            return {"success": False, "detail": "24-hour hold active."}
+
+        # Calculation based on commission model
+        sitter_payout = booking['subtotal'] * (1 - SERVICE_FEE_SITTER)
+        
+        # MOCK: Simulate transfer and logging
+        booking['status'] = 'PAID_OUT'
+        return {"success": True, "payout_amount": round(sitter_payout, 2)}
+
+class SitterVetting:
+    """Manages the legal multi-step trust process."""
+    
+    @staticmethod
+    def verify_id_and_dob(user_dob, uploaded_id_data):
+        """MOCK: Simulates cross-referencing ID data with registration DOB."""
+        min_age = 18
+        # Simple age check based on DOB (CRITICAL LEGAL CHECK)
+        if datetime.now().year - int(user_dob.split('-')[0]) < min_age:
+            return False, "Age must be 18 or over to sign contracts."
+        
+        # Assume ID scan passes
+        return True, "ID Verified. Background Check Approved."
+
+    @staticmethod
+    def check_resort_amenities(sitter_id, amenity_data):
+        """Unique Code: Verifies luxury/resort-style amenities for search filtering."""
+        
+        # Example check for mandatory resort amenity fields
+        if not amenity_data.get('lift_on_site') and amenity_data.get('stairs_count', 0) > 10:
+            return "Profile requires lift or fewer stairs for large dog access."
+        
+        # MOCK: Update sitter profile with amenities for advanced search
+        MOCK_SITTERS[sitter_id]['amenities'] = amenity_data
+
+
+# ====================================================================
+# MODULE 3: WALK MY PET (GEOLOCATION & REAL-TIME TRACKING)
+# ====================================================================
+
+class WalkManager:
+    """Manages GPS tracking, safety, and search for dog walkers."""
+    
+    @staticmethod
+    def find_nearest_walkers(center_lat, center_lon):
+        """Unique Code: MOCK of a spatial database query."""
+        
+        # 1. MOCK Spatial Query (using distance formula or PostGIS in production)
+        nearest = []
+        for sitter_id, sitter in MOCK_SITTERS.items():
+            if sitter.get('status') == SitterStatus.ACTIVE and sitter.get('is_walker'):
+                # MOCK: Calculate distance (simple proximity check)
+                if abs(sitter['location']['lat'] - center_lat) < 0.05: 
+                    nearest.append(sitter_id)
+                    
+        # 2. Sort by Trust Score (MOCK)
+        random.shuffle(nearest) 
+        return nearest
+
+    @staticmethod
+    async def update_location_stream(walk_id, data: GpsPoint):
+        """Receives real-time GPS stream from the mobile app."""
+        
+        walk = ACTIVE_WALKS.get(walk_id)
+        if not walk:
+            return False
+            
+        # 1. Update Real-Time Cache for Owner View
+        walk['last_location'] = (data.latitude, data.longitude)
+        
+        # 2. Unique Code: Geofencing Safety Check
+        if not WalkManager.is_inside_geofence(walk_id, data.latitude, data.longitude):
+            # Send immediate alert via WebSocket/Push Notification
+            await IoTManager.send_alert(walk['owner_id'], "Walker outside safe zone!")
+
+        # 3. Log data to non-realtime database for route history
+        # db.save_walk_history(walk_id, data)
+        return True
+
+    @staticmethod
+    def is_inside_geofence(walk_id, lat, lon):
+        """MOCK: Determines if point is inside a polygon boundary (essential safety)."""
+        # In production, uses PostGIS/Google Maps API spatial libraries
+        return random.random() > 0.1 # 90% chance of being safe
+
+
+# ====================================================================
+# MODULE 4: IOT SERVICE (PET WASH K9000 - ASSET UTILITY)
+# ====================================================================
+
+class IoTManager:
+    """Manages the physical walk-in wash stations (Pet Wash K9000)."""
+    
+    @staticmethod
+    def process_wash_payment(amount):
+        """Handles the 100% direct payment for the self-service wash."""
+        # Action: Process full charge and log
+        if amount > 5.00:
+            return {"success": True, "tx_id": "WASH_TX_" + str(int(time.time()))}
+        return {"success": False}
+
+    @staticmethod
+    def send_activation_signal(station_id, bay_number, duration):
+        """Sends the command to the physical machine."""
+        print(f"IoT SIGNAL: Activating Station {station_id}, Bay {bay_number} for {duration} min.")
+        # This function is where the direct API call to the K9000 IoT controller would live.
+        return True
+
+    @staticmethod
+    async def send_alert(recipient_id, message):
+        """MOCK: Sends an urgent push notification (used by WalkManager and Maintenance)."""
+        print(f"[PUSH ALERT to {recipient_id}]: {message}")
+
+
+# ====================================================================
+# MODULE 5: FRONTEND API DEFINITIONS (The User Interface)
+# ====================================================================
+
+# --- FRONTEND API STRUCTURE (The actual API endpoints) ---
+
+def api_register(user: UserCreate):
+    """
+    Handles new user registration and enforces CRITICAL DOB check.
+    Endpoint: /api/auth/register
+    """
+    if not user.dob:
+        raise Exception("DOB is required for legal and vetting purposes.")
+    
+    # Check age compliance (over 18)
+    if not SitterVetting.verify_id_and_dob(user.dob, "MOCK_ID_DATA")[0]:
+        raise Exception("Users must be 18 or older to register.")
+
+    # MOCK: Proceed with saving user and returning token
+    MOCK_USERS[user.phone] = user.dict()
+    token = create_access_token({"phone": user.phone})
+    return {"token": token}
+
+
+def api_book_stay(user_id, sitter_id, nights):
+    """
+    Endpoint for booking the Pet Wash Stay accommodation service.
+    Endpoint: /api/booking/stay
+    """
+    subtotal = MOCK_SITTERS.get(sitter_id, {}).get('base_rate', 100) * nights
+    booking_id = "BOOK_" + str(random.randint(1000, 9999))
+    
+    # CRITICAL: Funds are deposited to trigger the Escrow system
+    deposit_response = EscrowManager.deposit_booking(booking_id, subtotal)
+    
+    return {"booking_id": booking_id, "status": "Confirmed", **deposit_response}
+
+
+def api_search_walkers(user_lat, user_lon):
+    """
+    Endpoint for the Walk My Pet feature. Uses geolocation.
+    Endpoint: /api/walk/search
+    """
+    return WalkManager.find_nearest_walkers(user_lat, user_lon)
+
+
+def api_start_wash(station_id, bay_number, duration, payment_token):
+    """
+    Endpoint for the Pet Wash K9000 walk-in service.
+    Endpoint: /api/wash/start
+    """
+    # 1. Process payment
+    payment_response = IoTManager.process_wash_payment(20.00) # Fixed price mock
+    
+    if payment_response.get('success'):
+        # 2. Send command to physical machine
+        IoTManager.send_activation_signal(station_id, bay_number, duration)
+        return {"status": "Wash Activated", "bay": bay_number}
+    else:
+        return {"status": "Payment Failed", "detail": "Check payment token."}
+
+
+# ====================================================================
+# MAIN EXECUTOR (MOCK API CALLS)
+# ====================================================================
+
+if __name__ == "__main__":
+    # --- SETUP ---
+    # Register a mock sitter
+    MOCK_SITTERS["sitter_001"] = {
+        "country": "ISR", "status": SitterStatus.ACTIVE, "base_rate": 150, 
+        "location": {"lat": 32.0853, "lon": 34.7818}, # Tel Aviv
+        "is_walker": True
+    }
+    
+    print("--- PET WASH / WALK MY PET PLATFORM INITIALIZED ---")
+    
+    # 1. DEMO: Vetting Failure (Age Check)
+    try:
+        api_register(UserCreate(phone="972501234567", password="password123", dob="2010-01-01"))
+    except Exception as e:
+        print(f"\n[SECURITY CHECK FAIL]: {e}")
+        
+    # 2. DEMO: Walk My Pet Search (Geolocation)
+    print("\n[WALK MY PET: Nearest Walker Search]")
+    walkers = api_search_walkers(32.09, 34.78)
+    print(f"Found {len(walkers)} nearby trusted walkers: {walkers}")
+
+    # 3. DEMO: Pet Wash Stay™️ Booking
+    print("\n[PET WASH STAY: New Booking Deposit]")
+    booking_response = api_book_stay("owner_A", "sitter_001", 2)
+    print(f"Booking Status: {booking_response['status']} | Cost: {booking_response['total_cost']}")
+
+    # 4. DEMO: IoT Wash Station Activation
+    print("\n[PET WASH K9000: Walk-in Activation]")
+    wash_response = api_start_wash("TLV_01", 1, 10, "VALID_CARD_TOKEN")
+    print(wash_response)

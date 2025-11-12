@@ -1,0 +1,142 @@
+// LoginScreen.tsx - Requires Tailwind CSS, React, and Framer Motion installed
+
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+// A modern Biometric Icon (using lucide-react for example)
+import { ScanFace, User, Lock } from 'lucide-react'; 
+
+// --- Component State and Logic ---
+
+type LoginPhase = 'biometric' | 'manual';
+
+const LoginScreen: React.FC = () => {
+  const [phase, setPhase] = useState<LoginPhase>('biometric');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Simulates a smooth transition to manual login upon biometric failure
+  const handleBiometricFailure = () => {
+    // In a real app, this would happen after a failed Face ID scan attempt
+    setPhase('manual');
+  };
+
+  const handleManualLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Attempting manual login:', { username, password });
+    alert('כניסה ידנית בוצעה בהצלחה!'); // Manual login successful
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-luxury-dark text-white p-4">
+      
+      {/* 1. Header (Minimalist & Clean) */}
+      <h1 className="text-4xl font-light mb-2">ברוכים הבאים</h1>
+      <p className="text-lg text-gray-400 mb-10">בנק העתיד</p>
+
+      {/* 2. Login Panel (Glassmorphism Effect) */}
+      <motion.div
+        layout // Enables smooth layout transitions between biometric/manual phases
+        className="w-full max-w-sm p-8 bg-white/5 backdrop-blur-md rounded-2xl shadow-soft-3d border border-white/10"
+      >
+
+        {/* --- Biometric First Phase --- */}
+        {phase === 'biometric' && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="flex flex-col items-center space-y-8"
+          >
+            <h2 className="text-xl font-semibold text-center text-gray-200">
+              כניסה באמצעות זיהוי פנים
+            </h2>
+            
+            {/* The primary, highly-visible Face ID action */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleBiometricFailure} // On click, simulate initiating Face ID or failure
+              className="p-6 rounded-full bg-brand-accent/20 border-2 border-brand-accent transition-all duration-300"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }} // Subtle pulsing animation for 'live scanning'
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <ScanFace size={64} className="text-brand-accent" />
+              </motion.div>
+            </motion.button>
+
+            <button 
+              onClick={handleBiometricFailure} 
+              className="text-sm text-gray-400 hover:text-brand-accent transition-colors"
+            >
+              התחבר באמצעות סיסמה (Use Password Instead)
+            </button>
+          </motion.div>
+        )}
+
+        {/* --- Manual Login Phase (Fallback) --- */}
+        {phase === 'manual' && (
+          <motion.form 
+            onSubmit={handleManualLogin}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-6"
+          >
+            <h2 className="text-xl font-semibold text-center text-gray-200">
+              כניסה ידנית
+            </h2>
+            
+            {/* Username Field */}
+            <div className="relative">
+              <User className="absolute top-1/2 -translate-y-1/2 right-3 text-gray-500" size={20} />
+              <input
+                type="text"
+                placeholder="קוד משתמש"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                className="w-full p-3 pr-10 bg-white/10 border border-white/20 rounded-lg focus:border-brand-accent focus:ring-brand-accent transition-colors duration-200 text-right placeholder-gray-400"
+              />
+            </div>
+
+            {/* Password Field */}
+            <div className="relative">
+              <Lock className="absolute top-1/2 -translate-y-1/2 right-3 text-gray-500" size={20} />
+              <input
+                type="password"
+                placeholder="סיסמה"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full p-3 pr-10 bg-white/10 border border-white/20 rounded-lg focus:border-brand-accent focus:ring-brand-accent transition-colors duration-200 text-right placeholder-gray-400"
+              />
+            </div>
+
+            {/* Main Login Button (Animated) */}
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-3 bg-brand-accent rounded-lg text-lg font-bold shadow-lg shadow-brand-accent/30 transition-all duration-300"
+            >
+              כניסה לחשבון
+            </motion.button>
+
+            {/* Recovery Link */}
+            <p className="text-center text-sm">
+              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                שכחתי קוד משתמש / סיסמה
+              </a>
+            </p>
+          </motion.form>
+        )}
+      </motion.div>
+    </div>
+  );
+};
+
+export default LoginScreen;

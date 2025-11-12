@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AI Weather Planner</string>
+    <string name="loading">Loading AI forecast…</string>
+    <string name="error_fetching">Error fetching weather data</string>
+    <string name="temp_celsius">°C</string>
+    <string name="current_temp">Current Temperature:</string>
+    <string name="condition">Condition:</string>
+    <string name="planner_advice">AI Planner Advice:</string>
+</resources>

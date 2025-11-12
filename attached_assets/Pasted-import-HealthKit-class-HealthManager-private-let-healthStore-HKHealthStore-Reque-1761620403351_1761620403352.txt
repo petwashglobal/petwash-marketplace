@@ -1,0 +1,59 @@
+import HealthKit
+
+class HealthManager {
+    private let healthStore = HKHealthStore()
+
+    /// Requests read access to step count and walking/running distance data.
+    func requestAuthorization(completion: @escaping (Bool, Error?) -> Void) {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            completion(false, nil)
+            return
+        }
+        let readTypes: Set<HKObjectType> = [
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!
+        ]
+        healthStore.requestAuthorization(toShare: [], read: readTypes) { success, error in
+            completion(success, error)
+        }
+    }
+
+    /// Fetches the total steps and distance for today.
+    func fetchTodayActivity(completion: @escaping (Double, Double) -> Void) {
+        let now = Date()
+        let startOfDay = Calendar.current.startOfDay(for: now)
+        let group = DispatchGroup()
+        var totalSteps: Double = 0
+        var totalDistance: Double = 0
+
+        // Step count query
+        if let stepType = HKObjectType.quantityType(forIdentifier: .stepCount) {
+            let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: [])
+            let query = HKStatisticsQuery(quantityType: stepType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
+                if let sum = result?.sumQuantity() {
+                    totalSteps = sum.doubleValue(for: HKUnit.count())
+                }
+                group.leave()
+            }
+            group.enter()
+            healthStore.execute(query)
+        }
+
+        // Distance query
+        if let distanceType = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning) {
+            let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: [])
+            let query = HKStatisticsQuery(quantityType: distanceType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
+                if let sum = result?.sumQuantity() {
+                    totalDistance = sum.doubleValue(for: HKUnit.meter())
+                }
+                group.leave()
+            }
+            group.enter()
+            healthStore.execute(query)
+        }
+
+        group.notify(queue: .main) {
+            completion(totalSteps, totalDistance)
+        }
+    }
+}

@@ -1,0 +1,80 @@
+// BEST CODE 2025: Backend Logic for Remote K9000 Activation via Nayax Spark/Cortina API
+const express = require('express');
+const fetch = require('node-fetch'); // ספריית HTTP
+
+const app = express();
+app.use(express.json());
+
+// --- משתני סביבה (יש למלא בנתוני Nayax אמיתיים) ---
+const NAYAX_API_BASE = "https://lynx.nayax.com/api/v1"; 
+const NAYAX_ACCESS_TOKEN = "YOUR_SECURE_NAYAX_LYNX_TOKEN"; // אסימון גישה ל-API
+const K9000_TERMINAL_ID = "9999888877"; // ה-Terminal ID של מכשיר ה-Nayax במכונת ה-K9000
+const WASH_PROGRAM_ID = 5; // לדוגמה: ID של תוכנית השטיפה שנבחרה (5 דקות, סבון ושטיפה)
+
+/**
+ * 1. Endpoint: נקודת הקצה שקוראת להפעלת המכונה
+ * (נדרש לאחר שהתשלום הסתיים בהצלחה מצד המשתמש).
+ */
+app.post('/api/k9000/remote_start', async (req, res) => {
+    
+    // נתונים שהתקבלו מהאפליקציה/מערכת הסליקה שלך
+    const { userId, washAmountIls } = req.body; 
+
+    // 2. בדיקת אבטחה בסיסית ואימות נתונים
+    if (!userId || !washAmountIls) {
+        return res.status(400).json({ error: 'חסרים נתוני משתמש או סכום' });
+    }
+
+    // --- קריאת API ל-Nayax Spark/Marshall (Remote Device Start) ---
+    const nayax_start_url = `${NAYAX_API_BASE}/devices/${K9000_TERMINAL_ID}/start`; 
+
+    try {
+        const start_payload = {
+            // ה-API של Nayax דורש נתונים מדויקים להפעלת מכונות MDB
+            Amount: washAmountIls,
+            CurrencyCode: "ILS",
+            // ה-ControlData הוא המידע שהמכונה (K9000) צריכה לקבל
+            ControlData: {
+                ServiceCode: WASH_PROGRAM_ID, // הפעלת תוכנית השטיפה הרצויה
+                SessionTimeoutSec: 300,       // הגדרת זמן שטיפה (5 דקות)
+                CustomUserId: userId          // ניתן להשתמש בזה ל-Loyalty Card
+            }
+        };
+
+        const nayax_response = await fetch(nayax_start_url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${NAYAX_ACCESS_TOKEN}`, // אבטחה
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(start_payload)
+        });
+
+        const nayax_data = await nayax_response.json();
+        
+        // 3. טיפול בתגובה של Nayax
+        if (nayax_response.ok && nayax_data.Status === 'Success') {
+            
+            // עדכון Apple Wallet / אפליקציה שהשטיפה החלה
+            console.log(`K9000 (טרמינל ${K9000_TERMINAL_ID}) הופעל בהצלחה.`);
+            
+            res.status(200).json({ 
+                message_heb: `השטיפה הופעלה! התחל/י לשטוף את הכלב. סכום: ${washAmountIls} ₪`, 
+                nayaxResponse: nayax_data 
+            });
+            
+        } else {
+            console.error('כשל הפעלה מ-Nayax:', nayax_data);
+            res.status(500).json({ 
+                error: 'כשל בהפעלת המכונה דרך Nayax.',
+                details: nayax_data.Details
+            });
+        }
+
+    } catch (e) {
+        console.error('שגיאה בתקשורת Nayax:', e);
+        res.status(500).json({ error: 'שגיאת שרת פנימית בחיבור ל-Nayax.' });
+    }
+});
+
+// app.listen(3000, () => console.log('Nayax K9000 API Gateway פועל'));

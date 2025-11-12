@@ -1,0 +1,91 @@
+{
+  "k9000_machine": {
+    "version": "2.0 Twin",
+    "manufacturer": "K9000 Australia",
+    "website": "https://www.k9000dogwash.com/",
+    "specs": {
+      "controller": {
+        "type": "V2 MDB controller",
+        "lighting": "LED lighting system",
+        "interface": "User-friendly touchscreen"
+      },
+      "pumps": {
+        "configuration": "4 pumps per side (8 total)",
+        "types": [
+          "Organic shampoo",
+          "Conditioner",
+          "Flea treatment",
+          "Disinfectant"
+        ],
+        "pressure": "Low water pressure for safety and efficiency"
+      },
+      "filtration": {
+        "system": "Triple filtration",
+        "purpose": "Clean water circulation and environmental protection"
+      },
+      "dryers": {
+        "speeds": 2,
+        "temperature": "Instant hot water heating",
+        "safety": "Temperature controlled for pet safety"
+      },
+      "payment": {
+        "system": "Nayax integration",
+        "methods": [
+          "QR code payments",
+          "Credit/debit cards",
+          "Contactless payments",
+          "Digital wallets"
+        ]
+      },
+      "products": {
+        "type": "100% organic",
+        "certification": "Eco-friendly and biodegradable",
+        "safety": "Pet-safe formulations",
+        "allergies": "Hypoallergenic options available"
+      }
+    },
+    "features": {
+      "environmental": {
+        "water_efficiency": "Low pressure reduces waste",
+        "products": "Biodegradable and eco-friendly",
+        "energy": "Solar-ready infrastructure",
+        "waste": "Proper drainage and filtration"
+      },
+      "convenience": {
+        "availability": "24/7 operation",
+        "accessibility": "Wheelchair accessible",
+        "language": "Multi-language interface",
+        "instructions": "Clear visual guides"
+      },
+      "safety": {
+        "temperature_control": "Safe water temperature",
+        "non_slip": "Non-slip floors",
+        "ventilation": "Proper air circulation",
+        "emergency": "Emergency stop buttons"
+      }
+    },
+    "capacity": {
+      "pet_sizes": [
+        "Small dogs (up to 10kg)",
+        "Medium dogs (10-25kg)",
+        "Large dogs (25-45kg)",
+        "Extra large dogs (45kg+)"
+      ],
+      "wash_duration": "Approximately 10-15 minutes",
+      "dry_duration": "5-10 minutes depending on coat"
+    }
+  },
+  "technology": {
+    "innovation": "Australian K9000 technology adapted for Middle East climate",
+    "unique": "First self-service pet wash network in Middle East",
+    "updates": "Regular software and hardware maintenance",
+    "monitoring": "Real-time IoT monitoring and alerts"
+  },
+  "maintenance": {
+    "schedule": "Regular professional maintenance",
+    "cleaning": "Daily sanitization protocols",
+    "supplies": "Continuous organic product replenishment",
+    "quality": "Monitored water quality and pressure"
+  },
+  "ai_usage_note": "Provide these specs when customers ask about machine capabilities, safety, or eco-friendly features"
+}

@@ -1,0 +1,47 @@
+import android.hardware.biometrics.BiometricManager
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.biometric.BiometricPrompt
+
+class MainActivity : AppCompatActivity() {
+    private lateinit var biometricPrompt: BiometricPrompt
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val executor = ContextCompat.getMainExecutor(this)
+        biometricPrompt = BiometricPrompt(this, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    // User authenticated – proceed with secure action
+                }
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    // Authentication error – fallback to PIN
+                }
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+                    // Authentication failed – allow retry or fallback
+                }
+            })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Biometric login")
+            .setSubtitle("Use your fingerprint or face to continue")
+            .setNegativeButtonText("Use PIN")
+            .build()
+
+        val biometricManager = androidx.biometric.BiometricManager.from(this)
+        val canAuthenticate = biometricManager.canAuthenticate(
+            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                    androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        )
+        if (canAuthenticate == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS) {
+            biometricPrompt.authenticate(promptInfo)
+        } else {
+            // No biometrics – fallback to PIN/password
+        }
+    }
+}

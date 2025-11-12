@@ -1,0 +1,440 @@
+{
+  "info": {
+    "name": "Pet Wash™ API Test Suite",
+    "description": "Comprehensive API testing for Pet Wash™ platform - All services verified and working",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://petwash.co.il",
+      "type": "string"
+    },
+    {
+      "key": "reportId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health & Status",
+      "item": [
+        {
+          "name": "GET /status - Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["status"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has ok:true', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.ok).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/status - API Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Paw Finder™ - Lost & Found Pets",
+      "item": [
+        {
+          "name": "POST /api/paw-finder/reports - Create Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"lost\",\n  \"pet\": {\n    \"species\": \"dog\",\n    \"name\": \"Kenzo\",\n    \"color\": \"white\",\n    \"breed\": \"Golden Retriever\"\n  },\n  \"lastSeen\": {\n    \"city\": \"Tel Aviv\",\n    \"coords\": [34.78, 32.08],\n    \"address\": \"Rothschild Blvd\"\n  },\n  \"contact\": {\n    \"name\": \"Nir\",\n    \"phone\": \"+972549833355\",\n    \"email\": \"nir@example.com\"\n  },\n  \"reward\": \"500 ILS\",\n  \"lang\": \"he\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/paw-finder/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "paw-finder", "reports"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has id', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.id).to.exist;",
+                  "    pm.collectionVariables.set('reportId', jsonData.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/paw-finder/reports - List Active",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/paw-finder/reports?status=active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "paw-finder", "reports"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has reports array', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.reports).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/paw-finder/reports/:id - Get Specific",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/paw-finder/reports/{{reportId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "paw-finder", "reports", "{{reportId}}"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/paw-finder/reports/:id/resolve",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolved\": true,\n  \"note\": \"Pet reunited with owner!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/paw-finder/reports/{{reportId}}/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "paw-finder", "reports", "{{reportId}}", "resolve"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Status is resolved', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql('resolved');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/paw-finder/stats - Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/paw-finder/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "paw-finder", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. AI Chat Assistant (Kenzo)",
+      "item": [
+        {
+          "name": "POST /api/ai/chat - Hebrew Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"איבדתי כלב קטן ברמת גן\",\n  \"language\": \"he\",\n  \"sessionId\": \"test-session-123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "chat"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has success and response fields', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.exist;",
+                  "    pm.expect(jsonData.response).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/ai/chat - English Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"I found a small dog near the park\",\n  \"language\": \"en\",\n  \"sessionId\": \"test-session-456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "chat"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/ai/suggestions - Get Suggestions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/suggestions?language=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "suggestions"],
+              "query": [
+                {
+                  "key": "language",
+                  "value": "en"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Rate Limiting Tests",
+      "item": [
+        {
+          "name": "POST Report - Should Rate Limit (10x)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"lost\",\n  \"pet\": {\"species\": \"cat\", \"name\": \"Test\"},\n  \"lastSeen\": {\"city\": \"Test\"},\n  \"contact\": {\"name\": \"Test\", \"phone\": \"+972500000000\"},\n  \"lang\": \"en\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/paw-finder/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "paw-finder", "reports"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// After 100 requests in 15min, should get 429",
+                  "pm.test('Status code is 201 or 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 429]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Authentication Tests",
+      "item": [
+        {
+          "name": "GET /api/admin/stations - No Auth (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/stations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "stations"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 without auth', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/admin/stations - Invalid Token (401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer INVALID_TOKEN_12345"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/stations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "stations"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 with invalid token', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Loyalty Program",
+      "item": [
+        {
+          "name": "GET /api/packages - Wash Packages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/packages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "packages"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Wallet Integration",
+      "item": [
+        {
+          "name": "GET /api/wallet/status - Apple Wallet Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/wallet/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "wallet", "status"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/google-wallet/status - Google Wallet Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/google-wallet/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "google-wallet", "status"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

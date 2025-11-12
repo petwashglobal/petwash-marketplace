@@ -1,0 +1,330 @@
+/**
+ * Universal Responsive Design Tokens - Pet Wash™ 2025
+ * 
+ * Production-quality responsive system for ALL devices:
+ * - iPhone SE (375px) to iPhone Pro Max (430px)
+ * - Samsung Galaxy (360px-412px)
+ * - iPad (768px-1024px), iPad Pro (1024px-1366px)
+ * - Laptops 13" (1280px-1440px), 17" (1920px+)
+ * - Portrait AND landscape modes
+ * 
+ * Ensures ZERO layout shift, ZERO image cut-off, ZERO overflow
+ */
+
+:root {
+  /* ===== VIEWPORT CALCULATION (Mobile-Safe) ===== */
+  /* Use fallback for browsers without dvh support */
+  --app-vh: 1vh;
+  
+  /* Safe area insets for iOS notch/home indicator */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* ===== MODAL/DIALOG MAX WIDTHS (Responsive) ===== */
+  /* Extra Small (mobile portrait 320px-375px) */
+  --modal-max-w-xs: min(95vw, 360px);
+  
+  /* Small (mobile landscape / small tablets 376px-640px) */
+  --modal-max-w-sm: min(90vw, 500px);
+  
+  /* Medium (tablets 641px-1024px) */
+  --modal-max-w-md: min(85vw, 640px);
+  
+  /* Large (laptops 1025px-1440px) */
+  --modal-max-w-lg: min(80vw, 800px);
+  
+  /* Extra Large (large laptops 1441px+) */
+  --modal-max-w-xl: min(75vw, 1000px);
+  
+  /* Full width (edge-to-edge on mobile) */
+  --modal-max-w-full: 100vw;
+
+  /* ===== MODAL/DIALOG HEIGHTS (Viewport-Aware) ===== */
+  /* Account for header, safe areas, and keyboard */
+  --modal-max-h-portrait: min(calc(100 * var(--app-vh) - var(--safe-top) - var(--safe-bottom) - 120px), 90vh);
+  --modal-max-h-landscape: min(calc(100 * var(--app-vh) - var(--safe-top) - var(--safe-bottom) - 80px), 85vh);
+  
+  /* ===== SPACING SCALE (Responsive) ===== */
+  --space-xs: clamp(4px, 1vw, 8px);
+  --space-sm: clamp(8px, 2vw, 16px);
+  --space-md: clamp(16px, 3vw, 24px);
+  --space-lg: clamp(24px, 4vw, 32px);
+  --space-xl: clamp(32px, 5vw, 48px);
+  
+  /* ===== BORDER RADIUS (Responsive) ===== */
+  --radius-sm: clamp(4px, 0.5vw, 6px);
+  --radius-md: clamp(6px, 1vw, 8px);
+  --radius-lg: clamp(8px, 1.5vw, 12px);
+  --radius-xl: clamp(12px, 2vw, 16px);
+  
+  /* ===== CONTAINER MAX WIDTHS ===== */
+  --container-xs: 480px;
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1536px;
+  
+  /* ===== TYPOGRAPHY SCALE (Fluid) ===== */
+  --text-xs: clamp(0.75rem, 0.5vw + 0.5rem, 0.875rem);
+  --text-sm: clamp(0.875rem, 0.6vw + 0.6rem, 1rem);
+  --text-base: clamp(1rem, 0.8vw + 0.7rem, 1.125rem);
+  --text-lg: clamp(1.125rem, 1vw + 0.8rem, 1.25rem);
+  --text-xl: clamp(1.25rem, 1.2vw + 0.9rem, 1.5rem);
+  --text-2xl: clamp(1.5rem, 1.5vw + 1rem, 1.875rem);
+  --text-3xl: clamp(1.875rem, 2vw + 1.2rem, 2.25rem);
+  --text-4xl: clamp(2.25rem, 2.5vw + 1.5rem, 3rem);
+}
+
+/* ===== DYNAMIC VIEWPORT HEIGHT FIX (iOS/Android) ===== */
+/* Recalculate viewport height on resize/orientation change */
+@supports (height: 100dvh) {
+  :root {
+    --app-vh: 1dvh; /* Use dynamic viewport if supported */
+  }
+}
+
+/* ===== LANDSCAPE MODE OVERRIDES ===== */
+@media (max-width: 768px) and (orientation: landscape) {
+  :root {
+    /* Tighter spacing in landscape on small screens */
+    --modal-max-h-landscape: min(calc(100 * var(--app-vh) - var(--safe-top) - var(--safe-bottom) - 40px), 80vh);
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 24px;
+  }
+}
+
+/* ===== UTILITY CLASSES ===== */
+
+/* Responsive Media (Images, Videos) - NEVER OVERFLOW */
+.responsive-media {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.responsive-media-cover {
+  max-width: 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.responsive-media-contain {
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Safe Area Padding */
+.safe-area-padding {
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+.safe-area-inset-top {
+  padding-top: max(var(--safe-top), 16px);
+}
+
+.safe-area-inset-bottom {
+  padding-bottom: max(var(--safe-bottom), 16px);
+}
+
+/* Clamped Containers (Prevent Too Wide) */
+.clamp-container-xs {
+  max-width: var(--container-xs);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+}
+
+.clamp-container-sm {
+  max-width: var(--container-sm);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+}
+
+.clamp-container-md {
+  max-width: var(--container-md);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+}
+
+.clamp-container-lg {
+  max-width: var(--container-lg);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+}
+
+.clamp-container-xl {
+  max-width: var(--container-xl);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+}
+
+/* Responsive Scroll Container */
+.responsive-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
+  overscroll-behavior: contain; /* Prevent pull-to-refresh */
+}
+
+/* Prevent Horizontal Overflow (CRITICAL) */
+.no-horizontal-overflow {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Aspect Ratio Containers */
+.aspect-square {
+  aspect-ratio: 1 / 1;
+}
+
+.aspect-video {
+  aspect-ratio: 16 / 9;
+}
+
+.aspect-portrait {
+  aspect-ratio: 3 / 4;
+}
+
+/* Text Truncation */
+.truncate-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ===== BREAKPOINT-SPECIFIC UTILITIES ===== */
+
+/* Hide on Mobile Portrait */
+@media (max-width: 640px) and (orientation: portrait) {
+  .hide-mobile-portrait {
+    display: none !important;
+  }
+}
+
+/* Hide on Mobile Landscape */
+@media (max-width: 768px) and (orientation: landscape) {
+  .hide-mobile-landscape {
+    display: none !important;
+  }
+}
+
+/* Hide on Tablet */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .hide-tablet {
+    display: none !important;
+  }
+}
+
+/* Hide on Desktop */
+@media (min-width: 1024px) {
+  .hide-desktop {
+    display: none !important;
+  }
+}
+
+/* ===== TOUCH-FRIENDLY TARGETS (Minimum 44x44px) ===== */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== KEYBOARD AVOIDANCE ===== */
+/* Push content up when keyboard is visible */
+@supports (height: 100dvh) {
+  .keyboard-aware {
+    height: calc(100 * var(--app-vh));
+    transition: height 0.3s ease-in-out;
+  }
+}
+
+/* ===== GLASS MORPHISM (Responsive Blur) ===== */
+.glass-light {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ===== FULL VIEWPORT HEIGHT (Mobile-Safe) ===== */
+.full-vh {
+  height: calc(100 * var(--app-vh));
+  min-height: -webkit-fill-available; /* Safari fallback */
+}
+
+.full-vh-minus-header {
+  height: calc(100 * var(--app-vh) - 148px); /* Mobile header height */
+  min-height: -webkit-fill-available;
+}
+
+@media (min-width: 1280px) {
+  .full-vh-minus-header {
+    height: calc(100 * var(--app-vh) - 92px); /* Desktop header height */
+  }
+}
+
+/* ===== RESPONSIVE GAP/SPACING ===== */
+.gap-responsive {
+  gap: var(--space-md);
+}
+
+.gap-responsive-sm {
+  gap: var(--space-sm);
+}
+
+.gap-responsive-lg {
+  gap: var(--space-lg);
+}
+
+/* ===== PRINT-SAFE (Hide on Print) ===== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

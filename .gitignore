@@ -1,0 +1,31 @@
+node_modules
+dist
+.DS_Store
+server/public
+vite.config.ts.*
+*.tar.gz
+
+# GCS Backup System
+gcs-service-account.json
+petwash-backup-*.tar.gz
+firestore-restore/
+.env
+
+# Temporary setup files
+setup-github.js
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+
+# Database
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+tmp/

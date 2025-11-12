@@ -1,0 +1,221 @@
+// src/store/slices/expensesSlice.ts
+
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import axios from 'axios';
+import { Expense, PolicyViolation, AppConfig } from '../../types';
+import { generateUniqueId, calculateIsraeliVAT, DEFAULT_ISRAELI_VAT_RATE } from '../../utils/financialUtils';
+import moment from 'moment';
+
+// Define the API base URL (should be from environment variables)
+const API_BASE_URL = 'https://api.yourexpenseapp.com/v1';
+
+interface ExpensesState {
+  items: Expense[];
+  loading: 'idle' | 'pending' | 'succeeded' | 'failed';
+  error: string | null;
+  appConfig: AppConfig | null; // Global app configuration
+}
+
+const initialState: ExpensesState = {
+  items: [],
+  loading: 'idle',
+  error: null,
+  appConfig: null,
+};
+
+// --- Async Thunks for API Interaction ---
+
+/**
+ * @description Fetches all expenses for the logged-in employee.
+ */
+export const fetchExpenses = createAsyncThunk(
+  'expenses/fetchExpenses',
+  async (employeeId: string, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/employees/${employeeId}/expenses`);
+      // Convert date strings back to Moment objects
+      return response.data.map((exp: any) => ({
+        ...exp,
+        date: moment(exp.date),
+        submissionDate: moment(exp.submissionDate),
+        lastUpdated: moment(exp.lastUpdated),
+      })) as Expense[];
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+/**
+ * @description Submits a new expense to the backend.
+ * @param {Omit<Expense, 'id' | 'status' | 'submissionDate' | 'lastUpdated' | 'policyViolations' | 'currency'>} expenseData - Data for the new expense.
+ */
+export const submitNewExpense = createAsyncThunk(
+  'expenses/submitNewExpense',
+  async (
+    expenseData: Omit<Expense, 'id' | 'status' | 'submissionDate' | 'lastUpdated' | 'policyViolations' | 'currency'>,
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      const { expenses } = getState() as { expenses: ExpensesState };
+      const currentVatRate = expenses.appConfig?.currentIsraeliVatRate || DEFAULT_ISRAELI_VAT_RATE;
+      const { netAmountILS, vatAmountILS } = calculateIsraeliVAT(expenseData.totalAmountILS, currentVatRate);
+
+      // --- 2025 Best Practice: Pre-submission policy validation ---
+      const policyViolations: PolicyViolation[] = await checkPolicyViolations(expenseData, expenses.appConfig);
+      
+      const newExpense: Expense = {
+        ...expenseData,
+        id: generateUniqueId(),
+        currency: 'ILS', // Fixed for Israel
+        netAmountILS,
+        vatAmountILS,
+        vatRate: currentVatRate,
+        status: policyViolations.some(v => v.isCritical) ? 'Draft' : 'Pending', // If critical violation, start as Draft
+        policyViolations: policyViolations,
+        submissionDate: moment(),
+        lastUpdated: moment(),
+      };
+      
+      const response = await axios.post(`${API_BASE_URL}/expenses`, newExpense);
+      return response.data as Expense; // Return the created expense from server
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+/**
+ * @description Placeholder for AI/OCR processing of a receipt image.
+ * This would typically involve an API call to an external service.
+ * @param {string} imageUri - URI of the receipt image.
+ */
+export const processReceiptWithOCR = createAsyncThunk(
+  'expenses/processReceiptWithOCR',
+  async (imageUri: string, { rejectWithValue }) => {
+    try {
+      // --- Simulate API call to an OCR service (e.g., Google Vision AI, customized for Hebrew receipts) ---
+      const formData = new FormData();
+      formData.append('receipt', {
+        uri: imageUri,
+        type: 'image/jpeg', // Or other image types
+        name: `receipt-${Date.now()}.jpg`,
+      });
+
+      const response = await axios.post(`${API_BASE_URL}/ocr/process-receipt`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      // Expected response structure from OCR service (simplified)
+      return {
+        totalAmountILS: response.data.totalAmount,
+        date: moment(response.data.date, 'DD/MM/YYYY'), // Assuming Hebrew date format parsing
+        vendorName: response.data.vendor,
+        // ... potentially other fields like VAT breakdown if OCR is advanced
+      };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// --- Helper for Policy Validation (Client-side, can be server-side too) ---
+async function checkPolicyViolations(
+  expenseData: Omit<Expense, 'id' | 'status' | 'submissionDate' | 'lastUpdated' | 'policyViolations' | 'currency'>,
+  appConfig: AppConfig | null
+): Promise<PolicyViolation[]> {
+  const violations: PolicyViolation[] = [];
+  if (!appConfig) {
+    console.warn('App configuration not loaded, policy checks might be incomplete.');
+    return violations;
+  }
+
+  // Example Policy Rule 1: Max Meal Allowance in ILS
+  if (expenseData.category === 'Meals' && expenseData.totalAmountILS > appConfig.maxMealAllowanceILS) {
+    violations.push({
+      id: generateUniqueId(),
+      ruleCode: 'MAX_AMOUNT',
+      messageHE: `הוצאת ארוחה חורגת מהמגבלה היומית של ${formatCurrencyILS(appConfig.maxMealAllowanceILS)}`,
+      messageEN: `Meal expense exceeds daily limit of ${formatCurrencyILS(appConfig.maxMealAllowanceILS)}`,
+      isCritical: false, // Can be submitted with a warning
+    });
+  }
+
+  // Example Policy Rule 2: Forbidden Vendors (e.g., specific bars, luxury stores)
+  const vendorName = expenseData.description.toLowerCase(); // Simplified: assuming vendor in description
+  if (appConfig.forbiddenVendors.some(fv => vendorName.includes(fv.toLowerCase()))) {
+    violations.push({
+      id: generateUniqueId(),
+      ruleCode: 'FORBIDDEN_VENDOR',
+      messageHE: 'ספק זה אינו מאושר להוצאות חברה',
+      messageEN: 'This vendor is not approved for company expenses',
+      isCritical: true, // Prevents submission
+    });
+  }
+
+  // Add more policy rules here based on business logic...
+
+  return violations;
+}
+
+
+// --- Expenses Slice Definition ---
+const expensesSlice = createSlice({
+  name: 'expenses',
+  initialState,
+  reducers: {
+    // Reducers for local state updates (e.g., adding a draft expense)
+    addDraftExpense: (state, action: PayloadAction<Expense>) => {
+      state.items.push(action.payload);
+    },
+    updateExpenseLocally: (state, action: PayloadAction<Expense>) => {
+      const index = state.items.findIndex(exp => exp.id === action.payload.id);
+      if (index !== -1) {
+        state.items[index] = action.payload;
+      }
+    },
+    setAppConfig: (state, action: PayloadAction<AppConfig>) => {
+      state.appConfig = action.payload;
+    }
+  },
+  extraReducers: (builder) => {
+    builder
+      // Fetch Expenses
+      .addCase(fetchExpenses.pending, (state) => {
+        state.loading = 'pending';
+        state.error = null;
+      })
+      .addCase(fetchExpenses.fulfilled, (state, action) => {
+        state.loading = 'succeeded';
+        state.items = action.payload;
+      })
+      .addCase(fetchExpenses.rejected, (state, action) => {
+        state.loading = 'failed';
+        state.error = action.payload as string;
+      })
+      // Submit New Expense
+      .addCase(submitNewExpense.pending, (state) => {
+        state.loading = 'pending';
+        state.error = null;
+      })
+      .addCase(submitNewExpense.fulfilled, (state, action) => {
+        state.loading = 'succeeded';
+        state.items.push(action.payload); // Add the new expense from the server response
+      })
+      .addCase(submitNewExpense.rejected, (state, action) => {
+        state.loading = 'failed';
+        state.error = action.payload as string;
+      })
+      // Process Receipt with OCR (example of updating a draft expense)
+      .addCase(processReceiptWithOCR.fulfilled, (state, action) => {
+        // Find a pending draft expense and update its fields based on OCR results
+        // This is a simplified example; actual implementation needs more logic
+        console.log('OCR processed:', action.payload);
+      });
+  },
+});
+
+export const { addDraftExpense, updateExpenseLocally, setAppConfig } = expensesSlice.actions;
+export default expensesSlice.reducer;

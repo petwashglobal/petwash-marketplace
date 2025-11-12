@@ -1,0 +1,71 @@
+// קוד Backend (Node.js/Express) לניהול שטיפת כלבים בישראל
+const express = require('express');
+const app = express();
+const fetch = require('node-fetch'); // ספריית HTTP מודרנית
+const { verifyIsraeliPayment } = require('./israeli_payment_sdk'); // פונקציה פיקטיבית לאימות סליקה
+
+// --- הגדרות מקומיות ---
+// יש להגדיר את כתובות ה-IP המותרות של מכונות השטיפה
+const ALLOWED_MACHINE_IPS = [
+    '203.0.113.10',   // IP של מכונת שטיפה 1
+    '203.0.113.20',   // IP של מכונת שטיפה 2
+    // ...
+];
+// -----------------------
+
+
+/**
+ * 1. Endpoint: נקודת הקצה שאליה מכונת השטיפה מתקשרת
+ * (לאחר שהלקוח ביצע תשלום פיזי או סרק קוד QR באפליקציה).
+ */
+app.post('/api/wash/start_cycle_il', async (req, res) => {
+    
+    // נתונים מהמכונה או מהאפליקציה המקומית
+    const { machineId, transactionId, selectedProgram } = req.body;
+    
+    // אבטחה: אימות כתובת ה-IP של המכונה - חיוני בישראל ובעולם
+    const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (!ALLOWED_MACHINE_IPS.includes(clientIP)) {
+        console.warn(`SECURITY: ניסיון הפעלה לא מורשה מ-IP: ${clientIP}`);
+        return res.status(403).json({ error: 'IP מכונה לא מזוהה.' });
+    }
+
+    // 2. אימות תשלום (השלב המעניין)
+    try {
+        const paymentVerified = await verifyIsraeliPayment(transactionId, selectedProgram);
+
+        if (!paymentVerified) {
+            // התשלום לא עבר או לא אומת כהלכה
+            return res.status(402).json({ error: 'תשלום לא מאושר. אנא נסה שוב.' });
+        }
+        
+        // 3. שליחת פקודה מאובטחת להפעלת המכונה (IoT Control)
+        // כתובת ה-API הפנימית של בקר המכונה (דרך רשת מקומית מאובטחת)
+        const machine_url = `http://${clientIP}/api/start/${machineId}`;
+
+        const response = await fetch(machine_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ program: selectedProgram, token: process.env.MACHINE_SECRET_KEY })
+        });
+
+        if (response.ok) {
+            // 4. מעקב: עדכון המערכת שהשטיפה החלה
+            await database.logWashStart(machineId, transactionId, selectedProgram);
+            
+            res.status(200).json({ 
+                status: 'Success', 
+                message_heb: 'השטיפה החלה! תהנה/י עם הכלב!',
+                machineId 
+            });
+        } else {
+            res.status(503).json({ error: 'המכונה לא הגיבה. אנא פנה/י לשירות.' });
+        }
+
+    } catch (e) {
+        console.error('שגיאת שרת כללית:', e);
+        res.status(500).json({ error: 'שגיאה פנימית. אנא נסה/י שוב.' });
+    }
+});
+
+// app.listen(3000, () => console.log('Pet Wash IoT Gateway פועל'));

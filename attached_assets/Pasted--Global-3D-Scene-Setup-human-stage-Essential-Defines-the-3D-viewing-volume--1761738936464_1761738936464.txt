@@ -1,0 +1,91 @@
+/* --- Global 3D Scene Setup --- */
+.human-stage {
+    /* Essential: Defines the 3D viewing volume */
+    perspective: 800px;
+    
+    /* Center and define size */
+    width: 200px;
+    height: 200px;
+    margin: 50px auto;
+    
+    /* Enables animation for the rotateY prop from the component */
+    transition: transform 0.3s ease-out;
+}
+
+.human-head-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    
+    /* Essential: Makes child elements participate in 3D space */
+    transform-style: preserve-3d;
+}
+
+/* --- Base Face Styling (All sides inherit this) --- */
+.face, .side, .top-side, .back-side {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    opacity: 0.9;
+    
+    /* Ensure only one side is rendered when rotated */
+    backface-visibility: hidden;
+    
+    /* Smooth transitions for the talking animation */
+    transition: transform 0.1s ease-in-out, background-color 0.5s;
+}
+
+/* --- 3D Positioning using transform: translateZ() --- */
+
+/* Front Face (Face) */
+.face {
+    background-color: var(--emotion-color, #a8d5e5); /* Soft Skin Tone */
+    /* Push forward half the width/height to center the cube */
+    transform: rotateY(0deg) translateZ(100px); 
+}
+
+/* Right Side */
+.right-side {
+    background-color: #92b6c7;
+    /* Rotate 90 degrees and push forward */
+    transform: rotateY(90deg) translateZ(100px);
+}
+
+/* Left Side */
+.left-side {
+    background-color: #83a5b6;
+    /* Rotate -90 degrees and push forward */
+    transform: rotateY(-90deg) translateZ(100px);
+}
+
+/* Top Side (Hair) */
+.top-side {
+    --hair-color: #4b3832;
+    background-color: var(--hair-color);
+    /* Rotate -90 degrees around X-axis (to lay flat) and push forward */
+    transform: rotateX(90deg) translateZ(100px); 
+}
+
+/* Back Side */
+.back-side {
+    background-color: #a8d5e5;
+    /* Rotate 180 degrees and push forward */
+    transform: rotateY(180deg) translateZ(100px);
+}
+
+/* --- Simple Lip-Sync Indicator --- */
+.mouth {
+    position: absolute;
+    bottom: 30px;
+    left: 45%;
+    width: 20px;
+    height: 5px;
+    background-color: #333;
+    border-radius: 50%;
+    transition: height 0.1s;
+}
+.mouth.is-talking {
+    /* Animation trigger: increases mouth height */
+    height: 12px;
+    background-color: #e74c3c; 
+}
