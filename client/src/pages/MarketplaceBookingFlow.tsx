@@ -9,7 +9,7 @@
  * - Step 5: Proceed to Nayax payment
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -23,9 +23,10 @@ import { useProviderDetails } from '@/services/marketplace';
 import { useQuery } from '@tanstack/react-query';
 import {
   Calendar as CalendarIcon, Clock, Check, ChevronLeft, ChevronRight,
-  Dog, MapPin, Star, DollarSign, CreditCard, Shield
+  Dog, MapPin, Star, DollarSign, CreditCard, Shield, Lock
 } from 'lucide-react';
 import type { MarketplacePlatformId } from '@shared/schema';
+import { BookingCalendar } from '@/components/marketplace/BookingCalendar';
 
 interface BookingStep {
   id: number;
@@ -49,6 +50,12 @@ export default function MarketplaceBookingFlow() {
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [selectedPetId, setSelectedPetId] = useState<number | null>(null);
   const [specialInstructions, setSpecialInstructions] = useState('');
+  
+  // Availability lock state
+  const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
+  const [lockToken, setLockToken] = useState<string | null>(null);
+  const [lockExpiresAt, setLockExpiresAt] = useState<Date | null>(null);
+  const [lockSecondsLeft, setLockSecondsLeft] = useState<number>(0);
 
   // Fetch provider details
   const { data: providerData, isLoading: providerLoading } = useProviderDetails(platform!, id!);
@@ -60,10 +67,55 @@ export default function MarketplaceBookingFlow() {
     enabled: !!user,
   });
 
+  // Countdown timer for lock expiry
+  useEffect(() => {
+    if (!lockExpiresAt) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const remaining = Math.floor((lockExpiresAt.getTime() - now.getTime()) / 1000);
+
+      if (remaining <= 0) {
+        // Lock expired - reset state
+        setLockToken(null);
+        setLockExpiresAt(null);
+        setLockSecondsLeft(0);
+        setSelectedSlotId(null);
+        toast({
+          variant: 'destructive',
+          title: isHebrew ? 'הזמן פג' : 'Time Expired',
+          description: isHebrew ? 'ההזמנה שלך פגה. אנא בחר שוב.' : 'Your reservation has expired. Please select again.',
+        });
+      } else {
+        setLockSecondsLeft(remaining);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [lockExpiresAt, toast, isHebrew]);
+
+  // Handle slot selection from BookingCalendar
+  const handleSlotSelected = (slotId: number, token: string, expiresAt: Date) => {
+    setSelectedSlotId(slotId);
+    setLockToken(token);
+    setLockExpiresAt(expiresAt);
+    
+    // Mark Step 2 as completed
+    setSelectedDate(new Date()); // Will be replaced by actual slot date
+    setSelectedTime(''); // Will be replaced by actual slot time
+  };
+
+  // Format countdown
+  const formatCountdown = () => {
+    const minutes = Math.floor(lockSecondsLeft / 60);
+    const seconds = lockSecondsLeft % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   // Steps configuration
   const steps: BookingStep[] = [
     { id: 1, title: 'Select Service', titleHe: 'בחר שירות', completed: !!selectedService },
-    { id: 2, title: 'Choose Date & Time', titleHe: 'בחר תאריך ושעה', completed: !!selectedDate && !!selectedTime },
+    { id: 2, title: 'Choose Date & Time', titleHe: 'בחר תאריך ושעה', completed: !!lockToken && !!selectedSlotId },
     { id: 3, title: 'Pet Details', titleHe: 'פרטי חיית מחמד', completed: !!selectedPetId },
     { id: 4, title: 'Review & Pay', titleHe: 'סקירה ותשלום', completed: false },
   ];
@@ -288,43 +340,19 @@ export default function MarketplaceBookingFlow() {
                 </div>
               )}
 
-              {/* Step 2: Choose Date & Time */}
+              {/* Step 2: Choose Date & Time (Availability-Based) */}
               {currentStep === 2 && (
                 <div data-testid="step-choose-datetime">
                   <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                     {isHebrew ? 'בחר תאריך ושעה' : 'Choose Date & Time'}
                   </h2>
                   
-                  <div className="mb-6">
-                    <h3 className="font-semibold mb-3">{isHebrew ? 'תאריך' : 'Date'}</h3>
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={setSelectedDate}
-                      className="rounded-md border"
-                      disabled={(date) => date < new Date()}
-                      data-testid="calendar-date-picker"
-                    />
-                  </div>
-
-                  {selectedDate && (
-                    <div>
-                      <h3 className="font-semibold mb-3">{isHebrew ? 'שעה' : 'Time'}</h3>
-                      <div className="grid grid-cols-4 gap-2">
-                        {timeSlots.map((time) => (
-                          <Button
-                            key={time}
-                            variant={selectedTime === time ? 'default' : 'outline'}
-                            onClick={() => setSelectedTime(time)}
-                            className={selectedTime === time ? 'bg-purple-600' : ''}
-                            data-testid={`time-slot-${time}`}
-                          >
-                            {time}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <BookingCalendar
+                    platform={platform!}
+                    providerId={Number(id)}
+                    onSlotSelected={handleSlotSelected}
+                    bookingMode="SINGLE_SLOT"
+                  />
 
                   <div className="flex gap-4 mt-6">
                     <Button
@@ -338,7 +366,7 @@ export default function MarketplaceBookingFlow() {
                     </Button>
                     <Button
                       onClick={handleNextStep}
-                      disabled={!selectedDate || !selectedTime}
+                      disabled={!lockToken}
                       className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
                       data-testid="button-next-step"
                     >
@@ -438,6 +466,31 @@ export default function MarketplaceBookingFlow() {
                   <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                     {isHebrew ? 'סקירה ותשלום' : 'Review & Pay'}
                   </h2>
+
+                  {/* Lock Countdown Banner */}
+                  {lockToken && lockExpiresAt && (
+                    <div className="mb-6 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950 border-2 border-orange-400 dark:border-orange-600 rounded-2xl p-6">
+                      <div className="flex items-center gap-4">
+                        <Lock className="w-8 h-8 text-orange-600 dark:text-orange-400 animate-pulse" />
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg text-orange-900 dark:text-orange-100 mb-1">
+                            {isHebrew ? 'ההזמנה שלך מוזמנת!' : 'Your Slot is Reserved!'}
+                          </h3>
+                          <p className="text-orange-700 dark:text-orange-300">
+                            {isHebrew 
+                              ? 'השלם את התשלום תוך' 
+                              : 'Complete payment within'}
+                            {' '}
+                            <span className="font-mono text-2xl font-bold text-orange-600 dark:text-orange-400" data-testid="text-countdown">
+                              {formatCountdown()}
+                            </span>
+                            {' '}
+                            {isHebrew ? 'לפני שיפוג' : 'before it expires'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Booking Summary */}
                   <div className="space-y-4 mb-6">
