@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, FileText, Database, Package, Wrench, MapPin, Building2, LogOut } from 'lucide-react';
@@ -8,7 +8,10 @@ import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { FaInstagram, FaFacebookF, FaTiktok } from 'react-icons/fa';
 import { LanguageToggle } from './LanguageToggle';
+import { GlobalNavigation } from './GlobalNavigation';
+import { getPlatformByPath } from '@/shared/petwashGlobal';
 import type { Language } from '@/lib/i18n';
+import type { UserRole } from '@/shared/petwashGlobal';
 import { t } from '@/lib/i18n';
 
 interface HeaderProps {
@@ -20,6 +23,7 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
   // For components that only support Hebrew/English, convert other languages
   const headerLanguage: 'en' | 'he' = language === 'he' ? 'he' : 'en';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [location] = useLocation();
   const { user } = useFirebaseAuth();
   const { toast } = useToast();
   // Fetch user role for enterprise features
@@ -27,6 +31,9 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
     queryKey: ['/api/admin/role'],
     enabled: !!user,
   });
+  
+  // Detect if we're on a platform page
+  const currentPlatform = getPlatformByPath(location);
   
   // Static cache-busting version for social icons - stable across renders
   const iconVersion = "v20251023";
@@ -530,6 +537,38 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             <Link href="/" aria-label="PetWash Home" className="flex items-center gap-3">
               <img src="/brand/petwash-logo-official.png" alt="PetWash™" className="h-14 lg:h-16" />
             </Link>
+            
+            {/* Desktop Navigation Links */}
+            <nav className="flex items-center gap-6 flex-wrap">
+              <Link href="/" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
+                {t('nav.home', language)}
+              </Link>
+              <Link href="/about" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
+                {t('header.aboutUs', language)}
+              </Link>
+              <Link href="/our-service" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
+                {t('header.ourServices', language)}
+              </Link>
+              <Link href="/franchise" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
+                {t('header.franchiseOpportunities', language)}
+              </Link>
+              <Link href="/contact" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
+                {t('nav.contact', language)}
+              </Link>
+              
+              {/* Platform dropdown or direct links */}
+              <Link href="/k9000" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
+                K9000
+              </Link>
+              <Link href="/walk-my-pet" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
+                Walk My Pet™
+              </Link>
+              <Link href="/sitter-suite" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
+                The Sitter Suite™
+              </Link>
+            </nav>
+            
+            {/* User Section */}
             <nav className="flex items-center gap-6 flex-wrap">
               {user ? (
                 <>
@@ -650,55 +689,45 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
               </div>
             )}
             
-            <nav className="pt-3 space-y-2">
-              <Link href="/" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors">
-                {t('nav.home', language)}
-              </Link>
-              <Link href="/about" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors">
-                {t('header.aboutUs', language)}
-              </Link>
-              <Link href="/our-service" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors">
-                {t('header.ourServices', language)}
-              </Link>
-              <Link href="/franchise" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors">
-                {t('header.franchiseOpportunities', language)}
-              </Link>
-              <Link href="/contact" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors">
-                {t('nav.contact', language)}
-              </Link>
-              <Link href="/gallery" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors">
-                {t('nav.gallery', language)}
-              </Link>
-              
-              {/* Community & Social Features */}
-              <Link href="/pet-wash-circle" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors font-medium text-amber-700">
-                {t('header.petWashCircle', language)}
-              </Link>
-              
-              <Link href="/paw-finder" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors font-medium text-blue-700">
-                {t('header.pawFinder', language)}
-              </Link>
-              
-              {/* The Sitter Suite™ - BRAND NAME: NEVER TRANSLATE */}
-              <Link href="/sitter-suite" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors font-medium text-purple-700">
-                The Sitter Suite™
-              </Link>
-              
-              {/* PetTrek™ - BRAND NAME: NEVER TRANSLATE */}
-              <Link href="/pettrek/book" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors font-medium text-blue-700">
-                PetTrek™ {t('header.petTrekBooking', language)}
-              </Link>
-              
-              {user && (
-                <Link href="/pettrek/provider/dashboard" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors font-medium text-teal-700">
-                  PetTrek™ {t('header.petTrekProvider', language)}
-                </Link>
+            {/* GlobalNavigation Component - Platform-aware navigation */}
+            <div className="pt-3">
+              {/* Show platform name only when on a platform page */}
+              {currentPlatform && (
+                <div className="text-xs font-semibold text-gray-500 uppercase mb-3 px-2">
+                  {currentPlatform.displayName}
+                </div>
               )}
               
-              {/* Walk My Pet™ - BRAND NAME: NEVER TRANSLATE */}
-              <Link href="/walk-my-pet" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors font-medium text-green-700">
-                Walk My Pet™
-              </Link>
+              {/* Render GlobalNavigation sidebar variant - ALWAYS render to show fallback on non-platform pages */}
+              <GlobalNavigation 
+                userRole={
+                  userRole?.role?.name 
+                    ? (userRole.role.name.toUpperCase() as UserRole)
+                    : userRole?.isSuperAdmin 
+                    ? "ADMIN" 
+                    : undefined
+                }
+                variant="sidebar"
+                testId="header-nav"
+              />
+              
+              {/* Additional community features not in platform navigation */}
+              <div className="border-t pt-2 mt-4">
+                <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  {t('Community', language)}
+                </div>
+                
+                <Link href="/pet-wash-circle" className="block py-2 px-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors font-medium text-amber-700">
+                  {t('header.petWashCircle', language)}
+                </Link>
+                
+                <Link href="/paw-finder" className="block py-2 px-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors font-medium text-blue-700">
+                  {t('header.pawFinder', language)}
+                </Link>
+              </div>
+            </div>
+            
+            <nav className="pt-3 space-y-2">
               
               {/* DISABLED: PlushLab - Pet Avatar Creator (frozen for now, keep for future use) */}
               {/* {user && (

@@ -55,6 +55,19 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 
 ## System Architecture
 
+### Global Architecture Module (Single Source of Truth)
+**File**: `shared/petwashGlobal.ts` (670 lines) - Production-ready TypeScript module defining the entire Pet Wash Ltd ecosystem.
+- **Type System**: PlatformId, UserRole, BookingState, CurrencyCode, KycLevel, DeviceType, LocaleCode with strict typing
+- **Platform Catalog**: All 6 business units (K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers, Hub) with IDs, paths, descriptions
+- **Deep Navigation Model**: Complete multi-layer hamburger menu structure for all platforms with role-based access control
+- **KYC Engine**: 3-tier levels (LIGHT/STANDARD/ENHANCED) with automatic role-to-level resolution and field requirements
+- **Wallet Integration**: Apple Wallet & Google Wallet configuration with card styling and template IDs
+- **Payment Orchestration**: Nayax-exclusive gateway config with multi-currency support, tax rules (17% VAT), escrow timing (72hr)
+- **Booking Contracts**: TypeScript interfaces for booking creation, state management, and payment intents
+- **Mobile Client Contract**: API endpoint structure and deep linking schemes for iOS/Android apps
+- **Helper Utilities**: Platform lookup by ID/path, navigation filtering by role, amount/cents conversion
+- **Last Updated**: 2025-11-13
+
 ### Frontend
 - **Framework**: React 18 with TypeScript, Wouter for routing, TanStack Query for state management.
 - **UI**: shadcn/ui components (Radix UI primitives), Tailwind CSS with a custom design system.
