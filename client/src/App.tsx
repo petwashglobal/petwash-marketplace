@@ -203,6 +203,10 @@ const FirebaseTest = lazy(() => import("@/pages/FirebaseTest"));
 const ConsentDemo = lazy(() => import("@/pages/ConsentDemo"));
 const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
+
+// Pet Wash Ltd Executive Suite - Centralized C-Suite Management
+const ExecutiveSuiteHome = lazy(() => import("@/pages/ExecutiveSuiteHome"));
+const ExecutiveSuiteGuard = lazy(() => import("@/components/ExecutiveSuiteGuard").then(m => ({ default: m.ExecutiveSuiteGuard })));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
@@ -1003,14 +1007,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Protected route - Blockchain Audit Trail */}
-        <Route path="/audit-trail">
-          {() => (
-            <RequireAuth>
-              <AuditTrail />
-            </RequireAuth>
-          )}
-        </Route>
+        {/* Protected route - Blockchain Audit Trail [LEGACY: redirects to Executive Suite] */}
+        <Route path="/audit-trail">{() => <Redirect to="/pet-wash-ltd/executive/audit" />}</Route>
         
         {/* Admin route - Fraud Monitoring Dashboard */}
         <Route path="/admin/fraud-dashboard">
@@ -1020,13 +1018,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </AdminRouteGuard>
           )}
         </Route>
-        <Route path="/admin/compliance-control-tower">
-          {() => (
-            <AdminRouteGuard>
-              <ComplianceControlTower />
-            </AdminRouteGuard>
-          )}
-        </Route>
+        <Route path="/admin/compliance-control-tower">{() => <Redirect to="/pet-wash-ltd/executive/compliance" />}</Route>
         
         {/* Gemini AI Watchdog Dashboard */}
         <Route path="/admin/gemini-watchdog">
@@ -1193,6 +1185,87 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/accessibility" component={Accessibility} />
         <Route path="/accessibility-statement" component={AccessibilityStatement} />
         
+        {/* ═══════════════════════════════════════════════════════════════════════ */}
+        {/* PET WASH LTD EXECUTIVE SUITE - Centralized C-Suite Management          */}
+        {/* ═══════════════════════════════════════════════════════════════════════ */}
+        
+        {/* Executive Suite - Landing Page (role-based dashboard links) */}
+        <Route path="/pet-wash-ltd/executive">
+          {() => (
+            <ExecutiveSuiteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <ExecutiveSuiteHome />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+        
+        {/* Executive Suite - CEO Dashboard (strategic metrics, 2FA vouchers) */}
+        <Route path="/pet-wash-ltd/executive/ceo">
+          {() => (
+            <ExecutiveSuiteGuard requiredRoles={['ceo']}>
+              <Suspense fallback={<PageLoader />}>
+                <CEODashboard />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+        
+        {/* Executive Suite - Finance Dashboard (Israeli tax, accounts, revenue) */}
+        <Route path="/pet-wash-ltd/executive/finance">
+          {() => (
+            <ExecutiveSuiteGuard requiredRoles={['finance']}>
+              <Suspense fallback={<PageLoader />}>
+                <FinanceDashboard />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+        
+        {/* Executive Suite - KYC & Verification (passport, provider onboarding) */}
+        <Route path="/pet-wash-ltd/executive/kyc">
+          {() => (
+            <ExecutiveSuiteGuard requiredRoles={['kyc']}>
+              <Suspense fallback={<PageLoader />}>
+                <AdminKYC />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+        
+        {/* Executive Suite - Compliance Control Tower (AI legal compliance) */}
+        <Route path="/pet-wash-ltd/executive/compliance">
+          {() => (
+            <ExecutiveSuiteGuard requiredRoles={['compliance']}>
+              <Suspense fallback={<PageLoader />}>
+                <ComplianceControlTower />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+        
+        {/* Executive Suite - Audit Trail (blockchain-style immutable logs) */}
+        <Route path="/pet-wash-ltd/executive/audit">
+          {() => (
+            <ExecutiveSuiteGuard requiredRoles={['audit']}>
+              <Suspense fallback={<PageLoader />}>
+                <AuditTrail />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+        
+        {/* Executive Suite - Enterprise HQ (multi-franchise operations) */}
+        <Route path="/pet-wash-ltd/executive/enterprise">
+          {() => (
+            <ExecutiveSuiteGuard requiredRoles={['enterprise']}>
+              <Suspense fallback={<PageLoader />}>
+                <EnterpriseHQ />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+        
         {/* Admin routes - /admin redirects to /admin/login */}
         <Route path="/admin">{() => <Redirect to="/admin/login-v2" />}</Route>
         <Route path="/admin/login" component={AdminLogin} />
@@ -1211,7 +1284,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </AdminRouteGuard>
           )}
         </Route>
-        <Route path="/ceo/dashboard" component={CEODashboard} />
+        <Route path="/ceo/dashboard">{() => <Redirect to="/pet-wash-ltd/executive/ceo" />}</Route>
         <Route path="/admin/kyc">
           {() => (
             <AdminRouteGuard>
@@ -1219,13 +1292,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </AdminRouteGuard>
           )}
         </Route>
-        <Route path="/admin/financial">
-          {() => (
-            <AdminRouteGuard>
-              <AdminFinancial language={language} />
-            </AdminRouteGuard>
-          )}
-        </Route>
+        <Route path="/admin/financial">{() => <Redirect to="/pet-wash-ltd/executive/finance" />}</Route>
         <Route path="/admin/system-logs">
           {() => (
             <AdminRouteGuard>
@@ -1464,13 +1531,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </AdminRouteGuard>
           )}
         </Route>
-        <Route path="/enterprise/hq">
-          {() => (
-            <AdminRouteGuard>
-              <EnterpriseHQ />
-            </AdminRouteGuard>
-          )}
-        </Route>
+        <Route path="/enterprise/hq">{() => <Redirect to="/pet-wash-ltd/executive/enterprise" />}</Route>
         <Route path="/documents">
           {() => (
             <AdminRouteGuard>

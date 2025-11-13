@@ -1,0 +1,141 @@
+},
+
+async checkAvailability(_input: BookingCreateInput): Promise {
+// TODO dev: real overlap checks per platform
+return true;
+},
+
+async confirmBooking(_bookingId: string): Promise {
+// TODO dev: update booking state to CONFIRMED
+},
+
+async cancelBooking(_bookingId: string, _byUserId: string, _reason: string): Promise {
+// TODO dev: update booking state, handle refunds
+},
+};
+
+// Simple Nayax style transaction abstraction
+
+export interface CreatePaymentIntentInput {
+bookingId: string;
+customerId: string;
+platformId: PlatformId;
+amountCents: number;
+currency: CurrencyCode;
+deviceType: DeviceType;
+}
+
+export interface PaymentIntent {
+id: string;
+bookingId: string;
+status: “PENDING” | “SUCCEEDED” | “FAILED”;
+gateway: “NAYAX”;
+gatewaySessionId?: string;
+createdAt: string;
+updatedAt: string;
+}
+
+export const PaymentGateway = {
+async createPaymentIntent(input: CreatePaymentIntentInput): Promise {
+// TODO dev: call Nayax API server side
+const now = new Date().toISOString();
+return {
+id: “pi_” + Math.random().toString(36).slice(2),
+bookingId: input.bookingId,
+status: “PENDING”,
+gateway: “NAYAX”,
+gatewaySessionId: “nayax_” + Math.random().toString(36).slice(2),
+createdAt: now,
+updatedAt: now,
+};
+},
+
+async markPaymentSucceeded(_intentId: string): Promise {
+// TODO dev: mark payment succeeded and link to booking
+},
+};
+
+// Mobile client integration contract
+
+export const mobileClientContract = {
+supportedDevices: [“WEB”, “IOS”, “ANDROID”] as DeviceType[],
+apiEndpoints: {
+auth: {
+signIn: “/api/auth/sign-in”,
+signUp: “/api/auth/sign-up”,
+refresh: “/api/auth/refresh”,
+},
+booking: {
+createDraft: “/api/bookings”,
+listMyBookings: “/api/bookings/me”,
+getBooking: (id: string) => /api/bookings/${id},
+},
+payments: {
+createIntent: “/api/payments/intents”,
+walletCards: “/api/wallet/cards”,
+},
+kyc: {
+startFlow: “/api/kyc/start”,
+uploadDocuments: “/api/kyc/upload”,
+status: “/api/kyc/status”,
+},
+},
+deepLinks: {
+iosScheme: “petwash://”,
+androidScheme: “petwash://”,
+routes: {
+hubHome: “petwash://hub/home”,
+k9000Book: “petwash://k9000/book”,
+walkBook: “petwash://walk/book”,
+sitterSearch: “petwash://sitter/search”,
+trekRequest: “petwash://trek/request”,
+groomBook: “petwash://groom/book”,
+},
+},
+};
+
+// Express style server skeleton
+
+import express from “express”;
+import path from “path”;
+
+export function buildPetWashServer() {
+const app = express();
+
+app.set(“trust proxy”, true);
+app.use(express.json());
+
+app.get(”/health”, (_req, res) => {
+res.json({
+status: “ok”,
+time: new Date().toISOString(),
+brand: petWashGlobalBrand.trademarkName,
+});
+});
+
+app.post(”/api/bookings”, async (req, res) => {
+try {
+const booking = await BookingService.createDraftBooking(req.body as BookingCreateInput);
+const intent = await PaymentGateway.createPaymentIntent({
+bookingId: booking.id,
+customerId: booking.customerId,
+platformId: booking.platformId,
+amountCents: booking.totalAmountCents,
+currency: booking.currency,
+deviceType: “WEB”,
+});
+res.status(201).json({ booking, paymentIntent: intent });
+} catch (err) {
+console.error(“Error creating booking”, err);
+res.status(500).json({ error: “BOOKING_CREATE_FAILED” });
+}
+});
+
+app.post(”/api/webhooks/nayax”, async (req, res) => {
+try {
+// TODO dev: verify Nayax signature and IP allow list
+const { paymentIntentId, bookingId, status } = req.body as {
+paymentIntentId: string;
+bookingId: string;
+status: “SUCCESS” | “FAILED”;
+};
