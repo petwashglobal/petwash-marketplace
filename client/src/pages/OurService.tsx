@@ -3,7 +3,6 @@ import { WashPackages } from '@/components/WashPackages';
 import { LoyaltyProgram } from '@/components/LoyaltyProgram';
 import { type Language, t } from '@/lib/i18n';
 import { useState } from 'react';
-import dualWashStationImage from '@assets/d6f7faf6-2f4a-41eb-a35f-fe3b8a99865a_1752051520790.jpeg';
 
 interface OurServiceProps {
   language: Language;
@@ -86,7 +85,7 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
               <div className="luxury-tech-showcase">
                 <div className="luxury-tech-image">
                   <img 
-                    src={dualWashStationImage} 
+                    src="/petwash-logo-official.png" 
                     alt={t('ourService.k9000SystemAlt', language)}
                     className="luxury-tech-photo"
                   />

@@ -32,7 +32,7 @@ import {
   type PlatformId,
   type UserRole,
   type NavItem,
-} from "@/shared/petwashGlobal";
+} from "@shared/petwashGlobal";
 import { useLanguage } from "@/lib/languageStore";
 
 interface GlobalNavigationProps {

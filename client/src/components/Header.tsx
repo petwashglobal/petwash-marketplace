@@ -15,9 +15,9 @@ import {
   globalNavigation,
   type PlatformId,
   type NavItem
-} from '@/shared/petwashGlobal';
+} from '@shared/petwashGlobal';
 import type { Language } from '@/lib/i18n';
-import type { UserRole } from '@/shared/petwashGlobal';
+import type { UserRole } from '@shared/petwashGlobal';
 import { t } from '@/lib/i18n';
 
 interface HeaderProps {

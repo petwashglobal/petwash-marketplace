@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { t, type Language } from '@/lib/i18n';
-import { X, Play } from 'lucide-react';
-import galleryVideoSrc from '@assets/petwash-gallery-video.mp4';
-import galleryVideo2Src from '@assets/petwash-video-2.mp4';
+import { X } from 'lucide-react';
 
 // Gallery images
 const galleryImages = [
@@ -83,8 +81,6 @@ interface GalleryProps {
 export default function Gallery({ language, onLanguageChange }: GalleryProps) {
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
   const [filter, setFilter] = useState<'all' | 'branding' | 'station'>('all');
-  const [videoPlaying, setVideoPlaying] = useState(false);
-  const [video2Playing, setVideo2Playing] = useState(false);
 
   const filteredImages = filter === 'all' 
     ? galleryImages 
@@ -101,70 +97,6 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
             </h1>
             <p className="text-lg text-gray-700 max-w-3xl mx-auto">
               {t('gallery.subtitle', language)}
-            </p>
-          </div>
-
-          {/* Featured Video Section */}
-          <div className="mb-16">
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl group max-w-5xl mx-auto">
-              <video
-                src={galleryVideoSrc}
-                className="w-full h-auto"
-                controls={videoPlaying}
-                playsInline
-                onPlay={() => setVideoPlaying(true)}
-                onPause={() => setVideoPlaying(false)}
-                data-testid="gallery-video"
-              />
-              {!videoPlaying && (
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 flex items-center justify-center cursor-pointer"
-                     onClick={() => {
-                       const video = document.querySelector('video');
-                       video?.play();
-                     }}>
-                  <div className="bg-white/20 backdrop-blur-md rounded-full p-8 group-hover:scale-110 group-hover:bg-white/30 transition-all duration-300">
-                    <Play size={64} className="text-white" />
-                  </div>
-                  <div className="absolute top-6 left-6 bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-lg backdrop-blur-sm">
-                    ✨ Featured Video
-                  </div>
-                </div>
-              )}
-            </div>
-            <p className="text-center text-gray-600 mt-6 text-lg font-medium">
-              {t('gallery.videoCaption', language)}
-            </p>
-          </div>
-
-          {/* Second Featured Video */}
-          <div className="mb-16">
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl group max-w-5xl mx-auto">
-              <video
-                src={galleryVideo2Src}
-                className="w-full h-auto"
-                controls={video2Playing}
-                playsInline
-                onPlay={() => setVideo2Playing(true)}
-                onPause={() => setVideo2Playing(false)}
-                data-testid="gallery-video-2"
-              />
-              {!video2Playing && (
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 flex items-center justify-center cursor-pointer"
-                     onClick={() => {
-                       const videos = document.querySelectorAll('video');
-                       videos[1]?.play();
-                     }}>
-                  <div className="bg-white/20 backdrop-blur-md rounded-full p-8 group-hover:scale-110 group-hover:bg-white/30 transition-all duration-300">
-                    <Play size={64} className="text-white" />
-                  </div>
-                  <div className="absolute top-6 left-6 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-lg backdrop-blur-sm">
-                    🎬 Latest Video
-                  </div>
-                </div>
-              )}
-            </div>
-            <p className="text-center text-gray-600 mt-6 text-lg font-medium">
-              {t('gallery.latestVideoCaption', language)}
             </p>
           </div>
 

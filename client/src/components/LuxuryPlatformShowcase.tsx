@@ -9,9 +9,6 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLocation } from 'wouter';
 import type { Language } from '@/lib/i18n';
 
-// Ultra-luxury imagery
-import happyPetOwners from '@assets/IMG_7114_1761393217647.jpeg';
-
 interface LuxuryPlatformShowcaseProps {
   language: Language;
 }
@@ -230,7 +227,7 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
           {/* Compact Hero Section */}
           <div className="relative w-full h-32 sm:h-40 md:h-48 overflow-hidden pt-16 sm:pt-0">
             <img 
-              src={happyPetOwners}
+              src="/petwash-logo-official.png"
               alt="Happy Pet Owners"
               className="w-full h-full object-cover"
             />

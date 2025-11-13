@@ -6,15 +6,6 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLocation } from 'wouter';
 import type { Language } from '@/lib/i18n';
 
-// Ultra-luxury metallic card imagery (NEW 5-TIER SYSTEM)
-import goldCard from '@assets/stock_images/luxury_gold_metal_cr_58537332.jpg';
-import platinumCard from '@assets/stock_images/premium_platinum_met_11e9c72e.jpg';
-import silverCard from '@assets/stock_images/premium_platinum_met_692b0367.jpg';
-import newMemberCard from '@assets/stock_images/rose_gold_bronze_lux_8ecbc590.jpg'; // Repurpose for "New" tier
-
-// Happy family of pet owners
-import happyPetOwners from '@assets/IMG_7114_1761393217647.jpeg';
-
 interface LoyaltyWelcomeModalProps {
   language: Language;
 }
@@ -82,7 +73,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
       titleEn: 'New Member',
       titleHe: 'חבר חדש',
       discount: '0%',
-      hdCard: newMemberCard,
+      hdCard: '/petwash-logo-official.png',
       gradient: 'linear-gradient(135deg, #64748b 0%, #94a3b8 25%, #cbd5e1 50%, #94a3b8 75%, #475569 100%)',
       borderGlow: 'shadow-[0_0_40px_rgba(100,116,139,0.4),0_0_80px_rgba(100,116,139,0.2)]',
       iconColor: 'text-slate-600',
@@ -93,7 +84,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
       titleEn: 'Silver Elite',
       titleHe: 'עילית כסף',
       discount: '10%',
-      hdCard: silverCard,
+      hdCard: '/petwash-logo-official.png',
       gradient: 'linear-gradient(135deg, #C0C0C0 0%, #E8E8E8 25%, #F5F5F5 50%, #D3D3D3 75%, #A9A9A9 100%)',
       borderGlow: 'shadow-[0_0_40px_rgba(192,192,192,0.5),0_0_80px_rgba(192,192,192,0.3)]',
       iconColor: 'text-gray-500',
@@ -104,7 +95,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
       titleEn: 'Gold Prestige',
       titleHe: 'יוקרה זהב',
       discount: '15%',
-      hdCard: goldCard,
+      hdCard: '/petwash-logo-official.png',
       gradient: 'linear-gradient(135deg, #FFD700 0%, #FFC000 20%, #FFEA00 40%, #FFD700 60%, #DAA520 80%, #B8860B 100%)',
       borderGlow: 'shadow-[0_0_50px_rgba(255,215,0,0.6),0_0_100px_rgba(255,215,0,0.4),0_0_150px_rgba(255,215,0,0.2)]',
       iconColor: 'text-yellow-500',
@@ -115,7 +106,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
       titleEn: 'Platinum Reserve',
       titleHe: 'רזרבה פלטינום',
       discount: '20%',
-      hdCard: platinumCard,
+      hdCard: '/petwash-logo-official.png',
       gradient: 'linear-gradient(135deg, #E5E4E2 0%, #FFFFFF 20%, #B4C5E4 40%, #9CC4E4 60%, #7C98B3 80%, #536878 100%)',
       borderGlow: 'shadow-[0_0_60px_rgba(229,228,226,0.7),0_0_120px_rgba(156,196,228,0.5),0_0_180px_rgba(124,152,179,0.3)]',
       iconColor: 'text-indigo-400',
@@ -126,7 +117,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
       titleEn: 'Diamond Elite',
       titleHe: 'עילית יהלום',
       discount: '25%',
-      hdCard: platinumCard, // Use same platinum card image for now
+      hdCard: '/petwash-logo-official.png',
       gradient: 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 25%, #93c5fd 50%, #60a5fa 75%, #2563eb 100%)',
       borderGlow: 'shadow-[0_0_70px_rgba(59,130,246,0.8),0_0_140px_rgba(96,165,250,0.6),0_0_210px_rgba(37,99,235,0.4)]',
       iconColor: 'text-blue-500',
@@ -170,7 +161,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
           {/* Hero Image - Mobile-optimized heights with safe spacing for close button */}
           <div className="relative w-full h-56 sm:h-64 md:h-80 lg:h-96 overflow-hidden pt-16 sm:pt-0">
             <img 
-              src={happyPetOwners}
+              src="/petwash-logo-official.png"
               alt="Happy Pet Owners"
               className="w-full h-full object-cover"
             />
