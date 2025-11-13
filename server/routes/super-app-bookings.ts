@@ -889,4 +889,175 @@ router.get(
   }
 );
 
+// POST /api/platforms/:platformId/bookings/:bookingId/complete - Mark booking as completed
+router.post(
+  '/:platformId/bookings/:bookingId/complete',
+  requireAuth,
+  requirePlatformContext,
+  apiLimiter,
+  async (req: any, res: any) => {
+    try {
+      const userId = req.user?.uid;
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const platformId = req.platformContext.platformId;
+      const bookingId = req.params.bookingId;
+
+      // Get booking
+      const existingBooking = await bookingService.getBookingById(bookingId);
+
+      if (!existingBooking) {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      // SECURITY: Verify platform isolation
+      if (existingBooking.platformId !== platformId) {
+        return res.status(403).json({ error: 'Booking does not belong to this platform' });
+      }
+
+      // SECURITY: Only provider can complete booking
+      const isProvider = existingBooking.providerId && existingBooking.providerId.toString() === userId;
+      
+      if (!isProvider) {
+        return res.status(403).json({ error: 'Only the provider can complete this booking' });
+      }
+
+      // Update booking to completed
+      const { db } = await import('../db');
+      const { bookings } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      const [updatedBooking] = await db.update(bookings)
+        .set({
+          status: 'completed',
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, bookingId))
+        .returning();
+
+      logger.info('Booking marked as completed', {
+        bookingId,
+        platformId,
+        providerId: existingBooking.providerId,
+      });
+
+      res.json({ 
+        success: true,
+        booking: updatedBooking,
+        message: 'Booking completed. Escrow will be released after 72 hours.',
+      });
+    } catch (error: any) {
+      logger.error('Failed to complete booking', {
+        error: error.message,
+        userId: req.user?.uid,
+        platformId: req.platformContext?.platformId,
+        bookingId: req.params.bookingId
+      });
+
+      res.status(500).json({ 
+        error: 'Failed to complete booking'
+      });
+    }
+  }
+);
+
+// POST /api/platforms/:platformId/bookings/:bookingId/cancel - Cancel booking and trigger refund
+router.post(
+  '/:platformId/bookings/:bookingId/cancel',
+  requireAuth,
+  requirePlatformContext,
+  apiLimiter,
+  async (req: any, res: any) => {
+    try {
+      const userId = req.user?.uid;
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const platformId = req.platformContext.platformId;
+      const bookingId = req.params.bookingId;
+      const { reason } = req.body;
+
+      if (!reason) {
+        return res.status(400).json({ error: 'Cancellation reason required' });
+      }
+
+      // Get booking
+      const existingBooking = await bookingService.getBookingById(bookingId);
+
+      if (!existingBooking) {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      // SECURITY: Verify platform isolation
+      if (existingBooking.platformId !== platformId) {
+        return res.status(403).json({ error: 'Booking does not belong to this platform' });
+      }
+
+      // SECURITY: Only customer or provider can cancel
+      const isCustomer = existingBooking.userId === userId;
+      const isProvider = existingBooking.providerId && existingBooking.providerId.toString() === userId;
+      
+      if (!isCustomer && !isProvider) {
+        return res.status(403).json({ error: 'Unauthorized to cancel this booking' });
+      }
+
+      // Update booking to cancelled
+      const { db } = await import('../db');
+      const { bookings, superAppPayouts } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      const ProviderPayoutService = (await import('../services/ProviderPayoutService')).default;
+
+      const [updatedBooking] = await db.update(bookings)
+        .set({
+          status: 'cancelled',
+          paymentStatus: 'refunded',
+          cancellationReason: reason,
+          cancelledBy: isCustomer ? 'customer' : 'provider',
+          cancelledAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, bookingId))
+        .returning();
+
+      // Cancel escrow and trigger refund
+      const [payout] = await db.select()
+        .from(superAppPayouts)
+        .where(eq(superAppPayouts.bookingId, bookingId))
+        .limit(1);
+
+      if (payout && payout.status === 'in_escrow') {
+        await ProviderPayoutService.cancelEscrowAndRefund(payout.id, reason);
+      }
+
+      logger.info('Booking cancelled', {
+        bookingId,
+        platformId,
+        cancelledBy: isCustomer ? 'customer' : 'provider',
+        reason,
+      });
+
+      res.json({ 
+        success: true,
+        booking: updatedBooking,
+        message: 'Booking cancelled. Refund will be processed within 5-7 business days.',
+      });
+    } catch (error: any) {
+      logger.error('Failed to cancel booking', {
+        error: error.message,
+        userId: req.user?.uid,
+        platformId: req.platformContext?.platformId,
+        bookingId: req.params.bookingId
+      });
+
+      res.status(500).json({ 
+        error: 'Failed to cancel booking'
+      });
+    }
+  }
+);
+
 export default router;

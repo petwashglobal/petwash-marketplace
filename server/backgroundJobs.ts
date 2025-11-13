@@ -14,6 +14,7 @@ import { IsraeliVATReclaimService } from './services/IsraeliVATReclaimService';
 import { WalletTelemetryService } from './services/WalletTelemetryService';
 import { GeminiUpdateAdvisor } from './services/GeminiUpdateAdvisor';
 import { startAutoVoidCron } from './cron/auto-void-expired-payments';
+import ProviderPayoutService from './services/ProviderPayoutService';
 
 export class BackgroundJobProcessor {
   private static jobLocks = new Map<string, boolean>(); // Per-task locking
@@ -88,6 +89,18 @@ export class BackgroundJobProcessor {
     // Clean up old logs every hour
     cron.schedule('0 * * * *', async () => {
       await this.cleanupOldLogs();
+    });
+
+    // Auto-release expired escrows and process provider payouts (every hour)
+    // Booking-4: 72-hour escrow hold → Israeli bank transfer
+    cron.schedule('0 * * * *', async () => {
+      if (await this.acquireLock('autoReleaseEscrows')) {
+        try {
+          await this.autoReleaseEscrowPayouts();
+        } finally {
+          this.releaseLock('autoReleaseEscrows');
+        }
+      }
     });
 
     // Daily Firestore backup at midnight Israel time
@@ -739,6 +752,42 @@ export class BackgroundJobProcessor {
       
     } catch (error) {
       logger.error('Error cleaning up old logs', error);
+    }
+  }
+
+  /**
+   * Auto-release expired escrows and process provider payouts
+   * Booking-4: Marketplace payouts after 72-hour escrow hold
+   */
+  private static async autoReleaseEscrowPayouts(): Promise<void> {
+    try {
+      logger.info('[BackgroundJobs] Starting auto-release escrow job...');
+      
+      const result = await ProviderPayoutService.autoReleaseExpiredEscrows();
+      
+      logger.info('[BackgroundJobs] Auto-release escrow job completed', {
+        released: result.released,
+        failed: result.failed,
+        errors: result.errors,
+      });
+
+      // Record cron execution metrics
+      await recordCronExecution('autoReleaseEscrows', result.released > 0 ? 'success' : 'idle', {
+        releasedCount: result.released,
+        failedCount: result.failed,
+      });
+
+      if (result.failed > 0) {
+        logger.error('[BackgroundJobs] Some escrow releases failed', {
+          failedCount: result.failed,
+          errors: result.errors,
+        });
+      }
+    } catch (error) {
+      logger.error('[BackgroundJobs] Auto-release escrow job error', { error });
+      await recordCronExecution('autoReleaseEscrows', 'failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 
