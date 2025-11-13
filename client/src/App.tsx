@@ -1754,8 +1754,9 @@ function App() {
               <NotificationPermissionPrompt />
             </SimpleAuthProvider>
           </AuthProvider>
-          <ConsentManager language={currentLanguage} />
-          <LuxuryPlatformShowcase language={currentLanguage} />
+          {/* DISABLED: Annoying popups removed - user can manage consent in Settings */}
+          {/* <ConsentManager language={currentLanguage} /> */}
+          {/* <LuxuryPlatformShowcase language={currentLanguage} /> */}
         </TooltipProvider>
       </LanguageProvider>
     </QueryClientProvider>
