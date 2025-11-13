@@ -175,10 +175,10 @@ export const providers = pgTable("providers", {
   acceptingNewClients: boolean("accepting_new_clients").default(true),
   serviceRadius: integer("service_radius"), // km for mobile services (walkers, drivers, groomers)
   
-  // Stripe Connect (for marketplace payouts)
-  stripeConnectAccountId: varchar("stripe_connect_account_id"),
-  stripeOnboardingComplete: boolean("stripe_onboarding_complete").default(false),
+  // Payout settings (Nayax Israel + Israeli bank transfer ONLY)
   payoutEnabled: boolean("payout_enabled").default(false),
+  bankAccountVerified: boolean("bank_account_verified").default(false),
+  nayaxMerchantId: varchar("nayax_merchant_id"), // Nayax merchant account ID
   
   // Earnings
   totalEarnings: decimal("total_earnings", { precision: 12, scale: 2 }).default("0"),
@@ -565,16 +565,17 @@ export const payouts = pgTable("payouts", {
   providerId: integer("provider_id").references(() => providers.id).notNull(),
   bookingId: varchar("booking_id").references(() => bookings.id).notNull(),
   
-  // Payout method (dual payout architecture 2026)
-  payoutMethod: varchar("payout_method").notNull(), // stripe_connect | bank_transfer
+  // Payout method (Nayax Israel + Israeli bank transfer ONLY - 2026)
+  payoutMethod: varchar("payout_method").notNull(), // nayax | bank_transfer
   
-  // Stripe Connect (for international providers)
-  stripePayoutId: varchar("stripe_payout_id"),
-  stripeTransferId: varchar("stripe_transfer_id"),
+  // Nayax (for marketplace customer payments - provider portion held in escrow)
+  nayaxTransactionId: varchar("nayax_transaction_id"),
+  nayaxMerchantId: varchar("nayax_merchant_id"),
   
-  // Bank Transfer (for Israeli providers)
+  // Israeli Bank Transfer (for provider payouts)
   bankTransactionId: varchar("bank_transaction_id"),
   bankReference: varchar("bank_reference"),
+  bankAccountLast4: varchar("bank_account_last4"),
   
   // Amount (must align with contractorEarnings)
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
@@ -585,6 +586,10 @@ export const payouts = pgTable("payouts", {
   // Status
   status: varchar("status").default("pending"), // pending, processing, paid, failed, cancelled
   failureReason: text("failure_reason"),
+  
+  // Compliance & audit (Israeli tax law)
+  taxDocumentUrl: varchar("tax_document_url"), // Form 106/856 for tax reporting
+  vatIncluded: boolean("vat_included").default(true),
   
   // Metadata (integration flexibility)
   metadata: jsonb("metadata"),
