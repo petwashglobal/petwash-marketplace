@@ -53,6 +53,7 @@ import chatRoutes from "./routes/chat";
 import vatRoutes from "./routes/vat";
 import escrowRoutes from "./routes/escrow";
 import bookingsRoutes from "./routes/bookings";
+import superAppBookingsRoutes from "./routes/super-app-bookings";
 import jobOffersRoutes from "./routes/job-offers";
 import providersRoutes from "./routes/providers";
 import identityServiceRoutes from "./routes/identity-service";
@@ -7726,6 +7727,10 @@ self.addEventListener('notificationclick', (event) => {
   
   // Unified Booking System (Sitter Suite, Walk My Pet, PetTrek)
   app.use('/api/bookings', apiLimiter, bookingsRoutes);
+  
+  // SUPER-APP BOOKING ENGINE - Platform-scoped booking system for all 6 platforms
+  // K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers, Shared Services
+  app.use('/api/platforms', superAppBookingsRoutes);
   
   // Job Offers - Uber/Airbnb-Style Job Dispatch System
   app.use('/api/job-offers', apiLimiter, jobOffersRoutes);
