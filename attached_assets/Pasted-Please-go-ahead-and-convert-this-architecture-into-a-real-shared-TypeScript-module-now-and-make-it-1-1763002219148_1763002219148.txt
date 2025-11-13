@@ -1,0 +1,40 @@
+Please go ahead and convert this architecture into a real shared TypeScript module now and make it 100% compilable, before continuing with the Executive Suite work.
+
+This doc is exactly what I want as the single source of truth for Pet Wash Ltd, so the next step is to:
+	1.	Create a file like shared/petwashGlobal.ts and move all the core definitions there (platform catalog, types, navigation model, KYC levels, wallet config, payment orchestration, booking service contract, mobile client contract, etc).
+	2.	Fix every TypeScript issue so it builds cleanly with no warnings or TODOs that could break a production build:
+
+	•	Use only straight quotes “ “ everywhere (no curly quotes).
+	•	Make sure all async functions have explicit return types (for example: Promise, Promise, Promise, etc).
+	•	Remove or comment out any TODOs that would throw or break compilation. If you need placeholders, return safe default values that do not crash the app.
+	•	Ensure all imports/exports are correct so this module can be imported from anywhere in the codebase.
+
+	3.	Keep everything strictly configuration and contracts in this file – no direct database or API calls. It should just define:
+
+	•	Types (PlatformId, UserRole, BookingState, CurrencyCode, KycLevel, DeviceType, LocaleCode).
+	•	Platform map for all 6 platforms (no extra platforms).
+	•	Deep navigation structure for the hamburger menus per platform.
+	•	KYC levels and logic for which role gets which level.
+	•	Wallet/Apple Wallet/Google Wallet config.
+	•	Payment orchestration rules (Nayax, currencies, tax rules).
+	•	Booking service interface (what inputs/outputs look like, states), but not business logic that touches the DB.
+	•	Mobile client contract (API endpoints, deep links).
+
+For now, please do not add new products or fantasy features. Only include what we actually operate today:
+	•	K9000 Wash
+	•	Walk My Pet
+	•	The Sitter Suite
+	•	PetTrek
+	•	Groomers
+	•	Pet Wash Hub
+
+Once shared/petwashGlobal.ts is compiling cleanly and imported successfully, you can then use it as the backbone for:
+	•	The Executive Suite and admin dashboards.
+	•	The new multi-layer hamburger menu and navigation for all platforms.
+	•	Any future microservices or refactors, so we never duplicate this logic again.
+
+This should be written with 2025 best practices: strict TypeScript, zero runtime type errors, ready to support 100–200 concurrent users per region and able to scale much higher later. After you finish this, please confirm that:
+	•	TypeScript build passes with no errors.
+	•	The shared module is being used by the router/navigation and by any booking/kyc/payment code that needs these definitions.
+
+Then you can continue with the Executive Suite and the rest of the tasks on top of this clean, central module.
