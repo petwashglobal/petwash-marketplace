@@ -1,17 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is a full-stack enterprise platform ecosystem operating under **Pet Wash Ltd** (parent holding company). The platform features multiple independent business units: K9000 IoT wash stations (flagship), The Sitter Suite™ (pet sitting marketplace), Walk My Pet™ (dog walking marketplace), PetTrek™ (pet transport marketplace), and The Plush Lab™ (AI avatar creator). Each business operates independently while sharing enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management. The platform is designed for market leadership and global franchise expansion with enterprise-grade security, multi-jurisdiction tax compliance, and complete legal protection.
-
-## Corporate Structure
-**Pet Wash Ltd** - Parent holding company with independent business units:
-- 🛁 **K9000 Wash Stations** - Premium organic self-service IoT wash stations (flagship product)
-- 🏠 **The Sitter Suite™** - Pet sitting marketplace (competing with Rover/Care.com model)
-- 🐕 **Walk My Pet™** - Dog walking marketplace (competing with Wag!/Rover model)
-- 🚗 **PetTrek™** - Pet transport marketplace (competing with Uber Pets model)
-- 🎨 **The Plush Lab™** - AI-powered pet avatar creator with multilingual TTS
-
-Each business unit is fully independent with separate branding, operations, and revenue tracking, but all share centralized enterprise systems (auth, payments, compliance, AI, franchise management).
+Pet Wash™ is a full-stack enterprise platform operating under Pet Wash Ltd, featuring multiple independent business units: K9000 IoT wash stations (flagship), The Sitter Suite™ (pet sitting marketplace), Walk My Pet™ (dog walking marketplace), PetTrek™ (pet transport marketplace), and The Plush Lab™ (AI avatar creator). The platform aims for market leadership and global franchise expansion, sharing enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management, all while ensuring enterprise-grade security and multi-jurisdiction compliance.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -55,60 +45,46 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 
 ## System Architecture
 
-### Global Architecture Module (Single Source of Truth)
-**File**: `shared/petwashGlobal.ts` (670 lines) - Production-ready TypeScript module defining the entire Pet Wash Ltd ecosystem.
-- **Type System**: PlatformId, UserRole, BookingState, CurrencyCode, KycLevel, DeviceType, LocaleCode with strict typing
-- **Platform Catalog**: All 6 business units (K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers, Hub) with IDs, paths, descriptions
-- **Deep Navigation Model**: Complete multi-layer hamburger menu structure for all platforms with role-based access control
-- **KYC Engine**: 3-tier levels (LIGHT/STANDARD/ENHANCED) with automatic role-to-level resolution and field requirements
-- **Wallet Integration**: Apple Wallet & Google Wallet configuration with card styling and template IDs
-- **Payment Orchestration**: Nayax-exclusive gateway config with multi-currency support, tax rules (17% VAT), escrow timing (72hr)
-- **Booking Contracts**: TypeScript interfaces for booking creation, state management, and payment intents
-- **Mobile Client Contract**: API endpoint structure and deep linking schemes for iOS/Android apps
-- **Helper Utilities**: Platform lookup by ID/path, navigation filtering by role, amount/cents conversion
-- **Last Updated**: 2025-11-13
+### **🚨 CRITICAL DEVELOPER RULE: SEARCH FIRST, BUILD SECOND**
 
-### Frontend
-- **Framework**: React 18 with TypeScript, Wouter for routing, TanStack Query for state management.
-- **UI**: shadcn/ui components (Radix UI primitives), Tailwind CSS with a custom design system.
-- **Build**: Vite.
-- **PWA Features**: Comprehensive PWA functionality including Badge API, Background Sync, Wake Lock.
+**Before adding ANY new code, you MUST:**
+1. Check `shared/petwashGlobal.ts` (670 lines) - Single source of truth
+2. Search `server/services/` - 118 production services (41,313 lines)
+3. Search `client/src/pages/` - 192 existing pages
+4. Search `client/src/components/` - 155 existing components
+5. Document what exists, what's missing, and integration approach
+6. Only build if gap truly confirmed
 
-### Backend
-- **Runtime**: Node.js with Express.js.
-- **Database**: Neon serverless PostgreSQL with Drizzle ORM and Modular Schema Architecture.
-- **Caching**: Redis with graceful fallback.
-- **Architecture**: Clean separation of concerns (e.g., AuthService, PaymentsService, LoyaltyService).
-- **Authentication**: Firebase Authentication with Firestore user profiles, WebAuthn/Passkey support.
-- **Testing**: Vitest with unit and integration tests.
+**This platform represents MONTHS of enterprise development. Respect it. Use it. Don't rebuild it.**
 
 ### Core Features & Design Decisions
-- **UI/UX Design**: Brand-compliant, responsive mobile-first, luxury redesigns, glassmorphism, Apple-style spring animations, bilingual support with direction-aware layouts.
-- **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data deletion.
-- **AI Chat Assistant**: Google Gemini 2.5 Flash-powered with Kenzo mascot personality, bilingual, context-aware, real-time avatar animations, emotion detection, session management, multi-avatar system.
-- **Marketplaces**: "The Sitter Suite™", "Walk My Pet™", "PetTrek™".
-- **The Plush Lab™**: Premium pet avatar creator with AI landmark detection and multilingual TTS.
-- **Loyalty Program**: 5-tier progressive discount, e-gift cards, wash packages, Apple Wallet integration.
-- **Digital Wallet Integration**: Apple Wallet & Google Wallet for loyalty cards and e-vouchers.
+- **Global Architecture Module**: `shared/petwashGlobal.ts` acts as the single source of truth for type systems, platform catalog, deep navigation, KYC engine, wallet integration, payment orchestration (Nayax-exclusive), booking contracts, and mobile client contracts.
+- **Frontend**: React 18 with TypeScript, Wouter for routing, TanStack Query for state management, shadcn/ui components (Radix UI primitives), Tailwind CSS, and Vite for building. Comprehensive PWA features are implemented.
+- **Backend**: Node.js with Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching, and Firebase Authentication with WebAuthn/Passkey support.
+- **UI/UX Design**: Brand-compliant, responsive mobile-first, luxury redesigns with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts.
+- **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, and GDPR-compliant data handling.
+- **AI Chat Assistant**: Google Gemini 2.5 Flash-powered with a Kenzo mascot personality, bilingual, context-aware, and featuring real-time avatar animations and emotion detection.
+- **Marketplaces**: The Sitter Suite™, Walk My Pet™, and PetTrek™.
+- **The Plush Lab™**: AI-powered pet avatar creator with landmark detection and multilingual TTS.
+- **Loyalty Program**: 5-tier progressive discount system, e-gift cards, wash packages, and Apple Wallet integration.
 - **E-Signature**: DocuSeal with full Hebrew RTL support.
-- **Enterprise Features**: Multi-country/currency, franchise management, per-station tracking, IoT monitoring, secure document management, KYC.
-- **Financial Management**: Automated bookkeeping (Google Vision OCR + Gemini 2.5 Flash), Israeli Tax Compliance, Bank Reconciliation, Automated Monthly Invoicing, Israeli VAT Reclaim System.
-- **Payment Gateway Architecture**: **NAYAX ISRAEL ONLY - MANDATORY** for ALL customer payments across ALL 6 platforms (K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers, Shared Services). NO STRIPE. NO other payment processors. Provider payouts via Israeli bank transfer after 72hr escrow release. Simple, compliant, Israel-focused single-gateway solution.
-- **K9000 IoT Wash Station Integration**: Cloud-based management, real-time status, remote control, AI predictive maintenance.
+- **Enterprise Features**: Multi-country/currency support, franchise management, IoT monitoring, secure document management, and KYC.
+- **Financial Management**: Automated bookkeeping (Google Vision OCR + Gemini 2.5 Flash), Israeli Tax Compliance, bank reconciliation, invoicing, and VAT reclaim.
+- **Payment Gateway Architecture**: Nayax Israel is the mandatory and exclusive payment gateway for all customer payments across all 6 platforms. Provider payouts occur via Israeli bank transfer after a 72-hour escrow release.
+- **K9000 IoT Integration**: Cloud-based management, real-time status, remote control, and AI predictive maintenance for wash stations.
 - **Passport Verification (KYC)**: Google Vision API-powered passport verification with MRZ parsing.
-- **Security & Compliance**: Firebase App Check, Performance Monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025 compliance, AI-powered monitoring, enterprise-grade GDPR consent management.
+- **Security & Compliance**: Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025 compliance, AI-powered monitoring, and enterprise-grade GDPR consent.
 - **Blockchain-Style Audit Trail**: Immutable, cryptographically hash-chained ledger for fraud prevention.
-- **Chat History Management**: Enterprise-grade PostgreSQL-based chat storage with full-text search, analytics, 7-year retention, event-driven architecture, and immutable audit trails.
-- **Franchise-Based Authorization System**: Enterprise-grade multi-tenant security with employee-franchise linkage, RBAC, and per-record authorization.
-- **Smart Gemini Weather Backend**: Intelligent, actionable pet-focused weather advice powered by Gemini 2.5 Flash, generating smart insights and automated notifications.
-- **Role-Aware Weather Planner**: Full-stack weather intelligence system with 4 specialized views (Public, Client, Employee Station, Employee Executive), real Open-Meteo forecast data, multi-language support, luxury glassmorphism UI, and role-based filtering.
-- **Compliance Control Tower**: Enterprise-grade AI-driven legal compliance and regulatory management system.
-- **Load Testing & Performance Monitoring**: Enterprise-grade performance testing infrastructure with Grafana k6, real-time performance monitoring dashboard.
-- **Gemini AI Email Quality Monitor**: Automated email validation service ensuring display consistency across all email clients.
-- **Luxury Environmental Monitoring System**: Comprehensive environmental intelligence platform combining Air Quality, Pollen, Weather, and Gemini AI insights.
-- **Comprehensive Multi-Language System**: Enterprise-grade language detection and context management across the entire platform. Includes a centralized LanguageContext Service, multi-language staff manuals, and Gemini AI language integration.
-- **Staff Onboarding & Fraud Prevention System**: Comprehensive onboarding workflow for staff with fraud prevention, document management, e-signature, biometric verification, background checks, GPS-verified logbook, and expense management.
-- **Domain Verification & Deployment Optimization**: Configuration adjustments for Replit custom domain verification, including CORS, security headers, and rate limiting.
+- **Chat History Management**: PostgreSQL-based storage with full-text search, analytics, 7-year retention, and immutable audit trails.
+- **Franchise-Based Authorization System**: Multi-tenant security with employee-franchise linkage, RBAC, and per-record authorization.
+- **Smart Gemini Weather Backend**: Intelligent, actionable pet-focused weather advice powered by Gemini 2.5 Flash.
+- **Role-Aware Weather Planner**: Full-stack weather intelligence system with specialized views, Open-Meteo forecast data, and multi-language support.
+- **Compliance Control Tower**: AI-driven legal compliance and regulatory management system.
+- **Load Testing & Performance Monitoring**: Grafana k6 for performance testing.
+- **Gemini AI Email Quality Monitor**: Automated email validation service.
+- **Luxury Environmental Monitoring System**: Combines Air Quality, Pollen, Weather, and Gemini AI insights.
+- **Comprehensive Multi-Language System**: Enterprise-grade language detection and context management, including a centralized LanguageContext Service and Gemini AI integration.
+- **Staff Onboarding & Fraud Prevention**: Comprehensive workflow with document management, e-signature, biometric verification, background checks, GPS-verified logbook, and expense management.
 
 ## External Dependencies
 - **@neondatabase/serverless**: PostgreSQL connectivity.
@@ -117,7 +93,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **@radix-ui/***: Accessible UI component primitives.
 - **tailwindcss**: Utility-first CSS framework.
 - **vite**: Build tool.
-- **Nayax Israel**: **MANDATORY EXCLUSIVE** payment gateway for ALL platforms (K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers, Shared Services). NO STRIPE ALLOWED. Customer payments ONLY through Nayax. Provider payouts via Israeli bank transfer after 72hr escrow release.
+- **Nayax Israel**: MANDATORY EXCLUSIVE payment gateway.
 - **Google Analytics, Google Tag Manager, Facebook Pixel, TikTok Pixel, Microsoft Clarity, Google Ads**: Marketing and analytics.
 - **ipapi.co, ip-api.com, ipinfo.io**: IP geolocation services.
 - **Firebase**: Authentication, Firestore, Storage, App Check, Performance Monitoring.
@@ -137,5 +113,5 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Google Cloud Translation API**: Real-time multilingual support.
 - **Google Business Profile API**: Franchise location and review management.
 - **Google Weather API**: Official Google Weather integration.
-- **CurrentUVIndex.com API**: UV index monitoring with current readings, 5-day hourly forecast, and 24-hour history (no API key required, unlimited requests).
-- **Open-Meteo Air Quality API**: Real-time air quality monitoring (PM2.5, PM10, NO₂, O₃, SO₂, CO) and pollen forecasts (alder, birch, grass, olive, ragweed) - no API key required, 10,000+ requests/day.
+- **CurrentUVIndex.com API**: UV index monitoring.
+- **Open-Meteo Air Quality API**: Real-time air quality and pollen monitoring.
