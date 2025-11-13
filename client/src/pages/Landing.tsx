@@ -3,9 +3,7 @@ import { Button } from '@/components/ui/button';
 import { WashPackages } from '@/components/WashPackages';
 import { GiftCards } from '@/components/GiftCards';
 import { Layout } from '@/components/Layout';
-import { LuxuryPlatformShowcase } from '@/components/LuxuryPlatformShowcase';
 import { LegalFooter } from '@/components/LegalFooter';
-import { PetWashDivisions } from '@/components/PetWashDivisions';
 import { t, type Language } from '@/lib/i18n';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 
@@ -359,15 +357,9 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           </div>
         </section>
 
-        {/* PetWash Ltd Group - Our Unique Services */}
-        <PetWashDivisions language={language} />
-
         {/* Legal Footer Section */}
         <LegalFooter language={language} />
       </div>
-      
-      {/* Luxury Platform Showcase - Shows on first visit */}
-      <LuxuryPlatformShowcase language={language} />
     </Layout>
   );
 }
