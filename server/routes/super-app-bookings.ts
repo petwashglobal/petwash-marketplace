@@ -478,4 +478,184 @@ router.get(
   }
 );
 
+// ============================================================================
+// BOOKING CONTRACT ROUTES - Explicit state transition endpoints
+// ============================================================================
+
+// POST /api/platforms/:platformId/bookings/:bookingId/confirm - Confirm booking
+router.post(
+  '/:platformId/bookings/:bookingId/confirm',
+  requireAuth,
+  requirePlatformContext,
+  apiLimiter,
+  async (req: any, res: any) => {
+    try {
+      const userId = req.user?.uid;
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const platformId = req.platformContext.platformId;
+      const bookingId = req.params.bookingId;
+
+      // Get existing booking to verify ownership
+      const existingBooking = await bookingService.getBookingById(bookingId);
+
+      if (!existingBooking) {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      // SECURITY: Verify platform isolation
+      if (existingBooking.platformId !== platformId) {
+        return res.status(403).json({ error: 'Booking does not belong to this platform' });
+      }
+
+      // SECURITY FIX: Verify authenticated user is the provider (only providers can confirm)
+      let isProvider = false;
+      if (existingBooking.providerId) {
+        const { db } = await import('../db');
+        const { providers } = await import('@shared/schema');
+        const { eq, and } = await import('drizzle-orm');
+        
+        const [provider] = await db
+          .select()
+          .from(providers)
+          .where(
+            and(
+              eq(providers.id, existingBooking.providerId),
+              eq(providers.userId, userId),
+              eq(providers.platformId, platformId)
+            )
+          );
+        
+        isProvider = !!provider;
+      }
+
+      if (!isProvider) {
+        return res.status(403).json({ 
+          error: 'Only the assigned provider can confirm this booking' 
+        });
+      }
+
+      // Confirm booking with state guards and payment verification
+      const confirmedBooking = await bookingService.confirmBooking(bookingId, userId);
+
+      // Audit log
+      logger.info('Booking confirmed', {
+        bookingId,
+        bookingNumber: existingBooking.bookingNumber,
+        platformId,
+        providerId: existingBooking.providerId,
+        confirmedBy: userId
+      });
+
+      res.json(confirmedBooking);
+    } catch (error: any) {
+      logger.error('Booking confirmation failed', {
+        error: error.message,
+        userId: req.user?.uid,
+        platformId: req.platformContext?.platformId,
+        bookingId: req.params.bookingId
+      });
+
+      res.status(400).json({ 
+        error: error.message || 'Failed to confirm booking'
+      });
+    }
+  }
+);
+
+// POST /api/platforms/:platformId/bookings/:bookingId/cancel - Cancel booking
+router.post(
+  '/:platformId/bookings/:bookingId/cancel',
+  requireAuth,
+  requirePlatformContext,
+  apiLimiter,
+  async (req: any, res: any) => {
+    try {
+      const userId = req.user?.uid;
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const platformId = req.platformContext.platformId;
+      const bookingId = req.params.bookingId;
+      const { reason } = req.body;
+
+      if (!reason || reason.trim().length === 0) {
+        return res.status(400).json({ error: 'Cancellation reason is required' });
+      }
+
+      // Get existing booking to verify ownership
+      const existingBooking = await bookingService.getBookingById(bookingId);
+
+      if (!existingBooking) {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      // SECURITY: Verify platform isolation
+      if (existingBooking.platformId !== platformId) {
+        return res.status(403).json({ error: 'Booking does not belong to this platform' });
+      }
+
+      // SECURITY: Verify user ownership or provider access
+      const isCustomer = existingBooking.userId === userId;
+      
+      let isProvider = false;
+      if (existingBooking.providerId) {
+        const { db } = await import('../db');
+        const { providers } = await import('@shared/schema');
+        const { eq, and } = await import('drizzle-orm');
+        
+        const [provider] = await db
+          .select()
+          .from(providers)
+          .where(
+            and(
+              eq(providers.id, existingBooking.providerId),
+              eq(providers.userId, userId),
+              eq(providers.platformId, platformId)
+            )
+          );
+        
+        isProvider = !!provider;
+      }
+
+      if (!isCustomer && !isProvider) {
+        return res.status(403).json({ error: 'Unauthorized to cancel this booking' });
+      }
+
+      // Cancel booking with state guards and reason capture
+      const cancelledBooking = await bookingService.cancelBooking(
+        bookingId,
+        userId,
+        reason
+      );
+
+      // Audit log
+      logger.info('Booking cancelled', {
+        bookingId,
+        bookingNumber: existingBooking.bookingNumber,
+        platformId,
+        cancelledBy: userId,
+        role: isCustomer ? 'customer' : 'provider',
+        reason
+      });
+
+      res.json(cancelledBooking);
+    } catch (error: any) {
+      logger.error('Booking cancellation failed', {
+        error: error.message,
+        userId: req.user?.uid,
+        platformId: req.platformContext?.platformId,
+        bookingId: req.params.bookingId
+      });
+
+      res.status(400).json({ 
+        error: error.message || 'Failed to cancel booking'
+      });
+    }
+  }
+);
+
 export default router;
