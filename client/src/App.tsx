@@ -191,6 +191,9 @@ const GroomersProviderDashboard = lazy(() => import("@/pages/GroomersProviderDas
 const SharedServicesPrograms = lazy(() => import("@/pages/SharedServicesPrograms"));
 const SharedServicesImpact = lazy(() => import("@/pages/SharedServicesImpact"));
 
+// K9000 Wash Stations - Self-Service Organic Pet Washing
+const K9000BookingFlow = lazy(() => import("@/pages/k9000/BookingFlow"));
+
 const FirebaseTest = lazy(() => import("@/pages/FirebaseTest"));
 const ConsentDemo = lazy(() => import("@/pages/ConsentDemo"));
 const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
@@ -681,6 +684,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RequireAuth>
               <Suspense fallback={<PageLoader />}>
                 <GroomersProviderDashboard language={language} />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+        
+        {/* K9000 Wash Stations - Booking Flow (3-step wizard: station, datetime, review) */}
+        <Route path="/k9000/booking/:stationId?">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <K9000BookingFlow />
               </Suspense>
             </RequireAuth>
           )}

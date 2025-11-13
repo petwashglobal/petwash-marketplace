@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Phone, Clock } from "lucide-react";
+import { MapPin, Navigation, Phone, Clock, Calendar } from "lucide-react";
 
 interface Station {
   id: string;
@@ -14,6 +15,7 @@ interface Station {
 }
 
 export default function Locations() {
+  const [, setRouterLocation] = useLocation();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
@@ -157,6 +159,14 @@ export default function Locations() {
                   <div className="flex flex-wrap gap-3">
                     <Button
                       className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                      onClick={() => setRouterLocation(`/k9000/booking/${station.id}`)}
+                      data-testid={`button-book-${station.id}`}
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Book Wash Now
+                    </Button>
+                    <Button
+                      variant="outline"
                       onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${station.coordinates.lat},${station.coordinates.lng}`, '_blank')}
                     >
                       <MapPin className="w-4 h-4 mr-2" />

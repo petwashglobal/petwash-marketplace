@@ -361,4 +361,43 @@ router.get(
   }
 );
 
+// GET /api/platforms/:platformId/stations - Get stations for K9000 platform
+router.get(
+  '/:platformId/stations',
+  requirePlatformContext,
+  apiLimiter,
+  async (req: any, res: any) => {
+    try {
+      const platformId = req.platformContext.platformId;
+
+      // Only K9000 platform has stations
+      if (platformId !== 'k9000') {
+        return res.status(404).json({ 
+          error: 'Stations not available for this platform' 
+        });
+      }
+
+      const { db } = await import('../db');
+      const { stations } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      const stationList = await db
+        .select()
+        .from(stations)
+        .where(eq(stations.platformId, platformId));
+
+      res.json(stationList);
+    } catch (error: any) {
+      logger.error('Failed to fetch stations', {
+        error: error.message,
+        platformId: req.platformContext?.platformId
+      });
+
+      res.status(500).json({ 
+        error: 'Failed to fetch stations'
+      });
+    }
+  }
+);
+
 export default router;
