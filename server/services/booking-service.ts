@@ -750,6 +750,81 @@ export class BookingService {
       items
     };
   }
+
+  // ============================================================================
+  // CONTRACT METHODS - Thin wrappers enforcing booking state transitions
+  // ============================================================================
+
+  /**
+   * Create a draft booking (wrapper for createBooking)
+   * Returns booking in 'draft' or 'pending_payment' status depending on platform
+   */
+  async createDraftBooking(input: CreateBookingInput): Promise<SelectBooking> {
+    // createBooking already returns draft/pending_payment status
+    return await this.createBooking(input);
+  }
+
+  /**
+   * Confirm a booking (transition to confirmed status)
+   * SECURITY: Enforces payment must be settled before confirming
+   */
+  async confirmBooking(bookingId: string, confirmedBy: string): Promise<SelectBooking> {
+    const [existingBooking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId));
+
+    if (!existingBooking) {
+      throw new Error('Booking not found');
+    }
+
+    // State guard: only pending_payment or pending_provider can be confirmed
+    if (!['pending_payment', 'pending_provider'].includes(existingBooking.status)) {
+      throw new Error(
+        `Cannot confirm booking with status ${existingBooking.status}. ` +
+        `Only pending_payment or pending_provider bookings can be confirmed.`
+      );
+    }
+
+    // SECURITY: Verify payment is settled
+    if (existingBooking.paymentStatus !== 'succeeded') {
+      throw new Error('Cannot confirm booking: payment not settled');
+    }
+
+    return await this.updateBookingStatus(bookingId, 'confirmed', confirmedBy);
+  }
+
+  /**
+   * Cancel a booking with reason
+   * Enforces cancellation policies and captures reason
+   */
+  async cancelBooking(
+    bookingId: string,
+    cancelledBy: string,
+    reason: string
+  ): Promise<SelectBooking> {
+    const [existingBooking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId));
+
+    if (!existingBooking) {
+      throw new Error('Booking not found');
+    }
+
+    // State guard: cannot cancel already completed or refunded bookings
+    if (['completed', 'refunded', 'cancelled'].includes(existingBooking.status)) {
+      throw new Error(
+        `Cannot cancel booking with status ${existingBooking.status}`
+      );
+    }
+
+    if (!reason || reason.trim().length === 0) {
+      throw new Error('Cancellation reason is required');
+    }
+
+    return await this.updateBookingStatus(bookingId, 'cancelled', cancelledBy, reason);
+  }
 }
 
 export const bookingService = new BookingService();

@@ -9,7 +9,13 @@ import { useToast } from '@/hooks/use-toast';
 import { FaInstagram, FaFacebookF, FaTiktok } from 'react-icons/fa';
 import { LanguageToggle } from './LanguageToggle';
 import { GlobalNavigation } from './GlobalNavigation';
-import { getPlatformByPath } from '@/shared/petwashGlobal';
+import { 
+  getPlatformByPath, 
+  getAccessibleNavItems,
+  globalNavigation,
+  type PlatformId,
+  type NavItem
+} from '@/shared/petwashGlobal';
 import type { Language } from '@/lib/i18n';
 import type { UserRole } from '@/shared/petwashGlobal';
 import { t } from '@/lib/i18n';
@@ -34,6 +40,23 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
   
   // Detect if we're on a platform page
   const currentPlatform = getPlatformByPath(location);
+  const platformId = currentPlatform?.id as PlatformId | undefined;
+  
+  // Get accessible navigation items from GlobalNavigation data structure
+  // Uses globalNavigation from petwashGlobal.ts for non-platform pages
+  const desktopNavItems = platformId
+    ? getAccessibleNavItems(
+        platformId,
+        userRole?.role?.name 
+          ? (userRole.role.name.toUpperCase() as UserRole)
+          : userRole?.isSuperAdmin 
+          ? "ADMIN" 
+          : undefined
+      )
+    : globalNavigation.map(item => ({
+        ...item,
+        label: t(item.label, language) // Resolve translation keys
+      }));
   
   // Static cache-busting version for social icons - stable across renders
   const iconVersion = "v20251023";
@@ -538,34 +561,39 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
               <img src="/brand/petwash-logo-official.png" alt="PetWash™" className="h-14 lg:h-16" />
             </Link>
             
-            {/* Desktop Navigation Links */}
-            <nav className="flex items-center gap-6 flex-wrap">
-              <Link href="/" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
-                {t('nav.home', language)}
-              </Link>
-              <Link href="/about" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
-                {t('header.aboutUs', language)}
-              </Link>
-              <Link href="/our-service" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
-                {t('header.ourServices', language)}
-              </Link>
-              <Link href="/franchise" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
-                {t('header.franchiseOpportunities', language)}
-              </Link>
-              <Link href="/contact" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
-                {t('nav.contact', language)}
-              </Link>
-              
-              {/* Platform dropdown or direct links */}
-              <Link href="/k9000" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
-                K9000
-              </Link>
-              <Link href="/walk-my-pet" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
-                Walk My Pet™
-              </Link>
-              <Link href="/sitter-suite" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">
-                The Sitter Suite™
-              </Link>
+            {/* Desktop Navigation Links - Full GlobalNavigation mega-menu */}
+            <nav className="flex items-center gap-4 flex-wrap">
+              {/* Render ALL navigation items with dropdown support for children */}
+              {desktopNavItems.map((item) => (
+                <div key={item.id} className="relative group">
+                  <Link 
+                    href={item.path || '#'} 
+                    className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap flex items-center gap-1"
+                    data-testid={`desktop-nav-${item.id}`}
+                  >
+                    {item.label}
+                    {item.children && item.children.length > 0 && (
+                      <ChevronRight className="w-3 h-3 rotate-90" />
+                    )}
+                  </Link>
+                  
+                  {/* Dropdown for child items */}
+                  {item.children && item.children.length > 0 && (
+                    <div className="absolute left-0 top-full mt-1 hidden group-hover:block bg-white dark:bg-gray-900 shadow-lg rounded-md border border-gray-200 dark:border-gray-700 py-2 min-w-[200px] z-50">
+                      {item.children.map((child) => (
+                        <Link
+                          key={child.id}
+                          href={child.path || '#'}
+                          className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          data-testid={`desktop-nav-${item.id}-${child.id}`}
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </nav>
             
             {/* User Section */}

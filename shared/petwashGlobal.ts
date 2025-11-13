@@ -674,6 +674,47 @@ export const mobileClientContract = {
 } as const;
 
 // ============================================================================
+// GLOBAL NAVIGATION (NON-PLATFORM MARKETING/HOME PAGES)
+// ============================================================================
+
+/**
+ * Global navigation for non-platform pages (home, about, contact, etc.)
+ * Translation keys should be resolved in UI layer using t() function
+ */
+export const globalNavigation: NavItem[] = [
+  {
+    id: "home",
+    label: "nav.home", // Translation key
+    path: "/",
+  },
+  {
+    id: "about",
+    label: "header.aboutUs", // Translation key
+    path: "/about",
+  },
+  {
+    id: "services",
+    label: "header.ourServices", // Translation key
+    path: "/our-service",
+  },
+  {
+    id: "franchise",
+    label: "header.franchiseOpportunities", // Translation key
+    path: "/franchise",
+  },
+  {
+    id: "contact",
+    label: "nav.contact", // Translation key
+    path: "/contact",
+  },
+  {
+    id: "gallery",
+    label: "nav.gallery", // Translation key
+    path: "/gallery",
+  },
+];
+
+// ============================================================================
 // HELPER UTILITIES
 // ============================================================================
 
