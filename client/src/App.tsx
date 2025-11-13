@@ -180,6 +180,17 @@ const PetTrek = lazy(() => import("@/pages/pettrek/BrowseDrivers"));
 const PetTrekBookingFlow = lazy(() => import("@/pages/pettrek/BookingFlow"));
 const PetTrekCustomerDashboard = lazy(() => import("@/pages/pettrek/CustomerDashboard"));
 const PetTrekDriverDashboard = lazy(() => import("@/pages/pettrek/DriverDashboard"));
+
+// Grooming Marketplace - Professional Pet Grooming Services
+const Groomers = lazy(() => import("@/pages/Groomers"));
+const GroomersBook = lazy(() => import("@/pages/GroomersBook"));
+const GroomersCustomerDashboard = lazy(() => import("@/pages/GroomersCustomerDashboard"));
+const GroomersProviderDashboard = lazy(() => import("@/pages/GroomersProviderDashboard"));
+
+// Shared Pet Services Foundation - Cross-Platform Community Services
+const SharedServicesPrograms = lazy(() => import("@/pages/SharedServicesPrograms"));
+const SharedServicesImpact = lazy(() => import("@/pages/SharedServicesImpact"));
+
 const FirebaseTest = lazy(() => import("@/pages/FirebaseTest"));
 const ConsentDemo = lazy(() => import("@/pages/ConsentDemo"));
 const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
@@ -630,6 +641,66 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                 <ContractorDashboard />
               </Suspense>
             </RequireAuth>
+          )}
+        </Route>
+        
+        {/* Grooming Marketplace - Browse Groomers */}
+        <Route path="/groomers">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <Groomers language={language} />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Grooming Marketplace - Book Grooming Session */}
+        <Route path="/groomers/book">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <GroomersBook language={language} />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+        
+        {/* Grooming Marketplace - Customer Dashboard */}
+        <Route path="/groomers/customer/dashboard">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <GroomersCustomerDashboard language={language} />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+        
+        {/* Grooming Marketplace - Provider Dashboard */}
+        <Route path="/groomers/provider/dashboard">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <GroomersProviderDashboard language={language} />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+        
+        {/* Shared Pet Services - Community Programs */}
+        <Route path="/shared-services/programs">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <SharedServicesPrograms language={language} />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Shared Pet Services - Impact Dashboard */}
+        <Route path="/shared-services/impact">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <SharedServicesImpact language={language} />
+            </Suspense>
           )}
         </Route>
         

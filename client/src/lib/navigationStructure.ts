@@ -471,82 +471,182 @@ export const navigationTree: MenuItem[] = [
   },
 
   // =============================================
-  // ✂️ Grooming Services (Coming Soon)
+  // ✂️ Grooming Marketplace
   // =============================================
   {
-    id: 'grooming',
-    label: 'Grooming Services',
-    labelHe: 'שירותי טיפוח',
+    id: 'groomers',
+    label: 'Grooming Marketplace',
+    labelHe: 'שוק מטפחים',
     icon: Scissors,
-    isComingSoon: true,
     children: [
       {
-        id: 'grooming-placeholder',
-        label: 'Coming Soon',
-        labelHe: 'בקרוב',
-        path: '/platform-showcase',
+        id: 'find-groomer',
+        label: 'Find & Book Groomer',
+        labelHe: 'מצא והזמן מטפח',
+        icon: Users,
+        children: [
+          {
+            id: 'search-groomers',
+            label: 'Search Groomers',
+            labelHe: 'חפש מטפחים',
+            path: '/groomers',
+          },
+          {
+            id: 'grooming-services',
+            label: 'Grooming Services',
+            labelHe: 'שירותי טיפוח',
+            path: '/groomers#services',
+          },
+          {
+            id: 'mobile-grooming',
+            label: 'Mobile Grooming',
+            labelHe: 'טיפוח נייד',
+            path: '/groomers#mobile',
+          },
+        ],
+      },
+      {
+        id: 'groomer-profiles',
+        label: 'Groomer Profiles',
+        labelHe: 'פרופילי מטפחים',
+        icon: User,
+        path: '/groomers#profiles',
+      },
+      {
+        id: 'booking-grooming',
+        label: 'Booking System',
+        labelHe: 'מערכת הזמנות',
+        icon: Calendar,
+        children: [
+          {
+            id: 'book-grooming',
+            label: 'Book Grooming Session',
+            labelHe: 'הזמן מפגש טיפוח',
+            path: '/groomers/book',
+          },
+          {
+            id: 'grooming-packages',
+            label: 'Grooming Packages',
+            labelHe: 'חבילות טיפוח',
+            path: '/groomers#packages',
+          },
+        ],
+      },
+      {
+        id: 'pricing-grooming',
+        label: 'Pricing & Add-ons',
+        labelHe: 'תמחור ותוספות',
+        icon: CreditCard,
+        path: '/groomers#pricing',
+      },
+      {
+        id: 'grooming-history',
+        label: 'Grooming History',
+        labelHe: 'היסטוריית טיפוח',
+        icon: Clock,
+        path: '/groomers/customer/dashboard',
+        userRoles: ['customer'],
+      },
+      {
+        id: 'groomer-dashboard',
+        label: 'Groomer Dashboard',
+        labelHe: 'לוח בקרה למטפח',
+        icon: BarChart3,
+        path: '/groomers/provider/dashboard',
+        userRoles: ['groomer', 'provider'],
       },
     ],
   },
 
   // =============================================
-  // 🏥 Vet On Demand (Coming Soon)
+  // 🌟 Shared Pet Services Foundation
   // =============================================
   {
-    id: 'vet-on-demand',
-    label: 'Vet On Demand',
-    labelHe: 'וטרינר לפי דרישה',
-    icon: Stethoscope,
-    isComingSoon: true,
+    id: 'shared-services',
+    label: 'Shared Pet Services',
+    labelHe: 'שירותי חיות מחמד משותפים',
+    icon: Home,
     children: [
       {
-        id: 'vet-placeholder',
-        label: 'Coming Soon',
-        labelHe: 'בקרוב',
-        path: '/platform-showcase',
-      },
-    ],
-  },
-
-  // =============================================
-  // 🛒 Pet Marketplace (Coming Soon)
-  // =============================================
-  {
-    id: 'marketplace',
-    label: 'Pet Marketplace',
-    labelHe: 'חנות חיות מחמד',
-    icon: ShoppingCart,
-    isComingSoon: true,
-    children: [
-      {
-        id: 'marketplace-placeholder',
-        label: 'Coming Soon',
-        labelHe: 'בקרוב',
-        path: '/platform-showcase',
-      },
-    ],
-  },
-
-  // =============================================
-  // 📞 Emergency 24/7 Hotline
-  // =============================================
-  {
-    id: 'emergency',
-    label: 'Emergency 24/7 Hotline',
-    labelHe: 'קו חירום 24/7',
-    icon: Phone,
-    children: [
-      {
-        id: 'call-emergency',
-        label: 'Call Emergency Line',
-        labelHe: 'התקשר לקו חירום',
-        path: '/contact#emergency',
+        id: 'programs-grants',
+        label: 'Programs & Grants',
+        labelHe: 'תוכניות ומענקים',
+        icon: Award,
+        children: [
+          {
+            id: 'community-programs',
+            label: 'Community Programs',
+            labelHe: 'תוכניות קהילתיות',
+            path: '/shared-services/programs',
+          },
+          {
+            id: 'grant-applications',
+            label: 'Grant Applications',
+            labelHe: 'בקשות למענק',
+            path: '/shared-services/grants',
+          },
+          {
+            id: 'partnerships',
+            label: 'Partner Services',
+            labelHe: 'שירותי שותפים',
+            path: '/shared-services/partners',
+          },
+        ],
       },
       {
-        id: 'emergency-resources',
-        label: 'Emergency Resources',
-        labelHe: 'משאבי חירום',
-        path: '/contact#resources',
+        id: 'volunteering',
+        label: 'Community Volunteering',
+        labelHe: 'התנדבות קהילתית',
+        icon: Users,
+        children: [
+          {
+            id: 'volunteer-opportunities',
+            label: 'Volunteer Opportunities',
+            labelHe: 'הזדמנויות להתנדבות',
+            path: '/shared-services/volunteer',
+          },
+          {
+            id: 'volunteer-dashboard',
+            label: 'Volunteer Dashboard',
+            labelHe: 'לוח בקרה למתנדב',
+            path: '/shared-services/volunteer/dashboard',
+            userRoles: ['volunteer'],
+          },
+        ],
+      },
+      {
+        id: 'knowledge-base',
+        label: 'Knowledge Base',
+        labelHe: 'מאגר ידע',
+        icon: FileText,
+        children: [
+          {
+            id: 'pet-care-guides',
+            label: 'Pet Care Guides',
+            labelHe: 'מדריכי טיפול בחיות מחמד',
+            path: '/shared-services/guides',
+          },
+          {
+            id: 'training-resources',
+            label: 'Training Resources',
+            labelHe: 'משאבי אימון',
+            path: '/shared-services/training',
+          },
+          {
+            id: 'compliance-docs',
+            label: 'Compliance Documents',
+            labelHe: 'מסמכי ציות',
+            path: '/shared-services/compliance',
+            userRoles: ['provider', 'admin'],
+          },
+        ],
+      },
+      {
+        id: 'impact-dashboard',
+        label: 'Impact Dashboard',
+        labelHe: 'לוח מצב השפעה',
+        icon: BarChart3,
+        path: '/shared-services/impact',
       },
     ],
   },
