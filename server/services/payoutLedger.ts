@@ -288,12 +288,17 @@ export async function releaseEscrow(earningId: string) {
 /**
  * Process payout to contractor bank account
  * 
- * COMPLIANCE: Pet Wash Ltd mandate - All payouts via Israeli bank transfer only.
- * No third-party payment processors (PayPal, Stripe, etc.) allowed.
+ * COMPLIANCE: Pet Wash Ltd dual payout architecture (2026):
+ * - Israeli providers (country === 'IL'): Israeli bank transfer only (ACH/Isracard rails)
+ * - International providers: Stripe Connect payouts (global marketplace expansion)
+ * 
+ * Routing logic:
+ * - IF provider.country === 'IL' OR platform mandates → bank_transfer
+ * - ELSE → stripe_connect
  */
 export async function processPayout(
   earningId: string,
-  payoutMethod: 'bank_transfer',
+  payoutMethod: 'bank_transfer' | 'stripe_connect',
   payoutTransactionId: string
 ) {
   try {

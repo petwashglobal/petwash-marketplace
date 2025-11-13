@@ -558,22 +558,36 @@ export const payments = pgTable("payments", {
 
 export const payouts = pgTable("payouts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`), // FIX: UUID
-  providerId: integer("provider_id").references(() => providers.id).notNull(),
-  bookingId: varchar("booking_id").references(() => bookings.id),
   
-  // Stripe Connect
+  // Dual-ledger architecture: Link to contractorEarnings accrual ledger
+  earningId: varchar("earning_id").notNull(), // FK to contractorEarnings.earningId (EARN-YYYY-NNNNNN)
+  
+  providerId: integer("provider_id").references(() => providers.id).notNull(),
+  bookingId: varchar("booking_id").references(() => bookings.id).notNull(),
+  
+  // Payout method (dual payout architecture 2026)
+  payoutMethod: varchar("payout_method").notNull(), // stripe_connect | bank_transfer
+  
+  // Stripe Connect (for international providers)
   stripePayoutId: varchar("stripe_payout_id"),
   stripeTransferId: varchar("stripe_transfer_id"),
   
-  // Amount
+  // Bank Transfer (for Israeli providers)
+  bankTransactionId: varchar("bank_transaction_id"),
+  bankReference: varchar("bank_reference"),
+  
+  // Amount (must align with contractorEarnings)
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   platformFee: decimal("platform_fee", { precision: 12, scale: 2 }).notNull(),
   netAmount: decimal("net_amount", { precision: 12, scale: 2 }).notNull(),
   currency: varchar("currency").default("ILS"),
   
   // Status
-  status: varchar("status").default("pending"), // pending, processing, paid, failed
+  status: varchar("status").default("pending"), // pending, processing, paid, failed, cancelled
   failureReason: text("failure_reason"),
+  
+  // Metadata (integration flexibility)
+  metadata: jsonb("metadata"),
   
   // Timestamps
   scheduledFor: timestamp("scheduled_for"), // T+2 days after booking completion
@@ -582,8 +596,10 @@ export const payouts = pgTable("payouts", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
+  earningIdx: index("payout_earning_idx").on(table.earningId),
   providerIdx: index("payout_provider_idx").on(table.providerId),
   statusIdx: index("payout_status_idx").on(table.status),
+  methodIdx: index("payout_method_idx").on(table.payoutMethod),
 }));
 
 // ============================================================================
