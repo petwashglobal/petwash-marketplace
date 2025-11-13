@@ -754,12 +754,11 @@ router.post(
         });
       }
 
-      // VALIDATION: Supported currencies
-      const supportedCurrencies = ['ILS', 'USD', 'EUR'];
-      if (!supportedCurrencies.includes(existingBooking.currency)) {
+      // ISRAEL PRODUCTION: ILS only
+      if (existingBooking.currency !== 'ILS') {
         return res.status(400).json({ 
-          error: 'Unsupported currency',
-          supportedCurrencies 
+          error: 'Currency must be ILS (Israel production)',
+          providedCurrency: existingBooking.currency
         });
       }
 
@@ -778,50 +777,41 @@ router.post(
       // Import PaymentGatewayService
       const { default: PaymentGatewayService } = await import('../services/PaymentGatewayService');
 
-      // Create payment intent with error handling
-      let paymentIntent;
-      try {
-        paymentIntent = await PaymentGatewayService.createPaymentIntent({
-          bookingId,
-          customerId: userId,
-          platformId,
-          amountCents,
-          currency: existingBooking.currency,
-          deviceType: validatedBody.deviceType,
-          metadata: {
-            bookingNumber: existingBooking.bookingNumber,
-            providerId: existingBooking.providerId,
-            stationId: existingBooking.stationId,
-          },
-        });
-      } catch (serviceError: any) {
-        // Handle service-level errors (unsupported currency, etc.)
-        logger.error('PaymentGatewayService.createPaymentIntent failed', {
-          error: serviceError.message,
+      // Create payment intent - Israel production version
+      const result = await PaymentGatewayService.createPaymentIntent({
+        bookingId,
+        userId,
+        platformId,
+        amountCents,
+        providerId: existingBooking.providerId?.toString(),
+      });
+
+      // Handle service errors
+      if (!result.success) {
+        logger.error('Payment intent creation failed', {
+          error: result.error,
           bookingId,
           userId,
         });
         
         return res.status(400).json({ 
-          error: serviceError.message || 'Failed to create payment intent'
+          error: result.error
         });
       }
 
       // Audit log
       logger.info('Payment intent created for booking', {
-        paymentIntentId: paymentIntent.id,
+        paymentIntentId: result.id,
         bookingId,
         bookingNumber: existingBooking.bookingNumber,
         platformId,
         userId,
         amountCents,
-        currency: existingBooking.currency,
-        nayaxAuthorizationId: paymentIntent.nayaxAuthorizationId,
-        authorizedAmount: paymentIntent.authorizedAmount,
-        vat: paymentIntent.vat,
+        currency: result.currency,
+        nayaxAuthorizationId: result.nayaxAuthorizationId,
       });
 
-      res.status(201).json(paymentIntent);
+      res.status(201).json(result);
     } catch (error: any) {
       logger.error('Payment intent creation failed', {
         error: error.message,
