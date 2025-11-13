@@ -153,6 +153,7 @@ const PetWashDayPlanner = lazy(() => import("@/pages/PetWashDayPlanner"));
 const RoleAwareWeatherPlanner = lazy(() => import("@/pages/RoleAwareWeatherPlanner"));
 
 // The Sitter Suite™ - Pet Sitting Marketplace
+const SitterSuiteOverview = lazy(() => import("@/pages/sitter-suite/Overview"));
 const SitterSuite = lazy(() => import("@/pages/sitter-suite/BrowseSitters"));
 const SitterDetail = lazy(() => import("@/pages/sitter-suite/SitterDetail"));
 const SitterBookingFlow = lazy(() => import("@/pages/sitter-suite/BookingFlow"));
@@ -170,18 +171,21 @@ const AcademyBookingFlow = lazy(() => import("@/pages/academy/BookingFlow"));
 const ContractorDashboard = lazy(() => import("@/pages/contractor/Dashboard"));
 
 // Walk My Pet™ - Premium Dog Walking
+const WalkMyPetOverview = lazy(() => import("@/pages/walk-my-pet/Overview"));
 const WalkMyPet = lazy(() => import("@/pages/walk-my-pet/BrowseWalkers"));
 const WalkBookingFlow = lazy(() => import("@/pages/walk-my-pet/BookingFlow"));
 const WalkOwnerDashboardPage = lazy(() => import("@/pages/walk-my-pet/OwnerDashboard"));
 const WalkerDashboardPage = lazy(() => import("@/pages/walk-my-pet/WalkerDashboard"));
 
 // PetTrek™ - Advanced Pet Transport
+const PetTrekOverview = lazy(() => import("@/pages/pettrek/Overview"));
 const PetTrek = lazy(() => import("@/pages/pettrek/BrowseDrivers"));
 const PetTrekBookingFlow = lazy(() => import("@/pages/pettrek/BookingFlow"));
 const PetTrekCustomerDashboard = lazy(() => import("@/pages/pettrek/CustomerDashboard"));
 const PetTrekDriverDashboard = lazy(() => import("@/pages/pettrek/DriverDashboard"));
 
 // Grooming Marketplace - Professional Pet Grooming Services
+const GroomersOverview = lazy(() => import("@/pages/groomers/Overview"));
 const Groomers = lazy(() => import("@/pages/Groomers"));
 const GroomersBook = lazy(() => import("@/pages/GroomersBook"));
 const GroomersCustomerDashboard = lazy(() => import("@/pages/GroomersCustomerDashboard"));
@@ -192,6 +196,7 @@ const SharedServicesPrograms = lazy(() => import("@/pages/SharedServicesPrograms
 const SharedServicesImpact = lazy(() => import("@/pages/SharedServicesImpact"));
 
 // K9000 Wash Stations - Self-Service Organic Pet Washing
+const K9000Overview = lazy(() => import("@/pages/k9000/Overview"));
 const K9000BookingFlow = lazy(() => import("@/pages/k9000/BookingFlow"));
 
 const FirebaseTest = lazy(() => import("@/pages/FirebaseTest"));

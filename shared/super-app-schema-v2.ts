@@ -414,8 +414,9 @@ export const bookings = pgTable("bookings", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
-  // FIX: Composite indexes for performance
+  // FIX: Composite indexes for performance (200+ concurrent users)
   platformProviderTimeIdx: index("booking_platform_provider_time_idx").on(table.platformId, table.providerId, table.startTime),
+  platformStationTimeIdx: index("booking_platform_station_time_idx").on(table.platformId, table.stationId, table.startTime),
   platformUserStatusIdx: index("booking_platform_user_status_idx").on(table.platformId, table.userId, table.status),
   statusIdx: index("booking_status_idx").on(table.status),
   dateIdx: index("booking_date_idx").on(table.startTime),
