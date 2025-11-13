@@ -254,7 +254,7 @@ router.post("/:bookingId/cancel", requireAuth, async (req, res) => {
 // =================== AVAILABILITY-BASED BOOKING SYSTEM (2025) ===================
 // 5-minute payment lock system for marketplace bookings
 
-import { BookingLockService } from "../services/BookingLockService";
+// import { BookingLockService } from "../services/BookingLockService"; // TODO: Re-enable when service is created
 import { db as pgDb } from '../db';
 import { availabilitySlots } from '@shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
