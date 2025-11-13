@@ -255,6 +255,84 @@ router.post("/:bookingId/cancel", requireAuth, async (req, res) => {
 // 5-minute payment lock system for marketplace bookings
 
 import { BookingLockService } from "../services/BookingLockService";
+import { db as pgDb } from '../db';
+import { availabilitySlots } from '@shared/schema';
+import { eq, and, gte, lte } from 'drizzle-orm';
+
+/**
+ * GET /api/bookings/availability
+ * Get available slots for a provider within date range
+ */
+router.get("/availability", async (req, res) => {
+  try {
+    const { platform, providerId, from, to } = req.query;
+
+    if (!platform || !providerId || !from || !to) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required query params: platform, providerId, from, to',
+      });
+    }
+
+    // Parse dates
+    const fromDate = new Date(from as string);
+    const toDate = new Date(to as string);
+
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format',
+      });
+    }
+
+    // Fetch slots from PostgreSQL
+    const slots = await pgDb.query.availabilitySlots.findMany({
+      where: and(
+        eq(availabilitySlots.providerId, Number(providerId)),
+        gte(availabilitySlots.startTime, fromDate),
+        lte(availabilitySlots.endTime, toDate)
+      ),
+    });
+
+    // Filter and format slots
+    const now = new Date();
+    const availableSlots = slots
+      .filter((slot) => {
+        // Must not be booked
+        if (slot.status === 'booked') return false;
+        
+        // If held, check if lock expired
+        if (slot.status === 'held' && slot.lockExpiresAt) {
+          if (new Date(slot.lockExpiresAt) > now) return false;
+        }
+
+        return true;
+      })
+      .map((slot) => ({
+        id: slot.id,
+        providerId: slot.providerId,
+        platform: slot.platformId,
+        start: slot.startTime.toISOString(),
+        end: slot.endTime.toISOString(),
+        status: slot.status === 'held' && slot.lockExpiresAt && new Date(slot.lockExpiresAt) > now
+          ? 'HELD'
+          : 'AVAILABLE',
+        timezone: slot.timezone || 'Asia/Jerusalem',
+      }));
+
+    return res.status(200).json({
+      success: true,
+      slots: availableSlots,
+      count: availableSlots.length,
+    });
+  } catch (error: any) {
+    console.error('[Bookings] Availability error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
 
 /**
  * POST /api/bookings/lock

@@ -30,10 +30,18 @@ interface TimeSlot {
   timezone: string;
 }
 
+interface SlotDetails {
+  slotId: number;
+  lockToken: string;
+  expiresAt: Date;
+  startTime: Date;
+  endTime: Date;
+}
+
 interface BookingCalendarProps {
   platform: string;
   providerId: number;
-  onSlotSelected?: (slotId: number, lockToken: string, expiresAt: Date) => void;
+  onSlotSelected?: (slotDetails: SlotDetails) => void;
   bookingMode?: 'SINGLE_SLOT' | 'MULTI_DAY' | 'ARRIVAL_WINDOW';
   minDate?: Date;
   maxDate?: Date;
@@ -73,27 +81,37 @@ export function BookingCalendar({
 
   // Lock acquisition mutation
   const lockMutation = useMutation({
-    mutationFn: async (slotId: number) => {
+    mutationFn: async (slot: TimeSlot) => {
       const response = await apiRequest('/api/bookings/lock', {
         method: 'POST',
-        body: JSON.stringify({ slotId }),
+        body: JSON.stringify({ slotId: slot.id }),
       });
-      return response;
+      return { ...response, slot }; // Include slot data in response
     },
     onSuccess: (data) => {
-      if (data.success) {
+      if (data.success && data.slot) {
+        // Use slot data from mutation response (not state) to avoid race conditions
+        const slot = data.slot;
+        
         setLockToken(data.lockToken);
         setLockExpiresAt(new Date(data.expiresAt));
         setSecondsLeft(data.secondsLeft);
+        setSelectedSlotId(slot.id); // Update state from response, not vice versa
 
         toast({
           title: 'Time Slot Reserved ✅',
           description: `You have ${Math.floor(data.secondsLeft / 60)} minutes to complete payment`,
         });
 
-        // Notify parent
+        // Notify parent with full slot details from mutation response
         if (onSlotSelected) {
-          onSlotSelected(selectedSlotId!, data.lockToken, new Date(data.expiresAt));
+          onSlotSelected({
+            slotId: slot.id,           // ← From response, NOT state
+            lockToken: data.lockToken,
+            expiresAt: new Date(data.expiresAt),
+            startTime: new Date(slot.start),
+            endTime: new Date(slot.end),
+          });
         }
 
         // Invalidate availability query to refresh UI
@@ -189,7 +207,7 @@ export function BookingCalendar({
     }
 
     setSelectedSlotId(slot.id);
-    lockMutation.mutate(slot.id);
+    lockMutation.mutate(slot); // Pass full slot object
   };
 
   // Handle release

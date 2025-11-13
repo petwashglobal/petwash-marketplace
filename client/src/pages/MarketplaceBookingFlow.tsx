@@ -56,6 +56,8 @@ export default function MarketplaceBookingFlow() {
   const [lockToken, setLockToken] = useState<string | null>(null);
   const [lockExpiresAt, setLockExpiresAt] = useState<Date | null>(null);
   const [lockSecondsLeft, setLockSecondsLeft] = useState<number>(0);
+  const [selectedSlotStart, setSelectedSlotStart] = useState<Date | null>(null);
+  const [selectedSlotEnd, setSelectedSlotEnd] = useState<Date | null>(null);
 
   // Fetch provider details
   const { data: providerData, isLoading: providerLoading } = useProviderDetails(platform!, id!);
@@ -95,14 +97,26 @@ export default function MarketplaceBookingFlow() {
   }, [lockExpiresAt, toast, isHebrew]);
 
   // Handle slot selection from BookingCalendar
-  const handleSlotSelected = (slotId: number, token: string, expiresAt: Date) => {
-    setSelectedSlotId(slotId);
-    setLockToken(token);
-    setLockExpiresAt(expiresAt);
+  const handleSlotSelected = (slotDetails: {
+    slotId: number;
+    lockToken: string;
+    expiresAt: Date;
+    startTime: Date;
+    endTime: Date;
+  }) => {
+    setSelectedSlotId(slotDetails.slotId);
+    setLockToken(slotDetails.lockToken);
+    setLockExpiresAt(slotDetails.expiresAt);
+    setSelectedSlotStart(slotDetails.startTime);
+    setSelectedSlotEnd(slotDetails.endTime);
     
-    // Mark Step 2 as completed
-    setSelectedDate(new Date()); // Will be replaced by actual slot date
-    setSelectedTime(''); // Will be replaced by actual slot time
+    // Also set legacy date/time fields for compatibility with Step 4 display
+    setSelectedDate(slotDetails.startTime);
+    setSelectedTime(slotDetails.startTime.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    }));
   };
 
   // Format countdown
