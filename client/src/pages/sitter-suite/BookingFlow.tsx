@@ -94,7 +94,7 @@ export default function SitterBookingFlow() {
             itemType: 'service',
             name: 'Pet Sitting Service',
             nameHe: 'שירותי שמרטפות',
-            unitPrice: pricing.baseAmount
+            unitPrice: pricing.totalCharged
           }
         ],
         pricing: {

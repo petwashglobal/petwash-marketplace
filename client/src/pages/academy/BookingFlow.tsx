@@ -1,556 +1,406 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  Calendar as CalendarIcon, Clock, DollarSign, Star, Shield, 
-  ChevronRight, ChevronLeft, Check, AlertCircle, CreditCard, 
-  GraduationCap, Target, MapPin
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { ChevronLeft, Shield, GraduationCap, Clock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar } from "@/components/ui/calendar";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
+import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useLanguage } from "@/lib/languageStore";
-import { Layout } from "@/components/Layout";
+import { vatCalculator } from "@/lib/vatCalculator";
 
-type BookingStep = "calendar" | "time-slot" | "session-type" | "payment" | "confirm";
-
-interface Trainer {
-  id: number;
-  trainerId: string;
-  fullName: string;
-  profilePhotoUrl: string | null;
-  averageRating: string;
-  totalSessions: number;
-  hourlyRate: string;
-  commissionRate: string;
-  city: string;
-  isCertified: boolean;
-  specialties: string[] | null;
-}
+type BookingStep = "details" | "summary" | "confirmation";
 
 export default function AcademyBookingFlow() {
   const { trainerId } = useParams();
   const [, setLocation] = useLocation();
-  const { t } = useLanguage();
   const { toast } = useToast();
-  
-  const [currentStep, setCurrentStep] = useState<BookingStep>("calendar");
-  const [selectedDate, setSelectedDate] = useState<Date>();
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
+
+  const [step, setStep] = useState<BookingStep>("details");
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [sessionDuration, setSessionDuration] = useState<number>(60); // minutes
   const [sessionType, setSessionType] = useState<string>("private");
-  const [specialNotes, setSpecialNotes] = useState<string>("");
-  const [selectedPayment, setSelectedPayment] = useState("");
+  const [notes, setNotes] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingId, setBookingId] = useState<string | null>(null);
 
-  // Fetch trainer data
-  const { data: trainerData, isLoading } = useQuery<{ trainer: Trainer }>({
+  // Fetch trainer data from real API
+  const { data: trainerData, isLoading: trainerLoading, error: trainerError } = useQuery({
     queryKey: [`/api/academy/trainers/${trainerId}`],
+    enabled: !!trainerId,
   });
 
   const trainer = trainerData?.trainer;
 
-  const timeSlots = ["08:00", "09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
-  const sessionDurations = [
-    { minutes: 60, label: "1 Hour" },
-    { minutes: 90, label: "1.5 Hours" },
-    { minutes: 120, label: "2 Hours" },
-  ];
   const sessionTypes = [
-    { id: "private", name: "Private Session", description: "One-on-one training" },
-    { id: "group", name: "Group Class", description: "Small group training (2-4 dogs)" },
-    { id: "behavior", name: "Behavior Consultation", description: "Specialized behavioral assessment" },
+    { id: "private", name: "שיעור פרטי", description: "אימון אחד על אחד" },
+    { id: "group", name: "קבוצה קטנה", description: "2-4 כלבים" },
+    { id: "behavior", name: "ייעוץ התנהגותי", description: "הערכה התנהגותית מתקדמת" },
   ];
 
-  // **ISRAELI VAT CALCULATION - 18% ON COMMISSION ONLY (Jan 1, 2025)**
-  const calculatePricing = () => {
-    if (!trainer) return { baseAmount: 0, commission: 0, vatOnCommission: 0, totalCharged: 0, trainerPayout: 0 };
-    
+  // Calculate pricing using VAT calculator
+  const baseAmount = useMemo(() => {
+    if (!trainer?.hourlyRate) return 0;
     const hours = sessionDuration / 60;
-    const baseAmount = parseFloat(trainer.hourlyRate) * hours;
-    const commission = baseAmount * (parseFloat(trainer.commissionRate) / 100);
-    const vatOnCommission = commission * 0.18; // Israeli VAT 18% on commission only
-    const totalCharged = baseAmount + commission + vatOnCommission;
-    const trainerPayout = baseAmount; // Trainer gets full base amount
+    return parseFloat(trainer.hourlyRate) * hours;
+  }, [trainer, sessionDuration]);
 
-    return { baseAmount, commission, vatOnCommission, totalCharged, trainerPayout };
-  };
+  const pricing = useMemo(() => {
+    return vatCalculator.calculateVAT(baseAmount);
+  }, [baseAmount]);
 
-  const pricing = calculatePricing();
+  const canContinueDetails = useMemo(() => {
+    return (
+      !!trainer &&
+      !!selectedDate &&
+      sessionDuration > 0 &&
+      !!sessionType
+    );
+  }, [trainer, selectedDate, sessionDuration, sessionType]);
 
-  const steps: BookingStep[] = ["calendar", "time-slot", "session-type", "payment", "confirm"];
-  const currentStepIndex = steps.indexOf(currentStep);
-
-  const handleNext = () => {
-    if (currentStepIndex < steps.length - 1) {
-      setCurrentStep(steps[currentStepIndex + 1]);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStep(steps[currentStepIndex - 1]);
-    }
-  };
-
-  // **UNIFIED BOOKING API - CONNECTS TO CENTRAL PAYMENTS & LEDGER SERVICE**
-  const handleConfirmBooking = async () => {
-    try {
-      if (!trainer) throw new Error("Trainer data not loaded");
-
-      await apiRequest("/api/bookings/create", {
-        method: "POST",
-        body: JSON.stringify({
-          platform: "academy",
-          providerId: trainerId,
-          serviceDate: selectedDate,
-          timeSlot: selectedTimeSlot,
-          sessionDuration,
-          sessionType,
-          specialNotes,
-          baseAmount: pricing.baseAmount,
-          commission: pricing.commission,
-          vatOnCommission: pricing.vatOnCommission,
-          totalAmount: pricing.totalCharged,
-          currency: "ILS",
-          metadata: {
-            paymentMethod: selectedPayment,
-            trainerName: trainer.fullName,
-            sessionTypeDetails: sessionTypes.find(t => t.id === sessionType),
-          },
-        }),
-      });
-
+  async function handleNextFromDetails() {
+    if (!canContinueDetails) {
       toast({
-        title: "Training Session Booked! 🎓",
-        description: `Session confirmed with ${trainer.fullName}. 72-hour payment hold placed for ₪${pricing.totalCharged.toFixed(2)}. Processed by Pet Wash™ Ltd.`,
-      });
-
-      setTimeout(() => setLocation("/academy/owner/dashboard"), 2000);
-    } catch (error) {
-      toast({
-        title: "Booking Failed",
-        description: "There was an error creating your booking. Please try again.",
+        title: "נדרשים פרטים נוספים",
+        description: "יש למלא את כל השדות לפני המשך",
         variant: "destructive",
       });
+      return;
     }
-  };
+    setStep("summary");
+  }
 
-  const canProceed = () => {
-    switch (currentStep) {
-      case "calendar": return !!selectedDate;
-      case "time-slot": return !!selectedTimeSlot;
-      case "session-type": return !!sessionType && sessionDuration > 0;
-      case "payment": return !!selectedPayment;
-      default: return true;
+  async function handleConfirmBooking() {
+    if (!trainer || !selectedDate) return;
+
+    try {
+      setIsSubmitting(true);
+
+      const payload = {
+        platform: "academy",
+        providerId: trainerId,
+        serviceDate: selectedDate.toISOString(),
+        sessionDuration,
+        sessionType,
+        specialNotes: notes,
+        items: [
+          {
+            itemType: 'service',
+            name: 'Dog Training Session',
+            nameHe: 'שיעור אילוף כלבים',
+            unitPrice: pricing.totalCharged
+          }
+        ],
+        pricing: {
+          currency: "ILS",
+          baseAmount: pricing.baseAmount,
+          commission: pricing.commission,
+          vatAmount: pricing.vatOnCommission,
+          totalAmount: pricing.totalCharged
+        },
+        platformData: {
+          trainerName: trainer.fullName,
+          sessionTypeDetails: sessionTypes.find(t => t.id === sessionType),
+          paymentMethod: 'nayax',
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      };
+
+      const booking = await apiRequest("/api/academy/bookings", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      setBookingId(booking.id || booking.bookingNumber || 'pending');
+      setStep("confirmation");
+
+      toast({
+        title: "הזמנה נקלטה בהצלחה! 🎓",
+        description: "המאמן/ת יקבל/תקבל הודעה. החיוב מתבצע רק דרך Nayax Israel.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "שגיאה ביצירת הזמנה",
+        description: error.message || "אירעה שגיאה. אין חיוב. נסה/י שוב.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-  };
+  }
 
-  if (isLoading || !trainer) {
+  // Loading state
+  if (trainerLoading) {
     return (
-      <Layout>
-        <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">{t('Loading booking flow...')}</p>
-          </div>
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-slate-600 font-light">טוען את נתוני המאמן/ת...</p>
         </div>
-      </Layout>
+      </div>
+    );
+  }
+
+  // Error state
+  if (trainerError || !trainer) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="text-center max-w-md px-4">
+          <h2 className="text-2xl font-light mb-4 text-slate-900">לא נמצא/ה מאמן/ת</h2>
+          <p className="text-slate-600 font-light mb-6">
+            המאמן/ת לא זמינ/ה כרגע או שהקישור שגוי.
+          </p>
+          <Button onClick={() => setLocation("/academy")} className="bg-purple-500 text-white font-light">
+            חזרה לרשימת מאמנים
+          </Button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="min-h-screen bg-[#FAFAFA]">
-        {/* Header with Trainer Info */}
-        <div className="bg-white shadow-sm border-b">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Avatar className="w-12 h-12">
-                  {trainer.profilePhotoUrl ? (
-                    <AvatarImage src={trainer.profilePhotoUrl} alt={trainer.fullName} />
-                  ) : (
-                    <AvatarFallback className="bg-gradient-to-br from-purple-400 to-blue-400 text-white">
-                      {trainer.fullName.charAt(0)}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <div>
-                  <h2 className="font-semibold text-gray-900">{trainer.fullName}</h2>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-                    <span>{trainer.averageRating} ({trainer.totalSessions} sessions)</span>
-                    {trainer.isCertified && (
-                      <>
-                        <span>•</span>
-                        <Badge variant="secondary" className="text-xs">Certified</Badge>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-gray-900">
-                  ₪{pricing.totalCharged.toFixed(2)}
-                </div>
-                <div className="text-sm text-gray-600">{sessionDuration / 60} hour session</div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-100">
+        <div className="max-w-3xl mx-auto px-4 py-6">
+          <Button
+            variant="ghost"
+            className="mb-4 text-slate-600 font-light"
+            onClick={() => setLocation("/academy")}
+            data-testid="button-back"
+          >
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            חזרה למאמנים
+          </Button>
 
-        {/* Progress Steps */}
-        <div className="bg-white border-b">
-          <div className="container mx-auto px-4 py-6">
-            <div className="flex items-center justify-between max-w-3xl mx-auto">
-              {steps.map((step, index) => (
-                <div key={step} className="flex items-center">
-                  <div className={`flex flex-col items-center ${index <= currentStepIndex ? 'opacity-100' : 'opacity-40'}`}>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
-                      index < currentStepIndex 
-                        ? 'bg-green-500 text-white'
-                        : index === currentStepIndex
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-200 text-gray-500'
-                    }`}>
-                      {index < currentStepIndex ? <Check className="h-5 w-5" /> : index + 1}
-                    </div>
-                    <div className="text-xs font-medium text-gray-900 capitalize">
-                      {step.replace("-", " ")}
-                    </div>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className={`w-16 h-1 mx-2 ${index < currentStepIndex ? 'bg-green-500' : 'bg-gray-200'}`} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="grid md:grid-cols-3 gap-8">
-              {/* Left Column - Step Content */}
-              <div className="md:col-span-2">
-                <Card>
-                  <CardContent className="p-6">
-                    {/* Step 1: Calendar */}
-                    {currentStep === "calendar" && (
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                          <CalendarIcon className="h-6 w-6 text-purple-600" />
-                          {t('Select Training Date')}
-                        </h3>
-                        <Calendar
-                          mode="single"
-                          selected={selectedDate}
-                          onSelect={setSelectedDate}
-                          disabled={(date) => date < new Date()}
-                          className="rounded-md border mx-auto"
-                        />
-                      </div>
-                    )}
-
-                    {/* Step 2: Time Slot */}
-                    {currentStep === "time-slot" && (
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                          <Clock className="h-6 w-6 text-purple-600" />
-                          {t('Choose Time Slot')}
-                        </h3>
-                        <div className="grid grid-cols-3 gap-3">
-                          {timeSlots.map((slot) => (
-                            <button
-                              key={slot}
-                              onClick={() => setSelectedTimeSlot(slot)}
-                              className={`p-4 rounded-lg border-2 text-center transition-all ${
-                                selectedTimeSlot === slot
-                                  ? 'border-purple-600 bg-purple-50'
-                                  : 'border-gray-200 hover:border-purple-300'
-                              }`}
-                            >
-                              <Clock className="h-5 w-5 mx-auto mb-2 text-gray-600" />
-                              <div className="font-semibold">{slot}</div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 3: Session Type & Duration */}
-                    {currentStep === "session-type" && (
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                          <Target className="h-6 w-6 text-purple-600" />
-                          {t('Session Details')}
-                        </h3>
-                        
-                        <div className="space-y-6">
-                          {/* Duration Selection */}
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-900 mb-3">
-                              {t('Session Duration')}
-                            </label>
-                            <div className="grid grid-cols-3 gap-3">
-                              {sessionDurations.map((duration) => (
-                                <button
-                                  key={duration.minutes}
-                                  onClick={() => setSessionDuration(duration.minutes)}
-                                  className={`p-4 rounded-lg border-2 text-center transition-all ${
-                                    sessionDuration === duration.minutes
-                                      ? 'border-purple-600 bg-purple-50'
-                                      : 'border-gray-200 hover:border-purple-300'
-                                  }`}
-                                >
-                                  <div className="font-semibold">{duration.label}</div>
-                                  <div className="text-sm text-gray-600 mt-1">
-                                    ₪{(parseFloat(trainer.hourlyRate) * (duration.minutes / 60)).toFixed(0)}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Session Type Selection */}
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-900 mb-3">
-                              {t('Training Type')}
-                            </label>
-                            <div className="space-y-3">
-                              {sessionTypes.map((type) => (
-                                <button
-                                  key={type.id}
-                                  onClick={() => setSessionType(type.id)}
-                                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                                    sessionType === type.id
-                                      ? 'border-purple-600 bg-purple-50'
-                                      : 'border-gray-200 hover:border-purple-300'
-                                  }`}
-                                >
-                                  <div className="font-semibold text-gray-900">{type.name}</div>
-                                  <div className="text-sm text-gray-600 mt-1">{type.description}</div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Special Notes */}
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-900 mb-2">
-                              {t('Special Notes (Optional)')}
-                            </label>
-                            <textarea
-                              value={specialNotes}
-                              onChange={(e) => setSpecialNotes(e.target.value)}
-                              placeholder={t('Any special requirements or behavioral notes...')}
-                              className="w-full px-4 py-3 rounded-lg border border-gray-300 resize-none"
-                              rows={3}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 4: Payment */}
-                    {currentStep === "payment" && (
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                          <CreditCard className="h-6 w-6 text-purple-600" />
-                          {t('Payment Method')}
-                        </h3>
-                        
-                        <div className="space-y-3 mb-6">
-                          {[
-                            { id: "nayax-credit", name: "Credit Card (Nayax Israel)", icon: CreditCard },
-                            { id: "nayax-applepay", name: "Apple Pay (via Nayax)", icon: Shield },
-                            { id: "nayax-googlepay", name: "Google Pay (via Nayax)", icon: Shield },
-                          ].map((method) => (
-                            <button
-                              key={method.id}
-                              onClick={() => setSelectedPayment(method.id)}
-                              className={`w-full p-4 rounded-lg border-2 flex items-center gap-3 transition-all ${
-                                selectedPayment === method.id
-                                  ? 'border-purple-600 bg-purple-50'
-                                  : 'border-gray-200 hover:border-purple-300'
-                              }`}
-                            >
-                              <method.icon className="h-5 w-5 text-gray-600" />
-                              <span className="font-medium text-gray-900">{method.name}</span>
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Security Message */}
-                        <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-                          <div className="flex items-start gap-3">
-                            <Shield className="h-5 w-5 text-green-600 mt-0.5" />
-                            <div className="text-sm text-green-900">
-                              <div className="font-semibold mb-1">{t('Secure Payment Processing')}</div>
-                              <div>{t('All payments processed exclusively by Pet Wash™ Ltd through Nayax Israel. PCI DSS compliant.')}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 5: Confirmation */}
-                    {currentStep === "confirm" && (
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                          <Check className="h-6 w-6 text-green-600" />
-                          {t('Confirm Booking')}
-                        </h3>
-                        
-                        <div className="space-y-6">
-                          {/* Booking Summary */}
-                          <div className="p-4 rounded-lg bg-gray-50">
-                            <div className="space-y-3">
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">{t('Date')}</span>
-                                <span className="font-semibold">
-                                  {selectedDate?.toLocaleDateString('en-US', { 
-                                    weekday: 'long', 
-                                    year: 'numeric', 
-                                    month: 'long', 
-                                    day: 'numeric' 
-                                  })}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">{t('Time')}</span>
-                                <span className="font-semibold">{selectedTimeSlot}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">{t('Duration')}</span>
-                                <span className="font-semibold">{sessionDuration / 60} hour(s)</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">{t('Session Type')}</span>
-                                <span className="font-semibold">
-                                  {sessionTypes.find(t => t.id === sessionType)?.name}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 72-Hour Escrow Messaging */}
-                          <div className="p-4 rounded-lg bg-purple-50 border border-purple-200">
-                            <div className="flex items-start gap-3">
-                              <Shield className="h-5 w-5 text-purple-600 mt-0.5" />
-                              <div className="text-sm text-purple-900">
-                                <div className="font-semibold mb-1">{t('72-Hour Payment Protection')}</div>
-                                <div>{t('Payment held in escrow for 72 hours after session completion. Automatically released to trainer if no issues reported.')}</div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Terms Agreement */}
-                          <div className="flex items-start gap-3">
-                            <Checkbox id="terms" />
-                            <label htmlFor="terms" className="text-sm text-gray-600">
-                              {t('I agree to the terms of service and cancellation policy. All payments processed by Pet Wash™ Ltd.')}
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Navigation Buttons */}
-                    <div className="flex items-center justify-between mt-8 pt-6 border-t">
-                      {currentStepIndex > 0 && (
-                        <Button variant="outline" onClick={handleBack} className="gap-2">
-                          <ChevronLeft className="h-4 w-4" />
-                          {t('Back')}
-                        </Button>
-                      )}
-                      
-                      <div className="flex-1" />
-
-                      {currentStep !== "confirm" ? (
-                        <Button
-                          onClick={handleNext}
-                          disabled={!canProceed()}
-                          className="bg-purple-600 hover:bg-purple-700 gap-2"
-                        >
-                          {t('Continue')}
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={handleConfirmBooking}
-                          disabled={!canProceed()}
-                          className="bg-green-600 hover:bg-green-700 gap-2"
-                        >
-                          <Check className="h-4 w-4" />
-                          {t('Confirm Booking')}
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Right Column - Pricing Summary */}
-              <div className="md:col-span-1">
-                <div className="sticky top-6">
-                  <Card>
-                    <CardContent className="p-6">
-                      <h4 className="font-semibold text-gray-900 mb-4">{t('Price Breakdown')}</h4>
-                      
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between text-gray-600">
-                          <span>{t('Trainer Rate')} ({sessionDuration / 60}h)</span>
-                          <span>₪{pricing.baseAmount.toFixed(2)}</span>
-                        </div>
-                        
-                        <div className="flex justify-between text-gray-600">
-                          <span>{t('Platform Fee')} ({parseFloat(trainer.commissionRate).toFixed(0)}%)</span>
-                          <span>₪{pricing.commission.toFixed(2)}</span>
-                        </div>
-                        
-                        <div className="flex justify-between text-gray-600">
-                          <span>{t('Israeli VAT on Fee')} (18%)</span>
-                          <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div className="flex justify-between font-semibold text-gray-900 text-base">
-                          <span>{t('Total')}</span>
-                          <span>₪{pricing.totalCharged.toFixed(2)}</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-6 p-3 rounded-lg bg-gray-50 text-xs text-gray-600 space-y-2">
-                        <div className="flex items-start gap-2">
-                          <Check className="h-3 w-3 text-green-600 mt-0.5" />
-                          <span>{t('Processed by Pet Wash™ Ltd')}</span>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <Check className="h-3 w-3 text-green-600 mt-0.5" />
-                          <span>{t('72-hour escrow protection')}</span>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <Check className="h-3 w-3 text-green-600 mt-0.5" />
-                          <span>{t('Trainer receives ₪' + pricing.trainerPayout.toFixed(2))}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </div>
-          </div>
+          <h1 className="text-2xl font-light text-slate-900" data-testid="page-title">
+            הזמנת {trainer.fullName}
+          </h1>
         </div>
       </div>
-    </Layout>
+
+      {/* Main Content */}
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        
+        {/* Step 1: Details */}
+        {step === "details" && (
+          <>
+            {/* Trainer Info Card */}
+            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <div className="flex items-center gap-3">
+                {trainer.profilePhotoUrl ? (
+                  <img
+                    src={trainer.profilePhotoUrl}
+                    alt={trainer.fullName}
+                    className="h-16 w-16 rounded-full object-cover border-2 border-purple-200"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-purple-100 flex items-center justify-center text-xl font-semibold text-purple-700">
+                    {trainer.fullName.charAt(0)}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <div className="font-semibold text-slate-900">{trainer.fullName}</div>
+                  <div className="text-sm text-slate-600">
+                    {trainer.city} · ⭐ {parseFloat(trainer.averageRating).toFixed(1)} ({trainer.totalSessions} שיעורים)
+                  </div>
+                  {trainer.isCertified && (
+                    <div className="text-xs text-purple-600 mt-1">✓ מאומן/ת מוסמך/ת</div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Session Type */}
+            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <div className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <GraduationCap className="h-4 w-4 text-purple-500" />
+                סוג שיעור
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {sessionTypes.map((type) => {
+                  const active = sessionType === type.id;
+                  return (
+                    <button
+                      key={type.id}
+                      type="button"
+                      onClick={() => setSessionType(type.id)}
+                      className={`rounded-xl px-4 py-3 text-sm transition-all border ${
+                        active
+                          ? "bg-purple-500 text-white shadow-md border-purple-500"
+                          : "bg-white text-slate-700 border-slate-200"
+                      }`}
+                      data-testid={`button-type-${type.id}`}
+                    >
+                      <div className="font-semibold">{type.name}</div>
+                      <div className="text-xs opacity-80">{type.description}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Date & Time */}
+            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <div className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-purple-500" />
+                תאריך ושעה
+              </div>
+              <MobileDatePicker
+                value={selectedDate}
+                onChange={setSelectedDate}
+                minDate={new Date()}
+                includeTime={true}
+                label=""
+              />
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-sm text-slate-600">משך שיעור (דקות)</span>
+                <select
+                  value={sessionDuration}
+                  onChange={e => setSessionDuration(Number(e.target.value))}
+                  className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  data-testid="select-duration"
+                >
+                  <option value={60}>60 דקות</option>
+                  <option value={90}>90 דקות</option>
+                  <option value={120}>120 דקות</option>
+                </select>
+              </div>
+            </section>
+
+            {/* Notes */}
+            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <div className="mb-2 text-sm font-semibold text-slate-700">
+                הערות (אופציונלי)
+              </div>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                placeholder="בעיות התנהגות, מטרות אימון, רגישויות, וכו׳"
+                data-testid="textarea-notes"
+              />
+            </section>
+
+            {/* Pricing Summary */}
+            <div className="mb-6 rounded-2xl border border-purple-100 bg-purple-50/30 p-4">
+              <div className="mb-2 flex items-center justify-between text-sm text-slate-700">
+                <span>סכום בסיס</span>
+                <span>₪{pricing.baseAmount.toFixed(2)}</span>
+              </div>
+              <div className="mb-2 flex items-center justify-between text-sm text-slate-700">
+                <span>עמלת פלטפורמה (15%)</span>
+                <span>₪{pricing.commission.toFixed(2)}</span>
+              </div>
+              <div className="mb-3 flex items-center justify-between text-sm text-slate-700">
+                <span>מע״מ על עמלה (18%)</span>
+                <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
+              </div>
+              <div className="pt-3 border-t border-purple-200 flex items-center justify-between">
+                <span className="font-semibold text-slate-900">סה״כ לחיוב</span>
+                <span className="text-2xl font-bold text-purple-600">
+                  ₪{pricing.totalCharged.toFixed(2)}
+                </span>
+              </div>
+              <div className="mt-3 text-[11px] text-slate-600 leading-relaxed">
+                <Shield className="h-3 w-3 inline mr-1 text-purple-500" />
+                החיוב מתבצע אך ורק דרך Nayax Israel. הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר למאמן/ת לאחר סיום השיעור.
+              </div>
+            </div>
+
+            {/* Continue Button */}
+            <Button
+              className="w-full h-12 rounded-2xl bg-purple-500 text-white text-base font-semibold shadow-lg hover:bg-purple-600"
+              disabled={!canContinueDetails}
+              onClick={handleNextFromDetails}
+              data-testid="button-continue"
+            >
+              המשך לאישור
+            </Button>
+          </>
+        )}
+
+        {/* Step 2: Summary */}
+        {step === "summary" && (
+          <>
+            <h2 className="text-xl font-semibold mb-6 text-slate-900">סיכום הזמנה</h2>
+            
+            <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 text-sm space-y-2">
+              <div className="font-semibold text-slate-900">{trainer.fullName}</div>
+              <div className="text-slate-600">
+                תאריך: {selectedDate ? selectedDate.toLocaleString("he-IL") : "-"}
+              </div>
+              <div className="text-slate-600">
+                סוג: {sessionTypes.find(t => t.id === sessionType)?.name}
+              </div>
+              <div className="text-slate-600">
+                משך: {sessionDuration} דקות
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-2xl border border-purple-100 bg-purple-50/30 p-4">
+              <div className="mb-1 text-xs font-semibold text-slate-700">פירוט מחיר</div>
+              <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
+                <span>סכום בסיס</span>
+                <span>₪{pricing.baseAmount.toFixed(2)}</span>
+              </div>
+              <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
+                <span>עמלה + מע״מ</span>
+                <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-purple-200 flex items-center justify-between">
+                <span className="font-semibold text-slate-900">סה״כ</span>
+                <span className="text-xl font-bold text-purple-600">₪{pricing.totalCharged.toFixed(2)}</span>
+              </div>
+              <div className="mt-3 text-[10px] text-slate-600">
+                החיוב רק דרך Nayax Israel. אין גובים באמצעים אחרים.
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 h-12 rounded-2xl text-sm"
+                onClick={() => setStep("details")}
+                data-testid="button-back-summary"
+              >
+                חזרה
+              </Button>
+              <Button
+                className="flex-1 h-12 rounded-2xl bg-purple-500 text-white text-sm font-semibold shadow-lg hover:bg-purple-600"
+                onClick={handleConfirmBooking}
+                disabled={isSubmitting}
+                data-testid="button-confirm"
+              >
+                {isSubmitting ? "שולח..." : "אישור והמשך"}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Step 3: Confirmation */}
+        {step === "confirmation" && (
+          <div className="text-center py-12">
+            <div className="w-20 h-20 rounded-full bg-purple-100 mx-auto flex items-center justify-center mb-4">
+              <Check className="h-10 w-10 text-purple-600" />
+            </div>
+            <h2 className="text-2xl font-semibold mb-3 text-slate-900">ההזמנה נקלטה בהצלחה!</h2>
+            <p className="text-slate-600 max-w-sm mx-auto mb-2">
+              המאמן/ת יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
+            </p>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
+              פרטי חיוב Nayax ישלחו בהודעה נפרדת.
+            </p>
+            <Button
+              className="rounded-2xl px-8 bg-purple-500 text-white shadow-lg hover:bg-purple-600"
+              onClick={() => setLocation("/dashboard")}
+              data-testid="button-dashboard"
+            >
+              חזרה ללוח הבקרה
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

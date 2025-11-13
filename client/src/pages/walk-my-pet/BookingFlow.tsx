@@ -1,105 +1,112 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Clock, User, CreditCard, Check, ChevronLeft, PawPrint } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { ChevronLeft, Shield, PawPrint, Clock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
+import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { vatCalculator } from "@/lib/vatCalculator";
 
-type BookingStep = "datetime" | "pets" | "review";
+type BookingStep = "details" | "summary" | "confirmation";
 
 export default function WalkBookingFlow() {
   const { walkerId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+
   const walkerIdNumber = walkerId ? parseInt(walkerId) : undefined;
-  
-  const [currentStep, setCurrentStep] = useState<BookingStep>("datetime");
-  const [selectedDate, setSelectedDate] = useState<Date>();
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
-  const [selectedPets, setSelectedPets] = useState<number[]>([]);
 
-  const { data: providers = [], isLoading: providersLoading } = useQuery({
+  const [step, setStep] = useState<BookingStep>("details");
+  const [selectedPetIds, setSelectedPetIds] = useState<number[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [duration, setDuration] = useState<number>(60); // minutes
+  const [notes, setNotes] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+
+  // Fetch walker data from real API
+  const { data: providersData, isLoading: walkerLoading, error: walkerError } = useQuery({
     queryKey: ['/api/platforms/walk_my_pet/providers'],
-    enabled: true,
+    enabled: !!walkerIdNumber,
   });
 
-  const { data: userPets = [], isLoading: petsLoading } = useQuery({
+  // Fetch user's pets from real API
+  const { data: petsData, isLoading: petsLoading } = useQuery({
     queryKey: ['/api/pets'],
-    enabled: currentStep === 'pets',
+    enabled: step === 'details',
   });
 
-  const timeSlots = ["08:00", "09:00", "10:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
+  const providers = Array.isArray(providersData) ? providersData : [];
+  const walker = providers.find((p: any) => Number(p.id) === walkerIdNumber);
+  const pets = Array.isArray(petsData) ? petsData : (petsData?.pets || []);
 
-  const selectedWalker = providers.find((p: any) => Number(p.id) === walkerIdNumber);
+  // Calculate pricing using VAT calculator
+  const baseAmount = useMemo(() => {
+    if (!walker?.hourlyRate) return 0;
+    return walker.hourlyRate * (duration / 60); // Pro-rate for duration
+  }, [walker, duration]);
 
-  const steps: BookingStep[] = ["datetime", "pets", "review"];
-  const currentStepIndex = steps.indexOf(currentStep);
+  const pricing = useMemo(() => {
+    return vatCalculator.calculateVAT(baseAmount);
+  }, [baseAmount]);
 
-  const handleNext = () => {
-    if (currentStepIndex < steps.length - 1) {
-      setCurrentStep(steps[currentStepIndex + 1]);
+  const canContinueDetails = useMemo(() => {
+    return (
+      !!walker &&
+      selectedPetIds.length > 0 &&
+      !!selectedDate &&
+      duration > 0
+    );
+  }, [walker, selectedPetIds, selectedDate, duration]);
+
+  async function handleNextFromDetails() {
+    if (!canContinueDetails) {
+      toast({
+        title: "נדרשים פרטים נוספים",
+        description: "יש למלא את כל השדות לפני המשך",
+        variant: "destructive",
+      });
+      return;
     }
-  };
+    setStep("summary");
+  }
 
-  const handleBack = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStep(steps[currentStepIndex - 1]);
-    }
-  };
+  async function handleConfirmBooking() {
+    if (!walker || !selectedDate || !walkerIdNumber) return;
 
-  const handleConfirmBooking = async () => {
     try {
-      // CRITICAL: Validate all required data before booking
-      if (!selectedWalker) {
-        throw new Error("Walker information is missing. Please try again.");
-      }
-      
-      if (!walkerIdNumber || isNaN(walkerIdNumber)) {
-        throw new Error("Invalid walker ID. Please select a walker.");
-      }
-      
-      if (!selectedDate || !selectedTimeSlot) {
-        throw new Error("Please select both date and time.");
-      }
-      
-      if (selectedPets.length === 0) {
-        throw new Error("Please select at least one pet.");
-      }
+      setIsSubmitting(true);
 
       const startTime = new Date(selectedDate);
-      const [hours, minutes] = selectedTimeSlot.split(":");
-      startTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      
       const endTime = new Date(startTime);
-      endTime.setMinutes(endTime.getMinutes() + 60); // 60-minute walk
-
-      // Validate pricing data exists
-      const hourlyRate = selectedWalker.hourlyRate;
-      if (!hourlyRate || hourlyRate <= 0) {
-        throw new Error("Walker pricing information is missing. Please contact support.");
-      }
+      endTime.setMinutes(endTime.getMinutes() + duration);
 
       const payload = {
         providerId: walkerIdNumber,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
-        petIds: selectedPets,
+        petIds: selectedPetIds,
+        notes,
         items: [
           {
             itemType: 'service',
             name: 'Dog Walking Service',
             nameHe: 'שירות הליכה עם הכלב',
-            unitPrice: hourlyRate
+            unitPrice: pricing.totalCharged
           }
         ],
+        pricing: {
+          currency: "ILS",
+          baseAmount: pricing.baseAmount,
+          commission: pricing.commission,
+          vatAmount: pricing.vatOnCommission,
+          totalAmount: pricing.totalCharged
+        },
         platformData: {
-          walkerName: selectedWalker.businessName || selectedWalker.displayName || 'Professional Walker',
-          serviceArea: selectedWalker.serviceArea || 'Service Area',
+          walkerName: walker.businessName || walker.displayName || 'Professional Walker',
+          serviceArea: walker.serviceArea || 'Service Area',
+          duration,
           paymentMethod: 'nayax',
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         }
@@ -110,340 +117,312 @@ export default function WalkBookingFlow() {
         body: JSON.stringify(payload),
       });
 
-      toast({
-        title: "Walk Booked! 🐾",
-        description: `Your dog walk is confirmed. Booking #${booking.bookingNumber}. GPS tracking will be available during the walk.`,
-      });
+      setBookingId(booking.id || booking.bookingNumber || 'pending');
+      setStep("confirmation");
 
-      setTimeout(() => setLocation("/walk-my-pet/owner/dashboard"), 2000);
+      toast({
+        title: "הזמנה נקלטה בהצלחה! 🐾",
+        description: "המוליך/ה יקבל/תקבל הודעה. החיוב מתבצע רק דרך Nayax Israel.",
+      });
     } catch (error: any) {
       toast({
-        title: "Booking Failed",
-        description: error.message || "There was an error creating your booking. Please try again.",
+        title: "שגיאה ביצירת הזמנה",
+        description: error.message || "אירעה שגיאה. אין חיוב. נסה/י שוב.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
-  };
+  }
 
-  const togglePet = (petId: number) => {
-    setSelectedPets(prev => 
-      prev.includes(petId) 
-        ? prev.filter(id => id !== petId)
-        : [...prev, petId]
+  function togglePet(id: number) {
+    setSelectedPetIds(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
     );
-  };
+  }
 
-  const canProceed = () => {
-    switch (currentStep) {
-      case "datetime": return !!selectedDate && !!selectedTimeSlot;
-      case "pets": return selectedPets.length > 0;
-      default: return true;
-    }
-  };
-
-  // DEFENSIVE: Loading state
-  if (providersLoading || petsLoading) {
+  // Loading state
+  if (walkerLoading || petsLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400 font-light">Loading booking information...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-slate-600 font-light">טוען את נתוני המוליך/ה...</p>
         </div>
       </div>
     );
   }
 
-  // DEFENSIVE: Invalid walker ID
-  if (!walkerIdNumber || isNaN(walkerIdNumber)) {
+  // Error state
+  if (walkerError || !walker) {
     return (
-      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-light mb-4 text-gray-900 dark:text-gray-100">Invalid Walker</h2>
-          <p className="text-gray-600 dark:text-gray-400 font-light mb-6">
-            The walker ID is not valid.
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="text-center max-w-md px-4">
+          <h2 className="text-2xl font-light mb-4 text-slate-900">לא נמצא/ה מוליך/ה</h2>
+          <p className="text-slate-600 font-light mb-6">
+            המוליך/ה לא זמינ/ה כרגע או שהקישור שגוי.
           </p>
-          <Button onClick={() => setLocation("/walk-my-pet")} className="bg-black dark:bg-white text-white dark:text-black font-light">
-            Back to Walkers
+          <Button onClick={() => setLocation("/walk-my-pet")} className="bg-blue-500 text-white font-light">
+            חזרה לרשימת מוליכים
           </Button>
         </div>
       </div>
     );
   }
-
-  // DEFENSIVE: Walker not found in provider list
-  if (!selectedWalker) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-light mb-4 text-gray-900 dark:text-gray-100">Walker Not Found</h2>
-          <p className="text-gray-600 dark:text-gray-400 font-light mb-6">
-            This walker is not currently available.
-          </p>
-          <Button onClick={() => setLocation("/walk-my-pet")} className="bg-black dark:bg-white text-white dark:text-black font-light">
-            Back to Walkers
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // DEFENSIVE: No pets available - use useEffect to prevent toast spam
-  useEffect(() => {
-    if (currentStep === 'pets' && !petsLoading && userPets.length === 0) {
-      toast({
-        title: "No Pets Found",
-        description: "Please add a pet to your profile before booking a walk.",
-        variant: "destructive",
-      });
-    }
-  }, [currentStep, petsLoading, userPets.length, toast]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      <div className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Button 
-            variant="ghost" 
-            className="mb-4 text-gray-600 dark:text-gray-400 font-light" 
-            onClick={() => setLocation("/walk-my-pet")} 
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-100">
+        <div className="max-w-3xl mx-auto px-4 py-6">
+          <Button
+            variant="ghost"
+            className="mb-4 text-slate-600 font-light"
+            onClick={() => setLocation("/walk-my-pet")}
             data-testid="button-back"
           >
             <ChevronLeft className="h-4 w-4 mr-2" />
-            Back to Walkers
+            חזרה למוליכים
           </Button>
-          
-          <h1 className="text-2xl font-light mb-6 text-gray-900 dark:text-gray-100" data-testid="page-title">
-            Book Walk with {selectedWalker.businessName || selectedWalker.displayName || 'Walker'}
-          </h1>
 
-          <div className="flex items-center justify-between max-w-4xl" data-testid="stepper-booking-flow">
-            {steps.map((step, index) => (
-              <div key={step} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <div 
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-light border-2 ${
-                      index <= currentStepIndex 
-                        ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white' 
-                        : 'bg-white dark:bg-black text-gray-400 dark:text-gray-600 border-gray-300 dark:border-gray-700'
-                    }`} 
-                    data-testid={`step-indicator-${index}`}
-                  >
-                    {index < currentStepIndex ? <Check className="h-5 w-5" /> : index + 1}
-                  </div>
-                  <span className="text-xs mt-2 text-gray-600 dark:text-gray-400 hidden sm:block capitalize font-light">
-                    {step === "datetime" ? "Date & Time" : step}
-                  </span>
-                </div>
-                {index < steps.length - 1 && (
-                  <div className={`h-0.5 flex-1 mx-2 ${
-                    index < currentStepIndex 
-                      ? 'bg-black dark:bg-white' 
-                      : 'bg-gray-200 dark:bg-gray-800'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
+          <h1 className="text-2xl font-light text-slate-900" data-testid="page-title">
+            הזמנת {walker.businessName || walker.displayName}
+          </h1>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            
-            {currentStep === "datetime" && (
-              <>
-                <Card className="p-6 bg-white dark:bg-black border border-gray-200 dark:border-gray-800 shadow-sm" data-testid="card-step-calendar">
-                  <h2 className="text-xl font-light mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                    <CalendarIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                    Select Date
-                  </h2>
-                  <Calendar 
-                    mode="single" 
-                    selected={selectedDate} 
-                    onSelect={setSelectedDate} 
-                    disabled={(date) => date < new Date()} 
-                    data-testid="calendar-date-picker"
-                    className="mx-auto"
+      {/* Main Content */}
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        
+        {/* Step 1: Details */}
+        {step === "details" && (
+          <>
+            {/* Walker Info Card */}
+            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <div className="flex items-center gap-3">
+                {walker.profilePictureUrl ? (
+                  <img
+                    src={walker.profilePictureUrl}
+                    alt={walker.businessName || walker.displayName}
+                    className="h-16 w-16 rounded-full object-cover border-2 border-blue-200"
                   />
-                </Card>
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-xl font-semibold text-blue-700">
+                    {(walker.businessName || walker.displayName || 'W').charAt(0)}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <div className="font-semibold text-slate-900">
+                    {walker.businessName || walker.displayName}
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    {walker.serviceArea || 'שירות הליכה'} · ⭐ {walker.rating?.toFixed(1) || '5.0'}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    {walker.yearsOfExperience || 0} שנות ניסיון
+                  </div>
+                </div>
+              </div>
+            </section>
 
-                <Card className="p-6 bg-white dark:bg-black border border-gray-200 dark:border-gray-800 shadow-sm" data-testid="card-step-time">
-                  <h2 className="text-xl font-light mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                    <Clock className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                    Choose Time
-                  </h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {timeSlots.map((slot) => (
+            {/* Pet Selection */}
+            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <div className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <PawPrint className="h-4 w-4 text-blue-500" />
+                כלבים להליכה
+              </div>
+              {pets.length === 0 ? (
+                <div className="text-sm text-slate-500 text-center py-4">
+                  אין כלבים. הוסף/י כלב לפרופיל שלך.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {pets.map((pet: any) => {
+                    const active = selectedPetIds.includes(pet.id);
+                    return (
                       <button
-                        key={slot}
-                        onClick={() => setSelectedTimeSlot(slot)}
-                        className={`p-3 rounded-sm border transition-all font-light ${
-                          selectedTimeSlot === slot
-                            ? 'border-black dark:border-white bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100'
-                            : 'border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400'
-                        }`}
-                        data-testid={`button-time-${slot}`}
-                      >
-                        {slot}
-                      </button>
-                    ))}
-                  </div>
-                </Card>
-              </>
-            )}
-
-            {currentStep === "pets" && (
-              <Card className="p-6 bg-white dark:bg-black border border-gray-200 dark:border-gray-800 shadow-sm" data-testid="card-step-pets">
-                <h2 className="text-xl font-light mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                  <PawPrint className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                  Select Pets
-                </h2>
-                {petsLoading ? (
-                  <div className="text-center py-8 text-gray-600 dark:text-gray-400 font-light">
-                    Loading your pets...
-                  </div>
-                ) : userPets.length === 0 ? (
-                  <div className="text-center py-8 text-gray-600 dark:text-gray-400 font-light">
-                    No pets found. Please add a pet to your profile first.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {userPets.map((pet: any) => (
-                      <div
                         key={pet.id}
-                        className="flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-800 rounded-sm"
+                        type="button"
+                        onClick={() => togglePet(pet.id)}
+                        className={`rounded-full px-4 py-2 text-sm transition-all ${
+                          active
+                            ? "bg-blue-500 text-white shadow-md"
+                            : "bg-white text-slate-700 border border-slate-200"
+                        }`}
+                        data-testid={`button-pet-${pet.id}`}
                       >
-                        <Checkbox
-                          id={String(pet.id)}
-                          checked={selectedPets.includes(Number(pet.id))}
-                          onCheckedChange={() => togglePet(Number(pet.id))}
-                          data-testid={`checkbox-pet-${pet.id}`}
-                        />
-                        <label
-                          htmlFor={String(pet.id)}
-                          className="flex-1 font-light text-gray-900 dark:text-gray-100 cursor-pointer"
-                        >
-                          {pet.name} ({pet.breed || pet.species || 'Dog'})
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            )}
+                        {pet.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
 
-            {currentStep === "review" && (
-              <Card className="p-6 bg-white dark:bg-black border border-gray-200 dark:border-gray-800 shadow-sm" data-testid="card-step-review">
-                <h2 className="text-xl font-light mb-4 flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                  <CreditCard className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                  Review & Payment
-                </h2>
-                
-                <div className="space-y-4 mb-6">
-                  <div className="border-b border-gray-200 dark:border-gray-800 pb-3">
-                    <div className="text-sm text-gray-600 dark:text-gray-400 font-light">Walker</div>
-                    <div className="font-light text-gray-900 dark:text-gray-100">
-                      {selectedWalker.businessName || selectedWalker.displayName}
-                    </div>
-                  </div>
-                  <div className="border-b border-gray-200 dark:border-gray-800 pb-3">
-                    <div className="text-sm text-gray-600 dark:text-gray-400 font-light">Date & Time</div>
-                    <div className="font-light text-gray-900 dark:text-gray-100">
-                      {selectedDate?.toLocaleDateString()} at {selectedTimeSlot}
-                    </div>
-                  </div>
-                  <div className="border-b border-gray-200 dark:border-gray-800 pb-3">
-                    <div className="text-sm text-gray-600 dark:text-gray-400 font-light">Pets ({selectedPets.length})</div>
-                    <div className="font-light text-gray-900 dark:text-gray-100">
-                      {selectedPets.map(id => userPets.find((p: any) => Number(p.id) === id)?.name).join(', ')}
-                    </div>
-                  </div>
-                  <div className="border-b border-gray-200 dark:border-gray-800 pb-3">
-                    <div className="text-sm text-gray-600 dark:text-gray-400 font-light">Total</div>
-                    <div className="text-xl font-light text-gray-900 dark:text-gray-100">
-                      ₪{selectedWalker.hourlyRate || 60}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-sm p-4">
-                  <div className="text-sm font-light text-gray-600 dark:text-gray-400 mb-2">
-                    Payment Method: Nayax Israel
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-500 font-light">
-                    Payment will be processed securely via Nayax. GPS tracking will be enabled during the walk.
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
-
-          <div className="lg:col-span-1">
-            <Card className="p-6 bg-white dark:bg-black border border-gray-200 dark:border-gray-800 shadow-sm sticky top-4">
-              <h3 className="font-light text-lg mb-4 text-gray-900 dark:text-gray-100">Booking Summary</h3>
-              <div className="space-y-3 text-sm">
-                <div className="border-b border-gray-200 dark:border-gray-800 pb-2">
-                  <div className="text-gray-600 dark:text-gray-400 font-light">Walker</div>
-                  <div className="text-gray-900 dark:text-gray-100 font-light">
-                    {selectedWalker.businessName || selectedWalker.displayName}
-                  </div>
-                </div>
-                {selectedDate && selectedTimeSlot && (
-                  <div className="border-b border-gray-200 dark:border-gray-800 pb-2">
-                    <div className="text-gray-600 dark:text-gray-400 font-light">Date & Time</div>
-                    <div className="text-gray-900 dark:text-gray-100 font-light">
-                      {selectedDate.toLocaleDateString()} at {selectedTimeSlot}
-                    </div>
-                  </div>
-                )}
-                {selectedPets.length > 0 && (
-                  <div className="border-b border-gray-200 dark:border-gray-800 pb-2">
-                    <div className="text-gray-600 dark:text-gray-400 font-light">Pets</div>
-                    <div className="text-gray-900 dark:text-gray-100 font-light">{selectedPets.length} selected</div>
-                  </div>
-                )}
-                <div className="pt-2">
-                  <div className="text-gray-600 dark:text-gray-400 font-light">Total</div>
-                  <div className="text-2xl font-light text-gray-900 dark:text-gray-100">
-                    ₪{selectedWalker.hourlyRate || 60}
-                  </div>
-                </div>
+            {/* Date & Time */}
+            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <div className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-500" />
+                תאריך ושעת התחלה
               </div>
-
-              <div className="mt-6 space-y-3">
-                {currentStep !== "datetime" && (
-                  <Button 
-                    variant="outline" 
-                    className="w-full border-gray-300 dark:border-gray-700 font-light" 
-                    onClick={handleBack}
-                    data-testid="button-back-step"
-                  >
-                    Back
-                  </Button>
-                )}
-                {currentStep !== "review" ? (
-                  <Button 
-                    className="w-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 font-light"
-                    onClick={handleNext}
-                    disabled={!canProceed()}
-                    data-testid="button-next-step"
-                  >
-                    Continue
-                  </Button>
-                ) : (
-                  <Button 
-                    className="w-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 font-light"
-                    onClick={handleConfirmBooking}
-                    data-testid="button-confirm-booking"
-                  >
-                    Confirm Booking
-                  </Button>
-                )}
+              <MobileDatePicker
+                value={selectedDate}
+                onChange={setSelectedDate}
+                minDate={new Date()}
+                includeTime={true}
+                label=""
+              />
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-sm text-slate-600">משך הליכה (דקות)</span>
+                <select
+                  value={duration}
+                  onChange={e => setDuration(Number(e.target.value))}
+                  className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  data-testid="select-duration"
+                >
+                  <option value={30}>30 דקות</option>
+                  <option value={60}>60 דקות</option>
+                  <option value={90}>90 דקות</option>
+                  <option value={120}>120 דקות</option>
+                </select>
               </div>
-            </Card>
+            </section>
+
+            {/* Notes */}
+            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+              <div className="mb-2 text-sm font-semibold text-slate-700">
+                הערות (אופציונלי)
+              </div>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                placeholder="התנהגות הכלב, רגישויות, מסלול מועדף, וכו׳"
+                data-testid="textarea-notes"
+              />
+            </section>
+
+            {/* Pricing Summary */}
+            <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
+              <div className="mb-2 flex items-center justify-between text-sm text-slate-700">
+                <span>סכום בסיס</span>
+                <span>₪{pricing.baseAmount.toFixed(2)}</span>
+              </div>
+              <div className="mb-2 flex items-center justify-between text-sm text-slate-700">
+                <span>עמלת פלטפורמה (15%)</span>
+                <span>₪{pricing.commission.toFixed(2)}</span>
+              </div>
+              <div className="mb-3 flex items-center justify-between text-sm text-slate-700">
+                <span>מע״מ על עמלה (18%)</span>
+                <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
+              </div>
+              <div className="pt-3 border-t border-blue-200 flex items-center justify-between">
+                <span className="font-semibold text-slate-900">סה״כ לחיוב</span>
+                <span className="text-2xl font-bold text-blue-600">
+                  ₪{pricing.totalCharged.toFixed(2)}
+                </span>
+              </div>
+              <div className="mt-3 text-[11px] text-slate-600 leading-relaxed">
+                <Shield className="h-3 w-3 inline mr-1 text-blue-500" />
+                החיוב מתבצע אך ורק דרך Nayax Israel. הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר למוליך/ה לאחר סיום ההליכה.
+              </div>
+            </div>
+
+            {/* Continue Button */}
+            <Button
+              className="w-full h-12 rounded-2xl bg-blue-500 text-white text-base font-semibold shadow-lg hover:bg-blue-600"
+              disabled={!canContinueDetails}
+              onClick={handleNextFromDetails}
+              data-testid="button-continue"
+            >
+              המשך לאישור
+            </Button>
+          </>
+        )}
+
+        {/* Step 2: Summary */}
+        {step === "summary" && (
+          <>
+            <h2 className="text-xl font-semibold mb-6 text-slate-900">סיכום הזמנה</h2>
+            
+            <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 text-sm space-y-2">
+              <div className="font-semibold text-slate-900">
+                {walker.businessName || walker.displayName}
+              </div>
+              <div className="text-slate-600">
+                תאריך: {selectedDate ? selectedDate.toLocaleString("he-IL") : "-"}
+              </div>
+              <div className="text-slate-600">
+                משך: {duration} דקות
+              </div>
+              <div className="text-slate-600">
+                כלבים: {pets.filter((p: any) => selectedPetIds.includes(p.id)).map((p: any) => p.name).join(", ")}
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/30 p-4">
+              <div className="mb-1 text-xs font-semibold text-slate-700">פירוט מחיר</div>
+              <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
+                <span>סכום בסיס</span>
+                <span>₪{pricing.baseAmount.toFixed(2)}</span>
+              </div>
+              <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
+                <span>עמלה + מע״מ</span>
+                <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-blue-200 flex items-center justify-between">
+                <span className="font-semibold text-slate-900">סה״כ</span>
+                <span className="text-xl font-bold text-blue-600">₪{pricing.totalCharged.toFixed(2)}</span>
+              </div>
+              <div className="mt-3 text-[10px] text-slate-600">
+                החיוב רק דרך Nayax Israel. אין גובים באמצעים אחרים.
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 h-12 rounded-2xl text-sm"
+                onClick={() => setStep("details")}
+                data-testid="button-back-summary"
+              >
+                חזרה
+              </Button>
+              <Button
+                className="flex-1 h-12 rounded-2xl bg-blue-500 text-white text-sm font-semibold shadow-lg hover:bg-blue-600"
+                onClick={handleConfirmBooking}
+                disabled={isSubmitting}
+                data-testid="button-confirm"
+              >
+                {isSubmitting ? "שולח..." : "אישור והמשך"}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Step 3: Confirmation */}
+        {step === "confirmation" && (
+          <div className="text-center py-12">
+            <div className="w-20 h-20 rounded-full bg-blue-100 mx-auto flex items-center justify-center mb-4">
+              <Check className="h-10 w-10 text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-semibold mb-3 text-slate-900">ההזמנה נקלטה בהצלחה!</h2>
+            <p className="text-slate-600 max-w-sm mx-auto mb-2">
+              המוליך/ה יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
+            </p>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
+              פרטי חיוב Nayax ומעקב GPS ישלחו בהודעה נפרדת.
+            </p>
+            <Button
+              className="rounded-2xl px-8 bg-blue-500 text-white shadow-lg hover:bg-blue-600"
+              onClick={() => setLocation("/dashboard")}
+              data-testid="button-dashboard"
+            >
+              חזרה ללוח הבקרה
+            </Button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
