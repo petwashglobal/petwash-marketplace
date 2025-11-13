@@ -226,48 +226,172 @@ export class PaymentGatewayService {
    * Handle Nayax Webhook (Real-time Transaction Updates)
    * 
    * Nayax sends webhooks for:
-   * - Terminal swipes
-   * - Payment status changes
-   * - Refunds
-   * - Settlements
+   * - payment.success: Payment completed successfully (web/terminal)
+   * - payment.failed: Payment failed/declined
+   * - payment.refunded: Refund processed
+   * - transaction.completed: Terminal swipe completed
+   * - settlement.completed: Daily settlement report
    */
   static async handleNayaxWebhook(payload: WebhookPayload): Promise<{ processed: boolean; error?: string }> {
     try {
       logger.info('[PaymentGateway] Received Nayax webhook', {
         eventType: payload.eventType,
         transactionId: payload.transactionId,
+        amount: payload.amount,
+        status: payload.status,
       });
 
       switch (payload.eventType) {
         case 'payment.success':
         case 'transaction.completed':
           if (payload.terminalId) {
-            // Terminal payment
+            // Terminal payment (K9000 wash stations)
             await this.processTerminalPayment(payload);
+          } else {
+            // Marketplace/web payment success
+            await this.handleMarketplacePaymentSuccess(payload);
           }
-          break;
+          return { processed: true };
+        
+        case 'payment.failed':
+          await this.handleMarketplacePaymentFailed(payload);
+          return { processed: true };
         
         case 'payment.refunded':
           await this.handleRefund(payload);
-          break;
+          return { processed: true };
         
         case 'settlement.completed':
           await this.handleSettlement(payload);
-          break;
+          return { processed: true };
         
         default:
           logger.warn('[PaymentGateway] Unknown webhook event type', {
             eventType: payload.eventType,
           });
+          return { processed: true }; // Still return success to prevent retries
       }
-
-      return { processed: true };
     } catch (error) {
       logger.error('[PaymentGateway] Webhook processing error', { error });
       return {
         processed: false,
         error: error instanceof Error ? error.message : 'Webhook failed',
       };
+    }
+  }
+
+  /**
+   * Handle Marketplace Payment Success
+   * Updates payment_intents status and triggers escrow creation
+   */
+  private static async handleMarketplacePaymentSuccess(payload: WebhookPayload): Promise<void> {
+    try {
+      logger.info('[PaymentGateway] Processing marketplace payment success', {
+        transactionId: payload.transactionId,
+        amount: payload.amount,
+      });
+
+      // Find payment intent by nayaxAuthorizationId or transactionId
+      const [paymentIntent] = await db.select()
+        .from(paymentIntents)
+        .where(eq(paymentIntents.nayaxAuthorizationId, payload.transactionId))
+        .limit(1);
+
+      if (!paymentIntent) {
+        logger.error('[PaymentGateway] Payment intent not found', {
+          transactionId: payload.transactionId,
+        });
+        throw new Error(`Payment intent not found for transaction ${payload.transactionId}`);
+      }
+
+      // Update status to succeeded
+      await db.update(paymentIntents)
+        .set({
+          status: 'succeeded',
+          nayaxCaptureId: payload.transactionId,
+          transactionId: payload.transactionId,
+          updatedAt: new Date(),
+        })
+        .where(eq(paymentIntents.id, paymentIntent.id));
+
+      logger.info('[PaymentGateway] Payment intent status updated to succeeded', {
+        paymentIntentId: paymentIntent.id,
+        bookingId: paymentIntent.bookingId,
+      });
+
+      // Trigger post-payment actions (will implement escrow integration next)
+      await this.onPaymentSucceeded(paymentIntent);
+
+    } catch (error) {
+      logger.error('[PaymentGateway] Marketplace payment success handler error', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Handle Marketplace Payment Failed
+   * Updates payment_intents status to failed
+   */
+  private static async handleMarketplacePaymentFailed(payload: WebhookPayload): Promise<void> {
+    try {
+      logger.info('[PaymentGateway] Processing marketplace payment failed', {
+        transactionId: payload.transactionId,
+        amount: payload.amount,
+      });
+
+      // Find payment intent
+      const [paymentIntent] = await db.select()
+        .from(paymentIntents)
+        .where(eq(paymentIntents.nayaxAuthorizationId, payload.transactionId))
+        .limit(1);
+
+      if (!paymentIntent) {
+        logger.warn('[PaymentGateway] Payment intent not found for failed payment', {
+          transactionId: payload.transactionId,
+        });
+        return; // Not critical if not found
+      }
+
+      // Update status to failed
+      await db.update(paymentIntents)
+        .set({
+          status: 'failed',
+          transactionId: payload.transactionId,
+          updatedAt: new Date(),
+        })
+        .where(eq(paymentIntents.id, paymentIntent.id));
+
+      logger.info('[PaymentGateway] Payment intent status updated to failed', {
+        paymentIntentId: paymentIntent.id,
+        bookingId: paymentIntent.bookingId,
+      });
+
+    } catch (error) {
+      logger.error('[PaymentGateway] Marketplace payment failed handler error', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Post-payment success actions
+   * - Update booking status to confirmed
+   * - Create escrow record (implemented next)
+   * - Send confirmation notifications
+   */
+  private static async onPaymentSucceeded(paymentIntent: any): Promise<void> {
+    try {
+      logger.info('[PaymentGateway] Running post-payment actions', {
+        paymentIntentId: paymentIntent.id,
+        bookingId: paymentIntent.bookingId,
+      });
+
+      // TODO: Update booking status (will implement in booking-4)
+      // TODO: Create escrow record (will implement in booking-4)
+      // TODO: Send confirmation email/notification
+
+    } catch (error) {
+      logger.error('[PaymentGateway] Post-payment actions error', { error });
+      // Don't throw - payment succeeded, these are secondary actions
     }
   }
 
