@@ -308,17 +308,25 @@ router.get("/availability", async (req, res) => {
 
         return true;
       })
-      .map((slot) => ({
-        id: slot.id,
-        providerId: slot.providerId,
-        platform: slot.platformId,
-        start: slot.startTime.toISOString(),
-        end: slot.endTime.toISOString(),
-        status: slot.status === 'held' && slot.lockExpiresAt && new Date(slot.lockExpiresAt) > now
-          ? 'HELD'
-          : 'AVAILABLE',
-        timezone: slot.timezone || 'Asia/Jerusalem',
-      }));
+      .map((slot) => {
+        // Determine status with proper casing
+        let status = 'AVAILABLE';
+        if (slot.status === 'booked') {
+          status = 'BOOKED';
+        } else if (slot.status === 'held' && slot.lockExpiresAt && new Date(slot.lockExpiresAt) > now) {
+          status = 'HELD';
+        }
+        
+        return {
+          id: slot.id,
+          providerId: slot.providerId,
+          platform: slot.platformId,
+          start: slot.startTime.toISOString(),
+          end: slot.endTime.toISOString(),
+          status,
+          timezone: slot.timezone || 'Asia/Jerusalem',
+        };
+      });
 
     return res.status(200).json({
       success: true,
@@ -360,13 +368,16 @@ router.post("/lock", requireAuth, async (req, res) => {
       return res.status(400).json(result);
     }
 
+    // Calculate seconds remaining
+    const secondsLeft = result.expiresAt
+      ? Math.max(0, Math.floor((result.expiresAt.getTime() - Date.now()) / 1000))
+      : 0;
+    
     return res.status(200).json({
       success: true,
       lockToken: result.lockToken,
-      expiresAt: result.expiresAt,
-      secondsLeft: result.expiresAt
-        ? BookingLockService.getRemainingTime(result.expiresAt)
-        : 0,
+      expiresAt: result.expiresAt?.toISOString(),
+      secondsLeft,
       message: result.message,
     });
   } catch (error: any) {
