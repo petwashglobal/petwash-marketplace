@@ -146,7 +146,7 @@ export function ProviderCard({ provider, onClick }: ProviderCardProps) {
 
   return (
     <Link
-      href={`/marketplace/${provider.platform}/providers/${provider.kind === 'walker' ? provider.walkerId : provider.id}`}
+      href={`/marketplace/${provider.platform}/${provider.kind === 'walker' ? provider.walkerId : provider.id}`}
     >
       <Card
         className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800"

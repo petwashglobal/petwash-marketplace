@@ -44,6 +44,7 @@ const SimpleSignIn = lazy(() => import("@/pages/SimpleSignIn"));
 const SignUp = lazy(() => import("@/pages/SignUp"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Marketplace = lazy(() => import("@/pages/Marketplace"));
+const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
 const Verify = lazy(() => import("@/pages/Verify"));
@@ -393,6 +394,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <Marketplace />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* UNIFIED MARKETPLACE - Provider Detail Pages (All Platforms) */}
+        <Route path="/marketplace/:platform/:id">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <ProviderDetail />
             </Suspense>
           )}
         </Route>
