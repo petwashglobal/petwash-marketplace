@@ -21,7 +21,7 @@ import { NayaxSitterMarketplaceService } from "./NayaxSitterMarketplaceService";
 import { NayaxWalkMarketplaceService } from "./NayaxWalkMarketplaceService";
 import { K9000TransactionService, type K9000TransactionRequest } from "./K9000TransactionService";
 import { db } from "../db";
-import { paymentIntents } from "@shared/schema";
+import { paymentIntents, bookings, superAppPayouts } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
@@ -375,7 +375,7 @@ export class PaymentGatewayService {
   /**
    * Post-payment success actions
    * - Update booking status to confirmed
-   * - Create escrow record (implemented next)
+   * - Create escrow record (72hr hold for provider payouts)
    * - Send confirmation notifications
    */
   private static async onPaymentSucceeded(paymentIntent: any): Promise<void> {
@@ -385,13 +385,93 @@ export class PaymentGatewayService {
         bookingId: paymentIntent.bookingId,
       });
 
-      // TODO: Update booking status (will implement in booking-4)
-      // TODO: Create escrow record (will implement in booking-4)
-      // TODO: Send confirmation email/notification
+      // STEP 1: Update booking status to 'confirmed'
+      const [booking] = await db.select()
+        .from(bookings)
+        .where(eq(bookings.id, paymentIntent.bookingId))
+        .limit(1);
+
+      if (!booking) {
+        logger.error('[PaymentGateway] Booking not found', {
+          bookingId: paymentIntent.bookingId,
+        });
+        return;
+      }
+
+      await db.update(bookings)
+        .set({
+          status: 'confirmed',
+          paymentStatus: 'completed',
+          paymentIntentId: paymentIntent.id,
+          confirmedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, paymentIntent.bookingId));
+
+      logger.info('[PaymentGateway] Booking status updated to confirmed', {
+        bookingId: booking.id,
+      });
+
+      // STEP 2: Create escrow/payout record (72hr hold)
+      if (booking.providerId) {
+        await this.createEscrowPayout(booking, paymentIntent);
+      } else {
+        logger.info('[PaymentGateway] No provider - skipping escrow (K9000 wash or self-service)', {
+          bookingId: booking.id,
+        });
+      }
+
+      // STEP 3: Send confirmation notifications
+      // TODO: Implement notification service integration
 
     } catch (error) {
       logger.error('[PaymentGateway] Post-payment actions error', { error });
       // Don't throw - payment succeeded, these are secondary actions
+    }
+  }
+
+  /**
+   * Create escrow/payout record for marketplace bookings
+   * Holds payment for 72 hours before releasing to provider
+   */
+  private static async createEscrowPayout(booking: any, paymentIntent: any): Promise<void> {
+    try {
+      // Calculate platform fee and net payout
+      const platformFeePercent = 15; // 15% platform fee for marketplaces
+      const totalAmount = parseFloat(booking.total);
+      const platformFee = (totalAmount * platformFeePercent) / 100;
+      const netAmount = totalAmount - platformFee;
+
+      // Calculate escrow release date (72 hours from now)
+      const escrowReleaseDate = new Date();
+      escrowReleaseDate.setHours(escrowReleaseDate.getHours() + 72);
+
+      // Create payout record in 'in_escrow' status
+      await db.insert(superAppPayouts).values({
+        id: nanoid(),
+        providerId: booking.providerId,
+        bookingId: booking.id,
+        amount: booking.total,
+        platformFee: platformFee.toFixed(2),
+        netAmount: netAmount.toFixed(2),
+        currency: 'ILS',
+        status: 'in_escrow',
+        escrowReleaseDate,
+        scheduledFor: escrowReleaseDate,
+      });
+
+      logger.info('[PaymentGateway] Escrow payout created', {
+        bookingId: booking.id,
+        providerId: booking.providerId,
+        amount: booking.total,
+        platformFee: platformFee.toFixed(2),
+        netAmount: netAmount.toFixed(2),
+        escrowReleaseDate,
+      });
+
+    } catch (error) {
+      logger.error('[PaymentGateway] Error creating escrow payout', { error });
+      throw error;
     }
   }
 

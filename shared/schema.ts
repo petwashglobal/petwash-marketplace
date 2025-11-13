@@ -6707,18 +6707,26 @@ export const superAppPayments = pgTable("super_app_payments", {
   statusIdx: index("super_app_payment_status_idx").on(table.status),
 }));
 
-// ===== PAYOUTS TABLE =====
+// ===== PAYOUTS TABLE - ISRAELI BANK TRANSFER ONLY (NO STRIPE) =====
 export const superAppPayouts = pgTable("super_app_payouts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   providerId: integer("provider_id").references(() => providers.id).notNull(),
   bookingId: varchar("booking_id").references(() => bookings.id),
-  stripePayoutId: varchar("stripe_payout_id"),
-  stripeTransferId: varchar("stripe_transfer_id"),
+  
+  // Israeli bank transfer fields (NO STRIPE EVER)
+  bankTransferReference: varchar("bank_transfer_reference"), // Israeli bank ACH reference number
+  providerBankIban: varchar("provider_bank_iban"), // Provider's Israeli bank IBAN
+  providerBankName: varchar("provider_bank_name"), // Bank name (e.g., Bank Hapoalim, Leumi)
+  
+  // Payout amounts
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   platformFee: decimal("platform_fee", { precision: 12, scale: 2 }).notNull(),
   netAmount: decimal("net_amount", { precision: 12, scale: 2 }).notNull(),
   currency: varchar("currency").default("ILS"),
-  status: varchar("status").default("pending"),
+  
+  // Status and processing
+  status: varchar("status").default("pending"), // pending | in_escrow | released | processing | completed | failed
+  escrowReleaseDate: timestamp("escrow_release_date"), // 72 hours after booking completion
   failureReason: text("failure_reason"),
   scheduledFor: timestamp("scheduled_for"),
   processedAt: timestamp("processed_at"),
