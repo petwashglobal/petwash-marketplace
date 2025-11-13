@@ -251,4 +251,85 @@ router.post("/:bookingId/cancel", requireAuth, async (req, res) => {
   }
 });
 
+// =================== AVAILABILITY-BASED BOOKING SYSTEM (2025) ===================
+// 5-minute payment lock system for marketplace bookings
+
+import { BookingLockService } from "../services/BookingLockService";
+
+/**
+ * POST /api/bookings/lock
+ * Acquire 5-minute lock on availability slot
+ */
+router.post("/lock", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.uid;
+    const { slotId, lockDurationSeconds } = req.body;
+
+    if (!slotId || typeof slotId !== 'number') {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid slotId is required',
+      });
+    }
+
+    const result = await BookingLockService.acquireLock({
+      slotId,
+      userId,
+      lockDurationSeconds,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json({
+      success: true,
+      lockToken: result.lockToken,
+      expiresAt: result.expiresAt,
+      secondsLeft: result.expiresAt
+        ? BookingLockService.getRemainingTime(result.expiresAt)
+        : 0,
+      message: result.message,
+    });
+  } catch (error: any) {
+    console.error('[Bookings] Lock error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * POST /api/bookings/release
+ * Manually release a lock
+ */
+router.post("/release", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.uid;
+    const { lockToken } = req.body;
+
+    if (!lockToken || typeof lockToken !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid lockToken is required',
+      });
+    }
+
+    const result = await BookingLockService.releaseLock(lockToken, userId);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('[Bookings] Release error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
 export default router;
