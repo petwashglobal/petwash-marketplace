@@ -342,48 +342,33 @@ export class PaymentGatewayService {
     amountCents: number;
     currency: string;
     status: string;
+    userId?: string;
     stationId?: string;
     metadata?: any;
   }): Promise<void> {
-    // Convert cents to decimal
-    const authorizedAmount = (params.amountCents / 100).toFixed(2);
+    // Israel production version - amountCents (integer), no VAT/commission here
     
-    // Calculate VAT (17% included)
-    const vatAmount = (parseFloat(authorizedAmount) / 1.17 * 0.17).toFixed(2);
-    
-    // Platform commission (10% of net)
-    const netAmount = parseFloat(authorizedAmount) - parseFloat(vatAmount);
-    const platformCommission = (netAmount * 0.10).toFixed(2);
-    const operatorPayout = (netAmount - parseFloat(platformCommission)).toFixed(2);
-
     await db.insert(paymentIntents).values({
       id: nanoid(),
-      bookingId: params.bookingId || params.transactionId,
+      bookingId: params.bookingId || `TERMINAL_${params.transactionId}`,
+      platformId: 'K9000_WASH',
+      userId: params.userId || 'SYSTEM',
       
-      // Nayax fields + transaction ID
+      // Nayax transaction IDs
       nayaxCaptureId: params.transactionId,
-      transactionId: params.transactionId, // ✅ Unified ledger ID for refunds/settlements
-      nayaxTerminalId: params.stationId || null,
+      transactionId: params.transactionId,
       
-      // Payment amounts
-      authorizedAmount,
-      capturedAmount: params.status === 'captured' ? authorizedAmount : null,
-      currency: params.currency,
+      // Payment amount (INTEGER agorot)
+      amountCents: params.amountCents,
       
-      // Payment breakdown
-      platformCommission,
-      operatorPayout,
-      vat: vatAmount,
+      // Currency
+      currency: params.currency || 'ILS',
       
-      // Audit fields (required by schema)
-      customerId: 'SYSTEM', // Terminal payments don't have upfront customer
-      platform: 'k9000_wash', // Terminal payments are K9000 only
+      // Status
+      status: params.status === 'captured' ? 'succeeded' : params.status,
       
-      // Status & timestamps
-      status: params.status || 'captured',
-      capturedAt: params.status === 'captured' ? new Date() : null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      // Payment method
+      paymentMethod: 'card',
     });
   }
 
@@ -424,125 +409,97 @@ export class PaymentGatewayService {
     return transactions;
   }
 
-  // ==================== BOOKING-2: CREATE PAYMENT INTENT ====================
+  // ==================== BOOKING-2: CREATE PAYMENT INTENT (ISRAEL PRODUCTION) ====================
 
   /**
-   * Create Payment Intent for Booking
+   * Create Payment Intent for Booking - ISRAEL PRODUCTION VERSION
    * 
-   * BOOKING-2 CONTRACT:
-   * - Nayax Israel exclusive gateway
-   * - 17% VAT calculation (included in price)
-   * - Multi-currency support (ILS, USD, EUR)
-   * - Returns PaymentIntent with Nayax authorization ID
+   * - Currency: ILS only
+   * - Gateway: Nayax Israel exclusive
+   * - Amounts: INTEGER agorot (cents)
+   * - VAT: Not calculated here (already included in booking total)
    * 
-   * @param input CreatePaymentIntentInput from petwashGlobal.ts
-   * @returns PaymentIntent with NAYAX gateway session
+   * @param input CreatePaymentIntentInput
+   * @returns PaymentIntent with Nayax authorization ID
    */
   static async createPaymentIntent(input: {
     bookingId: string;
-    customerId: string;
+    userId: string;
     platformId: string;
     amountCents: number;
-    currency: string;
-    deviceType: string;
-    metadata?: Record<string, any>;
+    providerId?: string;
+    paymentMethod?: string;
   }): Promise<{
+    success: true;
     id: string;
     bookingId: string;
     status: string;
-    gateway: string;
     nayaxAuthorizationId: string;
-    authorizedAmount: string;
+    amountCents: number;
     currency: string;
-    vat: string;
-    vatPercent: number;
     createdAt: Date | null;
+  } | {
+    success: false;
+    error: string;
   }> {
     try {
-      // VALIDATION: Currency must be supported
-      const supportedCurrencies = ['ILS', 'USD', 'EUR'];
-      if (!supportedCurrencies.includes(input.currency)) {
-        throw new Error(`Unsupported currency: ${input.currency}. Supported: ${supportedCurrencies.join(', ')}`);
+      // VALIDATION: Amount must be positive
+      if (input.amountCents <= 0) {
+        return {
+          success: false,
+          error: 'Amount must be greater than zero'
+        };
       }
 
       logger.info('[PaymentGateway] Creating payment intent', {
         bookingId: input.bookingId,
-        platform: input.platformId,
+        platformId: input.platformId,
         amountCents: input.amountCents,
-        currency: input.currency,
       });
 
-      // Convert cents to decimal amount (e.g., 11700 cents = 117.00 ILS)
-      const authorizedAmount = (input.amountCents / 100).toFixed(2);
-
-      // VAT CALCULATION (17% included in price)
-      // If price is 117.00 ILS, then:
-      // - VAT = 117.00 / 1.17 * 0.17 = 17.00 ILS
-      // - Net = 117.00 - 17.00 = 100.00 ILS
-      const vatPercent = 17;
-      const vatAmount = (parseFloat(authorizedAmount) / (1 + vatPercent / 100) * (vatPercent / 100)).toFixed(2);
-
-      // Platform commission (10% of net amount for marketplaces)
-      const netAmount = parseFloat(authorizedAmount) - parseFloat(vatAmount);
-      const platformCommission = (netAmount * 0.10).toFixed(2);
-      const operatorPayout = (netAmount - parseFloat(platformCommission)).toFixed(2);
-
-      // Generate NAYAX authorization ID (in real implementation, this would call Nayax API)
+      // Generate NAYAX authorization ID (mock - real implementation would call Nayax API)
       const nayaxAuthorizationId = `NAYAX_AUTH_${input.platformId}_${nanoid(16)}`;
 
-      // Create payment intent record using correct schema
+      // Create payment intent record - SIMPLE ISRAEL VERSION
       const [paymentIntent] = await db.insert(paymentIntents).values({
         id: nanoid(),
         bookingId: input.bookingId,
+        platformId: input.platformId,
+        userId: input.userId,
+        providerId: input.providerId || null,
         
-        // Nayax fields + transaction ID
+        // Nayax fields
         nayaxAuthorizationId,
-        transactionId: nayaxAuthorizationId, // Unified ledger ID (same as auth ID until captured)
-        nayaxTerminalId: input.metadata?.terminalId || null,
+        transactionId: nayaxAuthorizationId, // Same as auth ID until captured
         
-        // Payment amounts (DECIMAL format, not cents)
-        authorizedAmount,
-        currency: input.currency,
+        // Payment amount (INTEGER agorot)
+        amountCents: input.amountCents,
         
-        // Payment breakdown
-        platformCommission,
-        operatorPayout,
-        vat: vatAmount,
-        
-        // Audit fields
-        customerId: input.customerId,
-        platform: input.platformId,
+        // Currency (Israel only)
+        currency: 'ILS',
         
         // Status
-        status: 'pending',
+        status: 'created',
         
-        // Timestamps
-        authorizedAt: new Date(),
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
-        
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        // Payment method
+        paymentMethod: input.paymentMethod || 'card',
       }).returning();
 
       logger.info('[PaymentGateway] Payment intent created', {
-        paymentIntentId: paymentIntent.id,
+        id: paymentIntent.id,
         bookingId: input.bookingId,
         nayaxAuthorizationId,
-        authorizedAmount,
-        vat: vatAmount,
-        currency: input.currency,
+        amountCents: input.amountCents,
       });
 
       return {
+        success: true,
         id: paymentIntent.id,
         bookingId: paymentIntent.bookingId,
         status: paymentIntent.status,
-        gateway: 'NAYAX',
         nayaxAuthorizationId,
-        authorizedAmount,
-        currency: input.currency,
-        vat: vatAmount,
-        vatPercent,
+        amountCents: paymentIntent.amountCents,
+        currency: paymentIntent.currency,
         createdAt: paymentIntent.createdAt,
       };
     } catch (error) {
@@ -550,7 +507,10 @@ export class PaymentGatewayService {
         error: error instanceof Error ? error.message : 'Unknown error',
         bookingId: input.bookingId,
       });
-      throw error;
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create payment intent'
+      };
     }
   }
 

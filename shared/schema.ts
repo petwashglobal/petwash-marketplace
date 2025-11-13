@@ -6221,58 +6221,45 @@ export const operatorPresence = pgTable("operator_presence", {
   lastActiveIdx: index("idx_operator_presence_last_active").on(table.lastActiveAt),
 }));
 
+// ISRAEL PRODUCTION SCHEMA - amountCents (integer), ILS-only, Nayax-only
 export const paymentIntents = pgTable("payment_intents", {
+  // Primary fields
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   bookingId: varchar("booking_id").notNull(),
-  jobOfferId: varchar("job_offer_id").references(() => jobOffers.id),
+  platformId: varchar("platform_id", { length: 50 }).notNull(), // K9000_WASH, WALK_MY_PET, etc
+  userId: varchar("user_id").notNull(), // Customer Firebase UID
+  providerId: varchar("provider_id"), // Provider ID for marketplace bookings
   
-  // Nayax Payment Details
-  nayaxAuthorizationId: varchar("nayax_authorization_id"), // Nayax pre-auth transaction ID
-  nayaxCaptureId: varchar("nayax_capture_id"), // Nayax capture transaction ID
-  nayaxTerminalId: varchar("nayax_terminal_id"),
-  transactionId: varchar("transaction_id"), // Unified ledger transaction ID for refunds/settlements
+  // Nayax transaction IDs
+  transactionId: varchar("transaction_id"), // Nayax transaction ID (for refunds/webhooks)
+  nayaxAuthorizationId: varchar("nayax_authorization_id"),
+  nayaxCaptureId: varchar("nayax_capture_id"),
   
-  // Payment Amounts
-  authorizedAmount: decimal("authorized_amount", { precision: 10, scale: 2 }).notNull(),
-  capturedAmount: decimal("captured_amount", { precision: 10, scale: 2 }),
-  refundedAmount: decimal("refunded_amount", { precision: 10, scale: 2 }).default("0"),
-  currency: varchar("currency", { length: 10 }).default("ILS").notNull(),
+  // Payment amounts (INTEGER - agorot/cents)
+  amountCents: integer("amount_cents").notNull(), // Total amount in agorot (ILS cents)
   
-  // Payment Breakdown (Marketplace model)
-  platformCommission: decimal("platform_commission", { precision: 10, scale: 2 }).notNull(), // Pet Wash cut
-  operatorPayout: decimal("operator_payout", { precision: 10, scale: 2 }).notNull(), // What operator gets
-  vat: decimal("vat", { precision: 10, scale: 2 }).notNull(),
+  // Currency (Israel only for now)
+  currency: varchar("currency", { length: 3 }).default("ILS").notNull(),
   
-  // Payment Status
-  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, authorized, captured, refunded, failed
+  // Status (created, pending, succeeded, failed, voided, refunded)
+  status: varchar("status", { length: 20 }).default("created").notNull(),
   
-  // Timestamps (Critical for Nayax reconciliation)
-  authorizedAt: timestamp("authorized_at"),
-  capturedAt: timestamp("captured_at"),
-  refundedAt: timestamp("refunded_at"),
-  expiresAt: timestamp("expires_at"), // Authorization expiry (typically 7-30 days)
+  // Payment method
+  paymentMethod: varchar("payment_method", { length: 50 }), // card, apple_pay, google_pay
   
-  // Audit & Compliance
-  customerId: varchar("customer_id").notNull(),
-  operatorId: varchar("operator_id"),
-  platform: varchar("platform", { length: 50 }).notNull(),
-  paymentMethod: varchar("payment_method", { length: 100 }), // credit_card, apple_pay, google_pay
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
   
-  // Error Handling
+  // Error handling
   errorCode: varchar("error_code"),
   errorMessage: text("error_message"),
-  
-  // Metadata
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   bookingIdx: index("idx_payment_intents_booking").on(table.bookingId),
-  jobOfferIdx: index("idx_payment_intents_job_offer").on(table.jobOfferId),
+  platformIdx: index("idx_payment_intents_platform").on(table.platformId),
+  userIdx: index("idx_payment_intents_user").on(table.userId),
   statusIdx: index("idx_payment_intents_status").on(table.status),
-  nayaxAuthIdx: index("idx_payment_intents_nayax_auth").on(table.nayaxAuthorizationId),
-  customerIdx: index("idx_payment_intents_customer").on(table.customerId),
-  operatorIdx: index("idx_payment_intents_operator").on(table.operatorId),
+  transactionIdx: index("idx_payment_intents_transaction").on(table.transactionId),
 }));
 
 // Zod Schemas
