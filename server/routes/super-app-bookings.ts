@@ -340,13 +340,51 @@ router.get(
 
       const platformId = req.platformContext.platformId;
 
-      // TODO: Fetch provider record to get providerId
-      // For now, return error asking to set up provider account
+      // SECURITY: Fetch provider record to verify user is a provider and get providerId
+      const { db } = await import('../db');
+      const { providers } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+
+      const providerRecords = await db
+        .select()
+        .from(providers)
+        .where(
+          and(
+            eq(providers.userId, userId),
+            eq(providers.platformId, platformId)
+          )
+        );
+
+      if (providerRecords.length === 0) {
+        return res.status(404).json({ 
+          error: 'Provider account not found',
+          message: 'You need to set up a provider account for this platform first'
+        });
+      }
+
+      const provider = providerRecords[0];
+
+      // Parse query filters
+      const filters: any = { 
+        platformId,
+        providerId: provider.id
+      };
       
-      res.status(501).json({ 
-        error: 'Provider bookings endpoint not fully implemented',
-        message: 'Provider account linkage required'
-      });
+      if (req.query.status) {
+        filters.status = req.query.status;
+      }
+
+      if (req.query.fromDate) {
+        filters.fromDate = new Date(req.query.fromDate);
+      }
+
+      if (req.query.toDate) {
+        filters.toDate = new Date(req.query.toDate);
+      }
+
+      const bookings = await bookingService.getProviderBookings(provider.id, filters);
+
+      res.json(bookings);
     } catch (error: any) {
       logger.error('Failed to fetch provider bookings', {
         error: error.message,
@@ -395,6 +433,46 @@ router.get(
 
       res.status(500).json({ 
         error: 'Failed to fetch stations'
+      });
+    }
+  }
+);
+
+// GET /api/platforms/:platformId/providers - Get providers for marketplace platforms
+router.get(
+  '/:platformId/providers',
+  requirePlatformContext,
+  apiLimiter,
+  async (req: any, res: any) => {
+    try {
+      const platformId = req.platformContext.platformId;
+
+      // Only marketplace platforms have providers
+      const marketplacePlatforms = ['walk_my_pet', 'sitter_suite', 'pettrek', 'groomers'];
+      if (!marketplacePlatforms.includes(platformId)) {
+        return res.status(404).json({ 
+          error: 'Providers not available for this platform' 
+        });
+      }
+
+      const { db } = await import('../db');
+      const { providers } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      const providerList = await db
+        .select()
+        .from(providers)
+        .where(eq(providers.platformId, platformId));
+
+      res.json(providerList);
+    } catch (error: any) {
+      logger.error('Failed to fetch providers', {
+        error: error.message,
+        platformId: req.platformContext?.platformId
+      });
+
+      res.status(500).json({ 
+        error: 'Failed to fetch providers'
       });
     }
   }
