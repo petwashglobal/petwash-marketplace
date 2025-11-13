@@ -402,7 +402,7 @@ export class PaymentGatewayService {
   static async getTransactionHistory(userId: string, limit = 50): Promise<any[]> {
     const transactions = await db.select()
       .from(paymentIntents)
-      .where(eq(paymentIntents.metadata, sql`jsonb_build_object('customerId', ${userId})`))
+      .where(eq(paymentIntents.userId, userId))
       .limit(limit)
       .orderBy(sql`${paymentIntents.createdAt} DESC`);
 
