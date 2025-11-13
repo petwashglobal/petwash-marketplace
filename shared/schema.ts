@@ -6230,6 +6230,7 @@ export const paymentIntents = pgTable("payment_intents", {
   nayaxAuthorizationId: varchar("nayax_authorization_id"), // Nayax pre-auth transaction ID
   nayaxCaptureId: varchar("nayax_capture_id"), // Nayax capture transaction ID
   nayaxTerminalId: varchar("nayax_terminal_id"),
+  transactionId: varchar("transaction_id"), // Unified ledger transaction ID for refunds/settlements
   
   // Payment Amounts
   authorizedAmount: decimal("authorized_amount", { precision: 10, scale: 2 }).notNull(),

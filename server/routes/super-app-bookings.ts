@@ -61,6 +61,12 @@ const createBookingSchema = z.object({
   platformData: z.any().optional()
 });
 
+// Payment intent creation schema validation
+const createPaymentIntentSchema = z.object({
+  amountCents: z.number().int().positive().optional(), // Optional - defaults to booking total
+  deviceType: z.enum(['WEB', 'IOS', 'ANDROID']).optional().default('WEB'),
+});
+
 // POST /api/platforms/:platformId/bookings - Create booking
 router.post(
   '/:platformId/bookings',
@@ -653,6 +659,241 @@ router.post(
 
       res.status(400).json({ 
         error: error.message || 'Failed to cancel booking'
+      });
+    }
+  }
+);
+
+// ============================================================================
+// BOOKING-2: PAYMENT INTENT ROUTES - NAYAX EXCLUSIVE
+// ============================================================================
+
+// POST /api/platforms/:platformId/bookings/:bookingId/payment-intents - Create payment intent
+router.post(
+  '/:platformId/bookings/:bookingId/payment-intents',
+  requireAuth,
+  requirePlatformContext,
+  apiLimiter,
+  async (req: any, res: any) => {
+    try {
+      const userId = req.user?.uid;
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const platformId = req.platformContext.platformId;
+      const bookingId = req.params.bookingId;
+
+      // VALIDATION: Verify booking exists
+      const existingBooking = await bookingService.getBookingById(bookingId);
+
+      if (!existingBooking) {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      // SECURITY: Verify platform isolation
+      if (existingBooking.platformId !== platformId) {
+        return res.status(403).json({ error: 'Booking does not belong to this platform' });
+      }
+
+      // SECURITY: Verify user ownership
+      const isCustomer = existingBooking.userId === userId;
+      
+      if (!isCustomer) {
+        return res.status(403).json({ error: 'Unauthorized to create payment intent for this booking' });
+      }
+
+      // VALIDATION: Check booking state (only draft/pending_payment can create intent)
+      const allowedStatuses = ['draft', 'pending_payment'];
+      if (!allowedStatuses.includes(existingBooking.status)) {
+        return res.status(409).json({ 
+          error: `Cannot create payment intent for booking with status ${existingBooking.status}`,
+          allowedStatuses 
+        });
+      }
+
+      // VALIDATION: Check for existing active payment intent (idempotency)
+      const { db } = await import('../db');
+      const { paymentIntents } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+
+      const existingIntents = await db
+        .select()
+        .from(paymentIntents)
+        .where(
+          and(
+            eq(paymentIntents.bookingId, bookingId),
+            eq(paymentIntents.status, 'pending')
+          )
+        );
+
+      if (existingIntents.length > 0) {
+        // Return existing intent (idempotency)
+        const existingIntent = existingIntents[0];
+        return res.json({
+          id: existingIntent.id,
+          bookingId: existingIntent.bookingId,
+          status: existingIntent.status,
+          gateway: 'NAYAX',
+          nayaxAuthorizationId: existingIntent.nayaxAuthorizationId,
+          authorizedAmount: existingIntent.authorizedAmount,
+          currency: existingIntent.currency,
+          vat: existingIntent.vat,
+          createdAt: existingIntent.createdAt,
+        });
+      }
+
+      // VALIDATION: Request body
+      let validatedBody;
+      try {
+        validatedBody = createPaymentIntentSchema.parse(req.body);
+      } catch (error: any) {
+        return res.status(400).json({ 
+          error: 'Invalid request body',
+          details: error.errors 
+        });
+      }
+
+      // VALIDATION: Supported currencies
+      const supportedCurrencies = ['ILS', 'USD', 'EUR'];
+      if (!supportedCurrencies.includes(existingBooking.currency)) {
+        return res.status(400).json({ 
+          error: 'Unsupported currency',
+          supportedCurrencies 
+        });
+      }
+
+      // Get amount from request body or use booking total
+      const amountCents = validatedBody.amountCents || existingBooking.totalCents;
+
+      // VALIDATION: Amount must match booking total
+      if (validatedBody.amountCents && validatedBody.amountCents !== existingBooking.totalCents) {
+        return res.status(400).json({ 
+          error: 'Amount does not match booking total',
+          expectedAmountCents: existingBooking.totalCents,
+          providedAmountCents: validatedBody.amountCents
+        });
+      }
+
+      // Import PaymentGatewayService
+      const { default: PaymentGatewayService } = await import('../services/PaymentGatewayService');
+
+      // Create payment intent with error handling
+      let paymentIntent;
+      try {
+        paymentIntent = await PaymentGatewayService.createPaymentIntent({
+          bookingId,
+          customerId: userId,
+          platformId,
+          amountCents,
+          currency: existingBooking.currency,
+          deviceType: validatedBody.deviceType,
+          metadata: {
+            bookingNumber: existingBooking.bookingNumber,
+            providerId: existingBooking.providerId,
+            stationId: existingBooking.stationId,
+          },
+        });
+      } catch (serviceError: any) {
+        // Handle service-level errors (unsupported currency, etc.)
+        logger.error('PaymentGatewayService.createPaymentIntent failed', {
+          error: serviceError.message,
+          bookingId,
+          userId,
+        });
+        
+        return res.status(400).json({ 
+          error: serviceError.message || 'Failed to create payment intent'
+        });
+      }
+
+      // Audit log
+      logger.info('Payment intent created for booking', {
+        paymentIntentId: paymentIntent.id,
+        bookingId,
+        bookingNumber: existingBooking.bookingNumber,
+        platformId,
+        userId,
+        amountCents,
+        currency: existingBooking.currency,
+        nayaxAuthorizationId: paymentIntent.nayaxAuthorizationId,
+        authorizedAmount: paymentIntent.authorizedAmount,
+        vat: paymentIntent.vat,
+      });
+
+      res.status(201).json(paymentIntent);
+    } catch (error: any) {
+      logger.error('Payment intent creation failed', {
+        error: error.message,
+        userId: req.user?.uid,
+        platformId: req.platformContext?.platformId,
+        bookingId: req.params.bookingId
+      });
+
+      res.status(500).json({ 
+        error: error.message || 'Failed to create payment intent'
+      });
+    }
+  }
+);
+
+// GET /api/platforms/:platformId/bookings/:bookingId/payment-intents - Get payment intent status
+router.get(
+  '/:platformId/bookings/:bookingId/payment-intents',
+  requireAuth,
+  requirePlatformContext,
+  apiLimiter,
+  async (req: any, res: any) => {
+    try {
+      const userId = req.user?.uid;
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const platformId = req.platformContext.platformId;
+      const bookingId = req.params.bookingId;
+
+      // VALIDATION: Verify booking exists
+      const existingBooking = await bookingService.getBookingById(bookingId);
+
+      if (!existingBooking) {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      // SECURITY: Verify platform isolation
+      if (existingBooking.platformId !== platformId) {
+        return res.status(403).json({ error: 'Booking does not belong to this platform' });
+      }
+
+      // SECURITY: Verify user ownership
+      const isCustomer = existingBooking.userId === userId;
+      
+      if (!isCustomer) {
+        return res.status(403).json({ error: 'Unauthorized to access payment intent for this booking' });
+      }
+
+      // Get payment intents for booking
+      const { db } = await import('../db');
+      const { paymentIntents } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      const intents = await db
+        .select()
+        .from(paymentIntents)
+        .where(eq(paymentIntents.bookingId, bookingId))
+        .orderBy(sql`${paymentIntents.createdAt} DESC`);
+
+      res.json(intents);
+    } catch (error: any) {
+      logger.error('Failed to fetch payment intents', {
+        error: error.message,
+        userId: req.user?.uid,
+        platformId: req.platformContext?.platformId,
+        bookingId: req.params.bookingId
+      });
+
+      res.status(500).json({ 
+        error: 'Failed to fetch payment intents'
       });
     }
   }
