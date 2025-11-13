@@ -1,0 +1,147 @@
+/** ============================================================
+ *  PET WASH™ LTD — 2025 LUXURY SIGN-IN EXPERIENCE
+ *  Ultra-premium Google Sign-In + Passkey UX
+ *  React 18 + TypeScript 5 + 2025 Design Standards
+ *  
+ *  STORED FOR FUTURE REFERENCE
+ *  
+ *  Architecture Note: This component provides excellent UX but
+ *  needs integration with existing platform requirements:
+ *  - Firebase session bootstrapping
+ *  - Analytics tracking (useAnalytics)
+ *  - Multi-language support (i18n)
+ *  - Auto Face ID (useAutoFaceID)
+ *  - Device trust system
+ *  - ReCaptcha integration
+ *  - Email/password fallback
+ *  - Phone authentication
+ *  - Magic link support
+ *  
+ *  To use: Extract auth handlers from SignIn.tsx into shared
+ *  hooks, then wrap them with this luxury UI shell.
+ * ============================================================ */
+
+import React, { useState } from "react";
+
+export function PetWashLogin2025({
+  onGoogle,
+  onPasskey,
+}: {
+  onGoogle: () => Promise<void>;
+  onPasskey: () => Promise<void>;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [method, setMethod] = useState<"google" | "passkey" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handle(action: () => Promise<void>, type: "google" | "passkey") {
+    try {
+      setError(null);
+      setMethod(type);
+      setLoading(true);
+      await action();
+    } catch (e) {
+      console.error(e);
+      setError("We could not complete the sign-in. Please try again.");
+    } finally {
+      setLoading(false);
+      setMethod(null);
+    }
+  }
+
+  return (
+    <div
+      className="min-h-screen bg-white flex items-center justify-center px-5"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
+      <div className="w-full max-w-sm flex flex-col items-center gap-10">
+
+        {/* BRAND HEADER */}
+        <div className="flex flex-col items-center gap-4">
+          <img
+            src="/icons/petwash-512.png"
+            alt="Pet Wash™ Ltd"
+            className="h-20 w-20 rounded-full shadow-[0_0_25px_rgba(0,0,0,0.08)]"
+          />
+
+          <div className="text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Pet Wash™ Ltd
+            </h1>
+            <p className="text-sm text-neutral-500 leading-relaxed">
+              One secure account for all services:
+              <br />
+              Wash Stations · Walkers · Sitters · Transport
+            </p>
+          </div>
+        </div>
+
+        {/* BUTTONS */}
+        <div className="w-full flex flex-col gap-4">
+          {/* GOOGLE SIGN-IN — 2025 DESIGN */}
+          <button
+            disabled={loading}
+            onClick={() => handle(onGoogle, "google")}
+            className="w-full py-3 rounded-full border border-neutral-200 bg-white shadow-sm
+                       hover:shadow-md active:scale-[0.98] transition-all text-sm font-medium
+                       flex items-center justify-center gap-3"
+          >
+            {loading && method === "google" ? (
+              <div className="flex items-center gap-3">
+                <span className="h-4 w-4 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
+                Connecting to Google…
+              </div>
+            ) : (
+              <>
+                <span
+                  className="h-5 w-5 rounded-full bg-neutral-100 flex items-center justify-center text-[10px] font-bold"
+                  style={{ color: "#4285F4" }}
+                >
+                  G
+                </span>
+                Continue with Google
+              </>
+            )}
+          </button>
+
+          {/* PASSKEY SIGN-IN — 2025 REQUIREMENT */}
+          <button
+            disabled={loading}
+            onClick={() => handle(onPasskey, "passkey")}
+            className="w-full py-3 rounded-full bg-neutral-900 text-white shadow-sm
+                       hover:bg-neutral-800 active:scale-[0.97] transition-all text-sm font-medium
+                       flex items-center justify-center gap-3"
+          >
+            {loading && method === "passkey" ? (
+              <div className="flex items-center gap-3">
+                <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Activating Passkey…
+              </div>
+            ) : (
+              <>
+                <span className="material-symbols-rounded text-[18px]">key</span>
+                Sign in with Passkey
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* TRUST COPY */}
+        <p className="text-center text-xs text-neutral-500 leading-snug">
+          Pet Wash™ uses 2025 Google Verified OAuth, Passkeys, and encrypted
+          credentials. Your password is never visible to us.
+        </p>
+
+        {/* ERROR */}
+        {error && (
+          <div className="text-xs bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-xl text-center w-full">
+            {error}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
