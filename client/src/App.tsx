@@ -401,15 +401,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* The Sitter Suite™ - Pet Sitting Marketplace (Public browsing, auth required for booking) */}
-        <Route path="/sitter-suite">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <SitterSuite />
-            </Suspense>
-          )}
-        </Route>
-        
+        {/* The Sitter Suite™ - Specific routes BEFORE general routes */}
         {/* The Sitter Suite™ - Sitter Detail/Profile Page */}
         <Route path="/sitter-suite/sitters/:id">
           {() => (
@@ -446,15 +438,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Premium Dog Walking Marketplace */}
-        <Route path="/walk-my-pet">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <WalkMyPet />
-            </Suspense>
-          )}
-        </Route>
-        
+        {/* Walk My Pet™ - Specific routes BEFORE general routes to avoid catch-all */}
         {/* Walk My Pet™ - Walker Booking Page */}
         <Route path="/walk-my-pet/book/:walkerId">
           {() => (
@@ -505,6 +489,35 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RequireAuth>
               <Suspense fallback={<PageLoader />}>
                 <WalkTracking />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+        
+        {/* Walk My Pet™ - Platform Overview (Marketing/Gateway) */}
+        <Route path="/walk-my-pet">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <WalkMyPetOverview />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Walk My Pet™ - Browse/Explore Walkers */}
+        <Route path="/walk-my-pet/explore">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <WalkMyPet />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Walk My Pet™ - Unified Hub (placeholder - routes to owner dashboard for now) */}
+        <Route path="/walk-my-pet/hub">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <WalkOwnerDashboardPage />
               </Suspense>
             </RequireAuth>
           )}
@@ -583,6 +596,35 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* PetTrek™ - Platform Overview (Marketing/Gateway) */}
+        <Route path="/pettrek">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <PetTrekOverview />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* PetTrek™ - Browse/Explore Drivers */}
+        <Route path="/pettrek/explore">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <PetTrek />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* PetTrek™ - Unified Hub (placeholder - routes to customer dashboard for now) */}
+        <Route path="/pettrek/hub">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <PetTrekCustomerDashboard />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+        
         {/* The Sitter Suite™ - Comprehensive Booking Flow (6-step process with Israeli VAT) */}
         <Route path="/sitter-suite/book/:sitterId">
           {() => (
@@ -641,6 +683,35 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* The Sitter Suite™ - Platform Overview (Marketing/Gateway) */}
+        <Route path="/sitter-suite">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <SitterSuiteOverview />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* The Sitter Suite™ - Browse/Explore Sitters */}
+        <Route path="/sitter-suite/explore">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <SitterSuite />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* The Sitter Suite™ - Unified Hub (placeholder - routes to owner dashboard for now) */}
+        <Route path="/sitter-suite/hub">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <SitterOwnerDashboard />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+        
         {/* Contractor Dashboard - Trust Scores, Earnings, Reviews, Badges (2026 Lifecycle) */}
         <Route path="/contractor/dashboard">
           {() => (
@@ -652,15 +723,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Grooming Marketplace - Browse Groomers */}
-        <Route path="/groomers">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <Groomers language={language} />
-            </Suspense>
-          )}
-        </Route>
-        
+        {/* Grooming Marketplace - Specific routes BEFORE general routes */}
         {/* Grooming Marketplace - Book Grooming Session */}
         <Route path="/groomers/book">
           {() => (
@@ -694,8 +757,67 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* Grooming Marketplace - Platform Overview (Marketing/Gateway) */}
+        <Route path="/groomers">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <GroomersOverview />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Grooming Marketplace - Browse/Explore Groomers */}
+        <Route path="/groomers/explore">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <Groomers language={language} />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Grooming Marketplace - Unified Hub (placeholder - routes to customer dashboard for now) */}
+        <Route path="/groomers/hub">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <GroomersCustomerDashboard language={language} />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+        
+        {/* K9000 Wash Stations - Specific routes BEFORE general routes */}
         {/* K9000 Wash Stations - Booking Flow (3-step wizard: station, datetime, review) */}
         <Route path="/k9000/booking/:stationId?">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <K9000BookingFlow />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+        
+        {/* K9000 Wash Stations - Platform Overview (Marketing/Gateway) */}
+        <Route path="/k9000">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <K9000Overview />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* K9000 Wash Stations - Browse/Explore Stations (future - for now redirect to booking) */}
+        <Route path="/k9000/explore">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <K9000Overview />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* K9000 Wash Stations - Unified Hub (placeholder - routes to booking for now) */}
+        <Route path="/k9000/hub">
           {() => (
             <RequireAuth>
               <Suspense fallback={<PageLoader />}>
