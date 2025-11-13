@@ -9,6 +9,14 @@ Preferred communication style: Simple, everyday language.
 CRITICAL RULE: Never make layout or styling changes without explicit user approval - user gets extremely upset when changes are made to working designs.
 VIOLATION WARNING: User explicitly said "don't ever touch the top part" referring to header layout. Any changes to header without permission will cause severe user frustration.
 USER EXPLICITLY FORBID: Touching header layout, logo positioning, social media icons, hamburger menu, or language toggle without explicit permission.
+
+**HOMEPAGE MODIFICATION ABSOLUTELY FORBIDDEN:**
+- **NEVER** change Landing.tsx/Home.tsx without EXPLICIT clear instructions
+- **NEVER** remove components from homepage (especially PetWashDivisions - it provides luxury gradient colors)
+- **NEVER** assume what should/shouldn't be on homepage
+- Homepage has rich luxury colors and beautiful design - DO NOT TOUCH IT
+- User will give CLEAR instructions if homepage needs changes
+- Violating this causes extreme user frustration
 BRANDING MANDATE: Only use official PetWash™ logo with TM trademark (Download PetWash_Logo_HighRes_1762743316767.png at /brand/petwash-logo-official.png - 891KB high-res version). Never create custom logos or use unofficial designs. Logo MUST include legal TM symbol. Logo is embedded as base64 in all emails for universal display across iOS Mail, Android Gmail, Outlook, and web clients.
 
 LANGUAGE STRATEGY FOR ISRAELI MARKET:
