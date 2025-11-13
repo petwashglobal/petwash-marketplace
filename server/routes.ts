@@ -11077,24 +11077,34 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   });
 
   // CRITICAL: SPA History Fallback (PRODUCTION ONLY)
-  // In development, Vite handles SPA routing automatically
-  // In production, serve index.html for all non-API GET requests
-  // This allows direct navigation to /signin, /login, etc. to work
+  // In development, Vite middleware handles ALL SPA routing automatically
+  // In production, we need to serve index.html for all non-API GET requests
+  // This allows direct navigation to /signin, /login, etc. to work in production
   // Must be BEFORE error handler, AFTER all API routes
-  const isProd = process.env.NODE_ENV === 'production' || 
-                 process.env.REPLIT_DEPLOYMENT === '1' || 
-                 process.env.REPLIT_DEPLOYMENT === 'true';
   
-  if (isProd) {
-    app.get('*', (req: Request, res: Response) => {
-      // Only serve index.html for non-API routes
-      if (!req.path.startsWith('/api/')) {
-        // ES modules: use import.meta.dirname instead of __dirname
-        res.sendFile(path.join(import.meta.dirname, '../client/dist/index.html'));
+  // Only register this fallback route in production mode
+  // In dev mode, Vite's middleware (registered in server/index.ts) handles all routing
+  if (process.env.NODE_ENV === 'production' || 
+      process.env.REPLIT_DEPLOYMENT === '1' || 
+      process.env.REPLIT_DEPLOYMENT === 'true') {
+    
+    app.get('*', (req: Request, res: Response, next: NextFunction) => {
+      // Skip API routes - let them 404 naturally if not found
+      if (req.path.startsWith('/api/')) {
+        return next();
       }
+      
+      // Serve index.html from server/public (synced from dist/public at startup)
+      const indexPath = path.join(import.meta.dirname, 'public', 'index.html');
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error('Failed to send index.html:', err);
+          next(err);
+        }
+      });
     });
   }
-  // In development mode, Vite serves the SPA automatically - no fallback needed
+  // In development mode, Vite's middleware serves index.html automatically - no fallback needed
 
   // Global error handler - MUST be last middleware
   // Catches any unhandled errors and sends clean response to clients

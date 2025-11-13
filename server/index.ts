@@ -378,6 +378,22 @@ registerEnterpriseRoutes(app);
   
   if (isProd) {
     logger.info('PRODUCTION MODE: Serving static build');
+    
+    // CRITICAL: Copy build files from dist/public to server/public BEFORE serving
+    const serverPublicPath = path.resolve(import.meta.dirname, 'public');
+    const distPublicPath = path.resolve(import.meta.dirname, '..', 'dist', 'public');
+    
+    if (fs.existsSync(distPublicPath)) {
+      logger.info(`📦 Syncing build files: ${distPublicPath} → ${serverPublicPath}`);
+      fs.mkdirSync(serverPublicPath, { recursive: true });
+      fs.cpSync(distPublicPath, serverPublicPath, { recursive: true });
+      logger.info('✅ Build files synced successfully');
+    } else {
+      logger.error(`❌ Build directory not found: ${distPublicPath}`);
+      logger.error('Make sure to run "npm run build" before starting in production mode');
+      throw new Error(`Build directory not found: ${distPublicPath}`);
+    }
+    
     const buildRevision = Date.now().toString();
     
     app.use((req, res, next) => {
@@ -415,19 +431,6 @@ registerEnterpriseRoutes(app);
     setImmediate(async () => {
       try {
         logger.info('⏳ Starting post-startup initialization...');
-        
-        // File sync (if needed for production)
-        if (isProd) {
-          const serverPublicPath = path.resolve(import.meta.dirname, 'public');
-          const distPublicPath = path.resolve(import.meta.dirname, '..', 'dist', 'public');
-          
-          if (fs.existsSync(distPublicPath) && !fs.existsSync(path.join(serverPublicPath, 'index.html'))) {
-            logger.info('📦 Syncing build files (post-startup)...');
-            fs.mkdirSync(serverPublicPath, { recursive: true });
-            fs.cpSync(distPublicPath, serverPublicPath, { recursive: true });
-            logger.info('✅ Build files synced');
-          }
-        }
         
         // Setup WebSocket
         try {
