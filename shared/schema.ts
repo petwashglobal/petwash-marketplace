@@ -6400,6 +6400,10 @@ export const platforms = pgTable("platforms", {
   platformFeePercent: decimal("platform_fee_percent", { precision: 5, scale: 2 }),
   stripeConnectEnabled: boolean("stripe_connect_enabled").default(false),
   nayaxEnabled: boolean("nayax_enabled").default(false),
+  
+  // PLATFORM-SPECIFIC BOOKING BEHAVIOR (2025 Booking Calendar)
+  bookingMode: varchar("booking_mode").default("SINGLE_SLOT"), // 'SINGLE_SLOT' | 'MULTI_DAY' | 'ARRIVAL_WINDOW'
+  
   settings: jsonb("settings"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -6668,16 +6672,26 @@ export const availabilitySlots = pgTable("availability_slots", {
   isRecurring: boolean("is_recurring").default(false),
   recurrenceRule: varchar("recurrence_rule"),
   recurrenceEnd: timestamp("recurrence_end"),
-  status: varchar("status").default("available"),
+  status: varchar("status").default("available"), // available | held | booked | cancelled
   bookingId: varchar("booking_id").references(() => bookings.id),
   bufferBefore: integer("buffer_before").default(0),
   bufferAfter: integer("buffer_after").default(0),
   notes: text("notes"),
+  
+  // 5-MINUTE PAYMENT LOCK SYSTEM (2025 Booking Calendar Integration)
+  lockedByUid: varchar("locked_by_uid"), // Firebase UID of user who locked slot
+  lockedAt: timestamp("locked_at"), // When lock was acquired
+  lockExpiresAt: timestamp("lock_expires_at"), // Lock expiry (5 minutes from lockedAt)
+  lockToken: varchar("lock_token").unique(), // Unique token to prevent race conditions
+  modeOverride: varchar("mode_override"), // Optional: 'SINGLE_SLOT' | 'MULTI_DAY' | 'ARRIVAL_WINDOW'
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   providerTimeIdx: index("availability_provider_time_idx").on(table.providerId, table.startTime),
   statusIdx: index("availability_status_idx").on(table.status),
+  lockTokenIdx: uniqueIndex("availability_lock_token_idx").on(table.lockToken),
+  lockExpiryIdx: index("availability_lock_expiry_idx").on(table.lockExpiresAt),
 }));
 
 // ===== PAYMENTS TABLE =====
