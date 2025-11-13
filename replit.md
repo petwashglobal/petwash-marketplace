@@ -80,6 +80,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **E-Signature**: DocuSeal with full Hebrew RTL support.
 - **Enterprise Features**: Multi-country/currency, franchise management, per-station tracking, IoT monitoring, secure document management, KYC.
 - **Financial Management**: Automated bookkeeping (Google Vision OCR + Gemini 2.5 Flash), Israeli Tax Compliance, Bank Reconciliation, Automated Monthly Invoicing, Israeli VAT Reclaim System.
+- **Payment Gateway Architecture (2026)**: Nayax Israel EXCLUSIVE for all customer payments across all 6 platforms. Provider payouts via Israeli bank transfer only. No Stripe, no third-party processors. Simple, compliant, single-gateway solution.
 - **K9000 IoT Wash Station Integration**: Cloud-based management, real-time status, remote control, AI predictive maintenance.
 - **Passport Verification (KYC)**: Google Vision API-powered passport verification with MRZ parsing.
 - **Security & Compliance**: Firebase App Check, Performance Monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025 compliance, AI-powered monitoring, enterprise-grade GDPR consent management.
@@ -103,7 +104,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **@radix-ui/***: Accessible UI component primitives.
 - **tailwindcss**: Utility-first CSS framework.
 - **vite**: Build tool.
-- **Nayax Israel**: Payment gateway integration.
+- **Nayax Israel**: EXCLUSIVE payment gateway for ALL platforms (K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers) - customer payments only. Provider payouts via Israeli bank transfer after 72hr escrow release.
 - **Google Analytics, Google Tag Manager, Facebook Pixel, TikTok Pixel, Microsoft Clarity, Google Ads**: Marketing and analytics.
 - **ipapi.co, ip-api.com, ipinfo.io**: IP geolocation services.
 - **Firebase**: Authentication, Firestore, Storage, App Check, Performance Monitoring.
