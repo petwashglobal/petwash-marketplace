@@ -6918,3 +6918,151 @@ export type SelectSuperAppNotification = typeof superAppNotifications.$inferSele
 export const insertMembershipSchema = createInsertSchema(memberships).omit({ id: true });
 export type InsertMembership = z.infer<typeof insertMembershipSchema>;
 export type SelectMembership = typeof memberships.$inferSelect;
+
+// ============================================================================
+// UNIFIED MARKETPLACE TYPES (Discriminated Unions for Frontend)
+// ============================================================================
+
+/**
+ * Unified marketplace platform IDs
+ */
+export type MarketplacePlatformId = 
+  | 'walk_my_pet'
+  | 'sitter_suite'
+  | 'pet_trek'
+  | 'groomers'
+  | 'k9000';
+
+/**
+ * Base provider fields shared across all platforms
+ */
+interface BaseMarketplaceProvider {
+  id: number | string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  city: string | null;
+  bio: string | null;
+  profilePictureUrl: string | null;
+  rating: string | null;
+  totalBookings: number | null;
+  isActive: boolean | null;
+  isVerified: boolean | null;
+  priceDisplay: string; // Formatted price for UI
+  createdAt: Date | null;
+}
+
+/**
+ * Walker-specific provider (Walk My Pet)
+ */
+export interface WalkerProvider extends BaseMarketplaceProvider {
+  kind: 'walker';
+  platform: 'walk_my_pet';
+  walkerId: string;
+  hourlyRate: string | null;
+  bodyCamera: boolean | null;
+  droneAccess: boolean | null;
+  certifications: string[] | null;
+  serviceArea: string | null;
+  yearsOfExperience: number | null;
+}
+
+/**
+ * Sitter-specific provider (Sitter Suite)
+ */
+export interface SitterProvider extends BaseMarketplaceProvider {
+  kind: 'sitter';
+  platform: 'sitter_suite';
+  sitterId?: number;
+  pricePerDayCents: number | null;
+  yearsOfExperience: number | null;
+  hasOwnPets: boolean | null;
+  petTypes: string[] | null;
+}
+
+/**
+ * Driver-specific provider (PetTrek)
+ */
+export interface DriverProvider extends BaseMarketplaceProvider {
+  kind: 'driver';
+  platform: 'pet_trek';
+  driverId?: string;
+  pricePerKm: string | null;
+  vehicleType: string | null;
+  vehicleCapacity: number | null;
+  hasAirConditioning: boolean | null;
+  hasPetSafetyGear: boolean | null;
+}
+
+/**
+ * Groomer-specific provider (Groomers Marketplace)
+ */
+export interface GroomerProvider extends BaseMarketplaceProvider {
+  kind: 'groomer';
+  platform: 'groomers';
+  groomerId?: string;
+  pricePerSession: string | null;
+  specializations: string[] | null;
+  mobileService: boolean | null;
+  acceptedPetSizes: string[] | null;
+}
+
+/**
+ * Discriminated union of all provider types
+ */
+export type MarketplaceProvider = 
+  | WalkerProvider 
+  | SitterProvider 
+  | DriverProvider 
+  | GroomerProvider;
+
+/**
+ * Unified search filters for all marketplace platforms
+ */
+export const marketplaceSearchFiltersSchema = z.object({
+  platform: z.enum(['walk_my_pet', 'sitter_suite', 'pet_trek', 'groomers', 'k9000']),
+  
+  // Location filters
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  radiusKm: z.number().min(1).max(50).default(10).optional(),
+  city: z.string().optional(),
+  
+  // Quality filters
+  minRating: z.number().min(0).max(5).optional(),
+  verifiedOnly: z.boolean().default(false).optional(),
+  
+  // Price filters
+  maxPrice: z.number().optional(),
+  minPrice: z.number().optional(),
+  
+  // Availability filters
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  
+  // Platform-specific filters (optional)
+  bodyCamera: z.boolean().optional(), // Walker-specific
+  droneAccess: z.boolean().optional(), // Walker-specific
+  hasOwnPets: z.boolean().optional(), // Sitter-specific
+  petTypes: z.array(z.string()).optional(), // Sitter-specific
+  vehicleType: z.string().optional(), // Driver-specific
+  mobileService: z.boolean().optional(), // Groomer-specific
+  
+  // Pagination
+  limit: z.number().min(1).max(100).default(20).optional(),
+  offset: z.number().min(0).default(0).optional(),
+});
+
+export type MarketplaceSearchFilters = z.infer<typeof marketplaceSearchFiltersSchema>;
+
+/**
+ * Unified marketplace search response
+ */
+export interface MarketplaceSearchResponse {
+  providers: MarketplaceProvider[];
+  total: number;
+  platform: MarketplacePlatformId;
+  filters: MarketplaceSearchFilters;
+}

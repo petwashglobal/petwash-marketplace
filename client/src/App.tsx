@@ -43,6 +43,7 @@ const FastSignIn = lazy(() => import("@/pages/FastSignIn"));
 const SimpleSignIn = lazy(() => import("@/pages/SimpleSignIn"));
 const SignUp = lazy(() => import("@/pages/SignUp"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Marketplace = lazy(() => import("@/pages/Marketplace"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
 const Verify = lazy(() => import("@/pages/Verify"));
@@ -384,6 +385,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RequireAuth>
               <Pets />
             </RequireAuth>
+          )}
+        </Route>
+        
+        {/* UNIFIED MARKETPLACE - Search & Book All Services */}
+        <Route path="/marketplace">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <Marketplace />
+            </Suspense>
           )}
         </Route>
         

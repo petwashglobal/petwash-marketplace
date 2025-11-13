@@ -56,6 +56,7 @@ import bookingsRoutes from "./routes/bookings";
 import superAppBookingsRoutes from "./routes/super-app-bookings";
 import jobOffersRoutes from "./routes/job-offers";
 import providersRoutes from "./routes/providers";
+import marketplaceRoutes from "./routes/marketplace";
 import identityServiceRoutes from "./routes/identity-service";
 import nayaxWebhooksRoutes from "./routes/nayax-webhooks";
 import webauthnRoutes from "./routes/webauthn";
@@ -7737,6 +7738,10 @@ self.addEventListener('notificationclick', (event) => {
   
   // Provider Management (Sitters, Walkers, Drivers)
   app.use('/api/providers', apiLimiter, providersRoutes);
+
+  // UNIFIED MARKETPLACE API - Aggregated search across all 6 platforms
+  // Returns normalized discriminated-union types for frontend
+  app.use('/api/marketplace', apiLimiter, marketplaceRoutes);
 
   // Identity Service V2 - Modern OAuth 2.1/OIDC Authentication (P0 PRIORITY)
   app.use('/auth', identityServiceRoutes);
