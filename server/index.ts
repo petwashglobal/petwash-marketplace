@@ -53,11 +53,38 @@ const app = express();
 // Trust proxy for proper secure cookie handling behind reverse proxy
 app.set('trust proxy', 1);
 
+// CRITICAL: Lightweight health check endpoint (BEFORE all middleware for fast response)
+app.get('/health', (req, res) => {
+  const isProd = process.env.NODE_ENV === 'production' || 
+                 process.env.REPLIT_DEPLOYMENT === '1' || 
+                 process.env.REPLIT_DEPLOYMENT === 'true';
+  res.status(200).json({ 
+    ok: true,
+    env: isProd ? 'production' : 'development',
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    service: 'PetWash™ Enterprise API',
+    version: '2.0.0'
+  });
+});
+
+// Readiness check (confirms app is fully initialized)
+let isReady = false;
+app.get('/ready', (req, res) => {
+  if (isReady) {
+    res.status(200).json({ status: 'ready', timestamp: new Date().toISOString() });
+  } else {
+    res.status(503).json({ status: 'initializing', timestamp: new Date().toISOString() });
+  }
+});
+
 // Enterprise-grade structured logging with request IDs
 app.use(requestIdAndLogs);
 
-// Circuit breaker for fault tolerance
-app.use(circuit(20));
+// Circuit breaker for fault tolerance (increased threshold for production health checks)
+const circuitBreakerThreshold = process.env.NODE_ENV === 'production' ? 50 : 20;
+app.use(circuit(circuitBreakerThreshold));
 
 // Legacy observability (keep for Sentry integration)
 app.use(requestIdMiddleware);
@@ -197,22 +224,7 @@ app.use(cors({
 // Enable gzip/brotli compression for all responses
 app.use(compression());
 
-// Health check endpoints (highest priority - before any middleware)
-// Primary health endpoint for production monitoring
-app.get('/health', (_req, res) => {
-  const isProd = process.env.NODE_ENV === 'production' || 
-                 process.env.REPLIT_DEPLOYMENT === '1' || 
-                 process.env.REPLIT_DEPLOYMENT === 'true';
-  res.status(200).json({ 
-    ok: true,
-    env: isProd ? 'production' : 'development',
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    service: 'PetWash™ Enterprise API',
-    version: '2.0.0'
-  });
-});
+// Duplicate /health endpoint removed - see top of file for primary health endpoint before middleware
 
 // Legacy healthz endpoint (for backward compatibility)
 app.get('/healthz', (_req, res) => {
@@ -476,8 +488,12 @@ registerEnterpriseRoutes(app);
         logger.info(`✅ Full initialization complete in ${totalStartupTime}ms`);
         logger.info('🚀 ALL SYSTEMS ACTIVE - Premium features enabled');
         
+        // Mark app as ready for health checks
+        isReady = true;
+        
       } catch (error) {
         logger.error('Error during post-startup initialization:', error);
+        logger.error('Stack trace:', error instanceof Error ? error.stack : String(error));
       }
     });
   });

@@ -11076,27 +11076,44 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
-  // CRITICAL: SPA History Fallback - Serve index.html for all non-API GET requests
-  // This allows direct navigation to /signin, /login, etc. to work in production
+  // CRITICAL: SPA History Fallback (PRODUCTION ONLY)
+  // In development, Vite handles SPA routing automatically
+  // In production, serve index.html for all non-API GET requests
+  // This allows direct navigation to /signin, /login, etc. to work
   // Must be BEFORE error handler, AFTER all API routes
-  app.get('*', (req: Request, res: Response) => {
-    // Only serve index.html for non-API routes
-    if (!req.path.startsWith('/api/')) {
-      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-    }
-  });
+  const isProd = process.env.NODE_ENV === 'production' || 
+                 process.env.REPLIT_DEPLOYMENT === '1' || 
+                 process.env.REPLIT_DEPLOYMENT === 'true';
+  
+  if (isProd) {
+    app.get('*', (req: Request, res: Response) => {
+      // Only serve index.html for non-API routes
+      if (!req.path.startsWith('/api/')) {
+        // ES modules: use import.meta.dirname instead of __dirname
+        res.sendFile(path.join(import.meta.dirname, '../client/dist/index.html'));
+      }
+    });
+  }
+  // In development mode, Vite serves the SPA automatically - no fallback needed
 
   // Global error handler - MUST be last middleware
   // Catches any unhandled errors and sends clean response to clients
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    // Log error internally
-    logger.error('Unhandled error', {
-      error: err.message,
-      stack: err.stack,
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    // Log error internally with full details
+    logger.error('Unhandled error:', {
+      errorMessage: err?.message || 'Unknown error',
+      errorName: err?.name || 'Error',
+      errorStack: err?.stack || 'No stack trace',
       method: req.method,
       url: req.url,
-      ip: req.ip
+      ip: req.ip,
+      body: req.body,
+      query: req.query,
+      params: req.params
     });
+    
+    // Also log raw error for debugging
+    console.error('[ERROR HANDLER] Full error object:', err);
     
     // Send clean error to client (no stack traces or internal details)
     if (!res.headersSent) {

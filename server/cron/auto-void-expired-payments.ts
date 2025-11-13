@@ -144,11 +144,11 @@ export function startAutoVoidCron() {
     await voidExpiredPayments();
   });
   
-  // Also run immediately on startup (catch any missed during downtime)
+  // Delay initial scan by 2 minutes to avoid blocking health checks during deployment
   setTimeout(async () => {
-    logger.info('[AutoVoid] Running initial scan on startup');
+    logger.info('[AutoVoid] Running delayed initial scan (post-deployment)');
     await voidExpiredPayments();
-  }, 10000); // Wait 10 seconds for server to fully initialize
+  }, 120000); // Wait 2 minutes for deployment health checks to complete
   
   logger.info('[AutoVoid] Cron job started successfully');
 }
