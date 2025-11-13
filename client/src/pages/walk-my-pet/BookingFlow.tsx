@@ -100,7 +100,7 @@ export default function WalkBookingFlow() {
         platformData: {
           walkerName: selectedWalker.businessName || selectedWalker.displayName || 'Professional Walker',
           serviceArea: selectedWalker.serviceArea || 'Service Area',
-          paymentMethod: 'stripe-connect',
+          paymentMethod: 'nayax',
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         }
       };
@@ -369,10 +369,10 @@ export default function WalkBookingFlow() {
 
                 <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-sm p-4">
                   <div className="text-sm font-light text-gray-600 dark:text-gray-400 mb-2">
-                    Payment Method: Stripe Connect
+                    Payment Method: Nayax Israel
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-500 font-light">
-                    Payment will be processed after the walk is completed. GPS tracking will be enabled during the walk.
+                    Payment will be processed securely via Nayax. GPS tracking will be enabled during the walk.
                   </div>
                 </div>
               </Card>
