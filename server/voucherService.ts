@@ -80,6 +80,7 @@ export class VoucherService {
   }
 
   // Redeem e-voucher via QR code scan (Nayax terminal integration)
+  // 🔒 ATOMIC REDEMPTION: Prevents race conditions on multi-wash vouchers
   static async redeemVoucher(request: RedeemVoucherRequest): Promise<VoucherRedemptionResult> {
     try {
       // Parse QR code data
@@ -91,53 +92,32 @@ export class VoucherService {
         };
       }
 
-      // Get voucher from database
-      const voucher = await storage.getEVoucherByCode(qrData.code);
-      if (!voucher) {
-        return {
-          success: false,
-          message: 'Voucher not found'
-        };
-      }
-
-      // Validate voucher
-      const validationResult = this.validateVoucher(voucher, qrData, request.washesRequested || 1);
-      if (!validationResult.isValid) {
-        return {
-          success: false,
-          message: validationResult.reason || 'Voucher validation failed'
-        };
-      }
-
-      // Process redemption
-      const washesUsed = request.washesRequested || 1;
-      const newRemainingWashes = voucher.remainingWashes - washesUsed;
-
-      // Create redemption record
+      const washesRequested = request.washesRequested || 1;
       const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-      
-      const redemptionData: InsertEVoucherRedemption = {
-        voucherId: voucher.id,
+
+      // 🔒 ATOMIC TRANSACTION: Get voucher, validate, update, and log in single transaction
+      // CRITICAL: Prevents race condition where multiple requests could overdraw remaining washes
+      const result = await storage.redeemVoucherAtomic({
+        code: qrData.code,
+        washesRequested,
         userId: request.userId,
         washStationId: request.washStationId,
-        washesUsed,
         transactionId,
-      };
-
-      await storage.createEVoucherRedemption(redemptionData);
-
-      // Update voucher remaining washes
-      await storage.updateEVoucher(voucher.id, {
-        remainingWashes: newRemainingWashes,
-        activatedAt: voucher.activatedAt || new Date(),
       });
+
+      if (!result.success) {
+        return {
+          success: false,
+          message: result.error || 'Voucher redemption failed'
+        };
+      }
 
       return {
         success: true,
-        message: `Successfully redeemed ${washesUsed} wash${washesUsed > 1 ? 'es' : ''}`,
-        remainingWashes: newRemainingWashes,
+        message: `Successfully redeemed ${washesRequested} wash${washesRequested > 1 ? 'es' : ''}`,
+        remainingWashes: result.remainingWashes,
         transactionId,
-        voucherId: voucher.id
+        voucherId: result.voucherId
       };
 
     } catch (error) {

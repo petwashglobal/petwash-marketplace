@@ -401,7 +401,7 @@ router.post('/purchase', paymentLimiter, async (req, res) => {
   }
 });
 
-// 🔓 REDEEM E-GIFT CARD AT K9000 STATION (SINGLE-USE ENFORCEMENT)
+// 🔓 REDEEM E-GIFT CARD AT K9000 STATION (ATOMIC SINGLE-USE ENFORCEMENT)
 router.post('/redeem', paymentLimiter, async (req, res) => {
   const correlationId = crypto.randomUUID();
   
@@ -419,56 +419,115 @@ router.post('/redeem', paymentLimiter, async (req, res) => {
     // Verify code hash
     const codeHash = crypto.createHash('sha256').update(code).digest('hex');
     
-    // Get voucher from database
-    const [voucher] = await db
-      .select()
-      .from(eVouchers)
-      .where(and(
-        eq(eVouchers.id, voucherId),
-        eq(eVouchers.codeHash, codeHash)
-      ));
+    // 🔒 ATOMIC TRANSACTION: Prevents double-redemption race condition
+    // CRITICAL: UPDATE and INSERT must be in same transaction for consistency
+    const result = await db.transaction(async (tx) => {
+      // ✅ ATOMIC REDEMPTION: Single UPDATE with WHERE conditions
+      // Only updates if ALL conditions match (id, code, status='ISSUED', not expired)
+      // If any condition fails, returns empty array → no redemption
+      const updateResult = await tx
+        .update(eVouchers)
+        .set({ 
+          status: 'REDEEMED',
+          activatedAt: new Date(),
+          ownerUid: userId || null,
+        })
+        .where(and(
+          eq(eVouchers.id, voucherId),
+          eq(eVouchers.codeHash, codeHash),
+          eq(eVouchers.status, 'ISSUED'), // ← CRITICAL: Atomic status check
+          sql`(${eVouchers.expiresAt} IS NULL OR ${eVouchers.expiresAt} > NOW())` // Handles both NULL (no expiry) and future dates
+        ))
+        .returning();
+      
+      // Check if update succeeded (only ONE request can succeed due to status check)
+      if (updateResult.length === 0) {
+        // Determine WHY redemption failed
+        const [checkVoucher] = await tx
+          .select({ 
+            status: eVouchers.status, 
+            expiresAt: eVouchers.expiresAt,
+            codeHash: eVouchers.codeHash,
+          })
+          .from(eVouchers)
+          .where(eq(eVouchers.id, voucherId));
+        
+        if (!checkVoucher) {
+          return { 
+            success: false, 
+            errorCode: 'NOT_FOUND',
+            error: 'Gift card not found or invalid code' 
+          };
+        }
+        
+        if (checkVoucher.codeHash !== codeHash) {
+          return { 
+            success: false, 
+            errorCode: 'INVALID_CODE',
+            error: 'Invalid gift card code' 
+          };
+        }
+        
+        if (checkVoucher.status === 'REDEEMED') {
+          return { 
+            success: false, 
+            errorCode: 'ALREADY_REDEEMED',
+            error: 'This gift card has already been redeemed',
+            status: checkVoucher.status,
+          };
+        }
+        
+        if (checkVoucher.expiresAt && new Date(checkVoucher.expiresAt) < new Date()) {
+          return { 
+            success: false, 
+            errorCode: 'EXPIRED',
+            error: 'Gift card has expired' 
+          };
+        }
+        
+        return { 
+          success: false, 
+          errorCode: 'UNKNOWN',
+          error: 'Gift card cannot be redeemed' 
+        };
+      }
+      
+      const [voucher] = updateResult;
+      
+      // Create immutable redemption record (audit trail) IN SAME TRANSACTION
+      // This ensures status='REDEEMED' and redemption record are always consistent
+      const [redemption] = await tx.insert(eVoucherRedemptions).values({
+        voucherId,
+        amount: voucher.remainingAmount,
+        locationId: stationId,
+        nayaxSessionId: correlationId,
+      }).returning();
+      
+      return {
+        success: true,
+        voucher,
+        redemption,
+      };
+    });
     
-    if (!voucher) {
-      logger.warn('[E-Gift] Redemption failed - voucher not found', { correlationId, voucherId });
-      return res.status(404).json({ error: 'Gift card not found or invalid' });
-    }
-    
-    // ⚠️ CRITICAL: Single-use enforcement
-    if (voucher.status !== 'ISSUED') {
-      logger.warn('[E-Gift] Redemption blocked - already redeemed', { 
+    // Transaction failed - return error to client
+    if (!result.success) {
+      logger.warn('[E-Gift] Redemption blocked', { 
         correlationId, 
-        voucherId, 
-        status: voucher.status 
+        voucherId,
+        errorCode: result.errorCode,
+        error: result.error,
       });
-      return res.status(400).json({ 
-        error: 'This gift card has already been redeemed',
-        status: voucher.status,
+      
+      const statusCode = result.errorCode === 'NOT_FOUND' ? 404 : 400;
+      return res.status(statusCode).json({ 
+        error: result.error,
+        errorCode: result.errorCode,
       });
     }
     
-    // Check expiration
-    if (new Date(voucher.expiresAt) < new Date()) {
-      logger.warn('[E-Gift] Redemption blocked - expired', { correlationId, voucherId });
-      return res.status(400).json({ error: 'Gift card has expired' });
-    }
-    
-    // ✅ REDEEM: Update status to REDEEMED (CANNOT BE USED AGAIN)
-    await db
-      .update(eVouchers)
-      .set({ 
-        status: 'REDEEMED',
-        activatedAt: new Date(),
-        ownerUid: userId || null,
-      })
-      .where(eq(eVouchers.id, voucherId));
-    
-    // Create immutable redemption record (audit trail)
-    const [redemption] = await db.insert(eVoucherRedemptions).values({
-      voucherId,
-      amount: voucher.remainingAmount,
-      locationId: stationId,
-      nayaxSessionId: correlationId,
-    }).returning();
+    // Transaction succeeded - voucher redeemed atomically
+    const { voucher, redemption } = result;
     
     logger.info('[E-Gift] Redemption successful', {
       correlationId,

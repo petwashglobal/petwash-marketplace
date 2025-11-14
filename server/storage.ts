@@ -280,6 +280,20 @@ export interface IStorage {
   createEVoucherRedemption(redemption: InsertEVoucherRedemption): Promise<EVoucherRedemption>;
   getVoucherRedemptions(voucherId: string): Promise<EVoucherRedemption[]>;
   
+  // Atomic voucher redemption (prevents race conditions)
+  redeemVoucherAtomic(data: {
+    code: string;
+    washesRequested: number;
+    userId?: string;
+    washStationId: string;
+    transactionId: string;
+  }): Promise<{
+    success: boolean;
+    voucherId?: number;
+    remainingWashes?: number;
+    error?: string;
+  }>;
+  
   // Legacy gift card methods (for backward compatibility)
   createGiftCard(giftCard: InsertGiftCard): Promise<GiftCard>;
   getGiftCard(codeHash: string): Promise<GiftCard | undefined>;
@@ -1325,6 +1339,109 @@ export class DatabaseStorage implements IStorage {
       .from(eVoucherRedemptions)
       .where(eq(eVoucherRedemptions.voucherId, voucherId))
       .orderBy(eVoucherRedemptions.createdAt);
+  }
+
+  // 🔒 ATOMIC VOUCHER REDEMPTION (prevents race conditions)
+  async redeemVoucherAtomic(data: {
+    code: string;
+    washesRequested: number;
+    userId?: string;
+    washStationId: string;
+    transactionId: string;
+  }): Promise<{
+    success: boolean;
+    voucherId?: number;
+    remainingWashes?: number;
+    error?: string;
+  }> {
+    try {
+      // Find voucher by code first to get ID
+      const [existingVoucher] = await db
+        .select({ id: eVouchers.id, code: eVouchers.code })
+        .from(eVouchers)
+        .where(eq(eVouchers.code, data.code));
+      
+      if (!existingVoucher) {
+        return { success: false, error: 'Voucher not found' };
+      }
+
+      // ✅ ATOMIC TRANSACTION: Update voucher and create redemption record
+      const result = await db.transaction(async (tx) => {
+        // Atomic UPDATE with WHERE conditions - only succeeds if ALL conditions met
+        const updateResult = await tx
+          .update(eVouchers)
+          .set({ 
+            remainingWashes: sql`${eVouchers.remainingWashes} - ${data.washesRequested}`,
+            activatedAt: sql`COALESCE(${eVouchers.activatedAt}, NOW())`,
+          })
+          .where(and(
+            eq(eVouchers.id, existingVoucher.id),
+            eq(eVouchers.code, data.code),
+            eq(eVouchers.isActive, true),
+            sql`${eVouchers.remainingWashes} >= ${data.washesRequested}`, // Atomic check
+            sql`(${eVouchers.expiresAt} IS NULL OR ${eVouchers.expiresAt} > NOW())` // Not expired
+          ))
+          .returning();
+
+        if (updateResult.length === 0) {
+          // Determine WHY redemption failed
+          const [checkVoucher] = await tx
+            .select({
+              isActive: eVouchers.isActive,
+              remainingWashes: eVouchers.remainingWashes,
+              expiresAt: eVouchers.expiresAt,
+            })
+            .from(eVouchers)
+            .where(eq(eVouchers.id, existingVoucher.id));
+
+          if (!checkVoucher) {
+            return { success: false, error: 'Voucher not found' };
+          }
+
+          if (!checkVoucher.isActive) {
+            return { success: false, error: 'Voucher is not active' };
+          }
+
+          if (checkVoucher.remainingWashes < data.washesRequested) {
+            return { 
+              success: false, 
+              error: `Insufficient washes remaining (${checkVoucher.remainingWashes} available, ${data.washesRequested} requested)` 
+            };
+          }
+
+          if (checkVoucher.expiresAt && new Date(checkVoucher.expiresAt) < new Date()) {
+            return { success: false, error: 'Voucher has expired' };
+          }
+
+          return { success: false, error: 'Voucher cannot be redeemed' };
+        }
+
+        const [updatedVoucher] = updateResult;
+
+        // Create redemption record IN SAME TRANSACTION
+        await tx.insert(eVoucherRedemptions).values({
+          voucherId: updatedVoucher.id,
+          userId: data.userId,
+          washStationId: data.washStationId,
+          washesUsed: data.washesRequested,
+          transactionId: data.transactionId,
+        });
+
+        return {
+          success: true,
+          voucherId: updatedVoucher.id,
+          remainingWashes: updatedVoucher.remainingWashes,
+        };
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Atomic voucher redemption error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Redemption failed',
+      };
+    }
   }
 
   // Legacy gift card operations (backward compatibility)
