@@ -405,6 +405,32 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
               </AccordionItem>
             </Accordion>
 
+            {/* PREMIUM TOOLS */}
+            <Accordion type="multiple" className="space-y-2 mt-2">
+              <AccordionItem value="premium-tools" className="border-2 border-indigo-200 rounded-xl bg-gradient-to-br from-indigo-50 via-purple-50 to-violet-100 shadow-md hover:shadow-xl transition-all">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-premium-tools-trigger">
+                  <span className="flex items-center gap-3 font-bold text-gray-900">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-violet-600 flex items-center justify-center shadow-lg">
+                      <Sparkles className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                    </div>
+                    <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                      Premium Tools
+                    </span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 space-y-1">
+                  <MenuLink href="/pet-care-planner" testId="menu-pet-care-planner" className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      🌡️ Pet Care & Weather
+                      <Badge variant="secondary" className="text-xs bg-indigo-500 text-white">AI-Powered</Badge>
+                    </span>
+                  </MenuLink>
+                  <MenuLink href="/weather-planner" testId="menu-weather-planner">Smart Weather Planner</MenuLink>
+                  <MenuLink href="/pet-wash-day-planner" testId="menu-day-planner">Day Planner</MenuLink>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
             <MenuLink href="/service-status" testId="menu-service-status" className="border border-gray-200 rounded-lg mt-2">
               <span className="flex items-center gap-2">
                 <LifeBuoy className="w-4 h-4 text-gray-600" />
