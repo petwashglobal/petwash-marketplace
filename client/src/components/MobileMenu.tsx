@@ -678,6 +678,17 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                   <MenuLink href="/pet-wash-ltd/executive/kyc" testId="menu-kyc-verification">KYC & Verification</MenuLink>
                   <MenuLink href="/pet-wash-ltd/executive/compliance" testId="menu-compliance-tower">Compliance Control Tower</MenuLink>
                   <MenuLink href="/pet-wash-ltd/executive/audit" testId="menu-audit-trail">Audit Trail</MenuLink>
+                  
+                  <Separator className="my-2" />
+                  
+                  <MenuLink href="/investor-presentation" testId="menu-investor-presentation" className="bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      💼 Investor Presentation
+                      <Badge variant="secondary" className="text-xs bg-yellow-600 text-white">Pitch Deck</Badge>
+                    </span>
+                  </MenuLink>
+                  <MenuLink href="/showcase" testId="menu-platform-showcase">Platform Showcase</MenuLink>
+                  <MenuLink href="/company-reports" testId="menu-company-reports">Company Reports</MenuLink>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -796,6 +807,17 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                       <MenuLink href="/admin/vouchers" testId="menu-admin-vouchers">Voucher Management</MenuLink>
                       <MenuLink href="/admin/performance-monitoring" testId="menu-admin-performance">Performance Monitoring</MenuLink>
                       <MenuLink href="/admin/performance-reviews" testId="menu-admin-performance-reviews">Performance Reviews</MenuLink>
+                      
+                      <Separator className="my-2" />
+                      
+                      <MenuLink href="/mobile/ops" testId="menu-mobile-ops" className="bg-gradient-to-r from-sky-50 to-blue-50 border-2 border-sky-300">
+                        <span className="flex items-center gap-2 font-bold">
+                          📱 Mobile Ops Hub
+                          <Badge variant="secondary" className="text-xs bg-sky-600 text-white">Mobile</Badge>
+                        </span>
+                      </MenuLink>
+                      <MenuLink href="/admin/station-registry" testId="menu-station-registry">Station Registry</MenuLink>
+                      <MenuLink href="/ops/dashboard" testId="menu-ops-dashboard">Operations Dashboard</MenuLink>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
