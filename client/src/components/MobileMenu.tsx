@@ -445,6 +445,39 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
 
           <Separator className="my-4" />
 
+          {/* AI & MONITORING - HIGH VISIBILITY "WATCH & SPY" SECTION */}
+          <div className="space-y-2">
+            <h3 className="px-4 text-xs font-semibold text-purple-600 uppercase tracking-wider font-bold">🤖 AI & Monitoring</h3>
+            
+            <Accordion type="multiple" className="space-y-2">
+              <AccordionItem value="ai-monitoring" className="border-2 border-purple-300 rounded-xl bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-100 shadow-lg hover:shadow-2xl transition-all">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-ai-monitoring-trigger">
+                  <span className="flex items-center gap-3 font-bold text-gray-900">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-600 flex items-center justify-center shadow-lg">
+                      <Sparkles className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                    </div>
+                    <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                      👁️ Gemini AI Watchdog
+                    </span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 space-y-1">
+                  <MenuLink href="/admin/gemini-watchdog" testId="menu-gemini-watchdog-prominent" className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      👁️ Watch & Spy Dashboard
+                      <Badge variant="secondary" className="text-xs bg-purple-600 text-white">AI Monitor</Badge>
+                    </span>
+                  </MenuLink>
+                  <MenuLink href="/admin/security-monitoring" testId="menu-security-monitor-ai">Security Monitor</MenuLink>
+                  <MenuLink href="/admin/fraud-dashboard" testId="menu-fraud-ai">Fraud Detection AI</MenuLink>
+                  <MenuLink href="/admin/performance-monitoring" testId="menu-perf-ai">Performance Monitoring</MenuLink>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+
+          <Separator className="my-4" />
+
           {/* COMMUNITY & FREE SERVICES */}
           <div className="space-y-2">
             <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Community & Social</h3>
