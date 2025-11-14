@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useSEO, pageSEO } from "@/lib/seo";
 import { 
   Scissors, 
   Search, 
@@ -16,6 +17,9 @@ import {
 } from "lucide-react";
 
 export default function GroomersOverview() {
+  // Apply SEO metadata
+  useSEO(pageSEO.groomingMarketplace);
+  
   const features = [
     {
       icon: <Search className="h-8 w-8 text-pink-600" />,

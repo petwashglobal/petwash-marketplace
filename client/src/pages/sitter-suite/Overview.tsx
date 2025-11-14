@@ -14,8 +14,12 @@ import {
   Sparkles,
   ArrowRight
 } from "lucide-react";
+import { useSEO, pageSEO } from "@/lib/seo";
 
 export default function SitterSuiteOverview() {
+  // Apply SEO metadata
+  useSEO(pageSEO.sitterSuite);
+  
   const features = [
     {
       icon: <Search className="h-8 w-8 text-violet-600" />,

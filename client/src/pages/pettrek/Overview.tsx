@@ -14,8 +14,12 @@ import {
   ArrowRight,
   MapPin
 } from "lucide-react";
+import { useSEO, pageSEO } from "@/lib/seo";
 
 export default function PetTrekOverview() {
+  // Apply SEO metadata
+  useSEO(pageSEO.petTrek);
+  
   const features = [
     {
       icon: <Car className="h-8 w-8 text-cyan-600" />,

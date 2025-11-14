@@ -13,8 +13,12 @@ import {
   Sparkles,
   ArrowRight
 } from "lucide-react";
+import { useSEO, pageSEO } from "@/lib/seo";
 
 export default function K9000Overview() {
+  // Apply SEO metadata
+  useSEO(pageSEO.k9000);
+  
   const features = [
     {
       icon: <MapPin className="h-8 w-8 text-blue-600" />,

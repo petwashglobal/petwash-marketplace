@@ -16,6 +16,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { Link } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 interface SitterProfile {
   id: string;
@@ -243,6 +244,9 @@ export default function SitterSuite() {
   const { user } = useFirebaseAuth();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
+  
+  // Apply SEO metadata
+  useSEO(pageSEO.sitterSuite);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState<string>('');

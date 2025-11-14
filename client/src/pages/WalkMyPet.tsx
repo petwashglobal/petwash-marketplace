@@ -19,6 +19,7 @@ import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 import { GlassCard, ProgressCircle, SparklineChart } from '@/components/LuxuryWidgets';
 import { EmergencyWalkBooking } from '@/components/EmergencyWalkBooking';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 interface AvailabilitySlot {
   day: string;
@@ -389,6 +390,9 @@ export default function WalkMyPet() {
   const { user } = useFirebaseAuth();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
+  
+  // Apply SEO metadata
+  useSEO(pageSEO.walkMyPet);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState<string>('');

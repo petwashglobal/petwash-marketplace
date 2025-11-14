@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSEO, pageSEO } from '@/lib/seo';
 import { 
   Sparkles, Upload, Star, Trash2, Check, Loader2, Image as ImageIcon,
   Wand2, Volume2, Settings, Download, Palette
@@ -60,6 +61,9 @@ export default function PlushLab() {
   const { user: firebaseUser } = useFirebaseAuth();
   const queryClient = useQueryClient();
   const [language] = useState<Language>((localStorage.getItem('petwash_lang') as Language) || 'he');
+  
+  // Apply SEO metadata
+  useSEO(pageSEO.plushLab);
   
   // Form state
   const [petName, setPetName] = useState('');

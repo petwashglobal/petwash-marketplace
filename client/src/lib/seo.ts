@@ -75,6 +75,42 @@ export const pageSEO: Record<string, SEOConfig> = {
     keywords: 'pet wash franchise, business opportunity, זיכיון, הזדמנות עסקית',
     ogType: 'website',
   },
+  k9000: {
+    title: 'K9000™ IoT Pet Wash Stations - Pet Wash™ | תחנות שטיפה חכמות',
+    description: 'Smart IoT pet washing stations with organic products. Self-service 24/7, AI-powered monitoring, contactless payment, real-time status. תחנות שטיפה חכמות עם מוצרים אורגניים, זמינות 24/7.',
+    keywords: 'K9000, IoT pet wash, smart pet station, self-service dog wash, תחנות שטיפה חכמות, כביסת כלבים עצמית',
+    ogType: 'product',
+  },
+  walkMyPet: {
+    title: 'Walk My Pet™ - Professional Dog Walking Services | שירותי הליכה מקצועיים',
+    description: 'Book certified dog walkers in Israel. GPS tracking, live updates, insurance coverage, instant booking. Starting from ₪50/walk. הזמן מטיילי כלבים מוסמכים עם מעקב GPS.',
+    keywords: 'dog walking Israel, pet walker, GPS tracking, professional dog walker, מטיילי כלבים, שירות הליכה',
+    ogType: 'website',
+  },
+  sitterSuite: {
+    title: 'The Sitter Suite™ - Premium Pet Sitting Services | שירותי פנסיון איכותיים',
+    description: 'Trusted pet sitters for overnight care, daily visits, and vacation boarding. Background-checked, insured, 72-hour escrow protection. From ₪120/day. פנסיון איכותי עם שמירה 24/7.',
+    keywords: 'pet sitting Israel, pet boarding, overnight pet care, dog sitter, פנסיון כלבים, שמירה על חיות מחמד',
+    ogType: 'website',
+  },
+  petTrek: {
+    title: 'PetTrek™ - Safe Pet Transportation Services | שירותי הסעות בטוחות',
+    description: 'Professional pet transport across Israel. Vet visits, airport transfers, inter-city travel. Climate-controlled vehicles, real-time tracking, certified drivers. הסעות מקצועיות עם מעקב בזמן אמת.',
+    keywords: 'pet transport Israel, dog taxi, pet shuttle, vet transport, הסעות כלבים, מונית לחיות מחמד',
+    ogType: 'website',
+  },
+  plushLab: {
+    title: 'The Plush Lab™ - AI Pet Avatar Creator | יוצר דמויות דיגיטליות',
+    description: 'Create stunning AI-powered 3D avatars of your pet. Advanced landmark detection, multilingual TTS, custom animations. Perfect for social media and gifts. צור דמויות דיגיטליות 3D מהחיה שלך.',
+    keywords: 'pet avatar, AI pet photo, 3D pet model, digital pet, דמות דיגיטלית, אווטאר כלב',
+    ogType: 'product',
+  },
+  groomingMarketplace: {
+    title: 'Grooming Marketplace - Premium Pet Grooming Services | שוק טיפוח מקצועי',
+    description: 'Book professional pet groomers in Israel. Full grooming, nail trimming, teeth cleaning, specialty cuts. Certified professionals, home service available. טיפוח מקצועי בבית או בסלון.',
+    keywords: 'pet grooming Israel, dog grooming, mobile grooming, pet salon, טיפוח כלבים, תספורת לכלבים',
+    ogType: 'website',
+  },
 };
 
 /**
