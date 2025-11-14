@@ -780,6 +780,7 @@ self.addEventListener('notificationclick', (event) => {
       if (!lastName) {
         return res.status(400).json({ ok: false, error: 'Last name is required' });
       }
+      // CRITICAL: Explicit consent required for GDPR + Israeli Privacy Law 2025 compliance
       if (!termsAccepted) {
         return res.status(400).json({ ok: false, error: 'You must accept the terms and conditions' });
       }
@@ -802,7 +803,7 @@ self.addEventListener('notificationclick', (event) => {
       // Hash password
       const passwordHash = await hashPassword(password);
 
-      // Create user
+      // Create user with explicit consent
       const [newUser] = await db
         .insert(customers)
         .values({
@@ -811,7 +812,7 @@ self.addEventListener('notificationclick', (event) => {
           firstName,
           lastName,
           phone: phone || null,
-          termsAccepted: true,
+          termsAccepted: true, // Already validated above - user explicitly consented
           authProvider: 'email',
           isVerified: false,
           loyaltyTier: 'new',
@@ -7519,6 +7520,67 @@ self.addEventListener('notificationclick', (event) => {
       res.status(500).json({ 
         success: false, 
         error: "Failed to get suggestions" 
+      });
+    }
+  });
+
+  // ========================================================================
+  // 📍 PUBLIC LOCATIONS API - K9000 Wash Stations for Customer Browsing
+  // ========================================================================
+  
+  app.get('/api/locations', apiLimiter, async (req, res) => {
+    try {
+      const { stations, locations } = await import('@shared/super-app-schema');
+      
+      // Query all active operational stations with their location data
+      const stationsData = await db
+        .select({
+          id: stations.id,
+          stationCode: stations.stationCode,
+          name: stations.name,
+          nameHe: stations.nameHe,
+          description: stations.description,
+          descriptionHe: stations.descriptionHe,
+          photoUrls: stations.photoUrls,
+          status: stations.status,
+          pricePerWash: stations.pricePerWash,
+          features: stations.features,
+          operatingHours: stations.operatingHours,
+          totalWashes: stations.totalWashes,
+          averageRating: sql<number>`5.0`, // Default rating, will be calculated from reviews
+          // Location data
+          address: locations.streetAddress,
+          city: locations.city,
+          district: locations.district,
+          postalCode: locations.postalCode,
+          latitude: locations.latitude,
+          longitude: locations.longitude,
+          phone: locations.phone,
+          email: locations.email,
+        })
+        .from(stations)
+        .innerJoin(locations, eq(stations.locationId, locations.id))
+        .where(
+          and(
+            eq(stations.isActive, true),
+            eq(stations.status, 'operational')
+          )
+        )
+        .orderBy(stations.name);
+
+      logger.info('[Locations API] Fetched K9000 stations', { count: stationsData.length });
+
+      res.json({
+        success: true,
+        locations: stationsData,
+        count: stationsData.length,
+      });
+    } catch (error: any) {
+      logger.error('[Locations API] Error fetching stations:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to fetch station locations',
+        message: error.message 
       });
     }
   });
