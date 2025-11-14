@@ -76,6 +76,18 @@ const petTypes = [
   { value: 'other', en: 'Other', he: 'אחר' },
 ];
 
+// Helper to get localized text from bilingual objects
+// TODO: Extend months/countries/petTypes to support all 6 languages (AR, RU, FR, ES)
+function getLocalizedText(obj: { en: string, he?: string } | { name: string, nameHe?: string }, lang: Language): string {
+  if ('en' in obj) {
+    // For months and petTypes
+    return lang === 'he' && obj.he ? obj.he : obj.en;
+  } else {
+    // For countries
+    return lang === 'he' && obj.nameHe ? obj.nameHe : obj.name;
+  }
+}
+
 export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrationComplete }: AppleStyleRegistrationProps) {
   const [formData, setFormData] = useState<RegistrationData>({
     firstName: '',
@@ -386,7 +398,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
                   <option value="">{t('registration.month', language)}</option>
                   {months.map(month => (
                     <option key={month.value} value={month.value}>
-                      {language === 'en' ? month.en : month.he}
+                      {getLocalizedText(month, language)}
                     </option>
                   ))}
                 </select>
@@ -421,7 +433,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
             >
               {countries.map(country => (
                 <option key={country.code} value={country.code}>
-                  {language === 'en' ? country.name : country.nameHe}
+                  {getLocalizedText(country, language)}
                 </option>
               ))}
             </select>
@@ -452,7 +464,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
             >
               {petTypes.map(pet => (
                 <option key={pet.value} value={pet.value}>
-                  {language === 'en' ? pet.en : pet.he}
+                  {getLocalizedText(pet, language)}
                 </option>
               ))}
             </select>

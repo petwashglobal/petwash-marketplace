@@ -1788,6 +1788,29 @@ export const translations: TranslationStrings = {
   'standaloneDivisions.marketplace': { en: 'MARKETPLACE', he: 'שוק', ar: 'سوق', ru: 'МАРКЕТПЛЕЙС', fr: 'MARCHÉ', es: 'MERCADO' },
   'standaloneDivisions.transport': { en: 'TRANSPORT', he: 'הסעות', ar: 'نقل', ru: 'ТРАНСПОРТ', fr: 'TRANSPORT', es: 'TRANSPORTE' },
   'standaloneDivisions.aiStudio': { en: 'AI STUDIO', he: 'סטודיו AI', ar: 'استوديو الذكاء الاصطناعي', ru: 'AI СТУДИЯ', fr: 'STUDIO IA', es: 'ESTUDIO IA' },
+  
+  // WhatsApp Chat Widget
+  'whatsapp.initialMessage': { en: 'Hello! I would like to know more about Pet Wash™ services', he: 'שלום! אני מעוניין לדעת יותר על שירותי Pet Wash™', ar: 'مرحبًا! أود معرفة المزيد عن خدمات Pet Wash™', ru: 'Здравствуйте! Я хотел бы узнать больше об услугах Pet Wash™', fr: 'Bonjour! Je voudrais en savoir plus sur les services Pet Wash™', es: '¡Hola! Me gustaría saber más sobre los servicios de Pet Wash™' },
+  'whatsapp.contactAria': { en: 'Contact us on WhatsApp', he: 'צור קשר דרך WhatsApp', ar: 'اتصل بنا عبر WhatsApp', ru: 'Свяжитесь с нами в WhatsApp', fr: 'Contactez-nous sur WhatsApp', es: 'Contáctanos en WhatsApp' },
+  'whatsapp.chatTitle': { en: 'Chat with us on WhatsApp', he: 'צ\'אט איתנו ב-WhatsApp', ar: 'تحدث معنا على WhatsApp', ru: 'Чат с нами в WhatsApp', fr: 'Discutez avec nous sur WhatsApp', es: 'Chatea con nosotros en WhatsApp' },
+  'whatsapp.tooltip': { en: 'Chat with us!', he: 'צ\'אט איתנו!', ar: 'تحدث معنا!', ru: 'Напишите нам!', fr: 'Discutez avec nous!', es: '¡Chatea con nosotros!' },
+  
+  // Pagination Controls
+  'pagination.previous': { en: 'Previous', he: 'הקודם', ar: 'السابق', ru: 'Предыдущая', fr: 'Précédent', es: 'Anterior' },
+  'pagination.next': { en: 'Next', he: 'הבא', ar: 'التالي', ru: 'Следующая', fr: 'Suivant', es: 'Siguiente' },
+  'pagination.morePages': { en: 'More pages', he: 'עמודים נוספים', ar: 'المزيد من الصفحات', ru: 'Больше страниц', fr: 'Plus de pages', es: 'Más páginas' },
+  'pagination.goToPrevious': { en: 'Go to previous page', he: 'עבור לעמוד הקודם', ar: 'انتقل إلى الصفحة السابقة', ru: 'Перейти на предыдущую страницу', fr: 'Aller à la page précédente', es: 'Ir a la página anterior' },
+  'pagination.goToNext': { en: 'Go to next page', he: 'עבור לעמוד הבא', ar: 'انتقل إلى الصفحة التالية', ru: 'Перейти на следующую страницу', fr: 'Aller à la page suivante', es: 'Ir a la página siguiente' },
+  
+  // Floating Action Buttons
+  'fab.aiLabel': { en: 'Ask Pet Wash AI', he: 'שאל את Pet Wash AI', ar: 'اسأل Pet Wash AI', ru: 'Спросить Pet Wash AI', fr: 'Demander à Pet Wash AI', es: 'Preguntar a Pet Wash AI' },
+  'fab.accessibility': { en: 'Accessibility', he: 'נגישות', ar: 'إمكانية الوصول', ru: 'Доступность', fr: 'Accessibilité', es: 'Accesibilidad' },
+  
+  // Privacy Policy
+  'privacy.backToHome': { en: 'Back to Home', he: 'חזרה לעמוד הבית', ar: 'العودة إلى الصفحة الرئيسية', ru: 'Вернуться на главную', fr: 'Retour à l\'accueil', es: 'Volver al inicio' },
+  'privacy.title': { en: 'Privacy Policy – Pet Wash Ltd', he: 'מדיניות פרטיות – פט ווש בע"מ', ar: 'سياسة الخصوصية – Pet Wash Ltd', ru: 'Политика конфиденциальности – Pet Wash Ltd', fr: 'Politique de confidentialité – Pet Wash Ltd', es: 'Política de privacidad – Pet Wash Ltd' },
+  'privacy.companyNumber': { en: 'Company Number: 517145033', he: 'מספר חברה: 517145033', ar: 'رقم الشركة: 517145033', ru: 'Номер компании: 517145033', fr: 'Numéro de société: 517145033', es: 'Número de empresa: 517145033' },
+  'privacy.effectiveDate': { en: 'Effective Date: 2025', he: 'תאריך תחילה: 2025', ar: 'تاريخ السريان: 2025', ru: 'Дата вступления в силу: 2025', fr: 'Date d\'entrée en vigueur: 2025', es: 'Fecha de vigencia: 2025' },
 };
 // Supported languages with English as global default
 export type Language = 'en' | 'he' | 'ar' | 'ru' | 'fr' | 'es';

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Accessibility } from 'lucide-react';
 import { AccessibilityMenu } from './AccessibilityMenu';
-import { Language } from '@/lib/i18n';
+import { Language, t } from '@/lib/i18n';
 import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface FloatingStackProps {
@@ -18,10 +18,7 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
     try {
       trackWhatsAppClick(language);
       
-      const message = language === 'en' 
-        ? 'Hello! I would like to know more about Pet Wash™️ services'
-        : 'שלום! אני מעוניין לדעת יותר על שירותי Pet Wash™️';
-      
+      const message = t('whatsapp.initialMessage', language);
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://wa.me/972549833355?text=${encodedMessage}`;
       
@@ -92,9 +89,9 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
     };
   }, []);
 
-  const aiLabel = language === 'en' ? 'Ask Pet Wash AI' : 'שאל את Pet Wash AI';
+  const aiLabel = t('fab.aiLabel', language);
   const whatsappLabel = 'WhatsApp';
-  const accessibilityLabel = language === 'en' ? 'Accessibility' : 'נגישות';
+  const accessibilityLabel = t('fab.accessibility', language);
 
   return (
     <>
