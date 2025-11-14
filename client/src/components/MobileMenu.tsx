@@ -92,6 +92,12 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                     💧 Our Service
                   </span>
                 </MenuLink>
+                <MenuLink href="/k9000/booking" testId="menu-k9000-booking" className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300">
+                  <span className="flex items-center gap-2 font-bold">
+                    🚿 Book K9000 Wash
+                    <Badge variant="secondary" className="text-xs bg-blue-500 text-white">Book Now</Badge>
+                  </span>
+                </MenuLink>
                 <MenuLink href="/packages" testId="menu-packages" className="bg-blue-50 border border-blue-200">
                   <span className="flex items-center gap-2 font-semibold">
                     🎁 Wash Packages
@@ -103,6 +109,15 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                     <span className="font-semibold bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">VIP Loyalty Program</span>
                   </span>
                 </MenuLink>
+                {user && (
+                  <MenuLink href="/loyalty/dashboard" testId="menu-loyalty-dashboard" className="bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      <Medal className="w-5 h-5 text-yellow-600 fill-yellow-500" />
+                      <span className="bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">My Loyalty Dashboard</span>
+                      <Badge variant="secondary" className="text-xs bg-gradient-to-r from-yellow-500 to-amber-500 text-white">7-Star</Badge>
+                    </span>
+                  </MenuLink>
+                )}
                 <MenuLink href="/locations" testId="menu-locations">
                   <span className="flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-red-500 fill-red-400" />
@@ -126,9 +141,10 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-3 space-y-1">
-                <MenuLink href="/walk-my-pet" testId="menu-walk-my-pet-book">
-                  <span className="flex items-center gap-2">
-                    📍 Book a Walker
+                <MenuLink href="/walk-my-pet" testId="menu-walk-my-pet-book" className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300">
+                  <span className="flex items-center gap-2 font-bold">
+                    🐕 Book a Walker
+                    <Badge variant="secondary" className="text-xs bg-green-500 text-white">Book Now</Badge>
                   </span>
                 </MenuLink>
                 {user && (
@@ -140,6 +156,11 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                       </span>
                     </MenuLink>
                     <MenuLink href="/walk-tracking/:walkId" testId="menu-walk-history">Walk History</MenuLink>
+                    <MenuLink href="/walk-my-pet/owner/dashboard" testId="menu-walk-owner-dashboard" className="bg-green-50 border border-green-200">
+                      <span className="flex items-center gap-2 font-semibold">
+                        📊 My Walks Dashboard
+                      </span>
+                    </MenuLink>
                   </>
                 )}
                 <MenuLink href="/walk-my-pet/walker/dashboard" testId="menu-walker-dashboard">Become a Walker</MenuLink>
@@ -160,10 +181,19 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-3 space-y-1">
-                <MenuLink href="/sitter-suite" testId="menu-sitter-suite-book">Book a Sitter</MenuLink>
+                <MenuLink href="/sitter-suite" testId="menu-sitter-suite-book" className="bg-gradient-to-r from-pink-50 to-rose-50 border-2 border-pink-300">
+                  <span className="flex items-center gap-2 font-bold">
+                    🏡 Book a Sitter
+                    <Badge variant="secondary" className="text-xs bg-pink-500 text-white">Book Now</Badge>
+                  </span>
+                </MenuLink>
                 {user && (
                   <>
-                    <MenuLink href="/sitter-suite/owner/dashboard" testId="menu-owner-dashboard">Owner Dashboard</MenuLink>
+                    <MenuLink href="/sitter-suite/owner/dashboard" testId="menu-owner-dashboard" className="bg-pink-50 border border-pink-200">
+                      <span className="flex items-center gap-2 font-semibold">
+                        📊 Owner Dashboard
+                      </span>
+                    </MenuLink>
                     <MenuLink href="/sitter-suite/sitter/dashboard" testId="menu-sitter-dashboard">Sitter Dashboard</MenuLink>
                   </>
                 )}
@@ -186,10 +216,19 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-3 space-y-1">
-                <MenuLink href="/academy" testId="menu-academy-book">Book a Trainer</MenuLink>
+                <MenuLink href="/academy" testId="menu-academy-book" className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-300">
+                  <span className="flex items-center gap-2 font-bold">
+                    🎓 Book a Trainer
+                    <Badge variant="secondary" className="text-xs bg-orange-500 text-white">Book Now</Badge>
+                  </span>
+                </MenuLink>
                 {user && (
                   <>
-                    <MenuLink href="/academy/owner/dashboard" testId="menu-academy-owner-dashboard">My Training Sessions</MenuLink>
+                    <MenuLink href="/academy/owner/dashboard" testId="menu-academy-owner-dashboard" className="bg-orange-50 border border-orange-200">
+                      <span className="flex items-center gap-2 font-semibold">
+                        📊 My Training Sessions
+                      </span>
+                    </MenuLink>
                     <MenuLink href="/academy/trainer/dashboard" testId="menu-trainer-dashboard">Trainer Dashboard</MenuLink>
                   </>
                 )}
@@ -210,10 +249,25 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-3 space-y-1">
-                <MenuLink href="/pettrek/book" testId="menu-pettrek-book">Book Transport</MenuLink>
+                <MenuLink href="/pettrek/book" testId="menu-pettrek-book" className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300">
+                  <span className="flex items-center gap-2 font-bold">
+                    🚗 Book Transport
+                    <Badge variant="secondary" className="text-xs bg-purple-500 text-white">Book Now</Badge>
+                  </span>
+                </MenuLink>
                 {user && (
                   <>
-                    <MenuLink href="/pettrek/track/:tripId" testId="menu-pettrek-track">Track Trip</MenuLink>
+                    <MenuLink href="/pettrek/track/:tripId" testId="menu-pettrek-track" className="bg-purple-100 border border-purple-200">
+                      <span className="flex items-center gap-2">
+                        📍 Track Trip LIVE
+                        <Badge variant="secondary" className="text-xs">Real-Time</Badge>
+                      </span>
+                    </MenuLink>
+                    <MenuLink href="/pettrek/customer/dashboard" testId="menu-pettrek-customer-dashboard" className="bg-purple-50 border border-purple-200">
+                      <span className="flex items-center gap-2 font-semibold">
+                        📊 My Trips Dashboard
+                      </span>
+                    </MenuLink>
                     <MenuLink href="/pettrek/provider/dashboard" testId="menu-pettrek-provider">Provider Dashboard</MenuLink>
                   </>
                 )}
