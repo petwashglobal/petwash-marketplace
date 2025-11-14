@@ -64,10 +64,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'gmail',
       icon: Mail,
       iconBg: 'from-red-500 to-red-600',
-      title: language === 'he' ? 'Gmail - דואר אלקטרוני מלא' : 'Gmail - Full Email Access',
-      description: language === 'he' 
-        ? 'קריאה, כתיבה, שליחה ומחיקה של אימיילים. התראות אוטומטיות, חשבוניות ותקשורת עם לקוחות.'
-        : 'Read, compose, send, and delete all your email. Automated notifications, invoices, and customer communications.',
+      title: t('googleConsent.services.gmail.title', language),
+      description: t('googleConsent.services.gmail.description', language),
       scopes: ['gmail.readonly', 'gmail.send', 'gmail.compose', 'gmail.modify'],
       critical: true,
     },
@@ -75,10 +73,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleMaps',
       icon: MapPin,
       iconBg: 'from-green-500 to-green-600',
-      title: language === 'he' ? 'Google Maps - ניווט ומיקום' : 'Google Maps - Navigation & Location',
-      description: language === 'he'
-        ? 'גיאוקודינג, ניווט, מיקום תחנות רחיצה, מעקב בזמן אמת, ואופטימיזציה של מסלולים עבור PetTrek™ ו-Walk My Pet™.'
-        : 'Geocoding, navigation, wash station locations, real-time tracking, and route optimization for PetTrek™ and Walk My Pet™.',
+      title: t('googleConsent.services.googleMaps.title', language),
+      description: t('googleConsent.services.googleMaps.description', language),
       scopes: ['maps.places', 'maps.geocoding', 'maps.directions'],
       critical: true,
     },
@@ -86,10 +82,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleCalendar',
       icon: Calendar,
       iconBg: 'from-blue-500 to-blue-600',
-      title: language === 'he' ? 'Google Calendar - יומן וקביעת תורים' : 'Google Calendar - Scheduling & Appointments',
-      description: language === 'he'
-        ? 'ניהול תורי רחיצה, פגישות עם פרנצ\'יזים, תזכורות אוטומטיות ותזמון צוות.'
-        : 'Manage wash appointments, franchise meetings, automated reminders, and staff scheduling.',
+      title: t('googleConsent.services.googleCalendar.title', language),
+      description: t('googleConsent.services.googleCalendar.description', language),
       scopes: ['calendar.events', 'calendar.readonly'],
       critical: true,
     },
@@ -97,10 +91,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleContacts',
       icon: Users,
       iconBg: 'from-purple-500 to-purple-600',
-      title: language === 'he' ? 'Google Contacts - אנשי קשר' : 'Google Contacts - Contact Management',
-      description: language === 'he'
-        ? 'סנכרון אנשי קשר, ניהול לקוחות, תזכורות ותקשורת מותאמת אישית.'
-        : 'Sync contacts, customer management, reminders, and personalized communications.',
+      title: t('googleConsent.services.googleContacts.title', language),
+      description: t('googleConsent.services.googleContacts.description', language),
       scopes: ['contacts.readonly', 'contacts.other.readonly'],
       critical: false,
     },
@@ -108,10 +100,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleDrive',
       icon: Cloud,
       iconBg: 'from-yellow-500 to-yellow-600',
-      title: language === 'he' ? 'Google Drive - אחסון קבצים' : 'Google Drive - File Storage',
-      description: language === 'he'
-        ? 'גיבוי אוטומטי, אחסון מסמכים, חשבוניות, חוזי פרנצ\'יזה ומסמכי KYC.'
-        : 'Automated backups, document storage, invoices, franchise contracts, and KYC documents.',
+      title: t('googleConsent.services.googleDrive.title', language),
+      description: t('googleConsent.services.googleDrive.description', language),
       scopes: ['drive.file', 'drive.appdata'],
       critical: true,
     },
@@ -119,10 +109,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleCloud',
       icon: Database,
       iconBg: 'from-indigo-500 to-indigo-600',
-      title: language === 'he' ? 'Google Cloud Storage - אחסון ענן' : 'Google Cloud Storage - Cloud Storage',
-      description: language === 'he'
-        ? 'אחסון ענן לגיבויים, תמונות, מסמכים וקבצים גדולים. תמיכה ב-1000+ משתמשים במקביל.'
-        : 'Cloud storage for backups, images, documents, and large files. Supports 1000+ concurrent users.',
+      title: t('googleConsent.services.googleCloud.title', language),
+      description: t('googleConsent.services.googleCloud.description', language),
       scopes: ['storage.objects.create', 'storage.objects.get'],
       critical: true,
     },
@@ -130,10 +118,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleVision',
       icon: Image,
       iconBg: 'from-pink-500 to-pink-600',
-      title: language === 'he' ? 'Google Vision AI - זיהוי תמונות וOCR' : 'Google Vision AI - Image Recognition & OCR',
-      description: language === 'he'
-        ? 'סריקת דרכונים לאימות KYC, OCR לקבלות, זיהוי פנים של חיות מחמד ב-Plush Lab™.'
-        : 'Passport scanning for KYC verification, receipt OCR, pet facial recognition for Plush Lab™.',
+      title: t('googleConsent.services.googleVision.title', language),
+      description: t('googleConsent.services.googleVision.description', language),
       scopes: ['vision.detect', 'vision.ocr'],
       critical: true,
     },
@@ -141,10 +127,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleTranslate',
       icon: MessageSquare,
       iconBg: 'from-teal-500 to-teal-600',
-      title: language === 'he' ? 'Google Translate - תרגום בזמן אמת' : 'Google Translate - Real-Time Translation',
-      description: language === 'he'
-        ? 'תרגום אוטומטי ל-6 שפות: עברית, אנגלית, ערבית, רוסית, צרפתית וספרדית.'
-        : 'Automatic translation to 6 languages: Hebrew, English, Arabic, Russian, French, and Spanish.',
+      title: t('googleConsent.services.googleTranslate.title', language),
+      description: t('googleConsent.services.googleTranslate.description', language),
       scopes: ['translate.v2'],
       critical: true,
     },
@@ -152,10 +136,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleWeather',
       icon: Cloud,
       iconBg: 'from-cyan-500 to-cyan-600',
-      title: language === 'he' ? 'Google Weather API - מזג אוויר' : 'Google Weather API - Weather Forecasts',
-      description: language === 'he'
-        ? 'תחזית מזג אוויר למיקום תחנות, התראות מזג אוויר והמלצות לרחיצת כלבים.'
-        : 'Weather forecasts for station locations, weather alerts, and pet washing recommendations.',
+      title: t('googleConsent.services.googleWeather.title', language),
+      description: t('googleConsent.services.googleWeather.description', language),
       scopes: ['weather.current', 'weather.forecast'],
       critical: false,
     },
@@ -163,10 +145,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleBusiness',
       icon: TrendingUp,
       iconBg: 'from-orange-500 to-orange-600',
-      title: language === 'he' ? 'Google Business Profile - ניהול עסקי' : 'Google Business Profile - Business Management',
-      description: language === 'he'
-        ? 'ניהול מיקומי פרנצ\'יזים, ביקורות, שעות פתיחה ומידע עסקי ב-Google Maps.'
-        : 'Manage franchise locations, reviews, business hours, and business info on Google Maps.',
+      title: t('googleConsent.services.googleBusiness.title', language),
+      description: t('googleConsent.services.googleBusiness.description', language),
       scopes: ['business.readonly', 'business.manage'],
       critical: false,
     },
@@ -174,10 +154,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleAnalytics',
       icon: TrendingUp,
       iconBg: 'from-rose-500 to-rose-600',
-      title: language === 'he' ? 'Google Analytics 4 - אנליטיקס' : 'Google Analytics 4 - Analytics',
-      description: language === 'he'
-        ? 'מעקב אחר שימוש, התנהגות משתמשים, המרות ואופטימיזציה עסקית.'
-        : 'Track usage, user behavior, conversions, and business optimization.',
+      title: t('googleConsent.services.googleAnalytics.title', language),
+      description: t('googleConsent.services.googleAnalytics.description', language),
       scopes: ['analytics.readonly', 'analytics.edit'],
       critical: false,
     },
@@ -185,10 +163,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'googleWallet',
       icon: Shield,
       iconBg: 'from-emerald-500 to-emerald-600',
-      title: language === 'he' ? 'Google Wallet - ארנק דיגיטלי' : 'Google Wallet - Digital Wallet',
-      description: language === 'he'
-        ? 'כרטיסי נאמנות דיגיטליים, שוברים, ותעודות חבר ב-Google Wallet.'
-        : 'Digital loyalty cards, vouchers, and membership passes in Google Wallet.',
+      title: t('googleConsent.services.googleWallet.title', language),
+      description: t('googleConsent.services.googleWallet.description', language),
       scopes: ['wallet.object.create', 'wallet.object.get'],
       critical: true,
     },
@@ -196,10 +172,8 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
       id: 'geminiAI',
       icon: Sparkles,
       iconBg: 'from-violet-500 to-violet-600',
-      title: language === 'he' ? 'Gemini AI 2.5 Flash - בינה מלאכותית' : 'Gemini AI 2.5 Flash - Artificial Intelligence',
-      description: language === 'he'
-        ? 'צ\'אט AI עם קנזו, טריאז\' אוטומטי, ניהול תקציבי AI, מודרציה ותמיכה חכמה.'
-        : 'AI chat with Kenzo, automated triage, AI bookkeeping, moderation, and smart support.',
+      title: t('googleConsent.services.geminiAI.title', language),
+      description: t('googleConsent.services.geminiAI.description', language),
       scopes: ['generative-ai'],
       critical: true,
     },
@@ -219,26 +193,22 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
             </div>
             
             <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              {language === 'he' ? '✅ אושר בהצלחה!' : '✅ Successfully Approved!'}
+              {t('googleConsent.success.approved', language)}
             </h1>
             
             <p className="text-xl text-neutral-700 dark:text-neutral-300 mb-8">
-              {language === 'he' 
-                ? 'כל 13 שירותי Google Cloud מאושרים ופעילים'
-                : 'All 13 Google Cloud Services Approved & Active'}
+              {t('googleConsent.success.allServices', language)}
             </p>
             
             <div className="p-6 rounded-2xl bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border-2 border-green-200 dark:border-green-700 mb-8">
               <div className="flex items-center justify-center gap-3 mb-4">
                 <Lock className="w-5 h-5 text-green-600" />
                 <span className="font-semibold text-green-900 dark:text-green-100">
-                  {language === 'he' ? 'מאובטח ומוצפן' : 'Secure & Encrypted'}
+                  {t('googleConsent.success.secure', language)}
                 </span>
               </div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                {language === 'he'
-                  ? 'כל הנתונים מוצפנים עם AES-256. ניתן לבטל גישה בכל עת דרך חשבון Google שלך.'
-                  : 'All data encrypted with AES-256. You can revoke access anytime via your Google Account.'}
+                {t('googleConsent.success.encryption', language)}
               </p>
             </div>
 
@@ -248,7 +218,7 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
               className="h-14 px-8 text-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-xl shadow-green-600/30"
               data-testid="button-continue-home"
             >
-              {language === 'he' ? 'המשך לדף הבית' : 'Continue to Home'}
+              {t('googleConsent.buttons.continue', language)}
             </Button>
           </div>
         </main>
@@ -281,14 +251,12 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
             
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 tracking-tight">
               <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                {language === 'he' ? 'Pet Wash™ Ltd' : 'Pet Wash™ Ltd'}
+                Pet Wash™ Ltd
               </span>
             </h1>
             
             <p className="text-lg sm:text-xl text-neutral-600 dark:text-neutral-400 max-w-3xl mx-auto leading-relaxed">
-              {language === 'he'
-                ? 'יש לאשר גישה ל-13 שירותי Google Cloud לצורך תפעול גלובלי מושלם'
-                : 'Authorize access to 13 Google Cloud Services for seamless global operations'}
+              {t('googleConsent.header.subtitle', language)}
             </p>
           </div>
 
@@ -310,7 +278,7 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
                   {service.critical && (
                     <div className="absolute top-4 right-4">
                       <div className="px-3 py-1 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold shadow-lg">
-                        {language === 'he' ? 'קריטי' : 'CRITICAL'}
+                        {t('googleConsent.status.critical', language)}
                       </div>
                     </div>
                   )}
@@ -356,13 +324,11 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
             <div className="flex items-center gap-3 mb-3">
               <TrendingUp className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
               <h3 className="text-xl font-bold text-indigo-900 dark:text-indigo-100">
-                {language === 'he' ? '🌍 מוכן ל-1000+ משתמשים במקביל' : '🌍 Ready for 1000+ Concurrent Users'}
+                {t('googleConsent.ready.concurrent', language)}
               </h3>
             </div>
             <p className="text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed">
-              {language === 'he'
-                ? 'כל שירותי Google Cloud מוגדרים לתפעול גלובלי בקנה מידה עסקי. תמיכה מלאה ב-6 שפות, פרנצ\'יזים רב-מדינתיים ו-AI אוטומטי.'
-                : 'All Google Cloud Services configured for enterprise-scale global operations. Full support for 6 languages, multi-country franchises, and automated AI.'}
+              {t('googleConsent.ready.configured', language)}
             </p>
           </div>
 
@@ -373,12 +339,10 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
             <div className="relative p-8 rounded-3xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-2xl border-2 border-neutral-200/60 dark:border-neutral-700/60 shadow-2xl">
               <div className="text-center mb-6">
                 <h2 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100 mb-2">
-                  {language === 'he' ? '✅ הכל מסומן ומוכן' : '✅ Everything Checked & Ready'}
+                  {t('googleConsent.ready.checked', language)}
                 </h2>
                 <p className="text-neutral-600 dark:text-neutral-400">
-                  {language === 'he'
-                    ? 'לחץ על "שמור ואשר" להפעלת כל השירותים'
-                    : 'Click "Save & Approve" to activate all services'}
+                  {t('googleConsent.ready.instruction', language)}
                 </p>
               </div>
 
@@ -392,12 +356,12 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
                 {isProcessing ? (
                   <div className="flex items-center justify-center gap-3">
                     <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
-                    {language === 'he' ? 'שומר...' : 'Saving...'}
+                    {t('googleConsent.buttons.saving', language)}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-3">
                     <Lock className="w-6 h-6" />
-                    {language === 'he' ? 'שמור ואשר - Save & Approve' : 'Save & Approve'}
+                    {t('googleConsent.buttons.saveApprove', language)}
                   </div>
                 )}
               </Button>
@@ -405,19 +369,19 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
               <div className="mt-4 flex items-center justify-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
                 <Shield className="w-4 h-4" />
                 <span>
-                  {language === 'he' ? 'מוצפן ומאובטח עם AES-256' : 'Encrypted & Secured with AES-256'}
+                  {t('googleConsent.security.encrypted', language)}
                 </span>
               </div>
 
               <div className="mt-4 text-center text-xs text-neutral-500 dark:text-neutral-400">
-                {language === 'he' ? 'ניתן לשנות הרשאות בכל עת דרך' : 'You can change permissions anytime via'}{' '}
+                {t('googleConsent.footer.changePermissions', language)}{' '}
                 <a 
                   href="https://myaccount.google.com/permissions" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline inline-flex items-center gap-1"
                 >
-                  {language === 'he' ? 'חשבון Google' : 'Google Account'}
+                  {t('googleConsent.footer.googleAccount', language)}
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
@@ -426,15 +390,15 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
 
           {/* PRIVACY & SECURITY */}
           <div className="mt-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
-            {language === 'he' ? 'ראה את' : 'See'}{' '}
+            {t('googleConsent.footer.see', language)}{' '}
             <a href="/privacy-policy" className="text-blue-600 hover:underline">
-              {language === 'he' ? 'מדיניות הפרטיות' : 'Privacy Policy'}
+              {t('googleConsent.footer.privacyPolicy', language)}
             </a>
-            {' '}{language === 'he' ? 'ו' : 'and'}{' '}
+            {' '}{t('googleConsent.footer.and', language)}{' '}
             <a href="/terms" className="text-blue-600 hover:underline">
-              {language === 'he' ? 'תנאי השירות' : 'Terms of Service'}
+              {t('googleConsent.footer.termsOfService', language)}
             </a>
-            {' '}{language === 'he' ? 'של Pet Wash™ Ltd' : 'of Pet Wash™ Ltd'}
+            {' '}{t('googleConsent.footer.ofPetWash', language)}
           </div>
         </div>
       </main>

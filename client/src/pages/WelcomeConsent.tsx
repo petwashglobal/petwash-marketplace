@@ -86,14 +86,12 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
               <Sparkles className="w-12 h-12 text-white" />
             </div>
             <h1 className="text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              {language === 'he' ? 'ברוכים הבאים ל-Pet Wash™' : 'Welcome to Pet Wash™'}
+              {t('welcomeConsent.title', language)}
             </h1>
           </div>
           
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            {language === 'he' 
-              ? 'המערכת האקולוגית הגלובלית המובילה לטיפול בחיות מחמד עם 8 פלטפורמות משולבות'
-              : 'The World\'s Leading Pet Care Ecosystem with 8 Integrated Platforms'}
+            {t('welcomeConsent.hero.subtitle', language)}
           </p>
 
           {/* Platform Badges */}
@@ -140,12 +138,10 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                 </div>
                 <div>
                   <CardTitle className="text-2xl">
-                    {language === 'he' ? 'התחבר עם Gmail' : 'Connect with Gmail'}
+                    {t('welcomeConsent.buttons.connectGmail', language)}
                   </CardTitle>
                   <CardDescription>
-                    {language === 'he' 
-                      ? 'אינטגרציה מאובטחת עם חשבון Google שלך'
-                      : 'Secure integration with your Google account'}
+                    {t('welcomeConsent.gmail.secureIntegration', language)}
                   </CardDescription>
                 </div>
               </div>
@@ -162,12 +158,10 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                     <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
                     <div>
                       <h4 className="font-semibold text-green-900 dark:text-green-100">
-                        {language === 'he' ? 'Gmail מחובר בהצלחה!' : 'Gmail Connected Successfully!'}
+                        {t('welcomeConsent.gmail.connected', language)}
                       </h4>
                       <p className="text-sm text-green-700 dark:text-green-300">
-                        {language === 'he'
-                          ? 'תקבל עדכונים אישיים ישירות לתיבת הדואר שלך'
-                          : 'You\'ll receive personalized updates directly to your inbox'}
+                        {t('welcomeConsent.gmail.personalizedUpdates', language)}
                       </p>
                     </div>
                   </div>
@@ -177,14 +171,14 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
               <div className="space-y-3">
                 <h4 className="font-semibold flex items-center gap-2">
                   <Shield className="w-4 h-4 text-blue-600" />
-                  {language === 'he' ? 'יתרונות האינטגרציה' : 'Integration Benefits'}
+                  {t('welcomeConsent.integration.benefits', language)}
                 </h4>
                 <ul className="space-y-2 text-sm">
                   {[
-                    language === 'he' ? 'התראות בזמן אמת על הזמנות' : 'Real-time booking notifications',
-                    language === 'he' ? 'עדכוני מצב שירות' : 'Service status updates',
-                    language === 'he' ? 'חשבוניות דיגיטליות' : 'Digital invoices',
-                    language === 'he' ? 'הודעות חירום וביטחון' : 'Emergency & security alerts',
+                    t('welcomeConsent.integration.notifications', language),
+                    t('welcomeConsent.integration.status', language),
+                    t('welcomeConsent.integration.invoices', language),
+                    t('welcomeConsent.integration.alerts', language),
                   ].map((benefit, index) => (
                     <li key={index} className="flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -205,12 +199,10 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                 </div>
                 <div>
                   <CardTitle className="text-2xl">
-                    {language === 'he' ? 'הסכמה ומדיניות' : 'Consent & Policies'}
+                    {t('welcomeConsent.section.consent', language)}
                   </CardTitle>
                   <CardDescription>
-                    {language === 'he'
-                      ? 'אנא אשר את ההסכמות הבאות'
-                      : 'Please confirm the following consents'}
+                    {t('welcomeConsent.consent.confirmFollowing', language)}
                   </CardDescription>
                 </div>
               </div>
@@ -228,14 +220,10 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                 />
                 <div className="flex-1">
                   <label htmlFor="terms" className="text-sm font-medium cursor-pointer">
-                    {language === 'he'
-                      ? 'אני מסכים/ה לתנאי השימוש *'
-                      : 'I agree to the Terms of Service *'}
+                    {t('welcomeConsent.consent.termsAgreement', language)}
                   </label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {language === 'he'
-                      ? 'כולל מדיניות תשלום, ביטול והחזר כספי'
-                      : 'Including payment, cancellation, and refund policies'}
+                    {t('welcomeConsent.consent.termsDescription', language)}
                   </p>
                 </div>
               </div>
@@ -252,14 +240,10 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                 />
                 <div className="flex-1">
                   <label htmlFor="privacy" className="text-sm font-medium cursor-pointer">
-                    {language === 'he'
-                      ? 'אני מסכים/ה למדיניות הפרטיות *'
-                      : 'I agree to the Privacy Policy *'}
+                    {t('welcomeConsent.consent.privacyAgreement', language)}
                   </label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {language === 'he'
-                      ? 'עיבוד נתונים, GDPR וחוק הגנת הפרטיות הישראלי'
-                      : 'Data processing, GDPR, and Israeli Privacy Law compliance'}
+                    {t('welcomeConsent.consent.privacyDescription', language)}
                   </p>
                 </div>
               </div>
@@ -276,14 +260,10 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                 />
                 <div className="flex-1">
                   <label htmlFor="guidelines" className="text-sm font-medium cursor-pointer">
-                    {language === 'he'
-                      ? 'קראתי והבנתי את ההנחיות הארגוניות הגלובליות *'
-                      : 'I have read and understood the Global Corporate Guidelines *'}
+                    {t('welcomeConsent.consent.guidelinesAgreement', language)}
                   </label>
                   <p className="text-xs text-muted-foreground mt-1 mb-2">
-                    {language === 'he'
-                      ? 'כיצד Pet Wash™ פועלת כארגון גלובלי'
-                      : 'How Pet Wash™ operates as a global organization'}
+                    {t('welcomeConsent.consent.guidelinesDescription', language)}
                   </p>
                   <Button
                     type="button"
@@ -295,8 +275,8 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                   >
                     <Info className="w-3 h-3 mr-1" />
                     {showCorporateGuidelines
-                      ? (language === 'he' ? 'סגור' : 'Close')
-                      : (language === 'he' ? 'קרא הנחיות' : 'Read Guidelines')}
+                      ? t('welcomeConsent.buttons.close', language)
+                      : t('welcomeConsent.buttons.readGuidelines', language)}
                   </Button>
                 </div>
               </div>
@@ -314,17 +294,13 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                 <div className="flex-1">
                   <label htmlFor="email" className="text-sm font-medium cursor-pointer flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    {language === 'he'
-                      ? 'אני מעוניין/ת לקבל עדכונים ומבצעים'
-                      : 'I want to receive updates and offers'}
+                    {t('welcomeConsent.consent.emailUpdates', language)}
                     <Badge variant="secondary" className="text-xs">
-                      {language === 'he' ? 'אופציונלי' : 'Optional'}
+                      {t('welcomeConsent.status.optional', language)}
                     </Badge>
                   </label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {language === 'he'
-                      ? 'ניתן לבטל בכל עת מההגדרות'
-                      : 'Can be disabled anytime from settings'}
+                    {t('welcomeConsent.consent.emailDisable', language)}
                   </p>
                 </div>
               </div>
@@ -340,21 +316,19 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
               >
                 {allRequiredConsentsGiven ? (
                   <>
-                    {language === 'he' ? 'המשך לדשבורד' : 'Continue to Dashboard'}
+                    {t('welcomeConsent.buttons.continue', language)}
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </>
                 ) : (
                   <>
-                    {language === 'he'
-                      ? 'אנא אשר את כל ההסכמות הנדרשות'
-                      : 'Please confirm all required consents'}
+                    {t('welcomeConsent.buttons.confirmRequired', language)}
                   </>
                 )}
               </Button>
 
               {!allRequiredConsentsGiven && (
                 <p className="text-xs text-center text-muted-foreground">
-                  * {language === 'he' ? 'שדות חובה' : 'Required fields'}
+                  * {t('welcomeConsent.requiredFields', language)}
                 </p>
               )}
             </CardContent>
@@ -367,28 +341,22 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-3">
                 <Globe className="w-6 h-6 text-blue-600" />
-                {language === 'he' 
-                  ? 'הנחיות ארגוניות גלובליות - Pet Wash™'
-                  : 'Global Corporate Guidelines - Pet Wash™'}
+                {t('welcomeConsent.guidelines.title', language)}
               </CardTitle>
               <CardDescription>
-                {language === 'he'
-                  ? 'המדריך המקיף לכל הפלטפורמות, עובדים ושותפים'
-                  : 'Comprehensive guide for all platforms, employees, and partners'}
+                {t('welcomeConsent.guidelines.description', language)}
               </CardDescription>
             </CardHeader>
             <CardContent className="prose prose-sm dark:prose-invert max-w-none space-y-6">
               {/* Quick link to full documentation */}
               <div className="not-prose p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-700">
                 <p className="text-sm mb-2">
-                  {language === 'he'
-                    ? 'המסמך המלא זמין במסמכי המערכת'
-                    : 'Full documentation available in system docs'}
+                  {t('welcomeConsent.guidelines.fullDocAvailable', language)}
                 </p>
                 <Button variant="outline" size="sm" asChild>
                   <a href="/docs/GLOBAL_CORPORATE_GUIDELINES.md" target="_blank">
                     <Building2 className="w-4 h-4 mr-2" />
-                    {language === 'he' ? 'פתח מדריך מלא' : 'View Full Guidelines'}
+                    {t('welcomeConsent.buttons.viewFullGuidelines', language)}
                   </a>
                 </Button>
               </div>
@@ -397,27 +365,25 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
               <div>
                 <h3 className="flex items-center gap-2 text-xl font-bold">
                   <Heart className="w-5 h-5 text-red-500" />
-                  {language === 'he' ? 'המשימה שלנו' : 'Our Mission'}
+                  {t('welcomeConsent.mission.title', language)}
                 </h3>
                 <p>
-                  {language === 'he'
-                    ? 'Pet Wash™ היא מערכת האקולוגית הגלובלית המובילה לטיפול בחיות מחמד, המציעה 8 פלטפורמות משולבות עם התמקדות בקיימות, אחריות חברתית ותמיכה במקלטי חיות.'
-                    : 'Pet Wash™ is the world\'s leading pet care ecosystem, offering 8 integrated platforms with a focus on sustainability, social responsibility, and supporting pet shelters.'}
+                  {t('welcomeConsent.mission.description', language)}
                 </p>
               </div>
 
               {/* Key Principles */}
               <div>
                 <h3 className="text-xl font-bold">
-                  {language === 'he' ? 'עקרונות מפתח' : 'Key Principles'}
+                  {t('welcomeConsent.principles.title', language)}
                 </h3>
                 <ul className="list-disc list-inside space-y-2">
-                  <li>{language === 'he' ? 'חברה אחת: Pet Wash™ Ltd (ישראל)' : 'Single Company: Pet Wash™ Ltd (Israel)'}</li>
-                  <li>{language === 'he' ? '8 פלטפורמות משולבות' : '8 Integrated Platforms'}</li>
-                  <li>{language === 'he' ? 'מע"מ ישראלי 18% על עמלות' : 'Israeli VAT 18% on commissions'}</li>
-                  <li>{language === 'he' ? 'אסקרו 72 שעות לבטיחות תשלומים' : '72-hour escrow for payment security'}</li>
-                  <li>{language === 'he' ? 'שער תשלום בלעדי: Nayax Israel' : 'Exclusive payment gateway: Nayax Israel'}</li>
-                  <li>{language === 'he' ? 'אימות ביומטרי וזיהוי דיגיטלי' : 'Biometric authentication and digital identity'}</li>
+                  <li>{t('welcomeConsent.principles.singleCompany', language)}</li>
+                  <li>{t('welcomeConsent.principles.platforms', language)}</li>
+                  <li>{t('welcomeConsent.principles.vat', language)}</li>
+                  <li>{t('welcomeConsent.principles.escrow', language)}</li>
+                  <li>{t('welcomeConsent.principles.payment', language)}</li>
+                  <li>{t('welcomeConsent.principles.biometric', language)}</li>
                 </ul>
               </div>
             </CardContent>

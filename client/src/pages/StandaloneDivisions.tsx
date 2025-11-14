@@ -14,6 +14,12 @@ import { t } from '@/lib/i18n';
 export default function StandaloneDivisions() {
   const [language] = useState<Language>((localStorage.getItem('petwash_lang') as Language) || 'he');
 
+  // Helper to get localized field from data objects
+  const getLocalizedField = (obj: any, fieldName: string): any => {
+    const hebrewField = `${fieldName}He`;
+    return language === 'he' && obj[hebrewField] ? obj[hebrewField] : obj[fieldName];
+  };
+
   const divisions = [
     {
       name: 'Pet Wash Hub™',
@@ -192,7 +198,7 @@ export default function StandaloneDivisions() {
                       ))}
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 italic border-t border-gray-200 dark:border-gray-700 pt-3">
-                      {language === 'he' ? company.modelHe : company.model}
+                      {getLocalizedField(company, 'model')}
                     </p>
                   </div>
                 ))}
@@ -213,7 +219,7 @@ export default function StandaloneDivisions() {
                     <CardHeader className={`bg-gradient-to-r ${division.color} text-white`}>
                       <CardTitle className="flex items-center gap-3 text-2xl">
                         <Icon className="w-8 h-8" />
-                        {language === 'he' ? division.nameHe : division.name}
+                        {getLocalizedField(division, 'name')}
                       </CardTitle>
                       {division.standalone && (
                         <Badge className="w-fit bg-white/20 text-white border-white/30">
@@ -223,12 +229,12 @@ export default function StandaloneDivisions() {
                     </CardHeader>
                     <CardContent className="pt-6">
                       <p className="text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
-                        {language === 'he' ? division.descriptionHe : division.description}
+                        {getLocalizedField(division, 'description')}
                       </p>
                       
                       <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                         <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">
-                          {language === 'he' ? division.usComparisonHe : division.usComparison}
+                          {getLocalizedField(division, 'usComparison')}
                         </p>
                       </div>
 
@@ -237,7 +243,7 @@ export default function StandaloneDivisions() {
                           {t('standaloneDivisions.keyFeatures', language)}
                         </h4>
                         <div className="flex flex-wrap gap-2">
-                          {(language === 'he' ? division.featuresHe : division.features).map((feature, i) => (
+                          {getLocalizedField(division, 'features').map((feature: string, i: number) => (
                             <Badge key={i} variant="secondary" className="text-xs">
                               {feature}
                             </Badge>
@@ -250,7 +256,7 @@ export default function StandaloneDivisions() {
                           {t('standaloneDivisions.revenueModel', language)}
                         </h4>
                         <p className="text-xs text-gray-700 dark:text-gray-300">
-                          {language === 'he' ? division.revenueHe : division.revenue}
+                          {getLocalizedField(division, 'revenue')}
                         </p>
                       </div>
                     </CardContent>

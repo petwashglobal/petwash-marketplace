@@ -94,6 +94,30 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Comprehensive Multi-Language System**: Enterprise-grade language detection and context management, including a centralized LanguageContext Service and Gemini AI integration.
 - **Staff Onboarding & Fraud Prevention**: Comprehensive workflow with document management, e-signature, biometric verification, background checks, GPS-verified logbook, and expense management.
 
+## Recent Changes
+
+### I18n Refactoring Pattern (November 2025)
+**Status:** Pilot completed on 3 files, remaining 44 files documented for future work
+
+**Completed Pilot Files:**
+1. `client/src/pages/GoogleServicesConsent.tsx` - Eliminated 19 inline ternaries
+2. `client/src/pages/WelcomeConsent.tsx` - Eliminated 17 inline ternaries  
+3. `client/src/pages/StandaloneDivisions.tsx` - Eliminated 22 inline ternaries (using helper function)
+
+**Translation Keys Added:** 75 new keys to `client/src/lib/i18n.ts` (now 1796 lines)
+
+**Systematic Refactoring Pattern:**
+1. **Identify inline ternaries:** `grep "language === 'he' ?" <file>.tsx`
+2. **Extract hardcoded strings:** Identify all Hebrew/English text pairs
+3. **Create i18n keys:** Add to `client/src/lib/i18n.ts` with proper taxonomy (e.g., `componentName.section.element`)
+4. **Replace ternaries:** Change `{language === 'he' ? 'עברית' : 'English'}` to `{t('key', language)}`
+5. **For dynamic data:** Use helper function `getLocalizedField()` (see StandaloneDivisions.tsx example)
+6. **Verify:** Run `grep -c "language === 'he' ?" <file>.tsx` (should return 0)
+
+**Remaining Work:** 44 files with ~200+ inline ternaries identified but deprioritized per architect guidance to preserve token budget for critical pre-deployment tasks (security, legal, SEO, performance, testing).
+
+**Note:** Pattern `language === 'he' || language === 'ar'` for RTL detection is correct and should NOT be replaced.
+
 ## External Dependencies
 - **@neondatabase/serverless**: PostgreSQL connectivity.
 - **drizzle-orm**: Type-safe database ORM.
