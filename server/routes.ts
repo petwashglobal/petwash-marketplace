@@ -11098,7 +11098,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const indexPath = path.join(import.meta.dirname, 'public', 'index.html');
       res.sendFile(indexPath, (err) => {
         if (err) {
-          console.error('Failed to send index.html:', err);
+          logger.error('Failed to send index.html', err);
           next(err);
         }
       });
@@ -11123,7 +11123,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     });
     
     // Also log raw error for debugging
-    console.error('[ERROR HANDLER] Full error object:', err);
+    logger.error('[ERROR HANDLER] Full error object', err);
     
     // Send clean error to client (no stack traces or internal details)
     if (!res.headersSent) {

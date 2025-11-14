@@ -90,7 +90,6 @@
     "express-session": "^1.18.2",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.5.0",
-    "firebaseui": "^6.1.0",
     "framer-motion": "^11.13.1",
     "googleapis": "^164.1.0",
     "helmet": "^8.1.0",
