@@ -276,6 +276,39 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
               </AccordionContent>
             </AccordionItem>
 
+            {/* Groomers Marketplace */}
+            <AccordionItem value="groomers" className="border-2 border-rose-200 rounded-xl bg-gradient-to-br from-rose-50 via-pink-50 to-fuchsia-100 shadow-md hover:shadow-xl transition-all">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-groomers-trigger">
+                <span className="flex items-center gap-3 font-bold text-gray-900">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 via-pink-500 to-fuchsia-600 flex items-center justify-center shadow-lg">
+                    <Scissors className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                  </div>
+                  <span className="bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
+                    Grooming Marketplace
+                  </span>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-3 space-y-1">
+                <MenuLink href="/groomers/book" testId="menu-groomers-book" className="bg-gradient-to-r from-rose-50 to-pink-50 border-2 border-rose-300">
+                  <span className="flex items-center gap-2 font-bold">
+                    ✂️ Book Grooming
+                    <Badge variant="secondary" className="text-xs bg-rose-500 text-white">Book Now</Badge>
+                  </span>
+                </MenuLink>
+                <MenuLink href="/groomers" testId="menu-groomers-explore">Explore Groomers</MenuLink>
+                {user && (
+                  <>
+                    <MenuLink href="/groomers/customer/dashboard" testId="menu-groomers-customer-dashboard" className="bg-rose-50 border border-rose-200">
+                      <span className="flex items-center gap-2 font-semibold">
+                        📊 My Grooming Dashboard
+                      </span>
+                    </MenuLink>
+                    <MenuLink href="/groomers/provider/dashboard" testId="menu-groomers-provider">Groomer Dashboard</MenuLink>
+                  </>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
             {/* K9000 IoT Stations */}
             <AccordionItem value="k9000" className="border-2 border-slate-300 rounded-xl bg-gradient-to-br from-slate-100 via-gray-100 to-zinc-200 shadow-md hover:shadow-xl transition-all">
               <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-k9000-trigger">
@@ -504,6 +537,46 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                     </span>
                   </MenuLink>
                   <MenuLink href="/enterprise/hq" testId="menu-enterprise-hq">Enterprise HQ</MenuLink>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Executive Suite - C-Level Dashboards */}
+              <AccordionItem value="executive-suite" className="border-2 border-violet-300 rounded-xl bg-gradient-to-br from-violet-100 via-purple-100 to-fuchsia-200 shadow-lg hover:shadow-2xl transition-all">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-executive-suite-trigger">
+                  <span className="flex items-center gap-3 font-bold text-gray-900">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-700 flex items-center justify-center shadow-lg">
+                      <Crown className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                    </div>
+                    <span className="bg-gradient-to-r from-violet-700 to-purple-700 bg-clip-text text-transparent">
+                      👑 Executive Suite
+                    </span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 space-y-1">
+                  <MenuLink href="/pet-wash-ltd/executive" testId="menu-executive-home" className="bg-gradient-to-r from-violet-50 to-purple-50 border-2 border-violet-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      <Sparkles className="w-4 h-4 text-violet-600" />
+                      Executive Home
+                      <Badge variant="secondary" className="text-xs bg-violet-600 text-white">C-Suite</Badge>
+                    </span>
+                  </MenuLink>
+                  <MenuLink href="/pet-wash-ltd/executive/ceo" testId="menu-ceo-dashboard" className="bg-violet-50 border border-violet-200">
+                    <span className="flex items-center gap-2 font-semibold">
+                      <Crown className="w-4 h-4 text-violet-600" />
+                      CEO Dashboard
+                    </span>
+                  </MenuLink>
+                  <MenuLink href="/pet-wash-ltd/executive/finance" testId="menu-finance-dashboard">Finance Dashboard</MenuLink>
+                  <MenuLink href="/admin/hr" testId="menu-hr-dashboard">HR Dashboard</MenuLink>
+                  <MenuLink href="/admin/sales" testId="menu-sales-dashboard">Sales Dashboard</MenuLink>
+                  <MenuLink href="/admin/crm" testId="menu-crm-dashboard">CRM Dashboard</MenuLink>
+                  <MenuLink href="/admin/logistics" testId="menu-logistics-dashboard">Logistics Dashboard</MenuLink>
+                  
+                  <Separator className="my-2" />
+                  
+                  <MenuLink href="/pet-wash-ltd/executive/kyc" testId="menu-kyc-verification">KYC & Verification</MenuLink>
+                  <MenuLink href="/pet-wash-ltd/executive/compliance" testId="menu-compliance-tower">Compliance Control Tower</MenuLink>
+                  <MenuLink href="/pet-wash-ltd/executive/audit" testId="menu-audit-trail">Audit Trail</MenuLink>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
