@@ -358,6 +358,83 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
 
           <Separator className="my-4" />
 
+          {/* LIVE TRACKING & MAPS */}
+          <div className="space-y-2">
+            <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Live Tracking & Maps</h3>
+            
+            <Accordion type="multiple" className="space-y-2">
+              <AccordionItem value="tracking" className="border-2 border-emerald-200 rounded-xl bg-gradient-to-br from-emerald-50 via-green-50 to-teal-100 shadow-md hover:shadow-xl transition-all">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-tracking-trigger">
+                  <span className="flex items-center gap-3 font-bold text-gray-900">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600 flex items-center justify-center shadow-lg">
+                      <Navigation className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                    </div>
+                    <span className="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
+                      📍 Live GPS Tracking
+                    </span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 space-y-1">
+                  <MenuLink href="/track-my-pet" testId="menu-track-my-pet" className="bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      🐾 Track My Pet LIVE
+                      <Badge variant="secondary" className="text-xs bg-emerald-500 text-white">Real-Time</Badge>
+                    </span>
+                  </MenuLink>
+                  <MenuLink href="/walk-tracking/:walkId" testId="menu-walk-tracking">Track Walk Live</MenuLink>
+                  <MenuLink href="/pettrek/track/:tripId" testId="menu-pettrek-tracking">Track Transport Live</MenuLink>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            <MenuLink href="/locations" testId="menu-locations" className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300 rounded-lg">
+              <span className="flex items-center gap-2 font-bold">
+                <MapPin className="w-4 h-4 text-blue-600" />
+                🗺️ Find K9000 Stations
+                <Badge variant="secondary" className="text-xs bg-blue-500 text-white">Maps</Badge>
+              </span>
+            </MenuLink>
+          </div>
+
+          <Separator className="my-4" />
+
+          {/* HR & TEAM MANAGEMENT */}
+          <div className="space-y-2">
+            <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">HR & Team</h3>
+            
+            <Accordion type="multiple" className="space-y-2">
+              <AccordionItem value="hr-team" className="border-2 border-amber-200 rounded-xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-100 shadow-md hover:shadow-xl transition-all">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-hr-team-trigger">
+                  <span className="flex items-center gap-3 font-bold text-gray-900">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-600 flex items-center justify-center shadow-lg">
+                      <Users className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                    </div>
+                    <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+                      Team Management
+                    </span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 space-y-1">
+                  <MenuLink href="/admin/recruitment" testId="menu-recruitment">Recruitment Dashboard</MenuLink>
+                  <MenuLink href="/admin/staff-onboarding" testId="menu-staff-onboarding">Staff Onboarding</MenuLink>
+                  <MenuLink href="/provider-onboarding" testId="menu-provider-onboarding">Provider Onboarding</MenuLink>
+                  <MenuLink href="/team-inbox" testId="menu-team-inbox">Team Inbox</MenuLink>
+                  <MenuLink href="/employee/expenses" testId="menu-employee-expenses">Employee Expenses</MenuLink>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            <MenuLink href="/documents" testId="menu-documents" className="bg-gradient-to-r from-slate-50 to-gray-50 border-2 border-slate-300 rounded-lg">
+              <span className="flex items-center gap-2 font-bold">
+                <FileText className="w-4 h-4 text-slate-600" />
+                📄 Document Management
+                <Badge variant="secondary" className="text-xs bg-slate-500 text-white">Secure</Badge>
+              </span>
+            </MenuLink>
+          </div>
+
+          <Separator className="my-4" />
+
           {/* COMMUNITY & FREE SERVICES */}
           <div className="space-y-2">
             <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Community & Social</h3>
@@ -460,6 +537,30 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                   </MenuLink>
                   <MenuLink href="/weather-planner" testId="menu-weather-planner">Smart Weather Planner</MenuLink>
                   <MenuLink href="/pet-wash-day-planner" testId="menu-day-planner">Day Planner</MenuLink>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Social Impact Programs */}
+              <AccordionItem value="social-impact" className="border-2 border-lime-200 rounded-xl bg-gradient-to-br from-lime-50 via-green-50 to-emerald-100 shadow-md hover:shadow-xl transition-all">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-social-impact-trigger">
+                  <span className="flex items-center gap-3 font-bold text-gray-900">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-lime-500 via-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                      <Award className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                    </div>
+                    <span className="bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent">
+                      🌱 Social Impact
+                    </span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 space-y-1">
+                  <MenuLink href="/shared-services/programs" testId="menu-community-programs" className="bg-gradient-to-r from-lime-50 to-green-50 border-2 border-lime-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      💚 Community Programs
+                      <Badge variant="secondary" className="text-xs bg-lime-600 text-white">Impact</Badge>
+                    </span>
+                  </MenuLink>
+                  <MenuLink href="/shared-services/impact" testId="menu-impact-metrics">Impact Dashboard</MenuLink>
+                  <MenuLink href="/claim" testId="menu-claim-voucher">Claim Voucher</MenuLink>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -689,6 +790,12 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                       <MenuLink href="/admin/fraud-dashboard" testId="menu-admin-fraud">Fraud Detection</MenuLink>
                       <MenuLink href="/admin/security-monitoring" testId="menu-admin-security">Security Monitor</MenuLink>
                       <MenuLink href="/admin/gemini-watchdog" testId="menu-admin-gemini">AI Watchdog</MenuLink>
+                      
+                      <Separator className="my-2" />
+                      
+                      <MenuLink href="/admin/vouchers" testId="menu-admin-vouchers">Voucher Management</MenuLink>
+                      <MenuLink href="/admin/performance-monitoring" testId="menu-admin-performance">Performance Monitoring</MenuLink>
+                      <MenuLink href="/admin/performance-reviews" testId="menu-admin-performance-reviews">Performance Reviews</MenuLink>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
