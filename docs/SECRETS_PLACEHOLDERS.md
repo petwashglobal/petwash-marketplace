@@ -56,23 +56,6 @@ FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
 
 ## ⚙️ Optional Production Secrets
 
-### Twilio SMS Alerts
-```bash
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_PHONE_NUMBER=+15551234567
-TWILIO_ALERT_PHONE=+972501234567
-```
-**Where to get**:
-1. Go to https://console.twilio.com
-2. Get Account SID & Auth Token from dashboard
-3. Buy phone number → Copy number
-4. Set `TWILIO_ALERT_PHONE` to your mobile (receives critical alerts)
-
-**Used for**: SMS alerts on critical failures (auth outage, deploy rollback)
-
----
-
 ### Google Analytics 4
 ```bash
 GA4_MEASUREMENT_ID=G-XXXXXXXXXX
@@ -297,17 +280,11 @@ curl -H "Authorization: Bearer YOUR_METRICS_TOKEN" http://localhost:5000/metrics
 3. ✅ `ALERTS_SLACK_WEBHOOK`
 4. ✅ `METRICS_AUTH_TOKEN`
 
-**Phase 2 - Important** (Within 48 hours):
-5. ⚙️ `TWILIO_ACCOUNT_SID`
-6. ⚙️ `TWILIO_AUTH_TOKEN`
-7. ⚙️ `TWILIO_PHONE_NUMBER`
-8. ⚙️ `TWILIO_ALERT_PHONE`
-
-**Phase 3 - Analytics** (Within 1 week):
-9. 📊 `GA4_MEASUREMENT_ID`
-10. 📊 `GA4_API_SECRET`
-11. 📊 `BIGQUERY_PROJECT_ID`
-12. 📊 `BIGQUERY_DATASET_ID`
+**Phase 2 - Analytics** (Within 1 week):
+5. 📊 `GA4_MEASUREMENT_ID`
+6. 📊 `GA4_API_SECRET`
+7. 📊 `BIGQUERY_PROJECT_ID`
+8. 📊 `BIGQUERY_DATASET_ID`
 
 **Phase 4 - Future** (As needed):
 - Social OAuth credentials
@@ -332,11 +309,6 @@ curl -H "Authorization: Bearer YOUR_METRICS_TOKEN" http://localhost:5000/metrics
 - Test webhook URL in browser
 - Verify channel permissions
 - Check webhook not expired
-
-**Twilio SMS failing?**
-- Verify phone number is E.164 format (+15551234567)
-- Check account balance
-- Ensure number is verified (trial accounts)
 
 ---
 

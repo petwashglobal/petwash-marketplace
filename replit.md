@@ -111,8 +111,9 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **qrcode**: QR code generation.
 - **PassKit**: Apple Wallet integration.
 - **googleapis**: Google Wallet integration.
-- **Meta WhatsApp Business API**: WhatsApp messaging.
-- **Google Firebase Cloud Messaging (FCM)**: Push notifications and SMS alternative.
+- **Meta WhatsApp Business API**: WhatsApp messaging (EXCLUSIVE for messaging).
+- **Google Firebase Cloud Messaging (FCM)**: Push notifications and SMS alternative (EXCLUSIVE for push/SMS).
+- **NOTE**: Twilio is NOT used - all messaging via WhatsApp Business API and FCM only.
 - **Mizrahi-Tefahot Bank (via aggregator API)**: Bank reconciliation.
 - **Open-Meteo API**: Weather forecast integration.
 - **DocuSeal (@docuseal/api)**: Open-source e-signature platform.

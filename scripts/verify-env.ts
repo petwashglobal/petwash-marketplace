@@ -26,10 +26,8 @@ const ENV_CHECKS: EnvCheck[] = [
   { key: 'ALERTS_SLACK_WEBHOOK', required: true, category: 'Monitoring' },
   { key: 'METRICS_AUTH_TOKEN', required: true, category: 'Monitoring' },
   
-  // Email & SMS
+  // Email & Messaging (WhatsApp via Meta, FCM for push)
   { key: 'SENDGRID_API_KEY', required: true, category: 'Email' },
-  { key: 'TWILIO_ACCOUNT_SID', required: false, category: 'SMS' },
-  { key: 'TWILIO_AUTH_TOKEN', required: false, category: 'SMS' },
   
   // OAuth Providers
   { key: 'TIKTOK_CLIENT_KEY', required: false, category: 'OAuth' },

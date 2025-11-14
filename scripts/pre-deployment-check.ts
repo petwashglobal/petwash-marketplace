@@ -33,7 +33,6 @@ async function checkEnvironmentVariables(): Promise<void> {
     { name: 'VITE_FIREBASE_API_KEY', critical: true },
     { name: 'VITE_FIREBASE_PROJECT_ID', critical: true },
     { name: 'SENDGRID_API_KEY', critical: false },
-    { name: 'TWILIO_ACCOUNT_SID', critical: false },
     { name: 'GEMINI_API_KEY', critical: false },
     { name: 'GOOGLE_APPLICATION_CREDENTIALS', critical: true }, // GCS backups
   ];
