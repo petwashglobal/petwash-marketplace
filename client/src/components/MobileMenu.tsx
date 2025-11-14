@@ -32,7 +32,7 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
     <Link href={href}>
       <button
         onClick={onClose}
-        className={`block w-full text-left py-2.5 px-4 rounded-lg hover:bg-gray-100 transition-colors ${className}`}
+        className={`block w-full text-left py-2.5 px-4 rounded-lg hover:bg-gray-50 active:scale-[0.98] transition-all duration-200 ${className}`}
         data-testid={testId}
       >
         {children}
@@ -48,22 +48,24 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
       onClick={onClose}
     >
       <div 
-        className={`mobile-hamburger-menu-container fixed top-0 h-full bg-white shadow-2xl transform transition-transform overflow-y-auto ${
+        className={`mobile-hamburger-menu-container fixed top-0 h-full bg-white shadow-2xl transform transition-all duration-300 overflow-y-auto scroll-smooth ${
           language === 'he' ? 'left-0' : 'right-0'
         }`}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 'clamp(300px, 80vw, 420px)',
+          scrollBehavior: 'smooth',
+          WebkitOverflowScrolling: 'touch'
         }}
       >
-        <div className="sticky top-0 bg-white z-10 border-b border-gray-200 px-6 py-4">
+        <div className="sticky top-0 bg-white/95 backdrop-blur-lg z-10 border-b border-gray-200 px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-900">Pet Wash™</h2>
+            <h2 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Pet Wash™</h2>
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-gray-100"
+              className="p-2 rounded-lg hover:bg-gray-100 active:scale-95 transition-all duration-200"
               aria-label="Close menu"
             >
               <X className="h-5 w-5" />
@@ -476,9 +478,6 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                     </span>
                   </MenuLink>
                   <MenuLink href="/enterprise/hq" testId="menu-enterprise-hq">Enterprise HQ</MenuLink>
-                  {user && userRole?.role === 'admin' && (
-                    <MenuLink href="/admin/enterprise" testId="menu-admin-enterprise">Admin: Enterprise</MenuLink>
-                  )}
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -551,11 +550,55 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                   </span>
                 </MenuLink>
 
+                <MenuLink href="/settings/security" testId="menu-security-settings" className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
+                  <span className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-green-600" />
+                    <span className="font-semibold">Security & 2FA</span>
+                  </span>
+                </MenuLink>
+
+                <MenuLink href="/connected-devices" testId="menu-connected-devices" className="border border-gray-200 rounded-lg">
+                  <span className="flex items-center gap-2">
+                    <Cog className="w-4 h-4" />
+                    Connected Devices
+                  </span>
+                </MenuLink>
+
+                <Separator className="my-2" />
+
+                {/* ADMIN PANEL - Show for all logged-in users (self-service admin features) */}
+                <Accordion type="multiple" className="space-y-2">
+                  <AccordionItem value="admin-tools" className="border-2 border-red-200 rounded-xl bg-gradient-to-br from-red-50 via-orange-50 to-amber-100 shadow-md hover:shadow-xl transition-all">
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-admin-trigger">
+                      <span className="flex items-center gap-3 font-bold text-gray-900">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 via-orange-500 to-amber-600 flex items-center justify-center shadow-lg">
+                          <Shield className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                        </div>
+                        <span className="bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+                          Admin Tools
+                        </span>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-3 space-y-1">
+                      <MenuLink href="/admin/dashboard" testId="menu-admin-dashboard" className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200">
+                        <span className="flex items-center gap-2 font-semibold">
+                          <BarChart className="w-4 h-4 text-red-600" />
+                          Admin Dashboard
+                        </span>
+                      </MenuLink>
+                      <MenuLink href="/admin/stations" testId="menu-admin-stations">Station Management</MenuLink>
+                      <MenuLink href="/admin/fraud-dashboard" testId="menu-admin-fraud">Fraud Detection</MenuLink>
+                      <MenuLink href="/admin/security-monitoring" testId="menu-admin-security">Security Monitor</MenuLink>
+                      <MenuLink href="/admin/gemini-watchdog" testId="menu-admin-gemini">AI Watchdog</MenuLink>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
                 <Separator className="my-2" />
 
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-left py-2.5 px-4 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors text-gray-700"
+                  className="block w-full text-left py-2.5 px-4 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all duration-200 active:scale-[0.98] text-gray-700"
                   data-testid="menu-logout"
                 >
                   {t('nav.logout', language)}
