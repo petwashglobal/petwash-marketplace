@@ -801,6 +801,176 @@ export const navigationTree: MenuItem[] = [
   },
 
   // =============================================
+  // ✨ Premium Features
+  // =============================================
+  {
+    id: 'premium-features',
+    label: 'Premium Features',
+    labelHe: 'תכונות פרימיום',
+    icon: Sparkles,
+    isNew: true,
+    children: [
+      {
+        id: 'kenzo-ai-mascot',
+        label: 'Kenzo AI Mascot (3D Avatar)',
+        labelHe: 'קנזו AI - מסקוט תלת-ממדי',
+        icon: Sparkles,
+        path: '/kenzo-ai',
+        isNew: true,
+      },
+      {
+        id: 'live-chat-widget',
+        label: 'Live Chat Support',
+        labelHe: 'צ\'אט תמיכה חי',
+        icon: MessageSquare,
+        path: '/live-chat',
+      },
+      {
+        id: 'wallet-telemetry',
+        label: 'Wallet Analytics Dashboard',
+        labelHe: 'לוח ניתוח ארנק',
+        icon: BarChart3,
+        path: '/wallet-telemetry',
+        userRoles: ['admin'],
+      },
+      {
+        id: 'notification-center',
+        label: 'Notification Preferences',
+        labelHe: 'העדפות התראות',
+        icon: Bell,
+        path: '/notification-preferences',
+      },
+      {
+        id: 'security-dashboard',
+        label: 'Security Status',
+        labelHe: 'סטטוס אבטחה',
+        icon: Shield,
+        path: '/security-status',
+      },
+    ],
+  },
+
+  // =============================================
+  // 🎓 Pet Training Academy
+  // =============================================
+  {
+    id: 'academy',
+    label: 'Pet Training Academy',
+    labelHe: 'אקדמיה לאימון חיות',
+    icon: GraduationCap,
+    children: [
+      {
+        id: 'academy-overview',
+        label: 'Academy Overview',
+        labelHe: 'סקירת אקדמיה',
+        path: '/academy',
+      },
+      {
+        id: 'academy-booking',
+        label: 'Book Training Session',
+        labelHe: 'הזמן אימון',
+        icon: Calendar,
+        path: '/academy/booking-flow',
+      },
+      {
+        id: 'trainer-profiles',
+        label: 'Browse Trainers',
+        labelHe: 'עיין במאמנים',
+        icon: Users,
+        path: '/academy/trainers',
+      },
+      {
+        id: 'training-programs',
+        label: 'Training Programs',
+        labelHe: 'תוכניות אימון',
+        path: '/academy/programs',
+      },
+    ],
+  },
+
+  // =============================================
+  // 🏢 Franchise Management
+  // =============================================
+  {
+    id: 'franchise',
+    label: 'Franchise Management',
+    labelHe: 'ניהול זכיינות',
+    icon: Building2,
+    userRoles: ['franchisee', 'admin'],
+    children: [
+      {
+        id: 'franchise-dashboard',
+        label: 'Franchise Dashboard',
+        labelHe: 'לוח בקרה זכיין',
+        icon: BarChart3,
+        path: '/franchise/dashboard',
+      },
+      {
+        id: 'franchise-inbox',
+        label: 'Franchise Inbox',
+        labelHe: 'תיבת דואר זכיין',
+        icon: Inbox,
+        path: '/franchise/inbox',
+      },
+      {
+        id: 'franchise-marketing',
+        label: 'Marketing Tools',
+        labelHe: 'כלי שיווק',
+        icon: BarChart3,
+        path: '/franchise/marketing',
+      },
+      {
+        id: 'franchise-reports',
+        label: 'Reports & Analytics',
+        labelHe: 'דוחות וניתוחים',
+        icon: FileText,
+        path: '/franchise/reports',
+      },
+      {
+        id: 'franchise-support',
+        label: 'Franchise Support',
+        labelHe: 'תמיכה לזכיין',
+        icon: HelpCircle,
+        path: '/franchise/support',
+      },
+    ],
+  },
+
+  // =============================================
+  // 👔 Contractor Portal
+  // =============================================
+  {
+    id: 'contractor',
+    label: 'Contractor Portal',
+    labelHe: 'פורטל קבלנים',
+    icon: Users,
+    userRoles: ['contractor', 'provider', 'admin'],
+    children: [
+      {
+        id: 'contractor-dashboard',
+        label: 'Contractor Dashboard',
+        labelHe: 'לוח בקרה קבלן',
+        icon: BarChart3,
+        path: '/contractor/dashboard',
+      },
+      {
+        id: 'contractor-earnings',
+        label: 'Earnings & Payouts',
+        labelHe: 'הכנסות ותשלומים',
+        icon: DollarSign,
+        path: '/contractor/earnings',
+      },
+      {
+        id: 'contractor-reviews',
+        label: 'Reviews & Ratings',
+        labelHe: 'ביקורות ודירוגים',
+        icon: Star,
+        path: '/contractor/reviews',
+      },
+    ],
+  },
+
+  // =============================================
   // 🆘 Help & Support
   // =============================================
   {
