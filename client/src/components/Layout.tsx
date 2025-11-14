@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Header } from './Header';
 import { Footer } from './Footer';
+import { LiveChatWidget } from './LiveChatWidget';
 import { type Language } from '@/lib/i18n';
 
 interface LayoutProps {
@@ -35,6 +36,9 @@ export function Layout({ children, language, onLanguageChange }: LayoutProps) {
       </main>
       
       <Footer language={language} />
+      
+      {/* Live Chat Widget - Tawk.to Integration */}
+      <LiveChatWidget />
     </div>
   );
 }
