@@ -202,20 +202,6 @@ export const navigationTree: MenuItem[] = [
         icon: Clock,
         path: '/dashboard#history',
       },
-      {
-        id: 'k9000-overview',
-        label: 'K9000 Station Overview',
-        labelHe: 'סקירת תחנות K9000',
-        icon: Droplet,
-        path: '/k9000/overview',
-      },
-      {
-        id: 'k9000-booking-flow',
-        label: 'K9000 Booking Flow',
-        labelHe: 'תהליך הזמנת K9000',
-        icon: Calendar,
-        path: '/k9000/booking-flow',
-      },
     ],
   },
 
@@ -228,26 +214,6 @@ export const navigationTree: MenuItem[] = [
     labelHe: 'Walk My Pet™',
     icon: Dog,
     children: [
-      {
-        id: 'walk-overview',
-        label: 'Walk My Pet Overview',
-        labelHe: 'סקירת Walk My Pet',
-        path: '/walk-my-pet/overview',
-      },
-      {
-        id: 'browse-walkers',
-        label: 'Browse Walkers',
-        labelHe: 'עיין במטיילים',
-        icon: Users,
-        path: '/walk-my-pet/browse-walkers',
-      },
-      {
-        id: 'walk-booking-flow',
-        label: 'Book Walking Service',
-        labelHe: 'הזמן שירות טיול',
-        icon: Calendar,
-        path: '/walk-my-pet/booking-flow',
-      },
       {
         id: 'find-walker',
         label: 'Find & Book Walker',
@@ -466,33 +432,6 @@ export const navigationTree: MenuItem[] = [
     icon: Car,
     children: [
       {
-        id: 'pettrek-overview',
-        label: 'PetTrek Overview',
-        labelHe: 'סקירת PetTrek',
-        path: '/pettrek/overview',
-      },
-      {
-        id: 'browse-drivers',
-        label: 'Browse Drivers',
-        labelHe: 'עיין בנהגים',
-        icon: Users,
-        path: '/pettrek/browse-drivers',
-      },
-      {
-        id: 'book-trip',
-        label: 'Book a Trip',
-        labelHe: 'הזמן נסיעה',
-        icon: Calendar,
-        path: '/pettrek/book-trip',
-      },
-      {
-        id: 'pettrek-booking-flow',
-        label: 'Transport Booking Flow',
-        labelHe: 'תהליך הזמנת הסעה',
-        icon: Calendar,
-        path: '/pettrek/booking-flow',
-      },
-      {
         id: 'track-trip',
         label: 'Track Trip (Live)',
         labelHe: 'עקוב אחר נסיעה (חי)',
@@ -542,12 +481,6 @@ export const navigationTree: MenuItem[] = [
     labelHe: 'שוק מטפחים',
     icon: Scissors,
     children: [
-      {
-        id: 'groomers-overview',
-        label: 'Grooming Marketplace Overview',
-        labelHe: 'סקירת שוק מטפחים',
-        path: '/groomers/overview',
-      },
       {
         id: 'find-groomer',
         label: 'Find & Book Groomer',
@@ -895,26 +828,18 @@ export const navigationTree: MenuItem[] = [
         path: '/live-chat',
       },
       {
-        id: 'wallet-telemetry',
-        label: 'Wallet Analytics Dashboard',
-        labelHe: 'לוח ניתוח ארנק',
-        icon: BarChart3,
-        path: '/wallet-telemetry',
-        userRoles: ['admin'],
-      },
-      {
         id: 'notification-center',
         label: 'Notification Preferences',
         labelHe: 'העדפות התראות',
         icon: Bell,
-        path: '/notification-preferences',
+        path: '/settings/notifications',
       },
       {
         id: 'security-dashboard',
         label: 'Security Status',
         labelHe: 'סטטוס אבטחה',
         icon: Shield,
-        path: '/security-status',
+        path: '/security/status',
       },
     ],
   },
@@ -927,34 +852,7 @@ export const navigationTree: MenuItem[] = [
     label: 'Pet Training Academy',
     labelHe: 'אקדמיה לאימון חיות',
     icon: GraduationCap,
-    children: [
-      {
-        id: 'academy-overview',
-        label: 'Academy Overview',
-        labelHe: 'סקירת אקדמיה',
-        path: '/academy',
-      },
-      {
-        id: 'academy-booking',
-        label: 'Book Training Session',
-        labelHe: 'הזמן אימון',
-        icon: Calendar,
-        path: '/academy/booking-flow',
-      },
-      {
-        id: 'trainer-profiles',
-        label: 'Browse Trainers',
-        labelHe: 'עיין במאמנים',
-        icon: Users,
-        path: '/academy/trainers',
-      },
-      {
-        id: 'training-programs',
-        label: 'Training Programs',
-        labelHe: 'תוכניות אימון',
-        path: '/academy/programs',
-      },
-    ],
+    path: '/academy',
   },
 
   // =============================================
@@ -1001,40 +899,6 @@ export const navigationTree: MenuItem[] = [
         labelHe: 'תמיכה לזכיין',
         icon: HelpCircle,
         path: '/franchise/support',
-      },
-    ],
-  },
-
-  // =============================================
-  // 👔 Contractor Portal
-  // =============================================
-  {
-    id: 'contractor',
-    label: 'Contractor Portal',
-    labelHe: 'פורטל קבלנים',
-    icon: Users,
-    userRoles: ['contractor', 'provider', 'admin'],
-    children: [
-      {
-        id: 'contractor-dashboard',
-        label: 'Contractor Dashboard',
-        labelHe: 'לוח בקרה קבלן',
-        icon: BarChart3,
-        path: '/contractor/dashboard',
-      },
-      {
-        id: 'contractor-earnings',
-        label: 'Earnings & Payouts',
-        labelHe: 'הכנסות ותשלומים',
-        icon: DollarSign,
-        path: '/contractor/earnings',
-      },
-      {
-        id: 'contractor-reviews',
-        label: 'Reviews & Ratings',
-        labelHe: 'ביקורות ודירוגים',
-        icon: Star,
-        path: '/contractor/reviews',
       },
     ],
   },
