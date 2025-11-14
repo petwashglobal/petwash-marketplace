@@ -129,16 +129,26 @@ After deploying indexes, verify they're working:
 
 ---
 
-## Current Status
+## Current Status (Updated Nov 14, 2025)
 
 ### Deployed Indexes
-- ✅ `firestore.indexes.json` created
+- ✅ `firestore.indexes.json` updated with 15 total indexes
 - ⏳ **Action Required:** Deploy indexes using one of the methods above
 
-### Missing Indexes (Pre-Deployment)
-- ⚠️ station_events (stationId + timestamp desc)
-- ⚠️ station_events (stationId + timestamp asc)
-- ⚠️ station_events (stationId + type + timestamp)
+### Recently Added (Nov 14, 2025)
+- ✅ wallet_telemetry (status + createdAt + __name__) - **URGENT FIX**
+- ✅ escrow_payments (status + holdUntil)
+- ✅ notifications (userId + createdAt)
+- ✅ conversations (participantIds + updatedAt)
+- ✅ bookings (customerId + createdAt)
+- ✅ bookings (providerId + createdAt)
+
+### Existing Indexes (Already Defined)
+- ✅ station_events (stationId + timestamp desc)
+- ✅ station_events (stationId + timestamp asc)
+- ✅ station_events (stationId + type + timestamp)
+- ✅ wallet_telemetry (passId + timestamp)
+- ✅ ai_feature_requests, fraud_detection_logs, compliance_monitoring, security_updates
 
 ---
 
