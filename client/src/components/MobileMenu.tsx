@@ -420,6 +420,16 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                   <MenuLink href="/provider-onboarding" testId="menu-provider-onboarding">Provider Onboarding</MenuLink>
                   <MenuLink href="/team-inbox" testId="menu-team-inbox">Team Inbox</MenuLink>
                   <MenuLink href="/employee/expenses" testId="menu-employee-expenses">Employee Expenses</MenuLink>
+                  
+                  <Separator className="my-2" />
+                  
+                  <MenuLink href="/document-signing" testId="menu-document-signing" className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      ✍️ E-Signature (DocuSeal)
+                      <Badge variant="secondary" className="text-xs bg-blue-600 text-white">Sign</Badge>
+                    </span>
+                  </MenuLink>
+                  <MenuLink href="/meetings" testId="menu-meetings">📅 Schedule Meetings</MenuLink>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -689,6 +699,15 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                   </MenuLink>
                   <MenuLink href="/showcase" testId="menu-platform-showcase">Platform Showcase</MenuLink>
                   <MenuLink href="/company-reports" testId="menu-company-reports">Company Reports</MenuLink>
+                  
+                  <Separator className="my-2" />
+                  
+                  <MenuLink href="/platform-legal" testId="menu-platform-legal" className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      ⚖️ Platform Legal Framework
+                      <Badge variant="secondary" className="text-xs bg-purple-600 text-white">Legal</Badge>
+                    </span>
+                  </MenuLink>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -818,6 +837,16 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
                       </MenuLink>
                       <MenuLink href="/admin/station-registry" testId="menu-station-registry">Station Registry</MenuLink>
                       <MenuLink href="/ops/dashboard" testId="menu-ops-dashboard">Operations Dashboard</MenuLink>
+                      
+                      <Separator className="my-2" />
+                      
+                      <MenuLink href="/admin/k9000-documents" testId="menu-k9000-documents" className="bg-gradient-to-r from-slate-50 to-gray-50 border-2 border-slate-300">
+                        <span className="flex items-center gap-2 font-bold">
+                          📄 K9000 Document Library
+                          <Badge variant="secondary" className="text-xs bg-slate-600 text-white">Secure</Badge>
+                        </span>
+                      </MenuLink>
+                      <MenuLink href="/admin/policy-management" testId="menu-policy-management">Policy Management</MenuLink>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
