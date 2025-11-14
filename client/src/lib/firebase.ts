@@ -53,10 +53,23 @@ function getFirebaseConfig() {
     .map(([, envVar]) => envVar);
   
   if (missingFields.length > 0) {
-    throw new Error(
-      `Firebase configuration incomplete. Missing required environment variables: ${missingFields.join(', ')}\n` +
+    console.warn(
+      `[Firebase] ⚠️ Configuration incomplete (fail-open mode). Missing: ${missingFields.join(', ')}\n` +
+      `Authentication and Firebase features will be disabled until configured.\n` +
       `Please check your .env file or Replit Secrets configuration.`
     );
+    
+    // Return safe placeholder config to allow app to render
+    // Firebase features will be disabled but UI will load
+    return {
+      apiKey: 'placeholder-api-key',
+      authDomain: 'placeholder.firebaseapp.com',
+      projectId: 'placeholder-project',
+      storageBucket: 'placeholder.appspot.com',
+      messagingSenderId: '000000000000',
+      appId: '1:000000000000:web:placeholder',
+      measurementId: 'G-PLACEHOLDER'
+    };
   }
   
   console.log('[Firebase] ℹ️ Using build-time config (fallback)', {
