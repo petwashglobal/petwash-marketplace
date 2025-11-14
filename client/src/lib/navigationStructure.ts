@@ -31,6 +31,10 @@ import {
   Lock,
   Smartphone,
   PackageOpen,
+  Sparkles,
+  GraduationCap,
+  Building2,
+  Inbox,
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -316,26 +320,6 @@ export const navigationTree: MenuItem[] = [
     icon: HomeIcon,
     children: [
       {
-        id: 'sitter-overview',
-        label: 'Sitter Suite Overview',
-        labelHe: 'סקירת Sitter Suite',
-        path: '/sitter-suite/overview',
-      },
-      {
-        id: 'browse-sitters',
-        label: 'Browse Sitters',
-        labelHe: 'עיין במטפלים',
-        icon: Users,
-        path: '/sitter-suite/browse-sitters',
-      },
-      {
-        id: 'sitter-booking-flow',
-        label: 'Book Sitting Service',
-        labelHe: 'הזמן שירות שמרטפות',
-        icon: Calendar,
-        path: '/sitter-suite/booking-flow',
-      },
-      {
         id: 'find-host',
         label: 'Find a Host',
         labelHe: 'מצא מארח',
@@ -354,13 +338,6 @@ export const navigationTree: MenuItem[] = [
             path: '/sitter-suite#categories',
           },
         ],
-      },
-      {
-        id: 'sitter-detail',
-        label: 'Sitter Profile Detail',
-        labelHe: 'פרטי פרופיל מטפל',
-        icon: User,
-        path: '/sitter-suite/sitter/:id',
       },
       {
         id: 'host-profiles',
@@ -431,13 +408,6 @@ export const navigationTree: MenuItem[] = [
     labelHe: 'PetTrek™',
     icon: Car,
     children: [
-      {
-        id: 'track-trip',
-        label: 'Track Trip (Live)',
-        labelHe: 'עקוב אחר נסיעה (חי)',
-        icon: MapPin,
-        path: '/pettrek/track-trip',
-      },
       {
         id: 'pettrek-customer-dashboard',
         label: 'Customer Dashboard',
@@ -570,78 +540,11 @@ export const navigationTree: MenuItem[] = [
     icon: Home,
     children: [
       {
-        id: 'programs-grants',
-        label: 'Programs & Grants',
-        labelHe: 'תוכניות ומענקים',
+        id: 'community-programs',
+        label: 'Community Programs',
+        labelHe: 'תוכניות קהילתיות',
         icon: Award,
-        children: [
-          {
-            id: 'community-programs',
-            label: 'Community Programs',
-            labelHe: 'תוכניות קהילתיות',
-            path: '/shared-services/programs',
-          },
-          {
-            id: 'grant-applications',
-            label: 'Grant Applications',
-            labelHe: 'בקשות למענק',
-            path: '/shared-services/grants',
-          },
-          {
-            id: 'partnerships',
-            label: 'Partner Services',
-            labelHe: 'שירותי שותפים',
-            path: '/shared-services/partners',
-          },
-        ],
-      },
-      {
-        id: 'volunteering',
-        label: 'Community Volunteering',
-        labelHe: 'התנדבות קהילתית',
-        icon: Users,
-        children: [
-          {
-            id: 'volunteer-opportunities',
-            label: 'Volunteer Opportunities',
-            labelHe: 'הזדמנויות להתנדבות',
-            path: '/shared-services/volunteer',
-          },
-          {
-            id: 'volunteer-dashboard',
-            label: 'Volunteer Dashboard',
-            labelHe: 'לוח בקרה למתנדב',
-            path: '/shared-services/volunteer/dashboard',
-            userRoles: ['volunteer'],
-          },
-        ],
-      },
-      {
-        id: 'knowledge-base',
-        label: 'Knowledge Base',
-        labelHe: 'מאגר ידע',
-        icon: FileText,
-        children: [
-          {
-            id: 'pet-care-guides',
-            label: 'Pet Care Guides',
-            labelHe: 'מדריכי טיפול בחיות מחמד',
-            path: '/shared-services/guides',
-          },
-          {
-            id: 'training-resources',
-            label: 'Training Resources',
-            labelHe: 'משאבי אימון',
-            path: '/shared-services/training',
-          },
-          {
-            id: 'compliance-docs',
-            label: 'Compliance Documents',
-            labelHe: 'מסמכי ציות',
-            path: '/shared-services/compliance',
-            userRoles: ['provider', 'admin'],
-          },
-        ],
+        path: '/shared-services/programs',
       },
       {
         id: 'impact-dashboard',
@@ -683,37 +586,12 @@ export const navigationTree: MenuItem[] = [
         icon: Shield,
         children: [
           {
-            id: 'change-password',
-            label: 'Change Password',
-            labelHe: 'שנה סיסמה',
-            path: '/security-settings',
-          },
-          {
-            id: 'two-factor',
-            label: 'Two-Factor Authentication',
-            labelHe: 'אימות דו-שלבי',
-            path: '/security-settings#2fa',
-          },
-          {
-            id: 'biometric',
-            label: 'Biometric Login (Face ID)',
-            labelHe: 'כניסה ביומטרית (Face ID)',
-            path: '/security-settings#biometric',
-          },
-          {
             id: 'active-sessions',
             label: 'Active Sessions',
             labelHe: 'הפעלות פעילות',
             path: '/connected-devices',
           },
         ],
-      },
-      {
-        id: 'notifications-settings',
-        label: 'Notifications',
-        labelHe: 'התראות',
-        icon: Bell,
-        path: '/notification-preferences',
       },
       {
         id: 'language-region',
@@ -747,26 +625,6 @@ export const navigationTree: MenuItem[] = [
         labelHe: 'שיטות תשלום',
         icon: CreditCard,
         path: '/my-wallet#payment-methods',
-      },
-      {
-        id: 'digital-cards',
-        label: 'Digital Cards',
-        labelHe: 'כרטיסים דיגיטליים',
-        icon: Smartphone,
-        children: [
-          {
-            id: 'apple-wallet',
-            label: 'Apple Wallet Pass',
-            labelHe: 'Apple Wallet',
-            path: '/wallet-download',
-          },
-          {
-            id: 'google-wallet',
-            label: 'Google Wallet Pass',
-            labelHe: 'Google Wallet',
-            path: '/wallet-download#google',
-          },
-        ],
       },
       {
         id: 'billing',
