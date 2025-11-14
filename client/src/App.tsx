@@ -87,6 +87,8 @@ const StandaloneDivisions = lazy(() => import("@/pages/StandaloneDivisions"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const SecurityStatus = lazy(() => import("@/pages/SecurityStatus"));
+const KenzoAI = lazy(() => import("@/pages/KenzoAI"));
+const LiveChat = lazy(() => import("@/pages/LiveChat"));
 const MyDevices = lazy(() => import("@/pages/MyDevices"));
 const DeviceManagement = lazy(() => import("@/pages/DeviceManagement"));
 const ConnectedDevices = lazy(() => import("@/pages/ConnectedDevices"));
@@ -991,6 +993,24 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RequireAuth>
               <SecurityStatus />
             </RequireAuth>
+          )}
+        </Route>
+        
+        {/* Premium Features - Kenzo AI Mascot (3D Avatar) */}
+        <Route path="/kenzo-ai">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <KenzoAI />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Premium Features - Live Chat Support */}
+        <Route path="/live-chat">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <LiveChat />
+            </Suspense>
           )}
         </Route>
         

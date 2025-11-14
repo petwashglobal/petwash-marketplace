@@ -478,6 +478,131 @@ export function MobileMenu({ isOpen, onClose, language }: MobileMenuProps) {
 
           <Separator className="my-4" />
 
+          {/* PREMIUM FEATURES - NEW HIDDEN GEMS! */}
+          <div className="space-y-2">
+            <h3 className="px-4 text-xs font-semibold text-cyan-600 uppercase tracking-wider font-bold">✨ Premium Features</h3>
+            
+            <Accordion type="multiple" className="space-y-2">
+              <AccordionItem value="premium-features" className="border-2 border-cyan-200 rounded-xl bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-100 shadow-lg hover:shadow-2xl transition-all">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-premium-features-trigger">
+                  <span className="flex items-center gap-3 font-bold text-gray-900">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 via-sky-500 to-blue-600 flex items-center justify-center shadow-lg">
+                      <Sparkles className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                    </div>
+                    <span className="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                      ✨ Premium Features
+                    </span>
+                    <Badge variant="secondary" className="text-xs bg-cyan-500 text-white">NEW</Badge>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 space-y-1">
+                  <MenuLink href="/kenzo-ai" testId="menu-kenzo-ai" className="bg-gradient-to-r from-cyan-50 to-sky-50 border-2 border-cyan-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      🦁 Kenzo AI Mascot (3D Avatar)
+                      <Badge variant="secondary" className="text-xs bg-gradient-to-r from-cyan-500 to-blue-500 text-white">3D AI</Badge>
+                    </span>
+                  </MenuLink>
+                  <MenuLink href="/live-chat" testId="menu-live-chat" className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      💬 Live Chat Support
+                      <Badge variant="secondary" className="text-xs bg-green-500 text-white">Real-Time</Badge>
+                    </span>
+                  </MenuLink>
+                  {user && (
+                    <>
+                      <MenuLink href="/wallet-telemetry-dashboard" testId="menu-wallet-telemetry" className="bg-purple-50 border border-purple-200">
+                        <span className="flex items-center gap-2 font-semibold">
+                          📊 Wallet Analytics Dashboard
+                        </span>
+                      </MenuLink>
+                      <MenuLink href="/settings/notifications" testId="menu-notification-prefs">Notification Preferences</MenuLink>
+                      <MenuLink href="/security-status" testId="menu-security-status">Security Status</MenuLink>
+                    </>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Pet Training Academy */}
+              <AccordionItem value="academy" className="border-2 border-amber-200 rounded-xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-100 shadow-md hover:shadow-xl transition-all">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-academy-trigger">
+                  <span className="flex items-center gap-3 font-bold text-gray-900">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-600 flex items-center justify-center shadow-lg">
+                      <GraduationCap className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                    </div>
+                    <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+                      🎓 Pet Training Academy
+                    </span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 space-y-1">
+                  <MenuLink href="/academy" testId="menu-academy-overview">Academy Overview</MenuLink>
+                  <MenuLink href="/academy/booking-flow" testId="menu-academy-booking" className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300">
+                    <span className="flex items-center gap-2 font-bold">
+                      🎓 Book Training Session
+                      <Badge variant="secondary" className="text-xs bg-amber-500 text-white">Book Now</Badge>
+                    </span>
+                  </MenuLink>
+                  <MenuLink href="/academy/trainers" testId="menu-browse-trainers">Browse Trainers</MenuLink>
+                  <MenuLink href="/academy/programs" testId="menu-training-programs">Training Programs</MenuLink>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Franchise Management */}
+              {user && (
+                <AccordionItem value="franchise" className="border-2 border-violet-200 rounded-xl bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-100 shadow-md hover:shadow-xl transition-all">
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-franchise-trigger">
+                    <span className="flex items-center gap-3 font-bold text-gray-900">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-600 flex items-center justify-center shadow-lg">
+                        <Building2 className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                      </div>
+                      <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                        🏢 Franchise Management
+                      </span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-3 space-y-1">
+                    <MenuLink href="/franchise/dashboard" testId="menu-franchise-dashboard" className="bg-violet-50 border border-violet-200">
+                      <span className="flex items-center gap-2 font-semibold">
+                        📊 Franchise Dashboard
+                      </span>
+                    </MenuLink>
+                    <MenuLink href="/franchise/inbox" testId="menu-franchise-inbox">Franchise Inbox</MenuLink>
+                    <MenuLink href="/franchise/marketing" testId="menu-franchise-marketing">Marketing Tools</MenuLink>
+                    <MenuLink href="/franchise/reports" testId="menu-franchise-reports">Reports & Analytics</MenuLink>
+                    <MenuLink href="/franchise/support" testId="menu-franchise-support">Franchise Support</MenuLink>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+
+              {/* Contractor Portal */}
+              {user && (
+                <AccordionItem value="contractor" className="border-2 border-slate-200 rounded-xl bg-gradient-to-br from-slate-50 via-gray-50 to-zinc-100 shadow-md hover:shadow-xl transition-all">
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="menu-contractor-trigger">
+                    <span className="flex items-center gap-3 font-bold text-gray-900">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-600 via-gray-600 to-zinc-700 flex items-center justify-center shadow-lg">
+                        <Users className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                      </div>
+                      <span className="bg-gradient-to-r from-slate-700 to-gray-700 bg-clip-text text-transparent">
+                        👔 Contractor Portal
+                      </span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-3 space-y-1">
+                    <MenuLink href="/contractor/dashboard" testId="menu-contractor-dashboard" className="bg-slate-50 border border-slate-200">
+                      <span className="flex items-center gap-2 font-semibold">
+                        📊 Contractor Dashboard
+                      </span>
+                    </MenuLink>
+                    <MenuLink href="/contractor/earnings" testId="menu-contractor-earnings">Earnings & Payouts</MenuLink>
+                    <MenuLink href="/contractor/reviews" testId="menu-contractor-reviews">Reviews & Ratings</MenuLink>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+            </Accordion>
+          </div>
+
+          <Separator className="my-4" />
+
           {/* COMMUNITY & FREE SERVICES */}
           <div className="space-y-2">
             <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Community & Social</h3>
