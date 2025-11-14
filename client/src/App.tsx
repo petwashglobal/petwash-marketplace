@@ -5,7 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { FloatingStack } from "@/components/FloatingStack";
 import { AIChatAssistant } from "@/components/AIChatAssistant";
+import { CookieConsent } from "@/components/CookieConsent";
 import { ConsentManager } from "@/components/ConsentManager";
+import { getConsentPreferences, applyConsentPreferences } from "@/lib/consent";
 import { LuxuryPlatformShowcase } from "@/components/LuxuryPlatformShowcase";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
 import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
@@ -1652,8 +1654,18 @@ function App() {
   const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
   const [isLanguageInitialized, setIsLanguageInitialized] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
   
   useKeyboardNavigation();
+
+  useEffect(() => {
+    // CRITICAL: Apply saved consent preferences to gtag on app load
+    // This ensures returning users have consent enforced before analytics run
+    const savedPreferences = getConsentPreferences();
+    if (savedPreferences) {
+      applyConsentPreferences(savedPreferences);
+    }
+  }, []);
 
   useEffect(() => {
     // Initialize viewport height fix for mobile devices
@@ -1774,9 +1786,17 @@ function App() {
               <NotificationPermissionPrompt />
             </SimpleAuthProvider>
           </AuthProvider>
-          {/* DISABLED: Annoying popups removed - user can manage consent in Settings */}
-          {/* <ConsentManager language={currentLanguage} /> */}
-          {/* <LuxuryPlatformShowcase language={currentLanguage} /> */}
+          
+          {/* GDPR-compliant cookie consent system */}
+          <CookieConsent 
+            language={currentLanguage}
+            onOpenManager={() => setIsConsentManagerOpen(true)}
+          />
+          <ConsentManager 
+            language={currentLanguage}
+            isOpen={isConsentManagerOpen}
+            onClose={() => setIsConsentManagerOpen(false)}
+          />
         </TooltipProvider>
       </LanguageProvider>
     </QueryClientProvider>

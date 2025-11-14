@@ -1,26 +1,46 @@
 import { useState, useEffect } from 'react';
 import { Cookie } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
+import { 
+  hasConsentPreferences, 
+  saveConsentPreferences, 
+  createAcceptAllConsent, 
+  createRejectAllConsent 
+} from '@/lib/consent';
 
 interface CookieConsentProps {
   language: Language;
+  onOpenManager?: () => void;
 }
 
-export function CookieConsent({ language }: CookieConsentProps) {
+export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem('petwash_cookie_consent');
-    if (!consent) {
+    if (!hasConsentPreferences()) {
       setTimeout(() => setIsVisible(true), 1000);
     }
   }, []);
 
-  const handleAccept = () => {
+  const handleAcceptAll = async () => {
+    await saveConsentPreferences(createAcceptAllConsent());
+    setIsAnimatingOut(true);
+    setTimeout(() => setIsVisible(false), 400);
+  };
+
+  const handleRejectAll = async () => {
+    await saveConsentPreferences(createRejectAllConsent());
+    setIsAnimatingOut(true);
+    setTimeout(() => setIsVisible(false), 400);
+  };
+
+  const handleManagePreferences = () => {
+    // Immediately call onOpenManager so modal can render
+    onOpenManager?.();
+    // Then animate banner out
     setIsAnimatingOut(true);
     setTimeout(() => {
-      localStorage.setItem('petwash_cookie_consent', 'accepted');
       setIsVisible(false);
     }, 400);
   };
@@ -32,37 +52,49 @@ export function CookieConsent({ language }: CookieConsentProps) {
       message: 'We use cookies to improve your experience, secure your account, and personalize offers.',
       policy: 'By continuing, you agree to our',
       privacyPolicy: 'Privacy Policy',
-      accept: 'Accept',
+      acceptAll: 'Accept All',
+      rejectAll: 'Reject All',
+      manage: 'Manage Preferences',
     },
     he: {
       message: 'אנו משתמשים בעוגיות לשיפור החוויה, אבטחת החשבון והתאמת מבצעים אישיים.',
       policy: 'בשימוש באתר אתה מסכים ל',
       privacyPolicy: 'מדיניות הפרטיות',
-      accept: 'אישור',
+      acceptAll: 'אישור הכל',
+      rejectAll: 'דחיית הכל',
+      manage: 'התאמה אישית',
     },
     ar: {
       message: 'نستخدم ملفات تعريف الارتباط لتحسين تجربتك وتأمين حسابك وتخصيص العروض.',
       policy: 'بالمتابعة، فإنك توافق على',
       privacyPolicy: 'سياسة الخصوصية',
-      accept: 'قبول',
+      acceptAll: 'قبول الكل',
+      rejectAll: 'رفض الكل',
+      manage: 'إدارة التفضيلات',
     },
     ru: {
       message: 'Мы используем файлы cookie для улучшения вашего опыта, защиты учетной записи и персонализации предложений.',
       policy: 'Продолжая, вы соглашаетесь с нашей',
       privacyPolicy: 'Политикой конфиденциальности',
-      accept: 'Принять',
+      acceptAll: 'Принять все',
+      rejectAll: 'Отклонить все',
+      manage: 'Настроить',
     },
     fr: {
       message: 'Nous utilisons des cookies pour améliorer votre expérience, sécuriser votre compte et personnaliser les offres.',
       policy: 'En continuant, vous acceptez notre',
       privacyPolicy: 'Politique de confidentialité',
-      accept: 'Accepter',
+      acceptAll: 'Tout accepter',
+      rejectAll: 'Tout refuser',
+      manage: 'Gérer les préférences',
     },
     es: {
       message: 'Utilizamos cookies para mejorar su experiencia, proteger su cuenta y personalizar las ofertas.',
       policy: 'Al continuar, acepta nuestra',
       privacyPolicy: 'Política de privacidad',
-      accept: 'Aceptar',
+      acceptAll: 'Aceptar todo',
+      rejectAll: 'Rechazar todo',
+      manage: 'Gestionar preferencias',
     },
   };
 
@@ -129,19 +161,47 @@ export function CookieConsent({ language }: CookieConsentProps) {
               </a>
             </p>
             
-            <button
-              onClick={handleAccept}
-              className="w-full text-white hover:opacity-90 transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
-              style={{
-                background: 'linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                fontWeight: 400,
-                boxShadow: '0 4px 12px rgba(212, 175, 55, 0.25)',
-              }}
-              data-testid="button-accept-cookies"
-            >
-              {t.accept}
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleAcceptAll}
+                className="w-full text-white hover:opacity-90 transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+                style={{
+                  background: 'linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                  fontWeight: 400,
+                  boxShadow: '0 4px 12px rgba(212, 175, 55, 0.25)',
+                }}
+                data-testid="button-accept-all-cookies"
+              >
+                {t.acceptAll}
+              </button>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRejectAll}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+                  style={{
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                    fontWeight: 400,
+                  }}
+                  data-testid="button-reject-all-cookies"
+                >
+                  {t.rejectAll}
+                </button>
+                
+                <button
+                  onClick={handleManagePreferences}
+                  className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+                  style={{
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                    fontWeight: 400,
+                  }}
+                  data-testid="button-manage-cookies"
+                >
+                  {t.manage}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

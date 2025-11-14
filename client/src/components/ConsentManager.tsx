@@ -2,184 +2,75 @@ import { useState, useEffect } from 'react';
 import { Shield, Cookie, BarChart3, Target, Info, Settings, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Language } from '@/lib/i18n';
-
-interface ConsentPreferences {
-  necessary: boolean; // Always true, cannot be disabled
-  functional: boolean;
-  analytics: boolean;
-  marketing: boolean;
-  location: boolean; // Location services for station finder
-  camera: boolean; // Camera for QR code scanning
-  washReminders: boolean; // Pet wash reminders
-  vaccinationReminders: boolean; // Pet vaccination reminders
-  promotionalNotifications: boolean; // Special offers and promotions
-  timestamp: string;
-}
+import type { ConsentPreferences } from '@/lib/consent';
+import {
+  getConsentPreferences,
+  saveConsentPreferences,
+  createAcceptAllConsent,
+  createRejectAllConsent,
+  loadConsentFromBackend,
+  applyConsentPreferences
+} from '@/lib/consent';
 
 interface ConsentManagerProps {
   language: Language;
+  isOpen: boolean;
+  onClose?: () => void;
+  onSave?: () => void;
 }
 
-export function ConsentManager({ language }: ConsentManagerProps) {
-  const [isVisible, setIsVisible] = useState(false);
+export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentManagerProps) {
   const [showDetails, setShowDetails] = useState(false);
-  const [preferences, setPreferences] = useState<ConsentPreferences>({
-    necessary: true,
-    functional: false,
-    analytics: false,
-    marketing: false,
-    location: false,
-    camera: false,
-    washReminders: false,
-    vaccinationReminders: false,
-    promotionalNotifications: false,
-    timestamp: new Date().toISOString(),
+  const [preferences, setPreferences] = useState<ConsentPreferences>(() => {
+    return getConsentPreferences() || createRejectAllConsent();
   });
 
   useEffect(() => {
-    const loadConsent = async () => {
-      // First, try to load from backend (cross-device sync)
-      try {
-        const response = await fetch('/api/consent');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.consent) {
-            // User has stored preferences - use them
-            setPreferences(data.consent);
-            localStorage.setItem('petwash_consent_preferences', JSON.stringify(data.consent));
-            applyConsentPreferences(data.consent);
-            return; // Don't show banner
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch backend consent:', error);
-        // Continue to localStorage fallback
+    // Load existing preferences from localStorage synchronously (instant render)
+    const localPrefs = getConsentPreferences();
+    if (localPrefs) {
+      setPreferences(localPrefs);
+    }
+
+    // Then asynchronously reconcile with backend for cross-device sync
+    loadConsentFromBackend().then((backendPrefs) => {
+      if (backendPrefs) {
+        setPreferences(backendPrefs);
+        // Persist backend preferences to localStorage WITHOUT triggering backend write
+        localStorage.setItem('petwash_consent_preferences', JSON.stringify(backendPrefs));
+        // CRITICAL: Apply to gtag to enforce consent
+        applyConsentPreferences(backendPrefs);
       }
-      
-      // Fallback to localStorage
-      const savedConsent = localStorage.getItem('petwash_consent_preferences');
-      if (!savedConsent) {
-        // Show consent banner after 1 second
-        setTimeout(() => setIsVisible(true), 1000);
-      } else {
-        // Load saved preferences
-        try {
-          const saved = JSON.parse(savedConsent);
-          setPreferences(saved);
-          applyConsentPreferences(saved);
-        } catch (e) {
-          console.error('Failed to parse consent preferences', e);
-          setTimeout(() => setIsVisible(true), 1000);
-        }
-      }
-    };
-    
-    loadConsent();
+    });
   }, []);
 
   const handleAcceptAll = async () => {
-    const consent: ConsentPreferences = {
-      necessary: true,
-      functional: true,
-      analytics: true,
-      marketing: true,
-      location: true,
-      camera: true,
-      washReminders: true,
-      vaccinationReminders: true,
-      promotionalNotifications: true,
-      timestamp: new Date().toISOString(),
-    };
-    await saveConsent(consent);
+    await saveConsentPreferences(createAcceptAllConsent());
+    onSave?.();
+    setShowDetails(false);
+    onClose?.();
   };
 
   const handleAcceptNecessary = async () => {
-    const consent: ConsentPreferences = {
-      necessary: true,
-      functional: false,
-      analytics: false,
-      marketing: false,
-      location: false,
-      camera: false,
-      washReminders: false,
-      vaccinationReminders: false,
-      promotionalNotifications: false,
-      timestamp: new Date().toISOString(),
-    };
-    await saveConsent(consent);
+    await saveConsentPreferences(createRejectAllConsent());
+    onSave?.();
+    setShowDetails(false);
+    onClose?.();
   };
 
   const handleSavePreferences = async () => {
-    const consent: ConsentPreferences = {
-      ...preferences,
-      timestamp: new Date().toISOString(),
-    };
-    await saveConsent(consent);
+    await saveConsentPreferences(preferences);
+    onSave?.();
+    setShowDetails(false);
+    onClose?.();
   };
 
-  const saveConsent = async (consent: ConsentPreferences) => {
-    localStorage.setItem('petwash_consent_preferences', JSON.stringify(consent));
-    localStorage.setItem('petwash_cookie_consent', 'accepted'); // Backwards compatibility
-    setPreferences(consent);
-    setIsVisible(false);
-    
-    // Apply consent preferences
-    applyConsentPreferences(consent);
-    
-    // Save to backend for audit trail and cross-device sync
-    try {
-      await fetch('/api/consent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(consent),
-      });
-    } catch (error) {
-      console.error('Failed to save consent to backend:', error);
-      // Continue anyway - localStorage is saved
-    }
+  const handleClose = () => {
+    setShowDetails(false);
+    onClose?.();
   };
 
-  const applyConsentPreferences = (consent: ConsentPreferences) => {
-    // Analytics (Google Analytics, Facebook Pixel, etc.)
-    if (consent.analytics) {
-      // Enable analytics
-      if (typeof window !== 'undefined' && (window as any).gtag) {
-        (window as any).gtag('consent', 'update', {
-          analytics_storage: 'granted'
-        });
-      }
-    } else {
-      // Disable analytics
-      if (typeof window !== 'undefined' && (window as any).gtag) {
-        (window as any).gtag('consent', 'update', {
-          analytics_storage: 'denied'
-        });
-      }
-    }
-
-    // Marketing (remarketing, ad personalization)
-    if (consent.marketing) {
-      if (typeof window !== 'undefined' && (window as any).gtag) {
-        (window as any).gtag('consent', 'update', {
-          ad_storage: 'granted',
-          ad_user_data: 'granted',
-          ad_personalization: 'granted'
-        });
-      }
-    } else {
-      if (typeof window !== 'undefined' && (window as any).gtag) {
-        (window as any).gtag('consent', 'update', {
-          ad_storage: 'denied',
-          ad_user_data: 'denied',
-          ad_personalization: 'denied'
-        });
-      }
-    }
-  };
-
-  if (!isVisible) return null;
+  if (!isOpen) return null;
 
   const text = {
     en: {
@@ -247,7 +138,7 @@ export function ConsentManager({ language }: ConsentManagerProps) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" onClick={() => !showDetails && setIsVisible(false)} />
+      <div className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" onClick={() => !showDetails && handleClose()} />
       
       <div 
         className={`fixed ${isRTL ? 'left-1/2' : 'left-1/2'} bottom-6 -translate-x-1/2 z-50 w-full max-w-2xl mx-4`}
@@ -268,9 +159,10 @@ export function ConsentManager({ language }: ConsentManagerProps) {
               </div>
               {!showDetails && (
                 <button
-                  onClick={() => setIsVisible(false)}
+                  onClick={handleClose}
                   className="text-white hover:opacity-80 transition-opacity"
                   aria-label="Close"
+                  data-testid="button-close-consent-manager"
                 >
                   <X className="w-6 h-6" />
                 </button>
