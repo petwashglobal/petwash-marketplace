@@ -78,7 +78,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **E-Signature**: DocuSeal with full Hebrew RTL support.
 - **Enterprise Features**: Multi-country/currency support, franchise management, IoT monitoring, secure document management, and KYC.
 - **Financial Management**: Automated bookkeeping (Google Vision OCR + Gemini 2.5 Flash), Israeli Tax Compliance, bank reconciliation, invoicing, and VAT reclaim.
-- **Payment Gateway Architecture**: Nayax Israel is the mandatory and exclusive payment gateway for all customer payments across all 6 platforms. Provider payouts occur via Israeli bank transfer after a 72-hour escrow release.
+- **Payment Gateway Architecture**: Nayax Israel is the MANDATORY and EXCLUSIVE payment gateway for ALL customer payments across all 6 platforms. Provider payouts occur ONLY via Israeli bank transfer after a 72-hour escrow release. NO Stripe, NO international payment processors allowed.
 - **K9000 IoT Integration**: Cloud-based management, real-time status, remote control, and AI predictive maintenance for wash stations.
 - **Passport Verification (KYC)**: Google Vision API-powered passport verification with MRZ parsing.
 - **Security & Compliance**: Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025 compliance, AI-powered monitoring, and enterprise-grade GDPR consent.
@@ -106,12 +106,13 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **ipapi.co, ip-api.com, ipinfo.io**: IP geolocation services.
 - **Firebase**: Authentication, Firestore, Storage, App Check, Performance Monitoring.
 - **HubSpot**: CRM integration.
-- **SendGrid**: Email services.
+- **SendGrid**: Email services (owned by Twilio but using Google-first approach).
 - **@google-cloud/storage**: Google Cloud Storage client.
 - **qrcode**: QR code generation.
 - **PassKit**: Apple Wallet integration.
 - **googleapis**: Google Wallet integration.
-- **Meta webhook**: WhatsApp Business integration.
+- **Meta WhatsApp Business API**: WhatsApp messaging (NOT Twilio).
+- **Google Firebase Cloud Messaging (FCM)**: Push notifications and SMS alternative (replacing Twilio).
 - **Mizrahi-Tefahot Bank (via aggregator API)**: Bank reconciliation.
 - **Open-Meteo API**: Weather forecast integration.
 - **DocuSeal (@docuseal/api)**: Open-source e-signature platform.

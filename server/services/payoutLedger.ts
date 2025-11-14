@@ -288,19 +288,24 @@ export async function releaseEscrow(earningId: string) {
 /**
  * Process payout to contractor bank account
  * 
- * COMPLIANCE: Pet Wash Ltd dual payout architecture (2026):
- * - Israeli providers (country === 'IL'): Israeli bank transfer only (ACH/Isracard rails)
- * - International providers: Stripe Connect payouts (global marketplace expansion)
+ * COMPLIANCE: Pet Wash Ltd payout architecture (2026):
+ * - ALL providers: Israeli bank transfer ONLY (ACH/Isracard rails)
+ * - Nayax Israel payment gateway (exclusive)
+ * - NO Stripe, NO international payment processors
  * 
- * Routing logic:
- * - IF provider.country === 'IL' OR platform mandates → bank_transfer
- * - ELSE → stripe_connect
+ * Security:
+ * - Runtime validation ensures only 'bank_transfer' accepted
+ * - Rejects any non-Israeli transfer attempts
  */
 export async function processPayout(
   earningId: string,
-  payoutMethod: 'bank_transfer' | 'stripe_connect',
+  payoutMethod: 'bank_transfer',
   payoutTransactionId: string
 ) {
+  // CRITICAL: Validate Israeli bank transfer only
+  if (payoutMethod !== 'bank_transfer') {
+    throw new Error(`Invalid payout method: ${payoutMethod}. Only Israeli bank transfers allowed.`);
+  }
   try {
     const [earning] = await db
       .select()

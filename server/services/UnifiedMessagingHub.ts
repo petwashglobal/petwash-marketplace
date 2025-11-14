@@ -142,7 +142,8 @@ export class UnifiedMessagingHub {
    */
   private async sendSMS(message: Message, content: string): Promise<void> {
     try {
-      // TODO: Integrate with Twilio
+      // TODO: Integrate with Google Firebase Cloud Messaging (SMS alternative)
+      // NOTE: Using Google services only - NO Twilio
       logger.info('[SMS] Message sent', { userId: message.userId });
     } catch (error) {
       logger.error('[SMS] Failed to send', { error });

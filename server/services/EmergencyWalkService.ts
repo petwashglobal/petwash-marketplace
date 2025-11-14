@@ -422,8 +422,8 @@ export class EmergencyWalkService {
       walkerName: params.walker.name,
     });
 
-    // NOTE: WhatsApp integration requires TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN
-    // For now, logging messages (production will use Twilio API)
+    // NOTE: WhatsApp integration uses Meta WhatsApp Business API (NOT Twilio)
+    // For now, logging messages (production will use Meta API)
     
     const ownerMessageHE = `
 🐾 יש לנו מטייל!
@@ -453,7 +453,7 @@ export class EmergencyWalkService {
 - צוות Walk My Pet™
     `.trim();
 
-    // Log WhatsApp notifications (production will send via Twilio)
+    // Log WhatsApp notifications (production will send via Meta WhatsApp Business API)
     logger.info('[WhatsApp] Owner notification (HE)', {
       to: params.owner.phone || 'phone_from_profile',
       message: ownerMessageHE,
@@ -464,9 +464,9 @@ export class EmergencyWalkService {
       message: walkerMessageHE,
     });
     
-    // Production: Use Twilio WhatsApp Business API
-    // await smsService.sendWhatsApp(params.owner.phone, ownerMessageHE);
-    // await smsService.sendWhatsApp(params.walker.phone, walkerMessageHE);
+    // Production: Use Meta WhatsApp Business API (NOT Twilio)
+    // await whatsappService.sendMessage(params.owner.phone, ownerMessageHE);
+    // await whatsappService.sendMessage(params.walker.phone, walkerMessageHE);
   }
 
   /**
