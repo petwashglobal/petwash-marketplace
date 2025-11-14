@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { t, type Language } from '@/lib/i18n';
-import { X } from 'lucide-react';
+import { X, Play } from 'lucide-react';
 
 // Gallery images
 const galleryImages = [
@@ -98,6 +98,43 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
             <p className="text-lg text-gray-700 max-w-3xl mx-auto">
               {t('gallery.subtitle', language)}
             </p>
+          </div>
+
+          {/* Featured YouTube Video Section */}
+          <div className="mb-16">
+            <div className="max-w-5xl mx-auto">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-red-600 via-pink-600 to-red-600 bg-clip-text text-transparent">
+                  {language === 'he' ? 'צפו בסרטון שלנו' : language === 'ar' ? 'شاهد الفيديو الخاص بنا' : language === 'ru' ? 'Посмотрите наше видео' : language === 'fr' ? 'Regardez notre vidéo' : language === 'es' ? 'Mira nuestro video' : 'Watch Our Video'}
+                </h2>
+                <p className="text-lg text-gray-700">
+                  {language === 'he' ? 'גלה את חווית הכביסה האורגנית הפרימיום שלנו לחיות מחמד' : language === 'ar' ? 'اكتشف تجربة الغسيل العضوية الفاخرة لحيواناتك الأليفة' : language === 'ru' ? 'Откройте для себя наш премиум органический опыт мытья домашних животных' : language === 'fr' ? 'Découvrez notre expérience de lavage bio premium pour animaux' : language === 'es' ? 'Descubre nuestra experiencia premium de lavado orgánico para mascotas' : 'Discover our premium organic pet wash experience'}
+                </p>
+              </div>
+              
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-900 to-gray-800 p-1">
+                <div className="relative rounded-3xl overflow-hidden bg-black" style={{ paddingBottom: '56.25%' }}>
+                  <iframe
+                    className="absolute inset-0 w-full h-full"
+                    src="https://www.youtube.com/embed/Om-iwY_vt5M?si=vGYJEwYMFyYRSoow"
+                    title="Pet Wash™ - Premium Organic Pet Care Experience"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    data-testid="youtube-video"
+                  />
+                </div>
+                
+                {/* Video Stats Bar */}
+                <div className="bg-gradient-to-r from-red-600/10 via-pink-600/10 to-red-600/10 backdrop-blur-sm p-4 text-center">
+                  <div className="flex items-center justify-center gap-3 text-gray-700">
+                    <Play className="w-5 h-5 text-red-600" />
+                    <span className="text-sm font-medium">
+                      {language === 'he' ? 'לחץ להפעלה' : language === 'ar' ? 'انقر للتشغيل' : language === 'ru' ? 'Нажмите для воспроизведения' : language === 'fr' ? 'Cliquez pour jouer' : language === 'es' ? 'Haz clic para reproducir' : 'Click to Play'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Filter Buttons */}
