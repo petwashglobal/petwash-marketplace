@@ -11,7 +11,7 @@
 
 import { logger } from '../lib/logger';
 import { getWeatherForecast, geocodeLocation } from './unifiedLocationWeather';
-import { sendPushNotification } from './fcmService';
+import { sendPushNotification } from './FCMService';
 import { db } from '../db';
 import { eq, and, gte } from 'drizzle-orm';
 
