@@ -9,9 +9,9 @@ yarn-error.log*
 package-lock.json
 
 # Build outputs
-# CRITICAL: server/public MUST be included for production (Express serves from here)
-# dist/public can be excluded (source build output, gets copied to server/public)
-dist/
+# CRITICAL: dist/public MUST be included for production (server copies it to server/public on startup)
+# server/public is generated at runtime, safe to exclude
+server/public/
 build/
 .next/
 out/
