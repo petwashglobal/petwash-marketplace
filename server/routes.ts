@@ -268,6 +268,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Payment Gateway Status Endpoint - PUBLIC (no auth required)
+  // Check if Nayax is configured - used by frontend to show "Coming Soon" badges
+  app.get('/payment-status', (req, res) => {
+    const isNayaxConfigured = !!(
+      process.env.NAYAX_API_KEY &&
+      process.env.NAYAX_MERCHANT_ID &&
+      process.env.NAYAX_SECRET_KEY &&
+      process.env.NAYAX_WEBHOOK_SECRET
+    );
+    
+    res.set('Cache-Control', 'no-store').json({
+      nayax: {
+        enabled: isNayaxConfigured,
+        status: isNayaxConfigured ? 'operational' : 'coming_soon',
+        message: isNayaxConfigured 
+          ? 'Nayax payment gateway is operational'
+          : 'Nayax payment coming soon - use credit card payment for now',
+        messageHe: isNayaxConfigured
+          ? 'שער התשלום Nayax פעיל'
+          : 'תשלום Nayax בקרוב - השתמש בתשלום בכרטיס אשראי בינתיים'
+      },
+      creditCard: {
+        enabled: true,
+        status: 'operational',
+        message: 'Credit card payments are operational',
+        messageHe: 'תשלומי כרטיס אשראי פעילים'
+      }
+    });
+  });
+
   // SECURITY FIX: Dynamic Firebase Service Worker with environment variables
   // Serves the service worker with Firebase config injected from environment variables
   // This prevents hardcoded credentials in static files
