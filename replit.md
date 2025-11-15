@@ -71,7 +71,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching, Firebase Authentication (WebAuthn/Passkey).
 - **UI/UX Design**: Responsive, mobile-first, luxury designs with glassmorphism, Apple-style animations, and bilingual direction-aware layouts.
 - **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
-- **AI Chat Assistant**: Google Gemini 2.5 Flash with Kenzo mascot, bilingual, context-aware, real-time avatar animations.
+- **AI Chat Assistant**: **PRODUCTION-READY** Google Dialogflow CX powered by Gemini 2.5 Flash with Kenzo mascot. Replaced Tawk.to (Nov 2025). Features: bilingual Hebrew/English, WCAG 2.1 AA compliant with ARIA live regions, rate-limited API (1000 req/15min), session persistence, comprehensive test IDs, sanitized error messages, accessible on all pages. Components: `AiChatWidget.tsx` (frontend), `AiChatService.ts` (backend), endpoint: `POST /api/v1/chat/message`.
 - **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™.
 - **The Plush Lab™**: AI-powered pet avatar creator with landmark detection and multilingual TTS.
 - **Loyalty Program**: 5-tier progressive discounts, e-gift cards, wash packages, Apple Wallet.
