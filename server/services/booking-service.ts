@@ -18,7 +18,8 @@ import {
 import { eq, and, or, gte, lte, between, sql, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { unifiedBookingFacade, type BookingPlatform } from './booking-facade';
-import type { AvailabilityCheckParams, PricingParams } from './booking-engines/base/BaseLuxuryBookingEngine';
+import type { AvailabilityCheckParams, PricingParams, PricingBreakdown } from './booking-engines/base/BaseLuxuryBookingEngine';
+import { logger } from '../lib/logger';
 
 export interface CreateBookingInput {
   // SECURITY: platformId MUST come from route params, not request body
@@ -424,23 +425,97 @@ export class BookingService {
       throw new Error('Booking must have at least one item with valid pricing');
     }
 
-    // STEP 8: Calculate pricing with platform fees
-    const pricing = await this.calculatePricing(platform, subtotal);
+    // STEP 8: Determine if platform supports unified facade
+    const platformId = input.platformId as BookingPlatform;
+    const useFacade = unifiedBookingFacade.hasEngine(platformId);
 
-    // STEP 9: Generate secure booking number
+    // STEP 8a: Facade availability check (for supported platforms only)
+    if (useFacade) {
+      logger.info('[BookingService] Using UnifiedLuxuryBookingFacade for pricing', { platformId });
+      
+      const facadeAvailability = await unifiedBookingFacade.checkAvailability(
+        platformId,
+        {
+          providerId: (input.providerId || input.stationId)?.toString() || '',
+          serviceType: input.serviceType || 'standard',
+          startDate: startTime,
+          endDate: endTime,
+          metadata: {
+            stationId: input.stationId,
+            items: input.items,
+            platformData: input.platformData
+          }
+        }
+      );
+
+      if (!facadeAvailability.available) {
+        throw new Error(facadeAvailability.message || 'Service not available for requested time slot');
+      }
+    } else {
+      logger.warn('[BookingService] Falling back to legacy pricing (no facade engine)', { platformId });
+    }
+
+    // STEP 9: Calculate pricing (facade with loyalty OR legacy without loyalty)
+    let pricingBreakdown: PricingBreakdown;
+
+    if (useFacade) {
+      const pricingParams: PricingParams = {
+        providerId: (input.providerId || input.stationId)?.toString() || '',
+        serviceType: input.serviceType || 'standard',
+        startDate: startTime,
+        endDate: endTime,
+        userId: input.userId,
+        ipAddress: (input.platformData as any)?.ip || '0.0.0.0',
+        metadata: {
+          platformId: input.platformId,
+          items: input.items,
+          subtotal,
+          timezone
+        }
+      };
+
+      pricingBreakdown = await unifiedBookingFacade.quotePrice(platformId, pricingParams);
+    } else {
+      // Legacy pricing (no loyalty discounts)
+      const legacyPricing = await this.calculatePricing(platform, subtotal);
+      
+      // Convert legacy format to PricingBreakdown format
+      pricingBreakdown = {
+        subtotal: legacyPricing.subtotal,
+        platformFee: legacyPricing.platformFee,
+        providerPayout: legacyPricing.providerPayout,
+        loyaltyDiscount: 0,
+        tax: 0,
+        totalPrice: legacyPricing.total,
+        currency: 'ILS',
+        breakdown: {
+          basePrice: legacyPricing.subtotal,
+          platformFee: legacyPricing.platformFee,
+          loyaltyDiscount: 0,
+          tax: 0,
+          total: legacyPricing.total
+        },
+        loyaltyTier: null
+      };
+    }
+
+    // STEP 10: Generate secure booking number
     const bookingNumber = await this.generateBookingNumber(input.platformId);
 
-    // STEP 10: Determine initial status based on platform
+    // STEP 11: Determine initial status based on platform
     let initialStatus = 'draft';
-    if (input.platformId === 'k9000') {
-      // K9000 goes straight to pending_payment (no provider acceptance needed)
+    
+    if (useFacade) {
+      // Facade platforms start at 'pending_payment' to allow confirmation
+      // K9000: pending_payment → confirmed (no provider needed)
+      // Walk/PetTrek: pending_payment → pending_provider (needs provider acceptance)
       initialStatus = 'pending_payment';
     } else {
-      // Marketplaces start as draft, then pending_payment, then pending_provider
+      // Legacy platforms start as 'draft' (confirmation happens in payment flow)
       initialStatus = 'draft';
     }
 
-    // STEP 11: Create booking in database
+    // STEP 12: Create booking in database with facade pricing
     const [booking] = await db
       .insert(bookings)
       .values({
@@ -457,16 +532,20 @@ export class BookingService {
         timezone,
         status: initialStatus,
         paymentStatus: 'pending',
-        subtotal: pricing.subtotal.toString(),
-        platformFee: pricing.platformFee.toString(),
-        providerPayout: pricing.providerPayout.toString(),
-        discount: pricing.discount.toString(),
-        total: pricing.total.toString(),
+        subtotal: pricingBreakdown.subtotal.toString(),
+        platformFee: pricingBreakdown.platformFee.toString(),
+        providerPayout: pricingBreakdown.providerPayout.toString(),
+        discount: pricingBreakdown.loyaltyDiscount.toString(),
+        total: pricingBreakdown.totalPrice.toString(),
         currency: 'ILS',
         serviceType: input.serviceType,
         serviceDescription: input.serviceDescription,
         specialRequests: input.specialRequests,
-        platformData: input.platformData
+        platformData: {
+          ...(input.platformData || {}),
+          pricingBreakdown: pricingBreakdown.breakdown,
+          loyaltyTier: pricingBreakdown.loyaltyTier
+        }
       })
       .returning();
 
@@ -496,6 +575,92 @@ export class BookingService {
       );
     }
 
+    // STEP 14: Confirm booking via facade (escrow + post-confirmation hooks)
+    // Only for platforms with facade support
+    if (useFacade) {
+      try {
+        const confirmation = await unifiedBookingFacade.confirmBooking(
+          platformId,
+          booking.id,
+          pricingBreakdown,
+          input.userId
+        );
+
+        // Define valid state transitions
+        const validTransitions: Record<string, string[]> = {
+          'draft': ['pending_payment', 'cancelled'],
+          'pending_payment': ['pending_provider', 'confirmed', 'cancelled']
+        };
+
+        // Validate confirmation.status against allowed transitions
+        const currentStatus = booking.status;
+        const allowedStatuses = validTransitions[currentStatus] || [];
+        
+        // Determine safe fallback based on platform type
+        const safeFallback = (platformId === 'k9000') 
+          ? 'confirmed'           // K9000: auto-confirm (no provider needed)
+          : 'pending_provider';   // Marketplaces: await provider acceptance
+        
+        const targetStatus = allowedStatuses.includes(confirmation.status)
+          ? confirmation.status
+          : safeFallback;
+
+        if (targetStatus !== confirmation.status) {
+          logger.warn('[BookingService] Confirmation status coerced to valid transition', {
+            bookingId: booking.id,
+            requestedStatus: confirmation.status,
+            coercedStatus: targetStatus,
+            currentStatus
+          });
+        }
+
+        // Update booking with confirmation metadata
+        const [updatedBooking] = await db
+          .update(bookings)
+          .set({
+            status: targetStatus,
+            platformData: {
+              ...(booking.platformData || {}),
+              escrowReferenceId: confirmation.escrowReferenceId,
+              confirmationTimestamp: confirmation.timestamp,
+              postConfirmationTriggers: confirmation.metadata
+            }
+          })
+          .where(eq(bookings.id, booking.id))
+          .returning();
+
+        logger.info('[BookingService] Booking confirmed via facade', {
+          bookingId: booking.id,
+          status: targetStatus,
+          escrowId: confirmation.escrowReferenceId
+        });
+
+        return updatedBooking;
+      } catch (confirmError: any) {
+        logger.error('[BookingService] Booking confirmation failed', {
+          bookingId: booking.id,
+          error: confirmError.message
+        });
+
+        // Use valid state machine status: 'cancelled' with failed payment metadata
+        await db
+          .update(bookings)
+          .set({
+            status: 'cancelled',
+            paymentStatus: 'failed',
+            platformData: {
+              ...(booking.platformData || {}),
+              confirmationError: confirmError.message,
+              confirmationErrorTimestamp: new Date().toISOString()
+            }
+          })
+          .where(eq(bookings.id, booking.id));
+
+        throw new Error(`Booking confirmation failed: ${confirmError.message}`);
+      }
+    }
+
+    // Return booking (for legacy platforms, confirmation happens later in payment flow)
     return booking;
   }
 

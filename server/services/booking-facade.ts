@@ -50,6 +50,13 @@ export class UnifiedLuxuryBookingFacade {
   }
 
   /**
+   * Check if platform has registered engine
+   */
+  hasEngine(platform: BookingPlatform): boolean {
+    return this.engines.has(platform);
+  }
+
+  /**
    * Get booking engine for platform
    */
   private getEngine(platform: BookingPlatform): BaseLuxuryBookingEngine {
