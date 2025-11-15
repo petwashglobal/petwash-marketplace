@@ -124,7 +124,7 @@ class AiChatService {
       return finalResponse;
 
     } catch (error: any) {
-      // Enhanced error logging for debugging
+      // Enhanced error logging for debugging (server-side only)
       const errorInfo = {
         message: error.message,
         code: error.code,
@@ -138,8 +138,9 @@ class AiChatService {
       
       logger.error('[AiChatService] Dialogflow CX error - Full details:', errorInfo);
       
-      // User-friendly error message in Hebrew
-      throw new Error(`מצטערים, אנחנו חווים בעיה טכנית. ${error.message || 'נסה שוב בעוד רגע.'}`);
+      // SECURITY: Return sanitized error message without exposing internal details
+      // Full error details are logged server-side only
+      throw new Error('מצטערים, אנחנו חווים בעיה טכנית. נסה שוב בעוד רגע.');
     }
   }
 

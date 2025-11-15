@@ -169,7 +169,13 @@ export function AiChatWidget() {
 
           {/* Messages Area */}
           <ScrollArea className="flex-1 p-4 bg-gray-50 dark:bg-gray-950">
-            <div className="space-y-4">
+            <div 
+              className="space-y-4"
+              role="log"
+              aria-live="polite"
+              aria-atomic="false"
+              aria-relevant="additions"
+            >
               {messages.map((msg) => (
                 <div
                   key={msg.id}
