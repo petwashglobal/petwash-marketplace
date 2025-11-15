@@ -4,11 +4,15 @@
 Pet Wash™ is a full-stack enterprise platform designed for market leadership and global franchise expansion in the pet care industry.
 
 ## Recent Changes (November 15, 2025)
-**✅ Deployment Configuration Fixed:**
+**✅ Deployment Blockers Fixed:**
+- **CRITICAL FIX**: CORS now allows Cloud Run deployments (`.run.app` domains) - website will now load on Chrome/Safari!
+- Security hardened: Changed from `.includes()` to secure `hostname.endsWith()` validation to prevent subdomain attacks
+- Added lowercase hostname normalization for extra security
 - Deleted 5 conflicting deployment scripts (optimize-deployment.sh, deploy-build.sh, pre-deployment-check.ts, monitor-deployment.ts, pre-deploy-backup.ts)
 - Fixed `.deployignore` to include `dist/` folder (was excluding production build)
 - Created deployment preparation script: `scripts/prepare-deployment.sh`
 - Verified tsx works standalone with built-in esbuild compiler (deployment safe)
+- Created comprehensive `docs/DEPLOYMENT_TROUBLESHOOTING_GUIDE.md`
 - Documented clean deployment process in `CLEAN_DEPLOYMENT_GUIDE.md`
 - Platform ready for production deployment with 10-20x faster page loads
 
