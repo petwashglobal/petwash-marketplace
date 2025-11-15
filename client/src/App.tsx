@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { FloatingStack } from "@/components/FloatingStack";
 import { AIChatAssistant } from "@/components/AIChatAssistant";
+import { AiChatWidget } from "@/components/AiChatWidget";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ConsentManager } from "@/components/ConsentManager";
 import { getConsentPreferences, applyConsentPreferences } from "@/lib/consent";
@@ -1777,6 +1778,10 @@ function App() {
             isOpen={isAIChatOpen}
             onClose={() => setIsAIChatOpen(false)}
           />
+          
+          {/* Google Dialogflow CX AI Chat Widget - Gemini-powered */}
+          <AiChatWidget />
+          
           <AuthProvider>
             <SimpleAuthProvider>
               <Router language={currentLanguage} onLanguageChange={(newLang) => {

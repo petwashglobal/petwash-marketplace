@@ -1,0 +1,171 @@
+// client/src/components/AiChatWidget.tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid'; // We need this on the client too
+
+interface Message {
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+}
+
+export const AiChatWidget: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [userInput, setUserInput] = useState('');
+  const [sessionId, setSessionId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 1. Generate a unique session ID when the component mounts
+  useEffect(() => {
+    setSessionId(uuidv4());
+    setMessages([
+      { id: 'init', text: 'Hi! How can I help you with your pet today?', sender: 'bot' }
+    ]);
+  }, []);
+
+  // 2. Auto-scroll to the bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // 3. Handle sending the message to our new backend
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userInput.trim() || isLoading) return;
+
+    const userMessage: Message = { id: uuidv4(), text: userInput, sender: 'user' };
+    setMessages(prev => [...prev, userMessage]);
+    setUserInput('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/v1/chat/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: userInput, sessionId: sessionId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+      const botMessage: Message = { id: uuidv4(), text: data.reply, sender: 'bot' };
+      setMessages(prev => [...prev, botMessage]);
+
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      const errorMessage: Message = {
+        id: uuidv4(),
+        text: 'Sorry, I'm having trouble connecting. Please try again later.',
+        sender: 'bot',
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {/* The floating chat bubble button */}
+      {!isOpen && (
+        <button onClick={() => setIsOpen(true)} style={styles.bubble}>
+          Chat
+        </button>
+      )}
+
+      {/* The main chat window */}
+      {isOpen && (
+        <div style={styles.window}>
+          <div style={styles.header}>
+            <span>Pet Wash Support</span>
+            <button onClick={() => setIsOpen(false)} style={styles.closeButton}>X</button>
+          </div>
+
+          <div style={styles.messageList}>
+            {messages.map(msg => (
+              <div
+                key={msg.id}
+                style={{
+                  ...styles.message,
+                  ...(msg.sender === 'user' ? styles.userMessage : styles.botMessage),
+                }}
+              >
+                {msg.text}
+              </div>
+            ))}
+            {isLoading && <div style={styles.typingIndicator}>...</div>}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <input
+              type="text"
+              value={userInput}
+              onChange={e => setUserInput(e.target.value)}
+              placeholder="Type a message..."
+              style={styles.input}
+              disabled={isLoading}
+            />
+            <button type="submit" style={styles.sendButton} disabled={isLoading}>
+              Send
+            </button>
+          </form>
+        </div>
+      )}
+    </>
+  );
+};
+
+// Basic CSS-in-JS for a clean, single-file component
+const styles: { [key: string]: React.CSSProperties } = {
+  bubble: {
+    position: 'fixed',
+    bottom: '20px',
+    right: '20px',
+    width: '60px',
+    height: '60px',
+    borderRadius: '50%',
+    backgroundColor: '#007bff',
+    color: 'white',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '16px',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+    zIndex: 9998,
+  },
+  window: {
+    position: 'fixed',
+    bottom: '20px',
+    right: '20px',
+    width: '350px',
+    height: '500px',
+    backgroundColor: 'white',
+    borderRadius: '10px',
+    boxShadow: '0 5px 15px rgba(0,0,0,0.3)',
+    display: 'flex',
+    flexDirection: 'column',
+    zIndex: 9999,
+  },
+  header: {
+    padding: '10px',
+    backgroundColor: '#007bff',
+    color: 'white',
+    borderTopLeftRadius: '10px',
+    borderTopRightRadius: '10px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  closeButton: { background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer' },
+  messageList: { flex: 1, padding: '10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' },
+  message: { padding: '8px 12px', borderRadius: '18px', maxWidth: '80%' },
+  userMessage: { backgroundColor: '#007bff', color: 'white', alignSelf: 'flex-end' },
+  botMessage: { backgroundColor: '#f1f1f1', color: 'black', alignSelf: 'flex-start' },
+  typingIndicator: { fontStyle: 'italic', color: '#888', alignSelf: 'flex-start' },
+  form: { display: 'flex', borderTop: '1px solid #ddd' },
+  input: { flex: 1, border: 'none', padding: '10px', outline: 'none' },
+  sendButton: { background: '#007bff', color: 'white', border: 'none', padding: '0 15px', cursor: 'pointer' },
+};

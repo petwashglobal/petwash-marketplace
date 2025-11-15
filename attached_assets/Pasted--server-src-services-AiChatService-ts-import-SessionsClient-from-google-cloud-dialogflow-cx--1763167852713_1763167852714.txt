@@ -1,0 +1,92 @@
+// server/src/services/AiChatService.ts
+import { SessionsClient } from '@google-cloud/dialogflow-cx';
+import { v4 as uuidv4 } from 'uuid'; // Use for session IDs
+
+// IMPORTANT: Parse the Google credentials from the environment
+// This is more secure than file paths in a Replit env
+let googleCreds;
+try {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    googleCreds = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+  } else {
+    console.warn('AiChatService: GOOGLE_APPLICATION_CREDENTIALS_JSON is not set.');
+  }
+} catch (error) {
+  console.error('AiChatService: Failed to parse Google credentials JSON.', error);
+}
+
+// 1. Initialize the Dialogflow CX Client
+const client = new SessionsClient({
+  credentials: {
+    client_email: googleCreds?.client_email,
+    private_key: googleCreds?.private_key,
+  },
+  apiEndpoint: `${process.env.GOOGLE_AGENT_LOCATION}-dialogflow.googleapis.com`
+});
+
+// 2. Define the service class
+class AiChatService {
+  private projectId: string;
+  private agentId: string;
+  private location: string;
+  private languageCode: string;
+
+  constructor() {
+    this.projectId = process.env.GOOGLE_PROJECT_ID || '';
+    this.agentId = process.env.GOOGLE_AGENT_ID || '';
+    this.location = process.env.GOOGLE_AGENT_LOCATION || 'global';
+    this.languageCode = 'en';
+
+    if (!this.projectId || !this.agentId || !googleCreds) {
+      console.error('AiChatService: Missing required environment variables (ID or Credentials).');
+    }
+  }
+
+  /**
+   * Sends a text query to the Dialogflow CX agent.
+   * @param text The user's message.
+   * @param sessionId A unique ID for the conversation (e.g., a user's ID or a random UUID).
+   * @returns The AI's text response.
+   */
+  public async detectIntent(text: string, sessionId: string): Promise<string> {
+    if (!this.projectId || !this.agentId) {
+      throw new Error('AiChatService is not configured. Missing Project/Agent ID.');
+    }
+
+    const sessionPath = client.projectLocationAgentSessionPath(
+      this.projectId,
+      this.location,
+      this.agentId,
+      sessionId
+    );
+
+    const request = {
+      session: sessionPath,
+      queryInput: {
+        text: {
+          text: text,
+        },
+        languageCode: this.languageCode,
+      },
+    };
+
+    try {
+      const [response] = await client.detectIntent(request);
+      
+      // Extract the text from the response messages
+      const aiResponses = response.queryResult?.responseMessages
+        ?.filter(msg => msg.text)
+        .map(msg => msg.text?.text?.join('\n') || '')
+        .join('\n');
+
+      return aiResponses || "I'm sorry, I didn't understand that.";
+
+    } catch (error) {
+      console.error('Dialogflow CX Error:', error);
+      throw new Error('Failed to communicate with AI agent.');
+    }
+  }
+}
+
+// 3. Export a singleton instance
+export const aiChatService = new AiChatService();
