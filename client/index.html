@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     
-    <!-- iOS Optimized Viewport -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- iOS & Chrome Optimized Viewport - FIXED for compatibility -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     
-    <!-- iOS Web App Configuration -->
+    <!-- iOS Web App Configuration - FIXED for iOS Safari -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Pet Wash™️" />
     <meta name="mobile-web-app-capable" content="yes" />
     
@@ -30,74 +30,7 @@
     <meta name="theme-color" content="#2c5282">
     <meta name="msapplication-TileColor" content="#2c5282">
     
-    <!-- Content Security Policy for HubSpot, Firebase, reCAPTCHA, Analytics & Marketing Pixels -->
-    <meta http-equiv="Content-Security-Policy" content="
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' 
-        js.hs-scripts.com 
-        js.hscollectedforms.net 
-        js.hs-analytics.net 
-        *.hsforms.com 
-        *.hsformsdemo.com
-        *.googleapis.com
-        www.google.com
-        www.gstatic.com
-        www.recaptcha.net
-        www.googletagmanager.com
-        *.google-analytics.com
-        connect.facebook.net
-        *.facebook.com
-        analytics.tiktok.com
-        *.tiktok.com
-        www.clarity.ms
-        *.clarity.ms;
-      connect-src 'self' 
-        api.hsforms.com 
-        forms.hubspot.com 
-        track.hubspot.com 
-        *.hs-analytics.net
-        *.googleapis.com
-        *.firebaseio.com
-        *.cloudfunctions.net
-        firestore.googleapis.com
-        identitytoolkit.googleapis.com
-        securetoken.googleapis.com
-        www.google.com
-        www.recaptcha.net
-        *.google-analytics.com
-        *.analytics.google.com
-        *.googletagmanager.com
-        *.facebook.com
-        *.facebook.net
-        analytics.tiktok.com
-        *.tiktok.com
-        *.clarity.ms
-        ipapi.co
-        ip-api.com
-        ipinfo.io
-        api.bigdatacloud.net;
-      frame-src 'self' 
-        forms.hubspot.com 
-        *.hsforms.com
-        *.firebaseapp.com
-        www.google.com
-        www.recaptcha.net;
-      img-src 'self' data: blob: 
-        track.hubspot.com 
-        *.hs-analytics.net
-        *.googleapis.com
-        *.google-analytics.com
-        *.googletagmanager.com
-        *.tile.openstreetmap.org
-        unpkg.com;
-      style-src 'self' 'unsafe-inline' 
-        fonts.googleapis.com 
-        cdnjs.cloudflare.com
-        unpkg.com;
-      font-src 'self' 
-        fonts.gstatic.com 
-        cdnjs.cloudflare.com;
-    " />
+    <!-- CSP handled by server (helmet) - removed duplicate HTML meta tag to prevent conflicts -->
     
     <title>Pet Wash™ - Premium Organic Pet Care | שטיפת חיות מחמד אורגנית פרימיום</title>
     
