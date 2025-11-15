@@ -204,18 +204,29 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, Postman, curl)
     if (!origin) return callback(null, true);
     
-    // CRITICAL: Allow Replit and Cloud Run deployment domains
-    // - Replit custom domain verification: *.replit.app, *.repl.co, *.replit.dev, *.replit.com
-    // - Cloud Run deployments: *.run.app (Google Cloud Run default URLs)
-    if (origin && (
-      origin.includes('.replit.app') || 
-      origin.includes('.repl.co') || 
-      origin.includes('.replit.dev') ||
-      origin.includes('.replit.com') ||
-      origin.includes('.run.app')  // Cloud Run deployments
-    )) {
-      logger.info(`[CORS] Allowing deployment origin: ${origin}`);
-      return callback(null, true);
+    // CRITICAL: Secure deployment domain verification
+    // - Replit: *.replit.app, *.repl.co, *.replit.dev, *.replit.com
+    // - Cloud Run: *.run.app (Google Cloud Run)
+    // Using hostname.endsWith() to prevent subdomain attacks
+    const trustedSuffixes = [
+      '.replit.app',
+      '.repl.co',
+      '.replit.dev',
+      '.replit.com',
+      '.run.app',      // Cloud Run deployments
+    ];
+    
+    try {
+      const hostname = new URL(origin).hostname.toLowerCase();  // Normalize casing
+      const isTrustedDeployment = trustedSuffixes.some(suffix => hostname.endsWith(suffix));
+      
+      if (isTrustedDeployment) {
+        logger.info(`[CORS] Allowing trusted deployment origin: ${origin}`);
+        return callback(null, true);
+      }
+    } catch (error) {
+      logger.warn(`[CORS] Invalid origin URL: ${origin}`);
+      return callback(new Error('Not allowed by CORS'));
     }
     
     if (allowedOrigins.includes(origin)) {
