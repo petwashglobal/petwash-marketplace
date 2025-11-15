@@ -10,13 +10,14 @@ import { SessionsClient } from '@google-cloud/dialogflow-cx';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 
-// Parse Google credentials from environment (secure approach for Replit)
+// Parse Google credentials from environment (using EXISTING Replit secrets)
 let googleCreds: any;
 try {
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-    googleCreds = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+  // ✅ Use existing GOOGLE_SERVICE_ACCOUNT_JSON secret
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    googleCreds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
   } else {
-    logger.warn('[AiChatService] GOOGLE_APPLICATION_CREDENTIALS_JSON is not set.');
+    logger.warn('[AiChatService] GOOGLE_SERVICE_ACCOUNT_JSON is not set.');
   }
 } catch (error) {
   logger.error('[AiChatService] Failed to parse Google credentials JSON', { error });
@@ -38,9 +39,13 @@ class AiChatService {
   private languageCode: string;
 
   constructor() {
-    this.projectId = process.env.GOOGLE_PROJECT_ID || '';
+    // ✅ Use existing VITE_FIREBASE_PROJECT_ID secret
+    this.projectId = process.env.VITE_FIREBASE_PROJECT_ID || '';
+    
+    // ⚠️ NEW SECRETS NEEDED (only 2!)
     this.agentId = process.env.GOOGLE_AGENT_ID || '';
     this.location = process.env.GOOGLE_AGENT_LOCATION || 'global';
+    
     this.languageCode = 'he'; // Default to Hebrew for Israeli market
 
     if (!this.projectId || !this.agentId || !googleCreds) {
@@ -73,7 +78,7 @@ class AiChatService {
   ): Promise<string> {
     if (!this.isConfigured() || !client) {
       throw new Error(
-        'AiChatService is not configured. Please add GOOGLE_PROJECT_ID, GOOGLE_AGENT_ID, GOOGLE_AGENT_LOCATION, and GOOGLE_APPLICATION_CREDENTIALS_JSON to Replit Secrets.'
+        'AiChatService is not configured. Please create a Dialogflow CX agent and add GOOGLE_AGENT_ID and GOOGLE_AGENT_LOCATION to Replit Secrets.'
       );
     }
 
