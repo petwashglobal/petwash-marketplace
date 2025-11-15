@@ -124,14 +124,22 @@ class AiChatService {
       return finalResponse;
 
     } catch (error: any) {
-      logger.error('[AiChatService] Dialogflow CX error', {
-        error: error.message || String(error),
-        errorDetails: error.details || error.code || '',
+      // Enhanced error logging for debugging
+      const errorInfo = {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        statusCode: error.statusCode,
+        statusMessage: error.statusMessage,
+        metadata: error.metadata,
+        stack: error.stack?.split('\n')[0], // First line of stack trace
         sessionId: sessionId.substring(0, 8) + '***',
-      });
+      };
+      
+      logger.error('[AiChatService] Dialogflow CX error - Full details:', errorInfo);
       
       // User-friendly error message in Hebrew
-      throw new Error('מצטערים, אנחנו חווים בעיה טכנית. נסה שוב בעוד רגע.');
+      throw new Error(`מצטערים, אנחנו חווים בעיה טכנית. ${error.message || 'נסה שוב בעוד רגע.'}`);
     }
   }
 
