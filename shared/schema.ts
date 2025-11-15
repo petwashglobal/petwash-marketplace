@@ -84,7 +84,7 @@ export const customers = pgTable("customers", {
   marketing: boolean("marketing").default(false),
   termsAccepted: boolean("terms_accepted").default(false),
   isVerified: boolean("is_verified").default(false),
-  loyaltyTier: varchar("loyalty_tier").default("bronze"), // bronze, silver, gold, platinum
+  loyaltyTier: varchar("loyalty_tier").default("new"), // 4-tier progressive system: new (0%), silver (10%), gold (15%), platinum (20%)
   totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0"),
   washBalance: integer("wash_balance").default(0),
   lastLogin: timestamp("last_login"),
