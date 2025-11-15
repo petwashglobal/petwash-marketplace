@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is a full-stack enterprise platform by Pet Wash Ltd, integrating various pet care business units (K9000 IoT wash stations, The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™). Its purpose is to achieve market leadership and global franchise expansion by providing shared enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management, all while ensuring enterprise-grade security and multi-jurisdiction compliance.
+Pet Wash™ is a full-stack enterprise platform aimed at achieving market leadership and global franchise expansion in the pet care industry. It integrates various business units (K9000 IoT wash stations, The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™) by providing shared enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management, all with enterprise-grade security and multi-jurisdiction compliance. The platform's business vision includes global expansion with a current focus on the Israeli market, leveraging luxury branding and advanced technology.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -54,63 +54,52 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 ## System Architecture
 
 ### **🚨 CRITICAL DEVELOPER RULE: SEARCH FIRST, BUILD SECOND**
-
-**Before adding ANY new code, you MUST:**
-1. Check `shared/petwashGlobal.ts` (670 lines) - Single source of truth
-2. Search `server/services/` - 118 production services (41,313 lines)
-3. Search `client/src/pages/` - 192 existing pages
-4. Search `client/src/components/` - 155 existing components
-5. Document what exists, what's missing, and integration approach
-6. Only build if gap truly confirmed
-
-**This platform represents MONTHS of enterprise development. Respect it. Use it. Don't rebuild it.**
+Before adding ANY new code, you MUST:
+1. Check `shared/petwashGlobal.ts` (Single source of truth)
+2. Search `server/services/`, `client/src/pages/`, `client/src/components/`
+3. Document what exists, what's missing, and integration approach
+4. Only build if gap truly confirmed
 
 ### Core Features & Design Decisions
-- **Global Architecture Module**: `shared/petwashGlobal.ts` for platform catalog, navigation, KYC, wallet, payments, booking, and mobile contracts.
+- **Global Architecture Module**: `shared/petwashGlobal.ts` for core platform catalog, KYC, wallet, payments, booking, and mobile contracts.
 - **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite, PWA.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching, Firebase Authentication (WebAuthn/Passkey).
 - **UI/UX Design**: Responsive, mobile-first, luxury designs with glassmorphism, Apple-style animations, and bilingual direction-aware layouts.
 - **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
-- **AI Chat Assistant**: **PRODUCTION-READY** Google Dialogflow CX powered by Gemini 2.5 Flash with Kenzo mascot. Replaced Tawk.to (Nov 2025). Features: bilingual Hebrew/English, WCAG 2.1 AA compliant with ARIA live regions, rate-limited API (1000 req/15min), session persistence, comprehensive test IDs, sanitized error messages, accessible on all pages. Components: `AiChatWidget.tsx` (frontend), `AiChatService.ts` (backend), endpoint: `POST /api/v1/chat/message`.
+- **AI Chat Assistant**: Production-ready Google Dialogflow CX powered by Gemini 2.5 Flash with Kenzo mascot, bilingual Hebrew/English, WCAG 2.1 AA compliant.
 - **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™.
-- **The Plush Lab™**: AI-powered pet avatar creator with landmark detection and multilingual TTS.
+- **The Plush Lab™**: AI-powered pet avatar creator.
 - **Loyalty Program**: 5-tier progressive discounts, e-gift cards, wash packages, Apple Wallet.
 - **E-Signature**: DocuSeal with Hebrew RTL support.
 - **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC.
 - **Financial Management**: Automated bookkeeping (Google Vision OCR + Gemini 2.5 Flash), Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
-- **Payment Gateway Architecture**: Nayax Israel is the mandatory and exclusive payment gateway, with provider payouts via Israeli bank transfer after 72-hour escrow.
+- **Payment Gateway Architecture**: Nayax Israel is the mandatory and exclusive payment gateway, with 72-hour escrow.
 - **K9000 IoT Integration**: Cloud-based management, real-time status, remote control, AI predictive maintenance.
 - **Passport Verification (KYC)**: Google Vision API-powered passport verification with MRZ parsing.
 - **Security & Compliance**: Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail.
-- **Unified Luxury Booking System**: Enterprise-grade booking infrastructure across all platforms using a strategy pattern (`BaseLuxuryBookingEngine`), supporting loyalty tier discounts, booking policies, 72-hour escrow, GPS activation (Walk), multi-driver dispatch (PetTrek), IoT unlock tokens (K9000), dynamic surge pricing, and progressive provider payouts.
+- **Unified Luxury Booking System**: Enterprise-grade booking using a strategy pattern, supporting loyalty tiers, booking policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts.
+- **Employee Expense Management System**: Production-ready with Israeli Tax Authority compliance. Features OCR receipt scanning, auto-approval workflows, WhatsApp notifications, cryptographic audit trail, and Israeli VAT calculations.
+- **Document Management System**: Production-ready with RBAC and Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
+- **Legal & Compliance Systems**: Comprehensive routes and services for privacy settings, data rights, GDPR, Israeli Privacy Law 2025, e-signature workflows, and contract management.
+- **HR & Employee Systems**: Routes and services for employee management, hierarchy, and onboarding, including auto-approval workflows and WhatsApp notifications.
+- **Enterprise Route Infrastructure**: Extensive set of 119 route files covering franchise management, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures.
+- **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments, enforcing access levels and department permissions.
 
 ## External Dependencies
-- **@neondatabase/serverless**: PostgreSQL connectivity.
-- **drizzle-orm**: Type-safe database ORM.
-- **@tanstack/react-query**: Server state management.
-- **@radix-ui/***: Accessible UI component primitives.
-- **tailwindcss**: Utility-first CSS framework.
-- **vite**: Build tool.
-- **Nayax Israel**: MANDATORY EXCLUSIVE payment gateway.
-- **Google Analytics, Google Tag Manager, Facebook Pixel, TikTok Pixel, Microsoft Clarity, Google Ads**: Marketing and analytics.
-- **ipapi.co, ip-api.com, ipinfo.io**: IP geolocation services.
-- **Firebase**: Authentication, Firestore, Storage, App Check, Performance Monitoring.
-- **HubSpot**: CRM integration.
-- **SendGrid**: Email services.
-- **@google-cloud/storage**: Google Cloud Storage client.
-- **qrcode**: QR code generation.
-- **PassKit**: Apple Wallet integration.
-- **googleapis**: Google Wallet integration.
-- **Meta WhatsApp Business API**: WhatsApp messaging (EXCLUSIVE for messaging).
-- **Google Firebase Cloud Messaging (FCM)**: Push notifications and SMS alternative (EXCLUSIVE for push/SMS).
-- **Mizrahi-Tefahot Bank (via aggregator API)**: Bank reconciliation.
-- **Open-Meteo API**: Weather forecast integration.
-- **DocuSeal (@docuseal/api)**: Open-source e-signature platform.
-- **Google Maps API**: Navigation, geocoding, places autocomplete.
-- **Google Cloud Vision API**: Passport OCR for KYC, receipt scanning.
-- **Google Gemini AI**: AI chat assistant, content moderation, triage.
-- **Google Cloud Translation API**: Real-time multilingual support.
-- **Google Business Profile API**: Franchise location and review management.
-- **Google Weather API**: Official Google Weather integration.
-- **CurrentUVIndex.com API**: UV index monitoring.
-- **Open-Meteo Air Quality API**: Real-time air quality and pollen monitoring.
+- **Database & ORM**: @neondatabase/serverless (PostgreSQL), drizzle-orm.
+- **Frontend Frameworks**: @tanstack/react-query, @radix-ui/*, tailwindcss, vite.
+- **Payment Gateway**: Nayax Israel (mandatory exclusive).
+- **Analytics & Marketing**: Google Analytics, Google Tag Manager, Facebook Pixel, TikTok Pixel, Microsoft Clarity, Google Ads.
+- **Geolocation**: ipapi.co, ip-api.com, ipinfo.io.
+- **Firebase Ecosystem**: Firebase (Auth, Firestore, Storage, App Check, Performance Monitoring).
+- **CRM**: HubSpot.
+- **Email**: SendGrid.
+- **Cloud Storage**: @google-cloud/storage.
+- **Utilities**: qrcode, PassKit, googleapis.
+- **Messaging**: Meta WhatsApp Business API (exclusive for messaging), Google Firebase Cloud Messaging (FCM) (exclusive for push/SMS).
+- **Banking Integration**: Mizrahi-Tefahot Bank (via aggregator API).
+- **Weather & Environmental Data**: Open-Meteo API, Google Weather API, CurrentUVIndex.com API, Open-Meteo Air Quality API.
+- **E-Signature**: DocuSeal (@docuseal/api).
+- **Mapping & Location**: Google Maps API.
+- **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API.
+- **Business Management**: Google Business Profile API.
