@@ -39,10 +39,10 @@ class AiChatService {
   private languageCode: string;
 
   constructor() {
-    // ✅ Use existing VITE_FIREBASE_PROJECT_ID secret
-    this.projectId = process.env.VITE_FIREBASE_PROJECT_ID || '';
+    // ✅ Use Dialogflow project ID (may differ from Firebase project)
+    this.projectId = process.env.GOOGLE_DIALOGFLOW_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || '';
     
-    // ⚠️ NEW SECRETS NEEDED (only 2!)
+    // ⚠️ NEW SECRETS NEEDED (only 3!)
     this.agentId = process.env.GOOGLE_AGENT_ID || '';
     this.location = process.env.GOOGLE_AGENT_LOCATION || 'global';
     
@@ -125,7 +125,8 @@ class AiChatService {
 
     } catch (error: any) {
       logger.error('[AiChatService] Dialogflow CX error', {
-        error: error.message,
+        error: error.message || String(error),
+        errorDetails: error.details || error.code || '',
         sessionId: sessionId.substring(0, 8) + '***',
       });
       
