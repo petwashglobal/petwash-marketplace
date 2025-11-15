@@ -204,10 +204,17 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, Postman, curl)
     if (!origin) return callback(null, true);
     
-    // CRITICAL: Allow Replit domain verification probes (*.replit.app, *.repl.co)
-    // Replit's custom domain verification system sends requests from these origins
-    if (origin && (origin.includes('.replit.app') || origin.includes('.repl.co') || origin.includes('.replit.dev'))) {
-      logger.info(`[CORS] Allowing Replit verification origin: ${origin}`);
+    // CRITICAL: Allow Replit and Cloud Run deployment domains
+    // - Replit custom domain verification: *.replit.app, *.repl.co, *.replit.dev, *.replit.com
+    // - Cloud Run deployments: *.run.app (Google Cloud Run default URLs)
+    if (origin && (
+      origin.includes('.replit.app') || 
+      origin.includes('.repl.co') || 
+      origin.includes('.replit.dev') ||
+      origin.includes('.replit.com') ||
+      origin.includes('.run.app')  // Cloud Run deployments
+    )) {
+      logger.info(`[CORS] Allowing deployment origin: ${origin}`);
       return callback(null, true);
     }
     
