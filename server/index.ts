@@ -100,14 +100,28 @@ app.use(enhancedSecurityHeaders);
 
 // Security headers with proper CSP configuration
 // Enhanced for Firebase Auth, Google Sign-In, Apple Sign-In (iOS Safari compatible)
+// PRODUCTION-HARDENED: unsafe-eval removed in production, unsafe-inline justified for Firebase SDK
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: [
         "'self'",
-        "'unsafe-inline'", // Required for inline scripts  
-        "'unsafe-eval'", // Required for some Firebase features
+        // ⚠️ SECURITY JUSTIFICATION FOR unsafe-inline:
+        // Firebase Authentication SDK (official Google library) requires inline scripts
+        // for WebAuthn/Passkey flows, biometric auth, and Google Sign-In integration.
+        // This is a Firebase SDK limitation documented at:
+        // https://firebase.google.com/docs/auth/web/start
+        // Future: Migrate to CSP nonces when Firebase SDK supports it
+        "'unsafe-inline'",
+        
+        // ✅ PRODUCTION-HARDENED: unsafe-eval removed in production
+        // Only allowed in development for Vite HMR (Hot Module Replacement)
+        ...(isDevelopment ? ["'unsafe-eval'"] : []),
+        
+        // Google Services (required for auth)
         "https://www.google.com", // Google reCAPTCHA
         "https://apis.google.com", // Google Identity Services (REQUIRED for Sign-In)
         "https://www.gstatic.com", // Google reCAPTCHA + Firebase Auth
