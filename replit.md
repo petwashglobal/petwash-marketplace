@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is a full-stack enterprise platform by Pet Wash Ltd, encompassing multiple business units such as K9000 IoT wash stations, The Sitter Suite™ (pet sitting), Walk My Pet™ (dog walking), PetTrek™ (pet transport), and The Plush Lab™ (AI avatar creator). The platform aims for market leadership and global franchise expansion by sharing enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management, ensuring enterprise-grade security and multi-jurisdiction compliance.
+Pet Wash™ is a full-stack enterprise platform by Pet Wash Ltd, integrating various pet care business units (K9000 IoT wash stations, The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™). Its purpose is to achieve market leadership and global franchise expansion by providing shared enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management, all while ensuring enterprise-grade security and multi-jurisdiction compliance.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -66,33 +66,23 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 **This platform represents MONTHS of enterprise development. Respect it. Use it. Don't rebuild it.**
 
 ### Core Features & Design Decisions
-- **Global Architecture Module**: `shared/petwashGlobal.ts` as the single source of truth for platform catalog, navigation, KYC, wallet, payments, booking, and mobile contracts.
-- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite, and PWA features.
+- **Global Architecture Module**: `shared/petwashGlobal.ts` for platform catalog, navigation, KYC, wallet, payments, booking, and mobile contracts.
+- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite, PWA.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching, Firebase Authentication (WebAuthn/Passkey).
-- **UI/UX Design**: Brand-compliant, responsive, mobile-first, luxury designs with glassmorphism, Apple-style animations, and bilingual direction-aware layouts.
+- **UI/UX Design**: Responsive, mobile-first, luxury designs with glassmorphism, Apple-style animations, and bilingual direction-aware layouts.
 - **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
-- **AI Chat Assistant**: Google Gemini 2.5 Flash with Kenzo mascot, bilingual, context-aware, real-time avatar animations, and emotion detection.
+- **AI Chat Assistant**: Google Gemini 2.5 Flash with Kenzo mascot, bilingual, context-aware, real-time avatar animations.
 - **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™.
 - **The Plush Lab™**: AI-powered pet avatar creator with landmark detection and multilingual TTS.
-- **Loyalty Program**: 5-tier progressive discounts, e-gift cards, wash packages, Apple Wallet integration.
+- **Loyalty Program**: 5-tier progressive discounts, e-gift cards, wash packages, Apple Wallet.
 - **E-Signature**: DocuSeal with Hebrew RTL support.
 - **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC.
 - **Financial Management**: Automated bookkeeping (Google Vision OCR + Gemini 2.5 Flash), Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
-- **Payment Gateway Architecture**: Nayax Israel is the MANDATORY and EXCLUSIVE payment gateway. Provider payouts via Israeli bank transfer after 72-hour escrow.
+- **Payment Gateway Architecture**: Nayax Israel is the mandatory and exclusive payment gateway, with provider payouts via Israeli bank transfer after 72-hour escrow.
 - **K9000 IoT Integration**: Cloud-based management, real-time status, remote control, AI predictive maintenance.
 - **Passport Verification (KYC)**: Google Vision API-powered passport verification with MRZ parsing.
-- **Security & Compliance**: Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent.
-- **Blockchain-Style Audit Trail**: Immutable, cryptographically hash-chained ledger.
-- **Chat History Management**: PostgreSQL-based storage, full-text search, analytics, 7-year retention, immutable audit trails.
-- **Franchise-Based Authorization System**: Multi-tenant security, employee-franchise linkage, RBAC, per-record authorization.
-- **Smart Gemini Weather Backend**: AI-powered pet-focused weather advice.
-- **Role-Aware Weather Planner**: Full-stack weather intelligence, Open-Meteo data, multi-language support.
-- **Compliance Control Tower**: AI-driven legal and regulatory management.
-- **Load Testing & Performance Monitoring**: Grafana k6.
-- **Gemini AI Email Quality Monitor**: Automated email validation.
-- **Luxury Environmental Monitoring System**: Air Quality, Pollen, Weather, Gemini AI insights.
-- **Comprehensive Multi-Language System**: Enterprise-grade language detection, centralized LanguageContext Service, Gemini AI integration.
-- **Staff Onboarding & Fraud Prevention**: Workflow with document management, e-signature, biometric verification, background checks, GPS-verified logbook, expense management.
+- **Security & Compliance**: Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail.
+- **Unified Luxury Booking System**: Enterprise-grade booking infrastructure across all platforms using a strategy pattern (`BaseLuxuryBookingEngine`), supporting loyalty tier discounts, booking policies, 72-hour escrow, GPS activation (Walk), multi-driver dispatch (PetTrek), IoT unlock tokens (K9000), dynamic surge pricing, and progressive provider payouts.
 
 ## External Dependencies
 - **@neondatabase/serverless**: PostgreSQL connectivity.
@@ -113,7 +103,6 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **googleapis**: Google Wallet integration.
 - **Meta WhatsApp Business API**: WhatsApp messaging (EXCLUSIVE for messaging).
 - **Google Firebase Cloud Messaging (FCM)**: Push notifications and SMS alternative (EXCLUSIVE for push/SMS).
-- **NOTE**: Twilio is NOT used - all messaging via WhatsApp Business API and FCM only.
 - **Mizrahi-Tefahot Bank (via aggregator API)**: Bank reconciliation.
 - **Open-Meteo API**: Weather forecast integration.
 - **DocuSeal (@docuseal/api)**: Open-source e-signature platform.

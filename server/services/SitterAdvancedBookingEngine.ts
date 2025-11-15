@@ -9,6 +9,8 @@ import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sitterBookings, sitterProfiles } from '@shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
+import { getLoyaltyStatus, type LoyaltyUser } from './loyalty';
+import { bookingPolicyEngine, type CancellationResult } from './BookingPolicyEngine';
 
 interface AvailabilityResult {
   available: boolean;
@@ -20,6 +22,7 @@ interface PricingBreakdown {
   duration: number;
   subtotal: number;
   holidaySurge: number;
+  loyaltyDiscount: number; // ADDED: Loyalty tier discount
   platformFee: number;
   tax: number;
   totalPrice: number;
@@ -115,15 +118,18 @@ export class SitterAdvancedBookingEngine {
   }
 
   /**
-   * Calculate price with dynamic pricing, holiday surges, and transparent fees
+   * Calculate price with dynamic pricing, holiday surges, loyalty discounts, and transparent fees
    * Like Booking.com/Airbnb: shows full breakdown
+   * 
+   * UPDATED: Now includes loyalty tier discounts (5-20%) across all tiers
    */
   async calculatePrice(
     sitterId: string,
     serviceType: string,
     startDate: Date,
     endDate: Date,
-    ipAddress: string
+    ipAddress: string,
+    userId?: string // ADDED: For loyalty discount
   ): Promise<PricingBreakdown> {
     // Get sitter's base rate
     const sitter = await db.query.sitterProfiles.findFirst({
@@ -156,6 +162,22 @@ export class SitterAdvancedBookingEngine {
       logger.info('[Dynamic Pricing] Holiday surge applied', { sitterId, surge: holidaySurge });
     }
 
+    // ADDED: Apply loyalty tier discount (UNIFIED across all platforms)
+    let loyaltyDiscount = 0;
+    if (userId) {
+      const loyaltyUser = await getLoyaltyStatus(userId);
+      if (loyaltyUser) {
+        const discountPercent = loyaltyUser.discount; // 0%, 5%, 10%, 15%, 20%
+        loyaltyDiscount = (subtotal * discountPercent) / 100;
+        subtotal -= loyaltyDiscount;
+        logger.info('[Sitter Booking] Loyalty discount applied', {
+          userId,
+          tier: loyaltyUser.tier,
+          discount: loyaltyDiscount,
+        });
+      }
+    }
+
     // Platform fee (10% transparent to customer)
     const platformFee = subtotal * globalConfig.getCommissionRate();
 
@@ -165,7 +187,7 @@ export class SitterAdvancedBookingEngine {
     // Total price to customer
     const totalPrice = subtotal + platformFee + tax;
 
-    // Sitter payout (subtotal - 5% hidden broker fee already in their rate)
+    // Sitter payout (gets full subtotal after loyalty discount)
     const sitterPayout = subtotal;
 
     return {
@@ -173,6 +195,7 @@ export class SitterAdvancedBookingEngine {
       duration,
       subtotal,
       holidaySurge,
+      loyaltyDiscount, // ADDED
       platformFee,
       tax,
       totalPrice,
@@ -323,6 +346,57 @@ export class SitterAdvancedBookingEngine {
   private async logTransaction(bookingId: string, type: string, amount: number): Promise<void> {
     logger.info('[Transaction Log]', { bookingId, type, amount });
     // Store in audit trail / blockchain-style ledger
+  }
+
+  /**
+   * Cancel booking with policy-based refund calculation
+   * ADDED: Unified BookingPolicyEngine integration (same as other platforms)
+   */
+  async cancelBooking(
+    bookingId: string,
+    userId: string,
+    serviceType: string,
+    bookingAmount: number,
+    bookingDate: Date
+  ): Promise<CancellationResult> {
+    try {
+      logger.info('[Sitter Booking] Processing cancellation', {
+        bookingId,
+        userId,
+        serviceType,
+      });
+
+      // Calculate refund using BookingPolicyEngine (UNIFIED with other platforms)
+      const cancellationResult = await bookingPolicyEngine.calculateCancellation(
+        serviceType,
+        bookingAmount,
+        bookingDate,
+        new Date(), // cancellation date = now
+        'IL' // TODO: Get country from user profile
+      );
+
+      if (cancellationResult.canCancel && cancellationResult.refundAmount > 0) {
+        // Process refund from escrow
+        await bookingPolicyEngine.processAutoRefund(
+          parseInt(bookingId),
+          cancellationResult.refundAmount,
+          cancellationResult.refundMethod
+        );
+
+        logger.info('[Sitter Booking] Refund processed', {
+          bookingId,
+          refundAmount: cancellationResult.refundAmount,
+        });
+      }
+
+      return cancellationResult;
+    } catch (error: any) {
+      logger.error('[Sitter Booking] Cancellation failed', {
+        error: error.message,
+        bookingId,
+      });
+      throw error;
+    }
   }
 }
 

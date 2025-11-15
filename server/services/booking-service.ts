@@ -17,6 +17,8 @@ import {
 } from '@shared/schema';
 import { eq, and, or, gte, lte, between, sql, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { unifiedBookingFacade, type BookingPlatform } from './booking-facade';
+import type { AvailabilityCheckParams, PricingParams } from './booking-engines/base/BaseLuxuryBookingEngine';
 
 export interface CreateBookingInput {
   // SECURITY: platformId MUST come from route params, not request body
