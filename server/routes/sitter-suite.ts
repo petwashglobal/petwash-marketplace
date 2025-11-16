@@ -318,8 +318,20 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
       });
       return res.status(400).json({ error: paymentResult.error });
     }
+
+    // STEP 4: Confirm booking with LUXURY ENGINE (escrow + audit trail)
+    const bookingConfirmation = await sitterAdvancedBookingEngine.confirmBooking(
+      bookingId,
+      pricing,
+      ownerId
+    );
+
+    if (bookingConfirmation.status === 'failed') {
+      logger.error('[Sitter Suite] Booking confirmation failed', { bookingId });
+      return res.status(400).json({ error: 'Booking confirmation failed - payment escrow could not be established' });
+    }
     
-    // STEP 4: Create booking record using LUXURY ENGINE data
+    // STEP 5: Create booking record using confirmed LUXURY ENGINE data
     const [newBooking] = await db
       .insert(sitterBookings)
       .values({

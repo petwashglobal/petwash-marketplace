@@ -121,7 +121,18 @@ router.post('/request-trip', requireAuth, requireLoyaltyMember, async (req, res)
       }
     });
 
-    // STEP 4: Create trip record with LUXURY ENGINE data
+    // STEP 4: Confirm booking with LUXURY ENGINE (escrow + audit trail)
+    const bookingConfirmation = await petTrekChauffeurBookingEngine.confirmBooking(
+      tripId,
+      pricing,
+      customerId
+    );
+
+    if (bookingConfirmation.status === 'failed') {
+      return res.status(400).json({ error: 'Booking confirmation failed - payment escrow could not be established' });
+    }
+
+    // STEP 5: Create trip record with confirmed LUXURY ENGINE data
     const [trip] = await db.insert(pettrekTrips).values({
       tripId,
       customerId,
@@ -138,7 +149,7 @@ router.post('/request-trip', requireAuth, requireLoyaltyMember, async (req, res)
       dropoffLongitude: data.dropoffLongitude.toString(),
       dropoffAddress: data.dropoffAddress,
       scheduledPickupTime: data.scheduledPickupTime,
-      status: 'requested',
+      status: 'confirmed',
       estimatedFare: pricing.totalPrice.toString(),
       baseFare: pricing.baseRate.toString(),
       distanceFare: (pricing.subtotal - pricing.baseRate).toString(),

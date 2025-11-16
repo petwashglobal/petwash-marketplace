@@ -262,9 +262,23 @@ router.post('/api/walks/book', requireLoyaltyMember, async (req, res) => {
       }
     });
 
-    // STEP 3: Create booking using LUXURY ENGINE data
+    // Generate bookingId
+    const bookingId = `WALK-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    // STEP 3: Confirm booking with LUXURY ENGINE (escrow + audit trail)
+    const bookingConfirmation = await walkEliteBookingEngine.confirmBooking(
+      bookingId,
+      pricing,
+      ownerId
+    );
+
+    if (bookingConfirmation.status === 'failed') {
+      return res.status(400).json({ error: 'Booking confirmation failed - payment escrow could not be established' });
+    }
+
+    // STEP 4: Create booking using confirmed LUXURY ENGINE data
     const bookingData: InsertWalkBooking = {
-      bookingId: `WALK-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
+      bookingId,
       ownerId,
       walkerId,
       scheduledDate: scheduledDateOnly,
@@ -286,7 +300,7 @@ router.post('/api/walks/book', requireLoyaltyMember, async (req, res) => {
       totalCost: pricing.totalPrice.toFixed(2),
       walkerPayout: pricing.providerPayout.toFixed(2),
       currency: pricing.currency,
-      status: 'pending',
+      status: 'confirmed',
       confirmationCode: Math.floor(100000 + Math.random() * 900000).toString(),
       isLiveTrackingActive: false,
       isVideoStreamActive: false,
