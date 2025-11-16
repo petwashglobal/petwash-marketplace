@@ -14,6 +14,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
 
+// Trust proxy for Replit/Cloud Run deployment
+app.set('trust proxy', 1);
+
 // 1. Security and basic middleware
 app.use(helmet());
 app.use(cors({
@@ -23,14 +26,17 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Session with conditional secure flag (true in production, false in dev)
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "change_me",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: true,
-      sameSite: "none",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       httpOnly: true
     }
   })
