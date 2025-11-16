@@ -20,6 +20,7 @@ import crypto from 'crypto';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
+import { walkEliteBookingEngine } from '../services/booking-engines/walk/WalkEliteBookingEngine';
 
 const router = Router();
 

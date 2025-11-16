@@ -29,6 +29,7 @@ import { sitterAITriageService } from '../services/SitterAITriageService';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
+import { sitterAdvancedBookingEngine } from '../services/SitterAdvancedBookingEngine';
 
 const router = Router();
 

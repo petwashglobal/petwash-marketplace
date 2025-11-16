@@ -8,6 +8,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { requireAuth } from '../customAuth';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { buildAllNavigationLinks } from '../utils/navigation';
+import { petTrekChauffeurBookingEngine } from '../services/booking-engines/pettrek/PetTrekChauffeurBookingEngine';
 
 const router = Router();
 
