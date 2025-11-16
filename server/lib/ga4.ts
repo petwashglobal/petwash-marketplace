@@ -25,9 +25,31 @@ const GA4_API_SECRET = process.env.GA4_API_SECRET;
 const GA4_ENDPOINT = 'https://www.google-analytics.com/mp/collect';
 
 /**
+ * Check if user has consented to analytics tracking
+ */
+async function hasAnalyticsConsent(userId?: string): Promise<boolean> {
+  // PRIVACY FIX: Tracking disabled by default, requires explicit user consent
+  if (!userId) {
+    return false; // No consent for anonymous users
+  }
+
+  // TODO: Check user's consent preferences from database
+  // For now, default to NO TRACKING unless explicitly enabled
+  return false;
+}
+
+/**
  * Send event to GA4 Measurement Protocol
+ * PRIVACY: Only sends if user has given consent
  */
 export async function sendGA4Event(event: GA4Event): Promise<boolean> {
+  // PRIVACY FIX: Check user consent first
+  const hasConsent = await hasAnalyticsConsent(event.userId);
+  if (!hasConsent) {
+    logger.debug('[GA4] Analytics tracking disabled - user has not consented');
+    return false;
+  }
+
   if (!GA4_MEASUREMENT_ID || !GA4_API_SECRET) {
     logger.warn('[GA4] Measurement ID or API Secret not configured');
     return false;
@@ -66,7 +88,7 @@ export async function sendGA4Event(event: GA4Event): Promise<boolean> {
       return false;
     }
 
-    logger.info('[GA4] Event sent', { eventName: event.name });
+    logger.info('[GA4] Event sent (user consented)', { eventName: event.name });
     return true;
   } catch (error) {
     logger.error('[GA4] Error sending event', error);
