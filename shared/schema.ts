@@ -62,6 +62,14 @@ export const users = pgTable("users", {
   totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0").notNull(),
   washBalance: integer("wash_balance").default(0).notNull(),
   giftCardBalance: decimal("gift_card_balance", { precision: 10, scale: 2 }).default("0").notNull(),
+  
+  // PRIVACY CONTROLS (OPT-IN by default = false)
+  analyticsConsent: boolean("analytics_consent").default(false), // GA4 tracking
+  ipTrackingConsent: boolean("ip_tracking_consent").default(false), // IP geolocation
+  emailTrackingConsent: boolean("email_tracking_consent").default(false), // SendGrid tracking pixels
+  marketingConsent: boolean("marketing_consent").default(false), // Marketing emails/SMS
+  privacyConsentUpdatedAt: timestamp("privacy_consent_updated_at"), // Last consent change
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

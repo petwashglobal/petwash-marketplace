@@ -54,6 +54,7 @@ import vatRoutes from "./routes/vat";
 import escrowRoutes from "./routes/escrow";
 import bookingsRoutes from "./routes/bookings";
 import superAppBookingsRoutes from "./routes/super-app-bookings";
+import privacySettingsRoutes from "./routes/privacy-settings";
 import jobOffersRoutes from "./routes/job-offers";
 import providersRoutes from "./routes/providers";
 import marketplaceRoutes from "./routes/marketplace";
@@ -7717,6 +7718,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // Global Special Days Promotions (Black Friday, Cyber Monday, Valentine's, Mother's/Father's Day)
   app.use('/api/promotions', apiLimiter, promotionsRoutes);
+  
+  // Privacy Settings - User privacy controls (OPT-IN tracking, GDPR compliance)
+  app.use('/api/privacy', apiLimiter, privacySettingsRoutes);
 
   // Compliance Control Tower - Authority documents, provider licenses, dispute resolution
   app.use('/api/compliance', adminLimiter, complianceRoutes);
