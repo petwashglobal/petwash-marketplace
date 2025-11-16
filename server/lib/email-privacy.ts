@@ -27,9 +27,21 @@ async function hasEmailTrackingConsent(userId?: string): Promise<boolean> {
     return false; // No consent for anonymous users
   }
   
-  // TODO: Check user's consent preferences from database
-  // For now, default to NO TRACKING unless explicitly enabled
-  return false;
+  try {
+    const { db } = await import('./db');
+    const { users } = await import('../../shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    const [user] = await db
+      .select({ emailTrackingConsent: users.emailTrackingConsent })
+      .from(users)
+      .where(eq(users.id, userId));
+    
+    return user?.emailTrackingConsent ?? false;
+  } catch (error) {
+    logger.error('[Email] Failed to check email tracking consent', error);
+    return false; // Default to NO TRACKING on error
+  }
 }
 
 /**

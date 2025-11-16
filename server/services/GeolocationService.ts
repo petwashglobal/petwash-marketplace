@@ -60,9 +60,21 @@ export class GeolocationService {
       return false; // No consent for anonymous users
     }
     
-    // TODO: Check user's consent preferences from database
-    // For now, default to NO TRACKING unless explicitly enabled
-    return false;
+    try {
+      const { db } = await import('../lib/db');
+      const { users } = await import('../../shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const [user] = await db
+        .select({ ipTrackingConsent: users.ipTrackingConsent })
+        .from(users)
+        .where(eq(users.id, userId));
+      
+      return user?.ipTrackingConsent ?? false;
+    } catch (error) {
+      console.error('[Geolocation] Failed to check IP tracking consent', error);
+      return false; // Default to NO TRACKING on error
+    }
   }
 
   /**

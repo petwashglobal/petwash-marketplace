@@ -33,9 +33,21 @@ async function hasAnalyticsConsent(userId?: string): Promise<boolean> {
     return false; // No consent for anonymous users
   }
 
-  // TODO: Check user's consent preferences from database
-  // For now, default to NO TRACKING unless explicitly enabled
-  return false;
+  try {
+    const { db } = await import('../lib/db');
+    const { users } = await import('../../shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    const [user] = await db
+      .select({ analyticsConsent: users.analyticsConsent })
+      .from(users)
+      .where(eq(users.id, userId));
+    
+    return user?.analyticsConsent ?? false;
+  } catch (error) {
+    logger.error('[GA4] Failed to check analytics consent', error);
+    return false; // Default to NO TRACKING on error
+  }
 }
 
 /**
