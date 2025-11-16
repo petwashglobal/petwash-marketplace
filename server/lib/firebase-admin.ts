@@ -66,36 +66,7 @@ console.log('✅ Firebase Admin services exported:', {
   dbConstructor: db?.constructor?.name
 });
 
-// Configure Cloud Storage lifecycle rules for automatic biometric data deletion
-async function configureBiometricDataLifecycle() {
-  try {
-    const bucket = storage.bucket();
-    
-    await bucket.addLifecycleRule({
-      action: {
-        type: 'Delete'
-      },
-      condition: {
-        age: 1, // Delete files older than 1 day
-        matchesPrefix: ['biometric-certificates/'] // Only applies to biometric certificates
-      }
-    });
-
-    console.log('✅ Cloud Storage lifecycle rule configured: biometric data auto-deletion after 24 hours');
-  } catch (error: any) {
-    // Lifecycle rules may already exist or require specific permissions
-    if (error.code === 409 || error.message?.includes('already exists')) {
-      console.log('ℹ️ Cloud Storage lifecycle rule already configured');
-    } else {
-      console.warn('⚠️ Could not configure lifecycle rule (may require Storage Admin role):', error.message);
-      console.warn('⚠️ Biometric data cleanup relies on in-process timers only');
-    }
-  }
-}
-
-// Initialize lifecycle rules (non-blocking)
-configureBiometricDataLifecycle().catch(err => {
-  console.error('Failed to configure lifecycle rules:', err);
-});
+// Note: Biometric storage lifecycle rules are now managed by server/infra/biometricStorage.ts
+// This uses Google Cloud Storage SDK directly for better control and error handling
 
 export default admin;

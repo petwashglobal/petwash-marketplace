@@ -45,6 +45,7 @@ import operationsRouter from './routes/operations'; // Enterprise operations: ta
 import { createSentryRelease} from './lib/sentry-releases';
 import { enhancedSecurityHeaders } from './middleware/securityHeaders';
 import { setCsrfToken, verifyCsrfToken, csrfTokenEndpoint } from './middleware/csrfProtection';
+import { ensureBiometricStorage } from './infra/biometricStorage';
 
 initSentry();
 
@@ -485,6 +486,13 @@ registerEnterpriseRoutes(app);
           initializeGoogleServices();
         } catch (error) {
           logger.error('Failed to initialize Google Services:', error);
+        }
+        
+        // Initialize biometric storage (GCS bucket and lifecycle rules)
+        try {
+          await ensureBiometricStorage();
+        } catch (error) {
+          logger.error('Failed to initialize biometric storage:', error);
         }
         
         // Create Sentry release
