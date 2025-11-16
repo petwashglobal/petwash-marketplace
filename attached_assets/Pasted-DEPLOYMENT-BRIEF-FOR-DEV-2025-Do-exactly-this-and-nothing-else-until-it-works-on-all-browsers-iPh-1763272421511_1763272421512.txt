@@ -1,0 +1,157 @@
+DEPLOYMENT_BRIEF_FOR_DEV_2025  
+Do exactly this and nothing else until it works on all browsers (iPhone, iPad, Mac, Chrome, Safari).
+
+=====================================================
+1. SERVER ENTRY POINT  server/index.ts
+=====================================================
+Use this structure for the production server. It must serve the built Vite app from dist/public and then start Express on port 5000.
+
+import "dotenv/config";
+import path from "node:path";
+import express from "express";
+import helmet from "helmet";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import session from "express-session";
+import { fileURLToPath } from "node:url";
+import { ensureBiometricStorage } from "./infra/biometricStorage"; // use the working module you already wired
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = Number(process.env.PORT || 5000);
+
+// 1. Security and basic middleware
+app.use(helmet());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "change_me",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: true,
+      sameSite: "none",
+      httpOnly: true
+    }
+  })
+);
+
+// 2. Initialise biometric storage once on startup
+ensureBiometricStorage()
+  .then(() => {
+    console.log("[BiometricStorage] ready");
+  })
+  .catch((err) => {
+    console.error("[BiometricStorage] init failed", err);
+  });
+
+// 3. API routes (whatever you already have)
+import { router as apiRouter } from "./api/router.js"; // adjust to real path
+app.use("/api", apiRouter);
+
+// 4. Static assets for Vite build
+const staticRoot = path.join(__dirname, "..", "dist", "public");
+app.use(express.static(staticRoot));
+
+// 5. SPA fallback for React router
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(staticRoot, "index.html"));
+});
+
+// 6. Start server
+app.listen(PORT, () => {
+  console.log(`[Server] listening on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
+});
+
+=====================================================
+2. PACKAGE.JSON SCRIPTS  (root package.json)
+=====================================================
+Make sure scripts look like this. deploy must be the single command for Replit production.
+
+{
+  "scripts": {
+    "dev": "vite dev",
+    "build": "NODE_ENV=production vite build",
+    "preview": "vite preview",
+    "start": "NODE_ENV=production node server/index.ts",
+    "deploy": "npm run build && npm run start"
+  }
+}
+
+Replit deployment command:
+- Build command:   npm run build
+- Run command:     npm run start
+For local manual full deploy:
+- npm run deploy
+
+=====================================================
+3. REQUIRED ENV SECRETS (already exist, just verify)
+=====================================================
+Do not invent new names. Use the ones that are already configured in Replit Secrets.
+
+SESSION_SECRET               = (already set, very long random)
+COOKIE_SECRET                = (already set, very long random)
+DATABASE_URL                 = (current Neon or Postgres URL)
+FIREBASE_SERVICE_ACCOUNT_KEY = (current JSON, already working)
+FIREBASE_PROJECT_ID          = signinpetwash
+VITE_FIREBASE_APP_ID         = (existing)
+VITE_FIREBASE_API_KEY        = (existing)
+VITE_FIREBASE_AUTH_DOMAIN    = (existing)
+VITE_FIREBASE_PROJECT_ID     = signinpetwash
+
+Biometric storage (already confirmed by logs, just keep them):
+BIOMETRIC_BUCKET_NAME        = signinpetwash.firebasestorage.app
+BIOMETRIC_PREFIX             = biometric-certificates/
+GCS_FIRESTORE_BUCKET         = signinpetwash.firebasestorage.app   (if used anywhere else)
+
+Do not add new bucket names.
+Do not change project id.
+We already see in logs:
+[BiometricStorage] Google Cloud Storage client initialized
+[BiometricStorage] Bucket "signinpetwash.firebasestorage.app" verified
+[BiometricStorage] Lifecycle rule already configured
+
+=====================================================
+4. CLEAN BUILD AND PUBLISH WORKFLOW
+=====================================================
+For every production publish do this exact flow, nothing extra:
+
+1. Stop any custom deploy scripts like deploy.ts  (remove them from repo if still there).
+2. Ensure server entry is server/index.ts exactly as above.
+3. Make sure Vite output folder is dist/public  (default).
+4. In Replit:
+   - Build: npm run build
+   - Run:   npm run start
+5. Click Publish in Replit deployment panel.
+
+After publish, I will verify on:
+- https://petwash.co.il
+- https://www.petwash.co.il
+- https://pet-wash-il-nirhadad1.replit.app
+
+Expected:
+- No 502.
+- No blank page.
+- HTML + JS loaded, React app visible on all devices (iPhone, iPad, Mac, Safari, Chrome).
+
+=====================================================
+5. DEBUG RULE FOR WHITE SCREEN ONLY
+=====================================================
+If I still see a white screen after this:
+
+1. Open browser dev tools Console.
+2. Any error like "Uncaught ReferenceError" or "Failed to load chunk" means build path mismatch.
+3. In that case:
+   - Confirm again staticRoot is ".., dist, public".
+   - Confirm index.html exists in dist/public.
+   - Confirm Replit did not override the run command.
+
+No further architecture changes are allowed until this flow is confirmed working end to end.
