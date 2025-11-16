@@ -42,6 +42,17 @@ app.use(
   })
 );
 
+// Canonical URL redirect (www → non-www) for SEO
+app.use((req, res, next) => {
+  const host = req.get('host')?.toLowerCase() || '';
+  if (host.startsWith('www.')) {
+    const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+    const nonWwwHost = host.replace(/^www\./, '');
+    return res.redirect(301, `${protocol}://${nonWwwHost}${req.originalUrl}`);
+  }
+  next();
+});
+
 // 2. Initialise biometric storage once on startup
 ensureBiometricStorage()
   .then(() => {
