@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { EmailService } from '../services/emailService';
+import { EmailService } from '../emailService';
 import { readFileSync } from 'fs';
 
 const router = Router();

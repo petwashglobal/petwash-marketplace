@@ -74,6 +74,60 @@ import promotionsRoutes from "./routes/promotions";
 import complianceRoutes from "./routes/compliance";
 import monitoringRoutes, { trackRequestMetrics } from "./routes/monitoring";
 import { registerStaffOnboardingRoutes } from "./routes/staff-onboarding";
+import accountingRoutes from "./routes/accounting";
+import adminRoutes from "./routes/admin";
+import aiInsightsRoutes from "./routes/ai-insights";
+import analyticsRoutes from "./routes/analytics";
+import auditRoutes from "./routes/audit";
+import avatarsRoutes from "./routes/avatars";
+import bankRoutes from "./routes/bank";
+import chatHistoryRoutes from "./routes/chat-history";
+import conciergeRoutes from "./routes/concierge";
+import contractorRoutes from "./routes/contractor";
+import contractsRoutes from "./routes/contracts";
+import dataRightsRoutes from "./routes/dataRights";
+import deploymentRoutes from "./routes/deployment";
+import devicesRoutes from "./routes/devices";
+import employeeRoutes from "./routes/employees";
+import enterpriseFinanceRoutes from "./routes/enterprise-finance";
+import enterpriseHRRoutes from "./routes/enterprise-hr";
+import enterpriseLogisticsRoutes from "./routes/enterprise-logistics";
+import enterpriseOperationsRoutes from "./routes/enterprise-operations";
+import enterpriseSalesRoutes from "./routes/enterprise-sales";
+import enterpriseSalesCRMRoutes from "./routes/enterprise-sales-crm";
+import expensesRoutes from "./routes/expenses";
+import franchiseRoutes from "./routes/franchise";
+import franchiseMgmtRoutes from "./routes/franchise-mgmt";
+import geminiWatchdogRoutes from "./routes/gemini-watchdog";
+import globalFormsRoutes from "./routes/globalForms";
+import globalServicesRoutes from "./routes/globalServices";
+import gmailTestRoutes from "./routes/gmail-test";
+import inboxRoutes from "./routes/inbox";
+import integrationsRoutes from "./routes/integrations";
+import messagesRoutes from "./routes/messages";
+import messagingRoutes from "./routes/messaging";
+import metricsRoutes from "./routes/metrics";
+import multiCurrencyRoutes from "./routes/multi-currency";
+import observancesRoutes from "./routes/observances";
+import operationsRoutes from "./routes/operations";
+import passportRoutes from "./routes/passport";
+import pawFinderRoutes from "./routes/paw-finder";
+import petsRoutes from "./routes/pets";
+import pricingRoutes from "./routes/pricing";
+import providerOnboardingRoutes from "./routes/provider-onboarding";
+import pushNotificationsRoutes from "./routes/push-notifications";
+import recaptchaRoutes from "./routes/recaptcha";
+import reviewsRoutes from "./routes/reviews";
+import securityStatusRoutes from "./routes/security-status";
+import sendReportRoutes from "./routes/send-report";
+import seoRoutes from "./routes/seo";
+import signaturesRoutes from "./routes/signatures";
+import socialRoutes from "./routes/social";
+import statusRoutes from "./routes/status";
+import syntheticRoutes from "./routes/synthetic";
+import walkPaymentFlowRoutes from "./routes/walk-payment-flow";
+import walletTelemetryRoutes from "./routes/wallet-telemetry";
+import weatherTestRoutes from "./routes/weather-test";
 // SSL certificate endpoints removed - handled by Replit platform
 import { 
   insertWashPackageSchema, 
@@ -7894,6 +7948,60 @@ self.addEventListener('notificationclick', (event) => {
   // SEO Routes (Sitemap & Robots.txt)
   const seoRoutes = await import('./routes/seo');
   app.use(seoRoutes.default);
+
+  // ========================================================================
+  // 🔌 NEWLY CONNECTED ROUTES - All Missing Infrastructure Wired Up!
+  // ========================================================================
+  
+  // Accounting & Finance
+  app.use('/api/accounting', adminLimiter, accountingRoutes);
+  app.use('/api/bank', adminLimiter, bankRoutes);
+  app.use('/api/multi-currency', apiLimiter, multiCurrencyRoutes);
+  app.use('/api/pricing', apiLimiter, pricingRoutes);
+  app.use('/api/reviews', apiLimiter, reviewsRoutes);
+  
+  // Enterprise Management
+  app.use('/api/enterprise/finance', adminLimiter, enterpriseFinanceRoutes);
+  app.use('/api/enterprise/hr', adminLimiter, enterpriseHRRoutes);
+  app.use('/api/enterprise/logistics', adminLimiter, enterpriseLogisticsRoutes);
+  app.use('/api/enterprise/operations', adminLimiter, enterpriseOperationsRoutes);
+  app.use('/api/enterprise/sales', adminLimiter, enterpriseSalesRoutes);
+  app.use('/api/enterprise/sales-crm', adminLimiter, enterpriseSalesCRMRoutes);
+  
+  // HR & Employee Management
+  app.use('/api/expenses', adminLimiter, expensesRoutes);
+  app.use('/api/contractor', adminLimiter, contractorRoutes);
+  app.use('/api/contracts', adminLimiter, contractsRoutes);
+  app.use('/api/signatures', apiLimiter, signaturesRoutes);
+  
+  // Operations & Logistics
+  app.use('/api/operations', adminLimiter, operationsRoutes);
+  app.use('/api/deployment', adminLimiter, deploymentRoutes);
+  app.use('/api/metrics', adminLimiter, metricsRoutes);
+  app.use('/api/security-status', adminLimiter, securityStatusRoutes);
+  app.use('/api/send-report', adminLimiter, sendReportRoutes);
+  app.use('/api/status', apiLimiter, statusRoutes);
+  app.use('/api/synthetic', adminLimiter, syntheticRoutes);
+  
+  // Franchise Management
+  app.use('/api/franchise-mgmt', adminLimiter, franchiseMgmtRoutes);
+  
+  // Customer & Social Features
+  app.use('/api/social', apiLimiter, socialRoutes);
+  app.use('/api/messages', apiLimiter, messagesRoutes);
+  app.use('/api/concierge', apiLimiter, conciergeRoutes);
+  
+  // Global Services
+  app.use('/api/global-forms', apiLimiter, globalFormsRoutes);
+  app.use('/api/global-services', apiLimiter, globalServicesRoutes);
+  app.use('/api/integrations', apiLimiter, integrationsRoutes);
+  
+  // Walk My Pet Payment Flow
+  app.use('/api/walk-payment-flow', apiLimiter, walkPaymentFlowRoutes);
+  
+  // Testing & Development
+  app.use('/api/gmail-test', adminLimiter, gmailTestRoutes);
+  app.use('/api/weather-test', adminLimiter, weatherTestRoutes);
 
   // Platform Status Monitor - Real-time health checks for all 7 platforms
   app.get('/api/admin/platform-status', adminLimiter, async (req, res) => {
