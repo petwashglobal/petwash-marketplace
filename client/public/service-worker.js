@@ -1,4 +1,4 @@
-const CACHE_NAME = 'petwash-ops-v1';
+const CACHE_NAME = 'petwash-ops-v2-nov16-2025';
 const urlsToCache = [
   '/m',
   '/brand/petwash-logo-official.png',
