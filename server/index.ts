@@ -1,10 +1,14 @@
 // server/index.ts - Pet Wash Platform 2025 Deployment
 
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Biometric storage already implemented and working
 import { ensureBiometricStorage } from "./infra/biometricStorage";
