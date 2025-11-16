@@ -34,7 +34,7 @@ async function hasAnalyticsConsent(userId?: string): Promise<boolean> {
   }
 
   try {
-    const { db } = await import('../lib/db');
+    const { db } = await import('../db');
     const { users } = await import('../../shared/schema');
     const { eq } = await import('drizzle-orm');
     
