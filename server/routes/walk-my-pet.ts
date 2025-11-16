@@ -182,7 +182,7 @@ router.post('/api/walkers/search', async (req, res) => {
 
 // =================== WALK BOOKING ===================
 
-// Create walk booking (LOYALTY MEMBERS ONLY)
+// Create walk booking (LOYALTY MEMBERS ONLY) - USING LUXURY ENGINE
 router.post('/api/walks/book', requireLoyaltyMember, async (req, res) => {
   try {
     const ownerId = req.body.ownerId || (req as any).user?.uid;
@@ -210,60 +210,87 @@ router.post('/api/walks/book', requireLoyaltyMember, async (req, res) => {
       return res.status(400).json({ error: 'Missing required booking information' });
     }
 
-    // Get walker details for pricing
-    const [walker] = await db
-      .select()
-      .from(walkerProfiles)
-      .where(eq(walkerProfiles.walkerId, walkerId))
-      .limit(1);
+    // Parse dates for luxury engine
+    const startDateTime = new Date(`${scheduledDate}T${scheduledStartTime}`);
+    const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60000);
+    const scheduledDateOnly = new Date(scheduledDate); // Keep day-only for queries
 
-    if (!walker) {
-      return res.status(404).json({ error: 'Walker not found' });
+    // Calculate distance (default 5km for walk radius)
+    const distanceKm = 5; // Most walks are local 5km radius
+
+    // STEP 1: Check availability using LUXURY ENGINE
+    const availability = await walkEliteBookingEngine.checkAvailability({
+      providerId: walkerId,
+      serviceType: 'dog_walk',
+      startDate: startDateTime,
+      endDate: endDateTime,
+      metadata: { 
+        petName, 
+        petBreed, 
+        pickupAddress,
+        pickupLatitude,
+        pickupLongitude,
+        distanceKm
+      }
+    });
+
+    if (!availability.available) {
+      return res.status(400).json({ error: availability.message });
     }
 
-    if (!walker.isAvailable || walker.verificationStatus !== 'verified') {
-      return res.status(400).json({ error: 'Walker is not available for bookings' });
-    }
+    // STEP 2: Get pricing quote using LUXURY ENGINE (with loyalty discounts!)
+    const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
+                     req.socket.remoteAddress || 
+                     '127.0.0.1';
 
-    // Calculate pricing
-    const hourlyRate = parseFloat(walker.baseHourlyRate);
-    const hours = durationMinutes / 60;
-    const walkerRate = hourlyRate * hours;
-    
-    // Platform commission: 24% total (Owner pays 6%, Walker pays 18%)
-    const platformFeeOwner = walkerRate * 0.06;
-    const platformFeeSitter = walkerRate * 0.18;
-    const totalCost = walkerRate + platformFeeOwner; // Owner pays base + 6%
-    const walkerPayout = walkerRate - platformFeeSitter; // Walker receives base - 18% = 82%
+    const pricing = await walkEliteBookingEngine.quotePrice({
+      providerId: walkerId,
+      serviceType: 'dog_walk',
+      startDate: startDateTime,
+      endDate: endDateTime,
+      userId: ownerId,
+      ipAddress: clientIP,
+      metadata: { 
+        durationMinutes,
+        pickupLatitude,
+        pickupLongitude,
+        distanceKm,
+        petName,
+        petBreed,
+        petWeight,
+        petSpecialNeeds
+      }
+    });
 
+    // STEP 3: Create booking using LUXURY ENGINE data
     const bookingData: InsertWalkBooking = {
       bookingId: `WALK-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
       ownerId,
       walkerId,
-      scheduledDate: new Date(scheduledDate),
+      scheduledDate: scheduledDateOnly,
       scheduledStartTime,
       durationMinutes,
       pickupLatitude: pickupLatitude.toString(),
       pickupLongitude: pickupLongitude.toString(),
       pickupAddress,
-      geofenceRadiusMeters: 500, // Default 500m safe zone
+      geofenceRadiusMeters: 500,
       geofenceCenterLat: pickupLatitude.toString(),
       geofenceCenterLon: pickupLongitude.toString(),
       petName,
       petBreed,
       petWeight,
       petSpecialNeeds,
-      walkerRate: walkerRate.toFixed(2),
-      platformFeeOwner: platformFeeOwner.toFixed(2),
-      platformFeeSitter: platformFeeSitter.toFixed(2),
-      totalCost: totalCost.toFixed(2),
-      walkerPayout: walkerPayout.toFixed(2),
-      currency: walker.currency || 'ILS',
+      walkerRate: pricing.baseRate.toFixed(2),
+      platformFeeOwner: (pricing.platformFee * 0.25).toFixed(2), // 25% owner portion
+      platformFeeSitter: (pricing.platformFee * 0.75).toFixed(2), // 75% walker portion
+      totalCost: pricing.totalPrice.toFixed(2),
+      walkerPayout: pricing.providerPayout.toFixed(2),
+      currency: pricing.currency,
       status: 'pending',
-      confirmationCode: Math.floor(100000 + Math.random() * 900000).toString(), // 6-digit code
+      confirmationCode: Math.floor(100000 + Math.random() * 900000).toString(),
       isLiveTrackingActive: false,
       isVideoStreamActive: false,
-      isDroneMonitoringActive: walker.hasDroneAccess || false,
+      isDroneMonitoringActive: false,
       geofenceViolationCount: 0,
       emergencyStopTriggered: false,
       ownerNotified: false,

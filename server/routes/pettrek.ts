@@ -9,6 +9,7 @@ import { requireAuth } from '../customAuth';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { petTrekChauffeurBookingEngine } from '../services/booking-engines/pettrek/PetTrekChauffeurBookingEngine';
+import { calculateDistance } from '../services/location/MapsService';
 
 const router = Router();
 
@@ -42,7 +43,7 @@ router.post('/fare-estimate', requireAuth, async (req, res) => {
   }
 });
 
-// Request a new trip (LOYALTY MEMBERS ONLY)
+// Request a new trip (LOYALTY MEMBERS ONLY) - USING LUXURY ENGINE
 router.post('/request-trip', requireAuth, requireLoyaltyMember, async (req, res) => {
   try {
     const schema = z.object({
@@ -59,6 +60,7 @@ router.post('/request-trip', requireAuth, requireLoyaltyMember, async (req, res)
       dropoffLongitude: z.number(),
       dropoffAddress: z.string(),
       scheduledPickupTime: z.string().transform(val => new Date(val)),
+      providerId: z.string().optional(), // Optional specific driver
     });
 
     const data = schema.parse(req.body);
@@ -67,14 +69,59 @@ router.post('/request-trip', requireAuth, requireLoyaltyMember, async (req, res)
     // Generate trip ID
     const tripId = `TRK-${Date.now()}`;
 
-    // Calculate fare estimate
-    const fareEstimate = fareEstimationService.getFareEstimate(
-      { latitude: data.pickupLatitude, longitude: data.pickupLongitude },
-      { latitude: data.dropoffLatitude, longitude: data.dropoffLongitude },
-      data.scheduledPickupTime
+    // STEP 1: Find available driver (if not specified)
+    const providerId = data.providerId || 'AUTO_DISPATCH';
+
+    // Calculate distance between pickup and dropoff
+    const distanceKm = calculateDistance(
+      data.pickupLatitude,
+      data.pickupLongitude,
+      data.dropoffLatitude,
+      data.dropoffLongitude
     );
 
-    // Create trip record
+    // STEP 2: Check availability using LUXURY ENGINE
+    const availability = await petTrekChauffeurBookingEngine.checkAvailability({
+      providerId,
+      serviceType: data.serviceType,
+      startDate: data.scheduledPickupTime,
+      endDate: new Date(data.scheduledPickupTime.getTime() + 60 * 60000), // Estimate 1 hour trip
+      metadata: { 
+        pickupLatitude: data.pickupLatitude, 
+        pickupLongitude: data.pickupLongitude,
+        dropoffLatitude: data.dropoffLatitude,
+        dropoffLongitude: data.dropoffLongitude,
+        distanceKm
+      }
+    });
+
+    if (!availability.available) {
+      return res.status(400).json({ error: availability.message });
+    }
+
+    // STEP 3: Get pricing using LUXURY ENGINE (with loyalty discounts!)
+    const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
+                     req.socket.remoteAddress || 
+                     '127.0.0.1';
+
+    const pricing = await petTrekChauffeurBookingEngine.quotePrice({
+      providerId,
+      serviceType: data.serviceType,
+      startDate: data.scheduledPickupTime,
+      endDate: new Date(data.scheduledPickupTime.getTime() + 60 * 60000),
+      userId: customerId,
+      ipAddress: clientIP,
+      metadata: {
+        pickupLatitude: data.pickupLatitude,
+        pickupLongitude: data.pickupLongitude,
+        dropoffLatitude: data.dropoffLatitude,
+        dropoffLongitude: data.dropoffLongitude,
+        distanceKm,
+        petSize: data.petSize
+      }
+    });
+
+    // STEP 4: Create trip record with LUXURY ENGINE data
     const [trip] = await db.insert(pettrekTrips).values({
       tripId,
       customerId,
@@ -92,17 +139,17 @@ router.post('/request-trip', requireAuth, requireLoyaltyMember, async (req, res)
       dropoffAddress: data.dropoffAddress,
       scheduledPickupTime: data.scheduledPickupTime,
       status: 'requested',
-      estimatedFare: fareEstimate.estimatedFare.toString(),
-      baseFare: fareEstimate.baseFare.toString(),
-      distanceFare: fareEstimate.distanceFare.toString(),
-      timeFare: fareEstimate.timeFare.toString(),
-      surgeFare: fareEstimate.surgeFare.toString(),
-      platformCommission: fareEstimate.platformCommission.toString(),
-      driverPayout: fareEstimate.driverPayout.toString(),
-      estimatedDistance: fareEstimate.breakdown.distanceKm.toString(),
-      estimatedDuration: fareEstimate.breakdown.estimatedMinutes,
-      isPeakTime: fareEstimate.breakdown.isPeakTime,
-      surgeMultiplier: fareEstimate.breakdown.surgeMultiplier.toString(),
+      estimatedFare: pricing.totalPrice.toString(),
+      baseFare: pricing.baseRate.toString(),
+      distanceFare: (pricing.subtotal - pricing.baseRate).toString(),
+      timeFare: '0',
+      surgeFare: pricing.surgePricing.toString(),
+      platformCommission: pricing.platformFee.toString(),
+      driverPayout: pricing.providerPayout.toString(),
+      estimatedDistance: distanceKm.toString(),
+      estimatedDuration: Math.round((distanceKm / 40) * 60), // Assume 40 km/h avg speed
+      isPeakTime: pricing.surgePricing > 0,
+      surgeMultiplier: pricing.surgePricing > 0 ? '1.5' : '1.0',
     }).returning();
 
     // Dispatch to nearby drivers
@@ -126,7 +173,17 @@ router.post('/request-trip', requireAuth, requireLoyaltyMember, async (req, res)
         id: trip.id,
         tripId: trip.tripId,
         status: trip.status,
-        fareEstimate,
+        pricing: {
+          totalPrice: pricing.totalPrice,
+          basePrice: pricing.baseRate,
+          loyaltyDiscount: pricing.loyaltyDiscount,
+          surgePricing: pricing.surgePricing,
+          platformFee: pricing.platformFee,
+          driverPayout: pricing.providerPayout,
+          currency: pricing.currency,
+          distanceKm,
+          estimatedDuration: Math.round((distanceKm / 40) * 60),
+        },
       },
       dispatch: dispatchResult,
       navigation: navigationLinks,

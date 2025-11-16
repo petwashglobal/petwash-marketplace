@@ -29,7 +29,7 @@ import { sitterAITriageService } from '../services/SitterAITriageService';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
-import { sitterAdvancedBookingEngine } from '../services/SitterAdvancedBookingEngine';
+import { advancedBookingEngine as sitterAdvancedBookingEngine } from '../services/SitterAdvancedBookingEngine';
 
 const router = Router();
 
@@ -214,7 +214,7 @@ router.post('/pets', async (req, res) => {
 // ==================== BOOKINGS ====================
 
 /**
- * POST /api/sitter-suite/bookings - Create new booking with AI triage (LOYALTY MEMBERS ONLY)
+ * POST /api/sitter-suite/bookings - Create new booking with AI triage (LOYALTY MEMBERS ONLY) - USING LUXURY ENGINE
  */
 router.post('/bookings', requireLoyaltyMember, async (req, res) => {
   try {
@@ -243,15 +243,46 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
       return res.status(404).json({ error: 'Sitter or pet not found' });
     }
     
-    // Calculate days and fees
+    // Parse dates
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     
-    const fees = nayaxSitterMarketplace.calculateBookingTotal(
-      sitter.pricePerDayCents,
-      totalDays
-    );
+    // STEP 1: Check availability using LUXURY ENGINE
+    const availability = await sitterAdvancedBookingEngine.checkAvailability({
+      providerId: sitterId.toString(),
+      serviceType: 'pet_sitting',
+      startDate: start,
+      endDate: end,
+      metadata: { 
+        petType: pet.breed,
+        specialNeeds: pet.specialNeeds,
+        allergies: pet.allergies
+      }
+    });
+
+    if (!availability.available) {
+      return res.status(400).json({ error: availability.message });
+    }
+
+    // STEP 2: Get pricing using LUXURY ENGINE (with loyalty discounts!)
+    const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
+                     req.socket.remoteAddress || 
+                     '127.0.0.1';
+
+    const pricing = await sitterAdvancedBookingEngine.quotePrice({
+      providerId: sitterId.toString(),
+      serviceType: 'pet_sitting',
+      startDate: start,
+      endDate: end,
+      userId: ownerId,
+      ipAddress: clientIP,
+      metadata: {
+        petId,
+        specialInstructions,
+        petType: pet.breed,
+        specialNeeds: pet.specialNeeds
+      }
+    });
     
     // AI Triage Analysis
     const triageResult = await sitterAITriageService.analyzeBookingUrgency({
@@ -267,12 +298,15 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
     // Generate booking ID
     const bookingId = `SITTER_${nanoid(12)}`;
     
-    // Process payment via Nayax
+    // STEP 3: Process payment via Nayax using LUXURY ENGINE pricing
+    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const pricePerDayCents = Math.round((pricing.totalPrice / totalDays) * 100);
+    
     const paymentResult = await nayaxSitterMarketplace.processBookingPayment({
       bookingId,
       ownerId,
       sitterId,
-      pricePerDayCents: sitter.pricePerDayCents,
+      pricePerDayCents,
       totalDays,
       ownerPaymentToken,
     });
@@ -285,7 +319,7 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
       return res.status(400).json({ error: paymentResult.error });
     }
     
-    // Create booking record
+    // STEP 4: Create booking record using LUXURY ENGINE data
     const [newBooking] = await db
       .insert(sitterBookings)
       .values({
@@ -296,11 +330,11 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
         startDate: start,
         endDate: end,
         totalDays,
-        basePriceCents: fees.basePriceCents,
-        platformServiceFeeCents: fees.platformServiceFeeCents,
-        brokerCutCents: fees.brokerCutCents,
-        sitterPayoutCents: fees.sitterPayoutCents,
-        totalChargeCents: fees.totalChargeCents,
+        basePriceCents: Math.round(pricing.subtotal * 100),
+        platformServiceFeeCents: Math.round(pricing.platformFee * 100),
+        brokerCutCents: Math.round(pricing.platformFee * 100),
+        sitterPayoutCents: Math.round(pricing.providerPayout * 100),
+        totalChargeCents: Math.round(pricing.totalPrice * 100),
         nayaxTransactionId: paymentResult.nayaxTransactionId,
         paymentStatus: 'captured',
         urgencyScore: triageResult.urgencyScore,
@@ -311,11 +345,13 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
       })
       .returning();
     
-    logger.info('[Sitter Suite] ✅ Booking created successfully', {
+    logger.info('[Sitter Suite] ✅ Booking created successfully with LUXURY ENGINE', {
       bookingId,
       urgencyScore: triageResult.urgencyScore,
-      brokerProfit: fees.brokerCut, // Our 5% cut 💰
-      sitterPayout: fees.sitterPayout,
+      brokerProfit: pricing.platformFee,
+      sitterPayout: pricing.providerPayout,
+      loyaltyDiscount: pricing.loyaltyDiscount,
+      totalPrice: pricing.totalPrice,
     });
     
     // Generate navigation links to sitter's location
@@ -331,7 +367,15 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
     res.status(201).json({
       booking: newBooking,
       triage: triageResult,
-      fees,
+      pricing: {
+        totalPrice: pricing.totalPrice,
+        basePrice: pricing.subtotal,
+        loyaltyDiscount: pricing.loyaltyDiscount,
+        platformFee: pricing.platformFee,
+        sitterPayout: pricing.providerPayout,
+        currency: pricing.currency,
+        breakdown: pricing.breakdown,
+      },
       navigation: navigationLinks,
     });
     
