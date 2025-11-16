@@ -51,28 +51,36 @@ ensureBiometricStorage()
     console.error("[BiometricStorage] init failed", err);
   });
 
-// 3. API routes
-registerRoutes(app);
-
-// 4. Static assets for Vite build
-const staticRoot = path.join(__dirname, "..", "dist", "public");
-app.use(express.static(staticRoot));
-
-// 5. SPA fallback for React router (with API route protection)
-app.get("*", (req, res, next) => {
-  // CRITICAL: Don't catch API routes - let them return 404 JSON instead of HTML
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ 
-      error: 'API endpoint not found',
-      path: req.path 
+// 3. API routes, static assets, and server startup
+(async () => {
+  try {
+    // Register all API routes (wait for async completion)
+    await registerRoutes(app);
+    
+    // Static assets for Vite build
+    const staticRoot = path.join(__dirname, "..", "dist", "public");
+    app.use(express.static(staticRoot));
+    
+    // SPA fallback for React router (with API route protection)
+    app.get("*", (req, res, next) => {
+      // CRITICAL: Don't catch API routes - let them return 404 JSON instead of HTML
+      if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ 
+          error: 'API endpoint not found',
+          path: req.path 
+        });
+      }
+      
+      // Serve index.html for all non-API routes (enables React Router)
+      res.sendFile(path.join(staticRoot, "index.html"));
     });
+    
+    // Start server
+    app.listen(PORT, () => {
+      console.log(`[Server] listening on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
+    });
+  } catch (error) {
+    console.error("[FATAL] Server startup failed:", error);
+    process.exit(1);
   }
-  
-  // Serve index.html for all non-API routes (enables React Router)
-  res.sendFile(path.join(staticRoot, "index.html"));
-});
-
-// 6. Start server
-app.listen(PORT, () => {
-  console.log(`[Server] listening on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
-});
+})();
