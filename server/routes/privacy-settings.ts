@@ -4,12 +4,12 @@
  */
 
 import { Router, Response } from 'express';
-import { db } from '../lib/db';
+import { db } from '../db';
 import { users } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
-import type { AuthenticatedRequest } from '../middleware/auth';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth } from '../customAuth';
+import type { Request } from 'express';
 
 const router = Router();
 
@@ -17,9 +17,9 @@ const router = Router();
  * GET /api/privacy/settings
  * Get current user's privacy settings
  */
-router.get('/settings', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/settings', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.uid;
+    const userId = (req as any).user.uid;
 
     const [user] = await db
       .select({
@@ -54,9 +54,9 @@ router.get('/settings', requireAuth, async (req: AuthenticatedRequest, res: Resp
  * PUT /api/privacy/settings
  * Update privacy preferences
  */
-router.put('/settings', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/settings', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.uid;
+    const userId = (req as any).user.uid;
     const { analyticsConsent, ipTrackingConsent, emailTrackingConsent, marketingConsent } = req.body;
 
     await db
@@ -95,9 +95,9 @@ router.put('/settings', requireAuth, async (req: AuthenticatedRequest, res: Resp
  * POST /api/privacy/opt-out-all
  * Disable all tracking (nuclear option)
  */
-router.post('/opt-out-all', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/opt-out-all', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.uid;
+    const userId = (req as any).user.uid;
 
     await db
       .update(users)
