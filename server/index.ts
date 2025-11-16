@@ -58,8 +58,17 @@ registerRoutes(app);
 const staticRoot = path.join(__dirname, "..", "dist", "public");
 app.use(express.static(staticRoot));
 
-// 5. SPA fallback for React router
-app.get("*", (_req, res) => {
+// 5. SPA fallback for React router (with API route protection)
+app.get("*", (req, res, next) => {
+  // CRITICAL: Don't catch API routes - let them return 404 JSON instead of HTML
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ 
+      error: 'API endpoint not found',
+      path: req.path 
+    });
+  }
+  
+  // Serve index.html for all non-API routes (enables React Router)
   res.sendFile(path.join(staticRoot, "index.html"));
 });
 
