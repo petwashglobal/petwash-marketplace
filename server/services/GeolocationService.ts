@@ -52,10 +52,48 @@ export class GeolocationService {
   private readonly CACHE_DURATION = 86400000; // 24 hours
 
   /**
+   * PRIVACY: Check if user has consented to IP tracking
+   */
+  private async hasLocationTrackingConsent(userId?: string): Promise<boolean> {
+    // PRIVACY FIX: IP tracking disabled by default
+    if (!userId) {
+      return false; // No consent for anonymous users
+    }
+    
+    // TODO: Check user's consent preferences from database
+    // For now, default to NO TRACKING unless explicitly enabled
+    return false;
+  }
+
+  /**
    * Detect user country from IP address
    * Uses multiple fallback APIs for reliability
+   * PRIVACY: Disabled by default, requires user consent
    */
-  async detectCountryFromIP(ip: string): Promise<GeolocationData> {
+  async detectCountryFromIP(ip: string, userId?: string): Promise<GeolocationData> {
+    // PRIVACY FIX: Check consent before tracking IP
+    const hasConsent = await this.hasLocationTrackingConsent(userId);
+    if (!hasConsent) {
+      console.log('[Geolocation] IP tracking disabled - user has not consented');
+      // Return minimal default location (no actual tracking)
+      return {
+        countryCode: 'XX',
+        countryName: 'Unknown',
+        countryCode3: 'XXX',
+        city: 'Unknown',
+        region: 'Unknown',
+        latitude: 0,
+        longitude: 0,
+        timezone: 'UTC',
+        ip: 'hidden',
+        currency: 'USD',
+        language: 'en',
+        timestamp: Date.now(),
+        source: 'manual',
+        confidence: 'low'
+      };
+    }
+
     // Check cache first
     const cached = this.cache.get(ip);
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
