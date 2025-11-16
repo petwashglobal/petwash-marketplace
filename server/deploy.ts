@@ -91,7 +91,7 @@ process.env.NODE_ENV = "production";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dist = path.join(__dirname, "..", "dist");
+const dist = path.join(__dirname, "..", "dist", "public");
 
 async function startServer() {
   try {
@@ -141,11 +141,12 @@ async function startServer() {
   //  API Endpoints (all 119)
   // -----------------------------
   try {
-    const api = (await import("../api/index.js")).default;
-    app.use("/api", api);
-    console.log("[Deploy] API routes loaded");
+    const { registerRoutes } = await import("./routes.js");
+    await registerRoutes(app);
+    console.log("[Deploy] API routes loaded (119 endpoints)");
   } catch (err) {
     console.error("[Deploy] Failed loading API:", err);
+    throw err; // Fatal error - cannot continue without API
   }
 
   // -----------------------------
