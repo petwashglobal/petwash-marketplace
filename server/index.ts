@@ -69,7 +69,35 @@ ensureBiometricStorage()
     await registerRoutes(app);
     
     // Static assets for Vite build
-    const staticRoot = path.join(__dirname, "..", "dist", "public");
+    // Support both dev (tsx) and production (compiled) paths
+    const staticRoot = path.resolve(process.cwd(), "dist", "public");
+    
+    // Verify build exists before starting server
+    const indexPath = path.join(staticRoot, "index.html");
+    const fs = await import("fs");
+    
+    if (!fs.existsSync(indexPath)) {
+      console.error(`[FATAL] Missing index.html at: ${indexPath}`);
+      console.error(`[FATAL] Current working directory: ${process.cwd()}`);
+      console.error(`[FATAL] Static root: ${staticRoot}`);
+      console.error(`[FATAL] __dirname: ${__dirname}`);
+      
+      // List what's actually in the directory
+      try {
+        const distExists = fs.existsSync(path.join(process.cwd(), "dist"));
+        console.error(`[FATAL] dist/ exists: ${distExists}`);
+        if (distExists) {
+          const distContents = fs.readdirSync(path.join(process.cwd(), "dist"));
+          console.error(`[FATAL] dist/ contents: ${distContents.join(", ")}`);
+        }
+      } catch (e) {
+        console.error(`[FATAL] Could not list dist/ contents:`, e);
+      }
+      
+      throw new Error("Build files not found - run 'npm run build' before starting production server");
+    }
+    
+    console.log(`[Server] Serving static files from: ${staticRoot}`);
     app.use(express.static(staticRoot));
     
     // SPA fallback for React router (with API route protection)
@@ -83,12 +111,14 @@ ensureBiometricStorage()
       }
       
       // Serve index.html for all non-API routes (enables React Router)
-      res.sendFile(path.join(staticRoot, "index.html"));
+      res.sendFile(indexPath);
     });
     
     // Start server
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`[Server] listening on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
+      console.log(`[Server] Static files: ${staticRoot}`);
+      console.log(`[Server] Health check: http://0.0.0.0:${PORT}/`);
     });
   } catch (error) {
     console.error("[FATAL] Server startup failed:", error);
