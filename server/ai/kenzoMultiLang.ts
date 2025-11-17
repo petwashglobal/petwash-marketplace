@@ -85,7 +85,7 @@ const PLATFORM_CONTEXT = {
   walker: 'Walk My Pet™ - Dog walking marketplace for daily exercise and socialization',
   transport: 'PetTrek™ - Safe pet transport service for vet visits, grooming, and travel',
   plushlab: 'The Plush Lab™ - AI-powered pet avatar creator with multilingual TTS',
-  loyalty: 'Loyalty Program - 5-tier progressive discount system (Bronze to Diamond)',
+  loyalty: 'Loyalty Program - 7-tier luxury loyalty system (Bronze→Silver→Gold→Platinum→Diamond→Emerald→Royal) with progressive rewards up to 50% off',
   pawfinder: 'Paw Finder™ - FREE community service to reunite lost pets with owners',
 };
 

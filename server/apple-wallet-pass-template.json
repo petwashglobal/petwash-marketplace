@@ -49,7 +49,7 @@
       {
         "key": "rewards_details",
         "label": "Loyalty Program",
-        "value": "5-tier loyalty system:\n• New: 0% (0 pts)\n• Silver: 10% (1000 pts)\n• Gold: 15% (3000 pts)\n• Platinum: 20% (6000 pts)\n• Diamond: 25% (10000 pts)"
+        "value": "7-tier luxury loyalty system:\n• Bronze: 5% (0 pts)\n• Silver: 10% (1000 pts)\n• Gold: 15% (3000 pts)\n• Platinum: 20% (6000 pts)\n• Diamond: 30% (10000 pts)\n• Emerald: 40% (20000 pts)\n• Royal: 50% (35000 pts)"
       },
       {
         "key": "terms",

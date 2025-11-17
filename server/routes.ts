@@ -5532,8 +5532,8 @@ self.addEventListener('notificationclick', (event) => {
       const highValueCustomers = await storage.getHighValueCustomers(10);
       const customersAtRisk = await storage.getCustomersAtRisk('medium');
       
-      // Customer segmentation by loyalty tier (NEW 5-TIER SYSTEM)
-      const newCustomers = await storage.getUsersByTier('new');
+      // Customer segmentation by loyalty tier (7-TIER LUXURY SYSTEM: Bronze→Royal)
+      const newCustomers = await storage.getUsersByTier('bronze');
       const silverCustomers = await storage.getUsersByTier('silver');
       const goldCustomers = await storage.getUsersByTier('gold');
       const platinumCustomers = await storage.getUsersByTier('platinum');
