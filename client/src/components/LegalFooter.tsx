@@ -173,7 +173,7 @@ Use of the PetWash™ website and services constitutes acceptance of these terms
 PetWash Ltd provides:
 - K9000 Twin smart wash stations
 - Premium organic washing services
-- 5-tier loyalty program
+- 7-tier luxury loyalty program (Bronze→Royal)
 - The Sitter Suite™ (pet sitting services)
 - Walk My Pet™ (dog walking services)
 - PetTrek™ (pet transport services)
