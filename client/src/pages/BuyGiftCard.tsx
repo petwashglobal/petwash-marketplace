@@ -90,13 +90,12 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
 
       const data = await response.json();
       
-      toast({
-        title: t('common.success', language),
-        description: t('giftCards.purchaseSuccess', language),
-      });
-
-      // Redirect to payment page
-      navigate(`/payment/gift-card/${data.voucherId}`);
+      if (data.paymentUrl) {
+        // Redirect to Nayax payment page (external)
+        window.location.href = data.paymentUrl;
+      } else {
+        throw new Error('Payment URL not provided');
+      }
     } catch (error: any) {
       toast({
         title: t('common.failed', language),

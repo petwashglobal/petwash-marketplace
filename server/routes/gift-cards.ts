@@ -196,7 +196,7 @@ petwash.co.il
     `.trim();
 
     try {
-      await SmsService.sendWhatsApp(recipientPhone, whatsappMessage);
+      await GoogleMessagingService.sendWhatsAppMessage(recipientPhone, whatsappMessage);
       logger.info('[E-Gift] WhatsApp sent to recipient', { recipientPhone, voucherId: voucher.id });
     } catch (error) {
       logger.error('[E-Gift] Failed to send WhatsApp to recipient', { error, recipientPhone });
@@ -302,6 +302,8 @@ async function sendPurchaseConfirmationToBuyer(
 }
 
 // 🎁 PURCHASE E-GIFT CARD (PUBLIC - No Auth Required)
+// SECURITY: Payment MUST complete via Nayax BEFORE voucher creation
+// Vouchers are created by webhook after successful payment
 router.post('/purchase', paymentLimiter, async (req, res) => {
   const correlationId = crypto.randomUUID();
   
@@ -309,87 +311,61 @@ router.post('/purchase', paymentLimiter, async (req, res) => {
     // Validate input
     const data = purchaseGiftCardSchema.parse(req.body);
     
-    // Generate unique voucher code
-    const plainCode = generateVoucherCode();
-    const codeHash = crypto.createHash('sha256').update(plainCode).digest('hex');
-    const codeLast4 = plainCode.replace(/-/g, '').slice(-4);
+    // TEMPORARY: Nayax disabled until API keys are provided
+    // TODO: Remove this check once NAYAX_API_KEY is added to secrets
+    const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;
     
-    // Set expiration to 12 months from now
-    const expiresAt = new Date();
-    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    
-    // Create e-voucher in database (IMMUTABLE RECORD)
-    const [voucher] = await db.insert(eVouchers).values({
-      codeHash,
-      codeLast4,
-      type: 'STORED_VALUE',
-      currency: 'ILS',
-      initialAmount: data.amount.toString(),
-      remainingAmount: data.amount.toString(),
-      status: 'ISSUED',
-      purchaserEmail: data.senderEmail,
-      recipientEmail: data.recipientEmail,
-      expiresAt,
-    }).returning();
-    
-    // Generate blockchain-style transaction hash
-    const transactionHash = generateBlockchainHash(
-      voucher.id,
-      plainCode,
-      data.amount,
-      voucher.createdAt
-    );
-    
-    // Generate QR code
-    const qrCodeData = JSON.stringify({
-      voucherId: voucher.id,
-      code: plainCode,
-      amount: data.amount,
-      type: 'PETWASH_EGIFT',
-      hash: transactionHash,
-    });
-    const qrCodeDataURL = await QRCodeService.generateQRCode(qrCodeData);
-    
-    // Send to recipient
-    await sendGiftCardToRecipient(
-      voucher,
-      data.recipientEmail,
-      data.recipientPhone,
-      data.recipientName,
-      data.senderName || 'A friend',
-      data.message,
-      qrCodeDataURL,
-      data.deliveryMethod
-    );
-    
-    // Send confirmation to buyer (if provided)
-    if (data.senderEmail) {
-      await sendPurchaseConfirmationToBuyer(
-        data.senderEmail,
-        data.senderName || 'Customer',
-        data.recipientName,
-        data.amount,
-        voucher.id,
-        transactionHash
-      );
+    if (!nayaxEnabled) {
+      logger.warn('[E-Gift] Nayax payment disabled - API keys not configured');
+      return res.status(503).json({
+        success: false,
+        error: 'Payment gateway temporarily unavailable. Please contact support.',
+        developerNote: 'NAYAX_API_KEY and NAYAX_MERCHANT_ID required in environment variables',
+      });
     }
     
-    logger.info('[E-Gift] Purchase successful', {
+    // Import Nayax service dynamically
+    const { NayaxPaymentService } = await import('../nayaxService');
+    
+    // CRITICAL: Initiate Nayax payment FIRST (creates pending transaction)
+    // Voucher will be created by webhook handler AFTER payment succeeds
+    const paymentResult = await NayaxPaymentService.initiatePayment({
+      packageId: 1, // E-Gift card package ID
+      customerEmail: data.senderEmail || data.recipientEmail,
+      customerName: data.senderName || 'Anonymous',
+      amount: data.amount,
+      currency: 'ILS',
+      returnUrl: `${process.env.BASE_URL || 'https://petwash.co.il'}/payment-success`,
+      webhookUrl: `${process.env.BASE_URL || 'https://petwash.co.il'}/api/nayax/webhook`,
+      isGiftCard: true,
+      recipientEmail: data.recipientEmail,
+      recipientName: data.recipientName,
+      recipientPhone: data.recipientPhone,
+      personalMessage: data.message,
+      deliveryMethod: data.deliveryMethod,
+    });
+    
+    if (!paymentResult.success) {
+      throw new Error(paymentResult.message || 'Payment initiation failed');
+    }
+    
+    logger.info('[E-Gift] Payment initiated', {
       correlationId,
-      voucherId: voucher.id,
+      transactionId: paymentResult.transactionId,
       amount: data.amount,
       recipientEmail: data.recipientEmail,
       senderEmail: data.senderEmail,
-      deliveryMethod: data.deliveryMethod,
-      blockchainHash: transactionHash,
     });
     
+    // CRITICAL: Return Nayax payment URL to frontend
+    // User will complete payment on Nayax hosted page
+    // Webhook will create voucher and send emails AFTER payment succeeds
     res.json({
       success: true,
-      voucherId: voucher.id,
-      transactionHash,
-      message: 'E-gift card purchased and delivered successfully',
-      expiresAt: voucher.expiresAt,
+      transactionId: paymentResult.transactionId,
+      paymentUrl: paymentResult.paymentUrl,
+      voucherCode: paymentResult.voucherCode,
+      message: 'Payment initiated - please complete payment via Nayax',
     });
     
   } catch (error: any) {

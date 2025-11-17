@@ -251,7 +251,10 @@ export const pendingTransactions = pgTable("pending_transactions", {
   qrCodeData: text("qr_code_data"),
   isGiftCard: boolean("is_gift_card").notNull().default(false),
   recipientEmail: varchar("recipient_email"),
+  recipientName: varchar("recipient_name"),
+  recipientPhone: varchar("recipient_phone"),
   personalMessage: text("personal_message"),
+  deliveryMethod: varchar("delivery_method").default("email"), // email, whatsapp, both
   createdAt: timestamp("created_at").defaultNow(),
   paidAt: timestamp("paid_at"),
   nayaxTransactionId: varchar("nayax_transaction_id"),

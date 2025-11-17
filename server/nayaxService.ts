@@ -23,7 +23,10 @@ export interface NayaxPaymentRequest {
   webhookUrl: string;
   isGiftCard?: boolean;
   recipientEmail?: string;
+  recipientName?: string;
+  recipientPhone?: string;
   personalMessage?: string;
+  deliveryMethod?: string;
 }
 
 export interface NayaxPaymentResponse {
@@ -93,7 +96,10 @@ export class NayaxPaymentService {
         voucherCode,
         isGiftCard: request.isGiftCard || false,
         recipientEmail: request.recipientEmail,
+        recipientName: request.recipientName,
+        recipientPhone: request.recipientPhone,
         personalMessage: request.personalMessage,
+        deliveryMethod: request.deliveryMethod || 'email',
       });
 
       // Mock Nayax payment URL (will be real in production)
@@ -424,6 +430,29 @@ export class NayaxPaymentService {
         .where(eq(pendingTransactions.id, pending.id));
 
       logger.info('Payment approved and voucher created', { transactionId: pending.id, voucherId });
+      
+      // CRITICAL: Send gift card emails for e-gift purchases
+      if (pending.isGiftCard) {
+        try {
+          // Dynamically import email helpers to avoid circular dependencies
+          const { sendGiftCardEmails } = await import('./routes/gift-cards-helpers');
+          await sendGiftCardEmails({
+            voucherId,
+            voucherCode: pending.voucherCode || '',
+            amount: pending.amount,
+            recipientEmail: pending.recipientEmail || pending.customerEmail || '',
+            recipientName: pending.recipientName || pending.recipientEmail || 'Customer',
+            senderEmail: pending.customerEmail,
+            senderName: pending.customerName || 'Anonymous',
+            message: pending.personalMessage,
+          });
+          logger.info('Gift card emails sent successfully', { voucherId });
+        } catch (emailError) {
+          // Don't fail payment if email fails - voucher is already created
+          logger.error('Failed to send gift card emails', { error: emailError, voucherId });
+        }
+      }
+      
       return true;
     } catch (error) {
       logger.error('Payment approval handling failed', error);
