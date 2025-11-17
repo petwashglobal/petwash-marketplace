@@ -53,6 +53,13 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
       return res.status(403).json({ message: "Admin access required" });
     }
 
+    // 🚨 OCTOPUS PROTOCOL: Admin Override Logging
+    const endpoint = req.path;
+    const method = req.method;
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    
+    logger.info(`🚨 HEAD OFFICE OVERRIDE by ${decodedClaims.uid} | ${method} ${endpoint} | IP: ${ip}`);
+
     // For backwards compatibility, set session adminId
     req.session.adminId = decodedClaims.uid;
     
@@ -60,6 +67,7 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
     const admin = await storage.getAdminUser(decodedClaims.uid);
     if (admin) {
       req.adminUser = admin;
+      logger.info(`   → Admin Details: ${admin.email} | Role: ${admin.role} | Regions: ${admin.regions?.join(', ') || 'ALL'}`);
     }
 
     next();
@@ -97,6 +105,17 @@ export const requireAuthenticatedRole = (allowedRoles: string[]) => {
         return res.status(403).json({ message: "Insufficient permissions for this operation" });
       }
 
+      // 🚨 OCTOPUS PROTOCOL: Role-Based Override Logging
+      const endpoint = req.path;
+      const method = req.method;
+      const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+      const role = userData.role;
+      
+      // Different emoji based on role level
+      const roleEmoji = role === 'super_admin' ? '👑' : role === 'regional_admin' ? '🏢' : '👤';
+      
+      logger.info(`${roleEmoji} ${role.toUpperCase()} ACCESS by ${decodedClaims.uid} | ${method} ${endpoint} | IP: ${ip}`);
+
       // Set session adminId for backwards compatibility
       req.session.adminId = decodedClaims.uid;
       
@@ -104,6 +123,7 @@ export const requireAuthenticatedRole = (allowedRoles: string[]) => {
       const admin = await storage.getAdminUser(decodedClaims.uid);
       if (admin) {
         req.adminUser = admin;
+        logger.info(`   → Details: ${admin.email} | Allowed Roles: ${allowedRoles.join(', ')}`);
       }
 
       next();
@@ -137,7 +157,7 @@ export const requireSuperAdmin = requireRole(["super_admin"]);
 // Regional admin or higher middleware
 export const requireRegionalAdmin = requireRole(["super_admin", "regional_admin"]);
 
-// Log admin activity
+// Log admin activity (with Octopus Protocol emoji alerts)
 export const logAdminActivity = async (
   adminId: string,
   action: string,
@@ -146,6 +166,32 @@ export const logAdminActivity = async (
   req?: Request
 ) => {
   try {
+    // 🚨 OCTOPUS PROTOCOL: Activity-based emoji logging
+    const actionEmojis: Record<string, string> = {
+      'create': '➕',
+      'update': '✏️',
+      'delete': '🗑️',
+      'approve': '✅',
+      'reject': '❌',
+      'export': '📤',
+      'import': '📥',
+      'access': '🔑',
+      'login': '🔐',
+      'logout': '🚪',
+      'fraud_check': '🚨',
+      'payment': '💳',
+      'refund': '💸',
+    };
+    
+    const emoji = actionEmojis[action.toLowerCase()] || '📋';
+    const ip = req?.ip || req?.socket?.remoteAddress || 'unknown';
+    
+    logger.info(`${emoji} ADMIN ACTION: ${action} | Resource: ${resource || 'N/A'} | Admin: ${adminId} | IP: ${ip}`);
+    
+    if (details && Object.keys(details).length > 0) {
+      logger.info(`   → Details: ${JSON.stringify(details).substring(0, 200)}`);
+    }
+    
     await storage.createAdminActivityLog({
       adminId,
       action,

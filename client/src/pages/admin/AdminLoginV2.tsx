@@ -17,9 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Fingerprint, Shield, Mail, Lock, Sparkles } from "lucide-react";
+import { Fingerprint, Shield, Mail, Lock, Sparkles, CheckCircle2, XCircle } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
 import { apiRequest } from "@/lib/queryClient";
+import { motion } from "framer-motion"; // Octopus Protocol animations
 
 export default function AdminLoginV2() {
   const [, setLocation] = useLocation();
@@ -29,6 +30,9 @@ export default function AdminLoginV2() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [supportsWebAuthn, setSupportsWebAuthn] = useState(false);
+  
+  // 🐙 OCTOPUS PROTOCOL: Biometric Status States
+  const [biometricStatus, setBiometricStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
 
   // Check WebAuthn support
   useEffect(() => {
@@ -107,14 +111,17 @@ export default function AdminLoginV2() {
 
   const handleBiometricLogin = async () => {
     triggerHaptic();
+    setBiometricStatus("scanning"); // 🐙 Start scanning
     
     try {
       if (!email) {
+        setBiometricStatus("error");
         toast({
           title: "Email Required",
           description: "Please enter your email address first",
           variant: "destructive",
         });
+        setTimeout(() => setBiometricStatus("idle"), 2000);
         return;
       }
 
@@ -165,20 +172,27 @@ export default function AdminLoginV2() {
 
       // Store custom token and redirect
       if (verifyResponse.customToken) {
-        // In a real implementation, you'd use this token to sign in with Firebase
-        // For now, just redirect to dashboard
+        setBiometricStatus("success"); // 🐙 Success state
         toast({
           title: "Biometric Authentication Successful! 🎉",
           description: "Welcome back",
         });
-        setLocation("/admin/status-monitor");
+        
+        // Brief delay to show success animation
+        setTimeout(() => {
+          setLocation("/admin/status-monitor");
+        }, 800);
       }
     } catch (error: any) {
+      setBiometricStatus("error"); // 🐙 Error state
       toast({
         title: "Biometric Authentication Failed",
         description: error.message || error.error || "Please try again or use email/password",
         variant: "destructive",
       });
+      
+      // Reset to idle after 2 seconds
+      setTimeout(() => setBiometricStatus("idle"), 2000);
     }
   };
 
@@ -252,25 +266,75 @@ export default function AdminLoginV2() {
         {/* Primary CTAs - Biometric & Google SSO */}
         <div className="space-y-3 mb-6">
           {supportsWebAuthn && (
-            <Button
-              onClick={handleBiometricLogin}
-              disabled={!email}
-              className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all"
-              data-testid="button-biometric-login"
+            <motion.div
+              whileTap={{ scale: 0.97 }} // 🐙 Tactile feedback
+              className="w-full"
             >
-              <Fingerprint className="h-5 w-5 mr-2" />
-              Sign in with Touch ID / Face ID
-            </Button>
+              <Button
+                onClick={handleBiometricLogin}
+                disabled={!email || biometricStatus === "scanning"}
+                className={`
+                  w-full h-12 text-white shadow-lg hover:shadow-xl transition-all
+                  ${biometricStatus === 'error' ? 'bg-red-500 hover:bg-red-600' : 
+                    biometricStatus === 'success' ? 'bg-green-500 hover:bg-green-600' :
+                    biometricStatus === 'scanning' ? 'bg-purple-400 animate-pulse' :
+                    'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'}
+                `}
+                data-testid="button-biometric-login"
+              >
+                {biometricStatus === "idle" && (
+                  <>
+                    <Fingerprint className="h-5 w-5 mr-2" />
+                    Sign in with Touch ID / Face ID
+                  </>
+                )}
+                {biometricStatus === "scanning" && (
+                  <motion.div
+                    className="flex items-center gap-2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    <Fingerprint className="h-5 w-5 animate-pulse" />
+                    Scanning Biometric...
+                  </motion.div>
+                )}
+                {biometricStatus === "success" && (
+                  <motion.div
+                    className="flex items-center gap-2"
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1 }}
+                  >
+                    <CheckCircle2 className="h-5 w-5" />
+                    ✅ Access Granted
+                  </motion.div>
+                )}
+                {biometricStatus === "error" && (
+                  <motion.div
+                    className="flex items-center gap-2"
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1 }}
+                  >
+                    <XCircle className="h-5 w-5" />
+                    ❌ Scan Failed. Retry?
+                  </motion.div>
+                )}
+              </Button>
+            </motion.div>
           )}
 
-          <Button
-            onClick={handleGoogleLogin}
-            className="w-full h-12 bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300 shadow-md hover:shadow-lg transition-all"
-            data-testid="button-google-login"
+          <motion.div
+            whileTap={{ scale: 0.97 }} // 🐙 Tactile feedback
+            className="w-full"
           >
-            <SiGoogle className="h-5 w-5 mr-2 text-blue-500" />
-            Continue with Google
-          </Button>
+            <Button
+              onClick={handleGoogleLogin}
+              className="w-full h-12 bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300 shadow-md hover:shadow-lg transition-all"
+              data-testid="button-google-login"
+            >
+              <SiGoogle className="h-5 w-5 mr-2 text-blue-500" />
+              Continue with Google
+            </Button>
+          </motion.div>
         </div>
 
         {/* Divider */}
@@ -343,10 +407,10 @@ export default function AdminLoginV2() {
           </button>
         </div>
 
-        {/* Security Badge */}
+        {/* Security Badge - Octopus Protocol 2025 */}
         <div className="mt-8 flex items-center justify-center gap-2 text-xs text-gray-500">
           <Shield className="h-3 w-3" />
-          <span>OAuth 2.1 Secured • Zero-Trust Architecture</span>
+          <span>OAuth 2.1 Secured • Octopus Protocol v2025</span>
         </div>
       </Card>
     </div>
