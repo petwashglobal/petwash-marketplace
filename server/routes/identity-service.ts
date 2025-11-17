@@ -96,18 +96,35 @@ function generateTokenPair(userId: string, email: string): TokenPair {
 
 /**
  * Log authentication failure to Sentry + Firestore
+ * 🚨 SECURITY: Automatically filters sensitive fields (passwords, tokens, etc.)
  */
 async function logAuthFailure(
   endpoint: string,
   error: any,
   metadata: any = {}
 ) {
+  // 🔒 SECURITY FILTER: Remove sensitive fields from metadata before logging
+  const SENSITIVE_FIELDS = ['password', 'token', 'secret', 'credential', 'key', 'body'];
+  const safeMetadata = Object.entries(metadata).reduce((safe, [key, value]) => {
+    // Check if key contains sensitive terms (case-insensitive)
+    const isSensitive = SENSITIVE_FIELDS.some(field => 
+      key.toLowerCase().includes(field.toLowerCase())
+    );
+    
+    if (isSensitive) {
+      safe[key] = '[REDACTED]';
+    } else {
+      safe[key] = value;
+    }
+    return safe;
+  }, {} as Record<string, any>);
+
   const errorLog = {
     endpoint,
     error: error.message || String(error),
     errorCode: error.code || "UNKNOWN",
     timestamp: new Date(),
-    metadata,
+    metadata: safeMetadata, // ✅ Using filtered metadata
     severity: "critical",
   };
 
@@ -117,7 +134,7 @@ async function logAuthFailure(
       service: "identity-service-v2",
       endpoint,
     },
-    extra: metadata,
+    extra: safeMetadata, // ✅ Using filtered metadata
   });
 
   // Log to Firestore for audit trail
@@ -271,7 +288,12 @@ router.post("/login/standard", async (req, res) => {
       }
     }
   } catch (error: any) {
-    await logAuthFailure("/auth/login/standard", error, { body: req.body });
+    // 🚨 SECURITY: Never log req.body - it contains passwords!
+    await logAuthFailure("/auth/login/standard", error, { 
+      email: req.body?.email, 
+      reason: "server_error",
+      hasDeviceInfo: !!req.body?.deviceInfo
+    });
     res.status(500).json({
       error: "Login failed - our authentication service encountered an error",
       action: "Please try again in a few moments. If the problem persists, contact support with this ID",
@@ -349,7 +371,11 @@ router.post("/login/google", async (req, res) => {
       }
     }
   } catch (error: any) {
-    await logAuthFailure("/auth/login/google", error, { body: req.body });
+    // 🚨 SECURITY: Never log req.body - may contain sensitive data!
+    await logAuthFailure("/auth/login/google", error, { 
+      idToken: req.body?.idToken ? "[REDACTED]" : undefined,
+      reason: "server_error"
+    });
     res.status(500).json({
       error: "Google login failed - authentication service error",
       action: "Please try again in a few moments or use email/password login. If the problem persists, contact support",

@@ -1,63 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is a full-stack enterprise platform designed for market leadership and global franchise expansion in the pet care industry.
-
-## Recent Changes (November 17, 2025)
-
-**✅ OCTOPUS PROTOCOL INTEGRATION COMPLETE:**
-- **Route Documentation System**: Comprehensive 119-route classification into 4 business units
-  - Documentation: `docs/octopus-routes.md` maps all endpoints to HEAD OFFICE (28 routes), FRANCHISE (18 routes), CUSTOMER (35 routes), SHARED (38 routes)
-  - Folder structure created: `server/routes/{head-office, franchise, customer, shared}/` for future organization
-  - Dual-ownership rationale documented (e.g., /meetings is both admin tool and customer service)
-  
-- **Enhanced Admin Security Logging**: Emoji-based audit trail in server/adminAuth.ts
-  - Visual alerts: 🚨 HEAD OFFICE OVERRIDE, 👑 SUPER_ADMIN, 🏢 REGIONAL_ADMIN
-  - Action-specific emojis: ➕ create, 🗑️ delete, ✅ approve, ❌ reject, 📧 email, 💬 SMS, 🔄 update, 👀 view, 📋 list, 📊 report, 🔒 lock, 🔓 unlock
-  - All admin access logged with IP tracking without affecting authorization flow
-  
-- **Biometric Login UI Enhancements**: Octopus Protocol animations in AdminLoginV2.tsx
-  - Framer Motion whileTap animations for tactile feedback
-  - Status state machine: idle → scanning → success/error with visual color coding
-  - Smooth transitions without disrupting WebAuthn credential pipeline
-  
-- **Fraud Detection System**: Risk-level transaction flags in server/routes/nayax-payments.ts
-  - Risk assessment engine: HIGH (>$500, blocks with 403), MEDIUM ($100-$500), LOW (<$100)
-  - Automatic fraud alerts: `🚨 HIGH RISK TRANSACTION: ${amount} by ${customerUid}`
-  - Risk metadata included in all successful payment responses
-
-**✅ TASK #7 & #8 COMPLETED:**
-- **Email/SMS Campaign System**: Production-ready personalized campaigns with channel-specific template fetching (CRITICAL BUG FIX: SMS-only campaigns now work correctly - templates fetched from correct tables)
-  - Route: `POST /api/campaigns/send`
-  - Features: Test mode, segment targeting (all/loyal/new/club/custom), GDPR consent integration
-  - Template personalization with 30+ placeholders (customer name, loyalty tier, points balance, etc.)
-  - Zod safeParse validation with `.describe()` AI context pattern
-  
-- **Meeting Attendee Notifications**: Multi-channel WhatsApp + Email invitation system
-  - Routes: `POST /api/meetings`, `PATCH /api/meetings/:id`, `PATCH /api/meetings/:id/attendees/:attendeeId/response`
-  - Features: Multi-attendee types (admin/customer/external), RSVP tracking (accept/decline/tentative), automatic update/cancel notifications
-  - Database: `crmMeetingAttendees` table with unique indexes
-  - Bilingual support (Hebrew/English)
-  
-- **Code Quality Improvements**: Applied 2025 Zod best practices across all validation endpoints
-  - Switched from `.parse()` to `.safeParse()` for graceful error handling
-  - Added `.describe()` to all schema fields for AI context and documentation
-  - Structured 400 error responses with `result.error.format()`
-  - Created `server/lib/env-validation.ts` for startup environment validation (not yet integrated)
-
-**Previous Changes (November 15, 2025):**
-- **CRITICAL FIX**: CORS now allows Cloud Run deployments (`.run.app` domains) - website will now load on Chrome/Safari!
-- Security hardened: Changed from `.includes()` to secure `hostname.endsWith()` validation to prevent subdomain attacks
-- Added lowercase hostname normalization for extra security
-- Deleted 5 conflicting deployment scripts (optimize-deployment.sh, deploy-build.sh, pre-deployment-check.ts, monitor-deployment.ts, pre-deploy-backup.ts)
-- Fixed `.deployignore` to include `dist/` folder (was excluding production build)
-- Created deployment preparation script: `scripts/prepare-deployment.sh`
-- Verified tsx works standalone with built-in esbuild compiler (deployment safe)
-- Created comprehensive `docs/DEPLOYMENT_TROUBLESHOOTING_GUIDE.md`
-- Documented clean deployment process in `CLEAN_DEPLOYMENT_GUIDE.md`
-- Platform ready for production deployment with 10-20x faster page loads
-
-Pet Wash™ integrates various business units (K9000 IoT wash stations, The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™) through shared enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management. The platform emphasizes enterprise-grade security, multi-jurisdiction compliance, and aims for global expansion, with an initial focus on the Israeli luxury market.
+Pet Wash™ is a full-stack enterprise platform designed for market leadership and global franchise expansion in the pet care industry. It integrates various business units (K9000 IoT wash stations, The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™) through shared enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management. The platform emphasizes enterprise-grade security, multi-jurisdiction compliance, and aims for global expansion, with an initial focus on the Israeli luxury market.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -69,7 +13,7 @@ USER EXPLICITLY FORBID: Touching header layout, logo positioning, social media i
 **HOMEPAGE MODIFICATION ABSOLUTELY FORBIDDEN:**
 - **NEVER** change Landing.tsx/Home.tsx without EXPLICIT clear instructions
 - **NEVER** remove components from homepage (especially PetWashDivisions - it provides luxury gradient colors)
-- **NEVER** assume what should/shouldn't be on homepage
+- **NEVER** assume what should/shouln't be on homepage
 - Homepage has rich luxury colors and beautiful design - DO NOT TOUCH IT
 - User will give CLEAR instructions if homepage needs changes
 - Violating this causes extreme user frustration
@@ -138,13 +82,13 @@ Before adding ANY new code, you MUST:
 - **Document Management System**: Production-ready with RBAC and Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
 - **Legal & Compliance Systems**: Comprehensive routes and services for privacy settings, data rights, GDPR, Israeli Privacy Law 2025, e-signature workflows, and contract management.
 - **HR & Employee Systems**: Routes and services for employee management, hierarchy, and onboarding, including auto-approval workflows and WhatsApp notifications.
-- **Enterprise Route Infrastructure**: Extensive set of 119 route files covering franchise management, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures.
+- **Enterprise Route Infrastructure**: Extensive set of 119 route files covering franchise management, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
 - **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments, enforcing access levels and department permissions.
 
 ## External Dependencies
 - **Database & ORM**: @neondatabase/serverless (PostgreSQL), drizzle-orm.
 - **Frontend Frameworks**: @tanstack/react-query, @radix-ui/*, tailwindcss, vite.
-- **Payment Gateway**: Nayax Israel (mandatory exclusive).
+- **Payment Gateway**: Nayax Israel.
 - **Analytics & Marketing**: Google Analytics, Google Tag Manager, Facebook Pixel, TikTok Pixel, Microsoft Clarity, Google Ads.
 - **Geolocation**: ipapi.co, ip-api.com, ipinfo.io.
 - **Firebase Ecosystem**: Firebase (Auth, Firestore, Storage, App Check, Performance Monitoring).
@@ -152,10 +96,10 @@ Before adding ANY new code, you MUST:
 - **Email**: SendGrid.
 - **Cloud Storage**: @google-cloud/storage.
 - **Utilities**: qrcode, PassKit, googleapis.
-- **Messaging**: Meta WhatsApp Business API (exclusive for messaging), Google Firebase Cloud Messaging (FCM) (exclusive for push/SMS).
+- **Messaging**: Meta WhatsApp Business API, Google Firebase Cloud Messaging (FCM).
 - **Banking Integration**: Mizrahi-Tefahot Bank (via aggregator API).
 - **Weather & Environmental Data**: Open-Meteo API, Google Weather API, CurrentUVIndex.com API, Open-Meteo Air Quality API.
 - **E-Signature**: DocuSeal (@docuseal/api).
 - **Mapping & Location**: Google Maps API.
-- **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API.
+- **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API, Google Dialogflow CX.
 - **Business Management**: Google Business Profile API.
