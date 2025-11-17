@@ -82,11 +82,11 @@ class LuxuryInvoiceService {
     try {
       // Try multiple potential logo paths
       const logoPaths = [
+        path.join(process.cwd(), 'dist/public/brand/petwash-logo-official.png'),
         path.join(__dirname, '../public/brand/petwash-logo-official.png'),
         path.join(__dirname, '../../public/brand/petwash-logo-official.png'),
         path.join(__dirname, '../../client/public/brand/petwash-logo-official.png'),
-        path.join(process.cwd(), 'public/brand/petwash-logo-official.png'),
-        path.join(process.cwd(), 'server/public/brand/petwash-logo-official.png')
+        path.join(process.cwd(), 'public/brand/petwash-logo-official.png')
       ];
 
       let logoBuffer: Buffer | null = null;

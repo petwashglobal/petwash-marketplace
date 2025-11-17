@@ -11521,8 +11521,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         return next();
       }
       
-      // Serve index.html from server/public (synced from dist/public at startup)
-      const indexPath = path.join(import.meta.dirname, 'public', 'index.html');
+      // Serve index.html from dist/public (production build output)
+      const indexPath = path.join(process.cwd(), 'dist', 'public', 'index.html');
       res.sendFile(indexPath, (err) => {
         if (err) {
           logger.error('Failed to send index.html', err);

@@ -169,25 +169,30 @@ ensureBiometricStorage()
       });
     });
     
-    // 6. Root Route Fix: Serve index.html from DIST for the main page (and SPA routing)
-    app.get("*", (req, res) => {
-      // Exclude API routes from this catch-all (safety measure)
-      if (req.path.startsWith('/api/')) {
-        return res.status(404).json({ 
-          error: 'API endpoint not found',
-          path: req.path 
-        });
-      }
-      
-      // Serve index.html with error handling callback (prevents silent hangs)
-      res.sendFile(indexPath, (err) => {
-        if (err) {
-          console.error('❌ CRITICAL: Could not serve index.html from:', indexPath);
-          console.error('   Error details:', err);
-          res.status(500).send('Server Error: Static files missing. Did you run "npm run build"?');
+    // 6. Root Route Fix: Serve index.html from DIST for the main page (PRODUCTION ONLY - SPA routing)
+    // In development, Vite middleware handles SPA routing automatically via server/routes.ts
+    if (process.env.NODE_ENV === 'production' || 
+        process.env.REPLIT_DEPLOYMENT === '1' || 
+        process.env.REPLIT_DEPLOYMENT === 'true') {
+      app.get("*", (req, res) => {
+        // Exclude API routes from this catch-all (safety measure)
+        if (req.path.startsWith('/api/')) {
+          return res.status(404).json({ 
+            error: 'API endpoint not found',
+            path: req.path 
+          });
         }
+        
+        // Serve index.html with error handling callback (prevents silent hangs)
+        res.sendFile(indexPath, (err) => {
+          if (err) {
+            console.error('❌ CRITICAL: Could not serve index.html from:', indexPath);
+            console.error('   Error details:', err);
+            res.status(500).send('Server Error: Static files missing. Did you run "npm run build"?');
+          }
+        });
       });
-    });
+    }
     
     // Start server
     app.listen(PORT, "0.0.0.0", () => {
