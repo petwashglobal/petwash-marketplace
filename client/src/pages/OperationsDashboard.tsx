@@ -153,12 +153,13 @@ export default function OperationsDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Operations Management</h1>
-          <p className="text-muted-foreground">Manage tasks, incidents, and SLA compliance</p>
-        </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Operations Management"
+      subtitle="Manage tasks, incidents, and SLA compliance"
+    >
+      <div className="p-6 space-y-6">
+      <div className="flex justify-end items-center">
         <div className="flex gap-2">
           <Button onClick={() => setShowTaskDialog(true)} data-testid="button-create-task">
             <Plus className="w-4 h-4 mr-2" />
@@ -553,5 +554,6 @@ export default function OperationsDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+    </LuxuryPageWrapper>
   );
 }

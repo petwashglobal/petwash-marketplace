@@ -223,12 +223,13 @@ export default function CrmDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">CRM Management</h1>
-          <p className="text-muted-foreground">Manage customer relationships, communications, tasks, and activities</p>
-        </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="CRM Management"
+      subtitle="Manage customer relationships, communications, tasks, and activities"
+    >
+      <div className="p-6 space-y-6">
+      <div className="flex justify-end items-center">
         <div className="flex gap-2">
           <Button onClick={() => setShowCommunicationDialog(true)} data-testid="button-create-communication">
             <MessageSquare className="w-4 h-4 mr-2" />
@@ -807,5 +808,6 @@ export default function CrmDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+    </LuxuryPageWrapper>
   );
 }

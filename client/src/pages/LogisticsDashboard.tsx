@@ -197,13 +197,12 @@ export default function LogisticsDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Logistics Management</h1>
-          <p className="text-muted-foreground">Manage warehouses, inventory, and fulfillment orders</p>
-        </div>
-      </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Logistics Management"
+      subtitle="Manage warehouses, inventory, and fulfillment orders"
+    >
+      <div className="p-6 space-y-6">
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -681,5 +680,6 @@ export default function LogisticsDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+    </LuxuryPageWrapper>
   );
 }

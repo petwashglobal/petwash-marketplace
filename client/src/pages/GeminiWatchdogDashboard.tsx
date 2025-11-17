@@ -164,7 +164,13 @@ export default function GeminiWatchdogDashboard() {
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${isHebrew ? "rtl" : "ltr"}`}>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title={isHebrew ? "🤖 פיקוח Gemini AI" : "🤖 Gemini AI Watchdog"}
+      subtitle={isHebrew ? "ניטור אוטונומי 24/7 ותיקון עצמי" : "24/7 Autonomous monitoring and self-healing"}
+      icon={<Bot className="w-8 h-8 text-purple-600" />}
+    >
+      <div className={`min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${isHebrew ? "rtl" : "ltr"}`}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -551,5 +557,6 @@ export default function GeminiWatchdogDashboard() {
         </Tabs>
       </div>
     </div>
+    </LuxuryPageWrapper>
   );
 }
