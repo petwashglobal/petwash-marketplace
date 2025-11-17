@@ -47,6 +47,7 @@ import qaTestingRoutes from "./routes/qa-testing";
 import launchEventRoutes from "./routes/launch-event";
 import socialCircleRoutes from "./routes/social-circle";
 import giftCardsRoutes from "./routes/gift-cards";
+import campaignsRoutes from "./routes/campaigns";
 import esignRoutes from "./routes/esign";
 import notificationsRoutes from "./routes/notifications";
 import chatRoutes from "./routes/chat";
@@ -8029,6 +8030,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/gps', apiLimiter, gpsTrackingRoutes);
   app.use('/api/fcm', apiLimiter, fcmRoutes);
   app.use('/api/gift-cards', giftCardsRoutes);
+  
+  // Email/SMS Campaigns (Marketing - Template Personalization)
+  app.use('/api/campaigns', adminLimiter, campaignsRoutes);
   
   // Management Dashboard (CEO/CFO only - comprehensive business analytics)
   app.use('/api/management', adminLimiter, managementDashboardRoutes);
