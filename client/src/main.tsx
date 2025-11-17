@@ -1,6 +1,7 @@
 // CRITICAL: All imports must be AFTER Firebase config loads
 // Only import React root - App will be dynamically imported
 import { createRoot } from "react-dom/client";
+import "./index.css"; // CRITICAL: Static import so Vite bundles CSS into <link> tag
 
 // HubSpot route change tracking
 declare global {
@@ -27,10 +28,7 @@ declare global {
   // Initialize Auth Guardian FIRST (before any Firebase imports)
   await import('./lib/auth-guardian-2025');
   
-  const [{ default: App }] = await Promise.all([
-    import('./App'),
-    import('./index.css')
-  ]);
+  const { default: App } = await import('./App');
   
   console.log('[App] App imported, initializing React...');
 
