@@ -1,5 +1,5 @@
 node_modules
-dist
+# dist - REMOVED: Must be included in Cloud Run deployments (built before deploy)
 .DS_Store
 server/public
 vite.config.ts.*
