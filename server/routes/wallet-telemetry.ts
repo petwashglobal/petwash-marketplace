@@ -10,6 +10,8 @@
 import express from 'express';
 import { WalletTelemetryService } from '../services/WalletTelemetryService';
 import { logger } from '../lib/logger';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { requireAdminRole } from '../lib/adminCheck';
 
 const router = express.Router();
 
@@ -68,13 +70,9 @@ router.post('/beacon',
  * Get telemetry statistics for admin dashboard
  * 🔒 Requires admin authentication
  */
-router.get('/stats', async (req, res) => {
+router.get('/stats', validateFirebaseToken, requireAdminRole, async (req, res) => {
   try {
-    // TODO: Add admin auth middleware
-    const session = req.session as any;
-    if (!session?.user?.isAdmin) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
+    // Admin auth enforced by middleware
 
     const timeRange = (req.query.range as 'today' | 'week' | 'month') || 'today';
     const stats = await WalletTelemetryService.getStats(timeRange);
@@ -100,12 +98,9 @@ router.get('/stats', async (req, res) => {
  * Cleanup old telemetry data (90 day retention)
  * 🔒 Requires admin authentication
  */
-router.post('/cleanup', async (req, res) => {
+router.post('/cleanup', validateFirebaseToken, requireAdminRole, async (req, res) => {
   try {
-    const session = req.session as any;
-    if (!session?.user?.isAdmin) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
+    // Admin auth enforced by middleware
 
     const deleted = await WalletTelemetryService.cleanup();
 

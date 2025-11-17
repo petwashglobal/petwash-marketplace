@@ -11,6 +11,9 @@ import { logger } from '../lib/logger';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import { format } from 'date-fns';
+import { db } from '../db';
+import { bookings, payments, stations } from '@shared/super-app-schema';
+import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 
 const router = Router();
 
@@ -37,15 +40,64 @@ router.get('/dashboard/stats', requireFranchiseAuth, async (req, res) => {
 
     const profile = profileDoc.data();
 
-    // TODO: Query actual transaction data from PostgreSQL
-    // For now, return mock stats structure
+    // Query actual transaction data from PostgreSQL
+    // Keep franchiseId as string (supports alphanumeric Firestore document IDs)
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    // Get total washes from stations stats
+    const franchiseStations = await db
+      .select({ totalWashes: sql<number>`COALESCE(SUM(${stations.totalWashes}), 0)` })
+      .from(stations)
+      .where(eq(stations.franchiseId, franchiseId));
+    
+    // Get revenue for today
+    const todayRevenue = await db
+      .select({ total: sql<number>`COALESCE(SUM(CAST(${payments.amount} AS NUMERIC)), 0)` })
+      .from(payments)
+      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
+      .innerJoin(stations, eq(bookings.stationId, stations.id))
+      .where(and(
+        eq(stations.franchiseId, franchiseId),
+        eq(payments.status, 'succeeded'),
+        gte(payments.createdAt, todayStart)
+      ));
+
+    // Get revenue for this month
+    const thisMonthRevenue = await db
+      .select({ total: sql<number>`COALESCE(SUM(CAST(${payments.amount} AS NUMERIC)), 0)` })
+      .from(payments)
+      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
+      .innerJoin(stations, eq(bookings.stationId, stations.id))
+      .where(and(
+        eq(stations.franchiseId, franchiseId),
+        eq(payments.status, 'succeeded'),
+        gte(payments.createdAt, monthStart)
+      ));
+
+    // Get revenue for last month
+    const lastMonthRevenue = await db
+      .select({ total: sql<number>`COALESCE(SUM(CAST(${payments.amount} AS NUMERIC)), 0)` })
+      .from(payments)
+      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
+      .innerJoin(stations, eq(bookings.stationId, stations.id))
+      .where(and(
+        eq(stations.franchiseId, franchiseId),
+        eq(payments.status, 'succeeded'),
+        gte(payments.createdAt, lastMonthStart),
+        lte(payments.createdAt, lastMonthEnd)
+      ));
+
     const stats = {
       locationName: profile?.locationName || 'Unknown Location',
-      totalWashes: 0,
+      totalWashes: franchiseStations[0]?.totalWashes || 0,
       revenue: {
-        today: 0,
-        thisMonth: 0,
-        lastMonth: 0,
+        today: todayRevenue[0]?.total || 0,
+        thisMonth: thisMonthRevenue[0]?.total || 0,
+        lastMonth: lastMonthRevenue[0]?.total || 0,
       },
       loyaltyRedemptionRate: 0,
       machineStatus: profile?.machineIds?.map((id: string) => ({
@@ -200,18 +252,69 @@ router.get('/reports/financial', requireFranchiseAuth, async (req, res) => {
       return res.status(400).json({ error: 'franchiseId is required' });
     }
 
-    // TODO: Query actual PostgreSQL transaction data
-    // For now, return mock structure
+    // Query actual PostgreSQL transaction data
+    // Keep franchiseId as string (supports alphanumeric Firestore document IDs)
+    let startDate: Date;
+    let endDate: Date;
+
+    if (period === 'daily' && date) {
+      startDate = new Date(date);
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+    } else if (period === 'monthly' && date) {
+      const [year, month] = date.split('-').map(Number);
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 1);
+    } else {
+      return res.status(400).json({ error: 'Invalid period or date format' });
+    }
+
+    // Get all transactions for the period
+    const transactionRecords = await db
+      .select({
+        id: payments.id,
+        bookingNumber: bookings.bookingNumber,
+        amount: payments.amount,
+        currency: payments.currency,
+        status: payments.status,
+        paymentMethod: payments.paymentMethod,
+        createdAt: payments.createdAt,
+        bookingStatus: bookings.status,
+      })
+      .from(payments)
+      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
+      .innerJoin(stations, eq(bookings.stationId, stations.id))
+      .where(and(
+        eq(stations.franchiseId, franchiseId),
+        eq(payments.status, 'succeeded'),
+        gte(payments.createdAt, startDate),
+        lte(payments.createdAt, endDate)
+      ))
+      .orderBy(desc(payments.createdAt));
+
+    // Calculate totals (VAT rate 17% in Israel)
+    const totalRevenue = transactionRecords.reduce((sum, tx) => 
+      sum + parseFloat(String(tx.amount)), 0
+    );
+    const vat = totalRevenue * 0.17;
+    const netRevenue = totalRevenue - vat;
+
     const reportData = {
       franchiseId,
       period,
       date,
-      totalTransactions: 0,
-      totalRevenue: 0,
+      totalTransactions: transactionRecords.length,
+      totalRevenue: Number(totalRevenue.toFixed(2)),
       voucherDiscounts: 0,
-      netRevenue: 0,
-      vat: 0,
-      transactions: [],
+      netRevenue: Number(netRevenue.toFixed(2)),
+      vat: Number(vat.toFixed(2)),
+      transactions: transactionRecords.map(tx => ({
+        id: tx.id,
+        bookingNumber: tx.bookingNumber,
+        amount: Number(parseFloat(String(tx.amount)).toFixed(2)),
+        paymentMethod: tx.paymentMethod,
+        date: tx.createdAt,
+      })),
     };
 
     res.json(reportData);
@@ -238,14 +341,63 @@ router.get('/reports/export/excel', requireFranchiseAuth, async (req, res) => {
     // Header
     worksheet.columns = [
       { header: 'Date', key: 'date', width: 15 },
-      { header: 'Transaction ID', key: 'txId', width: 20 },
+      { header: 'Booking Number', key: 'bookingNumber', width: 20 },
       { header: 'Amount (₪)', key: 'amount', width: 12 },
-      { header: 'Discount (₪)', key: 'discount', width: 12 },
+      { header: 'Payment Method', key: 'paymentMethod', width: 15 },
       { header: 'VAT (₪)', key: 'vat', width: 12 },
-      { header: 'Total (₪)', key: 'total', width: 12 },
+      { header: 'Net (₪)', key: 'net', width: 12 },
     ];
 
-    // TODO: Add actual transaction rows
+    // Query transactions (same logic as financial report endpoint)
+    // Keep franchiseId as string (supports alphanumeric Firestore document IDs)
+    let startDate: Date;
+    let endDate: Date;
+
+    if (period === 'daily' && date) {
+      startDate = new Date(date);
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+    } else if (period === 'monthly' && date) {
+      const [year, month] = date.split('-').map(Number);
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 1);
+    } else {
+      return res.status(400).json({ error: 'Invalid period or date format' });
+    }
+
+    const transactionRecords = await db
+      .select({
+        bookingNumber: bookings.bookingNumber,
+        amount: payments.amount,
+        paymentMethod: payments.paymentMethod,
+        createdAt: payments.createdAt,
+      })
+      .from(payments)
+      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
+      .innerJoin(stations, eq(bookings.stationId, stations.id))
+      .where(and(
+        eq(stations.franchiseId, franchiseId),
+        eq(payments.status, 'succeeded'),
+        gte(payments.createdAt, startDate),
+        lte(payments.createdAt, endDate)
+      ))
+      .orderBy(desc(payments.createdAt));
+
+    // Add transaction rows with VAT calculations
+    transactionRecords.forEach(tx => {
+      const amount = parseFloat(String(tx.amount));
+      const vat = amount * 0.17;
+      const net = amount - vat;
+      
+      worksheet.addRow({
+        date: format(tx.createdAt, 'yyyy-MM-dd HH:mm'),
+        bookingNumber: tx.bookingNumber,
+        amount: amount.toFixed(2),
+        paymentMethod: tx.paymentMethod || 'N/A',
+        vat: vat.toFixed(2),
+        net: net.toFixed(2),
+      });
+    });
 
     // Set response headers
     res.setHeader(
@@ -294,7 +446,66 @@ router.get('/reports/export/pdf', requireFranchiseAuth, async (req, res) => {
     doc.text(`Date: ${date}`);
     doc.moveDown();
 
-    // TODO: Add actual transaction data
+    // Query transactions (same logic as other endpoints)
+    // Keep franchiseId as string (supports alphanumeric Firestore document IDs)
+    let startDate: Date;
+    let endDate: Date;
+
+    if (period === 'daily' && date) {
+      startDate = new Date(date);
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+    } else if (period === 'monthly' && date) {
+      const [year, month] = date.split('-').map(Number);
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 1);
+    } else {
+      doc.text('Invalid period or date format');
+      doc.end();
+      return;
+    }
+
+    const transactionRecords = await db
+      .select({
+        bookingNumber: bookings.bookingNumber,
+        amount: payments.amount,
+        paymentMethod: payments.paymentMethod,
+        createdAt: payments.createdAt,
+      })
+      .from(payments)
+      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
+      .innerJoin(stations, eq(bookings.stationId, stations.id))
+      .where(and(
+        eq(stations.franchiseId, franchiseId),
+        eq(payments.status, 'succeeded'),
+        gte(payments.createdAt, startDate),
+        lte(payments.createdAt, endDate)
+      ))
+      .orderBy(desc(payments.createdAt));
+
+    // Add transaction summary
+    const totalRevenue = transactionRecords.reduce((sum, tx) => 
+      sum + parseFloat(String(tx.amount)), 0
+    );
+    const totalVat = totalRevenue * 0.17;
+    const totalNet = totalRevenue - totalVat;
+
+    doc.fontSize(14).text('Summary', { underline: true });
+    doc.fontSize(10).text(`Total Transactions: ${transactionRecords.length}`);
+    doc.text(`Total Revenue: ₪${totalRevenue.toFixed(2)}`);
+    doc.text(`VAT (17%): ₪${totalVat.toFixed(2)}`);
+    doc.text(`Net Revenue: ₪${totalNet.toFixed(2)}`);
+    doc.moveDown();
+
+    // Add transaction details
+    doc.fontSize(14).text('Transactions', { underline: true });
+    doc.fontSize(8);
+    transactionRecords.forEach((tx, index) => {
+      const amount = parseFloat(String(tx.amount));
+      doc.text(
+        `${index + 1}. ${format(tx.createdAt, 'yyyy-MM-dd HH:mm')} | ${tx.bookingNumber} | ₪${amount.toFixed(2)} | ${tx.paymentMethod || 'N/A'}`
+      );
+    });
 
     doc.end();
   } catch (error) {

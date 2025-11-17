@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import { logger } from '../lib/logger';
 import { validateFirebaseToken } from '../franchiseAuth';
+import { EmailService } from '../emailService';
 
 const router = Router();
 
@@ -39,7 +40,21 @@ router.post('/contact', async (req, res) => {
       platform: data.platform,
     });
 
-    // TODO: Send email notification to Support@PetWash.co.il
+    // Send email notification to Support team
+    await EmailService.send({
+      to: 'Support@PetWash.co.il',
+      subject: `New Contact Form: ${data.subject} (${data.platform})`,
+      html: `
+        <h2>New Contact Form Submission</h2>
+        <p><strong>Platform:</strong> ${data.platform}</p>
+        <p><strong>Name:</strong> ${data.name}</p>
+        <p><strong>Email:</strong> ${data.email}</p>
+        <p><strong>Phone:</strong> ${data.phone || 'Not provided'}</p>
+        <p><strong>Subject:</strong> ${data.subject}</p>
+        <p><strong>Message:</strong></p>
+        <p>${data.message}</p>
+      `,
+    }).catch(err => logger.error('[GlobalForms] Failed to send contact email notification', err));
     
     res.json({
       success: true,
@@ -136,7 +151,34 @@ router.post('/franchise-inquiry', async (req, res) => {
     
     await GoogleSheetsService.logFranchiseInquiry(data);
 
-    // TODO: Send email to franchise team + HubSpot integration
+    // Send email notification to franchise team
+    await EmailService.send({
+      to: 'franchise@petwash.co.il',
+      subject: `🌟 New Franchise Inquiry: ${data.name} - ${data.country}`,
+      html: `
+        <h2>New Franchise Inquiry Received</h2>
+        <h3>Contact Information</h3>
+        <p><strong>Name:</strong> ${data.name}</p>
+        <p><strong>Company:</strong> ${data.company || 'Individual investor'}</p>
+        <p><strong>Email:</strong> ${data.email}</p>
+        <p><strong>Phone:</strong> ${data.phone}</p>
+        
+        <h3>Location & Investment</h3>
+        <p><strong>Country:</strong> ${data.country}</p>
+        <p><strong>City:</strong> ${data.city}</p>
+        <p><strong>Investment Budget:</strong> ${data.investmentBudget}</p>
+        <p><strong>Timeline:</strong> ${data.timeline}</p>
+        
+        <h3>Experience</h3>
+        <p>${data.experience}</p>
+        
+        <h3>Additional Message</h3>
+        <p>${data.message}</p>
+        
+        <hr>
+        <p><small>Follow up within 48 hours to maintain lead quality.</small></p>
+      `,
+    }).catch(err => logger.error('[GlobalForms] Failed to send franchise inquiry email', err));
 
     res.json({
       success: true,

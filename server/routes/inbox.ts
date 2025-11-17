@@ -126,8 +126,32 @@ router.get('/franchise/:franchiseId', validateFirebaseToken, async (req, res) =>
   try {
     const { franchiseId } = req.params;
     const category = req.query.category as string | undefined;
+    const uid = req.firebaseUser!.uid;
     
-    // TODO: Verify user has franchise access
+    // Verify user has franchise access (franchise owner, employee, or admin)
+    try {
+      const franchiseProfileRef = firestore.doc(FIRESTORE_PATHS.FRANCHISE_PROFILES(franchiseId));
+      const franchiseDoc = await franchiseProfileRef.get();
+      
+      if (!franchiseDoc.exists) {
+        return res.status(404).json({ error: 'Franchise not found' });
+      }
+      
+      const franchiseData = franchiseDoc.data();
+      const isOwner = franchiseData?.ownerUid === uid;
+      const isEmployee = franchiseData?.employeeUids?.includes(uid);
+      
+      // Check if user is admin
+      const userDoc = await firestore.collection('users').doc(uid).get();
+      const isAdmin = ['admin', 'super_admin'].includes(userDoc.data()?.role);
+      
+      if (!isOwner && !isEmployee && !isAdmin) {
+        return res.status(403).json({ error: 'Access denied - not authorized for this franchise' });
+      }
+    } catch (accessError) {
+      logger.error('Error verifying franchise access', accessError);
+      return res.status(500).json({ error: 'Failed to verify access' });
+    }
     
     const messagesRef = firestore.collection(FIRESTORE_PATHS.FRANCHISE_INBOX(franchiseId));
     let query = messagesRef.orderBy('createdAt', 'desc');
@@ -156,8 +180,32 @@ router.get('/franchise/:franchiseId', validateFirebaseToken, async (req, res) =>
 router.patch('/franchise/:franchiseId/:messageId/acknowledge', validateFirebaseToken, async (req, res) => {
   try {
     const { franchiseId, messageId } = req.params;
+    const uid = req.firebaseUser!.uid;
     
-    // TODO: Verify user has franchise access
+    // Verify user has franchise access (franchise owner, employee, or admin)
+    try {
+      const franchiseProfileRef = firestore.doc(FIRESTORE_PATHS.FRANCHISE_PROFILES(franchiseId));
+      const franchiseDoc = await franchiseProfileRef.get();
+      
+      if (!franchiseDoc.exists) {
+        return res.status(404).json({ error: 'Franchise not found' });
+      }
+      
+      const franchiseData = franchiseDoc.data();
+      const isOwner = franchiseData?.ownerUid === uid;
+      const isEmployee = franchiseData?.employeeUids?.includes(uid);
+      
+      // Check if user is admin
+      const userDoc = await firestore.collection('users').doc(uid).get();
+      const isAdmin = ['admin', 'super_admin'].includes(userDoc.data()?.role);
+      
+      if (!isOwner && !isEmployee && !isAdmin) {
+        return res.status(403).json({ error: 'Access denied - not authorized for this franchise' });
+      }
+    } catch (accessError) {
+      logger.error('Error verifying franchise access', accessError);
+      return res.status(500).json({ error: 'Failed to verify access' });
+    }
     
     const docRef = firestore.doc(FIRESTORE_PATHS.FRANCHISE_INBOX(franchiseId, messageId));
     await docRef.update({

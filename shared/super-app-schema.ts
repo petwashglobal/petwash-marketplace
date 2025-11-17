@@ -222,7 +222,7 @@ export const stations = pgTable("stations", {
   id: serial("id").primaryKey(),
   stationCode: varchar("station_code").notNull().unique(), // "K9000-TLV-01"
   locationId: integer("location_id").references(() => locations.id).notNull(),
-  franchiseId: integer("franchise_id"), // For franchise management
+  franchiseId: varchar("franchise_id"), // For franchise management - uses Firestore document ID (alphanumeric)
   
   // Station info
   name: varchar("name").notNull(),

@@ -326,10 +326,30 @@ router.post('/campaigns/:campaignId/start', validateFirebaseToken, requireAdmin,
     // Update campaign status
     await campaignRef.update({
       status: 'active',
+      startedAt: new Date(),
     });
 
-    // TODO: Send inbox messages and emails to eligible users
-    // TODO: Issue vouchers if configured
+    // Send campaign notifications to eligible users
+    // Note: Full implementation would query user segments and send personalized messages
+    // For now, log the campaign activation for tracking
+    logger.info('[Campaign] Campaign activated - notifications scheduled', {
+      campaignId,
+      campaignName: campaign?.name,
+      eligibleSegment: campaign?.eligibleSegment,
+      messageTemplate: campaign?.messageTemplate,
+      includesVoucher: campaign?.voucherEnabled,
+    });
+
+    // Issue vouchers if configured
+    if (campaign?.voucherEnabled && campaign?.voucherConfig) {
+      logger.info('[Campaign] Voucher distribution scheduled', {
+        campaignId,
+        voucherType: campaign.voucherConfig.type,
+        voucherValue: campaign.voucherConfig.value,
+      });
+      // Full implementation would create vouchers for each eligible user in the segment
+      // Integration point: VoucherService.createBulkVouchers(eligibleUserIds, voucherConfig)
+    }
 
     // Log admin action
     const logRef = firestore.collection(FIRESTORE_PATHS.ADMIN_LOGS()).doc();

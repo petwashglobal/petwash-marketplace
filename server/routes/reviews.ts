@@ -15,6 +15,7 @@ import {
   walkBookings,
   pettrekTrips
 } from '@shared/schema';
+import { bookings, providers } from '@shared/super-app-schema';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
@@ -268,15 +269,33 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
             requireModeration: rule.requireModeration
           });
 
-          // Send Slack alert if required by rule
+          // Send email alert to management if required by rule
           if (rule.notifyManagement) {
-            // TODO: Send Slack notification to management
             logger.error('[Review Flagging] Management notification required', {
               reviewId,
               keyword: rule.keyword,
               severity: rule.severity,
               bookingId
             });
+            
+            // Import EmailService dynamically to avoid circular dependencies
+            const { EmailService } = await import('../emailService');
+            await EmailService.send({
+              to: 'management@petwash.co.il',
+              subject: `🚨 Review Flagged: ${rule.severity} - ${rule.keyword}`,
+              html: `
+                <h2 style="color: #d32f2f;">🚨 Flagged Review Alert</h2>
+                <p><strong>Severity:</strong> ${rule.severity}</p>
+                <p><strong>Keyword:</strong> ${rule.keyword}</p>
+                <p><strong>Reason:</strong> ${rule.flagReason}</p>
+                <p><strong>Review ID:</strong> ${reviewId}</p>
+                <p><strong>Booking ID:</strong> ${bookingId}</p>
+                <p><strong>Auto-Hidden:</strong> ${rule.autoHideReview ? 'Yes' : 'No'}</p>
+                <p><strong>Requires Moderation:</strong> ${rule.requireModeration ? 'Yes' : 'No'}</p>
+                <hr>
+                <p><small>Please review this flagged content in the admin dashboard.</small></p>
+              `,
+            }).catch(err => logger.error('[Review Flagging] Failed to send management notification', err));
           }
 
           // Only check first match for simplicity (critical keywords typically checked first)
@@ -533,8 +552,26 @@ async function updateContractorTrustScore(
       ? reviews.reduce((sum, r) => sum + (r.overallRating || 0), 0) / totalReviews
       : 4.50;
 
-    // Get total bookings (TODO: Query actual bookings from all platforms)
-    const totalBookings = 0; // Placeholder
+    // Get total completed bookings from unified bookings table
+    // First, find the provider record for this contractor
+    const providerRecord = await db
+      .select({ id: providers.id })
+      .from(providers)
+      .where(eq(providers.userId, contractorId))
+      .limit(1);
+
+    let totalBookings = 0;
+    if (providerRecord.length > 0) {
+      const bookingCount = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(bookings)
+        .where(and(
+          eq(bookings.providerId, providerRecord[0].id),
+          eq(bookings.status, 'completed')
+        ));
+      
+      totalBookings = Number(bookingCount[0]?.count || 0);
+    }
 
     // Calculate public trust score (4.0 - 5.0 scale)
     // Formula: Weighted average of review score + experience bonus

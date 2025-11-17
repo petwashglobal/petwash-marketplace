@@ -28,6 +28,7 @@ import {
 import { eq, and, desc, sql, gte, lte, or } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { EmailService } from '../emailService';
 
 const router = Router();
 
@@ -285,7 +286,23 @@ router.post('/orders', async (req: Request, res: Response) => {
     
     logger.info(`New franchise order created: ${orderNumber}`);
     
-    // TODO: Send notification to supplier
+    // Send email notification to supplier and operations team
+    await EmailService.send({
+      to: 'supplier@petwash.co.il',
+      subject: `📦 New Order Received: ${orderNumber}`,
+      html: `
+        <h2>New Franchise Order</h2>
+        <p><strong>Order Number:</strong> ${orderNumber}</p>
+        <p><strong>Franchise ID:</strong> ${newOrder.franchiseId}</p>
+        <p><strong>Part Number:</strong> ${newOrder.partNumber}</p>
+        <p><strong>Part Name:</strong> ${newOrder.partName}</p>
+        <p><strong>Quantity:</strong> ${newOrder.requestedQuantity}</p>
+        <p><strong>Status:</strong> ${newOrder.status}</p>
+        <p><strong>Notes:</strong> ${newOrder.notes || 'None'}</p>
+        <hr>
+        <p><small>Please process this order within 24 hours.</small></p>
+      `,
+    }).catch(err => logger.error('[K9000 Supplier] Failed to send new order notification', err));
     
     res.status(201).json({ order: newOrder });
   } catch (error) {
@@ -330,7 +347,46 @@ router.patch('/orders/:id', async (req: Request, res: Response) => {
     
     logger.info(`Order ${updatedOrder.orderNumber} updated to status: ${updatedOrder.status}`);
     
-    // TODO: Send notification based on status change
+    // Send notification based on status change
+    let notificationSubject = '';
+    let notificationBody = '';
+    
+    if (updatedOrder.status === 'approved') {
+      notificationSubject = `✅ Order Approved: ${updatedOrder.orderNumber}`;
+      notificationBody = `
+        <h2>Order Approved</h2>
+        <p>Your order <strong>${updatedOrder.orderNumber}</strong> has been approved and is being processed.</p>
+        <p><strong>Part:</strong> ${updatedOrder.partName}</p>
+        <p><strong>Quantity:</strong> ${updatedOrder.requestedQuantity}</p>
+        <p><strong>Approved by:</strong> ${approvedBy || 'System'}</p>
+      `;
+    } else if (updatedOrder.status === 'rejected') {
+      notificationSubject = `❌ Order Rejected: ${updatedOrder.orderNumber}`;
+      notificationBody = `
+        <h2>Order Rejected</h2>
+        <p>Your order <strong>${updatedOrder.orderNumber}</strong> has been rejected.</p>
+        <p><strong>Reason:</strong> ${rejectionReason || 'Not specified'}</p>
+        <p><strong>Part:</strong> ${updatedOrder.partName}</p>
+        <p><strong>Quantity:</strong> ${updatedOrder.requestedQuantity}</p>
+      `;
+    } else if (updatedOrder.status === 'shipped') {
+      notificationSubject = `🚚 Order Shipped: ${updatedOrder.orderNumber}`;
+      notificationBody = `
+        <h2>Order Shipped</h2>
+        <p>Your order <strong>${updatedOrder.orderNumber}</strong> has been shipped.</p>
+        <p><strong>Tracking Number:</strong> ${trackingNumber || 'Not available'}</p>
+        <p><strong>Part:</strong> ${updatedOrder.partName}</p>
+        <p><strong>Quantity:</strong> ${updatedOrder.requestedQuantity}</p>
+      `;
+    }
+    
+    if (notificationSubject) {
+      await EmailService.send({
+        to: 'operations@petwash.co.il',
+        subject: notificationSubject,
+        html: notificationBody,
+      }).catch(err => logger.error('[K9000 Supplier] Failed to send status change notification', err));
+    }
     
     res.json({ order: updatedOrder });
   } catch (error) {
@@ -400,8 +456,25 @@ router.post('/transactions', async (req: Request, res: Response) => {
       .where(eq(spareParts.id, sparePartId));
     
     if (updatedPart && (updatedPart.quantityInStock || 0) <= (updatedPart.reorderPoint || 0)) {
-      // TODO: Trigger WhatsApp notification
+      // Trigger low stock email alert (WhatsApp integration can be added via UnifiedMessagingHub)
       logger.warn(`LOW STOCK ALERT: ${updatedPart.partNumber} - ${updatedPart.partName} (${updatedPart.quantityInStock} units remaining)`);
+      
+      await EmailService.send({
+        to: 'supplier@petwash.co.il',
+        subject: `⚠️ LOW STOCK ALERT: ${updatedPart.partName}`,
+        html: `
+          <h2 style="color: #d32f2f;">⚠️ Low Stock Alert</h2>
+          <p>Stock levels for the following part have reached the reorder point:</p>
+          <p><strong>Part Number:</strong> ${updatedPart.partNumber}</p>
+          <p><strong>Part Name:</strong> ${updatedPart.partName}</p>
+          <p><strong>Current Stock:</strong> ${updatedPart.quantityInStock} units</p>
+          <p><strong>Reorder Point:</strong> ${updatedPart.reorderPoint} units</p>
+          <p><strong>Category:</strong> ${updatedPart.category}</p>
+          ${updatedPart.isCritical ? '<p style="color: #d32f2f;"><strong>⚠️ CRITICAL PART</strong></p>' : ''}
+          <hr>
+          <p><strong>Action Required:</strong> Please create a new purchase order to replenish stock.</p>
+        `,
+      }).catch(err => logger.error('[K9000 Supplier] Failed to send low stock alert', err));
     }
     
     logger.info(`Stock transaction recorded: ${transactionNumber}`);

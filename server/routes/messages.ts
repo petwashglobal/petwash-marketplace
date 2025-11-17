@@ -20,6 +20,7 @@ import { recordAuditEvent } from '../utils/auditSignature';
 import { backupMessage } from '../services/gcsBackupService';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
+import { EmailService } from '../emailService';
 
 const router = Router();
 
@@ -271,7 +272,27 @@ router.post('/send', async (req, res) => {
         logger.error('[Secure Inbox] Backup promise error', err);
       });
 
-    // TODO: Send email/push notification to recipient
+    // Send email notification to recipient
+    try {
+      const { getAuth } = await import('firebase-admin/auth');
+      const auth = getAuth();
+      const recipientUser = await auth.getUser(validated.recipientId).catch(() => null);
+      
+      if (recipientUser?.email) {
+        await EmailService.send({
+          to: recipientUser.email,
+          subject: '📬 New Message in Your Pet Wash™ Inbox',
+          html: `
+            <h2>You have a new message</h2>
+            <p><strong>From:</strong> ${req.user?.email || 'Pet Wash™ Team'}</p>
+            <p><strong>Subject:</strong> ${validated.subject}</p>
+            <p><em>Log in to your Pet Wash™ account to read and reply.</em></p>
+          `,
+        }).catch(err => logger.error('[Secure Inbox] Failed to send email notification', err));
+      }
+    } catch (err) {
+      logger.error('[Secure Inbox] Failed to lookup recipient for notification', err);
+    }
 
     logger.info('[Secure Inbox] Message sent successfully', { 
       messageId: newMessage.id,
