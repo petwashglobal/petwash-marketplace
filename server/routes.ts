@@ -11516,8 +11516,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       process.env.REPLIT_DEPLOYMENT === 'true') {
     
     app.get('*', (req: Request, res: Response, next: NextFunction) => {
-      // Skip API routes - let them 404 naturally if not found
-      if (req.path.startsWith('/api/')) {
+      // Skip API routes and static assets - let them 404 naturally if not found
+      if (req.path.startsWith('/api/') || req.path.startsWith('/assets/')) {
         return next();
       }
       

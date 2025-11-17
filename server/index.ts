@@ -174,13 +174,10 @@ ensureBiometricStorage()
     if (process.env.NODE_ENV === 'production' || 
         process.env.REPLIT_DEPLOYMENT === '1' || 
         process.env.REPLIT_DEPLOYMENT === 'true') {
-      app.get("*", (req, res) => {
-        // Exclude API routes from this catch-all (safety measure)
-        if (req.path.startsWith('/api/')) {
-          return res.status(404).json({ 
-            error: 'API endpoint not found',
-            path: req.path 
-          });
+      app.get("*", (req, res, next) => {
+        // Exclude API routes and static assets from this catch-all (safety measure)
+        if (req.path.startsWith('/api/') || req.path.startsWith('/assets/')) {
+          return next();
         }
         
         // Serve index.html with error handling callback (prevents silent hangs)
