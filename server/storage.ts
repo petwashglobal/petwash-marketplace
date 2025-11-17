@@ -990,6 +990,260 @@ export class DatabaseStorage implements IStorage {
     return customer;
   }
 
+  /**
+   * DUAL-PATH CONSENT MANAGEMENT: Full Unsubscribe (Global Opt-Out)
+   * Sets suppressionList.all=true, marketingConsent=false, unsubscribedAt timestamp
+   */
+  async unsubscribeAll(email: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      const [customer] = await db.select().from(customers).where(eq(customers.email, email)).limit(1);
+
+      if (!user && !customer) {
+        return { success: false, message: 'Email not found in system' };
+      }
+
+      const allChannels = ['email', 'sms', 'whatsapp', 'push', 'all'];
+
+      // Update user if exists
+      if (user) {
+        const existingSuppression = (user.suppressionList as any) || {};
+        const existingPrefs = (user.communicationPreferences as any) || {};
+
+        const mergedSuppression = { ...existingSuppression };
+        allChannels.forEach(channel => {
+          mergedSuppression[channel] = true;
+        });
+
+        const updatedPrefs = { ...existingPrefs };
+        ['email', 'sms', 'whatsapp', 'push'].forEach(channel => {
+          updatedPrefs[channel] = {
+            marketing: false,
+            reminders: false,
+            transactional: true // Always keep transactional (legal requirement)
+          };
+        });
+
+        await db
+          .update(users)
+          .set({
+            suppressionList: mergedSuppression as any,
+            communicationPreferences: updatedPrefs as any,
+            unsubscribedAt: new Date(), // ONLY set for full unsubscribe
+            marketingConsent: false, // ONLY set for full unsubscribe
+            updatedAt: new Date()
+          })
+          .where(eq(users.email, email));
+      }
+
+      // Update customer if exists
+      if (customer) {
+        const existingSuppression = (customer.suppressionList as any) || {};
+        const existingPrefs = (customer.communicationPreferences as any) || {};
+
+        const mergedSuppression = { ...existingSuppression };
+        allChannels.forEach(channel => {
+          mergedSuppression[channel] = true;
+        });
+
+        const updatedPrefs = { ...existingPrefs };
+        ['email', 'sms', 'whatsapp', 'push'].forEach(channel => {
+          updatedPrefs[channel] = {
+            marketing: false,
+            reminders: false,
+            transactional: true
+          };
+        });
+
+        await db
+          .update(customers)
+          .set({
+            suppressionList: mergedSuppression as any,
+            communicationPreferences: updatedPrefs as any,
+            unsubscribedAt: new Date(), // ONLY set for full unsubscribe
+            marketing: false, // ONLY set for full unsubscribe
+            updatedAt: new Date()
+          })
+          .where(eq(customers.email, email));
+      }
+
+      return { 
+        success: true, 
+        message: `Successfully unsubscribed ${email} from all communications` 
+      };
+    } catch (error) {
+      console.error('Error in unsubscribeAll:', error);
+      return { success: false, message: 'Failed to unsubscribe' };
+    }
+  }
+
+  /**
+   * DUAL-PATH CONSENT MANAGEMENT: Granular Channel Suppression
+   * Updates only specific channels WITHOUT touching marketingConsent or unsubscribedAt
+   */
+  async updateChannelSuppression(
+    email: string,
+    channels: ('email' | 'sms' | 'whatsapp' | 'push')[],
+    suppress: boolean = true
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      const [customer] = await db.select().from(customers).where(eq(customers.email, email)).limit(1);
+
+      if (!user && !customer) {
+        return { success: false, message: 'Email not found in system' };
+      }
+
+      // Update user if exists
+      if (user) {
+        const existingSuppression = (user.suppressionList as any) || {};
+        const existingPrefs = (user.communicationPreferences as any) || {};
+
+        // MERGE channel flags (preserve other channels)
+        const mergedSuppression = { ...existingSuppression };
+        channels.forEach(channel => {
+          mergedSuppression[channel] = suppress;
+        });
+
+        // CRITICAL: If re-enabling ANY channel, clear the global 'all' flag (user is now doing granular management)
+        // Check if ALL channels are now enabled for resetting legacy fields
+        let allChannelsNowEnabled = false;
+        if (!suppress) {
+          // Clear global 'all' flag immediately when re-enabling ANY channel
+          mergedSuppression.all = false;
+          
+          // Check if ALL channels are now enabled
+          allChannelsNowEnabled = ['email', 'sms', 'whatsapp', 'push'].every(
+            ch => mergedSuppression[ch] === false || !mergedSuppression[ch]
+          );
+        }
+
+        // Update only affected channels in preferences - EXPLICIT re-enablement
+        const updatedPrefs = { ...existingPrefs };
+        channels.forEach(channel => {
+          // Ensure channel object exists
+          if (!updatedPrefs[channel]) {
+            updatedPrefs[channel] = {};
+          }
+          
+          if (suppress) {
+            // Suppressing channel: turn OFF marketing/reminders
+            updatedPrefs[channel].marketing = false;
+            updatedPrefs[channel].reminders = false;
+            updatedPrefs[channel].transactional = true; // Always keep transactional
+          } else {
+            // CRITICAL: Re-enabling channel: EXPLICITLY turn ON marketing/reminders
+            updatedPrefs[channel].marketing = true;
+            updatedPrefs[channel].reminders = true;
+            updatedPrefs[channel].transactional = true;
+          }
+        });
+
+        const userUpdates: any = {
+          suppressionList: mergedSuppression as any,
+          communicationPreferences: updatedPrefs as any,
+          updatedAt: new Date()
+        };
+
+        // CRITICAL: If ALL channels re-enabled, reset legacy consent fields
+        if (allChannelsNowEnabled) {
+          userUpdates.marketingConsent = true;
+          userUpdates.unsubscribedAt = null;
+        }
+
+        await db
+          .update(users)
+          .set(userUpdates)
+          .where(eq(users.email, email));
+      }
+
+      // Update customer if exists
+      if (customer) {
+        const existingSuppression = (customer.suppressionList as any) || {};
+        const existingPrefs = (customer.communicationPreferences as any) || {};
+
+        const mergedSuppression = { ...existingSuppression };
+        channels.forEach(channel => {
+          mergedSuppression[channel] = suppress;
+        });
+
+        // CRITICAL: If re-enabling ANY channel, clear the global 'all' flag (user is now doing granular management)
+        // Check if ALL channels are now enabled for resetting legacy fields
+        let allChannelsNowEnabled = false;
+        if (!suppress) {
+          // Clear global 'all' flag immediately when re-enabling ANY channel
+          mergedSuppression.all = false;
+          
+          // Check if ALL channels are now enabled
+          allChannelsNowEnabled = ['email', 'sms', 'whatsapp', 'push'].every(
+            ch => mergedSuppression[ch] === false || !mergedSuppression[ch]
+          );
+        }
+
+        const updatedPrefs = { ...existingPrefs };
+        channels.forEach(channel => {
+          // Ensure channel object exists
+          if (!updatedPrefs[channel]) {
+            updatedPrefs[channel] = {};
+          }
+          
+          if (suppress) {
+            // Suppressing channel: turn OFF marketing/reminders
+            updatedPrefs[channel].marketing = false;
+            updatedPrefs[channel].reminders = false;
+            updatedPrefs[channel].transactional = true;
+          } else {
+            // CRITICAL: Re-enabling channel: EXPLICITLY turn ON marketing/reminders
+            updatedPrefs[channel].marketing = true;
+            updatedPrefs[channel].reminders = true;
+            updatedPrefs[channel].transactional = true;
+          }
+        });
+
+        const customerUpdates: any = {
+          suppressionList: mergedSuppression as any,
+          communicationPreferences: updatedPrefs as any,
+          updatedAt: new Date()
+        };
+
+        // CRITICAL: If ALL channels re-enabled, reset legacy consent fields
+        if (allChannelsNowEnabled) {
+          customerUpdates.marketing = true;
+          customerUpdates.unsubscribedAt = null;
+        }
+
+        await db
+          .update(customers)
+          .set(customerUpdates)
+          .where(eq(customers.email, email));
+      }
+
+      const action = suppress ? 'suppressed' : 're-enabled';
+      return { 
+        success: true, 
+        message: `Successfully ${action} channels: ${channels.join(', ')} for ${email}` 
+      };
+    } catch (error) {
+      console.error('Error in updateChannelSuppression:', error);
+      return { success: false, message: 'Failed to update channel suppression' };
+    }
+  }
+
+  /**
+   * DEPRECATED: Use unsubscribeAll() or updateChannelSuppression() instead
+   * Kept for backward compatibility
+   */
+  async addToSuppressionList(
+    email: string, 
+    channels: ('email' | 'sms' | 'whatsapp' | 'push' | 'all')[] = ['all']
+  ): Promise<{ success: boolean; message: string }> {
+    if (channels.includes('all')) {
+      return this.unsubscribeAll(email);
+    } else {
+      return this.updateChannelSuppression(email, channels as any, true);
+    }
+  }
+
   async getAllCustomers(): Promise<Customer[]> {
     return await db.select().from(customers).orderBy(desc(customers.createdAt));
   }

@@ -71,6 +71,16 @@ export const users = pgTable("users", {
   marketingConsent: boolean("marketing_consent").default(false), // Marketing emails/SMS
   privacyConsentUpdatedAt: timestamp("privacy_consent_updated_at"), // Last consent change
   
+  // COMMUNICATION PREFERENCES (Granular channel control)
+  communicationPreferences: jsonb("communication_preferences").default(sql`'{
+    "email": {"marketing": false, "transactional": true, "reminders": true},
+    "sms": {"marketing": false, "transactional": true, "reminders": true},
+    "whatsapp": {"marketing": false, "transactional": true, "reminders": true},
+    "push": {"marketing": false, "transactional": true, "reminders": true}
+  }'::jsonb`),
+  suppressionList: jsonb("suppression_list").default(sql`'{"email": false, "sms": false, "whatsapp": false, "push": false, "all": false}'::jsonb`), // Master suppression flags
+  unsubscribedAt: timestamp("unsubscribed_at"), // When user unsubscribed from all marketing
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -98,6 +108,17 @@ export const customers = pgTable("customers", {
   washBalance: integer("wash_balance").default(0),
   giftCardBalance: decimal("gift_card_balance", { precision: 10, scale: 2 }).default("0"), // Gift card monetary balance
   loyaltyPoints: integer("loyalty_points").default(0), // Points earned from purchases (1 point per ILS spent)
+  
+  // COMMUNICATION PREFERENCES (Granular channel control)
+  communicationPreferences: jsonb("communication_preferences").default(sql`'{
+    "email": {"marketing": false, "transactional": true, "reminders": true},
+    "sms": {"marketing": false, "transactional": true, "reminders": true},
+    "whatsapp": {"marketing": false, "transactional": true, "reminders": true},
+    "push": {"marketing": false, "transactional": true, "reminders": true}
+  }'::jsonb`),
+  suppressionList: jsonb("suppression_list").default(sql`'{"email": false, "sms": false, "whatsapp": false, "push": false, "all": false}'::jsonb`), // Master suppression flags
+  unsubscribedAt: timestamp("unsubscribed_at"), // When user unsubscribed from all marketing
+  
   lastLogin: timestamp("last_login"),
   authProvider: varchar("auth_provider").default("email"), // email, google, apple, facebook
   authProviderId: varchar("auth_provider_id"), // for OAuth providers

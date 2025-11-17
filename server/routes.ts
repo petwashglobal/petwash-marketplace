@@ -2789,21 +2789,14 @@ self.addEventListener('notificationclick', (event) => {
       let alreadyUnsubscribed = false;
       // TODO: Add communicationPreferences to customer/user schema
       
-      // Update user/customer marketing preferences
-      if (customerId && customer) {
-        await storage.updateCustomer(customerId, {
-          marketing: false
-        });
+      // Add to suppression list (comprehensive GDPR-compliant unsubscribe)
+      const suppressionResult = await storage.addToSuppressionList(email, ['all']);
+      
+      if (!suppressionResult.success) {
+        logger.error(`Failed to add ${email} to suppression list: ${suppressionResult.message}`);
       }
       
-      if (userId && user) {
-        await storage.updateUser(userId, {
-          marketing: false
-        });
-      }
-      
-      // TODO: Implement addToSuppressionList method in storage
-      logger.info(`User ${email} unsubscribed successfully`);
+      logger.info(`User ${email} unsubscribed successfully - ${suppressionResult.message}`);
       
       // Final success logging with security context
       logger.info(`UNSUBSCRIBE SUCCESS: ${email}`, {

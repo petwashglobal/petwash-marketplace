@@ -72,19 +72,76 @@ export class EmailService {
    */
   private static async checkEmailConsent(email: string, messageType: 'transactional' | 'marketing' | 'reminder'): Promise<boolean> {
     try {
-      // TODO: Implement suppression list and communication preferences in storage
-      // For now, allow all emails (transactional emails always allowed, marketing requires opt-in implementation)
+      // Import storage dynamically to avoid circular dependency
+      const { storage } = await import('./storage');
       
       // Transactional emails (invoices, confirmations) are always allowed
       if (messageType === 'transactional') {
         return true;
       }
       
-      // For marketing and reminder emails, we'll allow them for now
-      // In production, this should check user preferences from the database
-      logger.info(`Email consent check passed for ${email} (${messageType})`);
+      // Check if email is in suppression list (user unsubscribed)
+      const user = await storage.getUserByEmail(email);
+      const customer = await storage.getCustomerByEmail(email);
       
+      // CRITICAL: Check suppressionList - per-channel flags take priority over global 'all' flag
+      const userSuppressed = user?.suppressionList as any;
+      const customerSuppressed = customer?.suppressionList as any;
+      
+      // Check email-specific suppression first (granular consent)
+      if (userSuppressed?.email === true || customerSuppressed?.email === true) {
+        logger.info(`Email blocked by suppressionList.email for ${email} (${messageType})`);
+        return false;
+      }
+      
+      // Only check 'all' flag if no granular data exists
+      const hasGranularData = (user?.communicationPreferences as any) || (customer?.communicationPreferences as any);
+      if (!hasGranularData) {
+        // Legacy mode: respect global 'all' flag
+        if (userSuppressed?.all || customerSuppressed?.all) {
+          logger.info(`Email blocked by suppressionList.all (legacy mode) for ${email} (${messageType})`);
+          return false;
+        }
+      }
+      
+      // CRITICAL: Check communicationPreferences for granular consent (PRIORITY over legacy)
+      const userPrefs = user?.communicationPreferences as any;
+      const customerPrefs = customer?.communicationPreferences as any;
+      
+      // If communicationPreferences exist, TRUST THEM (new system)
+      const hasNewPrefs = userPrefs || customerPrefs;
+      
+      if (hasNewPrefs) {
+        // Check email channel preferences based on message type
+        if (messageType === 'marketing') {
+          const userAllows = userPrefs?.email?.marketing === true;
+          const customerAllows = customerPrefs?.email?.marketing === true;
+          if (!userAllows && !customerAllows) {
+            logger.info(`Email blocked by communicationPreferences.email.marketing for ${email}`);
+            return false;
+          }
+        } else if (messageType === 'reminder') {
+          const userAllows = userPrefs?.email?.reminders === true;
+          const customerAllows = customerPrefs?.email?.reminders === true;
+          if (!userAllows && !customerAllows) {
+            logger.info(`Email blocked by communicationPreferences.email.reminders for ${email}`);
+            return false;
+          }
+        }
+      } else {
+        // Fallback to legacy marketing consent fields (old system)
+        if (messageType === 'marketing') {
+          const hasConsent = user?.marketingConsent || customer?.marketing;
+          if (!hasConsent) {
+            logger.info(`Email blocked by legacy marketing consent for ${email}`);
+            return false;
+          }
+        }
+      }
+      
+      logger.info(`Email consent check passed for ${email} (${messageType})`);
       return true;
+      
     } catch (error) {
       logger.error('Error checking email consent', error);
       return messageType === 'transactional'; // Allow transactional, block marketing on error
