@@ -879,6 +879,46 @@ export const crmActivities = pgTable("crm_activities", {
   index("idx_crm_activities_date").on(table.activityDate),
 ]);
 
+// Meeting Attendees (Junction table for multi-attendee meetings)
+export const crmMeetingAttendees = pgTable("crm_meeting_attendees", {
+  id: serial("id").primaryKey(),
+  meetingId: integer("meeting_id").references(() => crmTasks.id, { onDelete: "cascade" }).notNull(),
+  
+  // Attendee can be either admin user, customer, or external contact
+  attendeeType: varchar("attendee_type").notNull(), // 'admin', 'customer', 'external'
+  
+  // Reference fields (only one should be set based on attendeeType)
+  adminUserId: varchar("admin_user_id").references(() => adminUsers.id),
+  customerId: integer("customer_id").references(() => customers.id),
+  
+  // External contact details (when attendeeType = 'external')
+  externalName: varchar("external_name"),
+  externalEmail: varchar("external_email"),
+  externalPhone: varchar("external_phone"),
+  
+  // Attendance status
+  responseStatus: varchar("response_status").default("pending"), // pending, accepted, declined, tentative, no_response
+  respondedAt: timestamp("responded_at"),
+  
+  // Notification tracking
+  invitationSent: boolean("invitation_sent").default(false),
+  invitationSentAt: timestamp("invitation_sent_at"),
+  reminderSent: boolean("reminder_sent").default(false),
+  reminderSentAt: timestamp("reminder_sent_at"),
+  
+  // Optional attendee role
+  role: varchar("role"), // organizer, presenter, participant, optional
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_crm_meeting_attendees_meeting").on(table.meetingId),
+  index("idx_crm_meeting_attendees_admin").on(table.adminUserId),
+  index("idx_crm_meeting_attendees_customer").on(table.customerId),
+  index("idx_crm_meeting_attendees_response").on(table.responseStatus),
+  index("idx_crm_meeting_attendees_type").on(table.attendeeType),
+]);
+
 // Marketing Campaigns
 export const crmCampaigns = pgTable("crm_campaigns", {
   id: serial("id").primaryKey(),
@@ -1194,6 +1234,10 @@ export type InsertCrmTask = typeof crmTasks.$inferInsert;
 export type CrmActivity = typeof crmActivities.$inferSelect;
 export type InsertCrmActivity = typeof crmActivities.$inferInsert;
 
+// CRM Meeting Attendee types
+export type CrmMeetingAttendee = typeof crmMeetingAttendees.$inferSelect;
+export type InsertCrmMeetingAttendee = typeof crmMeetingAttendees.$inferInsert;
+
 // CRM Campaign types
 export type CrmCampaign = typeof crmCampaigns.$inferSelect;
 export type InsertCrmCampaign = typeof crmCampaigns.$inferInsert;
@@ -1273,6 +1317,15 @@ export const insertCrmActivitySchema = createInsertSchema(crmActivities).omit({
   id: true,
   createdAt: true,
 });
+
+// CRM Meeting Attendee schemas
+export const insertCrmMeetingAttendeeSchema = createInsertSchema(crmMeetingAttendees).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateCrmMeetingAttendeeSchema = insertCrmMeetingAttendeeSchema.partial();
 
 // CRM Campaign schemas
 export const insertCrmCampaignSchema = createInsertSchema(crmCampaigns).omit({

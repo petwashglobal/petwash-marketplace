@@ -48,6 +48,7 @@ import launchEventRoutes from "./routes/launch-event";
 import socialCircleRoutes from "./routes/social-circle";
 import giftCardsRoutes from "./routes/gift-cards";
 import campaignsRoutes from "./routes/campaigns";
+import meetingsRoutes from "./routes/meetings";
 import esignRoutes from "./routes/esign";
 import notificationsRoutes from "./routes/notifications";
 import chatRoutes from "./routes/chat";
@@ -8033,6 +8034,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // Email/SMS Campaigns (Marketing - Template Personalization)
   app.use('/api/campaigns', adminLimiter, campaignsRoutes);
+  
+  // Meetings with Attendee Notifications (WhatsApp + Email)
+  app.use('/api/meetings', adminLimiter, meetingsRoutes);
   
   // Management Dashboard (CEO/CFO only - comprehensive business analytics)
   app.use('/api/management', adminLimiter, managementDashboardRoutes);

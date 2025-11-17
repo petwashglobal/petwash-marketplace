@@ -1,0 +1,106 @@
+import { z } from "zod";
+
+// ==========================================
+// 1. ENVIRONMENT VALIDATION (Startup Safety)
+// ==========================================
+// This ensures the app crashes immediately if API keys are missing,
+// rather than failing randomly later on.
+const EnvSchema = z.object({
+  NODE_ENV: z.enum(["development", "production"]).default("development"),
+  DATABASE_URL: z.string().url({ message: "Database URL must be valid" }),
+  // .min(1) prevents empty strings
+  OPENAI_API_KEY: z.string().min(1, "AI Key is required for 2025 features"), 
+});
+
+// Simulate process.env (In Replit, these come from the Secrets tab)
+const processEnvMock = {
+  NODE_ENV: "development",
+  DATABASE_URL: "postgres://user:pass@localhost:5432/db",
+  OPENAI_API_KEY: "sk-123456789", 
+};
+
+// Validate Env - throws error if invalid
+const env = EnvSchema.parse(processEnvMock); 
+console.log("✅ System Integrity Verified. Environment is secure.");
+
+
+// ==========================================
+// 2. THE "SMART" SCHEMA (AI & Data Logic)
+// ==========================================
+// This schema uses 2025 techniques: .describe() for AI context 
+// and .transform() to clean data automatically.
+const UserProfileSchema = z.object({
+  // .describe() helps AI agents understand what this field is for
+  id: z.string().uuid().describe("Unique user ID from the database"),
+  
+  username: z.string()
+    .min(3)
+    .trim()             // Auto-removes whitespace
+    .toLowerCase()      // Auto-converts to lowercase
+    .describe("Public display name"),
+
+  email: z.string().email(),
+
+  role: z.enum(["admin", "user", "guest"]).default("user"),
+
+  // Coercion: Turns "25" (string) into 25 (number) automatically
+  age: z.coerce.number().min(18).optional(),
+
+  tags: z.array(z.string()).max(5).describe("User interest tags for AI recommendations"),
+});
+
+// Export the Type automatically (No need to write interfaces manually)
+type UserProfile = z.infer<typeof UserProfileSchema>;
+
+
+// ==========================================
+// 3. USAGE SIMULATION (The "Bouncer")
+// ==========================================
+function registerUser(incomingData: unknown) {
+  console.log("\n--- Processing Incoming Request ---");
+
+  // .safeParse prevents the app from crashing
+  const result = UserProfileSchema.safeParse(incomingData);
+
+  if (!result.success) {
+    // 2025 Tip: Format errors to be human-readable immediately
+    console.error("❌ BLOCK: Validation Failed");
+    const formattedErrors = result.error.format();
+    
+    // Example: creating a clean error message for the frontend
+    if (formattedErrors.username) {
+      console.error(`   -> Username Error: ${formattedErrors.username._errors.join(", ")}`);
+    }
+    if (formattedErrors.email) {
+      console.error(`   -> Email Error: ${formattedErrors.email._errors.join(", ")}`);
+    }
+    return;
+  }
+
+  // If we get here, 'data' is typed, clean, and safe.
+  const cleanData = result.data;
+  console.log("✅ ALLOW: User Registered Successfully");
+  console.log("   -> Saved to DB:", cleanData); // Notice username is lowercased automatically
+}
+
+
+// ==========================================
+// 4. RUN THE TESTS
+// ==========================================
+
+// TEST A: Dirty Data (Should be cleaned and accepted)
+registerUser({
+  id: "550e8400-e29b-41d4-a716-446655440000", // Valid UUID
+  username: "  SUPERMAN_2025  ", // Messy input
+  email: "clark@dailyplanet.com",
+  age: "33", // String, will be coerced to number
+  tags: ["flight", "strength"]
+});
+
+// TEST B: Bad Data (Should be blocked)
+registerUser({
+  id: "invalid-id",
+  username: "Zod", // Too short (min 3) if we count strictly, but here just an example
+  email: "not-an-email",
+  // Missing age is okay (optional), but bad email is fatal
+});
