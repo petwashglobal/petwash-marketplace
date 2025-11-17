@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, Smartphone, Fingerprint } from "lucide-react";
-import { SiGmail, SiFacebook, SiInstagram, SiTiktok } from "react-icons/si";
+import { SiGmail, SiFacebook, SiTiktok } from "react-icons/si";
 import { Link, useLocation } from "wouter";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { OAuthConsentDialog } from "@/components/OAuthConsentDialog";
@@ -172,7 +172,7 @@ export default function FastSignIn({ language }: FastSignInProps) {
     }
   };
 
-  const handleSocialSignIn = async (provider: "google" | "yahoo" | "facebook" | "instagram" | "tiktok" | "microsoft") => {
+  const handleSocialSignIn = async (provider: "google" | "yahoo" | "facebook" | "tiktok" | "microsoft") => {
     setConsentDialog({
       isOpen: true,
       provider,
@@ -203,10 +203,6 @@ export default function FastSignIn({ language }: FastSignInProps) {
         case "facebook":
           authProvider = new FacebookAuthProvider();
           authProvider.addScope('email');
-          break;
-        case "instagram":
-          authProvider = new FacebookAuthProvider();
-          authProvider.addScope('instagram_basic');
           break;
         case "tiktok":
           window.location.href = '/api/auth/tiktok/start';
@@ -318,7 +314,7 @@ export default function FastSignIn({ language }: FastSignInProps) {
                   )}
                 </Button>
 
-                {/* Facebook */}
+                {/* Facebook / Instagram (Meta) - 2025 Update: Instagram login deprecated for personal accounts */}
                 <Button
                   onClick={() => handleSocialSignIn("facebook")}
                   disabled={!!socialLoading}
@@ -331,26 +327,7 @@ export default function FastSignIn({ language }: FastSignInProps) {
                     <>
                       <SiFacebook className="w-6 h-6 mr-3" />
                       <span className="font-semibold">
-                        {t('fastSignIn.continueFacebook', language)}
-                      </span>
-                    </>
-                  )}
-                </Button>
-
-                {/* Instagram */}
-                <Button
-                  onClick={() => handleSocialSignIn("instagram")}
-                  disabled={!!socialLoading}
-                  className="w-full h-14 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 hover:from-purple-700 hover:via-pink-700 hover:to-orange-600 text-white transition-all shadow-sm hover:shadow-md"
-                  data-testid="button-instagram-signin"
-                >
-                  {socialLoading === "instagram" ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : (
-                    <>
-                      <SiInstagram className="w-6 h-6 mr-3" />
-                      <span className="font-semibold">
-                        {t('fastSignIn.continueInstagram', language)}
+                        {t('fastSignIn.continueFacebookMeta', language)}
                       </span>
                     </>
                   )}

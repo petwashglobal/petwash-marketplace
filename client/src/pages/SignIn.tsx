@@ -792,7 +792,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               )}
             </Button>
 
-            {/* Facebook */}
+            {/* Facebook / Instagram (Meta) - 2025 Update: Instagram login deprecated for personal accounts */}
             <Button
               onClick={() => handleSocialLogin('facebook')}
               disabled={!!socialLoading}
@@ -804,24 +804,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               ) : (
                 <>
                   <FaFacebook className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
-                  {t('signin.continueFacebook', language)}
-                </>
-              )}
-            </Button>
-
-            {/* Instagram */}
-            <Button
-              onClick={() => handleSocialLogin('instagram')}
-              disabled={!!socialLoading}
-              className="w-full bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90 text-white rounded-2xl h-14 text-base font-medium transition-all duration-200 sm:h-16 md:h-16 lg:h-14 shadow-sm hover:shadow-md"
-              data-testid="button-instagram-signin"
-            >
-              {socialLoading === 'instagram' ? (
-                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-              ) : (
-                <>
-                  <FaInstagram className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
-                  {t('signin.continueInstagram', language)}
+                  {t('signin.continueFacebookMeta', language)}
                 </>
               )}
             </Button>
