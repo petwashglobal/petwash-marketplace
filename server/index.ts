@@ -147,10 +147,35 @@ ensureBiometricStorage()
     }
     
     console.log(`   index.html found: ✅`);
+    
+    // Verify critical assets exist
+    const logoPath = path.join(DIST_PUBLIC_PATH, "brand", "petwash-logo-official.png");
+    const logoExists = fs.existsSync(logoPath);
+    console.log(`   Logo exists: ${logoExists ? '✅' : '❌'} (${logoPath})`);
+    
+    if (!logoExists) {
+      console.error('   WARNING: Logo not found - images may be broken in production!');
+    }
+    
     console.log('--------------------------------------------------');
     
-    // 4. Serve static files from the DIST directory
-    app.use(express.static(DIST_PUBLIC_PATH));
+    // 4. Serve static files from the DIST directory with explicit configuration
+    app.use(express.static(DIST_PUBLIC_PATH, {
+      maxAge: '1d', // Cache static assets for 1 day
+      etag: true,
+      lastModified: true,
+      index: false, // Don't serve index.html for directory requests - let SPA handle routing
+      setHeaders: (res, filePath) => {
+        // Set correct MIME types for images
+        if (filePath.endsWith('.png')) {
+          res.setHeader('Content-Type', 'image/png');
+        } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+          res.setHeader('Content-Type', 'image/jpeg');
+        } else if (filePath.endsWith('.svg')) {
+          res.setHeader('Content-Type', 'image/svg+xml');
+        }
+      }
+    }));
     
     // --- 2025 PRODUCTION SAFETY NET ---
     
@@ -175,12 +200,31 @@ ensureBiometricStorage()
         process.env.REPLIT_DEPLOYMENT === '1' || 
         process.env.REPLIT_DEPLOYMENT === 'true') {
       app.get("*", (req, res, next) => {
-        // Exclude API routes and static assets from this catch-all (safety measure)
-        if (req.path.startsWith('/api/') || req.path.startsWith('/assets/')) {
-          return next();
+        // CRITICAL FIX: Exclude ALL static asset paths from SPA catchall
+        // This prevents images from being served as HTML
+        const staticAssetPaths = [
+          '/api/',
+          '/assets/',
+          '/brand/',
+          '/payments/',
+          '/gallery/',
+          '/icons/',
+          '/docs/',
+          '/reports/',
+          '/documents/',
+          '/.well-known/'
+        ];
+        
+        // Also exclude requests for files with static asset extensions
+        const staticExtensions = ['.png', '.jpg', '.jpeg', '.svg', '.ico', '.webp', '.gif', '.pdf', '.json', '.xml', '.txt', '.woff', '.woff2', '.ttf', '.eot'];
+        const hasStaticExtension = staticExtensions.some(ext => req.path.toLowerCase().endsWith(ext));
+        
+        if (staticAssetPaths.some(path => req.path.startsWith(path)) || hasStaticExtension) {
+          // Let the request fall through - if express.static didn't handle it, return 404
+          return res.status(404).send('File not found');
         }
         
-        // Serve index.html with error handling callback (prevents silent hangs)
+        // Serve index.html for all other routes (SPA routing)
         res.sendFile(indexPath, (err) => {
           if (err) {
             console.error('❌ CRITICAL: Could not serve index.html from:', indexPath);
