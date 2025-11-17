@@ -1,0 +1,74 @@
+import express, { type Request, type Response, NextFunction } from "express";
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic } from "./vite";
+import { createServer } from "http";
+import path from "path";
+import fs from "fs";
+
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// --- 1. INTELLIGENT STATIC FILE SERVING (THE FIX) ---
+// We check multiple locations to find where Vite actually put the 'index.html'
+function getStaticRoot() {
+  const possiblePaths = [
+    path.join(process.cwd(), "dist", "public"), // Custom config
+    path.join(process.cwd(), "dist"),           // Standard Vite
+    path.join(process.cwd(), "public")          // Fallback
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(path.join(p, "index.html"))) {
+      console.log(`✅ Found website build at: ${p}`);
+      return p;
+    }
+  }
+  console.warn("⚠️ WARNING: Could not find 'index.html' in standard folders. Run 'npm run build'.");
+  return null;
+}
+
+// --- 2. REGISTER API ROUTES FIRST ---
+// This prevents the "handlers failed" error by ensuring APIs load before the website
+const server = createServer(app);
+
+(async () => {
+  // Initialize your Routes
+  registerRoutes(app);
+
+  // Setup Static Files or Dev Server
+  const staticRoot = getStaticRoot();
+
+  // IF we are in Production and found the build folder:
+  if (app.get("env") === "production" && staticRoot) {
+    // Serve static files (JS, CSS, Images)
+    app.use(express.static(staticRoot));
+
+    // SPA CATCH-ALL HANDLER (Crucial for React/Vite)
+    // If a route isn't an API, serve the index.html
+    app.get("*", (req, res) => {
+      if (req.path.startsWith("/api")) {
+        return res.status(404).json({ message: "API Endpoint Not Found" });
+      }
+      res.sendFile(path.join(staticRoot, "index.html"));
+    });
+  } else {
+    // Fallback to Vite Dev Server if no build found
+    await setupVite(app, server);
+  }
+
+  // --- 3. ANTI-CRASH HANDLERS (SAFETY NET) ---
+  // Catches errors instead of killing the server
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || 500;
+    const message = err.message || "Internal Server Error";
+    console.error("[Server Error]:", err);
+    res.status(status).json({ message });
+  });
+
+  // Start Server
+  const PORT = 5000;
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Pet Wash Server running on port ${PORT}`);
+  });
+})();
