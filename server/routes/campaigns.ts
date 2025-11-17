@@ -22,16 +22,24 @@ import { z } from 'zod';
 
 const router = Router();
 
-// Campaign Send Schema
+// SMART SCHEMA (2025 Pattern) - Using .describe() for AI context
 const sendCampaignSchema = z.object({
-  templateId: z.number().int().positive(),
-  channel: z.enum(['email', 'sms']), // REMOVED 'both' - email/SMS have separate template IDs
-  segment: z.enum(['all', 'loyal_customers', 'new_customers', 'club_members', 'custom']),
-  customRecipients: z.array(z.string().email()).optional(), // For custom segment
-  testMode: z.boolean().optional().default(false), // Send to test email only
-  testEmail: z.string().email().optional(),
-  testPhone: z.string().optional(), // For SMS test mode
-  locale: z.enum(['he', 'en']).optional().default('he'),
+  templateId: z.number().int().positive()
+    .describe('Email or SMS template ID from respective templates table'),
+  channel: z.enum(['email', 'sms'])
+    .describe('Communication channel (email/SMS have separate template IDs)'),
+  segment: z.enum(['all', 'loyal_customers', 'new_customers', 'club_members', 'custom'])
+    .describe('Customer segment to target'),
+  customRecipients: z.array(z.string().email()).optional()
+    .describe('Custom email list (only used when segment is custom)'),
+  testMode: z.boolean().optional().default(false)
+    .describe('Test mode sends to single contact instead of mass send'),
+  testEmail: z.string().email().optional()
+    .describe('Test email address for email campaign testing'),
+  testPhone: z.string().optional()
+    .describe('Test phone number for SMS campaign testing'),
+  locale: z.enum(['he', 'en']).optional().default('he')
+    .describe('Language for email/SMS content (Hebrew or English)'),
 });
 
 type SendCampaignRequest = z.infer<typeof sendCampaignSchema>;
@@ -47,8 +55,19 @@ router.post('/send', async (req: Request, res: Response) => {
   const correlationId = nanoid();
   
   try {
-    // Validate request
-    const campaign = sendCampaignSchema.parse(req.body);
+    // Use safeParse to check data without crashing the app
+    const result = sendCampaignSchema.safeParse(req.body);
+    
+    if (!result.success) {
+      logger.warn(`[Campaign ${correlationId}] Validation failed`, result.error.format());
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: result.error.format(),
+      });
+    }
+    
+    const campaign = result.data;
     
     logger.info(`[Campaign ${correlationId}] Starting campaign send`, {
       templateId: campaign.templateId,

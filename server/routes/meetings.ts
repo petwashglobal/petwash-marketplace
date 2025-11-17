@@ -19,42 +19,62 @@ const router = Router();
 
 // =================== SCHEMAS ===================
 
+// SMART SCHEMA (2025 Pattern) - Using .describe() for AI context
 const attendeeSchema = z.object({
-  attendeeType: z.enum(['admin', 'customer', 'external']),
-  adminUserId: z.string().optional(),
-  customerId: z.number().int().optional(),
-  externalName: z.string().optional(),
-  externalEmail: z.string().email().optional(),
-  externalPhone: z.string().optional(),
-  role: z.enum(['organizer', 'presenter', 'participant', 'optional']).optional(),
+  attendeeType: z.enum(['admin', 'customer', 'external'])
+    .describe('Type of attendee: internal admin, existing customer, or external contact'),
+  adminUserId: z.string().optional()
+    .describe('Admin user ID if attendeeType is admin'),
+  customerId: z.number().int().optional()
+    .describe('Customer ID if attendeeType is customer'),
+  externalName: z.string().trim().optional()
+    .describe('Full name for external contacts'),
+  externalEmail: z.string().email().optional()
+    .describe('Email address for external contacts'),
+  externalPhone: z.string().optional()
+    .describe('Phone number for external contacts (WhatsApp notifications)'),
+  role: z.enum(['organizer', 'presenter', 'participant', 'optional']).optional()
+    .describe('Attendee role in the meeting'),
 });
 
 const createMeetingSchema = z.object({
   // Basic meeting info
-  title: z.string().min(1).max(200),
-  description: z.string().optional(),
+  title: z.string().min(1).max(200).trim()
+    .describe('Meeting title/subject'),
+  description: z.string().trim().optional()
+    .describe('Meeting agenda or description'),
   
   // Scheduling
-  scheduledStart: z.string().datetime(),
-  scheduledEnd: z.string().datetime(),
+  scheduledStart: z.string().datetime()
+    .describe('Meeting start time (ISO 8601 format)'),
+  scheduledEnd: z.string().datetime()
+    .describe('Meeting end time (ISO 8601 format)'),
   
   // Location / Link
-  location: z.string().optional(), // physical address or virtual link
+  location: z.string().trim().optional()
+    .describe('Physical address or virtual meeting link (Zoom, Google Meet, etc.)'),
   
   // Related entities
-  leadId: z.number().int().optional(),
-  customerId: z.number().int().optional(),
-  opportunityId: z.number().int().optional(),
+  leadId: z.number().int().optional()
+    .describe('Related CRM lead ID'),
+  customerId: z.number().int().optional()
+    .describe('Related customer ID'),
+  opportunityId: z.number().int().optional()
+    .describe('Related sales opportunity ID'),
   
   // Organizer (must be admin user)
-  createdBy: z.string(), // admin user ID
+  createdBy: z.string()
+    .describe('Admin user ID who created the meeting'),
   
   // Attendees
-  attendees: z.array(attendeeSchema).min(1, 'At least one attendee required'),
+  attendees: z.array(attendeeSchema).min(1, 'At least one attendee required')
+    .describe('List of meeting attendees (admins, customers, or external contacts)'),
   
   // Notification preferences
-  sendInvitations: z.boolean().default(true),
-  locale: z.enum(['he', 'en']).default('he'),
+  sendInvitations: z.boolean().default(true)
+    .describe('Whether to send email/WhatsApp invitations immediately'),
+  locale: z.enum(['he', 'en']).default('he')
+    .describe('Language for notifications (Hebrew or English)'),
 });
 
 const updateMeetingSchema = z.object({
@@ -484,7 +504,19 @@ router.patch('/:id', async (req: Request, res: Response) => {
   try {
     logger.info(`[Meetings ${correlationId}] Updating meeting ${meetingId}`);
     
-    const validated = updateMeetingSchema.parse(req.body);
+    // Use safeParse to check data without crashing the app
+    const result = updateMeetingSchema.safeParse(req.body);
+    
+    if (!result.success) {
+      logger.warn(`[Meetings ${correlationId}] Update validation failed`, result.error.format());
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: result.error.format(),
+      });
+    }
+    
+    const validated = result.data;
     
     // Get existing meeting
     const [existing] = await db
@@ -666,7 +698,19 @@ router.patch('/:id/attendees/:attendeeId/response', async (req: Request, res: Re
   try {
     const attendeeId = parseInt(req.params.attendeeId);
     
-    const validated = updateAttendeeResponseSchema.parse(req.body);
+    // Use safeParse to check data without crashing the app
+    const result = updateAttendeeResponseSchema.safeParse(req.body);
+    
+    if (!result.success) {
+      logger.warn('[Meetings] Response validation failed', result.error.format());
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: result.error.format(),
+      });
+    }
+    
+    const validated = result.data;
     
     const [updated] = await db
       .update(crmMeetingAttendees)
