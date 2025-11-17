@@ -163,7 +163,12 @@ import {
   aiProductRecommendations,
   insertCustomerSubscriptionSchema,
   updateCustomerSubscriptionSchema,
-  customers
+  customers,
+  nayaxTransactions,
+  hrDocuments,
+  washHistory,
+  customerPets,
+  users
 } from "@shared/schema";
 import { z } from "zod";
 import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as utilsCalculateDiscount } from "./utils";
@@ -4691,17 +4696,52 @@ self.addEventListener('notificationclick', (event) => {
       // Get dashboard statistics
       const allUsers = await storage.getAllUsers();
       const totalUsers = allUsers.length;
-      const monthlyRevenue = 15000; // Mock data for now
+      
+      // Calculate REAL monthly revenue from Nayax transactions (current month, settled, positive only)
+      // Use SQL SUM for efficiency - exclude refunds/chargebacks
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const revenueResult = await db
+        .select({
+          total: sql<string>`COALESCE(SUM(CAST(${nayaxTransactions.amount} AS DECIMAL)), 0)`,
+        })
+        .from(nayaxTransactions)
+        .where(
+          and(
+            gte(nayaxTransactions.completedAt, startOfMonth),
+            eq(nayaxTransactions.status, 'settled'),
+            sql`CAST(${nayaxTransactions.amount} AS DECIMAL) > 0` // Positive amounts only
+          )
+        );
+      const monthlyRevenue = parseFloat(revenueResult[0]?.total || '0');
+      
       const lowStockItems = await storage.getLowStockItems();
-      const pendingDocuments = 3; // Mock data for now
+      
+      // Count REAL pending documents from HR system (use SQL COUNT for performance)
+      const pendingDocsResult = await db
+        .select({
+          count: sql<number>`count(*)::int`,
+        })
+        .from(hrDocuments)
+        .where(eq(hrDocuments.status, 'pending'));
+      const pendingDocuments = pendingDocsResult[0]?.count || 0;
+      
+      // Count REAL active subscriptions (use SQL COUNT for performance)
+      const activeSubsResult = await db
+        .select({
+          count: sql<number>`count(*)::int`,
+        })
+        .from(customerSubscriptions)
+        .where(eq(customerSubscriptions.status, 'active'));
+      const activeSubscriptions = activeSubsResult[0]?.count || 0;
+      
       const recentActivity = await storage.getAdminActivityLogs(undefined, 5);
 
       const stats = {
         totalUsers,
-        activeSubscriptions: 89, // Mock data
+        activeSubscriptions,
         lowStockItems: lowStockItems.length,
         pendingDocuments,
-        monthlyRevenue,
+        monthlyRevenue: Math.round(monthlyRevenue * 100) / 100, // Round to 2 decimals
         recentActivity: recentActivity.map(activity => ({
           id: activity.id.toString(),
           action: activity.action,
@@ -5676,6 +5716,37 @@ self.addEventListener('notificationclick', (event) => {
         };
       }).sort((a, b) => b.revenue - a.revenue);
 
+      // Calculate REAL retention rate from wash history
+      // Measure repeat purchases in LAST 30 days (recent activity retention)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      // Get users with wash activity in last 30 days
+      const recentWashes = await db
+        .select({
+          userId: washHistory.userId,
+          purchaseCount: sql<number>`count(*)::int`,
+        })
+        .from(washHistory)
+        .where(
+          and(
+            gte(washHistory.createdAt, thirtyDaysAgo),
+            eq(washHistory.status, 'completed')
+          )
+        )
+        .groupBy(washHistory.userId);
+      
+      // Total users who purchased in last 30 days
+      const totalRecentUsers = recentWashes.length;
+      
+      // Users who made 2+ purchases in last 30 days (returning customers)
+      const returningCustomers = recentWashes.filter(u => u.purchaseCount >= 2).length;
+      
+      // Calculate retention rate: (returning customers / total customers) * 100
+      const retentionRate = totalRecentUsers > 0
+        ? Math.round((returningCustomers / totalRecentUsers) * 1000) / 10 // Round to 1 decimal
+        : 0;
+
       // Loyalty program impact
       const loyaltyImpact = {
         totalCustomers: allUsers.length,
@@ -5686,7 +5757,7 @@ self.addEventListener('notificationclick', (event) => {
         averageSpendNonLoyalty: Math.round(allUsers.filter(u => !u.isClubMember)
           .reduce((sum, u) => sum + parseFloat(u.totalSpent || '0'), 0) / 
           allUsers.filter(u => !u.isClubMember).length || 0),
-        retentionRate: 85.6, // Mock retention rate
+        retentionRate, // REAL retention rate from database
         loyaltyRevenue: monthlyRevenue[monthlyRevenue.length - 1].loyaltyImpact,
       };
 
@@ -11091,55 +11162,64 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
-  // Get user's pets
+  // Get user's pets - REAL DATABASE INTEGRATION
   app.get('/api/pets', async (req, res) => {
     try {
-      // Mock data for demo - will fetch from database in production
-      const mockPets = [
-        {
-          id: 1,
-          customerId: 1,
-          name: 'Buddy',
-          breed: 'Golden Retriever',
-          age: 3,
-          weight: '30kg',
-          lastWashDate: '2025-10-01',
-          nextWashDue: '2025-11-01',
-          nextVaccinationDate: '2025-12-15',
-          vaccinationNotes: 'Rabies booster due',
-          reminderEnabled: true,
-        },
-        {
-          id: 2,
-          customerId: 1,
-          name: 'Max',
-          breed: 'Labrador',
-          age: 5,
-          weight: '35kg',
-          lastWashDate: '2025-09-20',
-          nextWashDue: '2025-10-20',
-          nextVaccinationDate: '2025-11-30',
-          vaccinationNotes: 'Annual checkup',
-          reminderEnabled: true,
-        },
-      ];
-
-      res.json(mockPets);
+      const userId = (req.session as any)?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+      
+      // Fetch REAL pets from database
+      const userPets = await db
+        .select()
+        .from(customerPets)
+        .where(eq(customerPets.userId, userId));
+      
+      res.json(userPets);
     } catch (error: any) {
       logger.error('[PetCare] Fetch pets failed', error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Get user loyalty profile (tier, washes, gift balance)
+  // Get user loyalty profile (tier, washes, gift balance) - REAL DATABASE INTEGRATION
   app.get('/api/loyalty/user-profile', async (req, res) => {
     try {
-      // Mock data for demo - will fetch from database in production
-      // In production: query database for user's total washes, calculate tier dynamically
-      const totalWashes = 5; // Mock: from database wash history
-      const giftBalance = 35.50; // Mock: from gift_cards table
+      const userId = (req.session as any)?.userId;
       
-      // Calculate tier based on wash count (using loyalty tier logic)
+      if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+      
+      // Fetch REAL user data from database (gracefully handle new users)
+      const userData = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      
+      // For authenticated users without database records, return default profile
+      const user = userData.length > 0 ? userData[0] : null;
+      const giftBalance = user ? parseFloat(user.giftCardBalance?.toString() || '0') : 0;
+      
+      // Count REAL total washes from wash history (returns empty array if no history)
+      const washesCountResult = await db
+        .select({
+          count: sql<number>`count(*)::int`,
+        })
+        .from(washHistory)
+        .where(
+          and(
+            eq(washHistory.userId, userId),
+            eq(washHistory.status, 'completed')
+          )
+        );
+      
+      const totalWashes = washesCountResult[0]?.count || 0;
+      
+      // Calculate tier based on REAL wash count (using loyalty tier logic)
       let tier: 'new' | 'silver' | 'gold' | 'platinum' = 'new';
       if (totalWashes >= 25) tier = 'platinum';
       else if (totalWashes >= 10) tier = 'gold';
@@ -11149,15 +11229,15 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         tier,
         totalWashes,
         giftBalance,
-        washesUntilNextTier: tier === 'new' ? 3 - totalWashes : 
-                             tier === 'silver' ? 10 - totalWashes :
-                             tier === 'gold' ? 25 - totalWashes : 0,
+        washesUntilNextTier: tier === 'new' ? Math.max(0, 3 - totalWashes) : 
+                             tier === 'silver' ? Math.max(0, 10 - totalWashes) :
+                             tier === 'gold' ? Math.max(0, 25 - totalWashes) : 0,
         nextTier: tier === 'new' ? 'silver' : 
                  tier === 'silver' ? 'gold' :
                  tier === 'gold' ? 'platinum' : null,
       };
 
-      logger.info('[Loyalty] User profile fetched', { tier, totalWashes, giftBalance });
+      logger.info('[Loyalty] User profile fetched (REAL DATA)', { userId, tier, totalWashes, giftBalance, hasUserRecord: !!user });
       res.json(loyaltyProfile);
     } catch (error: any) {
       logger.error('[Loyalty] Fetch profile failed', error);
