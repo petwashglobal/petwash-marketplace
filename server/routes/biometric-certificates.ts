@@ -427,8 +427,14 @@ router.get(
     try {
       const { uid } = req.firebaseUser!;
 
-      // TODO: Add admin role check
-      // For now, allow any authenticated user (add proper RBAC later)
+      // ✅ SECURITY: Admin role check via Firestore
+      const { db: firestoreDb } = await import('../lib/firebase-admin');
+      const userDoc = await firestoreDb.collection('users').doc(uid).get();
+      const userData = userDoc.data();
+      
+      if (userData?.role !== 'admin' && userData?.role !== 'super_admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
 
       const pendingVerifications = await certificateVerification.getPendingVerifications();
 
@@ -475,7 +481,14 @@ router.post(
         return res.status(400).json({ error: 'Invalid verification ID' });
       }
 
-      // TODO: Add admin role check
+      // ✅ SECURITY: Admin role check via Firestore
+      const { db: firestoreDb } = await import('../lib/firebase-admin');
+      const userDoc = await firestoreDb.collection('users').doc(uid).get();
+      const userData = userDoc.data();
+      
+      if (userData?.role !== 'admin' && userData?.role !== 'super_admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
 
       await certificateVerification.approveVerification(
         verificationId,
@@ -522,7 +535,14 @@ router.post(
         return res.status(400).json({ error: 'Rejection reason is required' });
       }
 
-      // TODO: Add admin role check
+      // ✅ SECURITY: Admin role check via Firestore
+      const { db: firestoreDb } = await import('../lib/firebase-admin');
+      const userDoc = await firestoreDb.collection('users').doc(uid).get();
+      const userData = userDoc.data();
+      
+      if (userData?.role !== 'admin' && userData?.role !== 'super_admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
 
       await certificateVerification.rejectVerification(
         verificationId,

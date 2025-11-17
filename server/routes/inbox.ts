@@ -182,13 +182,27 @@ router.patch('/franchise/:franchiseId/:messageId/acknowledge', validateFirebaseT
 // ADMIN ROUTES (Protected)
 // ============================================
 
-const isAdmin = (req: any, res: any, next: any) => {
-  // TODO: Implement proper admin check
-  const adminEmail = req.firebaseUser?.email;
-  if (adminEmail === 'nirhadad1@gmail.com' || adminEmail?.includes('@petwash.co.il')) {
-    next();
-  } else {
-    res.status(403).json({ error: 'Admin access required' });
+const isAdmin = async (req: any, res: any, next: any) => {
+  // ✅ SECURITY: Proper admin role check via Firestore
+  const uid = req.firebaseUser?.uid;
+  
+  if (!uid) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  try {
+    const { db: firestoreDb } = await import('../lib/firebase-admin');
+    const userDoc = await firestoreDb.collection('users').doc(uid).get();
+    const userData = userDoc.data();
+    
+    if (userData?.role === 'admin' || userData?.role === 'super_admin') {
+      next();
+    } else {
+      res.status(403).json({ error: 'Admin access required' });
+    }
+  } catch (error) {
+    logger.error('[Inbox] Admin check error:', error);
+    res.status(500).json({ error: 'Authentication error' });
   }
 };
 

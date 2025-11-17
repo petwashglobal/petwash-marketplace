@@ -150,7 +150,12 @@ router.get('/analytics/my-activity', requireAuth, async (req: any, res) => {
  */
 router.get('/analytics/revenue/by-platform', requireAuth, async (req: any, res) => {
   try {
-    // TODO: Add admin check
+    // ✅ SECURITY: Admin-only endpoint
+    const { checkUserIsAdmin } = await import('../lib/adminCheck');
+    if (!await checkUserIsAdmin(req.user.uid)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
     const startDate = new Date(req.query.startDate as string);
     const endDate = new Date(req.query.endDate as string);
     
@@ -180,7 +185,12 @@ router.get('/analytics/health', async (req, res) => {
  */
 router.get('/analytics/insights', requireAuth, async (req: any, res) => {
   try {
-    // TODO: Add admin check
+    // ✅ SECURITY: Admin-only endpoint
+    const { checkUserIsAdmin } = await import('../lib/adminCheck');
+    if (!await checkUserIsAdmin(req.user.uid)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
     const timeframe = req.query.timeframe as 'day' | 'week' | 'month' || 'week';
     const insights = await analytics.generateInsights(timeframe);
     res.json({ insights });
@@ -197,7 +207,12 @@ router.get('/analytics/insights', requireAuth, async (req: any, res) => {
  */
 router.get('/events/recent', requireAuth, async (req: any, res) => {
   try {
-    // TODO: Add admin check
+    // ✅ SECURITY: Admin-only endpoint
+    const { checkUserIsAdmin } = await import('../lib/adminCheck');
+    if (!await checkUserIsAdmin(req.user.uid)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
     const limit = parseInt(req.query.limit as string) || 100;
     const events = eventBus.getHistory(limit);
     res.json({ events });
@@ -295,7 +310,12 @@ router.post('/cdp/refresh', requireAuth, async (req: any, res) => {
  */
 router.get('/marketing/campaigns', requireAuth, async (req: any, res) => {
   try {
-    // TODO: Add admin check
+    // ✅ SECURITY: Admin-only endpoint
+    const { checkUserIsAdmin } = await import('../lib/adminCheck');
+    if (!await checkUserIsAdmin(req.user.uid)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
     const campaigns = await programmatic.getAllCampaigns();
     res.json({ campaigns });
   } catch (error) {
@@ -309,7 +329,12 @@ router.get('/marketing/campaigns', requireAuth, async (req: any, res) => {
  */
 router.post('/marketing/campaigns', requireAuth, async (req: any, res) => {
   try {
-    // TODO: Add admin check
+    // ✅ SECURITY: Admin-only endpoint
+    const { checkUserIsAdmin } = await import('../lib/adminCheck');
+    if (!await checkUserIsAdmin(req.user.uid)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
     const campaign = await programmatic.createCampaign(req.body);
     res.json(campaign);
   } catch (error) {
@@ -323,7 +348,12 @@ router.post('/marketing/campaigns', requireAuth, async (req: any, res) => {
  */
 router.post('/marketing/campaigns/:id/launch', requireAuth, async (req: any, res) => {
   try {
-    // TODO: Add admin check
+    // ✅ SECURITY: Admin-only endpoint
+    const { checkUserIsAdmin } = await import('../lib/adminCheck');
+    if (!await checkUserIsAdmin(req.user.uid)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
     await programmatic.launchCampaign(req.params.id);
     res.json({ success: true });
   } catch (error) {
@@ -337,7 +367,12 @@ router.post('/marketing/campaigns/:id/launch', requireAuth, async (req: any, res
  */
 router.get('/marketing/campaigns/:id/performance', requireAuth, async (req: any, res) => {
   try {
-    // TODO: Add admin check
+    // ✅ SECURITY: Admin-only endpoint
+    const { checkUserIsAdmin } = await import('../lib/adminCheck');
+    if (!await checkUserIsAdmin(req.user.uid)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
     const performance = await programmatic.getCampaignPerformance(req.params.id);
     res.json(performance);
   } catch (error) {
