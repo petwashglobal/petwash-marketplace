@@ -105,16 +105,15 @@ export default function PolicyManagementDashboard() {
   const expiringCount = Array.isArray(expiringCerts) ? expiringCerts.length : 0;
 
   return (
-    <div className="min-h-screen bg-white p-6" data-testid="policy-management-dashboard">
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Policy Management & Compliance"
+      subtitle="Document versioning, acknowledgments, and compliance tracking"
+    >
+      <div className="min-h-screen bg-white p-6" data-testid="policy-management-dashboard">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-metallic-gold via-metallic-rose to-metallic-platinum bg-clip-text text-transparent mb-2" data-testid="text-page-title">
-              Policy Management & Compliance
-            </h1>
-            <p className="text-muted-foreground">Document versioning, acknowledgments, and compliance tracking</p>
-          </div>
+        <div className="flex items-center justify-end">
           <div className="flex gap-2">
             <Button variant="outline" className="border-metallic-gold text-metallic-gold hover:bg-metallic-gold/10" data-testid="button-export">
               <Download className="w-4 h-4 mr-2" />
@@ -406,5 +405,6 @@ export default function PolicyManagementDashboard() {
         </TabsContent>
       </Tabs>
     </div>
+    </LuxuryPageWrapper>
   );
 }

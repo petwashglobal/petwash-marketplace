@@ -114,16 +114,13 @@ export default function SuppliersDashboard() {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="page-title">
-            Supplier Management
-          </h1>
-          <p className="text-muted-foreground mt-2" data-testid="page-description">
-            Manage vendor registry, contracts, payment tracking, and quality scorecards
-          </p>
-        </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Supplier Management"
+      subtitle="Manage vendor registry, contracts, payment tracking, and quality scorecards"
+    >
+      <div className="container mx-auto py-8">
+      <div className="flex justify-end items-center mb-6">
         <Button onClick={() => setShowCreateDialog(true)} data-testid="button-add-supplier">
           <Plus className="w-4 h-4 mr-2" />
           Add Supplier
@@ -455,5 +452,6 @@ export default function SuppliersDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+    </LuxuryPageWrapper>
   );
 }
