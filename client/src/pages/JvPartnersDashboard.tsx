@@ -279,6 +279,7 @@ export default function JvPartnersDashboard() {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </LuxuryPageWrapper>
   );
 }
