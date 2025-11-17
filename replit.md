@@ -3,8 +3,28 @@
 ## Overview
 Pet Wash™ is a full-stack enterprise platform designed for market leadership and global franchise expansion in the pet care industry.
 
-## Recent Changes (November 15, 2025)
-**✅ Deployment Blockers Fixed:**
+## Recent Changes (November 17, 2025)
+
+**✅ TASK #7 & #8 COMPLETED:**
+- **Email/SMS Campaign System**: Production-ready personalized campaigns with channel-specific template fetching (CRITICAL BUG FIX: SMS-only campaigns now work correctly - templates fetched from correct tables)
+  - Route: `POST /api/campaigns/send`
+  - Features: Test mode, segment targeting (all/loyal/new/club/custom), GDPR consent integration
+  - Template personalization with 30+ placeholders (customer name, loyalty tier, points balance, etc.)
+  - Zod safeParse validation with `.describe()` AI context pattern
+  
+- **Meeting Attendee Notifications**: Multi-channel WhatsApp + Email invitation system
+  - Routes: `POST /api/meetings`, `PATCH /api/meetings/:id`, `PATCH /api/meetings/:id/attendees/:attendeeId/response`
+  - Features: Multi-attendee types (admin/customer/external), RSVP tracking (accept/decline/tentative), automatic update/cancel notifications
+  - Database: `crmMeetingAttendees` table with unique indexes
+  - Bilingual support (Hebrew/English)
+  
+- **Code Quality Improvements**: Applied 2025 Zod best practices across all validation endpoints
+  - Switched from `.parse()` to `.safeParse()` for graceful error handling
+  - Added `.describe()` to all schema fields for AI context and documentation
+  - Structured 400 error responses with `result.error.format()`
+  - Created `server/lib/env-validation.ts` for startup environment validation (not yet integrated)
+
+**Previous Changes (November 15, 2025):**
 - **CRITICAL FIX**: CORS now allows Cloud Run deployments (`.run.app` domains) - website will now load on Chrome/Safari!
 - Security hardened: Changed from `.includes()` to secure `hostname.endsWith()` validation to prevent subdomain attacks
 - Added lowercase hostname normalization for extra security
