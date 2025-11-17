@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, Droplets, AlertCircle, CheckCircle2, CloudRain, Sun, Snowflake, Thermometer, Sparkles, Heart, Star, Gift, QrCode, Download, Award, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { calculateTier, TIER_CONFIG } from '@/lib/loyalty';
@@ -283,22 +284,13 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
   }
 
   return (
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title={isHebrew ? '🐾 מתכנן טיפול יוקרתי לחיות מחמד' : '🐾 Luxury Pet Care Planner'}
+      subtitle={isHebrew ? 'ניהול חיסונים חכם, תזמון רחצות פרימיום, AI מתקדם + מערכת נאמנות VIP' : 'Smart vaccine management, premium wash scheduling, Advanced AI + VIP Loyalty System'}
+      icon={<Sparkles className="w-8 h-8 text-amber-500" />}
+    >
     <div className="container mx-auto px-4 py-8 max-w-7xl" dir={isHebrew ? 'rtl' : 'ltr'}>
-      {/* Luxury Hero Section */}
-      <div className="mb-12 text-center">
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <Sparkles className="h-12 w-12 icon-glow-gold animate-pulse" />
-          <h1 className="text-5xl font-bold text-metallic-gold">
-            {isHebrew ? '🐾 מתכנן טיפול יוקרתי לחיות מחמד' : '🐾 Luxury Pet Care Planner'}
-          </h1>
-          <Heart className="h-12 w-12 icon-glow-rose animate-pulse" />
-        </div>
-        <p className="text-lg text-muted-foreground mt-4 max-w-2xl mx-auto">
-          {isHebrew
-            ? '✨ ניהול חיסונים חכם, תזמון רחצות פרימיום, AI מתקדם + מערכת נאמנות VIP 🌟'
-            : '✨ Smart vaccine management, premium wash scheduling, Advanced AI + VIP Loyalty System 🌟'}
-        </p>
-      </div>
 
       {/* 2026 INNOVATIVE HUB: LOYALTY WALLET */}
       <Card className="mb-8 border-metallic-platinum hover-glow-platinum shadow-luxury transition-all duration-300 hover:scale-[1.01]">
@@ -692,5 +684,6 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
         </Card>
       </div>
     </div>
+    </LuxuryPageWrapper>
   );
 }

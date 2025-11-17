@@ -83,6 +83,7 @@ const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
 const Pets = lazy(() => import("@/pages/Pets"));
 const PetCarePlanner = lazy(() => import("@/pages/PetCarePlanner"));
+const EnterpriseFeaturesShowcase = lazy(() => import("@/pages/EnterpriseFeaturesShowcase"));
 const PetWashCircle = lazy(() => import("@/pages/PetWashCircle"));
 // DISABLED: PlushLab - Pet Avatar Creator (frozen for now, keep for future use)
 // const PlushLab = lazy(() => import("@/pages/PlushLab"));
@@ -319,6 +320,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/auth-test">{() => <AuthTest />}</Route>
         <Route path="/weather-test">{() => <WeatherTest />}</Route>
+        <Route path="/enterprise-features">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <EnterpriseFeaturesShowcase />
+            </Suspense>
+          )}
+        </Route>
         <Route path="/weather-planner">
           {() => (
             <Suspense fallback={<PageLoader />}>
