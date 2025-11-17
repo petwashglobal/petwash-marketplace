@@ -24,19 +24,26 @@ import {
   Sun,
   Calendar,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
 
 export default function EnterpriseFeaturesShowcase() {
   const [selectedCity, setSelectedCity] = useState('Tel Aviv');
 
-  // Demo: Fetch weather data
-  const { data: weatherData, isLoading: weatherLoading } = useQuery({
-    queryKey: [`/api/weather/forecast?location=${encodeURIComponent(selectedCity)}&days=7`],
+  // Demo: Fetch REAL current weather data
+  const { data: currentWeatherData, isLoading: weatherLoading, isError: weatherError } = useQuery({
+    queryKey: [`/api/weather/forecast?location=${encodeURIComponent(selectedCity)}`],
     enabled: !!selectedCity,
   });
 
-  // Demo: Fetch air quality
-  const { data: airQualityDemo } = useQuery({
+  // Demo: Fetch REAL 7-day forecast
+  const { data: forecastData, isLoading: forecastLoading, isError: forecastError } = useQuery({
+    queryKey: [`/api/weather/7-day-planner?location=${encodeURIComponent(selectedCity)}&lang=en`],
+    enabled: !!selectedCity,
+  });
+
+  // Demo: Fetch REAL air quality data
+  const { data: airQualityResponse, isLoading: aqiLoading, isError: aqiError } = useQuery({
     queryKey: ['/api/environment/air-quality?lat=32.0853&lng=34.7818'], // Tel Aviv coordinates
   });
 
@@ -46,10 +53,10 @@ export default function EnterpriseFeaturesShowcase() {
       icon: <Cloud className="w-6 h-6" />,
       description: '13,000+ API calls/day capacity across 4 premium weather sources',
       sources: [
-        { name: 'Open-Meteo', capacity: '10,000 calls/day', status: 'Primary', color: 'green' },
-        { name: 'OpenWeatherMap', capacity: '1,000 calls/day', status: 'Backup', color: 'blue' },
-        { name: 'WeatherAPI.com', capacity: '1,000 calls/day', status: 'Alerts', color: 'orange' },
-        { name: 'Visual Crossing', capacity: '1,000 calls/day', status: 'Historical', color: 'purple' },
+        { name: 'Open-Meteo', capacity: '10,000 calls/day', status: 'Primary', color: 'default' },
+        { name: 'OpenWeatherMap', capacity: '1,000 calls/day', status: 'Backup', color: 'secondary' },
+        { name: 'WeatherAPI.com', capacity: '1,000 calls/day', status: 'Alerts', color: 'destructive' },
+        { name: 'Visual Crossing', capacity: '1,000 calls/day', status: 'Historical', color: 'outline' },
       ],
       features: [
         '7-14 day forecasts',
@@ -71,58 +78,23 @@ export default function EnterpriseFeaturesShowcase() {
         'Gemini 2.5 Flash pet safety recommendations',
       ],
     },
-    maps: {
-      title: 'Google Maps Integration',
-      icon: <Map className="w-6 h-6" />,
-      description: 'Location services, geocoding, and places autocomplete',
-      features: [
-        'Google Maps Places API',
-        'Geocoding & reverse geocoding',
-        'Places autocomplete UI component',
-        'Route planning',
-        'Station location mapping',
-      ],
-    },
-    sheets: {
-      title: 'Google Sheets Integration',
-      icon: <FileSpreadsheet className="w-6 h-6" />,
-      description: 'Centralized form submission tracking across all 8 platforms',
-      platforms: [
-        'K9000 Wash Bookings',
-        'Sitter Suite Bookings',
-        'Walk My Pet Bookings',
-        'PetTrek Bookings',
-        'Academy Bookings',
-        'Contact & Inquiries',
-        'Feedback & Reviews',
-        'Newsletter Subscriptions',
-        'Franchise Inquiries',
-      ],
-    },
-    planners: {
-      title: 'Weather Planner Suite',
-      icon: <Calendar className="w-6 h-6" />,
-      description: 'Role-aware weather planning with AI recommendations',
-      views: [
-        { name: 'Public View', route: '/weather-planner', desc: 'General 7-day forecasts' },
-        { name: 'Client View', route: '/pet-care-planner', desc: 'Pet wash scheduling + loyalty' },
-        { name: 'Employee View', route: '/weather-planner', desc: 'Station-specific forecasts' },
-        { name: 'Executive View', route: '/weather-planner', desc: 'Franchise-wide analytics' },
-        { name: 'Day Planner', route: '/pet-wash-day-planner', desc: 'Best wash day finder' },
-      ],
-    },
-    ai: {
-      title: 'Gemini AI Integration',
-      icon: <Brain className="w-6 h-6" />,
-      description: 'Gemini 2.5 Flash for pet care insights and recommendations',
-      features: [
-        'Pet safety recommendations',
-        'Environmental risk analysis',
-        'Wash timing optimization',
-        'Allergen warnings',
-        'Activity planning',
-      ],
-    },
+  };
+
+  const getWeatherIcon = (condition: string) => {
+    const lower = condition?.toLowerCase() || '';
+    if (lower.includes('rain')) return '🌧️';
+    if (lower.includes('cloud')) return '☁️';
+    if (lower.includes('sun') || lower.includes('clear')) return '☀️';
+    if (lower.includes('snow')) return '❄️';
+    return '🌤️';
+  };
+
+  const getAQIStatus = (aqi: number) => {
+    if (aqi <= 50) return { label: 'Good', color: 'bg-green-500', text: 'Excellent for pet activities' };
+    if (aqi <= 100) return { label: 'Moderate', color: 'bg-yellow-500', text: 'Acceptable for most pets' };
+    if (aqi <= 150) return { label: 'Unhealthy (Sensitive)', color: 'bg-orange-500', text: 'Limit outdoor time' };
+    if (aqi <= 200) return { label: 'Unhealthy', color: 'bg-red-500', text: 'Avoid outdoor activities' };
+    return { label: 'Very Unhealthy', color: 'bg-purple-500', text: 'Keep pets indoors' };
   };
 
   return (
@@ -190,7 +162,7 @@ export default function EnterpriseFeaturesShowcase() {
             <TabsTrigger value="ai" data-testid="tab-ai">AI</TabsTrigger>
           </TabsList>
 
-          {/* Weather Tab */}
+          {/* Weather Tab - SHOW REAL DATA */}
           <TabsContent value="weather" className="space-y-4">
             <Card>
               <CardHeader>
@@ -223,36 +195,124 @@ export default function EnterpriseFeaturesShowcase() {
                   </div>
                 </div>
 
-                {/* Weather Features */}
-                <div>
-                  <h3 className="font-semibold mb-3">Capabilities</h3>
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {features.weather.features.map((feature) => (
-                      <div key={feature} className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        <span className="text-sm">{feature}</span>
-                      </div>
-                    ))}
+                {/* LIVE WEATHER DATA - VISIBLE TO PARTNERS */}
+                <div className="border-2 border-blue-300 dark:border-blue-700 rounded-lg p-6 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sparkles className="w-5 h-5 text-blue-600" />
+                    <h3 className="text-lg font-bold text-blue-900 dark:text-blue-100">
+                      🌍 Live Weather Data - {selectedCity}
+                    </h3>
                   </div>
-                </div>
 
-                {/* Live Demo */}
-                {weatherData && (
-                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="w-4 h-4 text-blue-600" />
-                      <h4 className="font-semibold text-blue-900 dark:text-blue-100">Live Weather Demo - {selectedCity}</h4>
+                  {(weatherLoading || forecastLoading) && (
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Fetching real-time weather data...</span>
                     </div>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Real-time data from multi-source aggregator (see console for full response)
-                    </p>
-                  </div>
-                )}
+                  )}
+
+                  {currentWeatherData?.success && currentWeatherData?.weather ? (
+                    <div className="space-y-4">
+                      {/* Current Weather */}
+                      <Card className="bg-white/80 dark:bg-gray-900/80">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Current Conditions</p>
+                              <p className="text-3xl font-bold">
+                                {Math.round(currentWeatherData.weather.temperature)}°C
+                              </p>
+                              <p className="text-sm mt-1">{currentWeatherData.weather.condition}</p>
+                            </div>
+                            <div className="text-6xl">
+                              {getWeatherIcon(currentWeatherData.weather.condition)}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 mt-4 text-sm">
+                            <div>
+                              <Droplets className="w-4 h-4 inline mr-1 text-blue-500" />
+                              {currentWeatherData.weather.humidity}% humidity
+                            </div>
+                            <div>
+                              <Wind className="w-4 h-4 inline mr-1 text-gray-500" />
+                              {currentWeatherData.weather.windSpeed} km/h
+                            </div>
+                            <div>
+                              <ThermometerSun className="w-4 h-4 inline mr-1 text-orange-500" />
+                              Feels {Math.round(currentWeatherData.weather.feelsLike)}°C
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* 7-Day Forecast */}
+                      {forecastData?.success && forecastData?.forecast && forecastData.forecast.length > 0 ? (
+                        <div>
+                          <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">
+                            7-Day Forecast
+                          </h4>
+                          <div className="grid gap-2 md:grid-cols-7">
+                            {forecastData.forecast.slice(0, 7).map((day: any, index: number) => (
+                              <Card key={index} className="bg-white/80 dark:bg-gray-900/80">
+                                <CardContent className="p-3 text-center">
+                                  <p className="text-xs font-medium">
+                                    {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                                  </p>
+                                  <div className="text-2xl my-2">
+                                    {day.condition?.icon || getWeatherIcon(day.condition?.condition || '')}
+                                  </div>
+                                  <p className="text-sm font-bold">
+                                    {Math.round(day.temperature?.max || 0)}°
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {Math.round(day.temperature?.min || 0)}°
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      ) : forecastLoading ? null : (
+                        <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                          <CardContent className="p-4 text-center">
+                            <AlertTriangle className="w-6 h-6 text-amber-600 mx-auto mb-2" />
+                            <p className="text-sm text-amber-700 dark:text-amber-300">
+                              7-day forecast unavailable. Location may not be supported or API credentials needed.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
+                        <CheckCircle2 className="w-4 h-4" />
+                        ✅ Multi-source aggregation active | Data refreshed every 15 minutes
+                      </div>
+                    </div>
+                  ) : !weatherLoading && weatherError ? (
+                    <Card className="bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800">
+                      <CardContent className="p-4 text-center">
+                        <AlertTriangle className="w-6 h-6 text-red-600 mx-auto mb-2" />
+                        <p className="text-sm text-red-700 dark:text-red-300">
+                          Weather API error. Please check backend configuration and API keys.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : !weatherLoading ? (
+                    <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                      <CardContent className="p-4 text-center">
+                        <AlertTriangle className="w-6 h-6 text-amber-600 mx-auto mb-2" />
+                        <p className="text-sm text-amber-700 dark:text-amber-300">
+                          No weather data available for "{selectedCity}". Try a different location or check API configuration.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Environment Tab */}
+          {/* Environment Tab - SHOW REAL AQI DATA */}
           <TabsContent value="environment" className="space-y-4">
             <Card>
               <CardHeader>
@@ -264,7 +324,7 @@ export default function EnterpriseFeaturesShowcase() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="grid gap-2">
                   {features.environment.capabilities.map((cap) => (
                     <div key={cap} className="flex items-center gap-2">
@@ -272,6 +332,106 @@ export default function EnterpriseFeaturesShowcase() {
                       <span className="text-sm">{cap}</span>
                     </div>
                   ))}
+                </div>
+
+                {/* LIVE AIR QUALITY DATA - VISIBLE TO PARTNERS */}
+                <div className="border-2 border-green-300 dark:border-green-700 rounded-lg p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Leaf className="w-5 h-5 text-green-600" />
+                    <h3 className="text-lg font-bold text-green-900 dark:text-green-100">
+                      🌿 Live Air Quality - Tel Aviv
+                    </h3>
+                  </div>
+
+                  {aqiLoading && (
+                    <div className="flex items-center gap-2 text-green-700">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Fetching real-time air quality data...</span>
+                    </div>
+                  )}
+
+                  {airQualityResponse?.success && airQualityResponse?.data?.aqi ? (
+                    <div className="space-y-4">
+                      {/* AQI Score */}
+                      <Card className="bg-white/80 dark:bg-gray-900/80">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Air Quality Index (US EPA)</p>
+                              <p className="text-4xl font-bold">
+                                {airQualityResponse.data.aqi}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Dominant: {airQualityResponse.data.dominantPollutant}
+                              </p>
+                            </div>
+                            <div className={`w-16 h-16 rounded-full ${getAQIStatus(airQualityResponse.data.aqi).color} flex items-center justify-center`}>
+                              <span className="text-2xl text-white font-bold">
+                                {getAQIStatus(airQualityResponse.data.aqi).label.charAt(0)}
+                              </span>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="mb-2">
+                            {airQualityResponse.data.category}
+                          </Badge>
+                          <p className="text-sm text-muted-foreground">
+                            {airQualityResponse.data.healthRecommendations?.generalPopulation || getAQIStatus(airQualityResponse.data.aqi).text}
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      {/* Pollutants Breakdown */}
+                      {airQualityResponse.data.pollutants && (
+                        <div className="grid gap-2 md:grid-cols-3">
+                          {Object.entries(airQualityResponse.data.pollutants)
+                            .filter(([_, value]) => value != null)
+                            .slice(0, 6)
+                            .map(([pollutant, value]: [string, any]) => (
+                            <Card key={pollutant} className="bg-white/80 dark:bg-gray-900/80">
+                              <CardContent className="p-3">
+                                <p className="text-xs font-medium text-muted-foreground">{pollutant.toUpperCase()}</p>
+                                <p className="text-lg font-bold">
+                                  {typeof value === 'number' ? value.toFixed(1) : 'N/A'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  μg/m³
+                                </p>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
+                        <CheckCircle2 className="w-4 h-4" />
+                        ✅ Google Air Quality API | Data updated hourly
+                      </div>
+                    </div>
+                  ) : !aqiLoading && aqiError ? (
+                    <Card className="bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800">
+                      <CardContent className="p-4 text-center">
+                        <AlertTriangle className="w-6 h-6 text-red-600 mx-auto mb-2" />
+                        <p className="text-sm text-red-700 dark:text-red-300 font-medium">
+                          Air Quality API Error
+                        </p>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                          Please check Google Air Quality API credentials and configuration.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : !aqiLoading ? (
+                    <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                      <CardContent className="p-4 text-center">
+                        <AlertTriangle className="w-6 h-6 text-amber-600 mx-auto mb-2" />
+                        <p className="text-sm text-amber-700 dark:text-amber-300 font-medium">
+                          Air Quality Data Unavailable
+                        </p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                          This location may not be covered by Google Air Quality API, or credentials may need to be configured.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : null}
                 </div>
 
                 {/* API Endpoints */}
@@ -284,18 +444,6 @@ export default function EnterpriseFeaturesShowcase() {
                     <div>✅ GET /api/environment/combined</div>
                   </div>
                 </div>
-
-                {airQualityDemo && (
-                  <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="w-4 h-4 text-green-600" />
-                      <h4 className="font-semibold text-green-900 dark:text-green-100">Live Air Quality - Tel Aviv</h4>
-                    </div>
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      Real-time AQI data from Google Air Quality API
-                    </p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -305,21 +453,40 @@ export default function EnterpriseFeaturesShowcase() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  {features.maps.icon}
+                  <Map className="w-6 h-6" />
                   <div>
-                    <CardTitle>{features.maps.title}</CardTitle>
-                    <CardDescription>{features.maps.description}</CardDescription>
+                    <CardTitle>Google Maps Integration</CardTitle>
+                    <CardDescription>Location services, geocoding, and places autocomplete</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-2">
-                  {features.maps.features.map((feature) => (
+                <div className="grid gap-2 mb-6">
+                  {['Google Maps Places API', 'Geocoding & reverse geocoding', 'Places autocomplete UI component', 'Route planning', 'Station location mapping'].map((feature) => (
                     <div key={feature} className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-green-600" />
                       <span className="text-sm">{feature}</span>
                     </div>
                   ))}
+                </div>
+
+                {/* Sample Integration */}
+                <div className="border-2 border-purple-300 dark:border-purple-700 rounded-lg p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950">
+                  <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-3">
+                    🗺️ Google Places Autocomplete
+                  </h4>
+                  <div className="bg-white dark:bg-gray-900 p-4 rounded border-2 border-dashed border-purple-300">
+                    <p className="text-sm text-muted-foreground mb-2">Component used in:</p>
+                    <ul className="text-sm space-y-1 list-disc list-inside">
+                      <li>Gift card delivery addresses</li>
+                      <li>Booking location inputs</li>
+                      <li>Station finder</li>
+                      <li>Service area validation</li>
+                    </ul>
+                  </div>
+                  <div className="mt-4 text-xs font-mono bg-muted p-2 rounded">
+                    📁 client/src/components/ui/google-places-autocomplete.tsx
+                  </div>
                 </div>
                 
                 <div className="mt-4 space-y-2">
@@ -339,10 +506,10 @@ export default function EnterpriseFeaturesShowcase() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  {features.sheets.icon}
+                  <FileSpreadsheet className="w-6 h-6" />
                   <div>
-                    <CardTitle>{features.sheets.title}</CardTitle>
-                    <CardDescription>{features.sheets.description}</CardDescription>
+                    <CardTitle>Google Sheets Integration</CardTitle>
+                    <CardDescription>Centralized form submission tracking across all 9 platforms</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -350,7 +517,7 @@ export default function EnterpriseFeaturesShowcase() {
                 <div className="space-y-2">
                   <h3 className="font-semibold mb-3">Tracked Form Submissions (9 Platforms)</h3>
                   <div className="grid gap-2 md:grid-cols-2">
-                    {features.sheets.platforms.map((platform) => (
+                    {['K9000 Wash Bookings', 'Sitter Suite Bookings', 'Walk My Pet Bookings', 'PetTrek Bookings', 'Academy Bookings', 'Contact & Inquiries', 'Feedback & Reviews', 'Newsletter Subscriptions', 'Franchise Inquiries'].map((platform) => (
                       <div key={platform} className="flex items-center gap-2">
                         <FileSpreadsheet className="w-4 h-4 text-purple-600" />
                         <span className="text-sm">{platform}</span>
@@ -359,13 +526,21 @@ export default function EnterpriseFeaturesShowcase() {
                   </div>
                 </div>
 
-                <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                  <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-2">
-                    Automatic Logging
+                <div className="mt-6 p-4 bg-purple-50 dark:bg-purple-950 rounded-lg border-2 border-purple-200 dark:border-purple-800">
+                  <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-2 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    Automatic Data Collection
                   </h4>
-                  <p className="text-sm text-purple-700 dark:text-purple-300">
+                  <p className="text-sm text-purple-700 dark:text-purple-300 mb-3">
                     All form submissions are automatically logged to Google Sheets with timestamps, user info, and submission details for easy management and analysis.
                   </p>
+                  <div className="bg-white dark:bg-gray-900 p-3 rounded text-xs font-mono">
+                    📊 Real-time sync | No manual data entry | Centralized analytics
+                  </div>
+                </div>
+
+                <div className="mt-4 text-xs font-mono bg-muted p-2 rounded">
+                  📁 server/services/googleSheetsIntegration.ts (425 lines)
                 </div>
               </CardContent>
             </Card>
@@ -376,18 +551,24 @@ export default function EnterpriseFeaturesShowcase() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  {features.planners.icon}
+                  <Calendar className="w-6 h-6" />
                   <div>
-                    <CardTitle>{features.planners.title}</CardTitle>
-                    <CardDescription>{features.planners.description}</CardDescription>
+                    <CardTitle>Weather Planner Suite</CardTitle>
+                    <CardDescription>Role-aware weather planning with AI recommendations</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3">
-                  {features.planners.views.map((view) => (
+                  {[
+                    { name: 'Public View', route: '/weather-planner', desc: 'General 7-day forecasts' },
+                    { name: 'Client View', route: '/pet-care-planner', desc: 'Pet wash scheduling + loyalty' },
+                    { name: 'Employee View', route: '/weather-planner', desc: 'Station-specific forecasts' },
+                    { name: 'Executive View', route: '/weather-planner', desc: 'Franchise-wide analytics' },
+                    { name: 'Day Planner', route: '/pet-wash-day-planner', desc: 'Best wash day finder' },
+                  ].map((view) => (
                     <Link key={view.route} href={view.route}>
-                      <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+                      <Card className="cursor-pointer hover:bg-muted/50 transition-colors hover:border-blue-400">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
@@ -402,8 +583,9 @@ export default function EnterpriseFeaturesShowcase() {
                   ))}
                 </div>
 
-                <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 rounded-lg">
-                  <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-2">
+                <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950 dark:to-yellow-950 rounded-lg border-2 border-amber-200 dark:border-amber-800">
+                  <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-2 flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
                     Multi-Language Support
                   </h4>
                   <p className="text-sm text-amber-700 dark:text-amber-300 mb-2">
@@ -424,16 +606,16 @@ export default function EnterpriseFeaturesShowcase() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  {features.ai.icon}
+                  <Brain className="w-6 h-6" />
                   <div>
-                    <CardTitle>{features.ai.title}</CardTitle>
-                    <CardDescription>{features.ai.description}</CardDescription>
+                    <CardTitle>Gemini AI Integration</CardTitle>
+                    <CardDescription>Gemini 2.5 Flash for pet care insights and recommendations</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-2 mb-4">
-                  {features.ai.features.map((feature) => (
+                <div className="grid gap-2 mb-6">
+                  {['Pet safety recommendations', 'Environmental risk analysis', 'Wash timing optimization', 'Allergen warnings', 'Activity planning'].map((feature) => (
                     <div key={feature} className="flex items-center gap-2">
                       <Brain className="w-4 h-4 text-purple-600" />
                       <span className="text-sm">{feature}</span>
@@ -441,7 +623,48 @@ export default function EnterpriseFeaturesShowcase() {
                   ))}
                 </div>
 
-                <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 rounded-lg">
+                {/* Sample AI Output */}
+                <div className="border-2 border-purple-300 dark:border-purple-700 rounded-lg p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950">
+                  <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-3 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" />
+                    Sample AI Recommendation
+                  </h4>
+                  <Card className="bg-white dark:bg-gray-900">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-sm">High Pollen Alert</p>
+                            <p className="text-xs text-muted-foreground">
+                              Grass pollen levels are high today. Consider indoor washing for pets with allergies.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-sm">Optimal Wash Time</p>
+                            <p className="text-xs text-muted-foreground">
+                              Best time: 2-4 PM when air quality is good and temperature is ideal for drying.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <Sun className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-sm">UV Protection</p>
+                            <p className="text-xs text-muted-foreground">
+                              UV index is moderate. Safe for outdoor activities but consider shade for light-colored pets.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 rounded-lg">
                   <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-2">
                     Gemini 2.5 Flash Integration
                   </h4>
@@ -477,7 +700,7 @@ export default function EnterpriseFeaturesShowcase() {
         </Card>
 
         {/* Call to Action */}
-        <div className="text-center p-6 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950 dark:via-purple-950 dark:to-pink-950 rounded-lg">
+        <div className="text-center p-6 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950 dark:via-purple-950 dark:to-pink-950 rounded-lg border-2 border-blue-200 dark:border-blue-800">
           <h3 className="text-2xl font-bold mb-2">🌟 Enterprise-Grade Platform</h3>
           <p className="text-muted-foreground mb-4">
             All APIs tested, documented, and production-ready for global scale
