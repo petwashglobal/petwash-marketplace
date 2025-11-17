@@ -18,6 +18,44 @@ import { eq } from 'drizzle-orm';
 
 const router = Router();
 
+// ==================== OCTOPUS PROTOCOL: FRAUD DETECTION ====================
+
+/**
+ * 🚨 RISK ASSESSMENT ENGINE (Octopus Protocol Pattern)
+ * Automatically flags transactions that may require fraud review
+ */
+function assessTransactionRisk(amount: number, customerUid?: string): {
+  riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  reason: string;
+  requiresManualReview: boolean;
+} {
+  // CRITICAL: Transactions over $500 (or ₪1800+)
+  if (amount > 500) {
+    logger.warn(`🚨 HIGH RISK TRANSACTION: ${amount} ${customerUid ? `by ${customerUid}` : 'anonymous'}`);
+    return {
+      riskLevel: "HIGH",
+      reason: `Amount exceeds $500 threshold (actual: $${amount})`,
+      requiresManualReview: true,
+    };
+  }
+  
+  // MEDIUM: Transactions $100-$500
+  if (amount > 100) {
+    return {
+      riskLevel: "MEDIUM",
+      reason: `Standard wash transaction ($${amount})`,
+      requiresManualReview: false,
+    };
+  }
+  
+  // LOW: Normal wash cycle pricing
+  return {
+    riskLevel: "LOW",
+    reason: `Normal transaction ($${amount})`,
+    requiresManualReview: false,
+  };
+}
+
 // ==================== VALIDATION SCHEMAS ====================
 
 const washInitiationSchema = z.object({
@@ -81,22 +119,44 @@ router.post('/initiate-wash', requireAuth, async (req, res) => {
     
     const params = validationResult.data;
     
+    // 🚨 OCTOPUS PROTOCOL: Risk Assessment
+    const riskAssessment = assessTransactionRisk(params.amount, params.customerUid);
+    
     logger.info('[Nayax API] Wash initiation request', {
       customerUid: params.customerUid,
       washType: params.washType,
       amount: params.amount,
       stationId: params.stationId,
+      riskLevel: riskAssessment.riskLevel,
+      requiresReview: riskAssessment.requiresManualReview,
     });
+    
+    // HIGH RISK transactions require admin approval before processing
+    if (riskAssessment.riskLevel === "HIGH" && riskAssessment.requiresManualReview) {
+      logger.warn(`🚨 FRAUD ALERT: Transaction ${params.amount} flagged for manual review`);
+      return res.status(403).json({
+        success: false,
+        error: 'Transaction flagged for manual review',
+        riskLevel: riskAssessment.riskLevel,
+        reason: riskAssessment.reason,
+        message: 'Transactions over $500 require admin approval. Please contact support.',
+      });
+    }
     
     // Execute complete payment flow
     const result = await NayaxSparkService.initiateWashCycle(params);
     
     if (result.success) {
+      // 🐙 OCTOPUS PROTOCOL: Include risk assessment in response
       res.json({
         success: true,
         message: result.message,
         transactionId: result.transactionId,
         nayaxTransactionId: result.nayaxTransactionId,
+        riskAssessment: {
+          level: riskAssessment.riskLevel,
+          reason: riskAssessment.reason,
+        },
       });
     } else {
       res.status(402).json({
