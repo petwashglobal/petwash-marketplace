@@ -95,12 +95,13 @@ export default function StationRegistryDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Station Registry</h1>
-          <p className="text-muted-foreground">Pet Wash Hub™ Canonical ID Management</p>
-        </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Station Registry"
+      subtitle="Pet Wash Hub™ Canonical ID Management"
+    >
+      <div className="p-6 space-y-6">
+      <div className="flex justify-end items-center">
         <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-station">
           <Plus className="w-4 h-4 mr-2" />
           Register New Station
@@ -394,5 +395,6 @@ export default function StationRegistryDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+    </LuxuryPageWrapper>
   );
 }

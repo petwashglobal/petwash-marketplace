@@ -101,12 +101,13 @@ export default function HRDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">HR Department</h1>
-          <p className="text-muted-foreground">Employee Records, Payroll & Time Tracking</p>
-        </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="HR Management"
+      subtitle="Employee management, payroll, and time tracking"
+    >
+      <div className="p-6 space-y-6">
+      <div className="flex justify-end items-center">
         <Button onClick={() => setShowCreateEmployeeDialog(true)} data-testid="button-create-employee">
           <Plus className="w-4 h-4 mr-2" />
           Add Employee
@@ -363,5 +364,6 @@ export default function HRDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+    </LuxuryPageWrapper>
   );
 }

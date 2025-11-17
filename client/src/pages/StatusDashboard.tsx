@@ -97,17 +97,16 @@ export default function StatusDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 p-6">
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Pet Wash™ System Status"
+      subtitle="Real-time platform health monitoring"
+      icon={<Activity className="w-8 h-8 text-blue-600" />}
+    >
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2">
-            <Activity className="w-8 h-8 text-blue-600" />
-            PetWash™ System Status
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Real-time platform health and station monitoring
-          </p>
           {uptimeData && (
             <p className="text-sm text-gray-500">
               Last updated: {new Date(uptimeData.timestamp).toLocaleString()}
@@ -286,5 +285,6 @@ export default function StatusDashboard() {
         </div>
       </div>
     </div>
+    </LuxuryPageWrapper>
   );
 }
