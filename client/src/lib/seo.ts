@@ -17,7 +17,7 @@ export interface SEOConfig {
 // Default SEO configuration
 export const defaultSEO: SEOConfig = {
   title: 'Pet Wash™ - Premium Organic Pet Care | שטיפת חיות מחמד אורגנית פרימיום',
-  description: 'Israel\'s leading premium organic pet washing service. 5-tier loyalty program (up to 25% discount), AI-powered booking, Apple/Google Wallet integration. שירות שטיפת חיות מחמד אורגני פרימיום מוביל בישראל עם תוכנית נאמנות 5 רמות.',
+  description: 'Israel\'s leading premium organic pet washing service. 7-tier luxury loyalty program (Bronze→Royal, up to 50% discount), AI-powered booking, Apple/Google Wallet integration. שירות שטיפת חיות מחמד אורגני פרימיום מוביל בישראל עם תוכנית נאמנות 7 רמות יוקרה.',
   keywords: 'pet wash, dog wash, cat wash, organic pet care, Israel pet services, שטיפת כלבים, שטיפת חיות מחמד, שטיפה אורגנית, כלבים ישראל',
   ogImage: 'https://petwash.co.il/IMG_7114_1751624638881.jpeg',
   ogType: 'website',
@@ -34,7 +34,7 @@ export const pageSEO: Record<string, SEOConfig> = {
   },
   pricing: {
     title: 'Pricing & Packages - Pet Wash™ | מחירים וחבילות',
-    description: 'Transparent pricing for premium organic pet washing. 5-tier loyalty program (New to Diamond) with up to 25% discounts. Gift cards available. מחירים שקופים לשטיפת חיות מחמד אורגנית עם הנחות עד 25%.',
+    description: 'Transparent pricing for premium organic pet washing. 7-tier luxury loyalty program (Bronze to Royal) with up to 50% discounts. Gift cards available. מחירים שקופים לשטיפת חיות מחמד אורגנית עם הנחות עד 50%.',
     keywords: 'pet wash prices, dog wash cost, loyalty discounts, מחיר שטיפת כלבים, הנחות נאמנות',
     ogType: 'website',
   },

@@ -16,6 +16,32 @@ import { z } from 'zod';
  */
 
 // ========================================
+// LOYALTY TIER ENUM (7-Star System)
+// ========================================
+
+export const LOYALTY_TIERS = {
+  BRONZE: 'bronze',
+  SILVER: 'silver',
+  GOLD: 'gold',
+  PLATINUM: 'platinum',
+  DIAMOND: 'diamond',
+  EMERALD: 'emerald',
+  ROYAL: 'royal',
+} as const;
+
+export type LoyaltyTier = typeof LOYALTY_TIERS[keyof typeof LOYALTY_TIERS];
+
+export const LOYALTY_TIER_THRESHOLDS = {
+  bronze: 0,
+  silver: 1000,
+  gold: 3000,
+  platinum: 6000,
+  diamond: 10000,
+  emerald: 20000,
+  royal: 35000,
+} as const;
+
+// ========================================
 // CORE LOYALTY PROFILE
 // ========================================
 
