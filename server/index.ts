@@ -89,41 +89,63 @@ ensureBiometricStorage()
     // Register all API routes (wait for async completion)
     await registerRoutes(app);
     
-    // Static assets for Vite build
-    // Support both dev (tsx) and production (compiled) paths
-    const staticRoot = path.resolve(process.cwd(), "dist", "public");
+    // --- STATIC FILE SERVING FIX ---
+    // 1. Define the correct build output path (dist/public)
+    // We use process.cwd() to safely resolve from the project root
+    const DIST_PUBLIC_PATH = path.join(process.cwd(), 'dist', 'public');
     
-    // Verify build exists before starting server
-    const indexPath = path.join(staticRoot, "index.html");
+    // 2. LOGGING: Verify the path on startup (as requested)
+    console.log('--------------------------------------------------');
+    console.log('📂 Static File Path Verification:');
+    console.log(`   Target Directory: ${DIST_PUBLIC_PATH}`);
+    console.log(`   Working Directory: ${process.cwd()}`);
+    console.log(`   Node Environment: ${process.env.NODE_ENV || "development"}`);
+    
+    // 3. Verify build exists before starting server
+    const indexPath = path.join(DIST_PUBLIC_PATH, "index.html");
     const fs = await import("fs");
     
     if (!fs.existsSync(indexPath)) {
-      console.error(`[FATAL] Missing index.html at: ${indexPath}`);
-      console.error(`[FATAL] Current working directory: ${process.cwd()}`);
-      console.error(`[FATAL] Static root: ${staticRoot}`);
-      console.error(`[FATAL] __dirname: ${__dirname}`);
+      console.error('--------------------------------------------------');
+      console.error('❌ CRITICAL: index.html not found!');
+      console.error(`   Expected path: ${indexPath}`);
+      console.error(`   Current working directory: ${process.cwd()}`);
+      console.error(`   __dirname: ${__dirname}`);
       
       // List what's actually in the directory
       try {
         const distExists = fs.existsSync(path.join(process.cwd(), "dist"));
-        console.error(`[FATAL] dist/ exists: ${distExists}`);
+        console.error(`   dist/ exists: ${distExists}`);
         if (distExists) {
           const distContents = fs.readdirSync(path.join(process.cwd(), "dist"));
-          console.error(`[FATAL] dist/ contents: ${distContents.join(", ")}`);
+          console.error(`   dist/ contents: ${distContents.join(", ")}`);
+          
+          const publicExists = fs.existsSync(DIST_PUBLIC_PATH);
+          console.error(`   dist/public/ exists: ${publicExists}`);
+          if (publicExists) {
+            const publicContents = fs.readdirSync(DIST_PUBLIC_PATH);
+            console.error(`   dist/public/ contents: ${publicContents.slice(0, 10).join(", ")}...`);
+          }
         }
       } catch (e) {
-        console.error(`[FATAL] Could not list dist/ contents:`, e);
+        console.error(`   Could not list directory contents:`, e);
       }
+      console.error('--------------------------------------------------');
+      console.error('💡 Solution: Run "npm run build" before starting the server');
+      console.error('--------------------------------------------------');
       
       throw new Error("Build files not found - run 'npm run build' before starting production server");
     }
     
-    console.log(`[Server] Serving static files from: ${staticRoot}`);
-    app.use(express.static(staticRoot));
+    console.log(`   index.html found: ✅`);
+    console.log('--------------------------------------------------');
     
-    // SPA fallback for React router (with API route protection)
-    app.get("*", (req, res, next) => {
-      // CRITICAL: Don't catch API routes - let them return 404 JSON instead of HTML
+    // 4. Serve static files from the DIST directory
+    app.use(express.static(DIST_PUBLIC_PATH));
+    
+    // 5. Root Route Fix: Serve index.html from DIST for the main page (and SPA routing)
+    app.get("*", (req, res) => {
+      // Exclude API routes from this catch-all (safety measure)
       if (req.path.startsWith('/api/')) {
         return res.status(404).json({ 
           error: 'API endpoint not found',
@@ -131,18 +153,28 @@ ensureBiometricStorage()
         });
       }
       
-      // Serve index.html for all non-API routes (enables React Router)
-      res.sendFile(indexPath);
+      // Serve index.html with error handling callback (prevents silent hangs)
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error('❌ CRITICAL: Could not serve index.html from:', indexPath);
+          console.error('   Error details:', err);
+          res.status(500).send('Server Error: Static files missing. Did you run "npm run build"?');
+        }
+      });
     });
     
     // Start server
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`[Server] listening on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
-      console.log(`[Server] Static files: ${staticRoot}`);
-      console.log(`[Server] Health check: http://0.0.0.0:${PORT}/`);
+      console.log('--------------------------------------------------');
+      console.log(`✅ [Server] listening on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
+      console.log(`📁 [Server] Static files: ${DIST_PUBLIC_PATH}`);
+      console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/`);
+      console.log('--------------------------------------------------');
     });
   } catch (error) {
-    console.error("[FATAL] Server startup failed:", error);
+    console.error('--------------------------------------------------');
+    console.error("❌ [FATAL] Server startup failed:", error);
+    console.error('--------------------------------------------------');
     process.exit(1);
   }
 })();
