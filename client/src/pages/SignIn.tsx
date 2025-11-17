@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Info, Fingerprint, Smartphone, ScanFace, Phone, User, Lock, ArrowRight, Sparkles } from "lucide-react";
-import { FaFacebook, FaInstagram, FaTiktok } from "react-icons/fa";
+import { FaFacebook, FaTiktok } from "react-icons/fa";
 import { SiGmail } from "react-icons/si";
 import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -348,11 +348,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'yahoo' | 'microsoft' | 'facebook' | 'instagram' | 'tiktok') => {
+  const handleSocialLogin = async (provider: 'google' | 'yahoo' | 'microsoft' | 'facebook' | 'tiktok') => {
     await performOAuthLogin(provider);
   };
 
-  const performOAuthLogin = async (provider: 'google' | 'yahoo' | 'microsoft' | 'facebook' | 'instagram' | 'tiktok') => {
+  const performOAuthLogin = async (provider: 'google' | 'yahoo' | 'microsoft' | 'facebook' | 'tiktok') => {
     try {
       setSocialLoading(provider);
       
@@ -373,10 +373,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         case 'facebook':
           authProvider = new FacebookAuthProvider();
           break;
-        case 'instagram':
-          authProvider = new FacebookAuthProvider();
-          authProvider.addScope('instagram_basic');
-          break;
         case 'tiktok':
           window.location.href = '/api/auth/tiktok/start';
           return;
@@ -390,7 +386,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           grantedScopes = ['email', 'profile'];
         } else if (provider === 'yahoo' || provider === 'microsoft') {
           grantedScopes = ['email'];
-        } else if (provider === 'facebook' || provider === 'instagram') {
+        } else if (provider === 'facebook') {
           grantedScopes = ['email', 'public_profile'];
         }
       } catch (scopeError) {
