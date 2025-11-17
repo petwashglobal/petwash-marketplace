@@ -132,12 +132,13 @@ export default function SalesDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Sales Management</h1>
-          <p className="text-muted-foreground">Manage leads and opportunities</p>
-        </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Sales Management"
+      subtitle="Manage leads and opportunities"
+    >
+      <div className="p-6 space-y-6">
+      <div className="flex justify-end items-center">
         <div className="flex gap-2">
           <Button onClick={() => setShowCreateLeadDialog(true)} data-testid="button-create-lead">
             <Plus className="w-4 h-4 mr-2" />
@@ -498,5 +499,6 @@ export default function SalesDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+    </LuxuryPageWrapper>
   );
 }
