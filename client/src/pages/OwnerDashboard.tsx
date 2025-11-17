@@ -6,6 +6,7 @@ import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { WorldClock } from "@/components/WorldClock";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 
 export default function OwnerDashboard() {
   const { language } = useLanguage();

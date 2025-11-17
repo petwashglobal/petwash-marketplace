@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Crown, Gift, Send, Sparkles, Shield } from "lucide-react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { routeGuard } from "@/lib/auth-guardian-2025";
+import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 
 export default function CEODashboard() {
   const { user } = useFirebaseAuth();
@@ -157,27 +158,12 @@ export default function CEODashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Premium Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-gradient-radial from-yellow-600/20 via-yellow-600/5 to-transparent blur-3xl animate-float"></div>
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-gradient-radial from-purple-600/20 via-purple-600/5 to-transparent blur-3xl animate-float-delayed"></div>
-        <div className="absolute bottom-0 left-1/2 w-[700px] h-[700px] bg-gradient-radial from-pink-600/20 via-pink-600/5 to-transparent blur-3xl"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px]"></div>
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Crown className="w-12 h-12 text-yellow-500" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-yellow-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              CEO Dashboard
-            </h1>
-          </div>
-          <p className="text-gray-400">Welcome back, Nir Hadad - Founder & CEO of PetWash™</p>
-        </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="CEO Dashboard"
+      subtitle="Welcome back, Nir Hadad - Founder & CEO of PetWash™"
+      icon={<Crown className="w-12 h-12" />}
+    >
 
         {/* Issue Free Voucher Card */}
         <div className="max-w-2xl mx-auto">
@@ -334,7 +320,6 @@ export default function CEODashboard() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
+    </LuxuryPageWrapper>
   );
 }

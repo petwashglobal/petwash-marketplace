@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { DollarSign, Calendar, Star, Heart } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
+import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 
 export default function SitterDashboard() {
   const { language } = useLanguage();

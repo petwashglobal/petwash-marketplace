@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Star, CheckCircle, Clock, Archive } from "lucide-react";
+import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 

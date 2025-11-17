@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, AlertCircle, XCircle, Activity, Database, Clock, MapPin } from 'lucide-react';
+import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 
 interface UptimeStatus {
   ok: boolean;

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Briefcase, Users, Calendar, DollarSign } from "lucide-react";
+import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 

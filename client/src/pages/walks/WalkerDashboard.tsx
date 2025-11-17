@@ -2,6 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, DollarSign, Star, TrendingUp } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
+import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 
 export default function WalkerDashboard() {
   const { language } = useLanguage();

@@ -6,6 +6,7 @@ interface LuxuryPageWrapperProps {
   title?: string;
   subtitle?: string;
   badge?: string;
+  icon?: ReactNode;
   variant?: 'hero' | 'content' | 'dashboard' | 'minimal';
   className?: string;
   showDivider?: boolean;
@@ -16,6 +17,7 @@ export function LuxuryPageWrapper({
   title,
   subtitle,
   badge,
+  icon,
   variant = 'content',
   className = '',
   showDivider = false,
@@ -43,8 +45,9 @@ export function LuxuryPageWrapper({
   if (variant === 'dashboard') {
     return (
       <div className={cn('luxury-content-section', className)}>
-        {(title || subtitle) && (
+        {(title || subtitle || icon) && (
           <div className="luxury-content-header">
+            {icon && <div className="mb-4">{icon}</div>}
             {title && <h2 className="luxury-content-title">{title}</h2>}
             {subtitle && <p className="luxury-content-subtitle">{subtitle}</p>}
           </div>
