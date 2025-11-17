@@ -309,41 +309,74 @@ UNSUBSCRIBE_HMAC_SECRET=<generate-secure-secret>
 
 ---
 
-## 🌐 OAuth Integrations
+## 🌐 OAuth Integrations (2025 Update)
 
-### TikTok
+### 🚨 Important 2025 Changes
+- **Instagram Login Deprecated**: Meta deprecated "Login with Instagram" for personal (consumer) accounts in late 2024
+- **Solution**: Use "Facebook Login" which works for both Facebook and Instagram users
+- **Instagram Business/Creator**: Only available for Business and Creator accounts (not supported in Pet Wash™)
+
+### TikTok Login Kit v2 (Fully Supported)
+
+Get from: [TikTok for Developers](https://developers.tiktok.com)
 
 ```bash
+# TikTok OAuth v2 API
 TIKTOK_CLIENT_KEY=<your-client-key>
 TIKTOK_CLIENT_SECRET=<your-client-secret>
+
+# ✅ Status: Configured and working
+# Redirect URI: https://petwash.co.il/api/auth/tiktok/callback
 ```
 
-### Facebook
+#### How to Setup TikTok Login:
+1. Go to [TikTok for Developers](https://developers.tiktok.com)
+2. Create an app and select "Login Kit"
+3. Add redirect URI: `https://petwash.co.il/api/auth/tiktok/callback`
+4. Get Client Key and Client Secret from app dashboard
+5. Add to Replit Secrets as `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET`
+
+### Facebook / Meta (Instagram Support Included)
+
+Get from: [Meta for Developers](https://developers.facebook.com)
 
 ```bash
-FACEBOOK_APP_ID=<your-app-id>
-FACEBOOK_APP_SECRET=<your-app-secret>
+# Facebook OAuth (also works for Instagram users)
+FB_APP_ID=<your-app-id>
+FB_APP_SECRET=<your-app-secret>
+
+# ⚠️ Status: Not configured yet
+# Redirect URI: https://petwash.co.il/api/auth/callback/facebook
 ```
 
-### Instagram
+#### How to Setup Facebook Login:
+1. Go to [Meta for Developers](https://developers.facebook.com)
+2. Create app type: "Consumer"
+3. Add product: "Facebook Login"
+4. Configure OAuth Redirect URIs: `https://petwash.co.il/api/auth/callback/facebook`
+5. Enable permissions: `public_profile` and `email`
+6. Get App ID and App Secret from app dashboard
+7. Add to Replit Secrets as `FB_APP_ID` and `FB_APP_SECRET`
 
-```bash
-INSTAGRAM_CLIENT_ID=<your-client-id>
-INSTAGRAM_CLIENT_SECRET=<your-client-secret>
-```
+**Note**: This setup works for both Facebook and Instagram users automatically. Users with Instagram accounts linked to Facebook can sign in using their Facebook credentials.
 
 ### Google (OAuth)
 
+Already configured via Firebase Authentication. No additional setup needed.
+
 ```bash
-GOOGLE_CLIENT_ID=<your-client-id>
-GOOGLE_CLIENT_SECRET=<your-client-secret>
+# Google OAuth is handled by Firebase Auth
+# VITE_FIREBASE_API_KEY already configured
+# No additional secrets required
 ```
 
 ### Apple Sign In
 
+Already configured via Firebase Authentication. No additional setup needed.
+
 ```bash
-APPLE_CLIENT_ID=<your-client-id>
-APPLE_CLIENT_SECRET=<your-client-secret>
+# Apple Sign In is handled by Firebase Auth  
+# No additional secrets required
 ```
 
 ---
