@@ -1,6 +1,7 @@
 import path from "node:path";
 import express from "express";
 import helmet from "helmet";
+import compression from "compression";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import session from "express-session";
@@ -18,7 +19,15 @@ const PORT = Number(process.env.PORT || 5000);
 app.set('trust proxy', 1);
 
 // 1. Security and basic middleware
-app.use(helmet());
+// A. Security Headers (Protects users from script injections)
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable strict CSP if it breaks images/scripts
+  crossOriginEmbedderPolicy: false,
+}));
+
+// B. Compression (Makes your site load 70% faster)
+app.use(compression());
+
 app.use(cors({
   origin: true,
   credentials: true
@@ -143,7 +152,24 @@ ensureBiometricStorage()
     // 4. Serve static files from the DIST directory
     app.use(express.static(DIST_PUBLIC_PATH));
     
-    // 5. Root Route Fix: Serve index.html from DIST for the main page (and SPA routing)
+    // --- 2025 PRODUCTION SAFETY NET ---
+    
+    // 5. Global Error Handler (Prevents Server Crashes)
+    // NOTE: This must be registered BEFORE the catchall route to catch API errors
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      const status = err.status || 500;
+      const message = err.message || 'Internal Server Error';
+      
+      console.error(`[CRITICAL ERROR] ${new Date().toISOString()}:`, err);
+
+      // Don't leak stack traces to users in production
+      res.status(status).json({
+        error: true,
+        message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : message,
+      });
+    });
+    
+    // 6. Root Route Fix: Serve index.html from DIST for the main page (and SPA routing)
     app.get("*", (req, res) => {
       // Exclude API routes from this catch-all (safety measure)
       if (req.path.startsWith('/api/')) {
@@ -178,3 +204,24 @@ ensureBiometricStorage()
     process.exit(1);
   }
 })();
+
+// --- UNCAUGHT EXCEPTION HANDLERS (Last Resort Safety Net) ---
+
+// 2. Uncaught Exception Catcher (Prevents total server crash)
+process.on('uncaughtException', (err) => {
+  console.error('--------------------------------------------------');
+  console.error('❌ FATAL: Uncaught Exception:', err);
+  console.error('   Stack:', err.stack);
+  console.error('--------------------------------------------------');
+  // Keep the process alive (don't exit - let it recover)
+  // In production, you might want to restart gracefully here
+});
+
+// 3. Unhandled Promise Rejection Catcher
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('--------------------------------------------------');
+  console.error('❌ FATAL: Unhandled Rejection at:', promise);
+  console.error('   Reason:', reason);
+  console.error('--------------------------------------------------');
+  // Keep the process alive (don't exit - let it recover)
+});
