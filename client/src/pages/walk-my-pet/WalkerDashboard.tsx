@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, DollarSign } from "lucide-react";
 import { useLocation } from "wouter";
+import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 
 export default function WalkerDashboard() {
   const [, setLocation] = useLocation();
@@ -13,18 +14,11 @@ export default function WalkerDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      <div className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <h1 className="text-4xl font-light mb-4 text-gray-900 dark:text-gray-100" data-testid="page-title">
-            Walker Dashboard
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 font-light">
-            Manage your dog walking appointments and earnings
-          </p>
-        </div>
-      </div>
-
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Walker Dashboard"
+      subtitle="Manage your dog walking appointments and earnings"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {isLoading ? (
           <div className="text-center py-12">
@@ -78,6 +72,6 @@ export default function WalkerDashboard() {
           </div>
         )}
       </div>
-    </div>
+    </LuxuryPageWrapper>
   );
 }

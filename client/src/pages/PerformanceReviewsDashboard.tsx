@@ -86,12 +86,13 @@ export default function PerformanceReviewsDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Performance Reviews</h1>
-          <p className="text-muted-foreground">Employee Performance & Career Development</p>
-        </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Performance Reviews"
+      subtitle="Employee Performance & Career Development"
+    >
+      <div className="p-6 space-y-6">
+      <div className="flex justify-end items-center">
         <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-review">
           <Plus className="w-4 h-4 mr-2" />
           New Review
@@ -258,5 +259,6 @@ export default function PerformanceReviewsDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+    </LuxuryPageWrapper>
   );
 }

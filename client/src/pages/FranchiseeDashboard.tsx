@@ -80,16 +80,12 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
   ];
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Franchisee Dashboard"
+      subtitle="Manage your Pet Wash™ station network"
+    >
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-4xl font-bold">Franchisee Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your Pet Wash™ station network
-          </p>
-        </div>
-
         {/* Key Metrics */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => {
@@ -286,6 +282,6 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </LuxuryPageWrapper>
   );
 }

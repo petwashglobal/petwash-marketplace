@@ -146,16 +146,15 @@ export default function WalletTelemetryDashboard() {
     : '0';
 
   return (
-    <div className="container mx-auto p-6 space-y-6" dir={isHebrew ? 'rtl' : 'ltr'}>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title={t.title}
+      subtitle={t.description}
+      icon={<Wallet className="w-8 h-8 text-blue-600" />}
+    >
+      <div className="container mx-auto p-6 space-y-6" dir={isHebrew ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Wallet className="w-8 h-8 text-blue-600" />
-            {t.title}
-          </h1>
-          <p className="text-muted-foreground mt-2">{t.description}</p>
-        </div>
+      <div className="flex items-center justify-end">
         
         <div className="flex items-center gap-3">
           <Button onClick={() => refetch()} variant="outline" size="sm">
@@ -324,5 +323,6 @@ export default function WalletTelemetryDashboard() {
         </>
       )}
     </div>
+    </LuxuryPageWrapper>
   );
 }

@@ -9,12 +9,11 @@ export default function WalkerDashboard() {
   const isHebrew = language === 'he';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 p-4">
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title={isHebrew ? 'לוח בקרה למטייל' : 'Walker Dashboard'}
+    >
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6" dir={isHebrew ? 'rtl' : 'ltr'}>
-          {isHebrew ? 'לוח בקרה למטייל' : 'Walker Dashboard'}
-        </h1>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -76,6 +75,6 @@ export default function WalkerDashboard() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </LuxuryPageWrapper>
   );
 }

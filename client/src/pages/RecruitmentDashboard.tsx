@@ -86,12 +86,13 @@ export default function RecruitmentDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Recruitment & Onboarding</h1>
-          <p className="text-muted-foreground">Manage job openings and applications</p>
-        </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Recruitment & Onboarding"
+      subtitle="Manage job openings and applications"
+    >
+      <div className="p-6 space-y-6">
+      <div className="flex justify-end items-center">
         <Button onClick={() => setShowCreateJobDialog(true)} data-testid="button-create-job">
           <Plus className="w-4 h-4 mr-2" />
           Post Job
@@ -341,5 +342,6 @@ export default function RecruitmentDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+    </LuxuryPageWrapper>
   );
 }

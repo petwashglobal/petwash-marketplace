@@ -85,16 +85,13 @@ export default function JvPartnersDashboard() {
   }
 
   return (
-    <div className="container mx-auto py-8" data-testid="jv-partners-dashboard">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="page-title">
-            Joint Venture Partners
-          </h1>
-          <p className="text-muted-foreground mt-2" data-testid="page-description">
-            Manage strategic JV partnerships and revenue sharing agreements
-          </p>
-        </div>
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title="Joint Venture Partners"
+      subtitle="Manage strategic JV partnerships and revenue sharing agreements"
+    >
+      <div className="container mx-auto" data-testid="jv-partners-dashboard">
+      <div className="flex justify-end items-center mb-8">
         <Button onClick={() => setShowCreateDialog(true)} data-testid="button-add-partner">
           <Plus className="w-4 h-4 mr-2" />
           Add Partner
@@ -282,6 +279,6 @@ export default function JvPartnersDashboard() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </LuxuryPageWrapper>
   );
 }

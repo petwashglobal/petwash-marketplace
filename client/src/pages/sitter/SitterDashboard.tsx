@@ -8,12 +8,11 @@ export default function SitterDashboard() {
   const isHebrew = language === 'he';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100 p-4">
+    <LuxuryPageWrapper
+      variant="dashboard"
+      title={isHebrew ? 'לוח בקרה למטפל' : 'Sitter Dashboard'}
+    >
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6" dir={isHebrew ? 'rtl' : 'ltr'}>
-          {isHebrew ? 'לוח בקרה למטפל' : 'Sitter Dashboard'}
-        </h1>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -75,6 +74,6 @@ export default function SitterDashboard() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </LuxuryPageWrapper>
   );
 }
