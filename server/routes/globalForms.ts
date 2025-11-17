@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import { logger } from '../lib/logger';
 import { validateFirebaseToken } from '../franchiseAuth';
+import { requireAdminRole } from '../lib/adminCheck';
 import { EmailService } from '../emailService';
 
 const router = Router();
@@ -241,27 +242,8 @@ router.post('/k9000/quick-booking', async (req, res) => {
 // =========================
 // GET GOOGLE SHEETS URL (Admin only)
 // =========================
-router.get('/admin/sheets-url', validateFirebaseToken, async (req: any, res) => {
-  // ✅ SECURITY: Admin authentication check
-  const uid = req.firebaseUser?.uid;
-  
-  if (!uid) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-  
-  try {
-    const { db: firestoreDb } = await import('../lib/firebase-admin');
-    const userDoc = await firestoreDb.collection('users').doc(uid).get();
-    const userData = userDoc.data();
-    
-    if (userData?.role !== 'admin' && userData?.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-  } catch (error) {
-    logger.error('[GlobalForms] Admin check error:', error);
-    return res.status(500).json({ error: 'Authentication error' });
-  }
-  
+router.get('/admin/sheets-url', validateFirebaseToken, requireAdminRole, async (req: any, res) => {
+  // ✅ SECURITY: Admin authentication enforced by requireAdminRole middleware
   const url = GoogleSheetsService.getSpreadsheetUrl();
   
   if (!url) {
