@@ -98,13 +98,13 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
     {
       name: t('loyalty.tier5.name', language),
       icon: Zap,
-      range: '5,000+',
-      points: '5,000+',
-      discount: '25%',
-      color: 'from-pink-400 via-rose-400 to-red-500',
-      borderColor: 'border-pink-500',
-      textColor: 'text-pink-700',
-      bgColor: 'bg-gradient-to-br from-pink-50 via-rose-50 to-red-50',
+      range: '10,000-19,999',
+      points: '10,000-19,999',
+      discount: '30%',
+      color: 'from-cyan-400 via-blue-400 to-indigo-500',
+      borderColor: 'border-cyan-500',
+      textColor: 'text-cyan-700',
+      bgColor: 'bg-gradient-to-br from-cyan-50 via-blue-50 to-indigo-50',
       benefits: [
         t('loyalty.tier5.benefit1', language),
         t('loyalty.tier5.benefit2', language),
@@ -113,6 +113,49 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
         t('loyalty.tier5.benefit5', language),
         t('loyalty.tier5.benefit6', language),
         t('loyalty.tier5.benefit7', language)
+      ]
+    },
+    {
+      name: t('loyalty.tier6.name', language),
+      icon: Crown,
+      range: '20,000-34,999',
+      points: '20,000-34,999',
+      discount: '40%',
+      color: 'from-emerald-400 via-green-500 to-teal-600',
+      borderColor: 'border-emerald-500',
+      textColor: 'text-emerald-700',
+      bgColor: 'bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50',
+      benefits: [
+        t('loyalty.tier6.benefit1', language),
+        t('loyalty.tier6.benefit2', language),
+        t('loyalty.tier6.benefit3', language),
+        t('loyalty.tier6.benefit4', language),
+        t('loyalty.tier6.benefit5', language),
+        t('loyalty.tier6.benefit6', language),
+        t('loyalty.tier6.benefit7', language),
+        t('loyalty.tier6.benefit8', language)
+      ]
+    },
+    {
+      name: t('loyalty.tier7.name', language),
+      icon: Sparkles,
+      range: '35,000+',
+      points: '35,000+',
+      discount: '50%',
+      color: 'from-violet-500 via-purple-600 to-fuchsia-700',
+      borderColor: 'border-violet-600',
+      textColor: 'text-violet-800',
+      bgColor: 'bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50',
+      benefits: [
+        t('loyalty.tier7.benefit1', language),
+        t('loyalty.tier7.benefit2', language),
+        t('loyalty.tier7.benefit3', language),
+        t('loyalty.tier7.benefit4', language),
+        t('loyalty.tier7.benefit5', language),
+        t('loyalty.tier7.benefit6', language),
+        t('loyalty.tier7.benefit7', language),
+        t('loyalty.tier7.benefit8', language),
+        t('loyalty.tier7.benefit9', language)
       ]
     }
   ];
