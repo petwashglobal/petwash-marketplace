@@ -3,7 +3,7 @@ modules = ["nodejs-20", "web", "postgresql-16"]
 run = ["npm", "run", "dev"]
 build = ["npm", "run", "build"]
 
-hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
+hidden = [".config", ".git", "generated-icon.png", "node_modules"]
 
 [nix]
 channel = "stable-24_05"
@@ -42,7 +42,6 @@ integrations = [
   "firebase_barebones_javascript:1.0.0",
   "javascript_log_in_with_replit:1.0.0",
   "hubspot:1.0.0",
-  "twilio:1.0.0",
   "javascript_gemini_ai_integrations:1.0.0",
   "google-mail:1.0.0",
   "google-sheet:1.0.0",
@@ -53,15 +52,3 @@ integrations = [
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 33287
-externalPort = 3002
-
-[[ports]]
-localPort = 36483
-externalPort = 3001
-
-[[ports]]
-localPort = 42193
-externalPort = 3000
