@@ -5,6 +5,7 @@ import { GiftCards } from '@/components/GiftCards';
 import { Layout } from '@/components/Layout';
 import { LegalFooter } from '@/components/LegalFooter';
 import { PetWashDivisions } from '@/components/PetWashDivisions';
+import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/components/LuxuryThemeWrapper';
 import { t, type Language } from '@/lib/i18n';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 
@@ -43,22 +44,20 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
       <div className="min-h-screen bg-white">
-        {/* Hero Section with Main Image */}
-        <section className="pt-[var(--header-height-mobile,148px)] md:pt-[var(--header-height-desktop,92px)] pb-12 px-4 sm:pb-16 sm:px-6 lg:pb-20 lg:px-8">
+        {/* Hero Section with Main Image - Luxury Design */}
+        <section className="luxury-services-hero pt-[var(--header-height-mobile,148px)] md:pt-[var(--header-height-desktop,92px)]">
           <div className="max-w-6xl mx-auto">
             {/* Hero Text Content - ABOVE the image */}
-            <div className="text-center px-2 sm:px-4 mb-8 sm:mb-10 lg:mb-12">
-              <h1 className="text-xl sm:text-2xl lg:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
+            <div className="luxury-services-hero-content">
+              <div className="luxury-services-badge">
+                {t('hero.k9000Tech', language)}
+              </div>
+              <h1 className="luxury-services-title">
                 {t('hero.title', language)}
               </h1>
-              <p className="text-base sm:text-lg lg:text-xl text-gray-700 mb-6 sm:mb-8">
+              <p className="luxury-services-subtitle">
                 {t('hero.subtitle', language)}
               </p>
-              <div className="mb-6 sm:mb-8">
-                <span className="bg-gray-900 text-white px-4 py-2 sm:px-6 sm:py-3 text-base sm:text-lg font-medium rounded-lg shadow-lg">
-                  {t('hero.k9000Tech', language)}
-                </span>
-              </div>
               <p className="text-base sm:text-lg text-gray-700 max-w-2xl lg:max-w-3xl mx-auto mb-8 sm:mb-12">
                 {t('hero.description', language)}
               </p>

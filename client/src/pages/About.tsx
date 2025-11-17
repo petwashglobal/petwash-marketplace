@@ -38,27 +38,25 @@ export default function About({ language }: AboutProps) {
     <div className="min-h-screen bg-white">
       <Header language={currentLanguage} onLanguageChange={handleLanguageChange} />
       
-      {/* Pure White Hero Section - 2025 Modern Design */}
-      <div className="relative bg-white pt-32 pb-24">
+      {/* Luxury Hero Section */}
+      <div className="luxury-services-hero">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
+          <div className="luxury-services-hero-content">
             {/* Premium Badge */}
-            <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-black/5 bg-black/[0.02] mb-8 transition-all hover:border-black/10">
-              <Sparkles className="h-5 w-5 text-black" />
-              <span className="text-sm font-semibold tracking-wide text-black">
+            <div className="luxury-services-badge">
+              <Sparkles className="h-5 w-5" />
+              <span>
                 {currentLanguage === 'en' ? '7-STAR GLOBAL EXCELLENCE' : 'מצוינות עולמית 7 כוכבים'}
               </span>
             </div>
             
-            {/* Main Title - Ultra Modern Typography */}
-            <h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold mb-8 tracking-tight">
-              <span className="bg-gradient-to-br from-black via-gray-800 to-black bg-clip-text text-transparent">
-                Pet Wash™
-              </span>
+            {/* Main Title */}
+            <h1 className="luxury-services-title">
+              Pet Wash™
             </h1>
             
-            {/* Subtitle - Clean & Elegant */}
-            <p className="text-xl sm:text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed font-light">
+            {/* Subtitle */}
+            <p className="luxury-services-subtitle">
               {currentLanguage === 'en' 
                 ? 'Leading the global revolution in premium pet care with world-class technology, sustainability, and a flawless safety record'
                 : 'מובילים את המהפכה העולמית בטיפול מתקדם בחיות מחמד עם טכנולוגיה מהשורה הראשונה, קיימות ורישום בטיחות מושלם'

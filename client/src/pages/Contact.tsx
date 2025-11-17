@@ -160,7 +160,7 @@ export default function Contact({ language }: ContactProps) {
   return (
     <div className={`min-h-screen bg-white ${currentLanguage === 'he' ? 'rtl' : 'ltr'}`}>
       <Header language={currentLanguage} onLanguageChange={handleLanguageChange} />
-      <div className="pt-20 pb-16">
+      <div className="luxury-content-section pt-20 pb-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-6">
             <Link href="/">
@@ -171,11 +171,20 @@ export default function Contact({ language }: ContactProps) {
             </Link>
           </div>
 
+          <div className="luxury-content-header text-center mb-8">
+            <h1 className="luxury-content-title">
+              {currentLanguage === 'en' ? 'Contact Us' : 'צור קשר'}
+            </h1>
+            <p className="luxury-content-subtitle">
+              {currentLanguage === 'en' ? 'We\'re here to help 24/7' : 'אנחנו כאן כדי לעזור 24/7'}
+            </p>
+          </div>
+
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Contact Information */}
-            <Card>
+            <Card className="luxury-feature-card">
               <CardHeader>
-                <CardTitle className="text-2xl text-center">
+                <CardTitle className="luxury-feature-title text-center">
                   {currentLanguage === 'en' ? 'Contact Information' : 'פרטי התקשרות'}
                 </CardTitle>
               </CardHeader>
