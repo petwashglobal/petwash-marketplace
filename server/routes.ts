@@ -2789,7 +2789,6 @@ self.addEventListener('notificationclick', (event) => {
       const user = userId ? await storage.getUser(userId) : null;
       
       let alreadyUnsubscribed = false;
-      // TODO: Add communicationPreferences to customer/user schema
       
       // Add to suppression list (comprehensive GDPR-compliant unsubscribe)
       const suppressionResult = await storage.addToSuppressionList(email, ['all']);
