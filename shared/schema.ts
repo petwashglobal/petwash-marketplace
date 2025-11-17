@@ -41,7 +41,7 @@ export const users = pgTable("users", {
   country: varchar("country").default("IL"),
   gender: varchar("gender"),
   language: varchar("language").default("en"),
-  loyaltyTier: varchar("loyalty_tier").default("new"), // new, regular, verified_senior, verified_disability
+  loyaltyTier: varchar("loyalty_tier").default("bronze"), // 7-tier luxury system: bronze(5%), silver(10%), gold(15%), platinum(20%), diamond(30%), emerald(40%), royal(50%)
   isClubMember: boolean("is_club_member").default(false),
   isSeniorVerified: boolean("is_senior_verified").default(false), // תעודת גימלאים verified
   isDisabilityVerified: boolean("is_disability_verified").default(false), // תעודת נכה verified
