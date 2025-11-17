@@ -64,6 +64,8 @@ router.get('/metrics', async (req, res) => {
       GOLD: 0,
       PLATINUM: 0,
       DIAMOND: 0,
+      EMERALD: 0,
+      ROYAL: 0,
     };
     
     loyaltySnapshot.forEach((doc) => {

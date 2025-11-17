@@ -83,6 +83,8 @@ interface AnalyticsOverview {
     gold: number;
     platinum: number;
     diamond: number;
+    emerald: number;
+    royal: number;
   };
 }
 
@@ -423,11 +425,13 @@ export default function AdminDashboard() {
                 </h3>
                 <div className="space-y-4">
                   {[
-                    { tier: 'Diamond', count: overview?.loyalty.diamond || 0, color: 'from-blue-400 to-blue-600', bgColor: 'bg-blue-500/20' },
-                    { tier: 'Platinum', count: overview?.loyalty.platinum || 0, color: 'from-purple-400 to-purple-600', bgColor: 'bg-purple-500/20' },
-                    { tier: 'Gold', count: overview?.loyalty.gold || 0, color: 'from-yellow-400 to-yellow-600', bgColor: 'bg-yellow-500/20' },
-                    { tier: 'Silver', count: overview?.loyalty.silver || 0, color: 'from-gray-400 to-gray-600', bgColor: 'bg-gray-500/20' },
-                    { tier: 'New', count: overview?.loyalty.new || 0, color: 'from-slate-400 to-slate-600', bgColor: 'bg-slate-500/20' },
+                    { tier: 'Royal 👑', count: overview?.loyalty.royal || 0, color: 'from-purple-500 to-violet-600', bgColor: 'bg-purple-500/20' },
+                    { tier: 'Emerald 💚', count: overview?.loyalty.emerald || 0, color: 'from-emerald-400 to-green-500', bgColor: 'bg-emerald-500/20' },
+                    { tier: 'Diamond 💎', count: overview?.loyalty.diamond || 0, color: 'from-blue-400 to-cyan-500', bgColor: 'bg-blue-500/20' },
+                    { tier: 'Platinum 💠', count: overview?.loyalty.platinum || 0, color: 'from-slate-200 to-slate-300', bgColor: 'bg-slate-500/20' },
+                    { tier: 'Gold 🥇', count: overview?.loyalty.gold || 0, color: 'from-yellow-400 to-amber-500', bgColor: 'bg-yellow-500/20' },
+                    { tier: 'Silver 🥈', count: overview?.loyalty.silver || 0, color: 'from-gray-300 to-gray-400', bgColor: 'bg-gray-500/20' },
+                    { tier: 'Bronze 🥉', count: overview?.loyalty.new || 0, color: 'from-amber-600 to-orange-700', bgColor: 'bg-amber-500/20' },
                   ].map((item) => {
                     const total = overview?.loyalty.totalMembers || 1;
                     const percentage = (item.count / total) * 100;
