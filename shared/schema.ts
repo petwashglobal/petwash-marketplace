@@ -62,6 +62,7 @@ export const users = pgTable("users", {
   totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0").notNull(),
   washBalance: integer("wash_balance").default(0).notNull(),
   giftCardBalance: decimal("gift_card_balance", { precision: 10, scale: 2 }).default("0").notNull(),
+  loyaltyPoints: integer("loyalty_points").default(0).notNull(), // Points earned from purchases (1 point per ILS spent)
   
   // PRIVACY CONTROLS (OPT-IN by default = false)
   analyticsConsent: boolean("analytics_consent").default(false), // GA4 tracking
@@ -95,6 +96,8 @@ export const customers = pgTable("customers", {
   loyaltyTier: varchar("loyalty_tier").default("new"), // 4-tier progressive system: new (0%), silver (10%), gold (15%), platinum (20%)
   totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0"),
   washBalance: integer("wash_balance").default(0),
+  giftCardBalance: decimal("gift_card_balance", { precision: 10, scale: 2 }).default("0"), // Gift card monetary balance
+  loyaltyPoints: integer("loyalty_points").default(0), // Points earned from purchases (1 point per ILS spent)
   lastLogin: timestamp("last_login"),
   authProvider: varchar("auth_provider").default("email"), // email, google, apple, facebook
   authProviderId: varchar("auth_provider_id"), // for OAuth providers

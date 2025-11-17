@@ -2445,13 +2445,33 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(500).json({ message: "Failed to redeem gift card" });
       }
       
-      // Update customer balance with eVoucher remaining amount
+      // Update customer balance and award loyalty points (TRUE ATOMIC UPDATE at SQL level)
       const customer = await storage.getCustomer(customerId);
       if (customer) {
         const addedAmount = parseFloat(redeemedCard.remainingAmount);
+        const pointsEarned = Math.floor(addedAmount);
         
-        // TODO: Add loyaltyPoints to customer schema
-        logger.info(`Gift card redeemed: ${addedAmount} ILS added for customer ${customerId}`);
+        // TRUE ATOMIC: Use SQL-level increments to prevent race conditions
+        // Database performs the addition, not JavaScript (prevents concurrent overwrites)
+        await db
+          .update(customers)
+          .set({ 
+            giftCardBalance: sql`${customers.giftCardBalance} + ${addedAmount}`, // SQL-level increment
+            loyaltyPoints: sql`${customers.loyaltyPoints} + ${pointsEarned}`, // SQL-level increment
+            updatedAt: new Date()
+          })
+          .where(eq(customers.id, customerId));
+        
+        // Fetch updated balances for logging
+        const updatedCustomer = await storage.getCustomer(customerId);
+        
+        logger.info(`Gift card redeemed: ${addedAmount} ILS added to gift card balance, ${pointsEarned} loyalty points awarded`, { 
+          customerId, 
+          addedAmount, 
+          pointsEarned,
+          newGiftCardBalance: updatedCustomer?.giftCardBalance,
+          newPointsBalance: updatedCustomer?.loyaltyPoints
+        });
       }
 
       res.json(redeemedCard);
@@ -3885,10 +3905,32 @@ self.addEventListener('notificationclick', (event) => {
 
       // For now, simulate payment success (integrate with Nayax later)
       if (paymentMethod === 'credit_card' || paymentMethod === 'nayax') {
-        // Update user wash balance
-        await storage.updateUser(userId, {
-          washBalance: (user?.washBalance || 0) + pkg.washCount,
-          totalSpent: String(Number(user?.totalSpent || 0) + finalPrice)
+        // Award loyalty points: 1 point per ILS spent (rounded)
+        const pointsEarned = Math.floor(finalPrice);
+        
+        // TRUE ATOMIC: Use SQL-level increments to prevent race conditions
+        // Database performs the addition, not JavaScript (prevents concurrent overwrites)
+        await db
+          .update(users)
+          .set({
+            washBalance: sql`${users.washBalance} + ${pkg.washCount}`, // SQL-level increment
+            totalSpent: sql`CAST(${users.totalSpent} AS DECIMAL) + ${finalPrice}`, // SQL-level increment
+            loyaltyPoints: sql`${users.loyaltyPoints} + ${pointsEarned}`, // SQL-level increment
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, userId));
+
+        // Fetch updated balances for logging
+        const updatedUser = await storage.getUser(userId);
+
+        logger.info(`Package purchased: ${pkg.washCount} washes, ${pointsEarned} loyalty points awarded`, {
+          userId,
+          packageId,
+          finalPrice,
+          pointsEarned,
+          newWashBalance: updatedUser?.washBalance,
+          newPointsBalance: updatedUser?.loyaltyPoints,
+          newTotalSpent: updatedUser?.totalSpent
         });
 
         // Record wash history
