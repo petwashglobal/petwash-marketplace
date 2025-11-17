@@ -55,7 +55,7 @@ export interface NayaxVoucher {
   // Loyalty discount fields
   discountType?: 'loyalty_general' | 'loyalty_senior' | 'loyalty_disabled';
   discountRate?: number; // e.g., 0.05 for 5%, 0.10 for 10%
-  memberTier?: string; // 'new', 'silver', 'gold', 'platinum', 'diamond' (NEW 5-TIER SYSTEM)
+  memberTier?: string; // 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'emerald', 'royal' (7-TIER LUXURY SYSTEM)
   
   // Station binding (optional policy)
   boundStationId?: string; // If set, can only redeem at this station

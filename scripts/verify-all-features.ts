@@ -120,7 +120,7 @@ const verificationMatrix: FeatureCheck[] = [
   // LOYALTY & WALLET
   {
     category: "Loyalty",
-    feature: "5-Tier Discount System",
+    feature: "7-Tier Luxury Loyalty System (Bronze→Royal)",
     dbTables: ["loyaltyTiers", "loyaltyPoints"],
     verified: false
   },

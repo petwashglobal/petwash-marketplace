@@ -357,7 +357,7 @@ export default function InvestorPresentation() {
                 <CardTitle className="text-rose-200">VIP Loyalty</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-gray-300 space-y-1">
-                <p>• 5-tier program</p>
+                <p>• 7-tier luxury program</p>
                 <p>• Progressive discounts</p>
                 <p>• Birthday bonuses</p>
                 <p>• Points system</p>

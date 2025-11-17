@@ -281,13 +281,16 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
     const offlineStations = stations.filter((s: any) => s.status === 'offline').length;
     const utilizationRate = stations.length > 0 ? (activeStations / stations.length) * 100 : 0;
     
-    // Process loyalty tiers (NEW 5-TIER SYSTEM)
+    // Process loyalty tiers (7-TIER LUXURY SYSTEM: Bronze→Royal)
     const loyaltyTiers = {
-      new: 0,
+      bronze: 0,
       silver: 0,
       gold: 0,
       platinum: 0,
       diamond: 0,
+      emerald: 0,
+      royal: 0,
+      new: 0, // Legacy support
     };
     
     loyaltySnapshot.forEach((doc: any) => {

@@ -15,7 +15,7 @@ const MODAL_COOLDOWN_DAYS = 30;
 
 export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedTier, setSelectedTier] = useState(2); // Default to Gold (index 2 in 5-tier array)
+  const [selectedTier, setSelectedTier] = useState(2); // Default to Gold (index 2 in 7-tier array: Bronze→Silver→Gold→Platinum→Diamond→Emerald→Royal)
   const { user } = useFirebaseAuth();
   const [, setLocation] = useLocation();
   

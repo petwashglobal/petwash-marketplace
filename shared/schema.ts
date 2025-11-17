@@ -103,7 +103,7 @@ export const customers = pgTable("customers", {
   marketing: boolean("marketing").default(false),
   termsAccepted: boolean("terms_accepted").default(false),
   isVerified: boolean("is_verified").default(false),
-  loyaltyTier: varchar("loyalty_tier").default("new"), // 4-tier progressive system: new (0%), silver (10%), gold (15%), platinum (20%)
+  loyaltyTier: varchar("loyalty_tier").default("bronze"), // 7-tier luxury system: bronze(5%), silver(10%), gold(15%), platinum(20%), diamond(30%), emerald(40%), royal(50%)
   totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default("0"),
   washBalance: integer("wash_balance").default(0),
   giftCardBalance: decimal("gift_card_balance", { precision: 10, scale: 2 }).default("0"), // Gift card monetary balance

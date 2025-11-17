@@ -69,7 +69,7 @@ export class GoogleWalletService {
       const classId = `${issuerId}.petwash_vip_loyalty`;
       const objectId = `${issuerId}.${data.userId}_${Date.now()}`;
 
-      // Tier colors (NEW 5-TIER SYSTEM)
+      // Tier colors (7-TIER LUXURY SYSTEM: Bronze→Royal)
       const tierColors = {
         new: { hex: '#94a3b8', rgb: 'rgb(148, 163, 184)' },        // Slate
         silver: { hex: '#cbd5e1', rgb: 'rgb(203, 213, 225)' },     // Silver

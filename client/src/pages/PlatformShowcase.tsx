@@ -65,7 +65,7 @@ export default function PlatformShowcase() {
         "Bank Reconciliation - Mizrahi-Tefahot API integration",
         "Automated Monthly Invoicing - Tax authority API filing",
         "E-Voucher System - Apple Wallet + Google Wallet integration",
-        "5-Tier Loyalty Program - Progressive discounts (Founder 50% off)",
+        "7-Tier Luxury Loyalty Program - Progressive discounts (Bronze→Royal, up to 50% off)",
         "Special Discounts - Disability (15% extra) & Senior (10% extra) programs"
       ]
     },

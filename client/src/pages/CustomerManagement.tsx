@@ -245,14 +245,17 @@ export default function CustomerManagement() {
   const totalCustomers = (customersData as any)?.total || 0;
   const totalPages = Math.ceil(totalCustomers / pageSize);
 
-  // Loyalty tier color mapping (NEW 5-TIER SYSTEM)
+  // Loyalty tier color mapping (7-TIER LUXURY SYSTEM: Bronze→Royal)
   const getLoyaltyTierColor = (tier: string) => {
     switch (tier) {
+      case 'royal': return 'bg-violet-100 text-violet-800 border-violet-300';
+      case 'emerald': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
       case 'diamond': return 'bg-blue-100 text-blue-800 border-blue-300';
       case 'platinum': return 'bg-purple-100 text-purple-800 border-purple-300';
       case 'gold': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'silver': return 'bg-gray-100 text-gray-800 border-gray-300';
-      case 'new': return 'bg-slate-100 text-slate-800 border-slate-300';
+      case 'bronze': return 'bg-amber-100 text-amber-800 border-amber-300';
+      case 'new': return 'bg-slate-100 text-slate-800 border-slate-300'; // Legacy support
       default: return 'bg-slate-100 text-slate-800 border-slate-300';
     }
   };

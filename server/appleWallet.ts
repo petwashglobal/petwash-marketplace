@@ -63,7 +63,7 @@ export class AppleWalletService {
   
   /**
    * Tier colors matching luxury bank card design
-   * Premium gradient-style colors for each tier (NEW 5-TIER SYSTEM)
+   * Premium gradient-style colors for each tier (7-TIER LUXURY SYSTEM: Bronze→Royal)
    */
   private static readonly TIER_COLORS = {
     new: {
