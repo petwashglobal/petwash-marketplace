@@ -1,17 +1,22 @@
 /**
  * 🐙 OCTOPUS PROTOCOL EMOJI CONSTANTS
  * 7-Star Luxury Metallic Emoji System (2025 Design Standards)
+ * Crown Jewel Edition
  * 
  * Inspired by Pet Wash™ Premium Loyalty Tier Design:
  * - Consistent metallic theme (🥉🥈🥇💎💠💚👑)
  * - Enterprise-grade visual hierarchy
  * - Production-ready audit logging
+ * - 3D rendering support with LuxuryEmoji component
  * 
  * Usage:
  * ```typescript
  * import { OCTOPUS_ADMIN, OCTOPUS_ACTIONS } from '@/shared/octopusEmojis';
  * logger.info(`${OCTOPUS_ADMIN.HEAD_OFFICE_OVERRIDE} by ${userId}`);
- * logger.info(`${OCTOPUS_ACTIONS.CREATE} new franchise location`);
+ * 
+ * // For UI rendering:
+ * import LuxuryEmoji from '@/components/luxury/LuxuryEmoji';
+ * <LuxuryEmoji emoji={OCTOPUS_ADMIN.SUPER_ADMIN} material="gold" size="lg" />
  * ```
  */
 
@@ -261,3 +266,27 @@ export type SecurityLevel = keyof typeof OCTOPUS_SECURITY;
 export type BusinessUnit = keyof typeof OCTOPUS_UNITS;
 export type PaymentAction = keyof typeof OCTOPUS_FINANCE;
 export type StatusIndicator = keyof typeof OCTOPUS_STATUS;
+
+// ==================== LUXURY RENDERING CONFIG ====================
+
+/**
+ * Material assignments for 3D luxury rendering
+ * Maps emoji categories to metallic materials (24K Gold, Diamond, Platinum, Rose Gold)
+ */
+export const LUXURY_MATERIALS = {
+  ADMIN_SUPER: 'gold' as const,        // 👑 Royal Gold
+  ADMIN_EXECUTIVE: 'diamond' as const, // 💎 VVS Diamond
+  ADMIN_REGIONAL: 'gold' as const,     // 🥇 Olympic Gold
+  ADMIN_FRANCHISE: 'platinum' as const, // 🥈 Platinum Silver
+  ADMIN_STANDARD: 'champagne' as const, // 🥉 Bronze Champagne
+  
+  SECURITY_HIGH: 'gold' as const,      // 🚨 Alert Gold
+  SECURITY_MEDIUM: 'champagne' as const, // ⚠️ Warning Champagne
+  SECURITY_SAFE: 'diamond' as const,   // ✅ Safe Diamond
+  
+  PAYMENT_PREMIUM: 'gold' as const,    // 💳 Premium Gold
+  PAYMENT_REFUND: 'rose-gold' as const, // 💰 Refund Rose
+  PAYMENT_LOYALTY: 'diamond' as const, // 💎 Loyalty Diamond
+} as const;
+
+export type LuxuryMaterial = typeof LUXURY_MATERIALS[keyof typeof LUXURY_MATERIALS];

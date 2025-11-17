@@ -20,7 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Fingerprint, Shield, Mail, Lock, Sparkles, CheckCircle2, XCircle } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
 import { apiRequest } from "@/lib/queryClient";
-import { motion } from "framer-motion"; // Octopus Protocol animations
+import { motion } from "framer-motion";
+import LuxuryEmoji from "@/components/luxury/LuxuryEmoji"; // 👑 Crown Jewel 7-Star Emoji
 
 export default function AdminLoginV2() {
   const [, setLocation] = useLocation();
@@ -252,15 +253,31 @@ export default function AdminLoginV2() {
 
       {/* Main Login Card */}
       <Card className="w-full max-w-md p-8 bg-white shadow-[8px_8px_16px_rgba(163,177,198,0.2),-8px_-8px_16px_rgba(255,255,255,0.9)] border-0">
-        {/* Header */}
+        {/* Header - Crown Jewel Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 shadow-lg">
-            <Shield className="h-8 w-8 text-white" />
+          <div className="mb-4 flex justify-center">
+            <LuxuryEmoji 
+              emoji="🐙" 
+              material="gold" 
+              size="xl"
+              withSparkles={true}
+              withGlow={true}
+            />
           </div>
-          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent">
+          <h1 
+            className="text-3xl font-bold mb-2"
+            style={{
+              background: 'var(--gradient-metallic-gold)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
             Pet Wash™ Admin
           </h1>
-          <p className="text-gray-600">7-Star Management Portal</p>
+          <p className="text-gray-600" style={{ fontFamily: 'var(--font-body)' }}>
+            7-Star Management Portal
+          </p>
         </div>
 
         {/* Primary CTAs - Biometric & Google SSO */}
@@ -407,10 +424,16 @@ export default function AdminLoginV2() {
           </button>
         </div>
 
-        {/* Security Badge - Octopus Protocol 2025 */}
-        <div className="mt-8 flex items-center justify-center gap-2 text-xs text-gray-500">
-          <Shield className="h-3 w-3" />
-          <span>OAuth 2.1 Secured • Octopus Protocol v2025</span>
+        {/* Security Badge - Crown Jewel Edition */}
+        <div className="mt-8 flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2">
+            <LuxuryEmoji emoji="🛡️" material="platinum" size="sm" animate={false} />
+            <LuxuryEmoji emoji="🔒" material="gold" size="sm" animate={false} />
+            <LuxuryEmoji emoji="👑" material="diamond" size="sm" animate={false} />
+          </div>
+          <p className="text-xs text-gray-500" style={{ fontFamily: 'var(--font-body)' }}>
+            OAuth 2.1 Secured • Crown Jewel Protocol v2025
+          </p>
         </div>
       </Card>
     </div>
