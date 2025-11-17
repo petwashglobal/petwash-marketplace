@@ -1,0 +1,46 @@
+The autoscale deployment build finishes but the promote step fails with this runtime error:
+
+ENOENT: no such file or directory, stat '/home/runner/workspace/server/public/index.html'
+
+I need you to fix this completely and test it end to end.
+
+Do the following NOW, step by step:
+
+1. Search the whole repo for ANY use of:
+   - "server/public/index.html"
+   - "server/public"
+   Replace ALL of them with the correct production path that matches the build output:
+   - "dist/public/index.html" for the main SPA index
+   - "dist/public/brand" (or the correct folder under dist/public) for the brand assets.
+
+2. Open the main server entry file that starts the Express (or similar) app. Make sure that in PRODUCTION it always serves from dist/public, not from server/public. For example:
+   - Static folder must be dist/public
+   - SPA fallback route must send dist/public/index.html
+   Use an absolute path based on process.cwd(), for example:
+   - const staticRoot = path.join(process.cwd(), 'dist', 'public');
+
+3. Check the "npm run start" script in package.json. It must start the compiled JS from dist, not the TS sources. For example it should be something like:
+   - "start": "NODE_ENV=production node dist/server/index.js"
+Adjust it if needed so Cloud Run runs the built code under dist, not the source under server.
+
+4. Run these commands IN THE SHELL and show they succeed:
+   - npm run build
+   - ls -lh dist/public/index.html
+   - ls -lh dist/public
+   Confirm that dist/public/index.html really exists with the latest build.
+
+5. Run the production server locally in the Workspace with the SAME command used in Cloud Run, for example:
+   - NODE_ENV=production PORT=5000 npm run start
+Then, from the Shell, call:
+   - curl -i http://localhost:5000/
+I want to see that it returns 200 and DOES NOT show the ENOENT error.
+
+6. Only after the local production server works without ENOENT, trigger a new Autoscale deployment and wait until it finishes. If it fails, open the deployment logs and fix any remaining path issues until promote succeeds.
+
+When you finish, confirm:
+- Exactly which files you changed (full paths).
+- The final code you are using for:
+  - static file middleware
+  - SPA index route
+  - npm "start" script
+- That https://petwash.co.il loads without 404 or ENOENT.
