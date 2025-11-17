@@ -2368,8 +2368,8 @@ export class EmailService {
                     <div class="feature-desc">Quality grooming products gentle on sensitive skin</div>
                 </div>
                 <div class="feature-item">
-                    <div class="feature-title">🎁 4-Tier Loyalty Program</div>
-                    <div class="feature-desc">NEW → SILVER → GOLD → PLATINUM → DIAMOND with up to 25% discounts</div>
+                    <div class="feature-title">🎁 7-Tier Luxury Loyalty Program</div>
+                    <div class="feature-desc">Bronze → Silver → Gold → Platinum → Diamond → Emerald → Royal with up to 50% discounts</div>
                 </div>
                 <div class="feature-item">
                     <div class="feature-title">📱 Full Digital Management</div>
@@ -2456,7 +2456,7 @@ export class EmailService {
                 he: `🐾 ברוכים הבאים ל-Pet Wash™ - המסע שלך מתחיל כאן!`,
                 en: `🐾 Welcome to Pet Wash™ - Your Journey Starts Here!`
               },
-              description: 'Enhanced welcome email with hero section, 5-tier loyalty program info, AI assistant mention, and branded footer',
+              description: 'Enhanced welcome email with hero section, 7-tier luxury loyalty program info, AI assistant mention, and branded footer',
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             });
