@@ -35,8 +35,8 @@ vitest.config.ts
 docs/
 examples/
 
-# Build artifacts (will be rebuilt in deployment)
-dist
+# Build artifacts (CRITICAL: dist/ must be included for frontend to work!)
+# dist - REMOVED: Replit builds BEFORE deployment, must include dist/public
 build
 .vite
 .cache
