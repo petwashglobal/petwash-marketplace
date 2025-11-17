@@ -644,11 +644,13 @@ router.get('/analytics/overview', validateFirebaseToken, requireAdminOrViewer, a
       },
       loyalty: {
         totalMembers: 890,
-        new: 350,
+        bronze: 350,
         silver: 280,
         gold: 180,
         platinum: 60,
-        diamond: 20
+        diamond: 15,
+        emerald: 4,
+        royal: 1
       }
     };
 

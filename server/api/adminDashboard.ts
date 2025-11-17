@@ -123,8 +123,14 @@ router.get('/metrics', async (req, res) => {
           : '0.0',
       },
       loyalty: {
-        totalUsers: loyaltySnapshot.size,
-        tiers: tierCounts,
+        totalMembers: loyaltySnapshot.size,
+        bronze: tierCounts.BRONZE,
+        silver: tierCounts.SILVER,
+        gold: tierCounts.GOLD,
+        platinum: tierCounts.PLATINUM,
+        diamond: tierCounts.DIAMOND,
+        emerald: tierCounts.EMERALD,
+        royal: tierCounts.ROYAL,
         platinumRate: loyaltySnapshot.size > 0
           ? ((tierCounts.PLATINUM / loyaltySnapshot.size) * 100).toFixed(1)
           : '0.0',

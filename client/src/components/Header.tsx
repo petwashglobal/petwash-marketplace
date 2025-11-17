@@ -548,6 +548,7 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             <LanguageToggle 
               language={language} 
               onLanguageChange={onLanguageChange}
+              testIdPrefix="header-mobile-language-button"
             />
           )}
         </div>
@@ -623,7 +624,11 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
               )}
               {onLanguageChange && (
                 <div className="flex-shrink-0">
-                  <LanguageToggle language={language} onLanguageChange={onLanguageChange} />
+                  <LanguageToggle 
+                    language={language} 
+                    onLanguageChange={onLanguageChange} 
+                    testIdPrefix="header-desktop-language-button"
+                  />
                 </div>
               )}
             </nav>

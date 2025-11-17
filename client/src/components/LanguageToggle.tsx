@@ -5,9 +5,10 @@ import type { Language } from '@/lib/i18n';
 interface LanguageToggleProps {
   language: Language;
   onLanguageChange: (language: Language) => void;
+  testIdPrefix?: string; // For unique testids in mobile vs desktop
 }
 
-export function LanguageToggle({ language, onLanguageChange }: LanguageToggleProps) {
+export function LanguageToggle({ language, onLanguageChange, testIdPrefix = "language-button" }: LanguageToggleProps) {
   const handleLanguageChange = (newLanguage: Language) => {
     onLanguageChange(newLanguage);
     localStorage.setItem('language', newLanguage);
@@ -51,7 +52,7 @@ export function LanguageToggle({ language, onLanguageChange }: LanguageTogglePro
             `}
             aria-pressed={language === lang.code}
             aria-label={`Switch to ${lang.label}`}
-            data-testid={`language-button-${lang.code}`}
+            data-testid={`${testIdPrefix}-${lang.code}`}
             type="button"
           >
             <span className={language === lang.code ? 'text-white font-extrabold' : 'font-bold'}>

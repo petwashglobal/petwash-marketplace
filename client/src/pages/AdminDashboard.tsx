@@ -78,7 +78,7 @@ interface AnalyticsOverview {
   };
   loyalty: {
     totalMembers: number;
-    new: number;
+    bronze: number;
     silver: number;
     gold: number;
     platinum: number;
@@ -431,7 +431,7 @@ export default function AdminDashboard() {
                     { tier: 'Platinum 💠', count: overview?.loyalty.platinum || 0, color: 'from-slate-200 to-slate-300', bgColor: 'bg-slate-500/20' },
                     { tier: 'Gold 🥇', count: overview?.loyalty.gold || 0, color: 'from-yellow-400 to-amber-500', bgColor: 'bg-yellow-500/20' },
                     { tier: 'Silver 🥈', count: overview?.loyalty.silver || 0, color: 'from-gray-300 to-gray-400', bgColor: 'bg-gray-500/20' },
-                    { tier: 'Bronze 🥉', count: overview?.loyalty.new || 0, color: 'from-amber-600 to-orange-700', bgColor: 'bg-amber-500/20' },
+                    { tier: 'Bronze 🥉', count: overview?.loyalty.bronze || 0, color: 'from-amber-600 to-orange-700', bgColor: 'bg-amber-500/20' },
                   ].map((item) => {
                     const total = overview?.loyalty.totalMembers || 1;
                     const percentage = (item.count / total) * 100;
