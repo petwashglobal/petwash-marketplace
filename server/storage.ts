@@ -312,6 +312,12 @@ export interface IStorage {
   getCoupon(code: string): Promise<Coupon | undefined>;
   useCoupon(userId: string, couponId: number): Promise<void>;
   
+  // CRM Communication Logs
+  getCommunicationLogByMessageId(messageId: string): Promise<CrmCommunicationLog | undefined>;
+  getCommunicationLogsByEmail(email: string): Promise<CrmCommunicationLog[]>;
+  createCommunicationLog(log: InsertCrmCommunicationLog): Promise<CrmCommunicationLog>;
+  updateCommunicationLog(id: number, updates: Partial<CrmCommunicationLog>): Promise<CrmCommunicationLog>;
+  
   // Admin operations
   getAdminUser(id: string): Promise<AdminUser | undefined>;
   getAdminUserByEmail(email: string): Promise<AdminUser | undefined>;
@@ -1536,6 +1542,68 @@ export class DatabaseStorage implements IStorage {
       userId,
       couponId,
     });
+  }
+
+  // CRM Communication Logs
+  async getCommunicationLogByMessageId(messageId: string): Promise<CrmCommunicationLog | undefined> {
+    const [log] = await db
+      .select()
+      .from(crmCommunicationLogs)
+      .where(eq(crmCommunicationLogs.externalMessageId, messageId))
+      .limit(1);
+    return log;
+  }
+
+  async getCommunicationLogsByEmail(email: string): Promise<CrmCommunicationLog[]> {
+    // Find BOTH user and customer by email (email may exist in both tables)
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    const [customer] = await db.select().from(customers).where(eq(customers.email, email)).limit(1);
+
+    if (!user && !customer) {
+      return [];
+    }
+
+    // Get communications for BOTH user AND customer (not just one or the other)
+    // This handles converted leads, users who started as customers, etc.
+    const communications = await db
+      .select()
+      .from(crmCommunications)
+      .where(
+        or(
+          user ? eq(crmCommunications.userId, user.id) : sql`false`,
+          customer ? eq(crmCommunications.customerId, customer.id) : sql`false`
+        )
+      );
+
+    if (communications.length === 0) {
+      return [];
+    }
+
+    // Get logs for these communications
+    const communicationIds = communications.map(c => c.id);
+    const logs = await db
+      .select()
+      .from(crmCommunicationLogs)
+      .where(inArray(crmCommunicationLogs.communicationId, communicationIds));
+
+    return logs;
+  }
+
+  async createCommunicationLog(log: InsertCrmCommunicationLog): Promise<CrmCommunicationLog> {
+    const [created] = await db
+      .insert(crmCommunicationLogs)
+      .values(log)
+      .returning();
+    return created;
+  }
+
+  async updateCommunicationLog(id: number, updates: Partial<CrmCommunicationLog>): Promise<CrmCommunicationLog> {
+    const [updated] = await db
+      .update(crmCommunicationLogs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(crmCommunicationLogs.id, id))
+      .returning();
+    return updated;
   }
 
   // Admin operations

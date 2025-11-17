@@ -2611,21 +2611,92 @@ self.addEventListener('notificationclick', (event) => {
   });
 
 
-  // Helper function to process email events (SendGrid webhook data)
+  // Helper function to process email events (SendGrid webhook data) - REAL IMPLEMENTATION
   async function processEmailEvent(event: any): Promise<void> {
     try {
-      const { email, event: eventType, timestamp, sg_event_id: messageId } = event;
+      // CRITICAL: Use sg_message_id (not sg_event_id) - message ID is same for all events, event ID changes per event
+      const { email, event: eventType, timestamp, sg_message_id: messageId, sg_event_id: eventId, url } = event;
       
-      // TODO: Implement getCommunicationLogByMessageId and getCommunicationLogsByEmail in storage
-      // For now, just log the event
       logger.info(`Email webhook event received: ${eventType} for ${email}`, {
         messageId,
+        eventId,
         timestamp,
-        eventType
+        eventType,
+        url
       });
       
-      // Track opens and clicks using existing methods if we have a communicationId
-      // This is a simplified implementation - full webhook tracking needs additional storage methods
+      // Look up communication log by external message ID
+      const communicationLog = await storage.getCommunicationLogByMessageId(messageId);
+      
+      if (!communicationLog) {
+        logger.warn(`Communication log not found for messageId: ${messageId}`, {
+          messageId,
+          eventId,
+          email,
+          eventType,
+          fullEvent: JSON.stringify(event) // DEBUG: Log full event for troubleshooting
+        });
+        return;
+      }
+      
+      // Update communication log based on event type
+      const updates: Partial<typeof communicationLog> = {};
+      
+      switch (eventType) {
+        case 'delivered':
+          updates.deliveryStatus = 'delivered';
+          updates.deliveredAt = new Date(timestamp * 1000);
+          break;
+          
+        case 'open':
+          updates.opened = true;
+          // CRITICAL: Preserve first-open timestamp (use stored value, not updates object)
+          updates.openedAt = communicationLog.openedAt ?? new Date(timestamp * 1000);
+          updates.openCount = (communicationLog.openCount || 0) + 1;
+          updates.lastOpenedAt = new Date(timestamp * 1000);
+          break;
+          
+        case 'click':
+          updates.clicked = true;
+          // CRITICAL: Preserve first-click timestamp (use stored value, not updates object)
+          updates.clickedAt = communicationLog.clickedAt ?? new Date(timestamp * 1000);
+          updates.clickCount = (communicationLog.clickCount || 0) + 1;
+          updates.lastClickedAt = new Date(timestamp * 1000);
+          if (url) {
+            updates.lastClickedUrl = url;
+          }
+          break;
+          
+        case 'bounce':
+        case 'dropped':
+          updates.deliveryStatus = 'bounced';
+          updates.bounceReason = event.reason || event.type;
+          break;
+          
+        case 'spamreport':
+          updates.markedAsSpam = true;
+          updates.spamReportedAt = new Date(timestamp * 1000);
+          break;
+          
+        case 'unsubscribe':
+          updates.unsubscribed = true;
+          updates.unsubscribedAt = new Date(timestamp * 1000);
+          break;
+          
+        default:
+          logger.warn(`Unknown email event type: ${eventType}`);
+          return;
+      }
+      
+      // Update the communication log
+      await storage.updateCommunicationLog(communicationLog.id, updates);
+      
+      logger.info(`Communication log updated for ${eventType} event`, {
+        communicationLogId: communicationLog.id,
+        messageId,
+        email,
+        updates
+      });
       
     } catch (error: unknown) {
       logger.error('Error processing email event', {
