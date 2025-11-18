@@ -6,6 +6,7 @@ import { Layout } from '@/components/Layout';
 import { LegalFooter } from '@/components/LegalFooter';
 import { PetWashDivisions } from '@/components/PetWashDivisions';
 import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/components/LuxuryThemeWrapper';
+import PaymentIcons from '@/components/PaymentIcons';
 import { t, type Language } from '@/lib/i18n';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 
@@ -184,35 +185,13 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Gift Cards Section */}
         <GiftCards language={language} />
 
-        {/* Payment Methods Accepted Section - Premium High-Quality Logos */}
+        {/* Payment Methods Accepted Section - Sharp SVG Icons */}
         <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-white">
           <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-8 sm:mb-12">
               {t('landing.paymentMethods', language)}
             </h2>
-            <div className="flex flex-col items-center justify-center gap-8 max-w-5xl mx-auto">
-              {/* All Credit Cards & Payment Methods - Ultra HD */}
-              <div className="bg-white rounded-2xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-1 border-2 border-gray-100">
-                <img 
-                  src="/payments/payment-methods.jpg"
-                  alt="Accepted Payment Methods: Visa, Mastercard, American Express, Diners Club"
-                  className="w-full max-w-4xl h-auto object-contain"
-                  loading="lazy"
-                  style={{ imageRendering: 'crisp-edges' }}
-                />
-              </div>
-              
-              {/* Apple Pay & Google Pay - Premium Quality */}
-              <div className="bg-white rounded-2xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-1 border-2 border-gray-100">
-                <img 
-                  src="/payments/apple-google-pay.jpg"
-                  alt="Apple Pay and Google Pay Accepted"
-                  className="w-full max-w-2xl h-auto object-contain"
-                  loading="lazy"
-                  style={{ imageRendering: 'crisp-edges' }}
-                />
-              </div>
-            </div>
+            <PaymentIcons variant="default" />
           </div>
         </section>
 

@@ -2,6 +2,7 @@ import { t, type Language } from '@/lib/i18n';
 import { Link } from 'wouter';
 import { FaWhatsapp } from 'react-icons/fa';
 import { Mail, Shield, Award, Leaf, CheckCircle2 } from 'lucide-react';
+import PaymentIcons from '@/components/PaymentIcons';
 
 interface FooterProps {
   language: Language;
@@ -110,47 +111,12 @@ export function Footer({ language }: FooterProps) {
         {/* Premium Trust & Payment Badges Section - 7-Star Luxury */}
         <div className="border-t border-gray-100 pt-8 pb-8">
           <div className="max-w-5xl mx-auto">
-            {/* Payment Methods - Ultra HD Premium Quality 2025 */}
+            {/* Payment Methods - Sharp SVG Icons */}
             <div className="text-center mb-6">
               <p className="text-xs uppercase tracking-[0.2em] text-gray-400 font-light mb-5">
                 {t('footer.securePayment', language)}
               </p>
-              <div className="flex flex-col items-center justify-center gap-6">
-                {/* All Payment Methods - Premium HD Quality */}
-                <div className="bg-white rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-1 border-2 border-gray-100 max-w-4xl">
-                  <img 
-                    src="/payments/payment-methods.jpg"
-                    alt="Accepted Payment Methods: Visa, Mastercard, American Express, Diners Club"
-                    className="w-full h-auto object-contain"
-                    loading="lazy"
-                    style={{ imageRendering: 'crisp-edges' }}
-                  />
-                </div>
-                
-                {/* Apple Pay & Google Pay - Premium Quality */}
-                <div className="bg-white rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-1 border-2 border-gray-100 max-w-2xl">
-                  <img 
-                    src="/payments/apple-google-pay.jpg"
-                    alt="Apple Pay and Google Pay Accepted"
-                    className="w-full h-auto object-contain"
-                    loading="lazy"
-                    style={{ imageRendering: 'crisp-edges' }}
-                  />
-                </div>
-                
-                {/* Nayax Badge - Premium 2025 */}
-                <div className="group cursor-default transform hover:scale-105 transition-all duration-300" title="Nayax Mobile Payment">
-                  <div className="relative bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 px-8 py-4 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-emerald-400/20 via-transparent to-teal-400/20"></div>
-                    <div className="relative flex items-center gap-3">
-                      <svg className="w-7 h-7" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.89-8.9L16 6l-1.41-1.41L12 7.17 9.41 4.59 8 6l3.11 3.1L8 12.21 9.41 13.62 12 11.03l2.59 2.59L16 12.21l-3.11-3.11z"/>
-                      </svg>
-                      <span className="text-white text-lg font-bold tracking-wide uppercase">Nayax Payment Gateway</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <PaymentIcons variant="compact" />
             </div>
 
             {/* Trust Badges - Minimalist Luxury */}
