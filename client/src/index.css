@@ -7,6 +7,9 @@
 /* Premium AI Chat Styles */
 @import './styles/ai-chat.css';
 
+/* Pet Wash™ Global Header 2025 */
+@import './styles/petwash-header.css';
+
 @import './styles/responsive-tokens.css';
 
 /* 2025 Override - Pure White + Large Display Fixes */

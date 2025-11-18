@@ -1,0 +1,512 @@
+/**
+ * Pet Wash™ Global Header 2025 - CSS
+ * Luxury header styles for desktop + mobile
+ * Supports RTL (Hebrew, Arabic) and 6 languages
+ */
+
+/* ===========================
+   HEADER CONTAINER
+   =========================== */
+.pw-header {
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.pw-header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: 4rem;
+  gap: 2rem;
+}
+
+/* ===========================
+   LEFT SECTION - SOCIAL ICONS
+   =========================== */
+.pw-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: flex-start;
+}
+
+.pw-social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.pw-social-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* ===========================
+   CENTER SECTION - LOGO
+   =========================== */
+.pw-header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pw-logo-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pw-logo-circle {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.pw-logo-link:hover .pw-logo-circle {
+  transform: scale(1.05) rotate(-5deg);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.pw-logo-text {
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.pw-logo-circle-mobile {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+/* ===========================
+   RIGHT SECTION - NAV & ACTIONS
+   =========================== */
+.pw-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+/* Desktop Navigation */
+.pw-nav-desktop {
+  display: none;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .pw-nav-desktop {
+    display: flex;
+  }
+}
+
+.pw-nav-item {
+  position: relative;
+}
+
+.pw-nav-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 0;
+  transition: color 0.2s ease;
+}
+
+.pw-nav-link:hover {
+  color: #0f172a;
+}
+
+/* ===========================
+   MEGA MENU (DESKTOP DROPDOWN)
+   =========================== */
+.pw-mega-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 0.75rem;
+  width: 600px;
+  max-width: 90vw;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  padding: 1.5rem;
+  z-index: 10000;
+  animation: fadeInDown 0.2s ease;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.pw-mega-inner {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+}
+
+.pw-mega-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pw-mega-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+}
+
+.pw-mega-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pw-mega-link:hover {
+  background: rgba(102, 126, 234, 0.08);
+  color: #667eea;
+}
+
+.pw-mega-link-frozen {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pw-mega-link-frozen:hover {
+  background: none;
+  color: #334155;
+}
+
+.pw-pill-frozen {
+  background: #fbbf24;
+  color: #92400e;
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ===========================
+   LANGUAGE SELECTOR
+   =========================== */
+.pw-language-select {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pw-language-select:hover {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.pw-language-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+/* ===========================
+   ACCOUNT BUTTON
+   =========================== */
+.pw-account-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pw-account-circle {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.pw-account-btn:hover .pw-account-circle {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
+}
+
+/* ===========================
+   HAMBURGER MENU (MOBILE)
+   =========================== */
+.pw-burger {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+@media (min-width: 1024px) {
+  .pw-burger {
+    display: none;
+  }
+}
+
+.pw-burger span {
+  width: 1.5rem;
+  height: 0.125rem;
+  background: #334155;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.pw-burger:hover span {
+  background: #667eea;
+}
+
+/* ===========================
+   MOBILE DRAWER
+   =========================== */
+.pw-mobile-drawer {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 100%;
+  max-width: 400px;
+  height: 100vh;
+  background: white;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.2);
+  z-index: 10001;
+  transition: right 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.pw-mobile-drawer.open {
+  right: 0;
+}
+
+.pw-mobile-top {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.pw-mobile-close {
+  background: none;
+  border: 1px solid #e2e8f0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #475569;
+  transition: all 0.2s ease;
+}
+
+.pw-mobile-close:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.pw-mobile-logo-wrap {
+  padding: 1.5rem 1rem;
+  display: flex;
+  justify-content: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.pw-mobile-lang-row {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.pw-mobile-menu-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.pw-mobile-section {
+  margin-bottom: 1.5rem;
+}
+
+.pw-mobile-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 0.75rem;
+}
+
+.pw-mobile-group {
+  margin-bottom: 1rem;
+}
+
+.pw-mobile-group-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.5rem;
+}
+
+.pw-mobile-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pw-mobile-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pw-mobile-link:hover {
+  background: rgba(102, 126, 234, 0.08);
+  color: #667eea;
+}
+
+/* ===========================
+   RTL SUPPORT
+   =========================== */
+[dir="rtl"] .pw-header-inner {
+  grid-template-columns: 1fr auto 1fr;
+}
+
+[dir="rtl"] .pw-header-left {
+  justify-content: flex-start;
+}
+
+[dir="rtl"] .pw-header-right {
+  justify-content: flex-end;
+}
+
+[dir="rtl"] .pw-mega-link {
+  text-align: right;
+}
+
+[dir="rtl"] .pw-mobile-link {
+  text-align: right;
+}
+
+[dir="rtl"] .pw-mobile-drawer {
+  right: auto;
+  left: -100%;
+}
+
+[dir="rtl"] .pw-mobile-drawer.open {
+  left: 0;
+  right: auto;
+}
+
+/* ===========================
+   RESPONSIVE BREAKPOINTS
+   =========================== */
+@media (max-width: 640px) {
+  .pw-header-inner {
+    padding: 0 1rem;
+    gap: 1rem;
+  }
+
+  .pw-header-left {
+    gap: 0.5rem;
+  }
+
+  .pw-social-link {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.625rem;
+  }
+
+  .pw-logo-circle {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .pw-logo-text {
+    font-size: 0.625rem;
+  }
+}
