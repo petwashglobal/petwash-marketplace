@@ -90,15 +90,6 @@ window.addEventListener('popstate', trackHubSpotPageView);
     </AppErrorBoundary>
   );
   
-  // Register service worker for offline support
-  if ("serviceWorker" in navigator && import.meta.env.PROD) {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((registration) => {
-        console.log("[SW] Registered successfully:", registration.scope);
-      })
-      .catch((error) => {
-        console.error("[SW] Registration failed:", error);
-      });
-  }
+  // SERVICE WORKER REMOVED 2025 - Per user request, all service worker code has been disabled
+  // No offline support, no PWA features - simpler, more reliable deployment
 })();

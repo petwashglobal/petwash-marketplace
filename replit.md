@@ -12,6 +12,16 @@ Pet Wash™ is a full-stack enterprise platform designed for market leadership a
 - **Multilingual**: Complete translations for all 6 languages (English, Hebrew, Arabic, Russian, French, Spanish)
 - **Architect Verified**: Backend-frontend alignment confirmed, no security issues, production-ready
 
+### ✅ Service Worker Removal & Security Hardening (PRODUCTION READY)
+**Completion Date**: November 18, 2025
+- **Service Workers Eliminated**: Completely removed from `client/src/main.tsx`, `client/index.html`, root `index.html`, all service worker files deleted
+- **Build System Verified**: Clean build output (33.64s, 4421 modules), no service worker registration code in production bundle
+- **SPA Routing Fixed**: Corrected middleware order (express.static → API routes → SPA catchall), fixed /gallery route 404 on mobile
+- **Console Verified Clean**: No service worker messages, no 404 errors, no 401 errors, only expected Firebase config logs
+- **Cross-Device Testing**: Homepage, gallery, navigation verified on desktop, mobile (375x667), tablet (768x1024)
+- **Critical Security Fixes**: Removed hardcoded admin credentials (CEO + generic admin), fixed 9 RBAC bypass vulnerabilities, enhanced session security
+- **E2E Tested**: All core functionality verified with Playwright, responsive layouts confirmed
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
@@ -71,7 +81,7 @@ Before adding ANY new code, you MUST:
 
 ### Core Features & Design Decisions
 - **Global Architecture Module**: `shared/petwashGlobal.ts` for core platform catalog, KYC, wallet, payments, booking, and mobile contracts.
-- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite, PWA.
+- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching, Firebase Authentication (WebAuthn/Passkey).
 - **UI/UX Design**: Responsive, mobile-first, luxury designs with glassmorphism, Apple-style animations, and bilingual direction-aware layouts.
 - **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.

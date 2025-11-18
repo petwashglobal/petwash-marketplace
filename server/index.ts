@@ -117,13 +117,13 @@ ensureBiometricStorage()
     console.error("[BiometricStorage] init failed", err);
   });
 
-// 3. API routes, static assets, and server startup
+// 3. Static assets, API routes, and server startup
 (async () => {
   try {
-    // Register all API routes (wait for async completion)
-    await registerRoutes(app);
+    // --- STATIC FILE SERVING FIX (2025) ---
+    // CRITICAL: Mount express.static BEFORE API routes (per architect recommendation)
+    // This ensures proper request handling order: static assets → API → SPA fallback
     
-    // --- STATIC FILE SERVING FIX ---
     // 1. Define the correct build output path (dist/public)
     // We use process.cwd() to safely resolve from the project root
     const DIST_PUBLIC_PATH = path.join(process.cwd(), 'dist', 'public');
@@ -185,6 +185,7 @@ ensureBiometricStorage()
     console.log('--------------------------------------------------');
     
     // 4. Serve static files from the DIST directory with explicit configuration
+    // MOUNTED BEFORE API ROUTES for proper request handling order
     app.use(express.static(DIST_PUBLIC_PATH, {
       maxAge: '1d', // Cache static assets for 1 day
       etag: true,
@@ -202,9 +203,12 @@ ensureBiometricStorage()
       }
     }));
     
+    // 5. Register all API routes (AFTER static files, BEFORE catchall)
+    await registerRoutes(app);
+    
     // --- 2025 PRODUCTION SAFETY NET ---
     
-    // 5. Global Error Handler (Prevents Server Crashes)
+    // 6. Global Error Handler (Prevents Server Crashes)
     // NOTE: This must be registered BEFORE the catchall route to catch API errors
     app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
       const status = err.status || 500;
@@ -219,46 +223,42 @@ ensureBiometricStorage()
       });
     });
     
-    // 6. Root Route Fix: Serve index.html from DIST for the main page (PRODUCTION ONLY - SPA routing)
-    // In development, Vite middleware handles SPA routing automatically via server/routes.ts
-    if (process.env.NODE_ENV === 'production' || 
-        process.env.REPLIT_DEPLOYMENT === '1' || 
-        process.env.REPLIT_DEPLOYMENT === 'true') {
-      app.get("*", (req, res, next) => {
-        // CRITICAL FIX: Exclude ALL static asset paths from SPA catchall
-        // This prevents images from being served as HTML
-        const staticAssetPaths = [
-          '/api/',
-          '/assets/',
-          '/brand/',
-          '/payments/',
-          '/gallery/',
-          '/icons/',
-          '/docs/',
-          '/reports/',
-          '/documents/',
-          '/.well-known/'
-        ];
-        
-        // Also exclude requests for files with static asset extensions
-        const staticExtensions = ['.png', '.jpg', '.jpeg', '.svg', '.ico', '.webp', '.gif', '.pdf', '.json', '.xml', '.txt', '.woff', '.woff2', '.ttf', '.eot'];
-        const hasStaticExtension = staticExtensions.some(ext => req.path.toLowerCase().endsWith(ext));
-        
-        if (staticAssetPaths.some(path => req.path.startsWith(path)) || hasStaticExtension) {
-          // Let the request fall through - if express.static didn't handle it, return 404
-          return res.status(404).send('File not found');
+    // 7. SPA Catchall Route - Serve index.html for ALL non-API routes (UNIVERSAL - works in dev AND production)
+    // CRITICAL FIX 2025: Removed production-only check - now works in ALL environments
+    app.get("*", (req, res, next) => {
+      // CRITICAL FIX: Exclude ONLY actual static asset directories (not SPA routes like /gallery)
+      // This prevents images/assets from being served as HTML
+      const staticAssetPaths = [
+        '/api/',           // API endpoints
+        '/assets/',        // Vite build assets (JS/CSS bundles)
+        '/brand/',         // Brand assets (logos)
+        '/payments/',      // Payment-related images
+        '/icons/',         // Icon files
+        '/docs/',          // Documentation files
+        '/reports/',       // Report files  
+        '/documents/',     // Document files
+        '/.well-known/'    // Well-known URIs
+        // NOTE: /gallery/ removed - it's a SPA route, not a static asset directory
+      ];
+      
+      // Also exclude requests for files with static asset extensions
+      const staticExtensions = ['.png', '.jpg', '.jpeg', '.svg', '.ico', '.webp', '.gif', '.pdf', '.json', '.xml', '.txt', '.woff', '.woff2', '.ttf', '.eot', '.js', '.css'];
+      const hasStaticExtension = staticExtensions.some(ext => req.path.toLowerCase().endsWith(ext));
+      
+      if (staticAssetPaths.some(path => req.path.startsWith(path)) || hasStaticExtension) {
+        // Let the request fall through - if express.static didn't handle it, return 404
+        return res.status(404).send('File not found');
+      }
+      
+      // Serve index.html for all other routes (SPA routing - includes /gallery, /about, /contact, etc.)
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error('❌ CRITICAL: Could not serve index.html from:', indexPath);
+          console.error('   Error details:', err);
+          res.status(500).send('Server Error: Static files missing. Did you run "npm run build"?');
         }
-        
-        // Serve index.html for all other routes (SPA routing)
-        res.sendFile(indexPath, (err) => {
-          if (err) {
-            console.error('❌ CRITICAL: Could not serve index.html from:', indexPath);
-            console.error('   Error details:', err);
-            res.status(500).send('Server Error: Static files missing. Did you run "npm run build"?');
-          }
-        });
       });
-    }
+    });
     
     // Start server
     app.listen(PORT, "0.0.0.0", () => {

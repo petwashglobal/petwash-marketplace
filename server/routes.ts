@@ -4764,13 +4764,9 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Legacy dashboard stats endpoint (kept for backward compatibility)
-  app.get('/api/admin/dashboard/stats', async (req, res) => {
+  // SECURITY FIX: Replaced manual session check with requireAdmin middleware
+  app.get('/api/admin/dashboard/stats', requireAdmin, async (req: any, res) => {
     try {
-      const adminId = (req.session as any)?.adminId;
-      
-      if (!adminId) {
-        return res.status(401).json({ message: "Admin authentication required" });
-      }
 
       // Get dashboard statistics
       const allUsers = await storage.getAllUsers();
@@ -8160,7 +8156,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/weather-test', adminLimiter, weatherTestRoutes);
 
   // Platform Status Monitor - Real-time health checks for all 7 platforms
-  app.get('/api/admin/platform-status', adminLimiter, async (req, res) => {
+  // SECURITY FIX: Added requireAdmin middleware (was RBAC bypass vulnerability)
+  app.get('/api/admin/platform-status', requireAdmin, adminLimiter, async (req: any, res) => {
     try {
       // Fetch real-time metrics from all platforms
       const platforms = [
@@ -8245,11 +8242,12 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Company Registration (CONFIDENTIAL - Authorized Personnel Only)
-  app.get('/api/admin/company-registration', async (req, res) => {
+  // SECURITY FIX: Added requireAdmin middleware (defense in depth with isAuthorizedUser whitelist)
+  app.get('/api/admin/company-registration', requireAdmin, async (req: any, res) => {
     try {
       const { getCompanyRegistration, isAuthorizedUser } = await import('./company-registration-secure');
       
-      // Get user email from session
+      // Get user email from session - Additional whitelist check on top of requireAdmin
       const userEmail = req.session?.user?.email;
       
       if (!userEmail || !isAuthorizedUser(userEmail)) {
@@ -8286,7 +8284,8 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Send Backend Team Invitation Email (Admin only)
-  app.post('/api/admin/send-backend-invitation', async (req, res) => {
+  // SECURITY FIX: Added requireAdmin middleware (was RBAC bypass vulnerability)
+  app.post('/api/admin/send-backend-invitation', requireAdmin, async (req: any, res) => {
     try {
       const { sendBackendTeamInvitation } = await import('./email/luxury-email-service');
       const { recipientEmail, recipientName, personalMessage } = req.body;
@@ -8563,7 +8562,8 @@ self.addEventListener('notificationclick', (event) => {
   const { BackgroundJobProcessor } = await import('./backgroundJobs');
 
   // Manual trigger for birthday processing (admin/testing only)
-  app.post('/api/admin/trigger-birthdays', async (req, res) => {
+  // SECURITY FIX: Added requireAdmin middleware (was RBAC bypass vulnerability)
+  app.post('/api/admin/trigger-birthdays', requireAdmin, async (req: any, res) => {
     try {
       logger.info('Manual birthday trigger requested');
       const result = await BackgroundJobProcessor.triggerBirthdayProcess();
@@ -8582,7 +8582,8 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Manual trigger for observances processing (admin/testing only)
-  app.post('/api/admin/trigger-observances', async (req, res) => {
+  // SECURITY FIX: Added requireAdmin middleware (was RBAC bypass vulnerability)
+  app.post('/api/admin/trigger-observances', requireAdmin, async (req: any, res) => {
     try {
       logger.info('Manual observances trigger requested');
       const { processAllObservances } = await import('./observanceEvaluator');
@@ -8838,7 +8839,8 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Admin Test Endpoints - For verifying live Firestore data (ADMIN ONLY)
-  app.post('/api/admin/test/add-wash', async (req, res) => {
+  // SECURITY FIX: Added requireAdmin middleware (defense in depth with Firebase token check)
+  app.post('/api/admin/test/add-wash', requireAdmin, async (req: any, res) => {
     try {
       const { uid } = req.body;
       
@@ -8901,7 +8903,8 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  app.post('/api/admin/test/grant-coupon', async (req, res) => {
+  // SECURITY FIX: Added requireAdmin middleware (defense in depth with Firebase token check)
+  app.post('/api/admin/test/grant-coupon', requireAdmin, async (req: any, res) => {
     try {
       const { uid } = req.body;
       
@@ -8959,7 +8962,8 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Admin: Send sample welcome/birthday emails for testing
-  app.post('/api/admin/test/send-sample-email', async (req, res) => {
+  // SECURITY FIX: Added requireAdmin middleware (defense in depth with Firebase token check)
+  app.post('/api/admin/test/send-sample-email', requireAdmin, async (req: any, res) => {
     try {
       const { emailType, language } = req.body;
       
