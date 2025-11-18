@@ -28,7 +28,7 @@ import {
   Award,
   MapPin
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import NayaxMonitoring from "@/components/admin/NayaxMonitoring";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
@@ -104,6 +104,7 @@ interface StationPerformance {
 }
 
 export default function AdminDashboard() {
+  const [, setLocation] = useLocation();
   const [selectedSection, setSelectedSection] = useState<'overview' | 'analytics' | 'loyalty' | 'inventory' | 'hr' | 'payments'>('overview');
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -140,7 +141,7 @@ export default function AdminDashboard() {
   const handleLogout = async () => {
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
-      window.location.href = '/admin/login';
+      setLocation('/admin/login');
     } catch (error) {
       logger.error('Logout error', error);
     }

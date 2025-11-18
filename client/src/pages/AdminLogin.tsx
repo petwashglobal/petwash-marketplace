@@ -26,6 +26,7 @@ import { Shield, Lock, Fingerprint, Loader2, Phone } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
 import { signInWithPasskey, isPasskeySupported, getBiometricMethodName, getDeviceType, registerPasskey } from "@/auth/passkey";
 import { LuxuryConsentCard } from "@/components/LuxuryConsentCard";
+import { useLocation } from "wouter";
 
 const adminLoginSchema = z.object({
   email: z.string()
@@ -40,6 +41,7 @@ const adminLoginSchema = z.object({
 type AdminLoginForm = z.infer<typeof adminLoginSchema>;
 
 export default function AdminLogin() {
+  const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyAvailable] = useState(isPasskeySupported());
@@ -86,7 +88,7 @@ export default function AdminLogin() {
         });
         
         console.log('[AdminLogin] ✅ Passkey login successful, redirecting to /admin/users');
-        window.location.href = "/admin/users";
+        setLocation("/admin/users");
       } else {
         // Check if error is due to no passkey registered
         if (result.error?.includes('No passkeys found') || result.error?.includes('No credentials found')) {
@@ -235,7 +237,7 @@ export default function AdminLogin() {
       }
       
       console.log('[AdminLogin] ✅ Redirecting to /admin/users');
-      window.location.href = "/admin/users";
+      setLocation("/admin/users");
     } catch (error: any) {
       console.error('[AdminLogin] ❌ Login error:', error);
       let errorMessage = "Invalid credentials";
@@ -487,7 +489,7 @@ export default function AdminLogin() {
                       }
                       
                       toast({ title: "Success", description: `Welcome, ${meData.user.firstName}!` });
-                      window.location.href = "/admin/users";
+                      setLocation("/admin/users");
                     } catch (error: any) {
                       toast({ title: "Error", description: error.message, variant: "destructive" });
                       setIsLoading(false);

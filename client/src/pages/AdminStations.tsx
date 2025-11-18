@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { logger } from "@/lib/logger";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +86,7 @@ interface RenewalAlert extends Alert {
 type TabType = "list" | "alerts" | "health";
 
 export default function AdminStations() {
+  const [, setLocation] = useLocation();
   const [selectedTab, setSelectedTab] = useState<TabType>("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -125,7 +127,7 @@ export default function AdminStations() {
   const handleLogout = async () => {
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
-      window.location.href = '/admin/login';
+      setLocation('/admin/login');
     } catch (error) {
       logger.error('Logout error', error);
     }
@@ -187,7 +189,7 @@ export default function AdminStations() {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" onClick={() => window.location.href = '/admin/dashboard'}>
+              <Button variant="ghost" size="sm" onClick={() => setLocation('/admin/dashboard')}>
                 <Shield className="w-4 h-4 mr-2" />
                 Back to Dashboard
               </Button>

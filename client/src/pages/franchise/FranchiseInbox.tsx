@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle } from 'lucide-react';
 import { trackFranchiseMessageAcknowledged } from '@/lib/analytics';
 import { t } from '@/lib/i18n';
+import sanitizeHtml from 'sanitize-html';
 
 interface FranchiseMessage {
   id: string;
@@ -123,7 +124,10 @@ export default function FranchiseInbox() {
                           </div>
                           <div 
                             className="text-sm text-gray-600 line-clamp-2"
-                            dangerouslySetInnerHTML={{ __html: message.bodyHtml }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.bodyHtml, {
+                              allowedTags: ['p', 'br', 'strong', 'em', 'u', 'span'],
+                              allowedAttributes: {}
+                            }) }}
                           />
                         </div>
                         {message.requiresAck && !message.ackAt && (

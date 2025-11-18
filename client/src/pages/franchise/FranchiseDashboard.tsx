@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { trackFranchiseDashboardOpened } from '@/lib/analytics';
 import { t } from '@/lib/i18n';
+import sanitizeHtml from 'sanitize-html';
 
 interface DashboardStats {
   locationName: string;
@@ -240,7 +241,10 @@ export default function FranchiseDashboard() {
                       <h4 className="font-semibold text-sm mb-1">{announcement.title}</h4>
                       <div 
                         className="text-xs text-gray-600 line-clamp-2" 
-                        dangerouslySetInnerHTML={{ __html: announcement.bodyHtml }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(announcement.bodyHtml, {
+                          allowedTags: ['p', 'br', 'strong', 'em', 'u', 'span'],
+                          allowedAttributes: {}
+                        }) }}
                       />
                       <p className="text-xs text-gray-400 mt-2">
                         {new Date(announcement.createdAt).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US')}

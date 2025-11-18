@@ -7,8 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 import { SiAndroid } from "react-icons/si";
 import { WalletConsentDialog } from "@/components/WalletConsentDialog";
 import { useWalletTelemetry } from "@/hooks/useWalletTelemetry";
+import { useLocation } from "wouter";
 
 export default function MyWallet() {
+  const [, setLocation] = useLocation();
   const { user } = useFirebaseAuth();
   const { toast } = useToast();
   const [isDownloadingVIP, setIsDownloadingVIP] = useState(false);
@@ -58,7 +60,7 @@ export default function MyWallet() {
 
       if (!prepareResponse.ok) {
         if (prepareResponse.status === 401) {
-          window.location.href = '/signin';
+          setLocation('/signin');
           return;
         }
         throw new Error('Failed to prepare VIP card');
@@ -140,7 +142,7 @@ export default function MyWallet() {
 
       if (!response.ok) {
         if (response.status === 401) {
-          window.location.href = '/signin';
+          setLocation('/signin');
           return;
         }
         throw new Error('Failed to generate business card');
@@ -190,7 +192,7 @@ export default function MyWallet() {
 
       if (!response.ok) {
         if (response.status === 401) {
-          window.location.href = '/signin';
+          setLocation('/signin');
           return;
         }
         const error = await response.json();

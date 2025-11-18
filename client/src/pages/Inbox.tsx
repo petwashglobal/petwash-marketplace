@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { format, differenceInDays, parseISO, isPast, isFuture } from 'date-fns';
 import { he, enUS } from 'date-fns/locale';
+import sanitizeHtml from 'sanitize-html';
 
 interface InboxMessage {
   id: string;
@@ -638,7 +639,10 @@ export default function Inbox() {
               <ScrollArea className="h-[500px]">
                 <div 
                   className="prose dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: selectedMessage.body }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedMessage.body, {
+                    allowedTags: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'a', 'img'],
+                    allowedAttributes: { 'a': ['href', 'target'], 'img': ['src', 'alt'] }
+                  }) }}
                 />
                 
                 {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
