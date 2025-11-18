@@ -230,6 +230,32 @@ const PlatformShowcase = lazy(() => import("@/pages/PlatformShowcase"));
 const PawFinder = lazy(() => import("@/pages/PawFinder"));
 const ServiceStatus = lazy(() => import("@/pages/ServiceStatus"));
 
+// Pet Wash™ 2025 Global Architecture - Octopus Model Routes
+const Hub = lazy(() => import("@/pages/Hub"));
+const Stations = lazy(() => import("@/pages/Stations"));
+const Shop = lazy(() => import("@/pages/Shop"));
+const BookingUnified = lazy(() => import("@/pages/BookingUnified"));
+const StationMap = lazy(() => import("@/pages/StationMap"));
+const Story = lazy(() => import("@/pages/Story"));
+const Media = lazy(() => import("@/pages/Media"));
+const Careers = lazy(() => import("@/pages/Careers"));
+const Support = lazy(() => import("@/pages/Support"));
+const SystemStatus = lazy(() => import("@/pages/SystemStatus"));
+
+// Partner Routes
+const FranchisePartners = lazy(() => import("@/pages/partners/Franchise"));
+const LocationPartners = lazy(() => import("@/pages/partners/Locations"));
+const SuppliersPartners = lazy(() => import("@/pages/partners/Suppliers"));
+const MunicipalPartners = lazy(() => import("@/pages/partners/Municipal"));
+
+// Legal Routes
+const LegalTerms = lazy(() => import("@/pages/legal/Terms"));
+const LegalPrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
+const EGiftPolicy = lazy(() => import("@/pages/legal/EGiftPolicy"));
+const LoyaltyTermsPage = lazy(() => import("@/pages/legal/LoyaltyTerms"));
+const CookiesPolicy = lazy(() => import("@/pages/legal/Cookies"));
+const AccessibilityStatementPage = lazy(() => import("@/pages/legal/AccessibilityStatement"));
+
 // Walk My Pet™ Pages
 const TrackWalk = lazy(() => import("@/pages/walks/TrackWalk"));
 
@@ -393,6 +419,76 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* eGift Cards */}
         <Route path="/egift">
           {() => <EGift />}
+        </Route>
+        
+        {/* Pet Wash™ 2025 Global Architecture - Octopus Model Routes */}
+        <Route path="/hub">
+          {() => <Hub />}
+        </Route>
+        <Route path="/stations">
+          {() => <Stations />}
+        </Route>
+        <Route path="/shop">
+          {() => <Shop />}
+        </Route>
+        <Route path="/booking">
+          {() => <BookingUnified />}
+        </Route>
+        <Route path="/map">
+          {() => <StationMap />}
+        </Route>
+        
+        {/* Company Pages */}
+        <Route path="/story">
+          {() => <Story />}
+        </Route>
+        <Route path="/media">
+          {() => <Media />}
+        </Route>
+        <Route path="/careers">
+          {() => <Careers />}
+        </Route>
+        
+        {/* Support & Status */}
+        <Route path="/support">
+          {() => <Support />}
+        </Route>
+        <Route path="/status">
+          {() => <SystemStatus />}
+        </Route>
+        
+        {/* Partner Routes */}
+        <Route path="/partners/franchise">
+          {() => <FranchisePartners />}
+        </Route>
+        <Route path="/partners/locations">
+          {() => <LocationPartners />}
+        </Route>
+        <Route path="/partners/suppliers">
+          {() => <SuppliersPartners />}
+        </Route>
+        <Route path="/partners/municipal">
+          {() => <MunicipalPartners />}
+        </Route>
+        
+        {/* Legal Routes */}
+        <Route path="/legal/terms">
+          {() => <LegalTerms />}
+        </Route>
+        <Route path="/legal/privacy">
+          {() => <LegalPrivacyPolicy />}
+        </Route>
+        <Route path="/legal/egift-policy">
+          {() => <EGiftPolicy />}
+        </Route>
+        <Route path="/legal/loyalty-terms">
+          {() => <LoyaltyTermsPage />}
+        </Route>
+        <Route path="/legal/cookies">
+          {() => <CookiesPolicy />}
+        </Route>
+        <Route path="/legal/accessibility">
+          {() => <AccessibilityStatementPage />}
         </Route>
         
         {/* Protected route - ID Verification */}

@@ -1,0 +1,134 @@
+
+Hi, please read carefully.
+This is the final master instruction.
+
+The code I provided is not a normal header.
+It is the full 2025 PetWash™ Global Architecture Blueprint, also called the Octopus Multi-Platform Structure.
+
+You must integrate and respect everything in it.
+This is not optional, and nothing should be simplified.
+
+🔥 What the code represents
+
+It contains:
+
+1. All 8 PetWash platforms together in one unified global system
+	•	PetWash Hub™
+	•	PetWash Stations
+	•	Pet Sitter Suite™
+	•	Walk My Pet™
+	•	PetTrek™ Transport
+	•	PetWash Academy
+	•	PetWash Shop (coming soon)
+	•	Avatar Studio (Frozen - do not enable booking flows)
+
+Each is a standalone business, connected through:
+	•	One global login
+	•	One global user identity
+	•	One global dashboard
+	•	One global backend and booking logic
+	•	One global 7-star UI/UX framework
+
+2. A premium luxury header for 2025
+	•	Centered logo, dominant
+	•	Social icons on the far left
+	•	Luxury hamburger on the far right
+	•	Mega-menu with sub → sub → sub structure
+	•	Mobile full-screen luxury drawer
+	•	Supports iPhone 13, 14, 15, 16, iPad, all laptops and 17’’ monitors
+	•	Fully responsive
+	•	Must look and behave like Apple / Uber / Airbnb
+
+3. 6 languages with RTL
+
+English, Hebrew, Arabic, Russian, French, Spanish.
+Browser-detected, saved in localStorage.
+RTL is automatic for Hebrew + Arabic.
+
+4. Loyalty & VIP Club
+
+A major PetWash product.
+You must integrate all menu items and page handlers:
+	•	Join free
+	•	Tiers: Member, Silver, Gold, VIP Elite
+	•	Perks & benefits
+	•	Birthday rewards
+	•	Refer a friend
+	•	eGift cards
+	•	All reflected in menu, mobile drawer, and legal pages
+
+5. Legal Pages Framework
+
+The menu expects these routes to exist:
+	•	Terms and Conditions
+	•	Privacy Policy
+	•	Loyalty Terms
+	•	eGift Policy
+	•	Data Protection
+	•	Safety & Liability
+	•	Accessibility
+	•	Insurance & Duty of Care
+
+6. Frozen Avatar Platform
+
+The Avatar Studio is intentionally marked as Frozen.
+Do not enable any booking or active features for it yet.
+Only display it in the menu.
+
+7. Backend Logic Expectations
+
+This menu is not decoration.
+It is the roadmap for:
+	•	Roles: user, sitter, walker, partner, franchisee, admin
+	•	Booking system (very advanced)
+	•	Multi-tenant architecture
+	•	Global dashboard
+	•	Growth into many countries
+	•	Multi-currency
+	•	Multi-language
+	•	Multi-operational roles
+	•	Multi-brand (8 platforms)
+
+8. Your job now
+
+Your job is:
+
+✔ Read every line of the master header and CSS
+✔ Integrate all missing CSS classes
+✔ Make sure every menu item links correctly
+✔ Make sure responsive behavior works on all devices
+✔ Check that the mega menu opens, closes, positions correctly
+✔ Ensure Avatar Studio remains frozen
+✔ Ensure language switching changes RTL/LTR properly
+✔ Ensure the structure is not modified or simplified
+✔ Ensure this becomes the permanent global header for PetWash 2025
+9. Important:
+
+This is the official PetWash™ 2025 Global Navigation Standard.
+Do not alter structure, remove items, or simplify anything.
+If something is unclear, ask before changing anything.
+
+⸻
+
+🚀 END OF MESSAGE
+
+Copy-paste that.
+He will now understand the scale and importance.
+
+If you want, I can also create:
+
+✔ Full backend API structure
+
+✔ Multi-role dashboard
+
+✔ 2025 booking engine master logic
+
+✔ Franchise & partner portals
+
+✔ Loyalty & VIP Club backend
+
+✔ Global user identity model
+
+✔ Multi-language runtime engine
+
+✔ Admin CMS to manage all 8 platforms
