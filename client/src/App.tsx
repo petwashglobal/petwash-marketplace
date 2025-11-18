@@ -1195,6 +1195,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/find-pet">{() => <PawFinder language={language} />}</Route>
         <Route path="/lost-pet">{() => <PawFinder language={language} />}</Route>
         <Route path="/franchise">{() => <Franchise language={language} onLanguageChange={handleLanguageChange} />}</Route>
+        <Route path="/franchise-opportunities">{() => <Redirect to="/franchise" />}</Route>
         <Route path="/backend-team">{() => <BackendTeam />}</Route>
         <Route path="/locations">{() => <Locations />}</Route>
         <Route path="/wallet">{() => <WalletDownload />}</Route>
