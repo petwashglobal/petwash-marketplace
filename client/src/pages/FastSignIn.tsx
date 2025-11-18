@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FacebookAuthProvider, OAuthProvider, signInWithRedirect, signInWithPhoneNumber, RecaptchaVerifier } from "firebase/auth";
+import { signInWithRedirect, signInWithPhoneNumber, RecaptchaVerifier } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { loginWithEmailPassword, loginWithGoogle, handleRedirectResult as handleAuthRedirect, humanizeAuthError } from "@/auth/client";
 import { type Language, t } from "@/lib/i18n";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, Smartphone, Fingerprint } from "lucide-react";
-import { SiGmail, SiFacebook, SiTiktok } from "react-icons/si";
+import { SiGmail } from "react-icons/si";
 import { Link, useLocation } from "wouter";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { OAuthConsentDialog } from "@/components/OAuthConsentDialog";
@@ -172,7 +172,7 @@ export default function FastSignIn({ language }: FastSignInProps) {
     }
   };
 
-  const handleSocialSignIn = async (provider: "google" | "yahoo" | "facebook" | "tiktok" | "microsoft") => {
+  const handleSocialSignIn = async (provider: "google") => {
     setConsentDialog({
       isOpen: true,
       provider,
@@ -193,27 +193,6 @@ export default function FastSignIn({ language }: FastSignInProps) {
         // Don't navigate yet - handleRedirectResult will handle it
         return;
       }
-      
-      // Other providers use standard Firebase flow
-      let authProvider;
-      switch (provider) {
-        case "yahoo":
-          authProvider = new OAuthProvider("yahoo.com");
-          break;
-        case "facebook":
-          authProvider = new FacebookAuthProvider();
-          authProvider.addScope('email');
-          break;
-        case "tiktok":
-          window.location.href = '/api/auth/tiktok/start';
-          return;
-        case "microsoft":
-          authProvider = new OAuthProvider("microsoft.com");
-          authProvider.addScope('email');
-          break;
-      }
-
-      await signInWithRedirect(auth, authProvider);
     } catch (error: any) {
       console.error('[FastSignIn] ❌ Social sign-in failed:', error.code, error.message);
       setSocialLoading(null);
@@ -271,82 +250,6 @@ export default function FastSignIn({ language }: FastSignInProps) {
                       <SiGmail className="w-6 h-6 mr-3 text-red-600" />
                       <span className="font-semibold">
                         {t('fastSignIn.continueGmail', language)}
-                      </span>
-                    </>
-                  )}
-                </Button>
-
-                {/* Yahoo */}
-                <Button
-                  onClick={() => handleSocialSignIn("yahoo")}
-                  disabled={!!socialLoading}
-                  className="w-full h-14 bg-[#6001D2] hover:bg-[#5001B2] text-white transition-all shadow-sm hover:shadow-md"
-                  data-testid="button-yahoo-signin"
-                >
-                  {socialLoading === "yahoo" ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : (
-                    <>
-                      <Mail className="w-6 h-6 mr-3" />
-                      <span className="font-semibold">
-                        {t('fastSignIn.continueYahoo', language)}
-                      </span>
-                    </>
-                  )}
-                </Button>
-
-                {/* Microsoft */}
-                <Button
-                  onClick={() => handleSocialSignIn("microsoft")}
-                  disabled={!!socialLoading}
-                  className="w-full h-14 bg-[#00A4EF] hover:bg-[#0078D4] text-white transition-all shadow-sm hover:shadow-md"
-                  data-testid="button-microsoft-signin"
-                >
-                  {socialLoading === "microsoft" ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : (
-                    <>
-                      <Mail className="w-6 h-6 mr-3" />
-                      <span className="font-semibold">
-                        {t('fastSignIn.continueMicrosoft', language)}
-                      </span>
-                    </>
-                  )}
-                </Button>
-
-                {/* Facebook / Instagram (Meta) - 2025 Update: Instagram login deprecated for personal accounts */}
-                <Button
-                  onClick={() => handleSocialSignIn("facebook")}
-                  disabled={!!socialLoading}
-                  className="w-full h-14 bg-[#1877F2] hover:bg-[#166FE5] text-white transition-all shadow-sm hover:shadow-md"
-                  data-testid="button-facebook-signin"
-                >
-                  {socialLoading === "facebook" ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : (
-                    <>
-                      <SiFacebook className="w-6 h-6 mr-3" />
-                      <span className="font-semibold">
-                        {t('fastSignIn.continueFacebookMeta', language)}
-                      </span>
-                    </>
-                  )}
-                </Button>
-
-                {/* TikTok */}
-                <Button
-                  onClick={() => handleSocialSignIn("tiktok")}
-                  disabled={!!socialLoading}
-                  className="w-full h-14 bg-black hover:bg-gray-900 text-white transition-all shadow-sm hover:shadow-md"
-                  data-testid="button-tiktok-signin"
-                >
-                  {socialLoading === "tiktok" ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : (
-                    <>
-                      <SiTiktok className="w-6 h-6 mr-3" />
-                      <span className="font-semibold">
-                        {t('fastSignIn.continueTikTok', language)}
                       </span>
                     </>
                   )}
