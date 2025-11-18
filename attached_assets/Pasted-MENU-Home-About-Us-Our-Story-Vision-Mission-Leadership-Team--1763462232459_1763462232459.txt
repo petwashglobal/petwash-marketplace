@@ -1,0 +1,112 @@
+MENU:
+  - Home
+
+  - About Us
+      - Our Story
+      - Vision & Mission
+      - Leadership Team
+      - Technology & Innovation 2025
+      - Community & Environment
+      - Media & Press
+
+  - Gallery
+      - Photos
+      - Videos
+      - Installations
+      - Events
+      - User Stories
+
+  - Our Services
+      - Pet Wash Stations (K9000)
+          - Wash Options
+          - Organic Products
+          - Prices
+          - Locations Map
+      - Pet Wash Delivery
+          - Book Delivery
+          - Track Driver (Live)
+          - Pricing
+      - Pet Sitter (Airbnb-style)
+          - Book Sitter
+          - Become a Sitter
+          - House Guarding
+          - Plant Care
+      - Pet Transport
+          - Book Transport
+          - Airport Transfers
+          - Long Distance
+      - Pet Shop
+          - Accessories
+          - Organic Products
+          - Gift Cards
+
+  - Booking & Scheduling
+      - Full Booking System
+      - Calendar View
+      - Payments & Wallet
+      - Coupons & Loyalty
+      - Membership Levels
+
+  - Partners & Franchise
+      - Franchise Program
+      - White Label Solutions
+      - Corporate Partnerships
+      - Revenue Models
+      - Documents & Forms
+
+  - Business Platforms (Octopus Global)
+      - Pet Wash Hub (Main)
+      - Pet Wash Live
+      - Pet Wash Stations
+      - Pet Wash Sitter
+      - Pet Wash Delivery
+      - Pet Wash Transport
+      - Pet Wash Shop
+      - Pet Wash Academy
+      - Pet Wash Veterinary
+      - Pet Wash Grooming
+      - Pet Wash Franchise Network
+      - Pet Wash Corporate Dashboard
+      - Frozen: Pet Avatar Builder (Coming Soon 2025)
+
+  - Support
+      - FAQ
+      - Troubleshooting
+      - Guides & Tutorials
+      - Station Instructions
+      - Report an Issue
+      - Contact Support
+      - WhatsApp
+
+  - Account
+      - Profile
+      - Pets
+      - Bookings
+      - Payments
+      - Wallet & Balance
+      - Membership Level
+      - Documents
+      - Notifications
+
+  - Legal
+      - Privacy Policy
+      - Terms & Conditions
+      - Disclaimer
+      - Cookies Policy
+      - E-Gift Card Policy
+      - Refunds & Cancellations
+      - Data Protection & GDPR
+      - Insurance & Liability
+      - Pet Sitter Platform Agreement
+      - Pet Transport Duty of Care
+      - Municipal Partnerships Legal
+      - Safety & Risk Policy
+
+  - Languages
+      - English
+      - Hebrew
+      - Arabic
+      - Russian
+      - French
+      - Chinese
+      - x-default
