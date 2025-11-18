@@ -39,8 +39,9 @@ const ORIGIN = process.env.BASE_URL || "http://localhost:5000";
  * POST /webauthn/register/options
  * Generate passkey registration options
  * SECURITY: Sets CSRF token in response header for client to use in verify step
+ * NOTE: requireAuth ensures session exists, no need for ensureWebAuthnSession
  */
-router.post("/register/options", requireAuth, ensureWebAuthnSession, setWebAuthnCsrfToken, async (req, res) => {
+router.post("/register/options", requireAuth, setWebAuthnCsrfToken, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const userEmail = req.user!.email || "user@petwash.co.il";
@@ -93,8 +94,9 @@ router.post("/register/options", requireAuth, ensureWebAuthnSession, setWebAuthn
  * POST /webauthn/register/verify
  * Verify passkey registration
  * SECURITY: Protected with CSRF token to prevent cross-site passkey enrollment
+ * NOTE: requireAuth ensures session exists, no need for ensureWebAuthnSession
  */
-router.post("/register/verify", requireAuth, ensureWebAuthnSession, verifyWebAuthnCsrfToken, async (req, res) => {
+router.post("/register/verify", requireAuth, verifyWebAuthnCsrfToken, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const { response, deviceName } = req.body;

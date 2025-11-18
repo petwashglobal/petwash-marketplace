@@ -19,34 +19,59 @@ const PORT = Number(process.env.PORT || 5000);
 app.set('trust proxy', 1);
 
 // 1. Security and basic middleware
-// A. Security Headers (Protects users from script injections)
+const isProduction = process.env.NODE_ENV === 'production';
+
+// A. Security Headers (ENHANCED 2025 - Protects users from script injections, XSS, clickjacking)
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable strict CSP if it breaks images/scripts
+  contentSecurityPolicy: false, // Disabled for now - enable with proper policy in future
   crossOriginEmbedderPolicy: false,
+  hsts: isProduction ? {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true
+  } : false, // HSTS only in production
+  frameguard: { action: 'deny' }, // Prevent clickjacking
+  noSniff: true, // Prevent MIME type sniffing
+  xssFilter: true // Enable XSS filter
 }));
 
 // B. Compression (Makes your site load 70% faster)
 app.use(compression());
 
+// C. CORS - Strict in production, permissive in dev
 app.use(cors({
-  origin: true,
-  credentials: true
+  origin: isProduction 
+    ? [
+        'https://petwash.co.il',
+        'https://www.petwash.co.il',
+        'https://*.petwash.co.il',
+        process.env.BASE_URL || 'http://localhost:5000'
+      ]
+    : true, // Allow all origins in dev
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-WebAuthn-CSRF-Token'],
+  maxAge: 86400 // 24 hours preflight cache
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Session with conditional secure flag (true in production, false in dev)
-const isProduction = process.env.NODE_ENV === 'production';
+// D. Session with ENHANCED security settings
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "change_me",
+    name: 'pw.sid', // Custom session cookie name (obscure default)
+    secret: process.env.SESSION_SECRET || process.env.COOKIE_SECRET || "dev_secret_change_in_production",
     resave: false,
     saveUninitialized: false,
+    rolling: true, // Reset expiry on each request (keep active users logged in)
     cookie: {
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      httpOnly: true
+      secure: isProduction, // HTTPS only in production
+      httpOnly: true, // Prevent JavaScript access
+      sameSite: isProduction ? 'strict' : 'lax', // STRICT in production for max CSRF protection
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      domain: isProduction ? '.petwash.co.il' : undefined // Share across subdomains in production
     }
   })
 );

@@ -283,62 +283,27 @@ router.get('/admin/document/:uid', requireAdmin, async (req: Request, res: Respo
 });
 
 // Delete KYC data (GDPR compliance)
-// SECURITY: Users can delete their own KYC data, or admins can delete any
-// Uses dedicated middleware for admin check to avoid response-after-response errors
-const checkAdminOrSelf = async (req: Request, res: Response, next: Function) => {
-  const authReq = req as AuthenticatedRequest;
-  const authenticatedUid = authReq.firebaseUser?.uid;
-  const { uid } = req.params;
-  
-  if (!authenticatedUid) {
-    return res.status(401).json({ error: 'Unauthorized - Authentication required' });
-  }
-  
-  // If user is deleting their own data, allow it
-  if (uid === authenticatedUid) {
-    authReq.isDeletingSelf = true;
-    return next();
-  }
-  
-  // Otherwise, load role and check if admin
+// SECURITY: Users can delete their own KYC data, or admins (access level 8+) can delete any
+router.delete('/delete/:uid', validateFirebaseToken, loadUserRole, async (req: Request, res: Response) => {
   try {
-    await new Promise<void>((resolve, reject) => {
-      loadUserRole(req, res, (err?: any) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
+    const authReq = req as AuthenticatedRequest;
+    const authenticatedUid = authReq.firebaseUser?.uid;
+    const { uid } = req.params;
     
-    // CRITICAL: Check if loadUserRole already sent a response (401/403)
-    if (res.headersSent) {
-      logger.debug('KYC delete RBAC check - response already sent by loadUserRole');
-      return; // Don't continue - response already sent
+    if (!authenticatedUid) {
+      return res.status(401).json({ error: 'Unauthorized - Authentication required' });
     }
     
+    // Check if user is deleting their own data OR is an admin
+    const isSelfDelete = uid === authenticatedUid;
     const isAdmin = authReq.userRole && authReq.userRole.assignment.accessLevel >= 8;
-    if (!isAdmin) {
-      logger.warn('KYC delete attempt for different user', { authenticatedUid, requestedUid: uid });
+    
+    if (!isSelfDelete && !isAdmin) {
+      logger.warn('KYC delete attempt for different user', { authenticatedUid, requestedUid: uid, isAdmin });
       return res.status(403).json({ error: 'Forbidden - Can only delete your own KYC data' });
     }
     
-    authReq.isAdminDelete = true;
-    next();
-  } catch (error) {
-    // Check if response already sent
-    if (res.headersSent) {
-      logger.debug('KYC delete RBAC check error - response already sent');
-      return;
-    }
-    logger.warn('KYC delete RBAC check failed', { authenticatedUid, requestedUid: uid, error });
-    return res.status(403).json({ error: 'Forbidden - Can only delete your own KYC data' });
-  }
-};
-
-router.delete('/delete/:uid', validateFirebaseToken, checkAdminOrSelf, async (req: Request, res: Response) => {
-  try {
-    const authReq = req as AuthenticatedRequest;
-    const authenticatedUid = authReq.firebaseUser?.uid!;
-    const { uid } = req.params;
+    logger.info(`KYC delete authorized for user ${uid} by ${isSelfDelete ? 'self' : 'admin'} ${authenticatedUid}`);
     
     // Get KYC document
     const kycDoc = await getKYCDocument(uid);
@@ -361,12 +326,12 @@ router.delete('/delete/:uid', validateFirebaseToken, checkAdminOrSelf, async (re
         docPaths: [],
         nameOnDoc: undefined,
         dob: undefined,
-        notes: authReq.isAdminDelete 
+        notes: isAdmin && !isSelfDelete
           ? `Admin ${authenticatedUid} deleted KYC data` 
           : 'User requested data deletion'
       });
 
-      logger.info(`KYC data deleted for user ${uid} by ${authReq.isAdminDelete ? 'admin' : 'user'} ${authenticatedUid}`);
+      logger.info(`KYC data deleted for user ${uid}`);
     }
 
     res.json({ success: true, message: 'KYC data deleted successfully' });
