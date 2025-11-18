@@ -50,6 +50,7 @@ import giftCardsRoutes from "./routes/gift-cards";
 import campaignsRoutes from "./routes/campaigns";
 import meetingsRoutes from "./routes/meetings";
 import esignRoutes from "./routes/esign";
+import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
 import notificationsRoutes from "./routes/notifications";
 import chatRoutes from "./routes/chat";
 import vatRoutes from "./routes/vat";
@@ -8093,6 +8094,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
   app.use(apiLimiter, esignRoutes);
+  
+  // 🇮🇱 Israeli Government-Grade E-Signature (2025 Compliance - ES256, TSA, MFA)
+  app.use('/api/israeli-2025-esign', apiLimiter, israeli2025EsignRoutes);
   
   // Staff Onboarding & Fraud Prevention (Airbnb/Uber/Booking.com style)
   registerStaffOnboardingRoutes(app);
