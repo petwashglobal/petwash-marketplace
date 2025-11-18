@@ -24,8 +24,19 @@ interface Message {
   timestamp: Date;
 }
 
-export function AiChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+interface AiChatWidgetProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetProps = {}) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  
+  // Use external control if provided, otherwise use internal state
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  const setIsOpen = onClose ? (value: boolean) => {
+    if (!value) onClose();
+  } : setInternalIsOpen;
   const [messages, setMessages] = useState<Message[]>([]);
   const [userInput, setUserInput] = useState('');
   const [sessionId, setSessionId] = useState('');
@@ -124,20 +135,11 @@ export function AiChatWidget() {
     });
   };
 
+  // Don't render anything if not open (controlled by FloatingStack)
+  if (!isOpen) return null;
+
   return (
     <>
-      {/* Floating Chat Bubble Button */}
-      {!isOpen && (
-        <Button
-          onClick={() => setIsOpen(true)}
-          data-testid="chat-bubble-button"
-          className="fixed bottom-6 right-6 z-[9998] h-16 w-16 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300"
-          aria-label="פתח צ'אט AI"
-        >
-          <MessageCircle className="h-7 w-7 text-white" />
-        </Button>
-      )}
-
       {/* Main Chat Window */}
       {isOpen && (
         <div 

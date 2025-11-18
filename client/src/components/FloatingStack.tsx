@@ -122,7 +122,7 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
           </svg>
         </button>
 
-        {/* PetWash AI - Bottom (16px from bottom) */}
+        {/* PetWash AI (Kenzo) - Bottom (16px from bottom) */}
         <button
           id="pw-ai"
           className="pw-float pw-ai-btn"

@@ -4,7 +4,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { FloatingStack } from "@/components/FloatingStack";
-import { AIChatAssistant } from "@/components/AIChatAssistant";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ConsentManager } from "@/components/ConsentManager";
@@ -1665,8 +1664,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 function App() {
   const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
   const [isLanguageInitialized, setIsLanguageInitialized] = useState(false);
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   
   useKeyboardNavigation();
 
@@ -1781,17 +1780,15 @@ function App() {
           
           <Toaster />
           <FloatingStack 
-            language={currentLanguage} 
-            onAIClick={() => setIsAIChatOpen(true)} 
-          />
-          <AIChatAssistant 
             language={currentLanguage}
+            onAIClick={() => setIsAIChatOpen(true)}
+          />
+          
+          {/* Google Dialogflow CX AI Chat Widget - Gemini-powered Kenzo 🤖 */}
+          <AiChatWidget 
             isOpen={isAIChatOpen}
             onClose={() => setIsAIChatOpen(false)}
           />
-          
-          {/* Google Dialogflow CX AI Chat Widget - Gemini-powered */}
-          <AiChatWidget />
           
           <AuthProvider>
             <SimpleAuthProvider>
