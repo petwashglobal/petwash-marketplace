@@ -143,7 +143,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
       {/* Main Chat Window */}
       {isOpen && (
         <div 
-          className="fixed bottom-6 right-6 z-[9999] w-[380px] h-[600px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700"
+          className="fixed bottom-24 left-4 right-4 md:bottom-6 md:right-6 md:left-auto z-[9999] md:w-[380px] h-auto max-h-[calc(100vh-200px)] md:h-[600px] md:max-h-none bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700"
           data-testid="chat-window"
         >
           {/* Header */}

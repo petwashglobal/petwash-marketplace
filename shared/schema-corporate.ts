@@ -64,35 +64,9 @@ export const boardMeetingAttendees = pgTable("board_meeting_attendees", {
   uniqueAttendance: uniqueIndex("idx_unique_attendance").on(table.meetingId, table.memberId),
 }));
 
-export const boardResolutions = pgTable("board_resolutions", {
-  id: serial("id").primaryKey(),
-  meetingId: integer("meeting_id").references(() => boardMeetings.id, { onDelete: 'set null' }),
-  title: varchar("title").notNull(),
-  description: text("description").notNull(),
-  proposedBy: integer("proposed_by").references(() => boardMembers.id, { onDelete: 'set null' }),
-  votesFor: integer("votes_for").default(0),
-  votesAgainst: integer("votes_against").default(0),
-  votesAbstain: integer("votes_abstain").default(0),
-  status: varchar("status").default("proposed"), // proposed, approved, rejected, withdrawn
-  approvedAt: timestamp("approved_at"),
-  implementedAt: timestamp("implemented_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => ({
-  statusIdx: index("idx_board_resolutions_status").on(table.status),
-}));
-
-export const boardVotes = pgTable("board_votes", {
-  id: serial("id").primaryKey(),
-  meetingId: integer("meeting_id").references(() => boardMeetings.id, { onDelete: 'cascade' }),
-  memberId: integer("member_id").references(() => boardMembers.id, { onDelete: 'cascade' }).notNull(),
-  resolutionId: integer("resolution_id").references(() => boardResolutions.id, { onDelete: 'cascade' }),
-  vote: varchar("vote").notNull(), // for, against, abstain
-  comment: text("comment"),
-  votedAt: timestamp("voted_at").defaultNow(),
-}, (table) => ({
-  meetingIdx: index("idx_board_votes_meeting").on(table.meetingId),
-  resolutionIdx: index("idx_board_votes_resolution").on(table.resolutionId),
-}));
+// REMOVED: Duplicate boardResolutions and boardVotes tables
+// These are defined in schema-compliance.ts and actively used there
+// Keeping these duplicates would cause schema conflicts
 
 // =================== JV PARTNERS ===================
 
@@ -311,21 +285,8 @@ export const insertBoardMeetingAttendeeSchema = createInsertSchema(boardMeetingA
 export type InsertBoardMeetingAttendee = z.infer<typeof insertBoardMeetingAttendeeSchema>;
 export type BoardMeetingAttendee = typeof boardMeetingAttendees.$inferSelect;
 
-// Board Resolutions
-export const insertBoardResolutionSchema = createInsertSchema(boardResolutions).omit({
-  id: true,
-  createdAt: true,
-});
-export type InsertBoardResolution = z.infer<typeof insertBoardResolutionSchema>;
-export type BoardResolution = typeof boardResolutions.$inferSelect;
-
-// Board Votes
-export const insertBoardVoteSchema = createInsertSchema(boardVotes).omit({
-  id: true,
-  votedAt: true,
-});
-export type InsertBoardVote = z.infer<typeof insertBoardVoteSchema>;
-export type BoardVote = typeof boardVotes.$inferSelect;
+// REMOVED: Insert schemas for boardResolutions and boardVotes
+// These are defined in schema-compliance.ts
 
 // JV Partners
 export const insertJvPartnerSchema = createInsertSchema(jvPartners).omit({
