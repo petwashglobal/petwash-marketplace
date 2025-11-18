@@ -9,10 +9,12 @@ import { Crown, Gift, Send, Sparkles, Shield } from "lucide-react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { routeGuard } from "@/lib/auth-guardian-2025";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
+import { useLocation } from 'wouter';
 
 export default function CEODashboard() {
   const { user } = useFirebaseAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [recipientEmail, setRecipientEmail] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [amount, setAmount] = useState('100');
@@ -33,11 +35,11 @@ export default function CEODashboard() {
       routeGuard({ 
         adminOnly: true, 
         onDeny: () => {
-          window.location.href = '/';
+          setLocation('/');
         }
       });
     }
-  }, [user]);
+  }, [user, setLocation]);
 
   // Step 1: Request 2FA code
   const handleRequestCode = async () => {

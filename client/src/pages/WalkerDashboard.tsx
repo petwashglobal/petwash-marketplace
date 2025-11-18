@@ -25,7 +25,7 @@ import {
   MessageSquare,
   AlertCircle
 } from 'lucide-react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 
 interface WalkRequest {
@@ -95,6 +95,7 @@ export default function WalkerDashboard() {
   const { user, signOut } = useFirebaseAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const isHebrew = language === 'he';
   
   const [activeTab, setActiveTab] = useState<'requests' | 'active' | 'completed' | 'earnings' | 'reviews' | 'achievements'>('requests');
@@ -345,7 +346,7 @@ export default function WalkerDashboard() {
 
   const handleLogout = async () => {
     await signOut();
-    window.location.href = '/';
+    setLocation('/');
   };
 
   const formatDate = (dateStr: string) => {

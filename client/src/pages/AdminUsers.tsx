@@ -1,10 +1,13 @@
 import { useEffect } from "react";
+import { useLocation } from "wouter";
 
 export default function AdminUsers() {
+  const [, setLocation] = useLocation();
+  
   useEffect(() => {
     // Redirect to new Enterprise HQ Dashboard
-    window.location.href = "/enterprise/hq";
-  }, []);
+    setLocation("/enterprise/hq");
+  }, [setLocation]);
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center">

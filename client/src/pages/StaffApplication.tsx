@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle, Loader2, Briefcase, DogIcon, Car, GraduationCap, Home } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'wouter';
 
 const applicationSchema = z.object({
   applicationType: z.enum(['sitter', 'walker', 'driver', 'trainer', 'host']),
@@ -77,6 +78,7 @@ const positionTypes = [
 
 export default function StaffApplication() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [submitted, setSubmitted] = useState(false);
   const [applicationId, setApplicationId] = useState<number | null>(null);
 
@@ -167,7 +169,7 @@ export default function StaffApplication() {
             </div>
 
             <Button
-              onClick={() => window.location.href = '/'}
+              onClick={() => setLocation('/')}
               className="w-full"
               data-testid="back-home-button"
             >

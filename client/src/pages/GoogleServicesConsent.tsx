@@ -5,6 +5,7 @@ import { type Language, t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Shield, Mail, Users, Calendar, MapPin, Cloud, Database, Image, MessageSquare, Phone, TrendingUp, CheckCircle2, Lock, Sparkles, ExternalLink } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
+import { useLocation } from 'wouter';
 
 interface GoogleServicesConsentProps {
   language: Language;
@@ -18,6 +19,7 @@ interface GoogleServicesConsentProps {
  * Designed for 1000+ concurrent users, enterprise-grade scale
  */
 export default function GoogleServicesConsent({ language, onLanguageChange }: GoogleServicesConsentProps) {
+  const [, setLocation] = useLocation();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -213,7 +215,7 @@ export default function GoogleServicesConsent({ language, onLanguageChange }: Go
             </div>
 
             <Button
-              onClick={() => window.location.href = '/'}
+              onClick={() => setLocation('/')}
               size="lg"
               className="h-14 px-8 text-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-xl shadow-green-600/30"
               data-testid="button-continue-home"

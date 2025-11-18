@@ -3,9 +3,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useLocation } from "wouter";
 
 export default function StationMap() {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
 
   return (
     <div className="min-h-screen bg-white dark:bg-black">
@@ -48,7 +50,7 @@ export default function StationMap() {
             <p className="text-gray-600 dark:text-gray-300 mb-6">
               We're building a beautiful map experience with Google Maps integration
             </p>
-            <Button size="lg" data-testid="button-view-list" onClick={() => window.location.href = "/locations"}>
+            <Button size="lg" data-testid="button-view-list" onClick={() => setLocation("/locations")}>
               View Station List
             </Button>
           </div>

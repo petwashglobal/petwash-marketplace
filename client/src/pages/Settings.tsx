@@ -256,7 +256,7 @@ export default function Settings() {
 
         // Sign out and redirect
         setTimeout(() => {
-          window.location.href = '/';
+          navigate('/');
         }, 2000);
       } else {
         const error = await response.json();
