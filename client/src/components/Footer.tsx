@@ -56,6 +56,11 @@ export function Footer({ language }: FooterProps) {
                 </Link>
               </div>
               <div>
+                <Link href="/admin/login-v2" className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer text-sm font-semibold">
+                  Admin Portal
+                </Link>
+              </div>
+              <div>
                 <Link href="/admin/guide" className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer text-sm">
                   {t('footer.adminGuide', language)}
                 </Link>

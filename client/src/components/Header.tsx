@@ -620,6 +620,7 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
                 <>
                   <Link href="/signin" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">Login</Link>
                   <Link href="/signup" className="text-sm font-medium hover:text-purple-600 transition-colors whitespace-nowrap">Sign Up</Link>
+                  <Link href="/admin/login-v2" className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors whitespace-nowrap">Admin</Link>
                 </>
               )}
               {onLanguageChange && (
@@ -829,6 +830,9 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
                   </Link>
                   <Link href="/signup" className="block py-2 text-sm hover:bg-gray-50 px-2 rounded transition-colors">
                     {t('header.signUp', language)}
+                  </Link>
+                  <Link href="/admin/login-v2" className="block py-2 text-sm text-blue-600 hover:bg-blue-50 px-2 rounded transition-colors font-semibold">
+                    Admin Portal
                   </Link>
                 </div>
               )}
