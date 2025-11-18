@@ -23,12 +23,12 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
 
     // Step 2: Then check admin access via /api/auth/me
     if (!adminLoading && firebaseUser && (!admin || !admin.isActive || isError)) {
-      console.log('[AdminGuard] ❌ Admin check failed → redirecting to /admin/login', { 
+      console.log('[AdminGuard] ❌ Admin check failed → redirecting to access denied', { 
         hasAdmin: !!admin, 
         isActive: admin?.isActive, 
         isError 
       });
-      setLocation("/admin/login");
+      setLocation("/admin/access-denied");
       return;
     }
 
@@ -36,7 +36,7 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
     const allowedRoles = ['admin', 'ops'];
     if (!adminLoading && firebaseUser && admin && !allowedRoles.includes(admin.role)) {
       console.log('[AdminGuard] ❌ Insufficient permissions → role:', admin.role);
-      setLocation("/admin/login");
+      setLocation("/admin/access-denied");
       return;
     }
 

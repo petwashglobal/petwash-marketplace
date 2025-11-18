@@ -1,0 +1,42 @@
+Do not change hosting, domains, Firebase project, or database configuration. Production stays exactly as it is on petwash.co.il with the existing autoscale deployment and backend API.
+
+Focus only on the Admin experience.
+	1.	Admin URL
+	•	Admin portal must live at: https://petwash.co.il/admin
+	•	This is the unified Pet Wash Admin Platform to manage the whole business.
+	2.	Branding
+	•	Change all admin wording to Pet Wash branding only.
+	•	Title on this page must be: “Pet Wash Admin Platform” (or “Pet Wash 7 Star Admin Platform” if you want to keep 7 Star).
+	•	Replace the empty white square with the PetWash logo that is already used on the main site.
+	•	Remove any generic wording like “7 Star Management Portal” that does not include Pet Wash.
+	•	No mentions of Firebase, Replit, templates, or sample text anywhere in the admin UI.
+	3.	Admin login behavior
+	•	Keep the existing authentication logic and redirect URIs.
+	•	Users can log in with Google or email using the current Firebase Auth project.
+	•	Only accounts with admin role should be allowed into /admin (for example support@petwash.co.il and my personal owner account).
+	•	If a non admin logs in and tries to open /admin, show a clean “Access denied” page with Pet Wash branding, not an error.
+	4.	Admin dashboard after login
+	•	After successful login, redirect to /admin/dashboard, not back to the public site.
+	•	On /admin/dashboard show a clear Pet Wash admin home page with sections (even if some are only stubs for now):
+	•	K9000 Stations and locations
+	•	Wash packages and prices
+	•	Premium Digital Gifts and gift codes
+	•	Loyalty and VIP cards
+	•	The Sitter Suite
+	•	Walk My Pet
+	•	PetTrek transport
+	•	Users and roles
+	•	Payments, invoices, and reports
+	•	Use existing API routes and services already in the project. Do not create new microservices or change database structure. If a feature is not ready yet, show a “Coming soon” card but never throw runtime errors.
+	5.	Navigation
+	•	From the public site, keep “Login” for normal customers.
+	•	Add a small “Admin” or “Admin Portal” link in the footer and in the header menu that goes to /admin.
+	•	Make sure the admin menu works perfectly on mobile and desktop. No broken overlays or hidden items.
+	6.	Quality
+	•	Test admin login and dashboard on iPhone Safari, Android Chrome, iPad, and at least one desktop browser.
+	•	Fix any UI layout bugs so the admin portal looks clean, premium, and matches the Pet Wash brand used on the main site.
+
+Do all of the above without touching DNS, SSL, or autoscale settings. When finished, run a full build, deploy to production, and verify that:
+	•	https://petwash.co.il loads correctly for normal users
+	•	https://petwash.co.il/admin shows the Pet Wash Admin Platform login
+	•	After admin login, /admin/dashboard is reachable and working.

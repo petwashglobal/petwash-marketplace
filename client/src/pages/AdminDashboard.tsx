@@ -176,14 +176,16 @@ export default function AdminDashboard() {
         <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-rose-400 via-purple-400 to-blue-400 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/50 animate-pulse">
-                <Shield className="w-7 h-7 text-white" />
-              </div>
+              <img 
+                src="/brand/petwash-logo-official.png" 
+                alt="Pet Wash" 
+                className="h-12 w-auto object-contain"
+              />
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-rose-300 via-purple-300 to-blue-300 bg-clip-text text-transparent">
-                  Pet Wash™ Premium
+                  Pet Wash Admin Platform
                 </h1>
-                <p className="text-sm text-purple-200 font-medium">Enterprise Analytics Portal</p>
+                <p className="text-sm text-purple-200 font-medium">Business Management</p>
               </div>
             </div>
             

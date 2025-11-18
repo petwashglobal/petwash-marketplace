@@ -1,13 +1,13 @@
 /**
- * Admin Portal Login V2 - 7-Star Luxury Design
- * Pure White Neomorphism with Zero UI Bugs
+ * Pet Wash Admin Platform Login
+ * Secure administrative access for Pet Wash business management
  * 
  * Features:
  * - Biometric/Passkey authentication (Touch ID/Face ID)
  * - Google One-Tap SSO
  * - Standard email/password with comprehensive validation
  * - Haptic feedback on button press
- * - Fluid adaptive design (mobile-first)
+ * - Mobile-optimized design
  */
 
 import { useState, useEffect } from "react";
@@ -73,7 +73,7 @@ export default function AdminLoginV2() {
       localStorage.setItem("access_token", response.tokens.accessToken);
       localStorage.setItem("refresh_token", response.tokens.refreshToken);
 
-      setLocation("/admin/status-monitor");
+      setLocation("/admin/dashboard");
     } catch (error: any) {
       toast({
         title: "Login Failed",
@@ -181,7 +181,7 @@ export default function AdminLoginV2() {
         
         // Brief delay to show success animation
         setTimeout(() => {
-          setLocation("/admin/status-monitor");
+          setLocation("/admin/dashboard");
         }, 800);
       }
     } catch (error: any) {
@@ -232,7 +232,7 @@ export default function AdminLoginV2() {
       localStorage.setItem("access_token", response.tokens.accessToken);
       localStorage.setItem("refresh_token", response.tokens.refreshToken);
 
-      setLocation("/admin/status-monitor");
+      setLocation("/admin/dashboard");
     } catch (error: any) {
       if (error.code === "auth/popup-closed-by-user") {
         // User closed the popup, don't show error
@@ -253,30 +253,20 @@ export default function AdminLoginV2() {
 
       {/* Main Login Card */}
       <Card className="w-full max-w-md p-8 bg-white shadow-[8px_8px_16px_rgba(163,177,198,0.2),-8px_-8px_16px_rgba(255,255,255,0.9)] border-0">
-        {/* Header - Crown Jewel Logo */}
+        {/* Header - Pet Wash Logo */}
         <div className="text-center mb-8">
           <div className="mb-4 flex justify-center">
-            <LuxuryEmoji 
-              emoji="🐙" 
-              material="gold" 
-              size="xl"
-              withSparkles={true}
-              withGlow={true}
+            <img 
+              src="/brand/petwash-logo-official.png" 
+              alt="Pet Wash" 
+              className="h-16 w-auto object-contain"
             />
           </div>
-          <h1 
-            className="text-3xl font-bold mb-2"
-            style={{
-              background: 'var(--gradient-metallic-gold)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontFamily: 'var(--font-display)',
-            }}
-          >
-            Pet Wash™ Admin
+          <h1 className="text-3xl font-bold mb-2 text-black">
+            Pet Wash Admin Platform
           </h1>
-          <p className="text-gray-600" style={{ fontFamily: 'var(--font-body)' }}>
-            7-Star Management Portal
+          <p className="text-gray-600">
+            Secure Business Management
           </p>
         </div>
 
