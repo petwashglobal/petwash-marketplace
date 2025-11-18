@@ -186,7 +186,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         <GiftCards language={language} />
 
         {/* Payment Methods Accepted Section - Sharp SVG Icons */}
-        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-white">
+        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto text-center">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-8 sm:mb-12">
               {t('landing.paymentMethods', language)}
@@ -196,7 +196,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </section>
 
         {/* Digital Wallet Download Section */}
-        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
+        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white keep-bg" data-keep-bg="true" style={{ background: 'linear-gradient(to bottom right, #2563eb, #9333ea, #ec4899)' }}>
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
