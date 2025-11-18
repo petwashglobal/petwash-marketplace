@@ -16,33 +16,26 @@ import {
   type KYCType
 } from '../kyc';
 import { logger } from '../lib/logger';
+import { loadUserRole, checkAccessLevel, type AuthenticatedRequest } from '../middleware/rbac';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
 
 const router = Router();
 
-const ADMIN_EMAIL = 'nirhadad1@gmail.com';
-
-// Admin authentication middleware
-async function requireAdmin(req: Request, res: Response, next: Function) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+// SECURITY FIX: Use RBAC instead of hardcoded email check
+// Admin authentication middleware - requires level 8+ access (admin/executive)
+const requireAdmin = [
+  validateFirebaseToken, // Verify Firebase token and email_verified
+  loadUserRole,           // Load user role from RBAC system
+  checkAccessLevel(8),    // Require minimum access level 8 (admin/executive)
+  // Propagate verified admin UID to req.body for downstream handlers
+  (req: Request, res: Response, next: Function) => {
+    const authReq = req as AuthenticatedRequest;
+    if (authReq.firebaseUser?.uid) {
+      req.body.adminUid = authReq.firebaseUser.uid;
     }
-
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await auth.verifyIdToken(token);
-    
-    if (decodedToken.email !== ADMIN_EMAIL) {
-      return res.status(403).json({ error: 'Forbidden - Admin access required' });
-    }
-
-    req.body.adminUid = decodedToken.uid;
     next();
-  } catch (error) {
-    logger.error('Admin auth error', error);
-    return res.status(401).json({ error: 'Unauthorized - Invalid token' });
   }
-}
+];
 
 // Configure multer for file uploads (memory storage)
 const upload = multer({
@@ -291,34 +284,61 @@ router.get('/admin/document/:uid', requireAdmin, async (req: Request, res: Respo
 
 // Delete KYC data (GDPR compliance)
 // SECURITY: Users can delete their own KYC data, or admins can delete any
-router.delete('/delete/:uid', async (req: Request, res: Response) => {
+// Uses dedicated middleware for admin check to avoid response-after-response errors
+const checkAdminOrSelf = async (req: Request, res: Response, next: Function) => {
+  const authReq = req as AuthenticatedRequest;
+  const authenticatedUid = authReq.firebaseUser?.uid;
+  const { uid } = req.params;
+  
+  if (!authenticatedUid) {
+    return res.status(401).json({ error: 'Unauthorized - Authentication required' });
+  }
+  
+  // If user is deleting their own data, allow it
+  if (uid === authenticatedUid) {
+    authReq.isDeletingSelf = true;
+    return next();
+  }
+  
+  // Otherwise, load role and check if admin
   try {
-    // SECURITY: Verify Firebase authentication
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized - Authentication required' });
-    }
-
-    const token = authHeader.split('Bearer ')[1];
-    let authenticatedUid: string;
-    let isAdmin = false;
+    await new Promise<void>((resolve, reject) => {
+      loadUserRole(req, res, (err?: any) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
     
-    try {
-      const decodedToken = await auth.verifyIdToken(token);
-      authenticatedUid = decodedToken.uid;
-      isAdmin = decodedToken.email === ADMIN_EMAIL;
-    } catch (authError) {
-      logger.error('KYC delete auth error', authError);
-      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    // CRITICAL: Check if loadUserRole already sent a response (401/403)
+    if (res.headersSent) {
+      logger.debug('KYC delete RBAC check - response already sent by loadUserRole');
+      return; // Don't continue - response already sent
     }
     
-    const { uid } = req.params;
-    
-    // SECURITY: Users can only delete their own KYC, admins can delete any
-    if (uid !== authenticatedUid && !isAdmin) {
-      logger.warn('KYC delete attempt for different user', { authenticatedUid, requestedUid: uid, isAdmin });
+    const isAdmin = authReq.userRole && authReq.userRole.assignment.accessLevel >= 8;
+    if (!isAdmin) {
+      logger.warn('KYC delete attempt for different user', { authenticatedUid, requestedUid: uid });
       return res.status(403).json({ error: 'Forbidden - Can only delete your own KYC data' });
     }
+    
+    authReq.isAdminDelete = true;
+    next();
+  } catch (error) {
+    // Check if response already sent
+    if (res.headersSent) {
+      logger.debug('KYC delete RBAC check error - response already sent');
+      return;
+    }
+    logger.warn('KYC delete RBAC check failed', { authenticatedUid, requestedUid: uid, error });
+    return res.status(403).json({ error: 'Forbidden - Can only delete your own KYC data' });
+  }
+};
+
+router.delete('/delete/:uid', validateFirebaseToken, checkAdminOrSelf, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const authenticatedUid = authReq.firebaseUser?.uid!;
+    const { uid } = req.params;
     
     // Get KYC document
     const kycDoc = await getKYCDocument(uid);
@@ -341,10 +361,12 @@ router.delete('/delete/:uid', async (req: Request, res: Response) => {
         docPaths: [],
         nameOnDoc: undefined,
         dob: undefined,
-        notes: 'User requested data deletion'
+        notes: authReq.isAdminDelete 
+          ? `Admin ${authenticatedUid} deleted KYC data` 
+          : 'User requested data deletion'
       });
 
-      logger.info(`KYC data deleted for user ${uid}`);
+      logger.info(`KYC data deleted for user ${uid} by ${authReq.isAdminDelete ? 'admin' : 'user'} ${authenticatedUid}`);
     }
 
     res.json({ success: true, message: 'KYC data deleted successfully' });

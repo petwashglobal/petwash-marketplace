@@ -25,6 +25,9 @@ export interface AuthenticatedRequest extends Request {
     assignment: UserRoleAssignment;
     isSuperAdmin: boolean;
   };
+  // KYC delete route flags
+  isDeletingSelf?: boolean;
+  isAdminDelete?: boolean;
 }
 
 /**

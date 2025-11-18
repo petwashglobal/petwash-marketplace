@@ -25,6 +25,7 @@ import type {
 import { requireAuth } from "../customAuth";
 import { logger } from "../lib/logger";
 import * as Sentry from "@sentry/node";
+import { ensureWebAuthnSession, setWebAuthnCsrfToken, verifyWebAuthnCsrfToken } from "../webauthn/csrfProtection";
 
 const router = express.Router();
 const db = admin.firestore();
@@ -37,8 +38,9 @@ const ORIGIN = process.env.BASE_URL || "http://localhost:5000";
 /**
  * POST /webauthn/register/options
  * Generate passkey registration options
+ * SECURITY: Sets CSRF token in response header for client to use in verify step
  */
-router.post("/register/options", requireAuth, async (req, res) => {
+router.post("/register/options", requireAuth, ensureWebAuthnSession, setWebAuthnCsrfToken, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const userEmail = req.user!.email || "user@petwash.co.il";
@@ -90,8 +92,9 @@ router.post("/register/options", requireAuth, async (req, res) => {
 /**
  * POST /webauthn/register/verify
  * Verify passkey registration
+ * SECURITY: Protected with CSRF token to prevent cross-site passkey enrollment
  */
-router.post("/register/verify", requireAuth, async (req, res) => {
+router.post("/register/verify", requireAuth, ensureWebAuthnSession, verifyWebAuthnCsrfToken, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const { response, deviceName } = req.body;
@@ -149,6 +152,9 @@ router.post("/register/verify", requireAuth, async (req, res) => {
 /**
  * POST /webauthn/authenticate/options
  * Generate passkey authentication options
+ * SECURITY: No additional CSRF protection needed - WebAuthn's challenge/response mechanism
+ * provides inherent CSRF protection. The challenge is cryptographically random, stored in Firestore,
+ * and must be signed by the client's credential. An attacker cannot forge this flow.
  */
 router.post("/authenticate/options", async (req, res) => {
   try {
@@ -201,6 +207,9 @@ router.post("/authenticate/options", async (req, res) => {
 /**
  * POST /webauthn/authenticate/verify
  * Verify passkey authentication
+ * SECURITY: No additional CSRF protection needed - WebAuthn's challenge/response mechanism
+ * provides inherent CSRF protection by requiring the client to sign the server-issued challenge.
+ * This prevents cross-site authentication attacks.
  */
 router.post("/authenticate/verify", async (req, res) => {
   try {

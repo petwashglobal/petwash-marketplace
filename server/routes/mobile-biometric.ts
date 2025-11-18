@@ -24,6 +24,7 @@ import { isoBase64URL, isoUint8Array } from '@simplewebauthn/server/helpers';
 import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { verifyAppCheckToken } from '../middleware/appCheckMiddleware';
 import { Timestamp } from 'firebase-admin/firestore';
 import crypto from 'crypto';
 
@@ -46,11 +47,13 @@ const MOBILE_CONFIG = {
  * 
  * POST /api/mobile/biometric/register/options
  * 
+ * SECURITY: Protected with Firebase App Check to prevent automated abuse
+ * 
  * Client Flow:
  * iOS: Use AuthenticationServices with ASAuthorizationPlatformPublicKeyCredentialProvider
  * Android: Use CredentialManager with CreatePublicKeyCredentialRequest
  */
-router.post('/register/options', validateFirebaseToken, async (req: Request, res: Response) => {
+router.post('/register/options', validateFirebaseToken, verifyAppCheckToken, async (req: Request, res: Response) => {
   try {
     const { uid, email } = req.firebaseUser!;
     const { deviceInfo } = req.body; // { platform: 'ios'|'android', osVersion, deviceName }
@@ -139,7 +142,7 @@ router.post('/register/options', validateFirebaseToken, async (req: Request, res
  * 
  * Client sends attestation response from device
  */
-router.post('/register/verify', validateFirebaseToken, async (req: Request, res: Response) => {
+router.post('/register/verify', validateFirebaseToken, verifyAppCheckToken, async (req: Request, res: Response) => {
   try {
     const { uid, email } = req.firebaseUser!;
     const { credential, deviceInfo } = req.body;
@@ -246,7 +249,7 @@ router.post('/register/verify', validateFirebaseToken, async (req: Request, res:
  * 
  * POST /api/mobile/biometric/authenticate/options
  */
-router.post('/authenticate/options', async (req: Request, res: Response) => {
+router.post('/authenticate/options', verifyAppCheckToken, async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     
@@ -321,7 +324,7 @@ router.post('/authenticate/options', async (req: Request, res: Response) => {
  * 
  * POST /api/mobile/biometric/authenticate/verify
  */
-router.post('/authenticate/verify', async (req: Request, res: Response) => {
+router.post('/authenticate/verify', verifyAppCheckToken, async (req: Request, res: Response) => {
   try {
     const { credential, uid } = req.body;
     

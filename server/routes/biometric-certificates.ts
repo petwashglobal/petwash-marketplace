@@ -7,6 +7,7 @@
 
 import { Router, Request, Response } from 'express';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { verifyAppCheckToken } from '../middleware/appCheckMiddleware';
 import { certificateVerification, type DocumentType } from '../services/CertificateVerificationService';
 import { consentService } from '../services/ConsentService';
 import { logger } from '../lib/logger';
@@ -97,6 +98,7 @@ const upload = multer({
 router.post(
   '/upload',
   validateFirebaseToken,
+  verifyAppCheckToken,
   upload.fields([
     { name: 'documentFront', maxCount: 1 },
     { name: 'documentBack', maxCount: 1 },
