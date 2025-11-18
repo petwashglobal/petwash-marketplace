@@ -30,7 +30,14 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const appCheckToken = await getAppCheckToken();
+  // CRITICAL FIX: Ensure getAppCheckToken failure doesn't break API calls
+  // If App Check is disabled or fails, we continue without the token (fail-open)
+  let appCheckToken: string | null = null;
+  try {
+    appCheckToken = await getAppCheckToken();
+  } catch (error) {
+    console.warn('[QueryClient] Failed to get App Check token, continuing without it', error);
+  }
   
   const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
   if (appCheckToken) {
@@ -54,7 +61,14 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const appCheckToken = await getAppCheckToken();
+    // CRITICAL FIX: Ensure getAppCheckToken failure doesn't break API calls
+    // If App Check is disabled or fails, we continue without the token (fail-open)
+    let appCheckToken: string | null = null;
+    try {
+      appCheckToken = await getAppCheckToken();
+    } catch (error) {
+      console.warn('[QueryClient] Failed to get App Check token, continuing without it', error);
+    }
     
     const headers: Record<string, string> = {};
     if (appCheckToken) {

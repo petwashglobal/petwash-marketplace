@@ -1,0 +1,59 @@
+From your screenshots and the text you pasted there are 3 clear problems:
+	1.	Gift packages API is failing
+	•	Message on mobile: 500: {"message":"Failed to fetch packages"}
+	•	That means the frontend is calling some endpoint like /api/packages or /api/store/packages and the server throws an internal error.
+	•	Until this is fixed, the page will always show the yellow warning, and sometimes it will leave the faint “PET WASH™ / ₪55 / ₪150 / ₪220” text half-rendered.
+	2.	Translations and content not resolving
+	•	You see things like loyalty.description, loyalty.newMember etc.
+	•	That means the i18n keys exist in the code but the translation JSON is not loaded or the wrong namespace is used on this page.
+	3.	Visual / layout issues
+	•	On mobile the package text is almost invisible (very faint white) and the error block sits inside the same section.
+	•	The header burger worked earlier, but when the packages call fails it may throw a JS error that blocks other interactions.
+
+⸻
+
+What the dev/agent needs to do now
+
+Here is one single block you can paste to the Replit agent so it focuses exactly on the real issues:
+
+The site is live at https://petwash.co.il but the “Premium Digital Gifts / Packages” section is broken in production. On mobile I see:
+
+⚠️ Error Loading Packages – 500: {"message":"Failed to fetch packages"}
+and the package cards sometimes show as very faint white text (“PET WASH™ ₪55 / ₪150 / ₪220”) with the error message above them. Also some loyalty strings show as raw keys: loyalty.description, loyalty.newMember, etc.
+
+Please debug and fix this in the existing architecture, step by step:
+	1.	Find and fix the 500 error on the packages endpoint
+	•	Locate the server route that powers the packages / gift cards (for example /api/packages, /api/store/packages, or similar).
+	•	Check the production logs from Autoscale for that endpoint and show the full stack trace.
+	•	Most likely causes:
+	•	missing or wrong environment variables (collection name, Firebase credentials, Nayax settings, etc)
+	•	Firestore read error due to security rules
+	•	wrong collection or document path in production
+	•	Fix the server code so that:
+	•	it does not throw, it returns a proper JSON list of packages, and
+	•	on error it returns a clear JSON error but never crashes the whole route.
+	•	After the fix, run the server locally in “production” mode and call the endpoint with curl from within the repl to prove it returns a 200 with real data, then redeploy.
+	2.	Add safe fallback on the frontend
+	•	In the React component that renders “Premium Digital Gifts” and calls the packages API:
+	•	catch fetch errors and show a simple friendly message, not a raw 500: {"message": ...} string
+	•	if the API fails, do not block the rest of the page and do not show partial ghost cards. Either hide the card grid or show a “Coming soon” placeholder.
+	3.	Fix the visual style of the packages on mobile
+	•	Audit the CSS for the package cards and prices. Right now the text looks almost the same color as the background on iPhone Safari.
+	•	Make sure the text color has enough contrast on both light and dark backgrounds, and does not rely on very low opacity.
+	•	Test explicitly on mobile viewport (iPhone Safari and Android Chrome) to confirm the cards are fully visible, centered, and scrollable.
+	4.	Fix the i18n / translation placeholders
+	•	Find why keys like loyalty.description, loyalty.newMember, loyalty.regular are rendered instead of their translated text.
+	•	Ensure the correct i18n namespace is loaded on this page and that the Hebrew and English translations exist in the JSON files.
+	•	Implement a safe fallback so that if a key is missing, the UI shows a readable default sentence instead of the raw key.
+	5.	Final QA pass focused only on this section
+	•	After fixes, run a full end to end test of the landing page in production mode:
+	•	desktop Chrome
+	•	iPhone Safari
+	•	Android Chrome
+	•	Confirm:
+	•	no more 500 errors in the console or server logs when loading packages
+	•	package cards appear correctly with prices and “Buy Now” buttons
+	•	no raw translation keys are visible anywhere on the page
+	•	the rest of the layout (menu, languages, footer) is not affected.
+
+Do not change unrelated systems. Keep Firebase, auth, and the overall architecture as is. Only fix the broken packages API, its error handling, translations, and mobile layout, then redeploy.
