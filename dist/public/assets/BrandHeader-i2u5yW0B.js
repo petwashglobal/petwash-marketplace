@@ -1,0 +1,1 @@
+import{j as a}from"./index-2Z6GbulB.js";function r(){return a.jsx("div",{className:"pw-logo-wrap","aria-label":"PetWash brand",children:a.jsx("img",{src:"/brand/petwash-logo-official.png",alt:"PetWash™",className:"pw-logo",decoding:"async",loading:"eager"})})}export{r as B};

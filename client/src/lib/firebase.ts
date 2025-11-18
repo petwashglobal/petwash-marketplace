@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { 
   initializeAuth, 
   indexedDBLocalPersistence, 
@@ -82,8 +82,8 @@ function getFirebaseConfig() {
 
 const firebaseConfig = getFirebaseConfig();
 
-// Initialize Firebase app immediately (lightweight)
-export const app = initializeApp(firebaseConfig);
+// Initialize Firebase app as singleton (prevent duplicate initialization)
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // CRITICAL FIX: App Check is OPTIONAL and uses separate key
 // If VITE_FIREBASE_APPCHECK_SITE_KEY is not provided, App Check is disabled (fail-open)

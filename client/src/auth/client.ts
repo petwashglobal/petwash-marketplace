@@ -9,12 +9,10 @@
  * - Handles redirect results automatically
  */
 
-import { initializeApp } from "firebase/app";
 import {
   browserLocalPersistence,
   browserSessionPersistence,
   indexedDBLocalPersistence,
-  initializeAuth,
   isSignInWithEmailLink,
   getAuth,
   onAuthStateChanged,
@@ -28,36 +26,12 @@ import {
   Auth,
 } from "firebase/auth";
 
-// ---- 1) Config via Vite env (must exist in Replit Secrets) ----
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,       // e.g. petwash-admin.firebaseapp.com
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
+// CRITICAL FIX: Import existing Firebase app instance instead of creating new one
+// This prevents "Firebase App named '[DEFAULT]' already exists" error
+import { app, auth as existingAuth } from "@/lib/firebase";
 
-// ---- 2) App + robust Auth init (multi-persistence) ----
-const app = initializeApp(firebaseConfig);
-
-// On Safari (especially iOS), IndexedDB can be flaky. We try IDB, then local, then session.
-function initAuth(): Auth {
-  const auth = initializeAuth(app, {
-    persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
-  });
-  // Show Google screens in the user's language (set 'he' if you want Hebrew)
-  auth.useDeviceLanguage();
-  return auth;
-}
-
-export const auth = ((): Auth => {
-  try {
-    return getAuth(app);
-  } catch {
-    return initAuth();
-  }
-})();
+// ---- Use existing auth instance from firebase.ts (singleton pattern) ----
+export const auth = existingAuth;
 
 // ---- 3) Google provider with clean UX ----
 export const googleProvider = new GoogleAuthProvider();
