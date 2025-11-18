@@ -4646,52 +4646,24 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // Admin authentication routes
+  // Admin authentication routes - SECURITY: Firebase Auth ONLY
+  // REMOVED hardcoded credentials - all admin login must use Firebase Authentication
   app.post('/api/admin/login', async (req, res) => {
     try {
-      const { email, password } = req.body;
+      // SECURITY FIX 2025: Removed hardcoded password backdoor
+      // All admin authentication now goes through Firebase Auth
+      // Admins must sign in with their Google account via Firebase
       
-      // Admin authentication with personalized passwords
-      const isValidCredentials = email && email.endsWith("@petwash.co.il") && (
-        (email === "nir.h@petwash.co.il" && password === "Petwashil1#") ||
-        (email !== "nir.h@petwash.co.il" && password === "admin")
-      );
+      return res.status(400).json({
+        error: 'Direct password login disabled',
+        message: 'Please use Firebase Authentication (Google Sign-In) for admin access',
+        code: 'USE_FIREBASE_AUTH'
+      });
       
-      if (isValidCredentials) {
-        let admin = await storage.getAdminUserByEmail(email);
-        
-        if (!admin) {
-          // Create admin user if not exists (for initial setup)
-          const isMainAdmin = email === "information@petwash.co.il" || email === "nir.h@petwash.co.il";
-          admin = await storage.createAdminUser({
-            id: email,
-            email,
-            firstName: isMainAdmin ? "Pet Wash" : "Admin",
-            lastName: isMainAdmin ? "Management" : "User",
-            role: "super_admin",
-            regions: [],
-            isActive: true,
-          });
-        }
-        
-        // Update last login
-        await storage.updateAdminUser(admin.id, { lastLogin: new Date() });
-        
-        // Set admin session
-        (req.session as any).adminId = admin.id;
-        
-        // Log activity
-        await storage.createAdminActivityLog({
-          adminId: admin.id,
-          action: "login",
-          ipAddress: req.ip,
-          userAgent: req.get("User-Agent"),
-        });
-        
-        res.json({ success: true, admin });
-      } else {
-        res.status(401).json({ message: "Invalid credentials" });
-      }
+      // OLD INSECURE CODE REMOVED:
+      // - Hardcoded CEO password exposed in plain text
+      // - Generic 'admin' password for all @petwash.co.il emails
+      // This was a CRITICAL security vulnerability
     } catch (error) {
       logger.error('Admin login error:', error);
       res.status(500).json({ message: "Login failed" });
