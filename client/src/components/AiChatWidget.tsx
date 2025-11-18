@@ -138,12 +138,30 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
   // Don't render anything if not open (controlled by FloatingStack)
   if (!isOpen) return null;
 
+  // FAB stack clearance: 3 buttons (56px each) + spacing + safe margin ≈ 240px
+  const FAB_STACK_CLEARANCE = '240px';
+
   return (
     <>
-      {/* Main Chat Window */}
+      {/* Responsive bottom positioning via CSS */}
+      <style>{`
+        .chat-widget-mobile {
+          bottom: calc(env(safe-area-inset-bottom, 0px) + ${FAB_STACK_CLEARANCE});
+        }
+        @media (min-width: 768px) {
+          .chat-widget-mobile {
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+          }
+        }
+      `}</style>
+
+      {/* Main Chat Window - Safe-area aware positioning */}
       {isOpen && (
         <div 
-          className="fixed bottom-24 left-4 right-4 md:bottom-6 md:right-6 md:left-auto z-[9999] md:w-[380px] h-auto max-h-[calc(100vh-200px)] md:h-[600px] md:max-h-none bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700"
+          className="chat-widget-mobile fixed left-4 right-4 md:right-6 md:left-auto md:w-[420px] z-[9999] flex flex-col rounded-2xl shadow-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden"
+          style={{
+            maxHeight: 'min(80vh, 600px)',
+          }}
           data-testid="chat-window"
         >
           {/* Header */}
