@@ -65,6 +65,7 @@ const Gallery = lazy(() => import("@/pages/Gallery"));
 const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const AdminLoginV2 = lazy(() => import("@/pages/admin/AdminLoginV2"));
+const AdminAccessDenied = lazy(() => import("@/pages/AdminAccessDenied"));
 const GroupStatusMonitor = lazy(() => import("@/pages/admin/GroupStatusMonitor"));
 const CEODashboard = lazy(() => import("@/pages/CEODashboard"));
 const AdminKYC = lazy(() => import("@/pages/AdminKYC"));
@@ -1332,6 +1333,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/admin">{() => <Redirect to="/admin/login-v2" />}</Route>
         <Route path="/admin/login" component={AdminLogin} />
         <Route path="/admin/login-v2" component={AdminLoginV2} />
+        <Route path="/admin/access-denied" component={AdminAccessDenied} />
         <Route path="/admin/dashboard">
           {() => (
             <AdminRouteGuard>

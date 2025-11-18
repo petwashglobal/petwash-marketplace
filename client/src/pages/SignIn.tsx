@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential } from "firebase/auth";
+import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Info, Fingerprint, Smartphone, ScanFace, Phone, User, Lock, ArrowRight, Sparkles } from "lucide-react";
-import { FaFacebook, FaTiktok } from "react-icons/fa";
 import { SiGmail } from "react-icons/si";
 import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -108,102 +107,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     });
   };
 
-  // [Previous useEffect hooks for TikTok callback, conditional UI, auto-redirect, etc.]
-  useEffect(() => {
-    const handleTikTokCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tiktokToken = urlParams.get('tiktokToken');
-      const oauthError = urlParams.get('oauthError');
-
-      if (oauthError) {
-        const errorMessages: Record<string, { en: string; he: string }> = {
-          'cancelled': { en: 'Sign-in was cancelled', he: 'ההתחברות בוטלה' },
-          'csrf_failed': { en: 'Security verification failed. Please try again.', he: 'אימות אבטחה נכשל. נסה שוב.' },
-          'exchange_failed': { en: 'Failed to complete sign-in with TikTok', he: 'נכשל להתחבר עם TikTok' },
-          'config_missing': { en: 'TikTok login is not configured. Please contact support.', he: 'התחברות TikTok לא מוגדרת. צור קשר עם התמיכה.' },
-          'default': { en: 'An error occurred during sign-in', he: 'אירעה שגיאה בהתחברות' }
-        };
-
-        const errorMsg = errorMessages[oauthError] || errorMessages['default'];
-        toast({
-          variant: "destructive",
-          title: t('signin.error', language),
-          description: language === 'he' ? errorMsg.he : errorMsg.en,
-        });
-
-        trackEvent({
-          action: 'tiktok_oauth_error',
-          category: 'authentication',
-          label: oauthError,
-          language,
-        });
-
-        window.history.replaceState({}, document.title, '/signin');
-        return;
-      }
-
-      if (tiktokToken) {
-        try {
-          setLoading(true);
-          logger.info("TikTok OAuth callback detected, signing in with custom token");
-
-          const userCredential = await signInWithCustomToken(auth, tiktokToken);
-          const idToken = await userCredential.user.getIdToken();
-          const sessionResponse = await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ idToken }),
-          });
-
-          if (!sessionResponse.ok) {
-            throw new Error('Failed to create session');
-          }
-
-          const { trackLogin } = await import('@/lib/analytics');
-          trackLogin('tiktok', userCredential.user.uid);
-          
-          trackEvent({
-            action: 'tiktok_login',
-            category: 'authentication',
-            label: 'tiktok_success',
-            language,
-          });
-          
-          toast({
-            title: t('signin.successTitle', language),
-            description: t('signin.redirecting', language),
-          });
-
-          window.history.replaceState({}, document.title, '/signin');
-          setTimeout(() => {
-            window.scrollTo(0, 0);
-            navigate("/");
-          }, 1000);
-        } catch (error: any) {
-          logger.error("TikTok sign-in error:", error);
-          toast({
-            variant: "destructive",
-            title: t('signin.error', language),
-            description: error.message || t('signin.failedTikTok', language)
-          });
-          
-          trackEvent({
-            action: 'tiktok_oauth_error',
-            category: 'authentication',
-            label: error.code || 'unknown_error',
-            language,
-          });
-          
-          window.history.replaceState({}, document.title, '/signin');
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    handleTikTokCallback();
-  }, [language, navigate, toast, trackEvent]);
   
   useEffect(() => {
     if (!passkeyAvailable || user || autoFaceID.isLoading) return;
@@ -348,47 +251,23 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'yahoo' | 'microsoft' | 'facebook' | 'tiktok') => {
+  const handleSocialLogin = async (provider: 'google') => {
     await performOAuthLogin(provider);
   };
 
-  const performOAuthLogin = async (provider: 'google' | 'yahoo' | 'microsoft' | 'facebook' | 'tiktok') => {
+  const performOAuthLogin = async (provider: 'google') => {
     try {
       setSocialLoading(provider);
       
-      let authProvider;
-      switch (provider) {
-        case 'google':
-          authProvider = new GoogleAuthProvider();
-          authProvider.addScope('email');
-          authProvider.addScope('profile');
-          break;
-        case 'yahoo':
-          authProvider = new OAuthProvider("yahoo.com");
-          break;
-        case 'microsoft':
-          authProvider = new OAuthProvider("microsoft.com");
-          authProvider.addScope('email');
-          break;
-        case 'facebook':
-          authProvider = new FacebookAuthProvider();
-          break;
-        case 'tiktok':
-          window.location.href = '/api/auth/tiktok/start';
-          return;
-      }
+      const authProvider = new GoogleAuthProvider();
+      authProvider.addScope('email');
+      authProvider.addScope('profile');
 
       const userCredential = await signInWithPopup(auth, authProvider);
       
       let grantedScopes: string[] = [];
       try {
-        if (provider === 'google') {
-          grantedScopes = ['email', 'profile'];
-        } else if (provider === 'yahoo' || provider === 'microsoft') {
-          grantedScopes = ['email'];
-        } else if (provider === 'facebook') {
-          grantedScopes = ['email', 'public_profile'];
-        }
+        grantedScopes = GoogleAuthProvider.credentialFromResult(userCredential)?.accessToken ? ['email', 'profile'] : [];
       } catch (scopeError) {
         logger.warn('Could not set OAuth scopes:', scopeError);
       }
@@ -750,74 +629,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 <>
                   <SiGmail className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-red-600" />
                   {t('signin.continueGmail', language)}
-                </>
-              )}
-            </Button>
-
-            {/* Yahoo */}
-            <Button
-              onClick={() => handleSocialLogin('yahoo')}
-              disabled={!!socialLoading}
-              className="w-full bg-[#6001D2] hover:bg-[#5001B2] text-white rounded-2xl h-14 text-base font-medium transition-all duration-200 sm:h-16 md:h-16 lg:h-14 shadow-sm hover:shadow-md"
-              data-testid="button-yahoo-signin"
-            >
-              {socialLoading === 'yahoo' ? (
-                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-              ) : (
-                <>
-                  <Mail className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
-                  {t('signin.continueYahoo', language)}
-                </>
-              )}
-            </Button>
-
-            {/* Microsoft */}
-            <Button
-              onClick={() => handleSocialLogin('microsoft')}
-              disabled={!!socialLoading}
-              className="w-full bg-[#00A4EF] hover:bg-[#0078D4] text-white rounded-2xl h-14 text-base font-medium transition-all duration-200 sm:h-16 md:h-16 lg:h-14 shadow-sm hover:shadow-md"
-              data-testid="button-microsoft-signin"
-            >
-              {socialLoading === 'microsoft' ? (
-                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-              ) : (
-                <>
-                  <Mail className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
-                  {t('signin.continueMicrosoft', language)}
-                </>
-              )}
-            </Button>
-
-            {/* Facebook / Instagram (Meta) - 2025 Update: Instagram login deprecated for personal accounts */}
-            <Button
-              onClick={() => handleSocialLogin('facebook')}
-              disabled={!!socialLoading}
-              className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-2xl h-14 text-base font-medium transition-all duration-200 sm:h-16 md:h-16 lg:h-14 shadow-sm hover:shadow-md"
-              data-testid="button-facebook-signin"
-            >
-              {socialLoading === 'facebook' ? (
-                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-              ) : (
-                <>
-                  <FaFacebook className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
-                  {t('signin.continueFacebookMeta', language)}
-                </>
-              )}
-            </Button>
-
-            {/* TikTok */}
-            <Button
-              onClick={() => handleSocialLogin('tiktok')}
-              disabled={!!socialLoading}
-              className="w-full bg-black hover:bg-gray-900 text-white rounded-2xl h-14 text-base font-medium transition-all duration-200 sm:h-16 md:h-16 lg:h-14 shadow-sm hover:shadow-md"
-              data-testid="button-tiktok-signin"
-            >
-              {socialLoading === 'tiktok' ? (
-                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-              ) : (
-                <>
-                  <FaTiktok className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
-                  {t('signin.continueTikTok', language)}
                 </>
               )}
             </Button>
