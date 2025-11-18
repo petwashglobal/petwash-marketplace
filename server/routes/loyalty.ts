@@ -60,7 +60,7 @@ router.get('/profile', async (req: AuthenticatedRequest, res: Response) => {
         .insert(loyaltyProfiles)
         .values({
           userId,
-          tier: 'new',
+          tier: 'bronze',
           tierSince: new Date(),
           tierProgress: 0,
           tierThreshold: 1000,
