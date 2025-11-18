@@ -1,8 +1,10 @@
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, Sparkles, Leaf, Package } from "lucide-react";
 
 export default function Shop() {
+  const [, setLocation] = useLocation();
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <div className="container max-w-6xl mx-auto px-4 py-12">
@@ -65,7 +67,7 @@ export default function Shop() {
               <Button size="lg" data-testid="button-notify-launch">
                 Notify Me at Launch
               </Button>
-              <Button size="lg" variant="outline" data-testid="button-view-stations" onClick={() => window.location.href = "/stations"}>
+              <Button size="lg" variant="outline" data-testid="button-view-stations" onClick={() => setLocation("/stations")}>
                 Visit K9000 Stations
               </Button>
             </div>

@@ -1,8 +1,10 @@
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Briefcase, Users, Heart, TrendingUp } from "lucide-react";
 
 export default function Careers() {
+  const [, setLocation] = useLocation();
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <div className="container max-w-6xl mx-auto px-4 py-12">
@@ -57,7 +59,7 @@ export default function Careers() {
             <Button size="lg" data-testid="button-view-jobs">
               View Open Positions
             </Button>
-            <Button size="lg" variant="outline" data-testid="button-staff-application" onClick={() => window.location.href = "/staff/application"}>
+            <Button size="lg" variant="outline" data-testid="button-staff-application" onClick={() => setLocation("/staff/application")}>
               Staff Application
             </Button>
           </div>

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
 
 export default function BookingUnified() {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
 
   const services = [
     {
@@ -70,7 +72,7 @@ export default function BookingUnified() {
               <Card
                 key={service.name}
                 className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-105"
-                onClick={() => (window.location.href = service.href)}
+                onClick={() => setLocation(service.href)}
               >
                 <div className="flex flex-col gap-4">
                   <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">

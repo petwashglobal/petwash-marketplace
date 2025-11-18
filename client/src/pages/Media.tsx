@@ -1,8 +1,10 @@
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Camera, Video, FileText, Download } from "lucide-react";
 
 export default function Media() {
+  const [, setLocation] = useLocation();
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <div className="container max-w-6xl mx-auto px-4 py-12">
@@ -15,7 +17,7 @@ export default function Media() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => window.location.href = "/gallery"}>
+          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setLocation("/gallery")}>
             <Camera className="w-12 h-12 text-purple-600 mb-4" />
             <h3 className="text-lg font-semibold mb-2">Photo Gallery</h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">

@@ -1,10 +1,12 @@
 import { useTranslation } from "react-i18next";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Clock, Droplet, Sparkles } from "lucide-react";
 
 export default function Stations() {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
 
   return (
     <div className="min-h-screen bg-white dark:bg-black">
@@ -57,11 +59,11 @@ export default function Stations() {
             Use our interactive map to locate K9000 stations, check availability, and get directions.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button size="lg" data-testid="button-map" onClick={() => window.location.href = "/map"}>
+            <Button size="lg" data-testid="button-map" onClick={() => setLocation("/map")}>
               <MapPin className="w-5 h-5 mr-2" />
               View Map
             </Button>
-            <Button size="lg" variant="outline" data-testid="button-pricing" onClick={() => window.location.href = "/pricing"}>
+            <Button size="lg" variant="outline" data-testid="button-pricing" onClick={() => setLocation("/pricing")}>
               View Pricing
             </Button>
           </div>

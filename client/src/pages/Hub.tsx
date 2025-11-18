@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
 
 export default function Hub() {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
 
   const platforms = [
     {
@@ -101,7 +103,7 @@ export default function Hub() {
                 }`}
                 onClick={() => {
                   if (platform.active && platform.href !== "#") {
-                    window.location.href = platform.href;
+                    setLocation(platform.href);
                   }
                 }}
               >

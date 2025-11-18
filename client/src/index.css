@@ -432,6 +432,7 @@ body {
   margin: 0;
   padding: 0;
   background: #fff;
+  overflow-x: hidden !important; /* Prevent horizontal scrolling */
   -webkit-tap-highlight-color: transparent; /* Remove iOS tap highlight */
   -webkit-touch-callout: none; /* Disable callout on long press */
 }
@@ -490,6 +491,9 @@ input[type="radio"] {
 body {
   font-family: sans-serif;
   padding-top: 0; /* No top padding - header sits flush at top */
+  overflow-x: hidden !important; /* Prevent horizontal scrolling */
+  max-width: 100vw !important; /* Ensure body doesn't exceed viewport width */
+  position: relative;
 }
 
 body:not([data-signup-page]) {

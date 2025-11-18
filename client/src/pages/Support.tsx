@@ -1,9 +1,11 @@
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { HelpCircle, MessageCircle, Phone, Mail, FileQuestion, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function Support() {
+  const [, setLocation] = useLocation();
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <div className="container max-w-6xl mx-auto px-4 py-12">
@@ -29,7 +31,7 @@ export default function Support() {
 
         {/* Contact Options */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <Card className="p-6 text-center hover:shadow-lg transition-shadow cursor-pointer" onClick={() => window.location.href = "/live-chat"}>
+          <Card className="p-6 text-center hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setLocation("/live-chat")}>
             <MessageCircle className="w-12 h-12 text-purple-600 mx-auto mb-4" />
             <h3 className="font-semibold mb-2">Live Chat</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
@@ -57,7 +59,7 @@ export default function Support() {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Send us a detailed message
             </p>
-            <Button variant="outline" className="w-full" data-testid="button-email" onClick={() => window.location.href = "/contact"}>
+            <Button variant="outline" className="w-full" data-testid="button-email" onClick={() => setLocation("/contact")}>
               Contact Us
             </Button>
           </Card>
