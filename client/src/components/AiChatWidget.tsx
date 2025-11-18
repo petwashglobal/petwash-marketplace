@@ -158,7 +158,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
       {/* Main Chat Window - Safe-area aware positioning */}
       {isOpen && (
         <div 
-          className="chat-widget-mobile fixed left-4 right-4 md:right-6 md:left-auto md:w-[420px] z-[9999] flex flex-col rounded-2xl shadow-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden"
+          className="chat-widget-mobile fixed left-4 right-4 md:right-6 md:left-auto md:w-[420px] z-50 flex flex-col rounded-2xl shadow-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden"
           style={{
             maxHeight: 'min(80vh, 600px)',
           }}

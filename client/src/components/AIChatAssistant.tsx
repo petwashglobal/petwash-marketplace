@@ -120,14 +120,14 @@ export function AIChatAssistant({ language, isOpen: externalIsOpen, onClose }: A
     <>
       {/* Backdrop blur overlay */}
       <div 
-        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[9998] animate-fade-in"
+        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 animate-fade-in"
         onClick={() => setIsOpen(false)}
         data-testid="chat-backdrop"
       />
       
       {/* Premium Chat Window */}
       <div 
-        className="fixed bottom-6 right-6 w-[90vw] sm:w-[420px] max-h-[70vh] z-[9999] animate-slide-up"
+        className="fixed bottom-6 right-6 w-[90vw] sm:w-[420px] max-h-[70vh] z-50 animate-slide-up"
         style={{ fontFamily }}
         dir={language === 'he' ? 'rtl' : 'ltr'}
       >

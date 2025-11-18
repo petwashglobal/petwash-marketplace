@@ -137,7 +137,7 @@ export function ExpressCheckoutModal({
   logger.debug('ExpressCheckoutModal rendering', { packageName: pkg?.name });
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[9999] ltr"
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 ltr"
          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       <div className="bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Minimalist Header - Apple Style */}

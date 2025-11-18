@@ -83,7 +83,7 @@ export function DevDiagnosticBar() {
   };
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 z-[9999] border-t ${getStatusColor()} backdrop-blur-md`}>
+    <div className={`fixed bottom-0 left-0 right-0 z-60 border-t ${getStatusColor()} backdrop-blur-md`}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-4 py-2 flex items-center justify-between text-xs font-mono text-white hover:bg-black/20 transition-colors"

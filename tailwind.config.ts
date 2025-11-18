@@ -5,6 +5,10 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      zIndex: {
+        '60': '60',
+        '70': '70',
+      },
       fontFamily: {
         serif: ['Playfair Display', 'Georgia', 'Times New Roman', 'serif'],
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', 'sans-serif'],
