@@ -1,0 +1,124 @@
+Hi mate, here is the full and final menu structure for Pet Wash™.
+
+Please update the PetWashHeaderNav menu to match this exact structure.  
+No duplicates, and no NDIS or anything unrelated.  
+This is the official 2025 Pet Wash™ global structure.
+
+======================================
+PET WASH™ – GLOBAL MENU STRUCTURE 2025
+======================================
+
+Home
+
+About Us
+  - Our Story
+  - Vision & Mission
+  - Leadership Team
+  - Technology & Innovation
+  - Community & Environment
+  - Media & Press
+
+Gallery
+  - Photos
+  - Videos
+  - Installations
+  - Events
+  - User Stories
+
+Our Services
+  - Pet Wash Stations (K9000)
+      - Wash Options
+      - Organic Products
+      - Prices
+      - Locations Map
+  - Pet Wash Delivery
+      - Book Delivery
+      - Track Driver
+      - Pricing
+  - Pet Sitter (Airbnb-style)
+      - Book a Sitter
+      - Become a Sitter
+      - House Guarding
+      - Plant Care
+  - Pet Transport
+      - Book Transport
+      - Airport Transfers
+      - Long Distance
+  - Pet Shop
+      - Accessories
+      - Organic Products
+      - Gift Cards
+
+Booking & Scheduling
+  - Book Now
+  - Calendar View
+  - Payments & Wallet
+  - Membership & Loyalty
+  - Packages & Coupons
+
+Business Platforms
+  - Pet Wash Hub
+  - Pet Wash Live
+  - Pet Wash Stations
+  - Pet Wash Sitter
+  - Pet Wash Delivery
+  - Pet Wash Transport
+  - Pet Wash Shop
+  - Pet Wash Academy
+  - Pet Wash Veterinary
+  - Pet Wash Grooming
+  - Pet Wash Franchise Network
+  - Corporate Dashboard
+  - Pet Avatar Builder (Frozen)
+
+Partners & Franchise
+  - Franchise Program
+  - White Label Solutions
+  - Corporate Partnerships
+  - Revenue Models
+  - Documents & Forms
+
+Support
+  - FAQ
+  - Help Center
+  - Station Instructions
+  - Contact Support
+  - WhatsApp
+
+Account
+  - Profile
+  - Pets
+  - My Bookings
+  - Payments
+  - Wallet
+  - Documents
+  - Notifications
+
+Legal
+  - Privacy Policy
+  - Terms & Conditions
+  - Disclaimer
+  - Cookies Policy
+  - E-Gift Card Policy
+  - Refunds & Cancellations
+  - Data Protection & GDPR
+  - Insurance & Liability
+  - Pet Sitter Agreement
+  - Pet Transport Duty of Care
+  - Municipal Partnerships Legal
+  - Safety & Risk Policy
+
+Languages
+  - English
+  - Hebrew
+  - Arabic
+  - Russian
+  - French
+  - Chinese
+  - x-default
+
+======================================
+
+This is the final structure – clean, luxury, and ready for the full 2025 Pet Wash™ ecosystem.
+Please implement this exactly, without removing or merging items.  
+Let me know when it's integrated.

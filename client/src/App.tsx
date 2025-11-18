@@ -28,6 +28,7 @@ import { initializeInteractionTracking } from "@/lib/interactionTracker";
 import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
+import { PetWashHeader } from "@/components/PetWashHeader";
 
 // CRITICAL: Only import home route components (for instant load)
 import Landing from "@/pages/Landing";
@@ -50,6 +51,11 @@ const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
+const LoyaltyTiers = lazy(() => import("@/pages/LoyaltyTiers"));
+const LoyaltyBenefits = lazy(() => import("@/pages/LoyaltyBenefits"));
+const LoyaltyBirthday = lazy(() => import("@/pages/LoyaltyBirthday"));
+const LoyaltyRefer = lazy(() => import("@/pages/LoyaltyRefer"));
+const EGift = lazy(() => import("@/pages/EGift"));
 const Verify = lazy(() => import("@/pages/Verify"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
@@ -291,6 +297,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       {/* Google One Tap - Disabled to improve page load speed */}
       {/* {showOneTap && <GoogleOneTap enabled={true} autoPrompt={true} />} */}
       
+      {/* Pet Wash™ Global Header 2025 */}
+      <PetWashHeader />
+      
       <Switch>
         {/* Public routes */}
         <Route path="/">
@@ -365,6 +374,25 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
               <LoyaltyDashboard />
             </RequireAuth>
           )}
+        </Route>
+        
+        {/* Loyalty Program - Additional Pages */}
+        <Route path="/loyalty/tiers">
+          {() => <LoyaltyTiers />}
+        </Route>
+        <Route path="/loyalty/benefits">
+          {() => <LoyaltyBenefits />}
+        </Route>
+        <Route path="/loyalty/birthday">
+          {() => <LoyaltyBirthday />}
+        </Route>
+        <Route path="/loyalty/refer">
+          {() => <LoyaltyRefer />}
+        </Route>
+        
+        {/* eGift Cards */}
+        <Route path="/egift">
+          {() => <EGift />}
         </Route>
         
         {/* Protected route - ID Verification */}
