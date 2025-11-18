@@ -19,7 +19,7 @@ export function Layout({ children, language, onLanguageChange }: LayoutProps) {
   }, [language]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white">
       {/* Skip to Content for Accessibility */}
       <a 
         href="#main-content" 
@@ -30,7 +30,7 @@ export function Layout({ children, language, onLanguageChange }: LayoutProps) {
       
       <Header language={language} onLanguageChange={onLanguageChange} />
       
-      <main id="main-content" role="main">
+      <main id="main-content" role="main" className="bg-white">
         {children}
       </main>
       
