@@ -58,7 +58,7 @@ export class AppErrorBoundary extends Component<Props, State> {
               We've encountered an unexpected error. Our team has been notified and is working on fixing it.
             </p>
             
-            {process.env.NODE_ENV === "development" && (
+            {import.meta.env.DEV && (
               <details className="bg-red-50 p-4 rounded-lg border border-red-200">
                 <summary className="cursor-pointer font-semibold text-red-900 mb-2">
                   Error Details (Development Only)
