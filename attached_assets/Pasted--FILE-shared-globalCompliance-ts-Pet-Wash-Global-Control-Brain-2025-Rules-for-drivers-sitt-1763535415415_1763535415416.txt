@@ -1,0 +1,408 @@
+// FILE: shared/globalCompliance.ts
+// Pet Wash Global Control Brain 2025
+// Rules for drivers, sitters, hosts and any contractor platform wide.
+
+import {
+  IsraeliContractorProfile,
+  PetWashServiceType,
+  evaluateIsraeliContractorForService,
+  ComplianceResult as ILComplianceResult,
+} from "./petwashIsraeliContractors";
+
+import {
+  ContractorAvailabilityProfile,
+  ExistingJobSlot,
+  AvailabilityCheckResult,
+  canTakeJob,
+} from "./petwashAvailability";
+
+import {
+  Rating,
+  RatingSummary,
+  computeRatingSummary,
+} from "./petwashRatings";
+
+import {
+  Incident,
+  isCritical as isCriticalIncident,
+} from "./petwashIncidents";
+
+import {
+  PlatformRole,
+} from "./petwashRoles";
+
+////////////////////////////////
+// Identity and verification
+////////////////////////////////
+
+export type VerificationProvider =
+  | "MANUAL"
+  | "SUMSUB"
+  | "ONFIDO"
+  | "TRULIOO"
+  | "OTHER";
+
+export type VerificationStatus =
+  | "NOT_STARTED"
+  | "PENDING"
+  | "PASSED"
+  | "FAILED"
+  | "EXPIRED";
+
+export interface DocumentVerification {
+  id: string;
+  contractorId: string;
+  type: "ID_CARD" | "PASSPORT" | "DRIVERS_LICENSE";
+  provider: VerificationProvider;
+  status: VerificationStatus;
+  documentCountry: string;
+  documentNumberMasked: string;
+  expiresAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LivenessCheck {
+  id: string;
+  contractorId: string;
+  provider: VerificationProvider;
+  status: VerificationStatus;
+  // True if provider confirmed selfie is live human, not photo.
+  isLive: boolean;
+  // True if selfie matched document photo.
+  faceMatchScore: number; // 0 to 100
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CriminalCategory =
+  | "VIOLENCE"
+  | "SEX_OFFENCE"
+  | "THEFT"
+  | "ANIMAL_CRUELTY"
+  | "DRUG_DISTRIBUTION"
+  | "FRAUD"
+  | "OTHER";
+
+export interface CriminalRecordHit {
+  category: CriminalCategory;
+  description: string;
+  date?: string;
+  isSpentOrCleared?: boolean;
+}
+
+export interface CriminalCheckProfile {
+  contractorId: string;
+  provider: VerificationProvider;
+  status: VerificationStatus;
+  hits: CriminalRecordHit[];
+  checkedAt?: string;
+}
+
+// Overall identity profile used across the group
+export interface IdentityVerificationProfile {
+  contractorId: string;
+  documentVerifications: DocumentVerification[];
+  livenessChecks: LivenessCheck[];
+  criminalCheck?: CriminalCheckProfile;
+}
+
+////////////////////////////////
+// Driving safety profile
+////////////////////////////////
+
+export interface DriverSafetyProfile {
+  contractorId: string;
+  // True if contractor declared no drunk driving, no current ban.
+  selfDeclaredCleanRecord: boolean;
+  // Optional info from provider or manual upload
+  licenseVerified: boolean;
+  licenseExpiry?: string | null;
+  // Penalty system if you want
+  activeDrivingBans: {
+    reason: string;
+    until: string; // ISO
+  }[];
+}
+
+////////////////////////////////
+// Global risk and flags
+////////////////////////////////
+
+export type GlobalRiskLevel = "LOW" | "MEDIUM" | "HIGH" | "BLOCK";
+
+export interface GlobalRiskProfile {
+  contractorId: string;
+  ratingSummary: RatingSummary;
+  openCriticalIncidents: Incident[];
+  riskLevel: GlobalRiskLevel;
+}
+
+////////////////////////////////
+// Eligibility result objects
+////////////////////////////////
+
+export type AssignmentRole =
+  | "DRIVER"
+  | "PET_SITTER_VISIT_HOME"
+  | "PET_HOST_HOME"
+  | "STATION_CLEANER"
+  | "GROOMER"
+  | "TRAINER";
+
+export interface EligibilityFailure {
+  code: string;
+  message: string;
+}
+
+export interface AssignmentEligibilityResult {
+  ok: boolean;
+  failures: EligibilityFailure[];
+  // For logs and dashboards
+  country: string;
+  role: AssignmentRole;
+  serviceType: PetWashServiceType;
+}
+
+////////////////////////////////
+// Helper functions
+////////////////////////////////
+
+function hasPassedLiveness(identity: IdentityVerificationProfile): boolean {
+  const latest = identity.livenessChecks
+    .filter((l) => l.status === "PASSED")
+    .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1))[0];
+
+  if (!latest) return false;
+  if (!latest.isLive) return false;
+  if (latest.faceMatchScore < 80) return false;
+  return true;
+}
+
+function hasValidDriversLicense(
+  identity: IdentityVerificationProfile,
+  driverProfile: DriverSafetyProfile
+): boolean {
+  if (!driverProfile.licenseVerified) return false;
+
+  const dlDoc = identity.documentVerifications.find(
+    (d) =>
+      d.type === "DRIVERS_LICENSE" &&
+      d.status === "PASSED"
+  );
+  if (!dlDoc) return false;
+
+  if (dlDoc.expiresAt && new Date(dlDoc.expiresAt) < new Date()) {
+    return false;
+  }
+  if (
+    driverProfile.licenseExpiry &&
+    new Date(driverProfile.licenseExpiry) < new Date()
+  ) {
+    return false;
+  }
+  if (driverProfile.activeDrivingBans.length > 0) {
+    return false;
+  }
+  return true;
+}
+
+function hasBlockingCriminalHits(
+  criminal?: CriminalCheckProfile
+): boolean {
+  if (!criminal) return false;
+  if (criminal.status !== "PASSED" && criminal.status !== "FAILED") {
+    // pending means not safe yet
+    return true;
+  }
+
+  const hits = criminal.hits || [];
+  // You can tune this list with your lawyers
+  const blockedCategories: CriminalCategory[] = [
+    "ANIMAL_CRUELTY",
+    "SEX_OFFENCE",
+    "VIOLENCE",
+  ];
+
+  for (const h of hits) {
+    if (blockedCategories.includes(h.category) && !h.isSpentOrCleared) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function computeGlobalRisk(
+  contractorId: string,
+  ratings: Rating[],
+  incidents: Incident[]
+): GlobalRiskProfile {
+  const ratingSummary = computeRatingSummary(contractorId, ratings);
+  const openCritical = incidents.filter(
+    (i) =>
+      (i.contractorId === contractorId || i.jobId) &&
+      isCriticalIncident(i)
+  );
+
+  let level: GlobalRiskLevel = "LOW";
+
+  if (ratingSummary.autoFlag === "WATCH" || openCritical.length > 0) {
+    level = "MEDIUM";
+  }
+  if (ratingSummary.autoFlag === "AUTO_REVIEW") {
+    level = "HIGH";
+  }
+  if (openCritical.some((i) => i.severity === "CRITICAL")) {
+    level = "BLOCK";
+  }
+
+  return {
+    contractorId,
+    ratingSummary,
+    openCriticalIncidents: openCritical,
+    riskLevel: level,
+  };
+}
+
+////////////////////////////////
+// Main evaluation function
+////////////////////////////////
+
+export interface AssignmentContext {
+  contractor: IsraeliContractorProfile; // can be extended later to other countries
+  identity: IdentityVerificationProfile;
+  driverProfile?: DriverSafetyProfile;
+  availability: ContractorAvailabilityProfile;
+  existingJobsSameDay: ExistingJobSlot[];
+  ratings: Rating[];
+  incidents: Incident[];
+  requestedTime: { startIso: string; endIso: string };
+  role: AssignmentRole;
+  serviceType: PetWashServiceType;
+}
+
+export function evaluateAssignmentEligibility(
+  ctx: AssignmentContext
+): AssignmentEligibilityResult {
+  const failures: EligibilityFailure[] = [];
+
+  // 1. Country specific legal compliance (Israel in this case)
+  const ilCheck: ILComplianceResult = evaluateIsraeliContractorForService(
+    ctx.contractor,
+    ctx.serviceType
+  );
+  if (!ilCheck.ok) {
+    ilCheck.failures.forEach((f) =>
+      failures.push({
+        code: `IL_${f.code}`,
+        message: f.message,
+      })
+    );
+  }
+
+  // 2. Availability
+  const availabilityResult: AvailabilityCheckResult = canTakeJob(
+    ctx.availability,
+    ctx.requestedTime,
+    ctx.existingJobsSameDay
+  );
+  if (!availabilityResult.ok) {
+    failures.push({
+      code: `AVAIL_${availabilityResult.reason || "UNKNOWN"}`,
+      message: "Contractor is not available for the requested time slot.",
+    });
+  }
+
+  // 3. Identity and live selfie
+  if (!hasPassedLiveness(ctx.identity)) {
+    failures.push({
+      code: "LIVENESS_FAILED",
+      message:
+        "Contractor must pass live selfie check with face match to ID.",
+    });
+  }
+
+  // 4. Criminal background rules per role
+  const criminal = ctx.identity.criminalCheck;
+  const hasBlock = hasBlockingCriminalHits(criminal);
+  if (hasBlock) {
+    failures.push({
+      code: "CRIMINAL_BLOCK",
+      message:
+        "Criminal record does not allow providing this type of pet service.",
+    });
+  }
+
+  // 5. Driver specific rules
+  if (ctx.role === "DRIVER" || ctx.role === "PET_TAXI") {
+    if (!ctx.driverProfile) {
+      failures.push({
+        code: "DRIVER_PROFILE_MISSING",
+        message: "Driver profile is missing.",
+      });
+    } else {
+      if (!hasValidDriversLicense(ctx.identity, ctx.driverProfile)) {
+        failures.push({
+          code: "DRIVER_LICENSE_INVALID",
+          message:
+            "Valid drivers license and verification are required for driving services.",
+        });
+      }
+      if (!ctx.driverProfile.selfDeclaredCleanRecord) {
+        failures.push({
+          code: "DRIVER_SELF_DECLARATION_MISSING",
+          message:
+            "Driver must confirm no active bans or drunk driving offences.",
+        });
+      }
+      if (ctx.driverProfile.activeDrivingBans.length > 0) {
+        failures.push({
+          code: "DRIVER_ACTIVE_BAN",
+          message: "Driver has an active driving ban.",
+        });
+      }
+    }
+  }
+
+  // 6. Role specific background strictness
+  if (
+    ctx.role === "PET_HOST_HOME" ||
+    ctx.role === "PET_SITTER_VISIT_HOME"
+  ) {
+    if (!criminal || criminal.status !== "PASSED") {
+      failures.push({
+        code: "CRIMINAL_CHECK_REQUIRED",
+        message:
+          "Clean criminal background check is required for entering client homes or hosting pets.",
+      });
+    }
+  }
+
+  // 7. Global risk level
+  const globalRisk = computeGlobalRisk(
+    ctx.contractor.id,
+    ctx.ratings,
+    ctx.incidents
+  );
+  if (globalRisk.riskLevel === "BLOCK") {
+    failures.push({
+      code: "GLOBAL_RISK_BLOCK",
+      message:
+        "Contractor is blocked by risk engine because of critical incidents or very low ratings.",
+    });
+  } else if (globalRisk.riskLevel === "HIGH") {
+    failures.push({
+      code: "GLOBAL_RISK_HIGH",
+      message:
+        "Contractor is in high risk level and requires manual review before taking new jobs.",
+    });
+  }
+
+  return {
+    ok: failures.length === 0,
+    failures,
+    country: ctx.contractor.countryOfOperation,
+    role: ctx.role,
+    serviceType: ctx.serviceType,
+  };
+}
