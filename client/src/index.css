@@ -4145,3 +4145,187 @@ html[dir="rtl"] .luxury-menu-panel * {
   animation: glow-pulse 2s ease-in-out infinite;
 }
 
+/* ============================================================================
+   MODERN 2025 RESPONSIVE CONTAINER SYSTEM
+   Ensures perfect layouts across all devices with no breaking
+   ============================================================================ */
+
+/* Safe Container - Prevents horizontal overflow on all devices */
+.safe-container {
+  width: 100%;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  overflow-x: hidden;
+}
+
+/* Responsive Container Sizes - 2025 Standard */
+.container-sm {
+  max-width: 640px;
+}
+
+.container-md {
+  max-width: 768px;
+}
+
+.container-lg {
+  max-width: 1024px;
+}
+
+.container-xl {
+  max-width: 1280px;
+}
+
+.container-2xl {
+  max-width: 1536px;
+}
+
+/* Responsive Grid System - No Breaking */
+.responsive-grid {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+}
+
+.responsive-grid-1 {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .responsive-grid-sm-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .responsive-grid-sm-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-grid-md-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .responsive-grid-md-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .responsive-grid-md-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid-lg-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .responsive-grid-lg-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .responsive-grid-lg-6 {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Responsive Flex - Auto wrap */
+.flex-responsive {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
+}
+
+.flex-responsive > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Prevent Text Overflow - ALL devices */
+.text-safe {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  max-width: 100%;
+}
+
+/* Image Responsive - Never break layout */
+.img-responsive {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Card Layout - Modern 2025 */
+.card-modern {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.card-modern:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Spacing System - Consistent across all pages */
+.section-spacing {
+  padding-top: clamp(2rem, 5vw, 4rem);
+  padding-bottom: clamp(2rem, 5vw, 4rem);
+}
+
+.section-spacing-sm {
+  padding-top: clamp(1rem, 3vw, 2rem);
+  padding-bottom: clamp(1rem, 3vw, 2rem);
+}
+
+.section-spacing-lg {
+  padding-top: clamp(3rem, 7vw, 6rem);
+  padding-bottom: clamp(3rem, 7vw, 6rem);
+}
+
+/* RTL Support - Maintain layout consistency */
+[dir="rtl"] .responsive-grid,
+[dir="rtl"] .flex-responsive {
+  direction: rtl;
+}
+
+[dir="rtl"] .card-modern {
+  text-align: right;
+}
+
+/* Mobile-First Breakpoints - 2025 Standard */
+@media (max-width: 480px) {
+  .safe-container {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  
+  .responsive-grid {
+    gap: 0.75rem;
+  }
+  
+  .card-modern {
+    padding: 1rem;
+    border-radius: 8px;
+  }
+}
+
+/* Prevent horizontal scroll on ALL devices */
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Fix for iOS viewport units */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+}
+
