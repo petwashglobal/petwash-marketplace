@@ -209,6 +209,7 @@ const GroomersProviderDashboard = lazy(() => import("@/pages/GroomersProviderDas
 // Shared Pet Services Foundation - Cross-Platform Community Services
 const SharedServicesPrograms = lazy(() => import("@/pages/SharedServicesPrograms"));
 const SharedServicesImpact = lazy(() => import("@/pages/SharedServicesImpact"));
+const GlobalCommunityHub = lazy(() => import("@/pages/GlobalCommunityHub"));
 
 // K9000 Wash Stations - Self-Service Organic Pet Washing
 const K9000Overview = lazy(() => import("@/pages/k9000/Overview"));
@@ -1012,6 +1013,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <SharedServicesImpact language={language} />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Global Community Hub - Social Good Programs & Impact */}
+        <Route path="/community-hub">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <GlobalCommunityHub />
             </Suspense>
           )}
         </Route>
