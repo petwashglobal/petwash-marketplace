@@ -1,0 +1,724 @@
+// FILE: petwash_lux_secure_2025.ts
+
+// Core 2025 backend for Pet Wash
+// - Voucher model (e gift + packages, single and multi wash)
+// - ES256 JWS signing and verification
+// - Zod validation for API routes
+// - Loyalty tiers and user dashboard types
+// - Pet profiles with vaccines and reminders
+// - City pet registry merge helper
+// - Express routes for voucher creation and redeem
+// - Future ready extension hooks
+
+import crypto from "crypto";
+import express, { Request, Response, NextFunction } from "express";
+import { z } from "zod";
+import {
+  importPKCS8,
+  importSPKI,
+  SignJWT,
+  jwtVerify,
+  JWTPayload
+} from "jose";
+
+/* ---------------------------------------------------------
+   1. CORE TYPES
+--------------------------------------------------------- */
+
+type VoucherType = "egift" | "package_single" | "package_multi";
+type ValueType = "currency" | "washes";
+type RedeemMethod = "app" | "station" | "qr";
+
+type LoyaltyTierId = "bronze" | "silver" | "gold" | "black_7star";
+
+type PetSpecies = "dog" | "cat" | "other";
+type Sex = "male" | "female" | "unknown";
+
+type ReminderType =
+  | "vaccine"
+  | "deworming"
+  | "flea_tick"
+  | "health_check"
+  | "grooming"
+  | "insurance_renewal";
+
+/* ---------------------------------------------------------
+   2. VOUCHER MODEL
+--------------------------------------------------------- */
+
+export interface PetWashVoucher2025 {
+  voucher_id: string;
+  public_code: string;
+  type: VoucherType;
+  visual: {
+    tier: "7star_metal";
+    card_theme: "neo_black_platinum" | "neo_emerald" | "neo_silver";
+    animated_highlight: boolean;
+    highres_svg_url: string;
+  };
+  rules: {
+    value_type: ValueType;
+    value_original: number | null;
+    value_remaining: number | null;
+    washes_original: number | null;
+    washes_remaining: number | null;
+    currency: string | null;
+    expires_at: string | null;
+    transferable: boolean;
+  };
+  owner: {
+    user_id: string;
+    name: string;
+    email: string;
+    created_in_app: string;
+  };
+  security: {
+    qr_url: string;
+    sha256: string;
+    signed_jws: string;
+  };
+  usage: {
+    last_used: string | null;
+    history: {
+      used_at: string;
+      station_id: string;
+      location_label: string;
+      method: RedeemMethod;
+    }[];
+    redeem_method: RedeemMethod;
+  };
+}
+
+/* ---------------------------------------------------------
+   3. USER, LOYALTY AND PET MODELS
+--------------------------------------------------------- */
+
+export interface PetWashUserProfile {
+  user_id: string;
+  name: string;
+  email: string;
+  photo_url?: string;
+  country: string;
+  created_at: string;
+  points: number;
+  lifetime_washes: number;
+  lifetime_spend_ils: number;
+  preferred_language: "he" | "en";
+}
+
+export interface LoyaltyTier {
+  id: LoyaltyTierId;
+  name: string;
+  min_points: number;
+  max_points: number | null;
+  perks: string[];
+  metal_theme: "neo_bronze" | "neo_silver" | "neo_gold" | "neo_black_7star";
+}
+
+export interface VaccineRecord {
+  id: string;
+  type: string;
+  date_given: string;
+  valid_until?: string;
+  clinic_name?: string;
+  vet_name?: string;
+  notes?: string;
+  document_url?: string;
+}
+
+export interface PetReminder {
+  id: string;
+  type: ReminderType;
+  label: string;
+  due_date: string;
+  created_at: string;
+  created_by_system: boolean;
+  completed_at?: string;
+}
+
+export interface PetProfile {
+  pet_id: string;
+  owner_user_id: string;
+  name: string;
+  nickname?: string;
+  species: PetSpecies;
+  breed?: string;
+  sex: Sex;
+  date_of_birth?: string;
+  weight_kg?: number;
+  color?: string;
+  photo_url?: string;
+
+  chip_number?: string;
+  city_registration_id?: string;
+  city_name?: string;
+
+  vaccines: VaccineRecord[];
+  reminders: PetReminder[];
+
+  vet: {
+    clinic_name?: string;
+    vet_name?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    emergency_phone?: string;
+  };
+
+  insurance: {
+    provider?: string;
+    policy_number?: string;
+    renew_date?: string;
+  };
+
+  notes_internal?: string;
+  notes_owner?: string;
+}
+
+/* ---------------------------------------------------------
+   4. FIELD SCHEMA (MANDATORY VS OPTIONAL)
+--------------------------------------------------------- */
+
+export type PetFieldId =
+  | "name"
+  | "species"
+  | "sex"
+  | "date_of_birth"
+  | "breed"
+  | "weight_kg"
+  | "chip_number"
+  | "city_registration_id"
+  | "vet_clinic"
+  | "vet_phone"
+  | "insurance_provider"
+  | "insurance_renew_date";
+
+export interface PetFieldSchemaItem {
+  id: PetFieldId;
+  label: string;
+  required: boolean;
+  description?: string;
+}
+
+export const PET_FIELD_SCHEMA: PetFieldSchemaItem[] = [
+  { id: "name", label: "Pet name", required: true, description: "Shown on all cards and reminders" },
+  { id: "species", label: "Species", required: true, description: "Dog, cat, or other" },
+  { id: "sex", label: "Sex", required: true },
+  {
+    id: "date_of_birth",
+    label: "Date of birth",
+    required: false,
+    description: "Used for age based reminders"
+  },
+  { id: "breed", label: "Breed", required: false },
+  { id: "weight_kg", label: "Weight (kg)", required: false },
+  {
+    id: "chip_number",
+    label: "Microchip number",
+    required: false,
+    description: "Helpful if pet is lost"
+  },
+  {
+    id: "city_registration_id",
+    label: "City registration number",
+    required: false,
+    description: "If provided by city pet registry"
+  },
+  { id: "vet_clinic", label: "Vet clinic", required: false },
+  { id: "vet_phone", label: "Vet phone", required: false },
+  { id: "insurance_provider", label: "Insurance provider", required: false },
+  { id: "insurance_renew_date", label: "Insurance renew date", required: false }
+];
+
+/* ---------------------------------------------------------
+   5. CITY PET REGISTRY INTEGRATION HOOKS
+--------------------------------------------------------- */
+
+export interface CityPetRegistryRecord {
+  registry_id: string;
+  city_name: string;
+  owner_name: string;
+  owner_email?: string;
+  pet_name: string;
+  species: PetSpecies;
+  breed?: string;
+  chip_number?: string;
+  registration_number?: string;
+}
+
+export function mergeCityRegistryData(
+  pet: PetProfile,
+  registry: CityPetRegistryRecord
+): PetProfile {
+  pet.city_registration_id = registry.registration_number || registry.registry_id;
+  pet.city_name = registry.city_name;
+  if (!pet.breed && registry.breed) pet.breed = registry.breed;
+  if (!pet.chip_number && registry.chip_number) pet.chip_number = registry.chip_number;
+  if (!pet.name && registry.pet_name) pet.name = registry.pet_name;
+  return pet;
+}
+
+/* ---------------------------------------------------------
+   6. LOYALTY TIERS AND DASHBOARD STATE
+--------------------------------------------------------- */
+
+export interface UserDashboardState {
+  user: PetWashUserProfile;
+  tier: LoyaltyTier;
+  active_vouchers: PetWashVoucher2025[];
+  pets: PetProfile[];
+  total_washes_remaining: number;
+  next_reward_at: number;
+}
+
+export const LOYALTY_TIERS: LoyaltyTier[] = [
+  {
+    id: "bronze",
+    name: "Bronze",
+    min_points: 0,
+    max_points: 499,
+    perks: ["Basic Pet Wash member", "Access to standard promotions"],
+    metal_theme: "neo_bronze"
+  },
+  {
+    id: "silver",
+    name: "Silver",
+    min_points: 500,
+    max_points: 1499,
+    perks: ["Priority support", "5 percent discount on selected washes"],
+    metal_theme: "neo_silver"
+  },
+  {
+    id: "gold",
+    name: "Gold",
+    min_points: 1500,
+    max_points: 3999,
+    perks: ["10 percent discount on packages", "Birthday e gift voucher"],
+    metal_theme: "neo_gold"
+  },
+  {
+    id: "black_7star",
+    name: "Black 7 Star",
+    min_points: 4000,
+    max_points: null,
+    perks: [
+      "Black 7 Star metal card",
+      "Priority queue at all stations",
+      "Exclusive events",
+      "Higher earn rate on points"
+    ],
+    metal_theme: "neo_black_7star"
+  }
+];
+
+export function getTierForPoints(points: number): LoyaltyTier {
+  for (const tier of LOYALTY_TIERS) {
+    if (tier.max_points === null) {
+      if (points >= tier.min_points) return tier;
+    } else if (points >= tier.min_points && points <= tier.max_points) {
+      return tier;
+    }
+  }
+  return LOYALTY_TIERS[0];
+}
+
+/* ---------------------------------------------------------
+   7. VOUCHER HELPERS (ID, BUILD, REDEEM)
+--------------------------------------------------------- */
+
+export function generateVoucherId(): string {
+  const raw = crypto.randomBytes(8).toString("hex").toUpperCase();
+  return `PWV-2025-${raw}`;
+}
+
+export function generatePublicCode(): string {
+  const raw = crypto.randomBytes(6).toString("hex").toUpperCase();
+  const a = raw.slice(0, 4);
+  const b = raw.slice(4, 8);
+  const c = raw.slice(8, 12);
+  return `PW-${a}-${b}-${c}`;
+}
+
+export function buildBaseVoucher(params: {
+  type: VoucherType;
+  value_type: ValueType;
+  value: number;
+  washes: number;
+  currency?: string;
+  expires_at?: string;
+  owner_id: string;
+  owner_name: string;
+  owner_email: string;
+  created_in_app: string;
+  theme?: "neo_black_platinum" | "neo_emerald" | "neo_silver";
+  animated_highlight?: boolean;
+}): PetWashVoucher2025 {
+  const voucher_id = generateVoucherId();
+  const public_code = generatePublicCode();
+  const theme = params.theme || "neo_black_platinum";
+  const animated = params.animated_highlight ?? true;
+  const baseUrl = "https://cdn.petwash.co.il";
+  const highres_svg_url = `${baseUrl}/vouchers/${public_code}.svg`;
+  const qr_url = `${baseUrl}/qr/${public_code}.svg`;
+
+  const isCurrency = params.value_type === "currency";
+
+  const voucher: PetWashVoucher2025 = {
+    voucher_id,
+    public_code,
+    type: params.type,
+    visual: {
+      tier: "7star_metal",
+      card_theme: theme,
+      animated_highlight: animated,
+      highres_svg_url
+    },
+    rules: {
+      value_type: params.value_type,
+      value_original: isCurrency ? params.value : null,
+      value_remaining: isCurrency ? params.value : null,
+      washes_original: isCurrency ? null : params.washes,
+      washes_remaining: isCurrency ? null : params.washes,
+      currency: isCurrency ? params.currency || "ILS" : null,
+      expires_at: params.expires_at || null,
+      transferable: true
+    },
+    owner: {
+      user_id: params.owner_id,
+      name: params.owner_name,
+      email: params.owner_email,
+      created_in_app: params.created_in_app
+    },
+    security: {
+      qr_url,
+      sha256: "",
+      signed_jws: ""
+    },
+    usage: {
+      last_used: null,
+      history: [],
+      redeem_method: "app"
+    }
+  };
+
+  return voucher;
+}
+
+export function redeemWash(
+  voucher: PetWashVoucher2025,
+  station: { station_id: string; location_label: string },
+  method: RedeemMethod
+): PetWashVoucher2025 {
+  const nowIso = new Date().toISOString();
+  if (voucher.rules.value_type !== "washes") {
+    throw new Error("Use redeemAmount for currency vouchers");
+  }
+  if (!voucher.rules.washes_remaining || voucher.rules.washes_remaining <= 0) {
+    throw new Error("No washes remaining");
+  }
+  voucher.rules.washes_remaining = voucher.rules.washes_remaining - 1;
+  voucher.usage.last_used = nowIso;
+  voucher.usage.history.push({
+    used_at: nowIso,
+    station_id: station.station_id,
+    location_label: station.location_label,
+    method
+  });
+  return voucher;
+}
+
+/* ---------------------------------------------------------
+   8. DASHBOARD STATE BUILDER
+--------------------------------------------------------- */
+
+export function buildDashboardState(input: {
+  user: PetWashUserProfile;
+  vouchers: PetWashVoucher2025[];
+  pets: PetProfile[];
+}): UserDashboardState {
+  const tier = getTierForPoints(input.user.points);
+  let totalRemaining = 0;
+  for (const v of input.vouchers) {
+    if (v.rules.value_type === "washes" && v.rules.washes_remaining) {
+      totalRemaining += v.rules.washes_remaining;
+    }
+  }
+  const nextTier =
+    tier.id === "black_7star"
+      ? tier
+      : LOYALTY_TIERS[LOYALTY_TIERS.findIndex(t => t.id === tier.id) + 1];
+  const nextRewardAt = nextTier ? nextTier.min_points : tier.min_points;
+
+  return {
+    user: input.user,
+    tier,
+    active_vouchers: input.vouchers,
+    pets: input.pets,
+    total_washes_remaining: totalRemaining,
+    next_reward_at: nextRewardAt
+  };
+}
+
+/* ---------------------------------------------------------
+   9. VOUCHER SECURITY (ES256 JWS)
+--------------------------------------------------------- */
+
+export const VOUCHER_JWS_ISSUER = "petwash.vouchers.2025";
+export const VOUCHER_JWS_AUDIENCE = "petwash.stations.api";
+export const VOUCHER_JWS_KID = "petwash-voucher-es256-2025";
+
+/*
+  Store these in environment, not in git:
+  VOUCHER_ES256_PRIVATE_KEY_PEM
+  VOUCHER_ES256_PUBLIC_KEY_PEM
+*/
+
+const PRIVATE_KEY_PEM = process.env.VOUCHER_ES256_PRIVATE_KEY_PEM || "";
+const PUBLIC_KEY_PEM = process.env.VOUCHER_ES256_PUBLIC_KEY_PEM || "";
+
+if (!PRIVATE_KEY_PEM || !PUBLIC_KEY_PEM) {
+  console.warn("[VoucherSecurity] ES256 keys not set. Signing will fail at runtime.");
+}
+
+export interface VoucherJwsPayload extends JWTPayload {
+  vid: string;
+  pcode: string;
+  hash: string;
+  type: string;
+  uid: string;
+}
+
+async function getPrivateKey() {
+  if (!PRIVATE_KEY_PEM) throw new Error("Missing VOUCHER_ES256_PRIVATE_KEY_PEM");
+  return importPKCS8(PRIVATE_KEY_PEM, "ES256");
+}
+
+async function getPublicKey() {
+  if (!PUBLIC_KEY_PEM) throw new Error("Missing VOUCHER_ES256_PUBLIC_KEY_PEM");
+  return importSPKI(PUBLIC_KEY_PEM, "ES256");
+}
+
+export function voucherSha256(voucher: unknown): string {
+  const buf = Buffer.from(JSON.stringify(voucher), "utf8");
+  return crypto.createHash("sha256").update(buf).digest("hex");
+}
+
+export async function signVoucherJws(params: {
+  voucher_id: string;
+  public_code: string;
+  hash: string;
+  type: string;
+  user_id: string;
+}): Promise<string> {
+  const privateKey = await getPrivateKey();
+
+  const payload: VoucherJwsPayload = {
+    iss: VOUCHER_JWS_ISSUER,
+    aud: VOUCHER_JWS_AUDIENCE,
+    vid: params.voucher_id,
+    pcode: params.public_code,
+    hash: params.hash,
+    type: params.type,
+    uid: params.user_id,
+    iat: Math.floor(Date.now() / 1000)
+  };
+
+  const jws = await new SignJWT(payload)
+    .setProtectedHeader({ alg: "ES256", kid: VOUCHER_JWS_KID, typ: "JWT" })
+    .sign(privateKey);
+
+  return jws;
+}
+
+export async function verifyVoucherJws(jws: string): Promise<VoucherJwsPayload> {
+  const publicKey = await getPublicKey();
+  const result = await jwtVerify(jws, publicKey, {
+    issuer: VOUCHER_JWS_ISSUER,
+    audience: VOUCHER_JWS_AUDIENCE
+  });
+  return result.payload as VoucherJwsPayload;
+}
+
+export async function signFullVoucher(
+  voucher: PetWashVoucher2025
+): Promise<{ hash: string; jws: string }> {
+  const hash = voucherSha256(voucher);
+  const jws = await signVoucherJws({
+    voucher_id: voucher.voucher_id,
+    public_code: voucher.public_code,
+    type: voucher.type,
+    user_id: voucher.owner.user_id,
+    hash
+  });
+  return { hash, jws };
+}
+
+/* ---------------------------------------------------------
+   10. ZOD VALIDATION SCHEMAS AND MIDDLEWARE
+--------------------------------------------------------- */
+
+export const createVoucherSchema = z.object({
+  type: z.enum(["egift", "package_single", "package_multi"]),
+  value_type: z.enum(["currency", "washes"]),
+  value: z.number().nonnegative().default(0),
+  washes: z.number().int().nonnegative().default(0),
+  currency: z.string().optional(),
+  expires_at: z.string().datetime().optional(),
+  owner: z.object({
+    user_id: z.string().min(1),
+    name: z.string().min(1),
+    email: z.string().email()
+  })
+});
+
+export const redeemVoucherSchema = z.object({
+  voucher_id: z.string().min(1),
+  station_id: z.string().min(1),
+  location_label: z.string().min(1),
+  method: z.enum(["app", "station", "qr"]),
+  amount: z.number().nonnegative().optional()
+});
+
+export function validateBody(schema: z.ZodSchema<any>) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const result = schema.safeParse(req.body);
+    if (!result.success) {
+      const issues = result.error.issues.map(i => ({
+        path: i.path.join("."),
+        message: i.message
+      }));
+      return res.status(400).json({
+        ok: false,
+        error: "Validation failed",
+        issues
+      });
+    }
+    req.body = result.data;
+    next();
+  };
+}
+
+/* ---------------------------------------------------------
+   11. EXPRESS ROUTER FOR VOUCHERS (SECURE)
+--------------------------------------------------------- */
+
+// In real app, replace in memory map with database
+const inMemoryVoucherStore = new Map<string, PetWashVoucher2025>();
+
+export const voucherRouter = express.Router();
+
+// Create voucher
+voucherRouter.post(
+  "/api/v1/vouchers",
+  validateBody(createVoucherSchema),
+  async (req: Request, res: Response) => {
+    try {
+      const body = req.body;
+
+      const voucher = buildBaseVoucher({
+        type: body.type,
+        value_type: body.value_type,
+        value: body.value,
+        washes: body.washes,
+        currency: body.currency,
+        expires_at: body.expires_at,
+        owner_id: body.owner.user_id,
+        owner_name: body.owner.name,
+        owner_email: body.owner.email,
+        created_in_app: "PetWash API"
+      });
+
+      const { hash, jws } = await signFullVoucher(voucher);
+      voucher.security.sha256 = hash;
+      voucher.security.signed_jws = jws;
+
+      inMemoryVoucherStore.set(voucher.voucher_id, voucher);
+
+      return res.json({ ok: true, voucher });
+    } catch (err: any) {
+      console.error(err);
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  }
+);
+
+// Redeem wash
+voucherRouter.post(
+  "/api/v1/vouchers/redeem",
+  validateBody(redeemVoucherSchema),
+  async (req: Request, res: Response) => {
+    try {
+      const body = req.body;
+
+      const voucher = inMemoryVoucherStore.get(body.voucher_id);
+      if (!voucher) {
+        return res.status(404).json({ ok: false, error: "Voucher not found" });
+      }
+
+      // Verify signature before using
+      const payload = await verifyVoucherJws(voucher.security.signed_jws);
+      const currentHash = voucherSha256(voucher);
+      if (payload.hash !== currentHash) {
+        return res.status(400).json({ ok: false, error: "Voucher hash mismatch" });
+      }
+
+      const updated = redeemWash(
+        voucher,
+        {
+          station_id: body.station_id,
+          location_label: body.location_label
+        },
+        body.method
+      );
+
+      inMemoryVoucherStore.set(updated.voucher_id, updated);
+
+      return res.json({ ok: true, voucher: updated });
+    } catch (err: any) {
+      console.error(err);
+      return res.status(400).json({ ok: false, error: err.message });
+    }
+  }
+);
+
+/* ---------------------------------------------------------
+   12. OPTIONAL KEY GENERATION HELPER (DEV ONLY)
+   Run once in a separate script if you need ES256 keys:
+
+   import { generateEs256KeyPair } from "./petwash_lux_secure_2025";
+   generateEs256KeyPair().then(console.log);
+--------------------------------------------------------- */
+
+export async function generateEs256KeyPair() {
+  const { generateKeyPair } = await import("crypto");
+  return new Promise<{ privateKeyPem: string; publicKeyPem: string }>((resolve, reject) => {
+    generateKeyPair(
+      "ec",
+      { namedCurve: "P-256" },
+      (err, publicKey, privateKey) => {
+        if (err) return reject(err);
+        resolve({
+          privateKeyPem: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+          publicKeyPem: publicKey.export({ type: "spki", format: "pem" }).toString()
+        });
+      }
+    );
+  });
+}
+
+/* ---------------------------------------------------------
+   13. MINIMAL APP WIRING EXAMPLE (CAN BE MOVED TO app.ts)
+--------------------------------------------------------- */
+
+export function createPetWashApp() {
+  const app = express();
+  app.use(express.json());
+
+  app.use(voucherRouter);
+
+  app.get("/health", (_req, res) => {
+    res.json({ ok: true, service: "petwash_lux_secure_2025", time: new Date().toISOString() });
+  });
+
+  return app;
+}
