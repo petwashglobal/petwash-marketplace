@@ -15,6 +15,7 @@ import {
   redeemOneWash,
   redeemAmount,
   verifyVoucherJws,
+  voucherSha256,
   type PetWashVoucher2025,
   type VoucherType,
   type ValueType,
@@ -69,6 +70,128 @@ function validateBody(schema: z.ZodSchema<any>) {
 }
 
 /* ---------------------------------------------------------
+   SECURITY: HASH VERIFICATION
+   Prevents tampering with stored voucher values
+--------------------------------------------------------- */
+
+/**
+ * Reconstructs voucher object from DB record and verifies hash integrity
+ * CRITICAL: This prevents attackers from modifying voucher values in DB
+ */
+function reconstructVoucherFromDb(dbVoucher: any): PetWashVoucher2025 {
+  return {
+    voucher_id: dbVoucher.id,
+    public_code: dbVoucher.publicCode,
+    type: dbVoucher.type,
+    visual: {
+      tier: dbVoucher.tier,
+      card_theme: dbVoucher.cardTheme,
+      animated_highlight: dbVoucher.animatedHighlight,
+      highres_svg_url: dbVoucher.highresSvgUrl
+    },
+    rules: {
+      value_type: dbVoucher.valueType,
+      value_original: dbVoucher.valueOriginal ? Number(dbVoucher.valueOriginal) : null,
+      value_remaining: dbVoucher.valueRemaining ? Number(dbVoucher.valueRemaining) : null,
+      washes_original: dbVoucher.washesOriginal,
+      washes_remaining: dbVoucher.washesRemaining,
+      currency: dbVoucher.currency,
+      expires_at: dbVoucher.expiresAt ? dbVoucher.expiresAt.toISOString() : null,
+      transferable: dbVoucher.transferable
+    },
+    owner: {
+      user_id: dbVoucher.ownerId,
+      name: dbVoucher.ownerName,
+      email: dbVoucher.ownerEmail,
+      created_in_app: dbVoucher.createdInApp
+    },
+    security: {
+      qr_url: dbVoucher.qrUrl,
+      sha256: dbVoucher.sha256Hash,
+      signed_jws: dbVoucher.signedJws
+    },
+    usage: {
+      last_used: dbVoucher.lastUsed ? dbVoucher.lastUsed.toISOString() : null,
+      history: [], // Loaded separately
+      redeem_method: dbVoucher.redeemMethod
+    }
+  };
+}
+
+/**
+ * 7-STAR LUXURY SECURITY: ALL vouchers MUST have ES256 signatures
+ * NO LEGACY EXCEPTIONS - This is a premium system requiring cryptographic integrity
+ * 
+ * For production deployment:
+ * 1. All existing vouchers must be migrated/re-signed before this code goes live
+ * 2. Set ALLOW_LEGACY_UNSIGNED environment variable to "true" ONLY during migration period
+ * 3. Remove ALLOW_LEGACY_UNSIGNED after migration is complete
+ */
+const ALLOW_LEGACY_UNSIGNED = process.env.ALLOW_LEGACY_UNSIGNED === "true";
+
+/**
+ * Verifies voucher integrity by comparing stored hash with recomputed hash
+ * CRITICAL: Hash only covers IMMUTABLE fields, so redemptions don't break verification
+ * CRITICAL SECURITY: ALL vouchers MUST have signatures (7-star luxury standard)
+ * Returns true if voucher has NOT been tampered with
+ */
+async function verifyVoucherIntegrity(dbVoucher: any): Promise<{ valid: boolean; reason?: string }> {
+  try {
+    // SECURITY: Check if signature is missing
+    if (!dbVoucher.signedJws || dbVoucher.signedJws === "") {
+      // 7-STAR LUXURY STANDARD: No unsigned vouchers allowed
+      if (!ALLOW_LEGACY_UNSIGNED) {
+        console.error("[Voucher Security] CRITICAL - Unsigned voucher detected in production:", {
+          voucherId: dbVoucher.id,
+          publicCode: dbVoucher.publicCode,
+          createdAt: dbVoucher.createdAt
+        });
+        return { 
+          valid: false, 
+          reason: "SECURITY: All 7-star luxury vouchers must have ES256 signatures" 
+        };
+      }
+      
+      // Migration period only - log and allow with warning
+      console.warn("[Voucher Security] MIGRATION MODE - Unsigned voucher allowed:", {
+        publicCode: dbVoucher.publicCode,
+        voucherId: dbVoucher.id
+      });
+      return { 
+        valid: true,
+        reason: "Migration mode - unsigned voucher temporarily allowed" 
+      };
+    }
+
+    const jwtPayload = await verifyVoucherJws(dbVoucher.signedJws);
+    
+    // Verify basic JWS claims
+    if (jwtPayload.vid !== dbVoucher.id || jwtPayload.pcode !== dbVoucher.publicCode) {
+      return { valid: false, reason: "JWS payload mismatch" };
+    }
+
+    // CRITICAL: Recompute hash from IMMUTABLE fields only
+    // This hash never changes even after redemptions because it only covers:
+    // - value_original (NOT value_remaining)
+    // - washes_original (NOT washes_remaining)
+    // - other immutable fields
+    const reconstructed = reconstructVoucherFromDb(dbVoucher);
+    const currentHash = voucherSha256(reconstructed);
+    
+    if (currentHash !== jwtPayload.hash) {
+      return { 
+        valid: false, 
+        reason: "Voucher immutable fields have been tampered with - hash mismatch" 
+      };
+    }
+
+    return { valid: true };
+  } catch (error: any) {
+    return { valid: false, reason: error.message || "Verification failed" };
+  }
+}
+
+/* ---------------------------------------------------------
    API ROUTES
 --------------------------------------------------------- */
 
@@ -97,7 +220,7 @@ router.post("/create", requireAuth, validateBody(createVoucherSchema), async (re
       value: Number(value) || 0,
       washes: Number(washes) || 0,
       currency: currency || "ILS",
-      expires_at: expires_at || null,
+      expires_at: expires_at ?? undefined,
       owner_id: req.user.uid,
       owner_name: recipient_name || req.user.displayName || "PetWash Customer",
       owner_email: recipient_email || req.user.email || "",
@@ -226,23 +349,16 @@ router.get("/:publicCode", requireAuth, async (req, res) => {
       .where(eq(voucherUsageHistory.voucherId, voucher.id))
       .orderBy(desc(voucherUsageHistory.usedAt));
 
-    // Verify JWS signature
-    let signatureValid = false;
-    if (voucher.signedJws) {
-      try {
-        const payload = await verifyVoucherJws(voucher.signedJws);
-        signatureValid = payload.vid === voucher.id && payload.pcode === voucher.publicCode;
-      } catch (err) {
-        console.warn("[Voucher] JWS verification failed:", err);
-      }
-    }
+    // CRITICAL: Verify voucher integrity
+    const integrityCheck = await verifyVoucherIntegrity(voucher);
 
     res.json({ 
       success: true, 
       voucher: {
         ...voucher,
         usage_history: history,
-        signature_valid: signatureValid
+        integrity_verified: integrityCheck.valid,
+        integrity_reason: integrityCheck.reason || null
       }
     });
   } catch (error: any) {
@@ -283,20 +399,47 @@ router.post("/redeem", requireAuth, validateBody(redeemVoucherSchema), async (re
       });
     }
 
-    // Verify JWS signature before redemption
-    if (dbVoucher.signedJws) {
-      try {
-        const payload = await verifyVoucherJws(dbVoucher.signedJws);
-        if (payload.vid !== dbVoucher.id || payload.pcode !== dbVoucher.publicCode) {
-          return res.status(403).json({
-            success: false,
-            error: "Voucher signature verification failed"
-          });
-        }
-      } catch (err) {
+    // CRITICAL: Verify voucher integrity (prevents tampering with DB immutable fields)
+    const integrityCheck = await verifyVoucherIntegrity(dbVoucher);
+    if (!integrityCheck.valid) {
+      console.warn("[Voucher Security] Integrity check failed:", integrityCheck.reason);
+      return res.status(403).json({
+        success: false,
+        error: "Voucher integrity verification failed",
+        details: integrityCheck.reason
+      });
+    }
+
+    // CRITICAL: Verify balance integrity (prevents tampering with mutable balance fields)
+    // Enforce invariant: remaining ≤ original (prevents balance inflation attacks)
+    if (dbVoucher.valueType === "currency") {
+      const remaining = Number(dbVoucher.valueRemaining || 0);
+      const original = Number(dbVoucher.valueOriginal || 0);
+      if (remaining > original) {
+        console.error("[Voucher Security] BALANCE TAMPERING DETECTED - Currency:", {
+          voucherId: dbVoucher.id,
+          publicCode: dbVoucher.publicCode,
+          valueRemaining: remaining,
+          valueOriginal: original
+        });
         return res.status(403).json({
           success: false,
-          error: "Invalid voucher signature"
+          error: "SECURITY: Voucher balance tampering detected (remaining > original)"
+        });
+      }
+    } else if (dbVoucher.valueType === "washes") {
+      const remaining = dbVoucher.washesRemaining || 0;
+      const original = dbVoucher.washesOriginal || 0;
+      if (remaining > original) {
+        console.error("[Voucher Security] BALANCE TAMPERING DETECTED - Washes:", {
+          voucherId: dbVoucher.id,
+          publicCode: dbVoucher.publicCode,
+          washesRemaining: remaining,
+          washesOriginal: original
+        });
+        return res.status(403).json({
+          success: false,
+          error: "SECURITY: Voucher balance tampering detected (remaining > original)"
         });
       }
     }

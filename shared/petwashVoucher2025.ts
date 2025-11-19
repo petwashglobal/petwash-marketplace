@@ -89,9 +89,68 @@ if (!PRIVATE_KEY_PEM || !PUBLIC_KEY_PEM) {
 export interface VoucherJwsPayload extends JWTPayload {
   vid: string;  // voucher_id
   pcode: string;  // public_code
-  hash: string;  // sha256
+  hash: string;  // sha256 of IMMUTABLE fields only
   type: string;  // voucher type
   uid: string;  // user_id
+}
+
+/**
+ * CRITICAL: Canonical representation of IMMUTABLE voucher fields
+ * Only includes fields that NEVER change after creation
+ * Excludes: value_remaining, washes_remaining, usage history, security fields
+ */
+interface VoucherImmutableFields {
+  voucher_id: string;
+  public_code: string;
+  type: VoucherType;
+  visual: {
+    tier: "7star_metal";
+    card_theme: CardTheme;
+    animated_highlight: boolean;
+    highres_svg_url: string;
+  };
+  rules: {
+    value_type: ValueType;
+    value_original: number | null;  // NOT value_remaining!
+    washes_original: number | null;  // NOT washes_remaining!
+    currency: string | null;
+    expires_at: string | null;
+    transferable: boolean;
+  };
+  owner: {
+    user_id: string;
+    name: string;
+    email: string;
+    created_in_app: string;
+  };
+}
+
+function extractImmutableFields(voucher: PetWashVoucher2025): VoucherImmutableFields {
+  return {
+    voucher_id: voucher.voucher_id,
+    public_code: voucher.public_code,
+    type: voucher.type,
+    visual: {
+      tier: voucher.visual.tier,
+      card_theme: voucher.visual.card_theme,
+      animated_highlight: voucher.visual.animated_highlight,
+      highres_svg_url: voucher.visual.highres_svg_url
+    },
+    rules: {
+      value_type: voucher.rules.value_type,
+      value_original: voucher.rules.value_original,
+      washes_original: voucher.rules.washes_original,
+      currency: voucher.rules.currency,
+      expires_at: voucher.rules.expires_at,
+      transferable: voucher.rules.transferable
+    },
+    owner: {
+      user_id: voucher.owner.user_id,
+      name: voucher.owner.name,
+      email: voucher.owner.email,
+      created_in_app: voucher.owner.created_in_app
+    }
+  };
 }
 
 async function getPrivateKey() {
@@ -104,8 +163,13 @@ async function getPublicKey() {
   return importSPKI(PUBLIC_KEY_PEM, "ES256");
 }
 
-export function voucherSha256(voucher: unknown): string {
-  const buf = Buffer.from(JSON.stringify(voucher), "utf8");
+/**
+ * Computes SHA256 hash of IMMUTABLE voucher fields only
+ * This hash never changes even after redemptions
+ */
+export function voucherSha256(voucher: PetWashVoucher2025): string {
+  const immutable = extractImmutableFields(voucher);
+  const buf = Buffer.from(JSON.stringify(immutable), "utf8");
   return crypto.createHash("sha256").update(buf).digest("hex");
 }
 
@@ -225,7 +289,7 @@ export async function buildBaseVoucher(params: {
     }
   };
 
-  // Sign voucher with ES256 JWS
+  // Sign voucher with ES256 JWS (hash of IMMUTABLE fields only)
   try {
     const { hash, jws } = await signFullVoucher(voucher);
     voucher.security.sha256 = hash;
