@@ -13,8 +13,16 @@ export function Layout({ children, language, onLanguageChange }: LayoutProps) {
   useEffect(() => {
     // Update document attributes when language changes
     document.documentElement.lang = language;
-    // CRITICAL: ALWAYS FORCE LTR LAYOUT - Hebrew mode only changes text, not layout
-    document.documentElement.dir = 'ltr';
+    
+    // CRITICAL: Set proper text direction for RTL languages (Hebrew, Arabic)
+    // Text flows RTL, but UI element positions remain FIXED via CSS logical properties
+    const isRTL = language === 'he' || language === 'ar';
+    document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+    
+    // Add data attribute for CSS targeting
+    document.documentElement.setAttribute('data-language', language);
+    document.documentElement.setAttribute('data-rtl', isRTL ? 'true' : 'false');
+    
     localStorage.setItem('language', language);
   }, [language]);
 

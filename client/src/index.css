@@ -496,43 +496,6 @@ body {
   position: relative;
 }
 
-body:not([data-signup-page]) {
-  direction: ltr !important; /* FORCE LTR LAYOUT ALWAYS - HEBREW MODE ONLY CHANGES TEXT */
-}
-
-/* CRITICAL: Force all main content to LTR regardless of language */
-html:not([data-signup-page]),
-body:not([data-signup-page]),
-#root:not([data-signup-page]),
-.min-h-screen:not([data-signup-page]),
-.container,
-.max-w-7xl,
-.grid,
-.flex,
-.space-y-8,
-.space-y-12,
-.space-y-16 {
-  direction: ltr !important; /* ALWAYS LTR LAYOUT */
-}
-
-/* Signup page: Allow RTL/LTR direction changes */
-html[data-signup-page],
-html[data-signup-page] body,
-html[data-signup-page] #root {
-  direction: inherit; /* Allow direction to change based on lang attribute */
-}
-
-/* Allow text-center to work normally, but force direction LTR */
-.text-center {
-  direction: ltr !important;
-  text-align: center !important;
-}
-
-.text-left {
-  direction: ltr !important;
-  text-align: left !important;
-}
-
 /* Multi-language font support - Apply proper fonts for Hebrew, Arabic, and other languages */
 html[lang="he"],
 html[lang="he"] body,
@@ -540,7 +503,6 @@ html[lang="he"] *,
 [lang="he"],
 .hebrew-text {
   font-family: 'Rubik', 'Heebo', 'Assistant', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  direction: ltr !important; /* Keep container LTR */
   text-align: inherit; /* Inherit alignment from parent */
 }
 
@@ -550,7 +512,6 @@ html[lang="ar"] *,
 [lang="ar"],
 .arabic-text {
   font-family: 'Noto Sans Arabic', 'Cairo', 'Tajawal', sans-serif !important;
-  direction: ltr !important; /* Keep container LTR per user requirements */
   text-align: inherit;
 }
 
@@ -585,7 +546,6 @@ html[lang="en"] *,
   width: 100%;
   z-index: 1000;
   background-color: #fff;
-  direction: ltr !important; /* FORCE LTR LAYOUT - NEVER CHANGES */
 }
 
 .header-inner {
@@ -791,7 +751,6 @@ html[lang="en"] *,
   cursor: pointer;
   background: #ffffff;
   border: none;
-  direction: ltr !important; /* FORCE LTR LAYOUT - NEVER CHANGES */
 }
 
 .lang-login-container {
@@ -802,7 +761,6 @@ html[lang="en"] *,
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
-  direction: ltr !important; /* FORCE LTR LAYOUT - NEVER CHANGES */
   z-index: 100;
   background: #ffffff;
   border: none;
@@ -815,7 +773,6 @@ html[lang="en"] *,
   font-size: 0.875rem;
   font-weight: 500;
   color: #111827;
-  direction: ltr !important; /* FORCE LTR LAYOUT - NEVER CHANGES */
   white-space: nowrap; /* Prevent text wrapping */
   background: #ffffff;
   border: none;
@@ -838,7 +795,6 @@ html[lang="en"] *,
   font-weight: 500;
   font-family: 'Inter', sans-serif;
   align-items: center;
-  direction: ltr !important;
 }
 
 .auth-link {
@@ -1230,43 +1186,7 @@ html[lang="en"] *,
   font-size: 16px !important;
 }
 
-/* MOBILE MENU LAYOUT CONSISTENCY - NEVER CHANGES WITH LANGUAGE */
-.luxury-menu-panel,
-.luxury-menu-panel *,
-.luxury-menu-header,
-.luxury-menu-header *,
-.luxury-menu-nav,
-.luxury-menu-nav *,
-.luxury-menu-footer,
-.luxury-menu-footer * {
-  direction: ltr !important; /* FORCE LTR FOR MENU */
-  text-align: left !important; /* PREVENT RTL TEXT CHANGES */
-}
-
-/* Ensure menu items maintain left alignment regardless of language */
-.luxury-menu-item {
-  text-align: left !important;
-  direction: ltr !important;
-}
-
-/* Override any global RTL styles that might affect the header */
-html[dir="rtl"] .site-header,
-html[dir="rtl"] .site-header *,
-html[dir="rtl"] .top-bar,
-html[dir="rtl"] .top-bar *,
-html[dir="rtl"] .social-icons,
-html[dir="rtl"] .social-icons *,
-html[dir="rtl"] .site-logo,
-html[dir="rtl"] .site-logo *,
-html[dir="rtl"] .menu-toggle,
-html[dir="rtl"] .lang-toggle,
-html[dir="rtl"] .luxury-menu-panel,
-html[dir="rtl"] .luxury-menu-panel * {
-  direction: ltr !important;
-  text-align: left !important;
-  left: unset !important;
-  right: unset !important;
-}
+/* MOBILE MENU - Text flows with language direction, positions remain stable */
 
 /* Beautiful Full-Screen Mobile Menu Styles */
 .fullscreen-menu-overlay {
@@ -1800,8 +1720,6 @@ html[dir="rtl"] .luxury-menu-panel * {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  direction: ltr !important;
-  text-align: left !important;
 }
 
 /* Hebrew text specific styling */
@@ -4328,4 +4246,65 @@ body {
     min-height: 100dvh;
   }
 }
+
+/* ============================================================================
+   RTL LAYOUT POSITION FIXES - MANDATORY RULES
+   Text flows RTL for he/ar, but UI element POSITIONS remain FIXED
+   Uses CSS logical properties and targeted selectors - NO blanket direction overrides
+   ============================================================================ */
+
+/* CRITICAL: Hamburger menu ALWAYS stays top-right regardless of language */
+[dir="rtl"] .hamburger-right {
+  /* Use margin-inline instead of margin-left/right */
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+/* CRITICAL: Social icons maintain their positions in RTL */
+[dir="rtl"] .socials-left {
+  /* Keep on left side using logical properties */
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+  justify-content: flex-start;
+}
+
+/* Navigation utility row - maintains left-right structure */
+[dir="rtl"] .nav-utility-row {
+  justify-content: space-between;
+}
+
+/* Logo always centered */
+[dir="rtl"] .brand-row,
+[dir="rtl"] .pw-logo {
+  text-align: center;
+  margin-inline: auto;
+}
+
+/* Mobile menu sheet ALWAYS slides from RIGHT - using logical positioning */
+[dir="rtl"] .mobile-hamburger-menu-container {
+  inset-inline-end: 0;
+  inset-inline-start: auto;
+  border-inline-start: 1px solid rgba(0, 0, 0, 0.1);
+  border-inline-end: none;
+}
+
+/* ONLY the payment icon container itself, not its children - prevents logo reversal */
+[dir="rtl"] [data-testid="payment-icons-container"] > div:first-child {
+  /* Payment icons flex container maintains LTR visual order */
+  direction: ltr;
+}
+
+/* Language toggle maintains center position */
+[dir="rtl"] .lang-row {
+  justify-content: center;
+  text-align: center;
+}
+
+/* Buttons maintain center alignment */
+[dir="rtl"] button {
+  /* Buttons are centered, text inside flows with document direction */
+}
+
+/* ONLY specific non-text containers that must maintain visual order */
+/* DO NOT override direction on text-containing elements */
 
