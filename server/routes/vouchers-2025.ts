@@ -22,6 +22,7 @@ import {
   type CardTheme
 } from "@shared/petwashVoucher2025";
 import { requireAuth } from "../customAuth";
+import { verifyAndRepairBalance } from "../services/voucherSecurityService";
 
 const router = Router();
 
