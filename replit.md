@@ -97,7 +97,8 @@ Before adding ANY new code, you MUST:
 
 **Phase 2 - Core Infrastructure:**
 - ✅ **Logistics & Fleet**: 14 API endpoints, auto-generated task numbers (TASK-2025-###), vehicle tracking, driver assignment, mobile-optimized API
-- ✅ **Finance & Settlements**: 7 API endpoints, partner revenue sharing, automated monthly settlements (cron: 1st of month at 00:05), Israeli VAT (17%), SHA-256 audit hashing, CSV export
+- ✅ **Finance & Settlements**: 7 API endpoints, partner revenue sharing, automated monthly settlements (cron: 1st of month at 00:05), Israeli VAT (18%), SHA-256 audit hashing, CSV export
+- ✅ **Israeli CPI Service**: Automatic Consumer Price Index tracking per Israeli law, 8 API endpoints for rent/mortgage/wage indexation calculations (הצמדה למדד), Bank of Israel data source, auto-seeding historical data (2024-2025), monthly index updates (15th of month), production-ready with 22 months of historical data
 - ✅ **Event-Driven Architecture**: 23 domain event types, event store with versioning, EventPublisher service, 4 critical event handlers, K9000 & Nayax integration
 
 **Phase 3 - Mobile & Advanced Features:**
@@ -106,7 +107,7 @@ Before adding ANY new code, you MUST:
 - ✅ **Inventory Management**: 11 API endpoints, station supply tracking, automated low-stock detection with email alerts, purchase order generation by supplier, refill audit trail
 - ✅ **Unified Notifications**: 12 API endpoints, multi-channel orchestration (email, SMS, WhatsApp, push, in-app), template management with variable substitution, EventBus integration for 10+ business events, 7 default production templates, delivery tracking and analytics
 
-**Database Impact (13 New Tables)**:
+**Database Impact (14 New Tables)**:
 - `departments`, `roles`, `controlPanelPlatforms`, `userRoles`
 - `logisticsTasks`, `logisticsVehicles`
 - `partners`, `partnerAgreements`, `settlements`
@@ -114,12 +115,13 @@ Before adding ANY new code, you MUST:
 - `healthSafetyIncidents`, `incidentPhotos`
 - `supplies`, `stationSupplies`, `inventoryRefills`
 - `notificationTemplates`, `notificationLogs`
+- `cpi_index_history` (Israeli Consumer Price Index tracking)
 
-**API Summary**: 64 new REST endpoints across 8 modules
+**API Summary**: 72 new REST endpoints across 9 modules
 
 **Technology Stack**: Node.js 20+, PostgreSQL (Neon), Drizzle ORM, Redis pub/sub, Firebase Storage, FCM, SendGrid, WhatsApp Business API, node-cron
 
-**Legal Compliance**: Israeli VAT (17%), SHA-256 audit hashing, tamper-proof settlement records, H&S incident documentation, complete notification audit trail
+**Legal Compliance**: Israeli VAT (18%), SHA-256 audit hashing, tamper-proof settlement records, H&S incident documentation, complete notification audit trail, automatic CPI indexation per Israeli law (הצמדה למדד)
 
 **Production Status**: ✅ Server running with zero errors, all routes registered, monthly settlements cron scheduled, EventBus with 45 event types active
 
