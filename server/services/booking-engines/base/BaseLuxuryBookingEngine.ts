@@ -419,7 +419,7 @@ export abstract class BaseLuxuryBookingEngine {
    */
   private getTaxRate(ipAddress: string): number {
     // TODO: Use globalConfig.getLocalSettings(ipAddress) for country-specific VAT
-    return 0.17; // Israel VAT 17%
+    return parseFloat(process.env.VAT_RATE || '0.18'); // Israel VAT 18% (updated Jan 2025)
   }
 
   /**

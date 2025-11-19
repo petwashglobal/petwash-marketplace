@@ -305,7 +305,7 @@ export default function ProviderDetail() {
                       {provider.priceDisplay || (isHebrew ? 'צור קשר למחיר' : 'Contact for Price')}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                      {isHebrew ? 'כולל 17% מע״מ' : 'Includes 17% VAT'}
+                      {isHebrew ? 'כולל 18% מע״מ' : 'Includes 18% VAT'}
                     </p>
                   </div>
                   <Button 

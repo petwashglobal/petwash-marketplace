@@ -156,7 +156,7 @@ export default function MarketplaceBookingFlow() {
   
   const platformFeeCents = Math.round(basePriceCents * 0.10); // 10% platform fee
   const subtotalCents = basePriceCents + platformFeeCents;
-  const vatCents = Math.round(subtotalCents * 0.17); // 17% VAT
+  const vatCents = Math.round(subtotalCents * 0.18); // 18% VAT (Israeli law updated Jan 2025)
   const totalCents = subtotalCents + vatCents;
 
   // Time slots (example - would come from backend)
@@ -556,7 +556,7 @@ export default function MarketplaceBookingFlow() {
                         <span data-testid="price-platform-fee">₪{(platformFeeCents / 100).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-gray-700 dark:text-gray-300">
-                        <span>{isHebrew ? 'מע״מ (17%)' : 'VAT (17%)'}</span>
+                        <span>{isHebrew ? 'מע״מ (18%)' : 'VAT (18%)'}</span>
                         <span data-testid="price-vat">₪{(vatCents / 100).toFixed(2)}</span>
                       </div>
                       <div className="border-t-2 border-purple-300 dark:border-purple-700 pt-2 mt-2">

@@ -209,8 +209,8 @@ export class FinanceSettlementService {
       const partnerShareAmount = grossRevenue * (maxSharePercent / 100);
       const petwashShareAmount = grossRevenue - partnerShareAmount;
 
-      // 4. Calculate VAT (17% Israeli VAT on partner share)
-      const VAT_RATE = 0.17;
+      // 4. Calculate VAT (18% Israeli VAT on partner share - updated Jan 2025)
+      const VAT_RATE = parseFloat(process.env.VAT_RATE || '0.18'); // Israeli VAT rate from environment
       const vatAmount = partnerShareAmount * VAT_RATE;
 
       return {

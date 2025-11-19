@@ -292,11 +292,12 @@ router.get('/reports/financial', requireFranchiseAuth, async (req, res) => {
       ))
       .orderBy(desc(payments.createdAt));
 
-    // Calculate totals (VAT rate 17% in Israel)
+    // Calculate totals (VAT rate 18% in Israel - updated Jan 2025)
+    const VAT_RATE = parseFloat(process.env.VAT_RATE || '0.18');
     const totalRevenue = transactionRecords.reduce((sum, tx) => 
       sum + parseFloat(String(tx.amount)), 0
     );
-    const vat = totalRevenue * 0.17;
+    const vat = totalRevenue * VAT_RATE;
     const netRevenue = totalRevenue - vat;
 
     const reportData = {
@@ -384,9 +385,10 @@ router.get('/reports/export/excel', requireFranchiseAuth, async (req, res) => {
       .orderBy(desc(payments.createdAt));
 
     // Add transaction rows with VAT calculations
+    const VAT_RATE_EXCEL = parseFloat(process.env.VAT_RATE || '0.18');
     transactionRecords.forEach(tx => {
       const amount = parseFloat(String(tx.amount));
-      const vat = amount * 0.17;
+      const vat = amount * VAT_RATE_EXCEL;
       const net = amount - vat;
       
       worksheet.addRow({
@@ -484,16 +486,17 @@ router.get('/reports/export/pdf', requireFranchiseAuth, async (req, res) => {
       .orderBy(desc(payments.createdAt));
 
     // Add transaction summary
+    const VAT_RATE_PDF = parseFloat(process.env.VAT_RATE || '0.18');
     const totalRevenue = transactionRecords.reduce((sum, tx) => 
       sum + parseFloat(String(tx.amount)), 0
     );
-    const totalVat = totalRevenue * 0.17;
+    const totalVat = totalRevenue * VAT_RATE_PDF;
     const totalNet = totalRevenue - totalVat;
 
     doc.fontSize(14).text('Summary', { underline: true });
     doc.fontSize(10).text(`Total Transactions: ${transactionRecords.length}`);
     doc.text(`Total Revenue: ₪${totalRevenue.toFixed(2)}`);
-    doc.text(`VAT (17%): ₪${totalVat.toFixed(2)}`);
+    doc.text(`VAT (${VAT_RATE_PDF * 100}%): ₪${totalVat.toFixed(2)}`);
     doc.text(`Net Revenue: ₪${totalNet.toFixed(2)}`);
     doc.moveDown();
 
