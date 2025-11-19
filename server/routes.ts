@@ -31,6 +31,7 @@ import healthSafetyRoutes from "./routes/health-safety";
 import authRoutes from "./routes/auth";
 import complianceIdentityRoutes from "./routes/compliance-identity";
 import complianceBrainRoutes from "./routes/compliance-brain";
+import contractorsFrameworkRoutes from "./routes/contractors-framework";
 import biometricCertificatesRoutes from "./routes/biometric-certificates";
 import voiceRoutes from "./routes/voice";
 import aiFeedbackRoutes from "./routes/ai-feedback";
@@ -7987,6 +7988,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // 📋 Biometric Identity Documents - Passport/ID/License upload with multer, face matching, KYC verification
   app.use('/api/contractors', uploadLimiter, complianceIdentityRoutes);
+
+  // 🏢 PET WASH LTD – GLOBAL BACKEND FRAMEWORK 2025 - Unified Contractors + Drivers + Ratings + Identity + Compliance Layer
+  app.use('/api', apiLimiter, contractorsFrameworkRoutes);
 
   // 🏥 Health & Safety - Incident reporting with photo documentation
   app.use('/api/health-safety', apiLimiter, healthSafetyRoutes);
