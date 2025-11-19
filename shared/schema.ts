@@ -7886,6 +7886,199 @@ export const insertProviderCommissionSchema = createInsertSchema(providerCommiss
   status: z.enum(['pending', 'paid', 'held', 'refunded']).optional(),
 }).omit({ id: true, commissionId: true, createdAt: true, transactionDate: true });
 
+// ============================================================================
+// ISRAELI CONTRACTOR COMPREHENSIVE PROFILE - Extended Tables
+// ============================================================================
+
+export const contractorDocuments = pgTable("contractor_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull(), // Links to provider ID
+  type: varchar("type").notNull(), // "ID_CARD", "DRIVERS_LICENSE", "CAR_REGISTRATION", "BUSINESS_REGISTRATION", "INSURANCE_POLICY", "POLICE_CLEARANCE", "TRAINING_CERTIFICATE", "OTHER"
+  country: varchar("country").default("IL"), // "IL", "AU", "US", "UK", "EU", "OTHER"
+  url: varchar("url").notNull(), // Storage URL
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  verifiedAt: timestamp("verified_at"),
+  expiresAt: timestamp("expires_at"),
+  verifiedByUserId: varchar("verified_by_user_id"),
+  notesInternal: text("notes_internal"),
+}, (table) => [
+  index("idx_contractor_docs_contractor").on(table.contractorId),
+  index("idx_contractor_docs_type").on(table.type),
+  index("idx_contractor_docs_verified").on(table.verifiedAt),
+]);
+
+export const contractorInsurance = pgTable("contractor_insurance", {
+  id: serial("id").primaryKey(),
+  contractorId: varchar("contractor_id").unique().notNull(),
+  providerName: varchar("provider_name"), // Insurance company name
+  policyNumber: varchar("policy_number"),
+  validFrom: timestamp("valid_from"),
+  validUntil: timestamp("valid_until"),
+  coversThirdParty: boolean("covers_third_party").default(false),
+  coversProfessionalLiability: boolean("covers_professional_liability").default(false),
+  coversAnimalsUnderCare: boolean("covers_animals_under_care").default(false),
+  lastVerifiedAt: timestamp("last_verified_at"),
+  documentId: varchar("document_id"), // Links to contractorDocuments
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_insurance_contractor").on(table.contractorId),
+  index("idx_contractor_insurance_expiry").on(table.validUntil),
+]);
+
+export const contractorBackgroundChecks = pgTable("contractor_background_checks", {
+  id: serial("id").primaryKey(),
+  contractorId: varchar("contractor_id").unique().notNull(),
+  providerName: varchar("provider_name"), // Background check provider
+  reportId: varchar("report_id"),
+  completedAt: timestamp("completed_at"),
+  result: varchar("result").default("PENDING"), // "PASS", "FAIL", "PENDING", "NOT_REQUIRED"
+  findings: jsonb("findings"), // Detailed results
+  documentId: varchar("document_id"), // Links to contractorDocuments
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_bgcheck_contractor").on(table.contractorId),
+  index("idx_contractor_bgcheck_result").on(table.result),
+]);
+
+export const contractorBankDetails = pgTable("contractor_bank_details", {
+  id: serial("id").primaryKey(),
+  contractorId: varchar("contractor_id").unique().notNull(),
+  bankName: varchar("bank_name"), // e.g., "Bank Leumi", "Mizrahi-Tefahot"
+  bankCode: varchar("bank_code"), // Israeli bank code
+  branchCode: varchar("branch_code"),
+  accountNumber: varchar("account_number"), // ⚠️ Should be encrypted in production
+  accountHolderName: varchar("account_holder_name"),
+  isVerified: boolean("is_verified").default(false),
+  verifiedAt: timestamp("verified_at"),
+  verifiedByUserId: varchar("verified_by_user_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_bank_contractor").on(table.contractorId),
+  index("idx_contractor_bank_verified").on(table.isVerified),
+]);
+
+export const contractorServiceAreas = pgTable("contractor_service_areas", {
+  id: serial("id").primaryKey(),
+  contractorId: varchar("contractor_id").notNull(),
+  country: varchar("country").default("IL"),
+  city: varchar("city"),
+  regionName: varchar("region_name"),
+  radiusKm: decimal("radius_km", { precision: 6, scale: 2 }), // Service radius in kilometers
+  centerLat: decimal("center_lat", { precision: 10, scale: 7 }), // GPS latitude
+  centerLng: decimal("center_lng", { precision: 10, scale: 7 }), // GPS longitude
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_areas_contractor").on(table.contractorId),
+  index("idx_contractor_areas_city").on(table.city),
+]);
+
+export const contractorCapabilities = pgTable("contractor_capabilities", {
+  id: serial("id").primaryKey(),
+  contractorId: varchar("contractor_id").notNull(),
+  serviceType: varchar("service_type").notNull(), // "SELF_SERVICE_STATION_CLEANING", "MOBILE_GROOMING", "PET_SITTING", "DOG_WALKING", "PET_TAXI", "TRAINING", "VET_VISIT_ASSIST", "OTHER"
+  isEnabled: boolean("is_enabled").default(true), // Contractor toggled on
+  platformApproved: boolean("platform_approved").default(false), // Admin approval required
+  notesInternal: text("notes_internal"),
+  approvedByUserId: varchar("approved_by_user_id"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_cap_contractor").on(table.contractorId),
+  index("idx_contractor_cap_service").on(table.serviceType),
+  index("idx_contractor_cap_approved").on(table.platformApproved),
+  uniqueIndex("idx_contractor_cap_unique").on(table.contractorId, table.serviceType),
+]);
+
+// Extend existing providers table to support contractor base profile fields
+export const contractorProfiles = pgTable("contractor_profiles", {
+  id: varchar("id").primaryKey(), // Links to user ID or provider ID
+  displayName: varchar("display_name").notNull(),
+  legalName: varchar("legal_name").notNull(),
+  email: varchar("email").notNull(),
+  phoneE164: varchar("phone_e164").notNull(), // E.164 format: +972541234567
+  whatsappOptIn: boolean("whatsapp_opt_in").default(false),
+  countryOfOperation: varchar("country_of_operation").default("IL"),
+  primaryCity: varchar("primary_city"),
+  languageCodes: jsonb("language_codes").default(sql`'["he","en"]'::jsonb`), // ["he", "en"]
+  acceptedPlatformTermsAt: timestamp("accepted_platform_terms_at"),
+  acceptedIndependentStatusAt: timestamp("accepted_independent_status_at"),
+  acceptedPrivacyPolicyAt: timestamp("accepted_privacy_policy_at"),
+  complianceStatus: varchar("compliance_status").default("PENDING"), // "PENDING", "PARTIALLY_APPROVED", "APPROVED", "SUSPENDED", "BLOCKED"
+  riskLevel: varchar("risk_level").default("LOW"), // "LOW", "MEDIUM", "HIGH"
+  lastComplianceCheckAt: timestamp("last_compliance_check_at"),
+  lastComplianceSummary: text("last_compliance_summary"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  archivedAt: timestamp("archived_at"),
+}, (table) => [
+  index("idx_contractor_profile_status").on(table.complianceStatus),
+  index("idx_contractor_profile_country").on(table.countryOfOperation),
+]);
+
+// Type exports for new tables
+export type ContractorDocument = typeof contractorDocuments.$inferSelect;
+export type InsertContractorDocument = typeof contractorDocuments.$inferInsert;
+export type ContractorInsurance = typeof contractorInsurance.$inferSelect;
+export type InsertContractorInsurance = typeof contractorInsurance.$inferInsert;
+export type ContractorBackgroundCheck = typeof contractorBackgroundChecks.$inferSelect;
+export type InsertContractorBackgroundCheck = typeof contractorBackgroundChecks.$inferInsert;
+export type ContractorBankDetails = typeof contractorBankDetails.$inferSelect;
+export type InsertContractorBankDetails = typeof contractorBankDetails.$inferInsert;
+export type ContractorServiceArea = typeof contractorServiceAreas.$inferSelect;
+export type InsertContractorServiceArea = typeof contractorServiceAreas.$inferInsert;
+export type ContractorCapability = typeof contractorCapabilities.$inferSelect;
+export type InsertContractorCapability = typeof contractorCapabilities.$inferInsert;
+export type ContractorProfile = typeof contractorProfiles.$inferSelect;
+export type InsertContractorProfile = typeof contractorProfiles.$inferInsert;
+
+// Zod validation schemas
+export const insertContractorDocumentSchema = createInsertSchema(contractorDocuments, {
+  contractorId: z.string().min(1),
+  type: z.enum(['ID_CARD', 'DRIVERS_LICENSE', 'CAR_REGISTRATION', 'BUSINESS_REGISTRATION', 'INSURANCE_POLICY', 'POLICE_CLEARANCE', 'TRAINING_CERTIFICATE', 'OTHER']),
+  country: z.enum(['IL', 'AU', 'US', 'UK', 'EU', 'OTHER']).optional(),
+  url: z.string().url(),
+}).omit({ id: true, uploadedAt: true });
+
+export const insertContractorInsuranceSchema = createInsertSchema(contractorInsurance, {
+  contractorId: z.string().min(1),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertContractorBackgroundCheckSchema = createInsertSchema(contractorBackgroundChecks, {
+  contractorId: z.string().min(1),
+  result: z.enum(['PASS', 'FAIL', 'PENDING', 'NOT_REQUIRED']).optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertContractorBankDetailsSchema = createInsertSchema(contractorBankDetails, {
+  contractorId: z.string().min(1),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertContractorServiceAreaSchema = createInsertSchema(contractorServiceAreas, {
+  contractorId: z.string().min(1),
+  country: z.enum(['IL', 'AU', 'US', 'UK', 'EU', 'OTHER']).optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertContractorCapabilitySchema = createInsertSchema(contractorCapabilities, {
+  contractorId: z.string().min(1),
+  serviceType: z.enum(['SELF_SERVICE_STATION_CLEANING', 'MOBILE_GROOMING', 'PET_SITTING', 'DOG_WALKING', 'PET_TAXI', 'TRAINING', 'VET_VISIT_ASSIST', 'OTHER']),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertContractorProfileSchema = createInsertSchema(contractorProfiles, {
+  id: z.string().min(1),
+  displayName: z.string().min(1).max(200),
+  legalName: z.string().min(1).max(200),
+  email: z.string().email(),
+  phoneE164: z.string().regex(/^\+[1-9]\d{1,14}$/),
+  countryOfOperation: z.enum(['IL', 'AU', 'US', 'UK', 'EU', 'OTHER']).optional(),
+  complianceStatus: z.enum(['PENDING', 'PARTIALLY_APPROVED', 'APPROVED', 'SUSPENDED', 'BLOCKED']).optional(),
+  riskLevel: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+}).omit({ createdAt: true, updatedAt: true });
+
 export const insertProviderIndependenceScoreSchema = createInsertSchema(providerIndependenceScore, {
   providerId: z.string().min(1),
   providerType: z.enum(['walker', 'sitter', 'driver', 'groomer', 'trainer']),
