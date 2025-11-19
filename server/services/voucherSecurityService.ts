@@ -1,6 +1,6 @@
 /**
  * PetWash™ Voucher Security Service (Server-Side Only)
- * ES256 JWS Cryptographic Signing & Verification
+ * ES256 JWS Cryptographic Signing & Verification + Ledger-Based Balance Reconciliation
  * 
  * CRITICAL: This file MUST stay server-side only
  * Never import this into frontend/client code
@@ -8,6 +8,9 @@
 
 import { SignJWT, importPKCS8, importSPKI, jwtVerify } from 'jose';
 import crypto from 'crypto';
+import { eq, desc, and } from 'drizzle-orm';
+import { db } from '../db';
+import { voucherUsageLedger, petWashVouchers2025 } from '../../shared/schema';
 import type { PetWashVoucher2025 } from '../../shared/petwashVoucher2025Types';
 
 // Load keys from environment with comprehensive newline handling
@@ -261,6 +264,229 @@ export async function verifyVoucherIntegrity(voucher: PetWashVoucher2025): Promi
   } catch (error: any) {
     errors.push(`Signature verification failed: ${error.message}`);
     return { valid: false, errors };
+  }
+}
+
+/**
+ * Ledger-Based Balance Verification & Reconciliation
+ * Validates value_remaining against append-only tamper-evident ledger
+ */
+
+export interface LedgerVerificationResult {
+  valid: boolean;
+  errors: string[];
+  ledgerBalance: {
+    valueRemaining: number;
+    washesRemaining: number;
+    totalUsed: number;
+    washesUsed: number;
+  } | null;
+  autoRepaired: boolean;
+}
+
+/**
+ * Verify ledger chain integrity
+ * Each entry's prevEntryHash must match the previous entry's entryHash
+ */
+export async function verifyLedgerChain(voucherId: string): Promise<{
+  valid: boolean;
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  
+  try {
+    // Get all ledger entries for this voucher, ordered by sequence number
+    const entries = await db
+      .select()
+      .from(voucherUsageLedger)
+      .where(eq(voucherUsageLedger.voucherId, voucherId))
+      .orderBy(voucherUsageLedger.seqNo);
+    
+    if (entries.length === 0) {
+      // No ledger entries yet (new voucher)
+      return { valid: true, errors: [] };
+    }
+    
+    // Genesis entry (seq 0) should have null prevEntryHash
+    if (entries[0].seqNo !== 0) {
+      errors.push("Missing genesis entry (seq 0)");
+    }
+    
+    if (entries[0].prevEntryHash !== null) {
+      errors.push("Genesis entry has non-null prevEntryHash");
+    }
+    
+    // Verify chain: each entry's prevEntryHash matches previous entry's entryHash
+    for (let i = 1; i < entries.length; i++) {
+      const current = entries[i];
+      const previous = entries[i - 1];
+      
+      if (current.seqNo !== previous.seqNo + 1) {
+        errors.push(`Sequence gap: expected seq ${previous.seqNo + 1}, got ${current.seqNo}`);
+      }
+      
+      if (current.prevEntryHash !== previous.entryHash) {
+        errors.push(`Chain break at seq ${current.seqNo}: prevEntryHash mismatch`);
+      }
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  } catch (error: any) {
+    errors.push(`Ledger verification error: ${error.message}`);
+    return { valid: false, errors };
+  }
+}
+
+/**
+ * Calculate balance from ledger (source of truth)
+ * Returns cumulative usage and remaining balance
+ */
+export async function calculateLedgerBalance(voucherId: string): Promise<{
+  valueOriginal: number;
+  washesOriginal: number | null;
+  valueRemaining: number;
+  washesRemaining: number | null;
+  cumulativeValueUsed: number;
+  cumulativeWashesUsed: number;
+}> {
+  // Get voucher original values
+  const voucher = await db
+    .select()
+    .from(petWashVouchers2025)
+    .where(eq(petWashVouchers2025.id, voucherId))
+    .limit(1);
+  
+  if (voucher.length === 0) {
+    throw new Error(`Voucher not found: ${voucherId}`);
+  }
+  
+  const valueOriginal = parseFloat(voucher[0].valueOriginal || '0');
+  const washesOriginal = voucher[0].washesOriginal;
+  
+  // Get latest ledger entry (has cumulative totals)
+  const latestEntry = await db
+    .select()
+    .from(voucherUsageLedger)
+    .where(eq(voucherUsageLedger.voucherId, voucherId))
+    .orderBy(desc(voucherUsageLedger.seqNo))
+    .limit(1);
+  
+  if (latestEntry.length === 0) {
+    // No usage yet
+    return {
+      valueOriginal,
+      washesOriginal,
+      valueRemaining: valueOriginal,
+      washesRemaining: washesOriginal,
+      cumulativeValueUsed: 0,
+      cumulativeWashesUsed: 0
+    };
+  }
+  
+  const cumulativeValueUsed = parseFloat(latestEntry[0].cumulativeValueUsed || '0');
+  const cumulativeWashesUsed = latestEntry[0].cumulativeWashesUsed || 0;
+  
+  return {
+    valueOriginal,
+    washesOriginal,
+    valueRemaining: valueOriginal - cumulativeValueUsed,
+    washesRemaining: washesOriginal ? washesOriginal - cumulativeWashesUsed : null,
+    cumulativeValueUsed,
+    cumulativeWashesUsed
+  };
+}
+
+/**
+ * Verify voucher balance against ledger
+ * Auto-repairs value_remaining if it doesn't match ledger
+ */
+export async function verifyAndRepairBalance(voucherId: string): Promise<LedgerVerificationResult> {
+  const errors: string[] = [];
+  let autoRepaired = false;
+  
+  try {
+    // Step 1: Verify ledger chain integrity
+    const chainVerification = await verifyLedgerChain(voucherId);
+    if (!chainVerification.valid) {
+      errors.push(...chainVerification.errors);
+      return {
+        valid: false,
+        errors,
+        ledgerBalance: null,
+        autoRepaired: false
+      };
+    }
+    
+    // Step 2: Calculate true balance from ledger
+    const ledgerBalance = await calculateLedgerBalance(voucherId);
+    
+    // Step 3: Get current voucher balance
+    const voucher = await db
+      .select()
+      .from(petWashVouchers2025)
+      .where(eq(petWashVouchers2025.id, voucherId))
+      .limit(1);
+    
+    if (voucher.length === 0) {
+      errors.push("Voucher not found");
+      return {
+        valid: false,
+        errors,
+        ledgerBalance: null,
+        autoRepaired: false
+      };
+    }
+    
+    const currentValueRemaining = parseFloat(voucher[0].valueRemaining || '0');
+    const currentWashesRemaining = voucher[0].washesRemaining;
+    
+    // Step 4: Compare and repair if needed
+    const valueDiscrepancy = Math.abs(currentValueRemaining - ledgerBalance.valueRemaining);
+    const washesDiscrepancy = currentWashesRemaining !== null && ledgerBalance.washesRemaining !== null
+      ? Math.abs(currentWashesRemaining - ledgerBalance.washesRemaining)
+      : 0;
+    
+    if (valueDiscrepancy > 0.01 || washesDiscrepancy > 0) {
+      // Discrepancy detected - auto-repair from ledger
+      await db
+        .update(petWashVouchers2025)
+        .set({
+          valueRemaining: ledgerBalance.valueRemaining.toFixed(2),
+          washesRemaining: ledgerBalance.washesRemaining,
+          updatedAt: new Date()
+        })
+        .where(eq(petWashVouchers2025.id, voucherId));
+      
+      autoRepaired = true;
+      errors.push(
+        `Balance mismatch detected and auto-repaired: ` +
+        `Value: ${currentValueRemaining} → ${ledgerBalance.valueRemaining.toFixed(2)}, ` +
+        `Washes: ${currentWashesRemaining} → ${ledgerBalance.washesRemaining}`
+      );
+    }
+    
+    return {
+      valid: true, // Valid because we auto-repaired
+      errors, // Contains repair log if any
+      ledgerBalance: {
+        valueRemaining: ledgerBalance.valueRemaining,
+        washesRemaining: ledgerBalance.washesRemaining || 0,
+        totalUsed: ledgerBalance.cumulativeValueUsed,
+        washesUsed: ledgerBalance.cumulativeWashesUsed
+      },
+      autoRepaired
+    };
+  } catch (error: any) {
+    errors.push(`Balance verification error: ${error.message}`);
+    return {
+      valid: false,
+      errors,
+      ledgerBalance: null,
+      autoRepaired: false
+    };
   }
 }
 
