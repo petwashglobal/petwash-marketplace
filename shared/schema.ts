@@ -8120,6 +8120,7 @@ export const refreshTokens = pgTable("refresh_tokens", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   deviceId: varchar("device_id"),
+  jti: varchar("jti").notNull(), // JWT ID - unique identifier for this specific token instance
   tokenHash: varchar("token_hash").notNull(), // bcrypt hashed refresh token
   createdAt: timestamp("created_at").defaultNow(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -8128,6 +8129,7 @@ export const refreshTokens = pgTable("refresh_tokens", {
   index("idx_refresh_tokens_user").on(table.userId),
   index("idx_refresh_tokens_device").on(table.deviceId),
   index("idx_refresh_tokens_expires").on(table.expiresAt),
+  index("idx_refresh_tokens_jti").on(table.jti), // Fast lookup by JWT ID
 ]);
 
 // Identity Verifications table (passport, drivers license, ID card)

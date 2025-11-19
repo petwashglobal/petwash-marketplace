@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
 import { db } from "../db";
 import { users, devices, refreshTokens } from "@shared/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, isNull } from "drizzle-orm";
 
 const router = Router();
 
@@ -39,13 +39,15 @@ function generateAccessToken(user: any): string {
   );
 }
 
-// Helper: Generate refresh token
+// Helper: Generate refresh token with unique jti (JWT ID)
 function generateRefreshToken(user: any, deviceId?: string): string {
+  const jti = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
   return jwt.sign(
     {
       sub: user.id,
       type: "refresh",
       deviceId,
+      jti, // Unique identifier for this specific token instance
     },
     JWT_REFRESH_SECRET,
     { expiresIn: `${REFRESH_TOKEN_EXPIRY_DAYS}d` }
@@ -57,10 +59,14 @@ async function saveRefreshToken(userId: string, token: string, deviceId?: string
   const tokenHash = await hash(token, 10);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
+  
+  // Decode token to extract jti
+  const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as any;
 
   await db.insert(refreshTokens).values({
     userId,
     deviceId: deviceId || null,
+    jti: decoded.jti, // Store JWT ID for fast lookup
     tokenHash,
     expiresAt,
   });
@@ -187,25 +193,15 @@ router.post("/refresh", async (req, res) => {
       });
     }
 
-    // Check if refresh token exists in database (search by userId and non-revoked)
-    const tokenRecords = await db.query.refreshTokens.findMany({
+    // Check if refresh token exists in database using jti (fast lookup, no bcrypt loop)
+    const foundToken = await db.query.refreshTokens.findFirst({
       where: and(
+        eq(refreshTokens.jti, decoded.jti),
         eq(refreshTokens.userId, decoded.sub),
-        eq(refreshTokens.revokedAt, null),
+        isNull(refreshTokens.revokedAt),
         gt(refreshTokens.expiresAt, new Date())
       ),
-      limit: 500,
     });
-
-    // Find matching token by comparing hash
-    let foundToken = null;
-    for (const record of tokenRecords) {
-      const match = await compare(token, record.tokenHash);
-      if (match) {
-        foundToken = record;
-        break;
-      }
-    }
 
     if (!foundToken) {
       return res.status(401).json({
