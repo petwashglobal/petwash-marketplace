@@ -1,0 +1,151 @@
+[
+  {
+    "id": "a2d3abb8-64f9-4629-9cd5-694038b41593",
+    "email": "test-contractor@petwash.co.il",
+    "passwordHash": "$2b$10$4AZQ1g4eE0C7KDyOhLpdqea6iSqRKp6X0zh6eLJxcJbYu/hbu3IQu",
+    "roles": [
+      "contractor"
+    ],
+    "permissions": [
+      "contractor:read",
+      "contractor:write"
+    ],
+    "firstName": "Test",
+    "lastName": "Contractor",
+    "profileImageUrl": null,
+    "phone": "+972501234567",
+    "dateOfBirth": null,
+    "country": "IL",
+    "gender": null,
+    "language": "en",
+    "loyaltyTier": "bronze",
+    "isClubMember": false,
+    "isSeniorVerified": false,
+    "isDisabilityVerified": false,
+    "idVerificationStatus": "none",
+    "idDocumentUrl": null,
+    "selfiePhotoUrl": null,
+    "idPhotoUrl": null,
+    "biometricMatchStatus": "pending",
+    "biometricMatchScore": null,
+    "biometricVerifiedAt": null,
+    "biometricVerifiedBy": null,
+    "hasUsedNewMemberDiscount": false,
+    "currentDiscountType": "none",
+    "maxDiscountPercent": 5,
+    "totalSpent": "0.00",
+    "washBalance": 0,
+    "giftCardBalance": "0.00",
+    "loyaltyPoints": 0,
+    "analyticsConsent": false,
+    "ipTrackingConsent": false,
+    "emailTrackingConsent": false,
+    "marketingConsent": false,
+    "privacyConsentUpdatedAt": null,
+    "communicationPreferences": {
+      "sms": {
+        "marketing": false,
+        "reminders": true,
+        "transactional": true
+      },
+      "push": {
+        "marketing": false,
+        "reminders": true,
+        "transactional": true
+      },
+      "email": {
+        "marketing": false,
+        "reminders": true,
+        "transactional": true
+      },
+      "whatsapp": {
+        "marketing": false,
+        "reminders": true,
+        "transactional": true
+      }
+    },
+    "suppressionList": {
+      "all": false,
+      "sms": false,
+      "push": false,
+      "email": false,
+      "whatsapp": false
+    },
+    "unsubscribedAt": null,
+    "createdAt": "2025-11-19T08:02:43.154Z",
+    "updatedAt": "2025-11-19T08:02:43.154Z"
+  },
+  {
+    "id": "3353c023-c2d2-4dd1-bff5-7a7eee23a847",
+    "email": "qa-test@petwash.co.il",
+    "passwordHash": "$2b$10$AIsjtIoM/1HWYZ5jRZc9zODxMKYD3q.g6KzWEbhtYeoj8q6aYUhQy",
+    "roles": [
+      "customer"
+    ],
+    "permissions": [],
+    "firstName": "QA",
+    "lastName": "Tester",
+    "profileImageUrl": null,
+    "phone": "+972501234567",
+    "dateOfBirth": null,
+    "country": "IL",
+    "gender": null,
+    "language": "en",
+    "loyaltyTier": "bronze",
+    "isClubMember": false,
+    "isSeniorVerified": false,
+    "isDisabilityVerified": false,
+    "idVerificationStatus": "none",
+    "idDocumentUrl": null,
+    "selfiePhotoUrl": null,
+    "idPhotoUrl": null,
+    "biometricMatchStatus": "pending",
+    "biometricMatchScore": null,
+    "biometricVerifiedAt": null,
+    "biometricVerifiedBy": null,
+    "hasUsedNewMemberDiscount": false,
+    "currentDiscountType": "none",
+    "maxDiscountPercent": 5,
+    "totalSpent": "0.00",
+    "washBalance": 0,
+    "giftCardBalance": "0.00",
+    "loyaltyPoints": 0,
+    "analyticsConsent": false,
+    "ipTrackingConsent": false,
+    "emailTrackingConsent": false,
+    "marketingConsent": false,
+    "privacyConsentUpdatedAt": null,
+    "communicationPreferences": {
+      "sms": {
+        "marketing": false,
+        "reminders": true,
+        "transactional": true
+      },
+      "push": {
+        "marketing": false,
+        "reminders": true,
+        "transactional": true
+      },
+      "email": {
+        "marketing": false,
+        "reminders": true,
+        "transactional": true
+      },
+      "whatsapp": {
+        "marketing": false,
+        "reminders": true,
+        "transactional": true
+      }
+    },
+    "suppressionList": {
+      "all": false,
+      "sms": false,
+      "push": false,
+      "email": false,
+      "whatsapp": false
+    },
+    "unsubscribedAt": null,
+    "createdAt": "2025-11-19T08:27:29.792Z",
+    "updatedAt": "2025-11-19T08:27:29.792Z"
+  }
+]
