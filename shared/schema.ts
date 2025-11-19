@@ -8398,3 +8398,42 @@ export type Driver = typeof drivers.$inferSelect;
 export type InsertDriver = typeof drivers.$inferInsert;
 export type Rating = typeof ratings.$inferSelect;
 export type InsertRating = typeof ratings.$inferInsert;
+
+// Framework 2025 Zod validation schemas
+export const insertContractorSchema = createInsertSchema(contractors, {
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  country: z.string().optional(),
+  roleType: z.enum(["sitter", "driver", "groomer", "courier", "walker", "trainer", "vet"]),
+  status: z.enum(["pending", "active", "blocked"]).default("pending"),
+}).omit({ id: true, createdAt: true, updatedAt: true, riskScore: true });
+
+export const insertIdentityDocumentSchema = createInsertSchema(identityDocuments, {
+  contractorId: z.string().uuid("Invalid contractor ID"),
+  documentType: z.enum(["passport", "drivers_license", "national_id"]),
+  documentNumber: z.string().min(1, "Document number is required"),
+  issuedCountry: z.string().optional(),
+  expiryDate: z.string().optional(),
+}).omit({ id: true, createdAt: true });
+
+export const insertDriverSchema = createInsertSchema(drivers, {
+  contractorId: z.string().uuid("Invalid contractor ID"),
+  vehicleType: z.string().optional(),
+  licenseNumber: z.string().optional(),
+  licenseExpiry: z.string().optional(),
+  areasOfService: z.string().optional(),
+  isActive: z.boolean().default(true),
+}).omit({ id: true, createdAt: true });
+
+export const insertRatingSchema = createInsertSchema(ratings, {
+  contractorId: z.string().uuid("Invalid contractor ID"),
+  givenByUserId: z.string().uuid("Invalid user ID"),
+  score: z.number().int().min(1).max(5, "Score must be between 1 and 5"),
+  category: z.enum(["communication", "reliability", "professionalism", "quality"]),
+  comment: z.string().optional(),
+}).omit({ id: true, createdAt: true });
+
+export const evaluateComplianceSchema = z.object({
+  contractorId: z.string().uuid("Invalid contractor ID"),
+});

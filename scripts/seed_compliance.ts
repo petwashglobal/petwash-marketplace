@@ -1,25 +1,49 @@
 /**
  * PET WASH LTD – GLOBAL BACKEND FRAMEWORK 2025
- * Complete Compliance Seed Script
+ * Complete Compliance Seed Script with JWT Authentication
  * 
  * Creates test contractor with full compliance flow:
- * 1. Create contractor
- * 2. Add identity document
- * 3. Add driver profile
- * 4. Add ratings
- * 5. Evaluate compliance
+ * 1. Generate test JWT token
+ * 2. Create contractor
+ * 3. Add identity document
+ * 4. Add driver profile
+ * 5. Add ratings
+ * 6. Evaluate compliance
  * 
  * Run with: tsx scripts/seed_compliance.ts
  */
 
 import axios from "axios";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.error("❌ FATAL: JWT_SECRET environment variable is not set.");
+  console.error("Please set JWT_SECRET in your environment before running this script.");
+  process.exit(1);
+}
+
+function generateTestToken(userId: string, roles: string[] = ["contractor"]): string {
+  return jwt.sign(
+    { sub: userId, roles },
+    JWT_SECRET,
+    { expiresIn: "24h" }
+  );
+}
 
 async function seed() {
   console.log("🚀 Pet Wash Global Compliance Seed Script – START\n");
 
+  const testUserId = "test-user-" + Date.now();
+  const token = generateTestToken(testUserId, ["admin", "compliance", "hr"]);
+
   const api = axios.create({
     baseURL: "http://localhost:5000",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
   });
 
   try {
@@ -111,7 +135,7 @@ async function seed() {
     console.error("\n❌ Seed failed:");
     if (error.response) {
       console.error("Status:", error.response.status);
-      console.error("Data:", error.response.data);
+      console.error("Data:", JSON.stringify(error.response.data, null, 2));
     } else {
       console.error(error.message);
     }

@@ -1,33 +1,52 @@
 /**
  * PET WASH LTD – GLOBAL BACKEND FRAMEWORK 2025
  * Unified Contractors + Drivers + Ratings + Identity + Compliance Layer
- * Complete API Routes
+ * 
+ * PRODUCTION-GRADE ROUTES with:
+ * - Zod validation on all POST endpoints
+ * - Authentication middleware for sensitive operations
+ * - Proper error handling and type safety
+ * - FK constraint validation
  */
 
 import { Router } from "express";
 import { db } from "../db";
-import { contractors, identityDocuments, drivers, ratings } from "@shared/schema";
+import { 
+  contractors, 
+  identityDocuments, 
+  drivers, 
+  ratings,
+  insertContractorSchema,
+  insertIdentityDocumentSchema,
+  insertDriverSchema,
+  insertRatingSchema,
+  evaluateComplianceSchema,
+} from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { authMiddleware, requireRoles } from "../middleware/auth";
+import { ZodError } from "zod";
 
 const router = Router();
 
 /* ---------------------- CONTRACTORS ---------------------- */
 
-// POST /api/contractors - Create new contractor
-router.post("/contractors", async (req, res) => {
+// POST /api/contractors - Create new contractor (ADMIN/HR ONLY)
+router.post("/contractors", authMiddleware, requireRoles("admin", "hr", "compliance"), async (req, res) => {
   try {
-    const { fullName, email, phone, country, roleType } = req.body;
+    const validated = insertContractorSchema.parse(req.body);
     
-    const result = await db.insert(contractors).values({
-      fullName,
-      email,
-      phone,
-      country,
-      roleType,
-    }).returning();
+    const result = await db.insert(contractors).values(validated).returning();
     
-    res.json(result[0]);
+    res.status(201).json(result[0]);
   } catch (error: any) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ 
+        error: "VALIDATION_ERROR", 
+        message: "Invalid contractor data",
+        details: error.errors,
+      });
+    }
+    
     console.error("[Contractors API] Create error:", error);
     res.status(500).json({ 
       error: "INTERNAL_ERROR", 
@@ -36,8 +55,8 @@ router.post("/contractors", async (req, res) => {
   }
 });
 
-// GET /api/contractors - Get all contractors
-router.get("/contractors", async (req, res) => {
+// GET /api/contractors - Get all contractors (PROTECTED)
+router.get("/contractors", authMiddleware, async (req, res) => {
   try {
     const result = await db.select().from(contractors);
     res.json(result);
@@ -50,22 +69,40 @@ router.get("/contractors", async (req, res) => {
   }
 });
 
-// GET /api/contractors/:id - Get single contractor
-router.get("/contractors/:id", async (req, res) => {
+// GET /api/contractors/:id - Get single contractor with full profile (PROTECTED)
+router.get("/contractors/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await db.query.contractors.findFirst({
+    
+    const contractor = await db.query.contractors.findFirst({
       where: eq(contractors.id, id),
     });
     
-    if (!result) {
+    if (!contractor) {
       return res.status(404).json({ 
         error: "NOT_FOUND", 
         message: "Contractor not found" 
       });
     }
     
-    res.json(result);
+    const docs = await db.query.identityDocuments.findMany({
+      where: eq(identityDocuments.contractorId, id),
+    });
+    
+    const driver = await db.query.drivers.findFirst({
+      where: eq(drivers.contractorId, id),
+    });
+    
+    const contractorRatings = await db.query.ratings.findMany({
+      where: eq(ratings.contractorId, id),
+    });
+    
+    res.json({
+      ...contractor,
+      documents: docs,
+      driverProfile: driver || null,
+      ratings: contractorRatings,
+    });
   } catch (error: any) {
     console.error("[Contractors API] Get error:", error);
     res.status(500).json({ 
@@ -77,21 +114,34 @@ router.get("/contractors/:id", async (req, res) => {
 
 /* ---------------------- IDENTITY DOCUMENTS ---------------------- */
 
-// POST /api/identity/document - Create identity document
-router.post("/identity/document", async (req, res) => {
+// POST /api/identity/document - Create identity document (ADMIN/COMPLIANCE ONLY)
+router.post("/identity/document", authMiddleware, requireRoles("admin", "compliance", "hr"), async (req, res) => {
   try {
-    const { contractorId, documentType, documentNumber, issuedCountry, expiryDate } = req.body;
+    const validated = insertIdentityDocumentSchema.parse(req.body);
 
-    const result = await db.insert(identityDocuments).values({
-      contractorId,
-      documentType,
-      documentNumber,
-      issuedCountry,
-      expiryDate,
-    }).returning();
+    const contractorExists = await db.query.contractors.findFirst({
+      where: eq(contractors.id, validated.contractorId),
+    });
 
-    res.json(result[0]);
+    if (!contractorExists) {
+      return res.status(404).json({
+        error: "NOT_FOUND",
+        message: "Contractor not found",
+      });
+    }
+
+    const result = await db.insert(identityDocuments).values(validated).returning();
+
+    res.status(201).json(result[0]);
   } catch (error: any) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        message: "Invalid document data",
+        details: error.errors,
+      });
+    }
+
     console.error("[Identity API] Create document error:", error);
     res.status(500).json({ 
       error: "INTERNAL_ERROR", 
@@ -102,21 +152,34 @@ router.post("/identity/document", async (req, res) => {
 
 /* ---------------------- DRIVERS ---------------------- */
 
-// POST /api/drivers - Create driver profile
-router.post("/drivers", async (req, res) => {
+// POST /api/drivers - Create driver profile (ADMIN/COMPLIANCE ONLY)
+router.post("/drivers", authMiddleware, requireRoles("admin", "compliance", "hr"), async (req, res) => {
   try {
-    const { contractorId, vehicleType, licenseNumber, licenseExpiry, areasOfService } = req.body;
+    const validated = insertDriverSchema.parse(req.body);
 
-    const result = await db.insert(drivers).values({
-      contractorId,
-      vehicleType,
-      licenseNumber,
-      licenseExpiry,
-      areasOfService,
-    }).returning();
+    const contractorExists = await db.query.contractors.findFirst({
+      where: eq(contractors.id, validated.contractorId),
+    });
 
-    res.json(result[0]);
+    if (!contractorExists) {
+      return res.status(404).json({
+        error: "NOT_FOUND",
+        message: "Contractor not found",
+      });
+    }
+
+    const result = await db.insert(drivers).values(validated).returning();
+
+    res.status(201).json(result[0]);
   } catch (error: any) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        message: "Invalid driver data",
+        details: error.errors,
+      });
+    }
+
     console.error("[Drivers API] Create error:", error);
     res.status(500).json({ 
       error: "INTERNAL_ERROR", 
@@ -125,8 +188,8 @@ router.post("/drivers", async (req, res) => {
   }
 });
 
-// GET /api/drivers - Get all drivers
-router.get("/drivers", async (req, res) => {
+// GET /api/drivers - Get all drivers (PROTECTED)
+router.get("/drivers", authMiddleware, async (req, res) => {
   try {
     const result = await db.select().from(drivers);
     res.json(result);
@@ -141,21 +204,34 @@ router.get("/drivers", async (req, res) => {
 
 /* ---------------------- RATINGS ---------------------- */
 
-// POST /api/ratings - Create rating
-router.post("/ratings", async (req, res) => {
+// POST /api/ratings - Create rating (PROTECTED)
+router.post("/ratings", authMiddleware, async (req, res) => {
   try {
-    const { contractorId, givenByUserId, score, category, comment } = req.body;
+    const validated = insertRatingSchema.parse(req.body);
 
-    const result = await db.insert(ratings).values({
-      contractorId,
-      givenByUserId,
-      score,
-      category,
-      comment,
-    }).returning();
+    const contractorExists = await db.query.contractors.findFirst({
+      where: eq(contractors.id, validated.contractorId),
+    });
 
-    res.json(result[0]);
+    if (!contractorExists) {
+      return res.status(404).json({
+        error: "NOT_FOUND",
+        message: "Contractor not found",
+      });
+    }
+
+    const result = await db.insert(ratings).values(validated).returning();
+
+    res.status(201).json(result[0]);
   } catch (error: any) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        message: "Invalid rating data",
+        details: error.errors,
+      });
+    }
+
     console.error("[Ratings API] Create error:", error);
     res.status(500).json({ 
       error: "INTERNAL_ERROR", 
@@ -164,8 +240,8 @@ router.post("/ratings", async (req, res) => {
   }
 });
 
-// GET /api/ratings - Get all ratings
-router.get("/ratings", async (req, res) => {
+// GET /api/ratings - Get all ratings (PROTECTED)
+router.get("/ratings", authMiddleware, async (req, res) => {
   try {
     const result = await db.select().from(ratings);
     res.json(result);
@@ -180,12 +256,12 @@ router.get("/ratings", async (req, res) => {
 
 /* ---------------------- COMPLIANCE BRAIN COMPATIBILITY LAYER ---------------------- */
 
-// POST /api/compliance/evaluate - Evaluate contractor eligibility
-router.post("/compliance/evaluate", async (req, res) => {
+// POST /api/compliance/evaluate - Evaluate contractor eligibility (ADMIN/COMPLIANCE ONLY)
+router.post("/compliance/evaluate", authMiddleware, requireRoles("admin", "compliance"), async (req, res) => {
   try {
-    const { contractorId } = req.body;
+    const validated = evaluateComplianceSchema.parse(req.body);
+    const { contractorId } = validated;
 
-    // Get contractor
     const contractor = await db.query.contractors.findFirst({
       where: eq(contractors.id, contractorId),
     });
@@ -197,22 +273,18 @@ router.post("/compliance/evaluate", async (req, res) => {
       });
     }
 
-    // Get documents
     const docs = await db.query.identityDocuments.findMany({
       where: eq(identityDocuments.contractorId, contractorId),
     });
 
-    // Get driver profile
     const driver = await db.query.drivers.findFirst({
       where: eq(drivers.contractorId, contractorId),
     });
 
-    // Get ratings
     const contractorRatings = await db.query.ratings.findMany({
       where: eq(ratings.contractorId, contractorId),
     });
 
-    // SIMPLE RISK ENGINE
     let riskScore = 0.1;
     if (contractorRatings.length > 0) {
       const avg = contractorRatings.reduce((a, r) => a + (r.score || 0), 0) / contractorRatings.length;
@@ -237,6 +309,14 @@ router.post("/compliance/evaluate", async (req, res) => {
       },
     });
   } catch (error: any) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        message: "Invalid compliance evaluate data",
+        details: error.errors,
+      });
+    }
+
     console.error("[Compliance API] Evaluate error:", error);
     res.status(500).json({
       error: "INTERNAL_ERROR",
