@@ -8300,6 +8300,69 @@ export const complianceAuditLogs = pgTable("compliance_audit_logs", {
   index("idx_compliance_audit_logs_created").on(table.createdAt),
 ]);
 
+// ===========================================================
+// PET WASH LTD – GLOBAL BACKEND FRAMEWORK 2025
+// Unified Contractors + Drivers + Ratings + Identity + Compliance Layer
+// ===========================================================
+
+// Contractors table (unified contractor management)
+export const contractors = pgTable("contractors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fullName: text("full_name").notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  country: varchar("country", { length: 50 }),
+  roleType: varchar("role_type", { length: 50 }).notNull(), // sitter, driver, groomer, courier, etc
+  status: varchar("status", { length: 50 }).default("pending"), // pending, active, blocked
+  riskScore: real("risk_score"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_contractors_email").on(table.email),
+  index("idx_contractors_status").on(table.status),
+  index("idx_contractors_role_type").on(table.roleType),
+]);
+
+// Identity Documents table
+export const identityDocuments = pgTable("identity_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").references(() => contractors.id),
+  documentType: varchar("document_type", { length: 50 }).notNull(),
+  documentNumber: varchar("document_number", { length: 100 }).notNull(),
+  issuedCountry: varchar("issued_country", { length: 50 }),
+  expiryDate: varchar("expiry_date", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_identity_documents_contractor").on(table.contractorId),
+]);
+
+// Drivers table
+export const drivers = pgTable("drivers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").references(() => contractors.id),
+  vehicleType: varchar("vehicle_type", { length: 100 }),
+  licenseNumber: varchar("license_number", { length: 100 }),
+  licenseExpiry: varchar("license_expiry", { length: 50 }),
+  areasOfService: text("areas_of_service"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_drivers_contractor").on(table.contractorId),
+]);
+
+// Ratings table
+export const ratings = pgTable("ratings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").references(() => contractors.id),
+  givenByUserId: varchar("given_by_user_id"),
+  score: integer("score"),
+  category: varchar("category", { length: 50 }), // communication, reliability, etc
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_ratings_contractor").on(table.contractorId),
+]);
+
 // Type exports for new tables
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = typeof devices.$inferInsert;
@@ -8325,3 +8388,13 @@ export type ComplianceDecision = typeof complianceDecisions.$inferSelect;
 export type InsertComplianceDecision = typeof complianceDecisions.$inferInsert;
 export type ComplianceAuditLog = typeof complianceAuditLogs.$inferSelect;
 export type InsertComplianceAuditLog = typeof complianceAuditLogs.$inferInsert;
+
+// Framework 2025 type exports
+export type Contractor = typeof contractors.$inferSelect;
+export type InsertContractor = typeof contractors.$inferInsert;
+export type IdentityDocument = typeof identityDocuments.$inferSelect;
+export type InsertIdentityDocument = typeof identityDocuments.$inferInsert;
+export type Driver = typeof drivers.$inferSelect;
+export type InsertDriver = typeof drivers.$inferInsert;
+export type Rating = typeof ratings.$inferSelect;
+export type InsertRating = typeof ratings.$inferInsert;
