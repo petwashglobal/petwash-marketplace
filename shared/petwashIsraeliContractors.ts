@@ -466,7 +466,7 @@ export function evaluateCondition(
       return null;
     }
     case "REQUIRES_BANK_VERIFIED": {
-      if (!contractor.bankDetails.isVerified) {
+      if (!contractor.bankDetails || !contractor.bankDetails.isVerified) {
         return { code: condition.code, message: condition.message };
       }
       return null;
@@ -502,12 +502,15 @@ export function evaluateCondition(
       return null;
     }
     case "REQUIRES_ENTITY_TYPE_IN": {
-      if (!condition.allowed.includes(contractor.taxProfile.entityType)) {
+      if (!contractor.taxProfile || !condition.allowed.includes(contractor.taxProfile.entityType)) {
         return { code: condition.code, message: condition.message };
       }
       return null;
     }
     case "REQUIRES_TAX_PROFILE_FIELDS": {
+      if (!contractor.taxProfile) {
+        return { code: condition.code, message: condition.message };
+      }
       const missing: string[] = [];
       for (const field of condition.fields) {
         const value = contractor.taxProfile[field];
