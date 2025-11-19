@@ -1,26 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is a full-stack enterprise platform designed for market leadership and global franchise expansion in the pet care industry. It integrates various business units (K9000 IoT wash stations, The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™) through shared enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management. The platform emphasizes enterprise-grade security, multi-jurisdiction compliance, and aims for global expansion, with an initial focus on the Israeli luxury market.
-
-### ✅ 7-Star Loyalty System (PRODUCTION READY)
-**Completion Date**: November 17, 2025
-- **Full 7-Tier Implementation**: Bronze (0 pts), Silver (1K), Gold (3K), Platinum (6K), Diamond (10K), Emerald (20K), Royal (35K)
-- **Type Safety**: LOYALTY_TIERS enum and LoyaltyTier type defined in `shared/schema-loyalty.ts`
-- **Backend**: Admin Dashboard analytics endpoint returns all 7 tiers in flat lowercase format
-- **Frontend**: Admin Dashboard UI displays all 7 tiers with luxury emojis and progress bars
-- **Multilingual**: Complete translations for all 6 languages (English, Hebrew, Arabic, Russian, French, Spanish)
-- **Architect Verified**: Backend-frontend alignment confirmed, no security issues, production-ready
-
-### ✅ Service Worker Removal & Security Hardening (PRODUCTION READY)
-**Completion Date**: November 18, 2025
-- **Service Workers Eliminated**: Completely removed from `client/src/main.tsx`, `client/index.html`, root `index.html`, all service worker files deleted
-- **Build System Verified**: Clean build output (33.64s, 4421 modules), no service worker registration code in production bundle
-- **SPA Routing Fixed**: Corrected middleware order (express.static → API routes → SPA catchall), fixed /gallery route 404 on mobile
-- **Console Verified Clean**: No service worker messages, no 404 errors, no 401 errors, only expected Firebase config logs
-- **Cross-Device Testing**: Homepage, gallery, navigation verified on desktop, mobile (375x667), tablet (768x1024)
-- **Critical Security Fixes**: Removed hardcoded admin credentials (CEO + generic admin), fixed 9 RBAC bypass vulnerabilities, enhanced session security
-- **E2E Tested**: All core functionality verified with Playwright, responsive layouts confirmed
+Pet Wash™ is a full-stack enterprise platform designed for market leadership and global franchise expansion in the pet care industry. It integrates various business units (K9000 IoT wash stations, The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™) through shared enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management. The platform emphasizes enterprise-grade security, multi-jurisdiction compliance, and aims for global expansion, with an initial focus on the Israeli luxury market. Key capabilities include a 7-Star Loyalty System, robust security hardening, and a comprehensive Unified Control Panel for enterprise orchestration.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -72,7 +53,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 
 ## System Architecture
 
-### **🚨 CRITICAL DEVELOPER RULE: SEARCH FIRST, BUILD SECOND**
+### 🚨 CRITICAL DEVELOPER RULE: SEARCH FIRST, BUILD SECOND
 Before adding ANY new code, you MUST:
 1. Check `shared/petwashGlobal.ts` (Single source of truth)
 2. Search `server/services/`, `client/src/pages/`, `client/src/components/`
@@ -103,6 +84,16 @@ Before adding ANY new code, you MUST:
 - **HR & Employee Systems**: Routes and services for employee management, hierarchy, and onboarding, including auto-approval workflows and WhatsApp notifications.
 - **Enterprise Route Infrastructure**: Extensive set of 119 route files covering franchise management, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
 - **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments, enforcing access levels and department permissions.
+
+### Unified Control Panel - Enterprise Orchestration Layer
+- **Architecture**: Event-driven, multi-tenant, multi-platform orchestration system.
+- **RBAC Foundation**: Defines 16 Departments, 11 Roles, 10 Platforms, and scoped permissions.
+- **Logistics & Fleet Management**: Auto-generated tasks, 5 task types, 5 status levels, vehicle tracking, driver assignment, mobile-optimized API.
+- **Finance & Settlements**: Partner revenue sharing, station-specific agreements, automated monthly settlements, Israeli VAT, SHA-256 audit hashing, email notifications, CSV export.
+- **Event-Driven Architecture**: 23 Domain Event Types across 8 categories, event store, Event Publisher service, critical event handlers.
+- **Mobile Field Operations**: Field updates with status tracking, photo uploads to Firebase Storage, signed URLs, Waze/Google Maps deep linking, location-based search, staff device registration for push notifications.
+- **Database Impact**: 10 new tables with proper indexing, TypeScript types, and Zod validation schemas.
+- **Technology Stack**: Node.js, PostgreSQL (Neon) with Drizzle ORM, Redis pub/sub, Firebase Storage, FCM, SendGrid, node-cron.
 
 ## External Dependencies
 - **Database & ORM**: @neondatabase/serverless (PostgreSQL), drizzle-orm.
