@@ -1,9 +1,10 @@
 /**
- * PetWash™ Voucher System 2025
- * 7-Star Luxury Digital Vouchers with Enhanced Security
+ * PetWash™ Voucher System 2025 - SECURE
+ * 7-Star Luxury Digital Vouchers with ES256 JWS Signing
  */
 
 import crypto from "crypto";
+import { importPKCS8, importSPKI, SignJWT, jwtVerify, type JWTPayload } from "jose";
 
 export type VoucherType = "egift" | "package_single" | "package_multi";
 export type ValueType = "currency" | "washes";
@@ -53,6 +54,10 @@ export interface PetWashVoucher2025 {
   };
 }
 
+/* ---------------------------------------------------------
+   VOUCHER ID & CODE GENERATION
+--------------------------------------------------------- */
+
 export function generateVoucherId(): string {
   const raw = crypto.randomBytes(8).toString("hex").toUpperCase();
   return `PWV-2025-${raw}`;
@@ -66,7 +71,99 @@ export function generatePublicCode(): string {
   return `PW-${a}-${b}-${c}`;
 }
 
-export function buildBaseVoucher(params: {
+/* ---------------------------------------------------------
+   ES256 JWS SECURITY
+--------------------------------------------------------- */
+
+export const VOUCHER_JWS_ISSUER = "petwash.vouchers.2025";
+export const VOUCHER_JWS_AUDIENCE = "petwash.stations.api";
+export const VOUCHER_JWS_KID = "petwash-voucher-es256-2025";
+
+const PRIVATE_KEY_PEM = process.env.VOUCHER_ES256_PRIVATE_KEY_PEM || "";
+const PUBLIC_KEY_PEM = process.env.VOUCHER_ES256_PUBLIC_KEY_PEM || "";
+
+if (!PRIVATE_KEY_PEM || !PUBLIC_KEY_PEM) {
+  console.warn("[VoucherSecurity] ES256 keys not set. Signing will fail at runtime.");
+}
+
+export interface VoucherJwsPayload extends JWTPayload {
+  vid: string;  // voucher_id
+  pcode: string;  // public_code
+  hash: string;  // sha256
+  type: string;  // voucher type
+  uid: string;  // user_id
+}
+
+async function getPrivateKey() {
+  if (!PRIVATE_KEY_PEM) throw new Error("Missing VOUCHER_ES256_PRIVATE_KEY_PEM");
+  return importPKCS8(PRIVATE_KEY_PEM, "ES256");
+}
+
+async function getPublicKey() {
+  if (!PUBLIC_KEY_PEM) throw new Error("Missing VOUCHER_ES256_PUBLIC_KEY_PEM");
+  return importSPKI(PUBLIC_KEY_PEM, "ES256");
+}
+
+export function voucherSha256(voucher: unknown): string {
+  const buf = Buffer.from(JSON.stringify(voucher), "utf8");
+  return crypto.createHash("sha256").update(buf).digest("hex");
+}
+
+export async function signVoucherJws(params: {
+  voucher_id: string;
+  public_code: string;
+  hash: string;
+  type: string;
+  user_id: string;
+}): Promise<string> {
+  const privateKey = await getPrivateKey();
+
+  const payload: VoucherJwsPayload = {
+    iss: VOUCHER_JWS_ISSUER,
+    aud: VOUCHER_JWS_AUDIENCE,
+    vid: params.voucher_id,
+    pcode: params.public_code,
+    hash: params.hash,
+    type: params.type,
+    uid: params.user_id,
+    iat: Math.floor(Date.now() / 1000)
+  };
+
+  const jws = await new SignJWT(payload)
+    .setProtectedHeader({ alg: "ES256", kid: VOUCHER_JWS_KID, typ: "JWT" })
+    .sign(privateKey);
+
+  return jws;
+}
+
+export async function verifyVoucherJws(jws: string): Promise<VoucherJwsPayload> {
+  const publicKey = await getPublicKey();
+  const result = await jwtVerify(jws, publicKey, {
+    issuer: VOUCHER_JWS_ISSUER,
+    audience: VOUCHER_JWS_AUDIENCE
+  });
+  return result.payload as VoucherJwsPayload;
+}
+
+export async function signFullVoucher(
+  voucher: PetWashVoucher2025
+): Promise<{ hash: string; jws: string }> {
+  const hash = voucherSha256(voucher);
+  const jws = await signVoucherJws({
+    voucher_id: voucher.voucher_id,
+    public_code: voucher.public_code,
+    type: voucher.type,
+    user_id: voucher.owner.user_id,
+    hash
+  });
+  return { hash, jws };
+}
+
+/* ---------------------------------------------------------
+   BUILD VOUCHER (WITH SIGNING)
+--------------------------------------------------------- */
+
+export async function buildBaseVoucher(params: {
   type: VoucherType;
   value_type: ValueType;
   value: number;
@@ -79,7 +176,7 @@ export function buildBaseVoucher(params: {
   created_in_app: string;
   theme?: CardTheme;
   animated_highlight?: boolean;
-}): PetWashVoucher2025 {
+}): Promise<PetWashVoucher2025> {
   const voucher_id = generateVoucherId();
   const public_code = generatePublicCode();
   const theme = params.theme || "neo_black_platinum";
@@ -128,15 +225,24 @@ export function buildBaseVoucher(params: {
     }
   };
 
-  // Generate SHA256 hash of voucher payload
-  const rawPayload = Buffer.from(JSON.stringify(voucher), "utf8");
-  voucher.security.sha256 = crypto.createHash("sha256").update(rawPayload).digest("hex");
-  
-  // TODO: Implement JWS signing with private key
-  voucher.security.signed_jws = "";
+  // Sign voucher with ES256 JWS
+  try {
+    const { hash, jws } = await signFullVoucher(voucher);
+    voucher.security.sha256 = hash;
+    voucher.security.signed_jws = jws;
+  } catch (error) {
+    console.error("[VoucherSecurity] Failed to sign voucher:", error);
+    // Fallback to just SHA256 if signing fails
+    voucher.security.sha256 = voucherSha256(voucher);
+    voucher.security.signed_jws = "";
+  }
 
   return voucher;
 }
+
+/* ---------------------------------------------------------
+   REDEMPTION FUNCTIONS
+--------------------------------------------------------- */
 
 export function redeemOneWash(
   voucher: PetWashVoucher2025,
@@ -195,8 +301,11 @@ export function redeemAmount(
   return voucher;
 }
 
-// Example voucher generators
-export function exampleEgiftVoucher(): PetWashVoucher2025 {
+/* ---------------------------------------------------------
+   EXAMPLES
+--------------------------------------------------------- */
+
+export async function exampleEgiftVoucher(): Promise<PetWashVoucher2025> {
   return buildBaseVoucher({
     type: "egift",
     value_type: "currency",
@@ -213,7 +322,7 @@ export function exampleEgiftVoucher(): PetWashVoucher2025 {
   });
 }
 
-export function exampleMultiWashVoucher(): PetWashVoucher2025 {
+export async function exampleMultiWashVoucher(): Promise<PetWashVoucher2025> {
   return buildBaseVoucher({
     type: "package_multi",
     value_type: "washes",

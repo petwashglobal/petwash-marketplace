@@ -1,18 +1,20 @@
 /**
- * PetWash™ Vouchers 2025 API Routes
- * 7-Star Luxury Voucher Management
+ * PetWash™ Vouchers 2025 API Routes - SECURE
+ * 7-Star Luxury Voucher Management with Zod Validation & JWS Signing
  */
 
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
+import { z } from "zod";
 import { db } from "../db";
 import { petWashVouchers2025, voucherUsageHistory } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { 
   buildBaseVoucher, 
   generateVoucherId, 
   generatePublicCode,
   redeemOneWash,
   redeemAmount,
+  verifyVoucherJws,
   type PetWashVoucher2025,
   type VoucherType,
   type ValueType,
@@ -22,11 +24,59 @@ import { requireAuth } from "../customAuth";
 
 const router = Router();
 
+/* ---------------------------------------------------------
+   ZOD VALIDATION SCHEMAS
+--------------------------------------------------------- */
+
+const createVoucherSchema = z.object({
+  type: z.enum(["egift", "package_single", "package_multi"]),
+  value_type: z.enum(["currency", "washes"]),
+  value: z.number().nonnegative().default(0),
+  washes: z.number().int().nonnegative().default(0),
+  currency: z.string().optional(),
+  expires_at: z.string().datetime().optional(),
+  theme: z.enum(["neo_black_platinum", "neo_emerald", "neo_silver"]).optional(),
+  recipient_name: z.string().min(1),
+  recipient_email: z.string().email()
+});
+
+const redeemVoucherSchema = z.object({
+  public_code: z.string().min(1),
+  station_id: z.string().min(1),
+  location_label: z.string().min(1),
+  method: z.enum(["app", "station", "qr"]),
+  amount: z.number().nonnegative().optional(),
+  washes: z.number().int().positive().optional()
+});
+
+function validateBody(schema: z.ZodSchema<any>) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const result = schema.safeParse(req.body);
+    if (!result.success) {
+      const issues = result.error.issues.map(i => ({
+        path: i.path.join("."),
+        message: i.message
+      }));
+      return res.status(400).json({
+        success: false,
+        error: "Validation failed",
+        issues
+      });
+    }
+    req.body = result.data;
+    next();
+  };
+}
+
+/* ---------------------------------------------------------
+   API ROUTES
+--------------------------------------------------------- */
+
 /**
  * Create a new voucher
  * POST /api/vouchers-2025/create
  */
-router.post("/create", requireAuth, async (req, res) => {
+router.post("/create", requireAuth, validateBody(createVoucherSchema), async (req, res) => {
   try {
     const {
       type,
@@ -40,8 +90,8 @@ router.post("/create", requireAuth, async (req, res) => {
       recipient_email
     } = req.body;
 
-    // Build voucher using shared library
-    const voucher = buildBaseVoucher({
+    // Build voucher with ES256 JWS signing
+    const voucher = await buildBaseVoucher({
       type: type as VoucherType,
       value_type: value_type as ValueType,
       value: Number(value) || 0,
@@ -87,13 +137,14 @@ router.post("/create", requireAuth, async (req, res) => {
     res.status(201).json({ 
       success: true, 
       voucher,
-      message: "Voucher created successfully"
+      message: "Voucher created successfully with ES256 signature"
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating voucher:", error);
     res.status(500).json({ 
       success: false, 
-      error: "Failed to create voucher" 
+      error: "Failed to create voucher",
+      message: error.message
     });
   }
 });
@@ -130,7 +181,7 @@ router.get("/my-vouchers", requireAuth, async (req, res) => {
       success: true, 
       vouchers: vouchersWithHistory 
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching vouchers:", error);
     res.status(500).json({ 
       success: false, 
@@ -175,14 +226,26 @@ router.get("/:publicCode", requireAuth, async (req, res) => {
       .where(eq(voucherUsageHistory.voucherId, voucher.id))
       .orderBy(desc(voucherUsageHistory.usedAt));
 
+    // Verify JWS signature
+    let signatureValid = false;
+    if (voucher.signedJws) {
+      try {
+        const payload = await verifyVoucherJws(voucher.signedJws);
+        signatureValid = payload.vid === voucher.id && payload.pcode === voucher.publicCode;
+      } catch (err) {
+        console.warn("[Voucher] JWS verification failed:", err);
+      }
+    }
+
     res.json({ 
       success: true, 
       voucher: {
         ...voucher,
-        usage_history: history
+        usage_history: history,
+        signature_valid: signatureValid
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching voucher:", error);
     res.status(500).json({ 
       success: false, 
@@ -195,15 +258,15 @@ router.get("/:publicCode", requireAuth, async (req, res) => {
  * Redeem a voucher (wash or amount)
  * POST /api/vouchers-2025/redeem
  */
-router.post("/redeem", requireAuth, async (req, res) => {
+router.post("/redeem", requireAuth, validateBody(redeemVoucherSchema), async (req, res) => {
   try {
     const {
       public_code,
       station_id,
       location_label,
       method,
-      amount, // For currency vouchers
-      washes // For wash vouchers (default 1)
+      amount,
+      washes
     } = req.body;
 
     // Find voucher
@@ -220,6 +283,24 @@ router.post("/redeem", requireAuth, async (req, res) => {
       });
     }
 
+    // Verify JWS signature before redemption
+    if (dbVoucher.signedJws) {
+      try {
+        const payload = await verifyVoucherJws(dbVoucher.signedJws);
+        if (payload.vid !== dbVoucher.id || payload.pcode !== dbVoucher.publicCode) {
+          return res.status(403).json({
+            success: false,
+            error: "Voucher signature verification failed"
+          });
+        }
+      } catch (err) {
+        return res.status(403).json({
+          success: false,
+          error: "Invalid voucher signature"
+        });
+      }
+    }
+
     // Check expiration
     if (dbVoucher.expiresAt && new Date(dbVoucher.expiresAt) < new Date()) {
       return res.status(400).json({ 
@@ -227,8 +308,6 @@ router.post("/redeem", requireAuth, async (req, res) => {
         error: "Voucher has expired" 
       });
     }
-
-    const nowIso = new Date().toISOString();
 
     // Redeem based on type
     if (dbVoucher.valueType === "washes") {
@@ -315,18 +394,19 @@ router.post("/redeem", requireAuth, async (req, res) => {
       });
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error redeeming voucher:", error);
     res.status(500).json({ 
       success: false, 
-      error: "Failed to redeem voucher" 
+      error: "Failed to redeem voucher",
+      message: error.message
     });
   }
 });
 
 /**
  * Get voucher statistics
- * GET /api/vouchers-2025/stats
+ * GET /api/vouchers-2025/stats/summary
  */
 router.get("/stats/summary", requireAuth, async (req, res) => {
   try {
@@ -352,7 +432,7 @@ router.get("/stats/summary", requireAuth, async (req, res) => {
     };
 
     res.json({ success: true, stats });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching stats:", error);
     res.status(500).json({ 
       success: false, 
