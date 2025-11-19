@@ -15,6 +15,8 @@ import { z } from 'zod';
 import { db } from '../db';
 import { nayaxQrRedemptions } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
+import { eventPublisher } from '../services/EventPublisher';
+import { DomainEventType } from '@shared/events';
 
 const router = Router();
 
@@ -253,6 +255,32 @@ router.post('/settle', requireAuth, async (req, res) => {
     const { transactionId, amount } = validationResult.data;
     
     const result = await NayaxSparkService.settleTransaction(transactionId, amount);
+    
+    if (result.success) {
+      try {
+        await eventPublisher.publishEvent(
+          DomainEventType.PAYMENT_CAPTURED,
+          {
+            transactionId,
+            amount: amount || 0,
+            currency: 'ILS',
+            paymentMethod: 'nayax',
+          },
+          {
+            aggregateType: 'transaction',
+            aggregateId: transactionId,
+            userId: (req as any).user?.id,
+          }
+        );
+        
+        logger.info('[Nayax API] Domain event published: PAYMENT_CAPTURED', { transactionId });
+      } catch (eventError: any) {
+        logger.error('[Nayax API] Failed to publish domain event', {
+          transactionId,
+          error: eventError.message,
+        });
+      }
+    }
     
     res.json(result);
     

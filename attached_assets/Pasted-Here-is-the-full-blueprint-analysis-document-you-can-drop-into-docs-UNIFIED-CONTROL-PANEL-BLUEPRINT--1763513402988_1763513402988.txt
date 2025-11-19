@@ -1,0 +1,567 @@
+Here is the full blueprint analysis document you can drop into
+docs/UNIFIED_CONTROL_PANEL_BLUEPRINT_ANALYSIS.md and edit with your team.
+
+⸻
+
+Unified Control Panel Blueprint - Alignment Analysis (2025)
+
+System: Pet Wash Group - Central Control Panel for all platforms
+Scope: Web + Mobile (iOS + Android)
+Date: November 2025
+
+⸻
+
+1. Purpose of this document
+
+This document compares your Unified Control Panel Blueprint with the current production architecture and defines:
+	•	What already fits perfectly
+	•	What is missing and needs to be built
+	•	How to implement it in three realistic phases
+	•	Technical impact on database, services, events, and mobile apps
+
+The goal is to give the team a clear Build-Plan-Edit loop:
+design → implement → test → refine, without breaking existing systems.
+
+⸻
+
+2. High level summary
+	•	Alignment score: ~85 percent
+	•	Architecture style: Event driven, multi tenant, multi platform
+	•	Risk: Low, because changes are additive (no breaking changes)
+	•	Primary benefit: One control panel to manage all platforms, all countries, all roles from one brain.
+
+The blueprint upgrades the system from:
+	•	Simple admin plus end user
+	•	Basic payments, basic station view
+
+To:
+	•	Full enterprise control panel
+	•	Departments, roles, fleets, logistics, health and safety, inventory, partner revenue, advanced notifications, and mobile field operations.
+
+⸻
+
+3. Assumptions
+
+The analysis assumes:
+	•	Backend is TypeScript based (Node)
+	•	Database is PostgreSQL (Neon or similar)
+	•	Auth is Google / Firebase style with JWT and roles
+	•	Frontend is React or similar SPA, mobile uses React Native or Expo
+	•	Existing platforms already talk to a shared API layer
+
+If any of these change, the blueprint still applies, but some implementation details differ.
+
+⸻
+
+4. Existing system summary
+
+Today the system already has:
+	1.	Users and auth
+	•	Core user table
+	•	Basic roles (admin, customer)
+	•	Google sign in in place or planned
+	2.	Payments and finance
+	•	Integration with Nayax and card terminals
+	•	Support for wash payments, e gift, discount logic
+	3.	Loyalty system
+	•	Memberships
+	•	Points or discounts
+	•	First wash promotions
+	•	Senior discounts logic planned
+	4.	Station management
+	•	Stations list
+	•	Basic status (online or offline)
+	•	Some telemetry and transaction logs
+
+What is missing is the full company level control panel that sees and controls everything across all platforms.
+
+⸻
+
+5. Blueprint summary
+
+Your Unified Control Panel Blueprint introduces:
+	1.	Departments
+	•	Operations
+	•	Finance
+	•	Logistics and fleet
+	•	Health and safety
+	•	Support and customer care
+	•	Sales and partnerships
+	•	Technology and dev ops
+	•	Marketing and brand
+	•	HR and compliance
+	2.	Role model (RBAC)
+At least 11 clear role types, for example:
+	•	Super admin (Pet Wash Ltd headquarters)
+	•	Country admin
+	•	City or council admin
+	•	Franchise owner
+	•	Station manager
+	•	Field technician
+	•	Logistics and driver
+	•	Finance and accounting
+	•	Customer support
+	•	Marketing manager
+	•	Viewer or auditor
+	3.	Platform registry
+	•	Each app (Hub, Academy, Booking, Franchise, Support, Internal tools) is a platform
+	•	Control panel knows which user has which permissions on which platform
+	4.	Event driven architecture
+	•	Domain events like:
+	•	StationStatusChanged
+	•	WashCompleted
+	•	PaymentCaptured
+	•	InventoryLow
+	•	IncidentReported
+	•	FieldUpdateSubmitted
+	•	PartnerPayoutGenerated
+	•	Event bus (Redis pub or sub or similar) for internal services
+	5.	Core new modules
+	•	Logistics and fleet management
+	•	Inventory and supplies per station
+	•	Health and safety incidents with photos
+	•	Mobile field operations with live updates and images
+	•	Partner revenue sharing and settlements
+	•	Unified notifications engine (email, SMS, push, in app)
+
+⸻
+
+6. Alignment matrix
+
+6.1 Components and alignment
+	•	User and auth:
+	•	Alignment: 95 percent
+	•	Current system already close
+	•	Need only to extend with departments and richer roles
+	•	Payments and finance:
+	•	Alignment: 80 percent
+	•	Integration exists
+	•	Need revenue sharing, settlements, and partner payouts
+	•	Loyalty system:
+	•	Alignment: 100 percent
+	•	Blueprint assumes strong loyalty module
+	•	System already moving in that direction
+	•	Station management:
+	•	Alignment: 60 percent
+	•	Need full lifecycle statuses and richer telemetry
+	•	Logistics and fleet:
+	•	Alignment: 0 percent
+	•	Needs to be built from scratch
+	•	Inventory tracking:
+	•	Alignment: 0 percent
+	•	Needs to be built from scratch
+	•	Health and safety:
+	•	Alignment: 0 percent
+	•	Needs a separate module
+	•	Mobile field operations:
+	•	Alignment: 40 percent
+	•	Some mobile flows exist
+	•	Need a proper field update and tasks model
+	•	Partner revenue:
+	•	Alignment: 20 percent
+	•	Some numbers exist in finance
+	•	Need a structured partner agreements model
+	•	Event driven architecture:
+	•	Alignment: 0 percent
+	•	Needs a proper event bus and catalog
+
+⸻
+
+7. Ten critical gaps and how the blueprint solves them
+
+7.1 No RBAC granularity
+	•	Current: Admin vs customer
+	•	Problem: No separation between HQ, city, franchise, support, etc.
+	•	Blueprint fix:
+	•	Add roles table (role key, label, department)
+	•	Add user_roles table (user id, role id, scope type, scope id)
+	•	Scope type can be global, country, city, station, partner
+
+This enables:
+	•	One user can be global admin and also city admin in one city
+	•	Franchise owners see only their stations
+	•	City staff see only their city stations
+
+⸻
+
+7.2 No logistics and fleet management
+	•	Current: No structured way to manage:
+	•	Installations
+	•	Maintenance visits
+	•	Vehicle usage
+	•	Driver schedules
+	•	Blueprint fix:
+	•	logistics_tasks table
+	•	type (install, service, repair, inspection, relocation)
+	•	status (planned, assigned, in progress, completed, blocked)
+	•	station id
+	•	assigned technician id
+	•	due date and time
+	•	vehicles table
+	•	plate number
+	•	capacity
+	•	default driver
+
+Mobile app for field technicians:
+	•	See tasks assigned today
+	•	Navigate with Waze link from task
+	•	Upload photos before and after
+	•	Mark tasks done or blocked
+
+⸻
+
+7.3 No event driven architecture
+	•	Current: Direct service calls, some logs
+	•	Problem: Hard to plug in new flows like alerts, reports, partner payouts
+	•	Blueprint fix:
+	•	Create events catalog with:
+	•	type
+	•	payload JSON
+	•	source service
+	•	created_at
+	•	Use Redis or similar pub or sub for live events
+	•	Consumers:
+	•	Notification service
+	•	Analytics and reporting
+	•	Finance service
+	•	Station health dashboards
+
+⸻
+
+7.4 No automated settlements
+	•	Current: Payments stored but not automatically split
+	•	Problem: Manual spreadsheets for councils, partners, franchisees
+	•	Blueprint fix:
+	•	partner_agreements table
+	•	partner id
+	•	partner type (city, council, land owner, franchise, sponsor)
+	•	revenue share percent
+	•	minimum and maximum conditions
+	•	settlements table
+	•	partner id
+	•	period (month or week)
+	•	gross revenue
+	•	partner share
+	•	Pet Wash share
+	•	status (pending, approved, paid)
+
+Settlement task:
+	•	Run monthly or weekly job
+	•	Aggregate transactions by station and partner
+	•	Use agreement rules
+	•	Generate settlement rows
+	•	Optionally export to accounting or bank files
+
+⸻
+
+7.5 No K9000 station lifecycle
+	•	Current: Online or offline only
+	•	Problem: No proper states for install, testing, maintenance, decommission
+	•	Blueprint fix:
+	•	station_status enum or string:
+	•	draft
+	•	planned
+	•	installing
+	•	testing
+	•	active
+	•	maintenance
+	•	decommissioned
+	•	Control panel can:
+	•	Show stations by status
+	•	Restrict payments for non active stations
+	•	Trigger different alerts by status
+
+⸻
+
+7.6 No inventory tracking
+	•	Current: Soap, conditioner, disinfectant, and other supplies not tracked centrally
+	•	Problem: Run out of consumables, bad user experience, emergency fixes
+	•	Blueprint fix:
+	•	supplies table
+	•	name
+	•	category (soap, disinfectant, accessories)
+	•	unit type (liters, units)
+	•	station_supplies table
+	•	station id
+	•	supply id
+	•	current level
+	•	reorder threshold
+	•	Events:
+	•	InventoryLow when supply level below threshold
+	•	Control panel:
+	•	Dashboard of stations by inventory risk
+	•	Export list for purchase orders
+
+⸻
+
+7.7 No health and safety incident reporting
+	•	Current: No structured incident log
+	•	Problem: Risk for compliance, insurance, and brand
+	•	Blueprint fix:
+	•	incidents table
+	•	station id
+	•	reported by user or staff
+	•	time
+	•	type (slip, electrical, water leak, injury, other)
+	•	severity
+	•	description
+	•	status (open, in review, resolved)
+	•	incident_photos table
+	•	incident id
+	•	file path or URL
+	•	Workflows:
+	•	Trigger notifications to H and S officer
+	•	Attach actions and resolution notes
+
+⸻
+
+7.8 No mobile field operations
+	•	Current: Technicians lack a central app for tasks, photos, notes
+	•	Blueprint fix:
+	•	field_updates table
+	•	station id
+	•	user id (technician)
+	•	task id (optional)
+	•	description
+	•	status
+	•	field_update_photos table
+	•	Mobile features:
+	•	View tasks list per day
+	•	Tap to open navigation in Waze
+	•	Upload before and after photos
+	•	Scan QR at station to auto select station
+	•	Report issues and mark as complete
+
+⸻
+
+7.9 No partner revenue sharing
+	•	Current: Some understanding of splits with councils and land owners, but not structured
+	•	Blueprint fix:
+	•	partners table
+	•	name
+	•	type (council, mall, park, petrol station, franchise, sponsor)
+	•	contact and billing info
+	•	station_partner_links table
+	•	station id
+	•	partner id
+	•	agreement details and percent
+	•	Integrated with settlements (section 7.4)
+
+⸻
+
+7.10 No unified notifications
+	•	Current: Notifications are fragmented or manual (email, WhatsApp, calls)
+	•	Blueprint fix:
+	•	notifications service with queue
+	•	Channels:
+	•	Email
+	•	SMS
+	•	Push notifications
+	•	In app alerts
+	•	Triggers:
+	•	New incident
+	•	Station down
+	•	Inventory low
+	•	New partner payout ready
+	•	New booking or cancellation
+	•	Senior discount approval
+
+⸻
+
+8. Database impact
+
+All changes are additive:
+	•	New tables:
+	•	departments
+	•	roles
+	•	user_roles
+	•	platforms and user_platform_access (if needed)
+	•	logistics_tasks
+	•	vehicles
+	•	supplies, station_supplies
+	•	incidents, incident_photos
+	•	field_updates, field_update_photos
+	•	partners, partner_agreements, station_partner_links
+	•	settlements
+	•	events (event store)
+	•	notifications (optional table for logs)
+	•	Changes to existing tables:
+	•	stations:
+	•	add status
+	•	add links to partner, city, and country
+	•	users:
+	•	link to department (optional)
+
+No existing column needs to be removed or changed in a breaking way.
+
+⸻
+
+9. Technology stack alignment
+	•	Backend language: TypeScript - fully aligned with blueprint
+	•	Database: PostgreSQL - perfect for the relational models
+	•	Events: Redis pub or sub or similar - standard for Node stacks
+	•	Mobile: React Native or Expo - good fit for field operations app
+	•	Auth: Google OAuth and JWT - ready for RBAC extensions
+
+No new core technology is forced by the blueprint. It mainly adds structure and modules on top of what you already have.
+
+⸻
+
+10. Three phase implementation plan
+
+This plan is built so the system remains stable at all times.
+
+Phase 1 - Foundation (2 to 3 days of focused work)
+
+Goal: Add structure without changing visible behavior.
+
+Tasks:
+	1.	RBAC and departments
+	•	Create departments, roles, user_roles
+	•	Migrate existing admin users into the new role model
+	•	Keep old checks working while adding new role checks for the control panel
+	2.	Platform registry
+	•	Create platforms table (name, key, description)
+	•	Optionally user_platform_access if needed
+	•	Register all current platforms (Hub, Booking, Franchise, Academy, etc)
+	3.	Event catalog setup
+	•	Create events table and enums for event types
+	•	Implement small helper to publish and consume events
+	•	Start publishing non critical events (for example log only):
+	•	UserLoggedIn
+	•	StationStatusChanged
+	•	WashCompleted
+	4.	Control panel shell
+	•	Add Control Panel section in admin app
+	•	Show simple dashboard (counts only) using new models
+	•	No advanced actions yet, only read side
+
+Result:
+	•	Clean foundation for all later modules
+	•	No user facing risk, only internal improvements
+
+⸻
+
+Phase 2 - Core modules (about 1 week)
+
+Goal: Turn the control panel into a serious internal tool.
+
+Modules:
+	1.	Logistics and fleet
+	•	logistics_tasks CRUD and API
+	•	Basic UI for creating tasks and assigning technicians
+	•	Simple list and filter by date and station
+	2.	Finance and settlements
+	•	partners, partner_agreements
+	•	Monthly settlement job
+	•	Basic settlements table and export to CSV
+	3.	Event bus
+	•	Hook Redis or similar
+	•	Subscribe from:
+	•	notification service
+	•	analytics reporter
+	4.	RBAC enforcement
+	•	Implement route guards in backend and frontend according to new roles
+	•	Add simple role management screen in control panel
+
+Result:
+	•	HQ sees logistics tasks, partners, settlements
+	•	Events wiring is working
+	•	Roles are enforced more precisely
+
+⸻
+
+Phase 3 - Mobile and advanced (2 or more weeks)
+
+Goal: Deliver the full 2025 experience.
+
+Components:
+	1.	Mobile field operations
+	•	Build or extend mobile app
+	•	Technician sees tasks
+	•	Tap to open Waze with station location
+	•	Upload photos and notes for tasks
+	2.	Health and safety
+	•	Incident reporting page in control panel
+	•	Basic public form or staff only form to report incident
+	•	Workflow for review and resolution
+	3.	Inventory management
+	•	Add supplies and station supply status
+	•	Hook inventory data to control panel dashboard
+	•	Event based alerts when inventory goes under threshold
+	4.	Unified notifications
+	•	Create notifications micro service or module
+	•	Wire event types to notifications
+	•	Define templates per channel (email, SMS, push, in app)
+
+Result:
+	•	Full multi department, multi platform control panel
+	•	Real time vision into operations, health, finances, fleets, inventory
+	•	Strong base for franchise and global scaling
+
+⸻
+
+11. Risks and mitigation
+	1.	Risk: Role confusion for early users
+	•	Mitigation: Keep old admin flag while new roles are tested
+	•	Log role checks in staging and confirm before hard switch
+	2.	Risk: Event storm or noisy logs
+	•	Mitigation: Start with a small set of events and grow slowly
+	•	Add simple rate limits or filters if needed
+	3.	Risk: Overly complex UI
+	•	Mitigation: Release the control panel in vertical slices:
+	•	Logistics first
+	•	Then finance and settlements
+	•	Then H and S and inventory
+
+⸻
+
+12. Team and effort suggestions
+
+For a small focused team, a realistic setup:
+	•	1 senior backend engineer - architecture, data, events
+	•	1 frontend or full stack engineer - control panel UI
+	•	1 mobile engineer - field app (or web app optimized for mobile)
+	•	1 product or ops owner - defines roles, workflows, and real life usage
+
+With this setup the plan above is achievable in about 3 to 4 calendar weeks of focused effort, while continuing normal operations.
+
+⸻
+
+13. Build Plan - Editable outline for the team
+
+You can paste this into your task manager or project board.
+
+Phase 1 - Foundation
+	•	Create departments, roles, user roles tables
+	•	Migrate existing admins to new RBAC model
+	•	Register platforms (Hub, Booking, Franchise, Academy, Support, Internal)
+	•	Implement event store table and simple publisher
+	•	Start logging non critical events
+	•	Add Control Panel shell in admin app with counts
+
+Phase 2 - Core Modules
+	•	Implement logistics tasks model, API, and UI
+	•	Implement vehicles model and assign to tasks
+	•	Implement partners and partner agreements
+	•	Implement settlements job and export
+	•	Wire Redis or similar event bus
+	•	Add RBAC enforcement in backend and frontend
+	•	Add role management UI in control panel
+
+Phase 3 - Mobile and Advanced
+	•	Build or extend field technician mobile app
+	•	Add Waze integration for each station task
+	•	Implement incidents and incident photos
+	•	Implement inventory and station supplies
+	•	Implement notifications module and templates
+	•	Connect event triggers to notifications
+
+⸻
+
+If you want, next step I can draft:
+	•	Concrete TypeScript interfaces and sample Prisma or SQL schema
+	•	Example event definitions and handlers
+	•	Sample React screens for the Control Panel home, Logistics, Finance, and H and S
+
+So you can hand this directly to your dev team and start coding.

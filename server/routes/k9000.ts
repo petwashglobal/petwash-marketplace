@@ -23,6 +23,8 @@ import { eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { k9000StationBookingEngine } from '../services/booking-engines/k9000/K9000StationBookingEngine';
+import { eventPublisher } from '../services/EventPublisher';
+import { DomainEventType } from '@shared/events';
 
 const router = express.Router();
 
@@ -217,6 +219,43 @@ router.post('/wash/start_cycle', async (req, res) => {
       userAgent: req.headers['user-agent'] || null,
       previousHash: null,
     });
+    
+    // === STEP 4.5: PUBLISH DOMAIN EVENT ===
+    
+    try {
+      const transaction = await db
+        .select()
+        .from(nayaxTransactions)
+        .where(eq(nayaxTransactions.id, transactionId))
+        .limit(1);
+      
+      const amount = transaction.length > 0 ? parseFloat(transaction[0].amount) : 0;
+      
+      await eventPublisher.publishEvent(
+        DomainEventType.WASH_STARTED,
+        {
+          washId,
+          stationId: stationInfo?.stationId || machineId,
+          customerId: customerUid,
+          programType: washType,
+          amount,
+        },
+        {
+          aggregateType: 'wash',
+          aggregateId: washId,
+          userId: customerUid,
+          ipAddress: clientIP,
+          userAgent: req.headers['user-agent'],
+        }
+      );
+      
+      logger.info('[K9000 Wash] Domain event published: WASH_STARTED', { washId });
+    } catch (eventError: any) {
+      logger.error('[K9000 Wash] Failed to publish domain event', {
+        washId,
+        error: eventError.message,
+      });
+    }
     
     // === STEP 5: SEND SUCCESS RESPONSE ===
     

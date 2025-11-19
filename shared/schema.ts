@@ -85,6 +85,25 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Domain Events (Event Store for Event-Driven Architecture)
+export const domainEvents = pgTable("domain_events", {
+  id: serial("id").primaryKey(),
+  eventId: varchar("event_id").unique().notNull(), // UUID
+  eventType: varchar("event_type").notNull(), // "station.created", "wash.completed", etc.
+  aggregateType: varchar("aggregate_type"), // "station", "transaction", "booking"
+  aggregateId: varchar("aggregate_id"),
+  payload: jsonb("payload").notNull(),
+  metadata: jsonb("metadata"), // IP, user agent, user ID
+  version: integer("version").default(1),
+  occurredAt: timestamp("occurred_at").defaultNow(),
+  publishedAt: timestamp("published_at"),
+  isPublished: boolean("is_published").default(false),
+}, (table) => [
+  index("idx_domain_events_type").on(table.eventType),
+  index("idx_domain_events_aggregate").on(table.aggregateType, table.aggregateId),
+  index("idx_domain_events_occurred_at").on(table.occurredAt),
+]);
+
 // Customer table (for custom authentication system)
 export const customers = pgTable("customers", {
   id: serial("id").primaryKey(),
@@ -437,6 +456,49 @@ export const adminActivityLogs = pgTable("admin_activity_logs", {
   ipAddress: varchar("ip_address"),
   userAgent: varchar("user_agent"),
   timestamp: timestamp("timestamp").defaultNow(),
+});
+
+// ============================================================================
+// RBAC (Role-Based Access Control) - Unified Control Panel
+// ============================================================================
+
+// Departments table - organizational units
+export const departments = pgTable("departments", {
+  id: serial("id").primaryKey(),
+  key: varchar("key").unique().notNull(), // "executive", "operations", "logistics", etc.
+  label: varchar("label").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+});
+
+// Roles table - user roles mapped to departments
+export const roles = pgTable("roles", {
+  id: serial("id").primaryKey(),
+  key: varchar("key").unique().notNull(), // "super_admin", "city_manager", etc.
+  label: varchar("label").notNull(),
+  departmentId: integer("department_id").references(() => departments.id),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+});
+
+// Control Panel Platforms - different from service platforms (walk_my_pet, etc.)
+export const controlPanelPlatforms = pgTable("control_panel_platforms", {
+  id: serial("id").primaryKey(),
+  key: varchar("key").unique().notNull(), // "petwash_hub", "petwash_manager", etc.
+  label: varchar("label").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+});
+
+// User Roles mapping - assigns roles to users with optional scope
+export const userRoles = pgTable("user_roles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(), // Firebase UID
+  roleId: integer("role_id").references(() => roles.id).notNull(),
+  scopeType: varchar("scope_type"), // "global", "country", "city", "station", "partner"
+  scopeId: varchar("scope_id"), // Entity ID for scope
+  grantedAt: timestamp("granted_at").defaultNow(),
+  grantedBy: varchar("granted_by"), // Admin who granted this
 });
 
 // Employee Hierarchy - Tree model for approval workflows
@@ -6637,6 +6699,97 @@ export const stations = pgTable("stations", {
   locationIdx: index("station_location_idx").on(table.locationId),
 }));
 
+// ===== LOGISTICS & FLEET MANAGEMENT =====
+
+// Logistics tasks for field operations (deliveries, installations, etc.)
+export const logisticsTasks = pgTable("logistics_tasks", {
+  id: serial("id").primaryKey(),
+  taskNumber: varchar("task_number").unique().notNull(),
+  type: varchar("type").notNull(),
+  status: varchar("status").default("pending"),
+  stationId: integer("station_id").references(() => stations.id).notNull(),
+  description: text("description").notNull(),
+  assignedToUserId: varchar("assigned_to_user_id"),
+  preferredWindowStart: timestamp("preferred_window_start"),
+  preferredWindowEnd: timestamp("preferred_window_end"),
+  failureReason: text("failure_reason"),
+  createdByUserId: varchar("created_by_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => ({
+  statusIdx: index("logistics_task_status_idx").on(table.status),
+  assignedUserIdx: index("logistics_task_assigned_user_idx").on(table.assignedToUserId),
+  stationIdx: index("logistics_task_station_idx").on(table.stationId),
+  typeIdx: index("logistics_task_type_idx").on(table.type),
+}));
+
+// Fleet vehicles for logistics operations
+export const logisticsVehicles = pgTable("logistics_vehicles", {
+  id: serial("id").primaryKey(),
+  label: varchar("label").notNull(),
+  type: varchar("type").notNull(),
+  plateNumber: varchar("plate_number").unique().notNull(),
+  driverUserId: varchar("driver_user_id"),
+  capacityKg: integer("capacity_kg"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  driverIdx: index("logistics_vehicle_driver_idx").on(table.driverUserId),
+  activeIdx: index("logistics_vehicle_active_idx").on(table.isActive),
+}));
+
+// ===== MOBILE FIELD OPERATIONS =====
+
+// Field updates for technicians (mobile app)
+export const fieldUpdates = pgTable("field_updates", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").references(() => stations.id).notNull(),
+  taskId: integer("task_id").references(() => logisticsTasks.id),
+  createdByUserId: varchar("created_by_user_id").notNull(),
+  message: text("message").notNull(),
+  status: varchar("status"), // "before", "during", "after", "issue"
+  tags: jsonb("tags"), // ["installation", "maintenance", "before", "after"]
+  metadata: jsonb("metadata"), // Device info, GPS coords
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  stationIdx: index("field_update_station_idx").on(table.stationId),
+  taskIdx: index("field_update_task_idx").on(table.taskId),
+  createdAtIdx: index("field_update_created_at_idx").on(table.createdAt),
+  statusIdx: index("field_update_status_idx").on(table.status),
+}));
+
+// Field update photos
+export const fieldUpdatePhotos = pgTable("field_update_photos", {
+  id: serial("id").primaryKey(),
+  fieldUpdateId: integer("field_update_id").references(() => fieldUpdates.id, { onDelete: 'cascade' }).notNull(),
+  fileName: varchar("file_name").notNull(),
+  fileUrl: varchar("file_url").notNull(),
+  fileSizeBytes: integer("file_size_bytes"),
+  mimeType: varchar("mime_type"),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+}, (table) => ({
+  fieldUpdateIdx: index("field_update_photo_field_update_idx").on(table.fieldUpdateId),
+}));
+
+// Staff devices for push notifications
+export const staffDevices = pgTable("staff_devices", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  platform: varchar("platform").notNull(), // "ios", "android"
+  deviceModel: varchar("device_model"),
+  osVersion: varchar("os_version"),
+  appVersion: varchar("app_version"),
+  pushToken: varchar("push_token"),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("staff_device_user_idx").on(table.userId),
+  platformIdx: index("staff_device_platform_idx").on(table.platform),
+  pushTokenIdx: index("staff_device_push_token_idx").on(table.pushToken),
+}));
+
 // ===== VEHICLES TABLE =====
 export const vehicles = pgTable("vehicles", {
   id: serial("id").primaryKey(),
@@ -7168,3 +7321,154 @@ export interface MarketplaceSearchResponse {
   platform: MarketplacePlatformId;
   filters: MarketplaceSearchFilters;
 }
+
+// ===== FINANCE & SETTLEMENTS - PARTNER REVENUE SHARING =====
+
+/**
+ * Partners table - Manages revenue sharing partners (municipalities, franchises, etc.)
+ */
+export const partners = pgTable("partners", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  type: varchar("type").notNull(), // "municipality", "shopping_center", "pet_store_chain", "gas_station_chain", "franchise", "other"
+  contactEmail: varchar("contact_email"),
+  contactPhone: varchar("contact_phone"),
+  revenueSharePercent: decimal("revenue_share_percent", { precision: 5, scale: 2 }), // e.g., "15.00" for 15%
+  contractStart: timestamp("contract_start"),
+  contractEnd: timestamp("contract_end"),
+  isActive: boolean("is_active").default(true),
+  billingAddress: text("billing_address"),
+  taxId: varchar("tax_id"), // For Israeli compliance
+  bankDetails: jsonb("bank_details"), // Encrypted bank info
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+/**
+ * Partner agreements - Specific revenue sharing agreements per station/location
+ */
+export const partnerAgreements = pgTable("partner_agreements", {
+  id: serial("id").primaryKey(),
+  partnerId: integer("partner_id").references(() => partners.id).notNull(),
+  stationId: integer("station_id").references(() => stations.id),
+  revenueSharePercent: decimal("revenue_share_percent", { precision: 5, scale: 2 }).notNull(),
+  minimumMonthlyAmount: decimal("minimum_monthly_amount", { precision: 10, scale: 2 }),
+  maximumMonthlyAmount: decimal("maximum_monthly_amount", { precision: 10, scale: 2 }),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+/**
+ * Settlements - Automated revenue sharing settlements with audit trail
+ */
+export const settlements = pgTable("settlements", {
+  id: serial("id").primaryKey(),
+  settlementNumber: varchar("settlement_number").unique().notNull(), // "SETTLE-2025-001"
+  partnerId: integer("partner_id").references(() => partners.id).notNull(),
+  periodType: varchar("period_type").default("monthly"), // "weekly", "monthly", "quarterly"
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  grossRevenue: decimal("gross_revenue", { precision: 12, scale: 2 }).notNull(),
+  partnerShare: decimal("partner_share", { precision: 12, scale: 2 }).notNull(),
+  petwashShare: decimal("petwash_share", { precision: 12, scale: 2 }).notNull(),
+  vatAmount: decimal("vat_amount", { precision: 12, scale: 2 }),
+  status: varchar("status").default("pending"), // "pending", "approved", "paid", "disputed"
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  paidAt: timestamp("paid_at"),
+  paymentReference: varchar("payment_reference"),
+  notes: text("notes"),
+  auditHash: varchar("audit_hash"), // SHA-256 for immutability
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Type exports
+export type Partner = typeof partners.$inferSelect;
+export type InsertPartner = typeof partners.$inferInsert;
+export type PartnerAgreement = typeof partnerAgreements.$inferSelect;
+export type InsertPartnerAgreement = typeof partnerAgreements.$inferInsert;
+export type Settlement = typeof settlements.$inferSelect;
+export type InsertSettlement = typeof settlements.$inferInsert;
+
+// Zod validation schemas
+export const insertPartnerSchema = createInsertSchema(partners, {
+  type: z.enum(['municipality', 'shopping_center', 'pet_store_chain', 'gas_station_chain', 'franchise', 'other']),
+  contactEmail: z.string().email().optional(),
+  revenueSharePercent: z.string().regex(/^\d+\.\d{2}$/).optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const updatePartnerSchema = insertPartnerSchema.partial();
+
+export const insertPartnerAgreementSchema = createInsertSchema(partnerAgreements, {
+  revenueSharePercent: z.string().regex(/^\d+\.\d{2}$/),
+}).omit({ id: true, createdAt: true });
+
+export const updatePartnerAgreementSchema = insertPartnerAgreementSchema.partial();
+
+export const insertSettlementSchema = createInsertSchema(settlements, {
+  periodType: z.enum(['weekly', 'monthly', 'quarterly']),
+  status: z.enum(['pending', 'approved', 'paid', 'disputed']),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const updateSettlementSchema = insertSettlementSchema.partial();
+
+// ===== LOGISTICS & FLEET MANAGEMENT TYPES =====
+
+export type LogisticsTask = typeof logisticsTasks.$inferSelect;
+export type InsertLogisticsTask = typeof logisticsTasks.$inferInsert;
+export type LogisticsVehicle = typeof logisticsVehicles.$inferSelect;
+export type InsertLogisticsVehicle = typeof logisticsVehicles.$inferInsert;
+
+// ===== MOBILE FIELD OPERATIONS TYPES =====
+
+export type FieldUpdate = typeof fieldUpdates.$inferSelect;
+export type InsertFieldUpdate = typeof fieldUpdates.$inferInsert;
+export type FieldUpdatePhoto = typeof fieldUpdatePhotos.$inferSelect;
+export type InsertFieldUpdatePhoto = typeof fieldUpdatePhotos.$inferInsert;
+export type StaffDevice = typeof staffDevices.$inferSelect;
+export type InsertStaffDevice = typeof staffDevices.$inferInsert;
+
+// Zod validation schemas
+export const insertFieldUpdateSchema = createInsertSchema(fieldUpdates, {
+  message: z.string().min(1).max(5000),
+  status: z.enum(['before', 'during', 'after', 'issue']).optional(),
+}).omit({ id: true, createdAt: true });
+
+export const insertFieldUpdatePhotoSchema = createInsertSchema(fieldUpdatePhotos, {
+  fileName: z.string().min(1),
+  fileUrl: z.string().url(),
+  mimeType: z.string().regex(/^image\/(jpeg|jpg|png|webp)$/),
+  fileSizeBytes: z.number().max(5 * 1024 * 1024), // 5MB max
+}).omit({ id: true, uploadedAt: true });
+
+export const insertStaffDeviceSchema = createInsertSchema(staffDevices, {
+  platform: z.enum(['ios', 'android']),
+  pushToken: z.string().optional(),
+}).omit({ id: true, createdAt: true, lastSeenAt: true });
+
+export const updateStaffDeviceSchema = insertStaffDeviceSchema.partial();
+
+export const insertLogisticsTaskSchema = createInsertSchema(logisticsTasks, {
+  type: z.enum(['supply_delivery', 'parts_delivery', 'installation', 'deinstallation', 'pickup']),
+  status: z.enum(['pending', 'assigned', 'in_progress', 'completed', 'failed']).default('pending'),
+});
+
+export const updateLogisticsTaskSchema = insertLogisticsTaskSchema.partial().omit({ 
+  id: true, 
+  taskNumber: true, 
+  createdAt: true,
+  createdByUserId: true 
+});
+
+export const insertLogisticsVehicleSchema = createInsertSchema(logisticsVehicles, {
+  type: z.enum(['van', 'small_truck', 'car', 'bike']),
+});
+
+export const updateLogisticsVehicleSchema = insertLogisticsVehicleSchema.partial().omit({ 
+  id: true, 
+  createdAt: true 
+});

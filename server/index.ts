@@ -8,6 +8,7 @@ import session from "express-session";
 import { fileURLToPath } from "node:url";
 import { ensureBiometricStorage } from "./infra/biometricStorage";
 import { registerRoutes } from "./routes";
+import { startMonthlySettlementsCron } from "./cron/monthly-settlements";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -205,6 +206,11 @@ ensureBiometricStorage()
     
     // 5. Register all API routes (AFTER static files, BEFORE catchall)
     await registerRoutes(app);
+    
+    // 5a. Initialize automated cron jobs (AFTER routes, BEFORE error handlers)
+    console.log('[Cron] Initializing automated jobs...');
+    startMonthlySettlementsCron();
+    console.log('[Cron] All cron jobs initialized successfully');
     
     // --- 2025 PRODUCTION SAFETY NET ---
     

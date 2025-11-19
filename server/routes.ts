@@ -26,6 +26,7 @@ import googleServicesRoutes from "./routes/google-services";
 import gmailRoutes from "./routes/gmail";
 import mobileAuthRoutes from "./routes/mobile-auth";
 import mobileBiometricRoutes from "./routes/mobile-biometric";
+import mobileFieldOpsRoutes from "./routes/mobile/field-ops";
 import biometricCertificatesRoutes from "./routes/biometric-certificates";
 import voiceRoutes from "./routes/voice";
 import aiFeedbackRoutes from "./routes/ai-feedback";
@@ -34,6 +35,7 @@ import thankYouRoutes from "./routes/send-thank-you";
 import ceoWalletRoutes from "./routes/ceo-wallet";
 import testLuxuryLaunchRoutes from "./routes/test-luxury-launch";
 import sendInvestorEventEmailRoutes from "./routes/send-investor-event-email";
+import financeSettlementsRoutes from "./routes/finance/settlements";
 import sitterSuiteRoutes from "./routes/sitter-suite";
 import seedDemoRoutes from "./routes/seed-demo";
 import academyRoutes from "./routes/academy";
@@ -77,6 +79,7 @@ import promotionsRoutes from "./routes/promotions";
 import complianceRoutes from "./routes/compliance";
 import monitoringRoutes, { trackRequestMetrics } from "./routes/monitoring";
 import { registerStaffOnboardingRoutes } from "./routes/staff-onboarding";
+import controlPanelRegistryRoutes from "./routes/control-panel-registry";
 import accountingRoutes from "./routes/accounting";
 import adminRoutes from "./routes/admin";
 import aiInsightsRoutes from "./routes/ai-insights";
@@ -96,6 +99,7 @@ import enterpriseFinanceRoutes from "./routes/enterprise-finance";
 import enterpriseHRRoutes from "./routes/enterprise-hr";
 import enterpriseLogisticsRoutes from "./routes/enterprise-logistics";
 import enterpriseOperationsRoutes from "./routes/enterprise-operations";
+import logisticsRoutes from "./routes/logistics";
 import enterpriseSalesRoutes from "./routes/enterprise-sales";
 import enterpriseSalesCRMRoutes from "./routes/enterprise-sales-crm";
 import expensesRoutes from "./routes/expenses";
@@ -122,6 +126,7 @@ import pushNotificationsRoutes from "./routes/push-notifications";
 import recaptchaRoutes from "./routes/recaptcha";
 import reviewsRoutes from "./routes/reviews";
 import securityStatusRoutes from "./routes/security-status";
+import eventsRoutes from "./routes/events";
 import sendReportRoutes from "./routes/send-report";
 import seoRoutes from "./routes/seo";
 import signaturesRoutes from "./routes/signatures";
@@ -7852,6 +7857,9 @@ self.addEventListener('notificationclick', (event) => {
   const adminRoutes = await import('./routes/admin');
   app.use('/api/admin', adminLimiter, adminRoutes.default);
   
+  // Control Panel Registry - RBAC (Role-Based Access Control)
+  app.use('/api/control-panel', apiLimiter, controlPanelRegistryRoutes);
+  
   // Employee Management routes
   const employeeRoutes = await import('./routes/employees');
   app.use('/api/employees', adminLimiter, employeeRoutes.default);
@@ -7863,6 +7871,9 @@ self.addEventListener('notificationclick', (event) => {
   // Blockchain-Style Audit Ledger routes (fraud prevention, transparency)
   const auditRoutes = await import('./routes/audit');
   app.use('/api/audit', apiLimiter, auditRoutes.default);
+  
+  // Domain Events routes (Event-Driven Architecture)
+  app.use('/api/events', adminLimiter, eventsRoutes);
   
   // Stations Management routes
   app.use('/api/admin/stations', adminLimiter, stationsRoutes);
@@ -7877,6 +7888,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/enterprise/corporate', adminLimiter, enterpriseCorporateRoutes);
   app.use('/api/enterprise/policy', adminLimiter, enterprisePolicyRoutes);
   app.use('/api/enterprise/franchise', adminLimiter, enterpriseFranchiseRoutes);
+  
+  // Logistics & Fleet Management routes (Field Operations - Phase 2)
+  app.use('/api/logistics', apiLimiter, logisticsRoutes);
   
   // Chat History routes (PostgreSQL-backed AI chat history - Nov 2025)
   const chatHistoryRoutes = await import('./routes/chat-history');
@@ -7939,6 +7953,9 @@ self.addEventListener('notificationclick', (event) => {
   // 🔐 Mobile Biometric Authentication - NIST SP 800-63B AAL2 Compliant (Passkeys, Health Data)
   app.use('/api/mobile/biometric', apiLimiter, mobileBiometricRoutes);
 
+  // 📱 Mobile Field Operations - Field updates, photo uploads, Waze integration for technicians
+  app.use('/api/mobile', apiLimiter, mobileFieldOpsRoutes);
+
   // 🔐 Biometric Certificate Verification - תעודת נכה, גימלאים, תעודת זהות, רשיון נהיגה (Document Upload + Face Matching)
   app.use('/api/biometric-certificates', uploadLimiter, biometricCertificatesRoutes);
 
@@ -7953,6 +7970,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // Nayax Webhooks (terminal transactions, settlements, refunds) - NO rate limiting
   app.use('/api/webhooks', nayaxWebhooksRoutes);
+  
+  // Finance Settlements API (automated revenue sharing for partners/municipalities)
+  app.use('/api/finance/settlements', apiLimiter, financeSettlementsRoutes);
   
   // Thank you email route (management use)
   app.use('/api', adminLimiter, thankYouRoutes);
