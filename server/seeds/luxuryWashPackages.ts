@@ -53,24 +53,38 @@ const LUXURY_PACKAGES: LuxuryPackage[] = [
 ];
 
 /**
- * Idempotent seed - only inserts if packages don't exist
+ * Idempotent seed - UPSERTS packages (updates existing or inserts new)
  */
 export async function seedLuxuryWashPackages(): Promise<void> {
   try {
     logger.info('[Seed] Starting luxury wash packages seed');
     
-    // Check if packages already exist
-    const existingPackages = await db.select().from(washPackages).where(eq(washPackages.isActive, true));
-    
-    if (existingPackages.length > 0) {
-      logger.info('[Seed] Wash packages already exist', { count: existingPackages.length });
-      return;
-    }
-    
-    // Insert all packages
+    // UPSERT each package - update if exists, insert if new
     for (const pkg of LUXURY_PACKAGES) {
-      await db.insert(washPackages).values(pkg);
-      logger.info('[Seed] Inserted wash package', { name: pkg.name });
+      // Find existing package by washCount (unique identifier)
+      const existing = await db.select()
+        .from(washPackages)
+        .where(eq(washPackages.washCount, pkg.washCount))
+        .limit(1);
+      
+      if (existing.length > 0) {
+        // UPDATE existing package
+        await db.update(washPackages)
+          .set({
+            name: pkg.name,
+            nameHe: pkg.nameHe,
+            description: pkg.description,
+            descriptionHe: pkg.descriptionHe,
+            price: pkg.price,
+            isActive: pkg.isActive
+          })
+          .where(eq(washPackages.id, existing[0].id));
+        logger.info('[Seed] Updated wash package', { name: pkg.name, washCount: pkg.washCount });
+      } else {
+        // INSERT new package
+        await db.insert(washPackages).values(pkg);
+        logger.info('[Seed] Inserted wash package', { name: pkg.name, washCount: pkg.washCount });
+      }
     }
     
     logger.info('[Seed] ✅ Luxury wash packages seeded successfully', { count: LUXURY_PACKAGES.length });

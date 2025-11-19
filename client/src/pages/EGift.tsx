@@ -46,8 +46,8 @@ export default function EGift() {
         body: JSON.stringify({
           type: 'STORED_VALUE',
           currency: 'ILS',
-          initialAmount: data.amount.toString(),
-          remainingAmount: data.amount.toString(),
+          initialAmount: data.amount,
+          remainingAmount: data.amount,
           status: 'ISSUED',
           purchaserEmail: data.purchaserEmail,
           recipientEmail: data.recipientEmail,
