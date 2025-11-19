@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import LogisticsFleetView from "@/components/control-panel/LogisticsFleetView";
+import FinanceSettlementsView from "@/components/control-panel/FinanceSettlementsView";
 
 export default function UnifiedControlPanel() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -268,22 +269,9 @@ export default function UnifiedControlPanel() {
           <LogisticsFleetView />
         </TabsContent>
 
+        {/* Finance & Settlements Module */}
         <TabsContent value="finance">
-          <Card>
-            <CardHeader>
-              <CardTitle>Finance & Settlements</CardTitle>
-              <CardDescription>
-                Partner revenue, commission tracking, and monthly settlements
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center text-muted-foreground py-12">
-                <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">Finance Module</p>
-                <p className="text-sm">Coming in next update</p>
-              </div>
-            </CardContent>
-          </Card>
+          <FinanceSettlementsView />
         </TabsContent>
 
         <TabsContent value="health-safety">
