@@ -25,6 +25,7 @@ import {
 } from "../../shared/globalCompliance";
 import { evaluateIsraeliContractorForService } from "../../shared/petwashIsraeliContractors";
 import type { IsraeliContractorProfile, PetWashServiceType } from "../../shared/petwashIsraeliContractors";
+import { requireAuth } from "../customAuth";
 
 const router = Router();
 
@@ -185,8 +186,8 @@ async function loadContractorComplianceData(contractorId: string) {
 }
 
 // GET /api/compliance/contractors/list
-// Get all contractors with their compliance status
-router.get("/contractors/list", authMiddleware, async (req: any, res) => {
+// Get all contractors with their compliance status (uses Firebase session cookies)
+router.get("/contractors/list", requireAuth, async (req: any, res) => {
   try {
     // Get all contractors
     const allContractors = await db.query.contractorProfiles.findMany({
