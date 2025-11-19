@@ -1062,8 +1062,9 @@ self.addEventListener('notificationclick', (event) => {
   // 🔐 FIREBASE AUTH SYSTEM (Legacy - for admin/employee access)
   // ========================================================================
 
-  // GET /api/auth/me - Get current authenticated user (employees or customers)
-  app.get('/api/auth/me', async (req, res) => {
+  // GET /api/auth/me-session - Get current authenticated user (employees or customers) via session cookie
+  // NOTE: /api/auth/me is reserved for mobile JWT auth, this endpoint uses Firebase session cookies
+  app.get('/api/auth/me-session', async (req, res) => {
     try {
       const token = req.cookies?.pw_session;
       if (!token) {
