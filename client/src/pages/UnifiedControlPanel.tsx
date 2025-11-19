@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import LogisticsFleetView from "@/components/control-panel/LogisticsFleetView";
 
 export default function UnifiedControlPanel() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -262,23 +263,9 @@ export default function UnifiedControlPanel() {
           </Card>
         </TabsContent>
 
-        {/* Other tabs will be built next */}
+        {/* Logistics & Fleet Module */}
         <TabsContent value="logistics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Logistics & Fleet Management</CardTitle>
-              <CardDescription>
-                Task management, vehicle tracking, and technician assignments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center text-muted-foreground py-12">
-                <Truck className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">Logistics Module</p>
-                <p className="text-sm">Coming in next update</p>
-              </div>
-            </CardContent>
-          </Card>
+          <LogisticsFleetView />
         </TabsContent>
 
         <TabsContent value="finance">
