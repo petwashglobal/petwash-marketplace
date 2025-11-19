@@ -49,6 +49,7 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Marketplace = lazy(() => import("@/pages/Marketplace"));
 const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
+const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
@@ -1383,6 +1384,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <ProviderCompliance />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/control-panel">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <UnifiedControlPanel />
             </Suspense>
           )}
         </Route>

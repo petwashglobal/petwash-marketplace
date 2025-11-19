@@ -81,6 +81,10 @@ import complianceRoutes from "./routes/compliance";
 import monitoringRoutes, { trackRequestMetrics } from "./routes/monitoring";
 import { registerStaffOnboardingRoutes } from "./routes/staff-onboarding";
 import controlPanelRegistryRoutes from "./routes/control-panel-registry";
+import controlPanelRoutes from "./routes/control-panel";
+import contractorDocumentsRoutes from "./routes/contractor-documents";
+import contractorOnboardingRoutes from "./routes/contractor-onboarding";
+import contractorInvoicesRoutes from "./routes/contractor-invoices";
 import accountingRoutes from "./routes/accounting";
 import adminRoutes from "./routes/admin";
 import aiInsightsRoutes from "./routes/ai-insights";
@@ -7862,7 +7866,15 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin', adminLimiter, adminRoutes.default);
   
   // Control Panel Registry - RBAC (Role-Based Access Control)
-  app.use('/api/control-panel', apiLimiter, controlPanelRegistryRoutes);
+  app.use('/api/control-panel/registry', apiLimiter, controlPanelRegistryRoutes);
+  
+  // Unified Control Panel - Metrics & Dashboard
+  app.use('/api/control-panel', apiLimiter, controlPanelRoutes);
+  
+  // Israeli Contractor Compliance - Documents, Onboarding, Invoices
+  app.use('/api/contractor-documents', apiLimiter, contractorDocumentsRoutes);
+  app.use('/api/contractor-onboarding', apiLimiter, contractorOnboardingRoutes);
+  app.use('/api/contractor-invoices', apiLimiter, contractorInvoicesRoutes);
   
   // Employee Management routes
   const employeeRoutes = await import('./routes/employees');
