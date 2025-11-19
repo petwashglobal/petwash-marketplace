@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Shield,
   Clock,
+  ShieldCheck,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import LogisticsFleetView from "@/components/control-panel/LogisticsFleetView";
 import FinanceSettlementsView from "@/components/control-panel/FinanceSettlementsView";
+import ComplianceView from "@/components/control-panel/ComplianceView";
 
 export default function UnifiedControlPanel() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -120,7 +122,7 @@ export default function UnifiedControlPanel() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 mb-6">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 mb-6">
           <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
             <BarChart3 className="w-4 h-4" />
             <span className="hidden sm:inline">Overview</span>
@@ -132,6 +134,10 @@ export default function UnifiedControlPanel() {
           <TabsTrigger value="finance" className="gap-2" data-testid="tab-finance">
             <DollarSign className="w-4 h-4" />
             <span className="hidden sm:inline">Finance</span>
+          </TabsTrigger>
+          <TabsTrigger value="compliance" className="gap-2" data-testid="tab-compliance">
+            <ShieldCheck className="w-4 h-4" />
+            <span className="hidden sm:inline">Compliance</span>
           </TabsTrigger>
           <TabsTrigger value="health-safety" className="gap-2" data-testid="tab-health-safety">
             <Shield className="w-4 h-4" />
@@ -272,6 +278,11 @@ export default function UnifiedControlPanel() {
         {/* Finance & Settlements Module */}
         <TabsContent value="finance">
           <FinanceSettlementsView />
+        </TabsContent>
+
+        {/* Global Compliance Brain Module */}
+        <TabsContent value="compliance">
+          <ComplianceView />
         </TabsContent>
 
         <TabsContent value="health-safety">

@@ -184,6 +184,87 @@ async function loadContractorComplianceData(contractorId: string) {
   };
 }
 
+// GET /api/compliance/contractors/list
+// Get all contractors with their compliance status
+router.get("/contractors/list", authMiddleware, async (req: any, res) => {
+  try {
+    // Get all contractors
+    const allContractors = await db.query.contractorProfiles.findMany({
+      limit: 100, // Limit to 100 for performance
+    });
+
+    // Load compliance data for each contractor
+    const contractorsWithCompliance = await Promise.all(
+      allContractors.map(async (contractor) => {
+        try {
+          const data = await loadContractorComplianceData(contractor.id);
+          if (!data) {
+            return null;
+          }
+
+          // Get latest compliance decision
+          const [latestDecision] = await db.query.complianceDecisions.findMany({
+            where: eq(complianceDecisions.contractorId, contractor.id),
+            orderBy: [desc(complianceDecisions.createdAt)],
+            limit: 1,
+          });
+
+          // Calculate average rating
+          const avgRating =
+            data.ratings.length > 0
+              ? data.ratings.reduce((sum, r) => sum + r.score, 0) / data.ratings.length
+              : 0;
+
+          // Check for critical incidents
+          const hasCriticalIncident = data.incidents.some((i) => i.severity === "critical");
+
+          return {
+            contractorId: contractor.id,
+            contractorName: `${contractor.firstName || ""} ${contractor.lastName || ""}`.trim() || "Unknown",
+            email: (contractor as any).email || "N/A",
+            serviceType: contractor.serviceTypes?.[0] || "general",
+            complianceStatus: {
+              identity: {
+                status: data.identity?.status || "pending",
+                biometricVerified: data.identity?.biometricVerified || false,
+                livenessCheck: data.identity?.livenessCheck || null,
+              },
+              criminal: data.criminalCheck || { status: "pending" },
+              driver: data.driver || null,
+              ratings: {
+                count: data.ratings.length,
+                average: avgRating,
+              },
+              incidents: {
+                total: data.incidents.length,
+                hasCritical: hasCriticalIncident,
+              },
+              latestDecision: latestDecision || null,
+            },
+          };
+        } catch (err) {
+          console.error(`[Compliance Brain] Error loading contractor ${contractor.id}:`, err);
+          return null;
+        }
+      })
+    );
+
+    // Filter out nulls
+    const validContractors = contractorsWithCompliance.filter((c) => c !== null);
+
+    res.json({
+      contractors: validContractors,
+      total: validContractors.length,
+    });
+  } catch (error: any) {
+    console.error("[Compliance Brain] List contractors error:", error);
+    res.status(500).json({
+      error: "INTERNAL_ERROR",
+      message: "Failed to list contractors",
+    });
+  }
+});
+
 // POST /api/compliance/contractors/:id/evaluate-eligibility
 // Evaluate contractor eligibility using Global Compliance Brain
 router.post("/contractors/:id/evaluate-eligibility", authMiddleware, async (req: any, res) => {
