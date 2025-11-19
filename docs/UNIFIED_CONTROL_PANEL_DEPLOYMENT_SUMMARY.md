@@ -100,7 +100,7 @@ Successfully implemented **Pet Wash Ltd Unified Control Panel** - a Microsoft/Ap
 
 - Service Layer:
   - `server/services/FinanceSettlementService.ts` - Complete settlement automation
-  - Revenue calculation with Israeli VAT (17%)
+  - Revenue calculation with Israeli VAT (18%)
   - SHA-256 audit hashing for immutability
   - CSV export for accounting systems
 
@@ -276,7 +276,7 @@ Successfully implemented **Pet Wash Ltd Unified Control Panel** - a Microsoft/Ap
   - Auto-generates settlements for all active partners
   - Calculates revenue share based on agreements
   - Sends email notifications to finance team
-  - Handles Israeli VAT (17%) calculations
+  - Handles Israeli VAT (18%) calculations
 
 ---
 
@@ -305,7 +305,7 @@ Successfully implemented **Pet Wash Ltd Unified Control Panel** - a Microsoft/Ap
 - ✅ Timestamp tracking on all operations
 
 ### Israeli Compliance
-- ✅ VAT calculations (17%)
+- ✅ VAT calculations (18%)
 - ✅ Tax ID (taxId) field for partners
 - ✅ Encrypted bank details (JSONB)
 - ✅ Email notifications with Hebrew support

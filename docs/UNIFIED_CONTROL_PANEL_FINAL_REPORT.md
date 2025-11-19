@@ -61,7 +61,7 @@ Hub, Manager, Partner, Franchise, Academy, Payments, Loyalty, API, Support, KYC
 - ✅ Partner types: municipality, shopping_center, franchise, gas_station_chain
 - ✅ Station-specific revenue sharing agreements
 - ✅ Automated monthly settlement generation
-- ✅ Israeli VAT calculations (17%)
+- ✅ Israeli VAT calculations (18%)
 - ✅ SHA-256 audit hashing (tamper-proof records)
 - ✅ Email notifications to finance team
 - ✅ CSV export for accounting systems
@@ -237,7 +237,7 @@ Hub, Manager, Partner, Franchise, Academy, Payments, Loyalty, API, Support, KYC
 - ✅ Timestamp tracking on all operations
 
 ### **Israeli Legal Compliance**
-- ✅ VAT calculations (17%)
+- ✅ VAT calculations (18%)
 - ✅ Tax ID (taxId) field for partners
 - ✅ Encrypted bank details (JSONB)
 - ✅ Tamper-proof settlement records
@@ -259,7 +259,7 @@ Hub, Manager, Partner, Franchise, Academy, Payments, Loyalty, API, Support, KYC
   - Auto-generates settlements for all active partners
   - Calculates revenue share based on agreements
   - Sends email notifications to finance team
-  - Handles Israeli VAT (17%) calculations
+  - Handles Israeli VAT (18%) calculations
 
 ### **Event-Driven Alerts**
 - **Inventory Low**: Auto-detection when supply < threshold
@@ -357,7 +357,7 @@ Unified communication:
 
 ### **6. Legal Compliance**
 Israeli and international standards:
-- Israeli VAT (17%)
+- Israeli VAT (18%)
 - SHA-256 audit hashing
 - H&S incident documentation
 - Notification audit trail
