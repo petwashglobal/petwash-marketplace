@@ -28,6 +28,9 @@ import mobileAuthRoutes from "./routes/mobile-auth";
 import mobileBiometricRoutes from "./routes/mobile-biometric";
 import mobileFieldOpsRoutes from "./routes/mobile/field-ops";
 import healthSafetyRoutes from "./routes/health-safety";
+import authRoutes from "./routes/auth";
+import complianceIdentityRoutes from "./routes/compliance-identity";
+import complianceBrainRoutes from "./routes/compliance-brain";
 import biometricCertificatesRoutes from "./routes/biometric-certificates";
 import voiceRoutes from "./routes/voice";
 import aiFeedbackRoutes from "./routes/ai-feedback";
@@ -7969,11 +7972,20 @@ self.addEventListener('notificationclick', (event) => {
   // Mobile Authentication (iOS/Android Google Sign-In with OAuth2 + Biometric)
   app.use('/api/mobile-auth', apiLimiter, mobileAuthRoutes);
 
+  // 🔐 Mobile App Authentication - Email/Password with JWT tokens, refresh token rotation, biometric unlock
+  app.use('/api/auth', apiLimiter, authRoutes);
+
   // 🔐 Mobile Biometric Authentication - NIST SP 800-63B AAL2 Compliant (Passkeys, Health Data)
   app.use('/api/mobile/biometric', apiLimiter, mobileBiometricRoutes);
 
   // 📱 Mobile Field Operations - Field updates, photo uploads, Waze integration for technicians
   app.use('/api/mobile', apiLimiter, mobileFieldOpsRoutes);
+
+  // 🛡️ Global Compliance Brain - Unified eligibility engine (identity, criminal checks, driver safety, ratings, incidents)
+  app.use('/api/compliance-brain', apiLimiter, complianceBrainRoutes);
+
+  // 📋 Biometric Identity Documents - Passport/ID/License upload with multer, face matching, KYC verification
+  app.use('/api/contractors', uploadLimiter, complianceIdentityRoutes);
 
   // 🏥 Health & Safety - Incident reporting with photo documentation
   app.use('/api/health-safety', apiLimiter, healthSafetyRoutes);

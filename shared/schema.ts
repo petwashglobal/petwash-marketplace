@@ -33,6 +33,9 @@ export const sessions = pgTable(
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
   email: varchar("email").unique(),
+  passwordHash: varchar("password_hash"), // For mobile app email/password authentication
+  roles: jsonb("roles").default(sql`'[]'::jsonb`), // ["admin","dispatcher","contractor","driver"]
+  permissions: jsonb("permissions").default(sql`'[]'::jsonb`), // Additional permissions array
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -8091,3 +8094,232 @@ export const insertComplianceVerificationLogSchema = createInsertSchema(complian
   verificationType: z.enum(['tax_registration', 'national_insurance', 'independence_check', 'monthly_audit']),
   checkStatus: z.enum(['passed', 'failed', 'warning']),
 }).omit({ id: true, createdAt: true });
+
+// ========================================
+// Mobile App & Global Compliance Brain
+// ========================================
+
+// Devices table for mobile app tracking
+export const devices = pgTable("devices", {
+  id: varchar("id").primaryKey(), // device_id from mobile app
+  userId: varchar("user_id").notNull(),
+  platform: varchar("platform").notNull(), // "ios" or "android"
+  osVersion: varchar("os_version"),
+  appVersion: varchar("app_version"),
+  pushToken: varchar("push_token"), // FCM/APNS push token
+  isBlocked: boolean("is_blocked").default(false),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_devices_user").on(table.userId),
+  index("idx_devices_last_seen").on(table.lastSeenAt),
+]);
+
+// Refresh tokens table for mobile app authentication
+export const refreshTokens = pgTable("refresh_tokens", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  deviceId: varchar("device_id"),
+  tokenHash: varchar("token_hash").notNull(), // bcrypt hashed refresh token
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => [
+  index("idx_refresh_tokens_user").on(table.userId),
+  index("idx_refresh_tokens_device").on(table.deviceId),
+  index("idx_refresh_tokens_expires").on(table.expiresAt),
+]);
+
+// Identity Verifications table (passport, drivers license, ID card)
+export const identityVerifications = pgTable("identity_verifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull(),
+  documentType: varchar("document_type").notNull(), // "id_card", "drivers_license", "passport"
+  status: varchar("status").default("pending"), // "pending", "approved", "rejected", "expired"
+  provider: varchar("provider"), // "SUMSUB", "ONFIDO", "TRULIOO", "mobile_app"
+  details: jsonb("details"), // { country:"IL", biometricVerified:true, mrzChecked:true, ... }
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+}, (table) => [
+  index("idx_identity_verifications_contractor").on(table.contractorId),
+  index("idx_identity_verifications_status").on(table.status),
+]);
+
+// Identity Document Files table
+export const identityDocumentFiles = pgTable("identity_document_files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  identityVerificationId: varchar("identity_verification_id").notNull(),
+  filePath: varchar("file_path").notNull(), // relative path or GCS URL
+  mimeType: varchar("mime_type").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_identity_files_verification").on(table.identityVerificationId),
+]);
+
+// Liveness Checks table (selfie with face matching)
+export const livenessChecks = pgTable("liveness_checks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull(),
+  status: varchar("status").notNull(), // "passed", "failed"
+  riskScore: real("risk_score").notNull(), // 0.0 - 1.0
+  failureReason: text("failure_reason"),
+  selfieUrl: varchar("selfie_url"), // URL to selfie image
+  faceMatchScore: real("face_match_score"), // 0.0 - 1.0 (80%+ required)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_liveness_checks_contractor").on(table.contractorId),
+  index("idx_liveness_checks_status").on(table.status),
+]);
+
+// Criminal Background Checks table
+export const criminalBackgroundChecks = pgTable("criminal_background_checks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull(),
+  country: varchar("country").notNull(),
+  status: varchar("status").notNull(), // "clear", "record_found", "pending"
+  detailsMasked: text("details_masked"), // Redacted details for privacy
+  blockingOffenses: jsonb("blocking_offenses"), // ["animal_cruelty", "sex_offense", "violence"]
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+}, (table) => [
+  index("idx_criminal_checks_contractor").on(table.contractorId),
+  index("idx_criminal_checks_status").on(table.status),
+]);
+
+// Driver Safety Profiles table
+export const driverSafetyProfiles = pgTable("driver_safety_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").unique().notNull(),
+  licenseNumber: varchar("license_number"),
+  licenseClass: varchar("license_class"),
+  licenseExpiryDate: date("license_expiry_date"),
+  licenseCountry: varchar("license_country").default("IL"),
+  hasActiveBan: boolean("has_active_ban").default(false),
+  banExpiryDate: date("ban_expiry_date"),
+  pointsOnLicense: integer("points_on_license").default(0),
+  lastIncidentDate: timestamp("last_incident_date"),
+  safetyScore: real("safety_score").default(1.0), // 0.0 - 1.0
+  riskLevel: varchar("risk_level").default("medium"), // "low", "medium", "high"
+  declaresCleanRecord: boolean("declares_clean_record").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_driver_safety_contractor").on(table.contractorId),
+  index("idx_driver_safety_ban").on(table.hasActiveBan),
+]);
+
+// Contractor Ratings table
+export const contractorRatings = pgTable("contractor_ratings", {
+  id: serial("id").primaryKey(),
+  contractorId: varchar("contractor_id").notNull(),
+  raterType: varchar("rater_type").notNull(), // "customer", "dispatcher", "internal"
+  score: integer("score").notNull(), // 1-5 stars
+  comment: text("comment"),
+  jobId: varchar("job_id"), // Reference to specific job
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_ratings_contractor").on(table.contractorId),
+  index("idx_contractor_ratings_score").on(table.score),
+  index("idx_contractor_ratings_created").on(table.createdAt),
+]);
+
+// Contractor Incidents table
+export const contractorIncidents = pgTable("contractor_incidents", {
+  id: serial("id").primaryKey(),
+  contractorId: varchar("contractor_id").notNull(),
+  type: varchar("type").notNull(), // "pet_injury", "customer_complaint", "safety_violation", "driving_accident", "fraud", "late", "no_show", "other"
+  severity: varchar("severity").notNull(), // "low", "medium", "high", "critical"
+  description: text("description").notNull(),
+  occurredAt: timestamp("occurred_at").notNull(),
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNotes: text("resolution_notes"),
+  autoBlocked: boolean("auto_blocked").default(false), // Critical incidents auto-block contractor
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_contractor_incidents_contractor").on(table.contractorId),
+  index("idx_contractor_incidents_type").on(table.type),
+  index("idx_contractor_incidents_severity").on(table.severity),
+  index("idx_contractor_incidents_occurred").on(table.occurredAt),
+]);
+
+// Assignments table (jobs that need contractor assignment)
+export const assignments = pgTable("assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  city: varchar("city"),
+  country: varchar("country").default("IL"),
+  type: varchar("type").notNull(), // "install", "service", "delivery", "cleaning", "grooming", "sitting", "walking"
+  scheduledFor: timestamp("scheduled_for"),
+  status: varchar("status").default("pending"), // "pending", "assigned", "completed", "cancelled"
+  assignedContractorId: varchar("assigned_contractor_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_assignments_status").on(table.status),
+  index("idx_assignments_scheduled").on(table.scheduledFor),
+  index("idx_assignments_contractor").on(table.assignedContractorId),
+]);
+
+// Compliance Decisions table (Global Compliance Brain output)
+export const complianceDecisions = pgTable("compliance_decisions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull(),
+  assignmentId: varchar("assignment_id"),
+  decision: varchar("decision").notNull(), // "approved", "pending", "rejected", "blocked"
+  score: real("score").notNull(), // 0.0 - 1.0
+  reasons: jsonb("reasons").notNull(), // Array of failure codes
+  triggeredRules: jsonb("triggered_rules").notNull(), // Detailed rule violations
+  decidedBy: varchar("decided_by").default("system"), // "system" or admin user id
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_compliance_decisions_contractor").on(table.contractorId),
+  index("idx_compliance_decisions_assignment").on(table.assignmentId),
+  index("idx_compliance_decisions_decision").on(table.decision),
+  index("idx_compliance_decisions_created").on(table.createdAt),
+]);
+
+// Compliance Audit Logs table (Blockchain-style audit trail)
+export const complianceAuditLogs = pgTable("compliance_audit_logs", {
+  id: serial("id").primaryKey(),
+  contractorId: varchar("contractor_id").notNull(),
+  assignmentId: varchar("assignment_id"),
+  decisionId: varchar("decision_id"),
+  action: varchar("action").notNull(), // "evaluate", "manual_override", "status_change", "identity_upload", "document_verified"
+  actorType: varchar("actor_type").notNull(), // "system", "admin"
+  actorId: varchar("actor_id"), // User ID of admin who took action
+  fromStatus: varchar("from_status"),
+  toStatus: varchar("to_status"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_compliance_audit_logs_contractor").on(table.contractorId),
+  index("idx_compliance_audit_logs_decision").on(table.decisionId),
+  index("idx_compliance_audit_logs_action").on(table.action),
+  index("idx_compliance_audit_logs_created").on(table.createdAt),
+]);
+
+// Type exports for new tables
+export type Device = typeof devices.$inferSelect;
+export type InsertDevice = typeof devices.$inferInsert;
+export type RefreshToken = typeof refreshTokens.$inferSelect;
+export type InsertRefreshToken = typeof refreshTokens.$inferInsert;
+export type IdentityVerification = typeof identityVerifications.$inferSelect;
+export type InsertIdentityVerification = typeof identityVerifications.$inferInsert;
+export type IdentityDocumentFile = typeof identityDocumentFiles.$inferSelect;
+export type InsertIdentityDocumentFile = typeof identityDocumentFiles.$inferInsert;
+export type LivenessCheck = typeof livenessChecks.$inferSelect;
+export type InsertLivenessCheck = typeof livenessChecks.$inferInsert;
+export type CriminalBackgroundCheck = typeof criminalBackgroundChecks.$inferSelect;
+export type InsertCriminalBackgroundCheck = typeof criminalBackgroundChecks.$inferInsert;
+export type DriverSafetyProfile = typeof driverSafetyProfiles.$inferSelect;
+export type InsertDriverSafetyProfile = typeof driverSafetyProfiles.$inferInsert;
+export type ContractorRating = typeof contractorRatings.$inferSelect;
+export type InsertContractorRating = typeof contractorRatings.$inferInsert;
+export type ContractorIncident = typeof contractorIncidents.$inferSelect;
+export type InsertContractorIncident = typeof contractorIncidents.$inferInsert;
+export type Assignment = typeof assignments.$inferSelect;
+export type InsertAssignment = typeof assignments.$inferInsert;
+export type ComplianceDecision = typeof complianceDecisions.$inferSelect;
+export type InsertComplianceDecision = typeof complianceDecisions.$inferInsert;
+export type ComplianceAuditLog = typeof complianceAuditLogs.$inferSelect;
+export type InsertComplianceAuditLog = typeof complianceAuditLogs.$inferInsert;
