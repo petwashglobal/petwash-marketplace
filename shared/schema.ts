@@ -7502,6 +7502,22 @@ export const settlements = pgTable("settlements", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+/**
+ * CPI Index History - Israeli Consumer Price Index (מדד המחירים לצרכן)
+ * Legal Requirement: Israeli law requires automatic indexation for rent, mortgages, taxes, wages
+ * Data Source: Bank of Israel / CBS (Central Bureau of Statistics)
+ * Update Schedule: Monthly on the 15th
+ */
+export const cpiIndexHistory = pgTable("cpi_index_history", {
+  id: serial("id").primaryKey(),
+  month: varchar("month").notNull(), // "2025-01" format (YYYY-MM)
+  indexValue: decimal("index_value", { precision: 10, scale: 2 }).notNull(), // 104.10
+  yearOverYearChange: decimal("year_over_year_change", { precision: 5, scale: 2 }), // 2.5 (%)
+  source: varchar("source").default("Bank of Israel"), // "CBS", "Bank of Israel", "Manual"
+  publishedAt: timestamp("published_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Type exports
 export type Partner = typeof partners.$inferSelect;
 export type InsertPartner = typeof partners.$inferInsert;
@@ -7509,6 +7525,8 @@ export type PartnerAgreement = typeof partnerAgreements.$inferSelect;
 export type InsertPartnerAgreement = typeof partnerAgreements.$inferInsert;
 export type Settlement = typeof settlements.$inferSelect;
 export type InsertSettlement = typeof settlements.$inferInsert;
+export type CPIIndexHistory = typeof cpiIndexHistory.$inferSelect;
+export type InsertCPIIndexHistory = typeof cpiIndexHistory.$inferInsert;
 
 // Zod validation schemas
 export const insertPartnerSchema = createInsertSchema(partners, {

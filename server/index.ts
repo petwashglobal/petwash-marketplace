@@ -218,6 +218,22 @@ ensureBiometricStorage()
     startMonthlySettlementsCron();
     console.log('[Cron] All cron jobs initialized successfully');
     
+    // 5c. Initialize Israeli CPI data (AFTER routes, BEFORE serving)
+    console.log('[CPI] Initializing Israeli Consumer Price Index data...');
+    const IsraeliCPIService = (await import('./services/IsraeliCPIService')).default;
+    try {
+      const isCurrent = await IsraeliCPIService.isCPIDataCurrent();
+      if (!isCurrent) {
+        console.log('[CPI] No CPI data found - seeding initial data...');
+        await IsraeliCPIService.seedInitialData();
+      } else {
+        const latest = await IsraeliCPIService.getLatestCPI();
+        console.log(`[CPI] ✅ CPI data current - Latest: ${latest?.month} = ${latest?.indexValue}`);
+      }
+    } catch (error) {
+      console.error('[CPI] Failed to initialize CPI data:', error);
+    }
+    
     // --- 2025 PRODUCTION SAFETY NET ---
     
     // 6. Global Error Handler (Prevents Server Crashes)

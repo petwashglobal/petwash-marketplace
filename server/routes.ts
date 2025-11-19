@@ -106,6 +106,7 @@ import enterpriseSalesCRMRoutes from "./routes/enterprise-sales-crm";
 import expensesRoutes from "./routes/expenses";
 import franchiseRoutes from "./routes/franchise";
 import inventoryRoutes from "./routes/inventory";
+import israeliCPIRoutes from "./routes/israeli-cpi";
 import franchiseMgmtRoutes from "./routes/franchise-mgmt";
 import geminiWatchdogRoutes from "./routes/gemini-watchdog";
 import globalFormsRoutes from "./routes/globalForms";
@@ -7963,6 +7964,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // 📦 Inventory Management - Station supplies, low stock alerts, purchase orders
   app.use('/api/inventory', apiLimiter, inventoryRoutes);
+
+  // 📊 Israeli CPI (Consumer Price Index) - מדד המחירים לצרכן - Israeli law compliance (rent, mortgages, wages indexation)
+  app.use('/api/israeli-cpi', israeliCPIRoutes);
 
   // 🔐 Biometric Certificate Verification - תעודת נכה, גימלאים, תעודת זהות, רשיון נהיגה (Document Upload + Face Matching)
   app.use('/api/biometric-certificates', uploadLimiter, biometricCertificatesRoutes);
