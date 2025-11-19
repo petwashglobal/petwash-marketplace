@@ -271,6 +271,64 @@ export const eVoucherEvents = pgTable("e_voucher_events", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// PetWash Vouchers 2025 - 7-Star Luxury System
+export const petWashVouchers2025 = pgTable("petwash_vouchers_2025", {
+  // Core IDs
+  id: varchar("id").primaryKey(), // voucher_id (PWV-2025-XXX)
+  publicCode: varchar("public_code").notNull().unique(), // PW-XXXX-XXXX-XXXX
+  
+  // Type & Classification
+  type: varchar("type").notNull(), // egift, package_single, package_multi
+  valueType: varchar("value_type").notNull(), // currency, washes
+  
+  // Visual Theme (7-Star Metal)
+  tier: varchar("tier").notNull().default("7star_metal"),
+  cardTheme: varchar("card_theme").notNull().default("neo_black_platinum"), // neo_black_platinum, neo_emerald, neo_silver
+  animatedHighlight: boolean("animated_highlight").default(true),
+  highresSvgUrl: text("highres_svg_url"),
+  
+  // Value Rules
+  valueOriginal: decimal("value_original", { precision: 12, scale: 2 }),
+  valueRemaining: decimal("value_remaining", { precision: 12, scale: 2 }),
+  washesOriginal: integer("washes_original"),
+  washesRemaining: integer("washes_remaining"),
+  currency: varchar("currency").default("ILS"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  transferable: boolean("transferable").default(true),
+  
+  // Owner Information
+  ownerId: varchar("owner_id").notNull(), // User ID
+  ownerName: varchar("owner_name").notNull(),
+  ownerEmail: varchar("owner_email").notNull(),
+  createdInApp: varchar("created_in_app").default("PetWash Hub 1.0.0"),
+  
+  // Security (SHA256 + JWS)
+  qrUrl: text("qr_url"),
+  sha256Hash: text("sha256_hash").notNull(),
+  signedJws: text("signed_jws"),
+  
+  // Usage Tracking
+  lastUsed: timestamp("last_used", { withTimezone: true }),
+  redeemMethod: varchar("redeem_method").default("app"), // app, station, qr
+  
+  // Timestamps
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Voucher 2025 Usage History (Redemption Ledger)
+export const voucherUsageHistory = pgTable("voucher_usage_history_2025", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  voucherId: varchar("voucher_id").notNull().references(() => petWashVouchers2025.id, { onDelete: 'cascade' }),
+  usedAt: timestamp("used_at", { withTimezone: true }).notNull().defaultNow(),
+  stationId: varchar("station_id"),
+  locationLabel: text("location_label"),
+  method: varchar("method").notNull(), // app, station, qr
+  amountUsed: decimal("amount_used", { precision: 12, scale: 2 }),
+  washesUsed: integer("washes_used"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Wash history
 export const washHistory = pgTable("wash_history", {
   id: serial("id").primaryKey(),
