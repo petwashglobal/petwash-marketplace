@@ -92,6 +92,7 @@ import chatHistoryRoutes from "./routes/chat-history";
 import conciergeRoutes from "./routes/concierge";
 import contractorRoutes from "./routes/contractor";
 import contractsRoutes from "./routes/contracts";
+import israeliContractorComplianceRoutes from "./routes/israeli-contractor-compliance";
 import dataRightsRoutes from "./routes/dataRights";
 import deploymentRoutes from "./routes/deployment";
 import devicesRoutes from "./routes/devices";
@@ -7942,6 +7943,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // Compliance Control Tower - Authority documents, provider licenses, dispute resolution
   app.use('/api/compliance', adminLimiter, complianceRoutes);
+  
+  // 🇮🇱 Israeli Contractor Compliance - Tax verification, commission calculation, independence scoring (prevents employee misclassification)
+  app.use('/api/israeli-compliance', apiLimiter, israeliContractorComplianceRoutes);
   
   // Performance Monitoring - Database, API, and system metrics
   app.use('/api/monitoring', apiLimiter, monitoringRoutes);

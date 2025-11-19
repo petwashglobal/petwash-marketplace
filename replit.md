@@ -84,6 +84,7 @@ Before adding ANY new code, you MUST:
 - **HR & Employee Systems**: Routes and services for employee management, hierarchy, and onboarding, including auto-approval workflows and WhatsApp notifications.
 - **Enterprise Route Infrastructure**: Extensive set of 119 route files covering franchise management, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
 - **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments, enforcing access levels and department permissions.
+- **Israeli Contractor Compliance System**: Production-ready marketplace broker model (like Airbnb) preventing employee misclassification. Features Osek Patur/Murshe tax verification, National Insurance tracking, 15-25% commission calculation, independence scoring algorithm, monthly compliance audits, risk monitoring, SHA-256 audit trails. Includes 4 new database tables (provider_tax_compliance, provider_commissions, provider_independence_score, compliance_verification_logs) and comprehensive service layer (IsraeliContractorComplianceService.ts) ensuring full Israeli Labor Law 2025 compliance.
 
 ### ✅ Unified Control Panel - Enterprise Orchestration Layer (100% COMPLETE)
 **Completion Date**: November 19, 2025

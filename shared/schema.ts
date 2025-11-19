@@ -7709,3 +7709,192 @@ export const insertInventoryRefillSchema = createInsertSchema(inventoryRefills, 
   newLevel: z.number().min(0),
   notes: z.string().max(1000).optional(),
 }).omit({ id: true, refilledAt: true });
+
+// ============================================================================
+// ISRAELI CONTRACTOR COMPLIANCE SYSTEM - Marketplace Model (Like Airbnb)
+// ============================================================================
+
+export const providerTaxCompliance = pgTable("provider_tax_compliance", {
+  id: serial("id").primaryKey(),
+  providerId: varchar("provider_id").notNull(), // walker_id, sitter_id, or driver_id
+  providerType: varchar("provider_type").notNull(), // "walker", "sitter", "driver", "groomer", "trainer"
+  
+  // Israeli Tax Registration (MANDATORY)
+  taxIdType: varchar("tax_id_type").notNull(), // "osek_patur" (עוסק פטור) or "osek_murshe" (עוסק מורשה)
+  taxId: varchar("tax_id").notNull(), // Israeli Tax ID number
+  taxRegistrationNumber: varchar("tax_registration_number"), // ח.פ או מספר עוסק
+  isVatRegistered: boolean("is_vat_registered").default(false), // Must be true if earning >₪120,000/year
+  vatNumber: varchar("vat_number"), // Only if isVatRegistered=true
+  
+  // National Insurance (Bituach Leumi) Registration
+  nationalInsuranceNumber: varchar("national_insurance_number").notNull(), // מספר ביטוח לאומי
+  isBituachLeumiActive: boolean("is_bituach_leumi_active").default(true), // Active coverage
+  
+  // Verification Status
+  verificationStatus: varchar("verification_status").default("pending"), // "pending", "verified", "rejected", "expired"
+  verifiedAt: timestamp("verified_at"),
+  verifiedByUserId: varchar("verified_by_user_id"), // Admin who verified
+  rejectionReason: text("rejection_reason"),
+  expiresAt: timestamp("expires_at"), // Tax registration must be renewed annually
+  
+  // Document Uploads
+  taxRegistrationDocumentUrl: varchar("tax_registration_document_url"), // Uploaded proof
+  nationalInsuranceDocumentUrl: varchar("national_insurance_document_url"),
+  
+  // Compliance Flags
+  isCompliant: boolean("is_compliant").default(false), // Overall compliance status
+  riskLevel: varchar("risk_level").default("low"), // "low", "medium", "high" (employee misclassification risk)
+  lastComplianceCheckAt: timestamp("last_compliance_check_at"),
+  nextComplianceCheckAt: timestamp("next_compliance_check_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_provider_tax_provider").on(table.providerId),
+  index("idx_provider_tax_status").on(table.verificationStatus),
+  index("idx_provider_tax_expires").on(table.expiresAt),
+]);
+
+export const providerCommissions = pgTable("provider_commissions", {
+  id: serial("id").primaryKey(),
+  commissionId: varchar("commission_id").unique().notNull(), // "COMM-2025-001"
+  providerId: varchar("provider_id").notNull(),
+  providerType: varchar("provider_type").notNull(),
+  bookingId: integer("booking_id").notNull(), // Reference to walk_bookings, sitter_bookings, etc.
+  
+  // Commission Calculation (Pet Wash takes 15-25% broker fee)
+  customerPaidAmount: decimal("customer_paid_amount", { precision: 10, scale: 2 }).notNull(), // Total customer payment (ILS)
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).notNull(), // 15.00 to 25.00 (percentage)
+  commissionAmount: decimal("commission_amount", { precision: 10, scale: 2 }).notNull(), // Platform fee (ILS)
+  providerEarnings: decimal("provider_earnings", { precision: 10, scale: 2 }).notNull(), // Provider gets this
+  
+  // Israeli VAT Tracking
+  includesVat: boolean("includes_vat").default(true), // Israeli VAT 18%
+  vatAmount: decimal("vat_amount", { precision: 10, scale: 2 }), // VAT portion
+  
+  // Payment Status
+  status: varchar("status").default("pending"), // "pending", "paid", "held", "refunded"
+  paidToProviderAt: timestamp("paid_to_provider_at"),
+  paymentMethod: varchar("payment_method"), // "bank_transfer", "direct_deposit"
+  paymentReferenceId: varchar("payment_reference_id"),
+  
+  // Invoice Generation
+  invoiceGenerated: boolean("invoice_generated").default(false),
+  invoiceNumber: varchar("invoice_number"),
+  invoiceUrl: varchar("invoice_url"),
+  
+  transactionDate: timestamp("transaction_date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_provider_comm_provider").on(table.providerId),
+  index("idx_provider_comm_status").on(table.status),
+  index("idx_provider_comm_date").on(table.transactionDate),
+]);
+
+export const providerIndependenceScore = pgTable("provider_independence_score", {
+  id: serial("id").primaryKey(),
+  providerId: varchar("provider_id").unique().notNull(),
+  providerType: varchar("provider_type").notNull(),
+  
+  // Independence Metrics (Higher score = Lower employee risk)
+  totalClients: integer("total_clients").default(1), // Number of different platforms/clients
+  exclusivityScore: decimal("exclusivity_score", { precision: 5, scale: 2 }).default("100.00"), // 0-100 (100=exclusive to PetWash, 0=many clients)
+  
+  // Revenue Distribution (Diversification = Independence)
+  petwashRevenuePercent: decimal("petwash_revenue_percent", { precision: 5, scale: 2 }).default("100.00"), // % of total income from PetWash
+  otherPlatformsRevenue: decimal("other_platforms_revenue", { precision: 10, scale: 2 }).default("0.00"), // Revenue from other sources
+  
+  // Work Pattern Analysis
+  hasOwnEquipment: boolean("has_own_equipment").default(false), // Owns car, grooming tools, etc.
+  canRefuseGigs: boolean("can_refuse_gigs").default(true), // Can decline bookings
+  setOwnRates: boolean("set_own_rates").default(false), // Can set pricing
+  hasSubstitutes: boolean("has_substitutes").default(false), // Can delegate work
+  
+  // Risk Calculation (Lower = Safer)
+  employeeRiskScore: decimal("employee_risk_score", { precision: 5, scale: 2 }).default("0.00"), // 0-100 (0=safe contractor, 100=high employee risk)
+  riskLevel: varchar("risk_level").default("low"), // "low", "medium", "high"
+  
+  // Recommendations
+  complianceRecommendations: jsonb("compliance_recommendations"), // Array of suggestions to improve independence
+  
+  lastCalculatedAt: timestamp("last_calculated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_provider_independence_provider").on(table.providerId),
+  index("idx_provider_independence_risk").on(table.riskLevel),
+]);
+
+export const complianceVerificationLogs = pgTable("compliance_verification_logs", {
+  id: serial("id").primaryKey(),
+  providerId: varchar("provider_id").notNull(),
+  providerType: varchar("provider_type").notNull(),
+  verificationType: varchar("verification_type").notNull(), // "tax_registration", "national_insurance", "independence_check", "monthly_audit"
+  
+  // Verification Results
+  checkStatus: varchar("check_status").notNull(), // "passed", "failed", "warning"
+  findings: jsonb("findings"), // Detailed results
+  actionRequired: text("action_required"),
+  
+  // Auditor Info
+  performedByUserId: varchar("performed_by_user_id"), // Admin or system
+  performedBySystem: boolean("performed_by_system").default(true), // Auto-check vs manual review
+  
+  // Compliance Actions
+  actionTaken: text("action_taken"),
+  notificationSent: boolean("notification_sent").default(false),
+  providerNotifiedAt: timestamp("provider_notified_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_compliance_logs_provider").on(table.providerId),
+  index("idx_compliance_logs_type").on(table.verificationType),
+  index("idx_compliance_logs_status").on(table.checkStatus),
+  index("idx_compliance_logs_date").on(table.createdAt),
+]);
+
+// Type exports
+export type ProviderTaxCompliance = typeof providerTaxCompliance.$inferSelect;
+export type InsertProviderTaxCompliance = typeof providerTaxCompliance.$inferInsert;
+export type ProviderCommission = typeof providerCommissions.$inferSelect;
+export type InsertProviderCommission = typeof providerCommissions.$inferInsert;
+export type ProviderIndependenceScore = typeof providerIndependenceScore.$inferSelect;
+export type InsertProviderIndependenceScore = typeof providerIndependenceScore.$inferInsert;
+export type ComplianceVerificationLog = typeof complianceVerificationLogs.$inferSelect;
+export type InsertComplianceVerificationLog = typeof complianceVerificationLogs.$inferInsert;
+
+// Zod validation schemas
+export const insertProviderTaxComplianceSchema = createInsertSchema(providerTaxCompliance, {
+  providerId: z.string().min(1),
+  providerType: z.enum(['walker', 'sitter', 'driver', 'groomer', 'trainer']),
+  taxIdType: z.enum(['osek_patur', 'osek_murshe']),
+  taxId: z.string().min(1).max(20),
+  nationalInsuranceNumber: z.string().min(1).max(20),
+  verificationStatus: z.enum(['pending', 'verified', 'rejected', 'expired']).optional(),
+  riskLevel: z.enum(['low', 'medium', 'high']).optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const updateProviderTaxComplianceSchema = insertProviderTaxComplianceSchema.partial();
+
+export const insertProviderCommissionSchema = createInsertSchema(providerCommissions, {
+  providerId: z.string().min(1),
+  providerType: z.enum(['walker', 'sitter', 'driver', 'groomer', 'trainer']),
+  bookingId: z.number().min(1),
+  customerPaidAmount: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  commissionRate: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  commissionAmount: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  providerEarnings: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  status: z.enum(['pending', 'paid', 'held', 'refunded']).optional(),
+}).omit({ id: true, commissionId: true, createdAt: true, transactionDate: true });
+
+export const insertProviderIndependenceScoreSchema = createInsertSchema(providerIndependenceScore, {
+  providerId: z.string().min(1),
+  providerType: z.enum(['walker', 'sitter', 'driver', 'groomer', 'trainer']),
+  riskLevel: z.enum(['low', 'medium', 'high']).optional(),
+}).omit({ id: true, lastCalculatedAt: true, updatedAt: true });
+
+export const insertComplianceVerificationLogSchema = createInsertSchema(complianceVerificationLogs, {
+  providerId: z.string().min(1),
+  providerType: z.enum(['walker', 'sitter', 'driver', 'groomer', 'trainer']),
+  verificationType: z.enum(['tax_registration', 'national_insurance', 'independence_check', 'monthly_audit']),
+  checkStatus: z.enum(['passed', 'failed', 'warning']),
+}).omit({ id: true, createdAt: true });
