@@ -56,6 +56,7 @@ import socialCircleRoutes from "./routes/social-circle";
 import giftCardsRoutes from "./routes/gift-cards";
 import campaignsRoutes from "./routes/campaigns";
 import meetingsRoutes from "./routes/meetings";
+import vouchers2025Routes from "./routes/vouchers-2025";
 import esignRoutes from "./routes/esign";
 import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
 import notificationsRoutes from "./routes/notifications";
@@ -8064,6 +8065,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/gps', apiLimiter, gpsTrackingRoutes);
   app.use('/api/fcm', apiLimiter, fcmRoutes);
   app.use('/api/gift-cards', giftCardsRoutes);
+  
+  // PetWash Vouchers 2025 - 7-Star Luxury System
+  app.use('/api/vouchers-2025', apiLimiter, vouchers2025Routes);
   
   // Email/SMS Campaigns (Marketing - Template Personalization)
   app.use('/api/campaigns', adminLimiter, campaignsRoutes);
