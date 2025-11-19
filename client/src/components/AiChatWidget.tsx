@@ -167,12 +167,27 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
-                <span className="text-2xl">🐕</span>
+              <div className="relative h-12 w-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden ring-2 ring-white/30">
+                <img 
+                  src="/brand/kenzo-avatar.jpeg" 
+                  alt="Kenzo - Pet Wash AI Assistant" 
+                  className={`h-full w-full object-cover transition-transform duration-200 ${
+                    isLoading ? 'scale-110 animate-pulse' : 'scale-100'
+                  }`}
+                  style={{
+                    transform: isLoading ? 'scale(1.1)' : 'scale(1)'
+                  }}
+                />
+                {isLoading && (
+                  <div className="absolute inset-0 bg-blue-500/20 animate-pulse" />
+                )}
               </div>
               <div>
                 <h3 className="text-white font-semibold text-base">קנזו - העוזר החכם</h3>
-                <p className="text-white/80 text-xs">Pet Wash™ AI Assistant</p>
+                <p className="text-white/80 text-xs flex items-center gap-1">
+                  <span className={`inline-block w-2 h-2 rounded-full ${isLoading ? 'bg-green-400 animate-pulse' : 'bg-green-300'}`} />
+                  {isLoading ? 'מדבר...' : 'מוכן לעזור'}
+                </p>
               </div>
             </div>
             <Button

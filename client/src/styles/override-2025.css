@@ -1,81 +1,8 @@
-/* override-2025.css — STRATEGIC WHITE BACKGROUND ENFORCEMENT */
+/* override-2025.css — Minimal overrides for mobile menu only */
 
 /* ========================================================================
-   LEVEL 1: ROOT & BODY - Always pure white canvas
+   MOBILE HAMBURGER MENU ONLY - Pure white background
    ======================================================================== */
-:root { 
-  color-scheme: light !important;
-  background: #fff !important;
-  background-color: #fff !important;
-}
-
-html, body {
-  background: #fff !important;
-  background-color: #fff !important;
-  background-image: none !important;
-  -webkit-text-size-adjust: 100%;
-  overscroll-behavior: none;
-}
-
-/* ========================================================================
-   LEVEL 2: PAGE STRUCTURE - Main layout containers white
-   ======================================================================== */
-#root, #app, [id*="root"], [id*="app"] {
-  background: #fff !important;
-  background-color: #fff !important;
-  background-image: none !important;
-}
-
-/* Main page container */
-main, [role="main"], .main, .page {
-  background: #fff !important;
-  background-color: #fff !important;
-  background-image: none !important;
-}
-
-/* ========================================================================
-   LEVEL 3: SECTION BACKGROUNDS - All sections white by default
-   ======================================================================== */
-section:not(.keep-bg),
-.section:not(.keep-bg),
-article:not(.keep-bg) {
-  background: #fff !important;
-  background-color: #fff !important;
-  background-image: none !important;
-}
-
-/* ========================================================================
-   LEVEL 4: HEADER & FOOTER - Pure white
-   ======================================================================== */
-header, .header, [class*="header"]:not(button),
-nav:not(.keep-bg), .navbar:not(.keep-bg), [class*="navbar"]:not(.keep-bg):not(button) {
-  background: #fff !important;
-  background-color: #fff !important;
-  background-image: none !important;
-}
-
-footer, .footer, [class*="footer"]:not(button) {
-  background: #fff !important;
-  background-color: #fff !important;
-  background-image: none !important;
-}
-
-/* ========================================================================
-   LEVEL 5: DARK MODE ANNIHILATION - Force light mode always
-   ======================================================================== */
-@media (prefers-color-scheme: dark) {
-  html, body, #root, main {
-    background: #fff !important;
-    background-color: #fff !important;
-    color: #000 !important;
-  }
-}
-
-.dark, [data-theme="dark"], [data-mode="dark"] {
-  background: #fff !important;
-  background-color: #fff !important;
-  color: #000 !important;
-}
 
 /* ========================================================================
    LEVEL 6: MOBILE HAMBURGER MENU - Pure white background
