@@ -4,6 +4,7 @@ import { Check, Sparkles, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ExpressCheckoutModal } from '@/components/ExpressCheckoutModal';
 import { CustomerSignupModal } from '@/components/CustomerSignupModal';
+import PaymentIcons from '@/components/PaymentIcons';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { t, type Language } from '@/lib/i18n';
@@ -300,6 +301,14 @@ export function WashPackages({ language }: WashPackagesProps) {
               </div>
             );
           })}
+        </div>
+
+        {/* Payment Methods - Ultra-Modern 2025 */}
+        <div className="mt-12 sm:mt-16 lg:mt-20">
+          <h3 className="text-2xl sm:text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            {language === 'he' ? 'אמצעי תשלום מאובטחים' : 'Secure Payment Methods'}
+          </h3>
+          <PaymentIcons variant="default" />
         </div>
 
         {/* Trust Indicators */}
