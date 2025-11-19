@@ -104,7 +104,8 @@ async function testES256System() {
     // Test 4: Test tamper detection
     console.log('📝 Test 4: Testing tamper detection...');
     const tamperedVoucher = { ...signedVoucher };
-    tamperedVoucher.rules.value_remaining = 999999; // Try to inflate balance
+    // Tamper with an IMMUTABLE field (value_original is protected by signature)
+    tamperedVoucher.rules.value_original = 999999; // Try to inflate original value
     
     const tamperedVerification = await verifyVoucherIntegrity(tamperedVoucher);
     if (tamperedVerification.valid) {
