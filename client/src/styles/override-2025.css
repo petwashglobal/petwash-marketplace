@@ -1,16 +1,22 @@
-/* override-2025.css — Minimal overrides for mobile menu only */
+/* override-2025.css — Mobile menu white background only */
 
-/* ========================================================================
-   MOBILE HAMBURGER MENU ONLY - Pure white background
-   ======================================================================== */
-
-/* ========================================================================
-   LEVEL 6: MOBILE HAMBURGER MENU - Pure white background
-   ======================================== */
+/* Mobile hamburger menu - white background for readability */
 .mobile-hamburger-menu-container {
   width: clamp(280px, 75vw, 400px) !important;
   background-color: #FFFFFF !important;
   border-left: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Preserve luxury glassmorphism and gradients everywhere else */
+.glass-bg,
+.glassmorphism,
+[class*="glass"],
+[class*="gradient"],
+.luxury-card,
+.luxury-section {
+  background: initial !important;
+  background-color: initial !important;
+  background-image: initial !important;
 }
 
 /* ========================================================================
