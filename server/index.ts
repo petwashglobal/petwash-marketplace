@@ -234,6 +234,16 @@ ensureBiometricStorage()
       console.error('[CPI] Failed to initialize CPI data:', error);
     }
     
+    // 5d. Initialize Control Panel Registry (AFTER routes, BEFORE serving)
+    console.log('[Control Panel] Initializing registry data...');
+    const { initializeControlPanelRegistry } = await import('./services/ControlPanelRegistry');
+    try {
+      await initializeControlPanelRegistry();
+      console.log('[Control Panel] ✅ Registry initialized successfully');
+    } catch (error) {
+      console.error('[Control Panel] Failed to initialize registry:', error);
+    }
+    
     // --- 2025 PRODUCTION SAFETY NET ---
     
     // 6. Global Error Handler (Prevents Server Crashes)
