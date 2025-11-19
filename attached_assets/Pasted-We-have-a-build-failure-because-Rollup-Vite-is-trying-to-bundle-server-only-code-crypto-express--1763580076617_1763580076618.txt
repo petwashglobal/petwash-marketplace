@@ -1,0 +1,153 @@
+We have a build failure because Rollup/Vite is trying to bundle server-only code 
+(crypto, express, jose) into the frontend. This must be separated properly.
+
+Please follow these steps EXACTLY:
+
+────────────────────────────────────────────────────────────
+1) CREATE NEW SERVER FOLDER
+────────────────────────────────────────────────────────────
+Create a folder:
+  /server
+
+Inside /server place ALL backend-only code:
+
+  /server/petwash_lux_secure_2025.ts
+  /server/voucherSecurity.ts
+  /server/validation.ts
+  /server/voucherRoutes.ts
+  /server/app.ts (new file created below)
+  /server/server.ts (optional if needed)
+
+All Express routes, signing code, and Zod validation MUST stay in /server.
+Nothing server related can live in /src or frontend bundle.
+
+────────────────────────────────────────────────────────────
+2) FRONTEND MUST NOT IMPORT SERVER FILES
+────────────────────────────────────────────────────────────
+Check all frontend files (React/Vite) and make sure:
+- they do NOT import anything from server/
+- they only call backend via HTTPS fetch requests
+
+────────────────────────────────────────────────────────────
+3) NEW BACKEND ENTRY FILE (app.ts)
+────────────────────────────────────────────────────────────
+Create this file: /server/app.ts
+
+──────────────── CODE START ────────────────
+import express from "express";
+import path from "path";
+import { voucherRouter } from "./voucherRoutes";
+
+export function createPetWashServer() {
+  const app = express();
+  app.use(express.json());
+
+  // Voucher API (secure)
+  app.use(voucherRouter);
+
+  // Health endpoint
+  app.get("/health", (_req, res) => {
+    res.json({ ok: true, time: new Date().toISOString() });
+  });
+
+  return app;
+}
+──────────────── CODE END ──────────────────
+
+────────────────────────────────────────────────────────────
+4) SERVER LAUNCH FILE (server.ts)
+────────────────────────────────────────────────────────────
+Create file: /server/server.ts
+
+──────────────── CODE START ────────────────
+import { createPetWashServer } from "./app";
+
+const app = createPetWashServer();
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log("PetWash Secure 2025 backend running on port " + PORT);
+});
+──────────────── CODE END ──────────────────
+
+────────────────────────────────────────────────────────────
+5) REPLIT BUILD CONFIG (.replit)
+────────────────────────────────────────────────────────────
+Update your .replit file so the backend runs with Node 
+and the frontend is bundled separately.
+
+──────────────── CODE START (.replit) ─────
+run = "node server/server.js"
+
+[packager]
+language = "nodejs"
+
+[env]
+NODE_ENV = "production"
+──────────────── CODE END ──────────────────
+
+────────────────────────────────────────────────────────────
+6) FIX VITE/ROLLUP CONFIG
+────────────────────────────────────────────────────────────
+In vite.config.ts add:
+
+──────────────── CODE START ────────────────
+export default defineConfig({
+  optimizeDeps: {
+    exclude: ["express", "crypto", "jose"]
+  },
+  build: {
+    rollupOptions: {
+      external: ["express", "crypto", "jose"]
+    }
+  }
+});
+──────────────── CODE END ──────────────────
+
+This ensures server-only code never enters the client bundle.
+
+────────────────────────────────────────────────────────────
+7) MOVE FULL SECURE VOUCHER SYSTEM INTO SERVER
+────────────────────────────────────────────────────────────
+Place ALL this code into:
+
+  /server/petwash_lux_secure_2025.ts
+
+──────────────── CODE START (FULL FILE) ───
+<PASTE THE ENTIRE petwash_lux_secure_2025.ts FILE HERE>
+──────────────── CODE END ──────────────────
+
+────────────────────────────────────────────────────────────
+8) REQUIREMENT: INSTALL DEPENDENCIES
+────────────────────────────────────────────────────────────
+Run:
+
+  npm install express jose zod
+
+Must be installed in project root.
+
+────────────────────────────────────────────────────────────
+9) RESULT OF THIS FIX
+────────────────────────────────────────────────────────────
+- Backend (Node/Express) runs completely isolated
+- Frontend bundles cleanly without crypto/express/jose errors
+- Publishing works 100 percent
+- Secure ES256 JWS signing stays intact
+- Zod validation stays intact
+- Vouchers cannot be forged (server signs + verifies)
+- Ready for loyalty, pets, vaccines, registry integrations
+- Future APIs can be added inside /server with no build issues
+
+────────────────────────────────────────────────────────────
+FINISHING
+────────────────────────────────────────────────────────────
+After moving everything:
+
+1) Create the two secrets in Replit:
+
+  VOUCHER_ES256_PRIVATE_KEY_PEM  
+  VOUCHER_ES256_PUBLIC_KEY_PEM
+
+2) Press Publish again
+
+Everything will work perfectly after this structure is in place.
