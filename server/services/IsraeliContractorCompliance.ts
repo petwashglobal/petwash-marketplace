@@ -80,6 +80,14 @@ export class IsraeliContractorComplianceService {
   /**
    * Verify provider's Israeli tax registration
    * Checks Osek Patur/Murshe status and National Insurance
+   * 
+   * ⚠️ PRODUCTION REQUIREMENT: This is a placeholder verification.
+   * For production deployment, MUST integrate with:
+   * 1. Israeli Tax Authority (Mas Hachnasa) API for tax ID verification
+   * 2. National Insurance Institute (Bituach Leumi) API for insurance verification
+   * 3. Implement admin manual review workflow for document verification
+   * 
+   * Current implementation: Basic validation only - NOT suitable for legal compliance
    */
   static async verifyTaxRegistration(
     providerId: string,
@@ -96,15 +104,20 @@ export class IsraeliContractorComplianceService {
       const issues: string[] = [];
       const recommendations: string[] = [];
 
-      // Validate tax ID format (basic check - in production, integrate with Tax Authority API)
+      // ⚠️ BASIC VALIDATION ONLY - NOT PRODUCTION-READY
+      // TODO: Replace with Israeli Tax Authority (Mas Hachnasa) API integration
       if (!taxData.taxId || taxData.taxId.length < 5) {
-        issues.push('Invalid tax ID number');
+        issues.push('Invalid tax ID number - must verify against Mas Hachnasa registry');
       }
 
-      // Check National Insurance registration
+      // ⚠️ BASIC VALIDATION ONLY - NOT PRODUCTION-READY  
+      // TODO: Replace with National Insurance (Bituach Leumi) API integration
       if (!taxData.nationalInsuranceNumber || taxData.nationalInsuranceNumber.length < 9) {
-        issues.push('Invalid National Insurance number');
+        issues.push('Invalid National Insurance number - must verify against Bituach Leumi registry');
       }
+      
+      // Add production warning
+      recommendations.push('⚠️ PRODUCTION: Integrate with Israeli Tax Authority API for real verification');
 
       // VAT registration check (required if earning >₪120,000/year)
       if (taxData.taxIdType === 'osek_murshe' && !taxData.isVatRegistered) {
@@ -119,18 +132,25 @@ export class IsraeliContractorComplianceService {
       const riskLevel: ComplianceRiskLevel = this.calculateRiskLevel(issues, taxData);
 
       // Save to database
+      // ⚠️ SECURITY WARNING: Tax IDs and National Insurance numbers are stored in plaintext
+      // TODO PRODUCTION: Encrypt sensitive PII (taxId, nationalInsuranceNumber) at rest using AES-256
+      // TODO PRODUCTION: Implement field-level encryption for GDPR/Israeli Privacy Law compliance
+      // TODO PRODUCTION: Redact sensitive fields in API responses (show only last 4 digits)
       const expiresAt = new Date();
       expiresAt.setFullYear(expiresAt.getFullYear() + 1); // Tax registration valid for 1 year
 
+      // NOTE: In production, status should remain 'pending' until admin/API verification completes
+      const productionSafeStatus = verificationStatus === 'verified' ? 'pending' : verificationStatus;
+      
       await db.insert(providerTaxCompliance).values({
         providerId,
         providerType,
         ...taxData,
-        verificationStatus,
+        verificationStatus: productionSafeStatus, // Force pending until real verification
         riskLevel,
-        isCompliant: verificationStatus === 'verified',
+        isCompliant: false, // Never auto-approve without real verification
         expiresAt,
-        verifiedAt: verificationStatus === 'verified' ? new Date() : null,
+        verifiedAt: null, // Only set after real verification
       });
 
       // Log verification
@@ -181,14 +201,32 @@ export class IsraeliContractorComplianceService {
         throw new Error('Commission rate must be between 15% and 25%');
       }
 
-      // Calculate amounts
-      const commissionAmount = parseFloat((customerPaidAmount * (commissionRate / 100)).toFixed(2));
-      const providerEarnings = parseFloat((customerPaidAmount - commissionAmount).toFixed(2));
+      // Calculate amounts (Israeli VAT Law - marketplace broker model)
+      // Commission is VAT-INCLUSIVE (like Airbnb/Uber): Customer payment already includes VAT
+      const grossCommission = parseFloat((customerPaidAmount * (commissionRate / 100)).toFixed(2));
+      const providerEarnings = parseFloat((customerPaidAmount - grossCommission).toFixed(2));
 
-      // Israeli VAT calculation (18%)
+      // Israeli VAT calculation (18% - VAT-inclusive reverse calculation)
+      // The commission already includes VAT. We extract the VAT portion for tax reporting.
+      // Formula: VAT = GrossAmount / 1.18 * 0.18 (reverse calculation)
       const includesVat = true;
       const vatRate = 0.18;
-      const vatAmount = parseFloat((commissionAmount / (1 + vatRate) * vatRate).toFixed(2));
+      const vatAmount = parseFloat((grossCommission / (1 + vatRate) * vatRate).toFixed(2));
+      const commissionAmount = grossCommission; // Gross commission (includes VAT)
+      const netCommission = parseFloat((grossCommission - vatAmount).toFixed(2)); // Net commission (without VAT)
+      
+      // Verify balance: customerPaid = providerEarnings + netCommission + VAT
+      const balance = providerEarnings + netCommission + vatAmount;
+      if (Math.abs(balance - customerPaidAmount) > 0.02) {
+        logger.warn('[Israeli Compliance] Commission calculation imbalance', {
+          customerPaidAmount,
+          providerEarnings,
+          netCommission,
+          vatAmount,
+          balance,
+          difference: balance - customerPaidAmount
+        });
+      }
 
       // Generate unique commission ID
       const commissionId = `COMM-${new Date().getFullYear()}-${nanoid(6).toUpperCase()}`;

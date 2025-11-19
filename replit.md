@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is a full-stack enterprise platform designed for market leadership and global franchise expansion in the pet care industry. It integrates various business units (K9000 IoT wash stations, The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™) through shared enterprise infrastructure for authentication, payments, AI services, compliance, and franchise management. The platform emphasizes enterprise-grade security, multi-jurisdiction compliance, and aims for global expansion, with an initial focus on the Israeli luxury market. Key capabilities include a 7-Star Loyalty System, robust security hardening, and a comprehensive Unified Control Panel for enterprise orchestration.
+Pet Wash™ is an enterprise platform for the pet care industry, integrating business units like IoT wash stations, pet sitting, walking, and avatar creation. It leverages shared infrastructure for authentication, payments, AI services, compliance, and franchise management. The platform aims for global expansion, starting with the Israeli luxury market, and features a 7-Star Loyalty System, robust security, and a Unified Control Panel for enterprise orchestration.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -62,14 +62,13 @@ Before adding ANY new code, you MUST:
 
 ### Core Features & Design Decisions
 - **Global Architecture Module**: `shared/petwashGlobal.ts` for core platform catalog, KYC, wallet, payments, booking, and mobile contracts.
-- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite.
-- **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching, Firebase Authentication (WebAuthn/Passkey).
-- **UI/UX Design**: Responsive, mobile-first, luxury designs with glassmorphism, Apple-style animations, and bilingual direction-aware layouts.
+- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Responsive, mobile-first, luxury designs with glassmorphism, Apple-style animations, and bilingual direction-aware layouts.
+- **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
 - **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
 - **AI Chat Assistant**: Production-ready Google Dialogflow CX powered by Gemini 2.5 Flash with Kenzo mascot, bilingual Hebrew/English, WCAG 2.1 AA compliant.
 - **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™.
 - **The Plush Lab™**: AI-powered pet avatar creator.
-- **Loyalty Program**: 7-tier luxury progressive system (Bronze→Silver→Gold→Platinum→Diamond→Emerald→Royal), e-gift cards, wash packages, Apple Wallet.
+- **Loyalty Program**: 7-tier luxury progressive system, e-gift cards, wash packages, Apple Wallet integration.
 - **E-Signature**: DocuSeal with Hebrew RTL support.
 - **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC.
 - **Financial Management**: Automated bookkeeping (Google Vision OCR + Gemini 2.5 Flash), Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
@@ -78,53 +77,21 @@ Before adding ANY new code, you MUST:
 - **Passport Verification (KYC)**: Google Vision API-powered passport verification with MRZ parsing.
 - **Security & Compliance**: Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail.
 - **Unified Luxury Booking System**: Enterprise-grade booking using a strategy pattern, supporting loyalty tiers, booking policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts.
-- **Employee Expense Management System**: Production-ready with Israeli Tax Authority compliance. Features OCR receipt scanning, auto-approval workflows, WhatsApp notifications, cryptographic audit trail, and Israeli VAT calculations.
-- **Document Management System**: Production-ready with RBAC and Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
+- **Employee Expense Management System**: Production-ready with Israeli Tax Authority compliance, OCR receipt scanning, and cryptographic audit trail.
+- **Document Management System**: Production-ready with RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
 - **Legal & Compliance Systems**: Comprehensive routes and services for privacy settings, data rights, GDPR, Israeli Privacy Law 2025, e-signature workflows, and contract management.
 - **HR & Employee Systems**: Routes and services for employee management, hierarchy, and onboarding, including auto-approval workflows and WhatsApp notifications.
 - **Enterprise Route Infrastructure**: Extensive set of 119 route files covering franchise management, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
 - **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments, enforcing access levels and department permissions.
-- **Israeli Contractor Compliance System**: Production-ready marketplace broker model (like Airbnb) preventing employee misclassification. Features Osek Patur/Murshe tax verification, National Insurance tracking, 15-25% commission calculation, independence scoring algorithm, monthly compliance audits, risk monitoring, SHA-256 audit trails. Includes 4 new database tables (provider_tax_compliance, provider_commissions, provider_independence_score, compliance_verification_logs) and comprehensive service layer (IsraeliContractorComplianceService.ts) ensuring full Israeli Labor Law 2025 compliance.
+- **Israeli Contractor Compliance System**: Marketplace broker model preventing employee misclassification. Features Osek Patur/Murshe tax verification, National Insurance tracking, commission calculation, independence scoring, and monthly compliance audits. Requires integration with Israeli Tax Authority and National Insurance APIs, and AES-256 encryption for PII.
 
-### ✅ Unified Control Panel - Enterprise Orchestration Layer (100% COMPLETE)
-**Completion Date**: November 19, 2025
-**Implementation**: 8 parallel subagent deployments (3 hours total)
-**Blueprint Alignment**: 100% (688-line blueprint fully implemented)
-
-**Phase 1 - RBAC Foundation:**
-- ✅ 16 Departments, 11 Roles, 10 Platforms with scoped permissions (global, country, city, station, partner)
-- ✅ Control Panel Registry Service with auto-initialization
-- ✅ 6 API endpoints for department/role/platform management
-
-**Phase 2 - Core Infrastructure:**
-- ✅ **Logistics & Fleet**: 14 API endpoints, auto-generated task numbers (TASK-2025-###), vehicle tracking, driver assignment, mobile-optimized API
-- ✅ **Finance & Settlements**: 7 API endpoints, partner revenue sharing, automated monthly settlements (cron: 1st of month at 00:05), Israeli VAT (18%), SHA-256 audit hashing, CSV export
-- ✅ **Israeli CPI Service**: Automatic Consumer Price Index tracking per Israeli law, 8 API endpoints for rent/mortgage/wage indexation calculations (הצמדה למדד), Bank of Israel data source, auto-seeding historical data (2024-2025), monthly index updates (15th of month), production-ready with 22 months of historical data
-- ✅ **Event-Driven Architecture**: 23 domain event types, event store with versioning, EventPublisher service, 4 critical event handlers, K9000 & Nayax integration
-
-**Phase 3 - Mobile & Advanced Features:**
-- ✅ **Mobile Field Operations**: 8 API endpoints, field updates with photo uploads (Firebase Storage, max 10 photos/5MB each), Waze deep linking, GPS-based station search (50km radius), FCM push notifications
-- ✅ **Health & Safety**: 9 API endpoints, incident reporting with auto-generated INC-YYYY-### numbers, 4 severity levels, photo documentation, H&S team email notifications, resolution workflows
-- ✅ **Inventory Management**: 11 API endpoints, station supply tracking, automated low-stock detection with email alerts, purchase order generation by supplier, refill audit trail
-- ✅ **Unified Notifications**: 12 API endpoints, multi-channel orchestration (email, SMS, WhatsApp, push, in-app), template management with variable substitution, EventBus integration for 10+ business events, 7 default production templates, delivery tracking and analytics
-
-**Database Impact (14 New Tables)**:
-- `departments`, `roles`, `controlPanelPlatforms`, `userRoles`
-- `logisticsTasks`, `logisticsVehicles`
-- `partners`, `partnerAgreements`, `settlements`
-- `domain_events`, `field_updates`, `field_update_photos`, `staff_devices`
-- `healthSafetyIncidents`, `incidentPhotos`
-- `supplies`, `stationSupplies`, `inventoryRefills`
-- `notificationTemplates`, `notificationLogs`
-- `cpi_index_history` (Israeli Consumer Price Index tracking)
-
-**API Summary**: 72 new REST endpoints across 9 modules
-
-**Technology Stack**: Node.js 20+, PostgreSQL (Neon), Drizzle ORM, Redis pub/sub, Firebase Storage, FCM, SendGrid, WhatsApp Business API, node-cron
-
-**Legal Compliance**: Israeli VAT (18%), SHA-256 audit hashing, tamper-proof settlement records, H&S incident documentation, complete notification audit trail, automatic CPI indexation per Israeli law (הצמדה למדד)
-
-**Production Status**: ✅ Server running with zero errors, all routes registered, monthly settlements cron scheduled, EventBus with 45 event types active
+### Unified Control Panel - Enterprise Orchestration Layer
+- **RBAC Foundation**: 16 Departments, 11 Roles, 10 Platforms with scoped permissions, Control Panel Registry Service, 6 API endpoints.
+- **Core Infrastructure**: Logistics & Fleet (14 API endpoints), Finance & Settlements (7 API endpoints, automated monthly settlements with Israeli VAT, SHA-256 audit hashing), Israeli CPI Service (8 API endpoints for indexation calculations, Bank of Israel data source, monthly updates), Event-Driven Architecture (23 domain event types, event store, EventPublisher service, critical event handlers, K9000 & Nayax integration).
+- **Mobile & Advanced Features**: Mobile Field Operations (8 API endpoints, photo uploads, Waze deep linking, GPS station search, FCM push notifications), Health & Safety (9 API endpoints, incident reporting, photo documentation, email notifications), Inventory Management (11 API endpoints, supply tracking, low-stock alerts, purchase order generation), Unified Notifications (12 API endpoints, multi-channel orchestration, template management, EventBus integration).
+- **Database Impact**: 14 new tables for departments, roles, user roles, logistics, partners, settlements, events, field updates, health/safety, inventory, notifications, and CPI history.
+- **API Summary**: 72 new REST endpoints across 9 modules.
+- **Legal Compliance**: Israeli VAT, SHA-256 audit hashing, tamper-proof settlement records, H&S incident documentation, complete notification audit trail, automatic CPI indexation per Israeli law.
 
 ## External Dependencies
 - **Database & ORM**: @neondatabase/serverless (PostgreSQL), drizzle-orm.
