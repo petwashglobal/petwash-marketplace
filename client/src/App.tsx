@@ -58,6 +58,7 @@ const LoyaltyBenefits = lazy(() => import("@/pages/LoyaltyBenefits"));
 const LoyaltyBirthday = lazy(() => import("@/pages/LoyaltyBirthday"));
 const LoyaltyRefer = lazy(() => import("@/pages/LoyaltyRefer"));
 const EGift = lazy(() => import("@/pages/EGift"));
+const Vouchers = lazy(() => import("@/pages/Vouchers"));
 const Verify = lazy(() => import("@/pages/Verify"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
@@ -419,9 +420,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <LoyaltyRefer />}
         </Route>
         
-        {/* eGift Cards */}
+        {/* eGift Cards & Vouchers 2025 */}
         <Route path="/egift">
           {() => <EGift />}
+        </Route>
+        
+        <Route path="/vouchers">
+          {() => <Vouchers />}
         </Route>
         
         {/* Pet Wash™ 2025 Global Architecture - Octopus Model Routes */}

@@ -12,13 +12,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Gift, Heart, Sparkles, CreditCard, Mail, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// E-Gift form schema matching backend validation
+// Voucher 2025 form schema
 const eGiftFormSchema = z.object({
   amount: z.coerce.number().min(10, "Minimum ₪10").max(5000, "Maximum ₪5,000"),
   recipientEmail: z.string().email("Valid email required"),
   recipientName: z.string().min(1, "Recipient name required"),
   purchaserEmail: z.string().email("Valid email required"),
-  message: z.string().max(200, "Maximum 200 characters").optional()
+  message: z.string().max(200, "Maximum 200 characters").optional(),
+  theme: z.enum(['neo_black_platinum', 'neo_emerald', 'neo_silver']).default('neo_emerald')
 });
 
 type EGiftFormData = z.infer<typeof eGiftFormSchema>;
@@ -35,41 +36,46 @@ export default function EGift() {
       recipientEmail: '',
       recipientName: '',
       purchaserEmail: user?.email || '',
-      message: ''
+      message: '',
+      theme: 'neo_emerald'
     }
   });
 
   const createVoucherMutation = useMutation({
     mutationFn: async (data: EGiftFormData) => {
-      return await apiRequest('/api/gift-cards', {
+      // Calculate expiration date (2 years from now for premium vouchers)
+      const expiresAt = new Date();
+      expiresAt.setFullYear(expiresAt.getFullYear() + 2);
+      
+      return await apiRequest('/api/vouchers-2025/create', {
         method: 'POST',
         body: JSON.stringify({
-          type: 'STORED_VALUE',
+          type: 'egift',
+          value_type: 'currency',
+          value: data.amount,
+          washes: 0,
           currency: 'ILS',
-          initialAmount: data.amount,
-          remainingAmount: data.amount,
-          status: 'ISSUED',
-          purchaserEmail: data.purchaserEmail,
-          recipientEmail: data.recipientEmail,
-          purchaserUid: user?.uid || null,
-          expiresAt: null // No expiration
+          expires_at: expiresAt.toISOString(),
+          theme: data.theme,
+          recipient_name: data.recipientName,
+          recipient_email: data.recipientEmail
         })
       });
     },
     onSuccess: () => {
       toast({
-        title: "🎉 E-Gift Card Sent!",
-        description: `Successfully sent ₪${form.getValues('amount')} gift card to ${form.getValues('recipientEmail')}`,
+        title: "✨ 7-Star Voucher Created!",
+        description: `Successfully created luxury ₪${form.getValues('amount')} voucher for ${form.getValues('recipientName')}`,
       });
       
       form.reset();
-      setTimeout(() => navigate('/hub'), 2000);
+      setTimeout(() => navigate('/vouchers'), 2000);
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "❌ Purchase Failed",
-        description: error.message || "Failed to send e-gift card. Please try again."
+        title: "❌ Creation Failed",
+        description: error.message || "Failed to create voucher. Please try again."
       });
     }
   });
@@ -98,12 +104,12 @@ export default function EGift() {
           <div className="inline-flex items-center justify-center gap-3 mb-4">
             <Gift className="w-10 h-10 sm:w-12 sm:h-12 text-pink-600" />
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Digital Pet Wash™ E-Gifts
+              Pet Wash™ 7-Star Vouchers
             </h1>
             <Heart className="w-10 h-10 sm:w-12 sm:h-12 text-purple-600" />
           </div>
           <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
-            Send instant love to pet parents - Perfect for birthdays, holidays, or just because! 💝🐾
+            Premium luxury vouchers with metallic themes, QR codes, and SHA256 security 💎🔒
           </p>
         </div>
 
@@ -113,10 +119,10 @@ export default function EGift() {
             <CardHeader className="bg-gradient-to-r from-pink-50 to-purple-50">
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-purple-600" />
-                Create E-Gift Card
+                Create 7-Star Voucher
               </CardTitle>
               <CardDescription>
-                Instant delivery via email - No physical card needed!
+                Luxury digital voucher with metallic themes & enhanced security
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
@@ -236,6 +242,64 @@ export default function EGift() {
                     )}
                   />
 
+                  {/* Theme Selection */}
+                  <FormField
+                    control={form.control}
+                    name="theme"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold">
+                          Card Theme
+                        </FormLabel>
+                        <div className="grid grid-cols-3 gap-3">
+                          <Button
+                            type="button"
+                            variant={field.value === 'neo_black_platinum' ? "default" : "outline"}
+                            className={`h-20 flex flex-col items-center justify-center ${
+                              field.value === 'neo_black_platinum' 
+                                ? 'bg-gradient-to-br from-gray-900 to-gray-700 text-white' 
+                                : ''
+                            }`}
+                            onClick={() => field.onChange('neo_black_platinum')}
+                            data-testid="button-theme-platinum"
+                          >
+                            <span className="text-xs font-bold">Black</span>
+                            <span className="text-xs">Platinum</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={field.value === 'neo_emerald' ? "default" : "outline"}
+                            className={`h-20 flex flex-col items-center justify-center ${
+                              field.value === 'neo_emerald' 
+                                ? 'bg-gradient-to-br from-emerald-700 to-emerald-500 text-white' 
+                                : ''
+                            }`}
+                            onClick={() => field.onChange('neo_emerald')}
+                            data-testid="button-theme-emerald"
+                          >
+                            <span className="text-xs font-bold">Emerald</span>
+                            <span className="text-xs">Luxury</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={field.value === 'neo_silver' ? "default" : "outline"}
+                            className={`h-20 flex flex-col items-center justify-center ${
+                              field.value === 'neo_silver' 
+                                ? 'bg-gradient-to-br from-gray-400 to-gray-300 text-gray-900' 
+                                : ''
+                            }`}
+                            onClick={() => field.onChange('neo_silver')}
+                            data-testid="button-theme-silver"
+                          >
+                            <span className="text-xs font-bold">Silver</span>
+                            <span className="text-xs">Classic</span>
+                          </Button>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   {/* Personal Message */}
                   <FormField
                     control={form.control}
@@ -275,8 +339,8 @@ export default function EGift() {
                       </>
                     ) : (
                       <>
-                        <Gift className="w-5 h-5 mr-2" />
-                        Send E-Gift Card (₪{form.watch('amount')})
+                        <Sparkles className="w-5 h-5 mr-2" />
+                        Create Luxury Voucher (₪{form.watch('amount')})
                       </>
                     )}
                   </Button>
@@ -289,36 +353,36 @@ export default function EGift() {
           <div className="space-y-6">
             <Card className="border-2 border-pink-200">
               <CardHeader className="bg-gradient-to-r from-pink-50 to-rose-50">
-                <CardTitle className="text-pink-700">Why E-Gift Cards?</CardTitle>
+                <CardTitle className="text-pink-700">7-Star Features</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
-                    <span className="text-2xl">⚡</span>
+                    <span className="text-2xl">💎</span>
                     <div>
-                      <p className="font-semibold">Instant Delivery</p>
-                      <p className="text-sm text-gray-600">Arrives in seconds via email</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-2xl">🎁</span>
-                    <div>
-                      <p className="font-semibold">Perfect for Any Occasion</p>
-                      <p className="text-sm text-gray-600">Birthdays, holidays, thank you gifts</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-2xl">🌍</span>
-                    <div>
-                      <p className="font-semibold">Works Everywhere</p>
-                      <p className="text-sm text-gray-600">Valid at all Pet Wash stations & services</p>
+                      <p className="font-semibold">Metallic Themes</p>
+                      <p className="text-sm text-gray-600">Choose from Platinum, Emerald, or Silver</p>
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="text-2xl">🔒</span>
                     <div>
-                      <p className="font-semibold">Secure & Reliable</p>
-                      <p className="text-sm text-gray-600">Tracked in your account, never expires</p>
+                      <p className="font-semibold">SHA256 Security</p>
+                      <p className="text-sm text-gray-600">Military-grade encryption & JWS signing</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="text-2xl">📱</span>
+                    <div>
+                      <p className="font-semibold">QR Code Ready</p>
+                      <p className="text-sm text-gray-600">Instant redemption at any station</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="text-2xl">📊</span>
+                    <div>
+                      <p className="font-semibold">Usage Tracking</p>
+                      <p className="text-sm text-gray-600">Full redemption history & analytics</p>
                     </div>
                   </li>
                 </ul>
