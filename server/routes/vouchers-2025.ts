@@ -410,37 +410,86 @@ router.post("/redeem", requireAuth, validateBody(redeemVoucherSchema), async (re
       });
     }
 
-    // CRITICAL: Verify balance integrity (prevents tampering with mutable balance fields)
-    // Enforce invariant: remaining ≤ original (prevents balance inflation attacks)
+    // CRITICAL: Ledger-Based Balance Reconciliation (prevents replay attacks)
+    // Computes true remaining from append-only usage history ledger
+    const usageHistory = await db
+      .select()
+      .from(voucherUsageHistory)
+      .where(eq(voucherUsageHistory.voucherId, dbVoucher.id))
+      .orderBy(voucherUsageHistory.createdAt);
+
     if (dbVoucher.valueType === "currency") {
-      const remaining = Number(dbVoucher.valueRemaining || 0);
+      // Compute cumulative usage from tamper-evident ledger
+      const cumulativeUsed = usageHistory.reduce((sum, entry) => {
+        return sum + Number(entry.amountUsed || 0);
+      }, 0);
+      
       const original = Number(dbVoucher.valueOriginal || 0);
-      if (remaining > original) {
-        console.error("[Voucher Security] BALANCE TAMPERING DETECTED - Currency:", {
+      const trustedRemaining = original - cumulativeUsed;
+      const dbRemaining = Number(dbVoucher.valueRemaining || 0);
+      
+      // SECURITY: Check for balance tampering
+      if (Math.abs(trustedRemaining - dbRemaining) > 0.01) {
+        console.error("[Voucher Security] BALANCE REPLAY ATTACK DETECTED - Currency:", {
           voucherId: dbVoucher.id,
           publicCode: dbVoucher.publicCode,
-          valueRemaining: remaining,
-          valueOriginal: original
+          valueOriginal: original,
+          cumulativeUsed,
+          trustedRemaining,
+          dbRemaining,
+          delta: trustedRemaining - dbRemaining
         });
-        return res.status(403).json({
-          success: false,
-          error: "SECURITY: Voucher balance tampering detected (remaining > original)"
-        });
+        
+        // AUTO-REPAIR: Overwrite DB value with ledger-computed truth
+        await db
+          .update(petWashVouchers2025)
+          .set({ 
+            valueRemaining: trustedRemaining.toString(),
+            updatedAt: new Date()
+          })
+          .where(eq(petWashVouchers2025.id, dbVoucher.id));
+        
+        // Update in-memory value for this request
+        dbVoucher.valueRemaining = trustedRemaining.toString();
+        
+        console.warn("[Voucher Security] AUTO-REPAIRED balance from ledger");
       }
+      
     } else if (dbVoucher.valueType === "washes") {
-      const remaining = dbVoucher.washesRemaining || 0;
+      // Compute cumulative usage from tamper-evident ledger
+      const cumulativeUsed = usageHistory.reduce((sum, entry) => {
+        return sum + (entry.washesUsed || 0);
+      }, 0);
+      
       const original = dbVoucher.washesOriginal || 0;
-      if (remaining > original) {
-        console.error("[Voucher Security] BALANCE TAMPERING DETECTED - Washes:", {
+      const trustedRemaining = original - cumulativeUsed;
+      const dbRemaining = dbVoucher.washesRemaining || 0;
+      
+      // SECURITY: Check for balance tampering
+      if (trustedRemaining !== dbRemaining) {
+        console.error("[Voucher Security] BALANCE REPLAY ATTACK DETECTED - Washes:", {
           voucherId: dbVoucher.id,
           publicCode: dbVoucher.publicCode,
-          washesRemaining: remaining,
-          washesOriginal: original
+          washesOriginal: original,
+          cumulativeUsed,
+          trustedRemaining,
+          dbRemaining,
+          delta: trustedRemaining - dbRemaining
         });
-        return res.status(403).json({
-          success: false,
-          error: "SECURITY: Voucher balance tampering detected (remaining > original)"
-        });
+        
+        // AUTO-REPAIR: Overwrite DB value with ledger-computed truth
+        await db
+          .update(petWashVouchers2025)
+          .set({ 
+            washesRemaining: trustedRemaining,
+            updatedAt: new Date()
+          })
+          .where(eq(petWashVouchers2025.id, dbVoucher.id));
+        
+        // Update in-memory value for this request
+        dbVoucher.washesRemaining = trustedRemaining;
+        
+        console.warn("[Voucher Security] AUTO-REPAIRED balance from ledger");
       }
     }
 

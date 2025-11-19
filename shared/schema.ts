@@ -329,6 +329,40 @@ export const voucherUsageHistory = pgTable("voucher_usage_history_2025", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Voucher 2025 Tamper-Evident Ledger (CRITICAL SECURITY)
+// Append-only ledger with ES256 signatures preventing balance replay attacks
+export const voucherUsageLedger = pgTable("voucher_usage_ledger_2025", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  voucherId: varchar("voucher_id").notNull().references(() => petWashVouchers2025.id, { onDelete: 'cascade' }),
+  
+  // Sequence & Chain
+  seqNo: integer("seq_no").notNull(), // Monotonic sequence number starting from 0 (genesis)
+  prevEntryHash: text("prev_entry_hash"), // SHA256 of previous entry (null for genesis)
+  
+  // Delta Values (this transaction)
+  deltaValue: decimal("delta_value", { precision: 12, scale: 2 }).default("0"), // Amount used in this redemption
+  deltaWashes: integer("delta_washes").default(0), // Washes used in this redemption
+  
+  // Cumulative Totals (after this transaction)
+  cumulativeValueUsed: decimal("cumulative_value_used", { precision: 12, scale: 2 }).notNull(),
+  cumulativeWashesUsed: integer("cumulative_washes_used").notNull(),
+  
+  // Transaction Details
+  stationId: varchar("station_id"),
+  locationLabel: text("location_label"),
+  method: varchar("method"), // app, station, qr (null for genesis)
+  
+  // Cryptographic Security
+  entryHash: text("entry_hash").notNull(), // SHA256 of this entry's canonical data
+  signedJws: text("signed_jws").notNull(), // ES256 signature of entryHash
+  
+  // Metadata
+  entryType: varchar("entry_type").notNull().default("redemption"), // genesis, redemption, refund
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("voucher_ledger_seq_idx").on(table.voucherId, table.seqNo)
+]);
+
 // Wash history
 export const washHistory = pgTable("wash_history", {
   id: serial("id").primaryKey(),
