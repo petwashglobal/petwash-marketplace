@@ -200,7 +200,7 @@ export default function ComplianceView() {
         },
       },
     },
-  ];
+  ] : [];
 
   // Use real contractors if they exist, otherwise mock data (but never during errors)
   const allContractors = contractors.length > 0 ? contractors : (error ? [] : mockContractors);
