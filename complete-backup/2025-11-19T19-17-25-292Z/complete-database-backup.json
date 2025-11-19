@@ -1,0 +1,2024 @@
+{
+  "backup_timestamp": "2025-11-19T19-17-25-292Z",
+  "backup_date": "2025-11-19T19:17:27.493Z",
+  "tables": {
+    "accounts_payable": {
+      "count": 0,
+      "data": []
+    },
+    "accounts_receivable": {
+      "count": 0,
+      "data": []
+    },
+    "admin_activity_logs": {
+      "count": 0,
+      "data": []
+    },
+    "admin_users": {
+      "count": 0,
+      "data": []
+    },
+    "adp_integration": {
+      "count": 0,
+      "data": []
+    },
+    "ai_product_recommendations": {
+      "count": 0,
+      "data": []
+    },
+    "airbnb_bookings": {
+      "count": 0,
+      "data": []
+    },
+    "airbnb_listings": {
+      "count": 0,
+      "data": []
+    },
+    "approved_countries": {
+      "count": 0,
+      "data": []
+    },
+    "assignments": {
+      "count": 0,
+      "data": []
+    },
+    "audit_ledger": {
+      "count": 0,
+      "data": []
+    },
+    "australian_tax": {
+      "count": 0,
+      "data": []
+    },
+    "authority_documents": {
+      "count": 0,
+      "data": []
+    },
+    "authority_levels": {
+      "count": 0,
+      "data": []
+    },
+    "availability_slots": {
+      "count": 0,
+      "data": []
+    },
+    "bank_accounts": {
+      "count": 0,
+      "data": []
+    },
+    "bank_import_batches": {
+      "count": 0,
+      "data": []
+    },
+    "bank_reconciliation_summary": {
+      "count": 0,
+      "data": []
+    },
+    "bank_reconciliations": {
+      "count": 0,
+      "data": []
+    },
+    "bank_transactions": {
+      "count": 0,
+      "data": []
+    },
+    "benefits_packages": {
+      "count": 0,
+      "data": []
+    },
+    "biometric_certificate_verifications": {
+      "count": 0,
+      "data": []
+    },
+    "biometric_consents": {
+      "count": 0,
+      "data": []
+    },
+    "board_meeting_attendees": {
+      "count": 0,
+      "data": []
+    },
+    "board_meetings": {
+      "count": 0,
+      "data": []
+    },
+    "board_members": {
+      "count": 0,
+      "data": []
+    },
+    "board_resolutions": {
+      "count": 0,
+      "data": []
+    },
+    "board_votes": {
+      "count": 0,
+      "data": []
+    },
+    "booking_com_listings": {
+      "count": 0,
+      "data": []
+    },
+    "booking_com_reservations": {
+      "count": 0,
+      "data": []
+    },
+    "booking_consents": {
+      "count": 0,
+      "data": []
+    },
+    "booking_extensions": {
+      "count": 0,
+      "data": []
+    },
+    "booking_items": {
+      "count": 0,
+      "data": []
+    },
+    "booking_pets": {
+      "count": 0,
+      "data": []
+    },
+    "booking_policies": {
+      "count": 0,
+      "data": []
+    },
+    "bookings": {
+      "count": 0,
+      "data": []
+    },
+    "calendar_events": {
+      "count": 0,
+      "data": []
+    },
+    "canadian_tax": {
+      "count": 0,
+      "data": []
+    },
+    "chat_analytics": {
+      "count": 0,
+      "data": []
+    },
+    "chat_attachments": {
+      "count": 0,
+      "data": []
+    },
+    "chat_conversations": {
+      "count": 0,
+      "data": []
+    },
+    "chat_event_outbox": {
+      "count": 0,
+      "data": []
+    },
+    "chat_messages": {
+      "count": 0,
+      "data": []
+    },
+    "compensation_structure": {
+      "count": 0,
+      "data": []
+    },
+    "compliance_audit_logs": {
+      "count": 0,
+      "data": []
+    },
+    "compliance_audit_trail": {
+      "count": 0,
+      "data": []
+    },
+    "compliance_certifications": {
+      "count": 0,
+      "data": []
+    },
+    "compliance_decisions": {
+      "count": 0,
+      "data": []
+    },
+    "compliance_tasks": {
+      "count": 0,
+      "data": []
+    },
+    "compliance_verification_logs": {
+      "count": 0,
+      "data": []
+    },
+    "content_moderation_logs": {
+      "count": 0,
+      "data": []
+    },
+    "contract_templates": {
+      "count": 0,
+      "data": []
+    },
+    "contractor_badges": {
+      "count": 0,
+      "data": []
+    },
+    "contractor_earnings": {
+      "count": 0,
+      "data": []
+    },
+    "contractor_incidents": {
+      "count": 0,
+      "data": []
+    },
+    "contractor_profiles": {
+      "count": 1,
+      "data": [
+        {
+          "id": "a2d3abb8-64f9-4629-9cd5-694038b41593",
+          "display_name": "Test Contractor",
+          "legal_name": "Test Contractor Ltd.",
+          "email": "test-contractor@petwash.co.il",
+          "phone_e164": "+972501234567",
+          "whatsapp_opt_in": false,
+          "country_of_operation": "IL",
+          "primary_city": "Tel Aviv",
+          "language_codes": [
+            "he",
+            "en"
+          ],
+          "accepted_platform_terms_at": null,
+          "accepted_independent_status_at": null,
+          "accepted_privacy_policy_at": null,
+          "compliance_status": "PENDING",
+          "risk_level": "LOW",
+          "last_compliance_check_at": null,
+          "last_compliance_summary": null,
+          "created_at": "2025-11-19 08:05:37.312491",
+          "updated_at": "2025-11-19 08:05:37.312491",
+          "archived_at": null
+        }
+      ]
+    },
+    "contractor_ratings": {
+      "count": 0,
+      "data": []
+    },
+    "contractor_reviews": {
+      "count": 0,
+      "data": []
+    },
+    "contractor_trust_scores": {
+      "count": 0,
+      "data": []
+    },
+    "contractor_violations": {
+      "count": 0,
+      "data": []
+    },
+    "contractors": {
+      "count": 3,
+      "data": [
+        {
+          "id": "8c7820bf-0e31-420f-b73e-6ac266be8236",
+          "full_name": "John PetDriver",
+          "email": "john@example.com",
+          "phone": "+1 202-555-7777",
+          "country": "US",
+          "role_type": "driver",
+          "status": "pending",
+          "risk_score": null,
+          "created_at": "2025-11-19 09:32:56.783006",
+          "updated_at": "2025-11-19 09:32:56.783006"
+        },
+        {
+          "id": "7ece0945-52c8-433b-b7b0-6e7b3d37e829",
+          "full_name": "John PetDriver",
+          "email": "john@example.com",
+          "phone": "+1 202-555-7777",
+          "country": "US",
+          "role_type": "driver",
+          "status": "pending",
+          "risk_score": null,
+          "created_at": "2025-11-19 09:37:01.81407",
+          "updated_at": "2025-11-19 09:37:01.81407"
+        },
+        {
+          "id": "bffdfb29-1894-4a97-b25e-e9c67a56cae2",
+          "full_name": "John PetDriver",
+          "email": "john@example.com",
+          "phone": "+1 202-555-7777",
+          "country": "US",
+          "role_type": "driver",
+          "status": "pending",
+          "risk_score": null,
+          "created_at": "2025-11-19 09:39:04.911534",
+          "updated_at": "2025-11-19 09:39:04.911534"
+        }
+      ]
+    },
+    "control_panel_platforms": {
+      "count": 10,
+      "data": [
+        {
+          "id": 1,
+          "key": "petwash_hub",
+          "label": "Hub",
+          "description": "Central operations hub",
+          "is_active": true
+        },
+        {
+          "id": 2,
+          "key": "petwash_manager",
+          "label": "Manager",
+          "description": "Management dashboard",
+          "is_active": true
+        },
+        {
+          "id": 3,
+          "key": "petwash_partner",
+          "label": "Partner",
+          "description": "Partner portal",
+          "is_active": true
+        },
+        {
+          "id": 4,
+          "key": "petwash_franchise",
+          "label": "Franchise",
+          "description": "Franchise management",
+          "is_active": true
+        },
+        {
+          "id": 5,
+          "key": "petwash_academy",
+          "label": "Academy",
+          "description": "Training and education",
+          "is_active": true
+        },
+        {
+          "id": 6,
+          "key": "petwash_payments",
+          "label": "Payments",
+          "description": "Payment processing",
+          "is_active": true
+        },
+        {
+          "id": 7,
+          "key": "petwash_loyalty",
+          "label": "Loyalty",
+          "description": "Loyalty program management",
+          "is_active": true
+        },
+        {
+          "id": 8,
+          "key": "petwash_api",
+          "label": "API",
+          "description": "API access and integration",
+          "is_active": true
+        },
+        {
+          "id": 9,
+          "key": "petwash_support",
+          "label": "Support",
+          "description": "Customer support platform",
+          "is_active": true
+        },
+        {
+          "id": 10,
+          "key": "petwash_kyc",
+          "label": "KYC",
+          "description": "Know Your Customer verification",
+          "is_active": true
+        }
+      ]
+    },
+    "corporate_seals": {
+      "count": 0,
+      "data": []
+    },
+    "coupons": {
+      "count": 0,
+      "data": []
+    },
+    "cpi_index_history": {
+      "count": 22,
+      "data": [
+        {
+          "id": 1,
+          "month": "2024-01",
+          "index_value": "100.00",
+          "year_over_year_change": "0.00",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.416",
+          "created_at": "2025-11-19 03:47:00.429773"
+        },
+        {
+          "id": 2,
+          "month": "2024-02",
+          "index_value": "100.20",
+          "year_over_year_change": "0.20",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.468",
+          "created_at": "2025-11-19 03:47:00.479932"
+        },
+        {
+          "id": 3,
+          "month": "2024-03",
+          "index_value": "100.50",
+          "year_over_year_change": "0.50",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.513",
+          "created_at": "2025-11-19 03:47:00.525319"
+        },
+        {
+          "id": 4,
+          "month": "2024-04",
+          "index_value": "100.80",
+          "year_over_year_change": "0.80",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.558",
+          "created_at": "2025-11-19 03:47:00.571181"
+        },
+        {
+          "id": 5,
+          "month": "2024-05",
+          "index_value": "101.10",
+          "year_over_year_change": "1.10",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.605",
+          "created_at": "2025-11-19 03:47:00.617909"
+        },
+        {
+          "id": 6,
+          "month": "2024-06",
+          "index_value": "101.40",
+          "year_over_year_change": "1.40",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.653",
+          "created_at": "2025-11-19 03:47:00.665968"
+        },
+        {
+          "id": 7,
+          "month": "2024-07",
+          "index_value": "101.70",
+          "year_over_year_change": "1.70",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.701",
+          "created_at": "2025-11-19 03:47:00.712865"
+        },
+        {
+          "id": 8,
+          "month": "2024-08",
+          "index_value": "102.00",
+          "year_over_year_change": "2.00",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.746",
+          "created_at": "2025-11-19 03:47:00.75796"
+        },
+        {
+          "id": 9,
+          "month": "2024-09",
+          "index_value": "102.30",
+          "year_over_year_change": "2.30",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.79",
+          "created_at": "2025-11-19 03:47:00.801587"
+        },
+        {
+          "id": 10,
+          "month": "2024-10",
+          "index_value": "102.60",
+          "year_over_year_change": "2.60",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.834",
+          "created_at": "2025-11-19 03:47:00.846494"
+        },
+        {
+          "id": 11,
+          "month": "2024-11",
+          "index_value": "102.90",
+          "year_over_year_change": "2.90",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.88",
+          "created_at": "2025-11-19 03:47:00.89179"
+        },
+        {
+          "id": 12,
+          "month": "2024-12",
+          "index_value": "103.20",
+          "year_over_year_change": "3.20",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.928",
+          "created_at": "2025-11-19 03:47:00.940061"
+        },
+        {
+          "id": 13,
+          "month": "2025-01",
+          "index_value": "103.30",
+          "year_over_year_change": "3.30",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:00.974",
+          "created_at": "2025-11-19 03:47:00.987528"
+        },
+        {
+          "id": 14,
+          "month": "2025-02",
+          "index_value": "103.40",
+          "year_over_year_change": "3.20",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:01.021",
+          "created_at": "2025-11-19 03:47:01.033248"
+        },
+        {
+          "id": 15,
+          "month": "2025-03",
+          "index_value": "103.50",
+          "year_over_year_change": "3.00",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:01.066",
+          "created_at": "2025-11-19 03:47:01.078112"
+        },
+        {
+          "id": 16,
+          "month": "2025-04",
+          "index_value": "103.60",
+          "year_over_year_change": "2.80",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:01.111",
+          "created_at": "2025-11-19 03:47:01.122805"
+        },
+        {
+          "id": 17,
+          "month": "2025-05",
+          "index_value": "103.70",
+          "year_over_year_change": "2.60",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:01.155",
+          "created_at": "2025-11-19 03:47:01.166462"
+        },
+        {
+          "id": 18,
+          "month": "2025-06",
+          "index_value": "103.80",
+          "year_over_year_change": "2.40",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:01.199",
+          "created_at": "2025-11-19 03:47:01.211308"
+        },
+        {
+          "id": 19,
+          "month": "2025-07",
+          "index_value": "103.90",
+          "year_over_year_change": "2.20",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:01.244",
+          "created_at": "2025-11-19 03:47:01.256082"
+        },
+        {
+          "id": 20,
+          "month": "2025-08",
+          "index_value": "104.00",
+          "year_over_year_change": "2.00",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:01.289",
+          "created_at": "2025-11-19 03:47:01.30044"
+        },
+        {
+          "id": 21,
+          "month": "2025-09",
+          "index_value": "103.60",
+          "year_over_year_change": "1.30",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:01.334",
+          "created_at": "2025-11-19 03:47:01.345427"
+        },
+        {
+          "id": 22,
+          "month": "2025-10",
+          "index_value": "104.10",
+          "year_over_year_change": "1.50",
+          "source": "Bank of Israel (Historical)",
+          "published_at": "2025-11-19 03:47:01.38",
+          "created_at": "2025-11-19 03:47:01.391888"
+        }
+      ]
+    },
+    "criminal_background_checks": {
+      "count": 0,
+      "data": []
+    },
+    "crm_activities": {
+      "count": 0,
+      "data": []
+    },
+    "crm_appointment_reminders": {
+      "count": 0,
+      "data": []
+    },
+    "crm_campaign_metrics": {
+      "count": 0,
+      "data": []
+    },
+    "crm_campaign_targets": {
+      "count": 0,
+      "data": []
+    },
+    "crm_campaigns": {
+      "count": 0,
+      "data": []
+    },
+    "crm_communication_logs": {
+      "count": 0,
+      "data": []
+    },
+    "crm_communications": {
+      "count": 0,
+      "data": []
+    },
+    "crm_customer_insights": {
+      "count": 0,
+      "data": []
+    },
+    "crm_customer_segment_members": {
+      "count": 0,
+      "data": []
+    },
+    "crm_customer_segments": {
+      "count": 0,
+      "data": []
+    },
+    "crm_deal_stages": {
+      "count": 0,
+      "data": []
+    },
+    "crm_email_templates": {
+      "count": 0,
+      "data": []
+    },
+    "crm_leads": {
+      "count": 0,
+      "data": []
+    },
+    "crm_meeting_attendees": {
+      "count": 0,
+      "data": []
+    },
+    "crm_opportunities": {
+      "count": 0,
+      "data": []
+    },
+    "crm_sms_templates": {
+      "count": 0,
+      "data": []
+    },
+    "crm_tasks": {
+      "count": 0,
+      "data": []
+    },
+    "crm_touchpoints": {
+      "count": 0,
+      "data": []
+    },
+    "customer_payment_tokens": {
+      "count": 0,
+      "data": []
+    },
+    "customer_pets": {
+      "count": 0,
+      "data": []
+    },
+    "customer_subscriptions": {
+      "count": 0,
+      "data": []
+    },
+    "customers": {
+      "count": 0,
+      "data": []
+    },
+    "deel_integration": {
+      "count": 0,
+      "data": []
+    },
+    "delegation_of_authority": {
+      "count": 0,
+      "data": []
+    },
+    "departments": {
+      "count": 16,
+      "data": [
+        {
+          "id": 1,
+          "key": "executive",
+          "label": "Executive",
+          "description": "C-level and executive leadership",
+          "is_active": true
+        },
+        {
+          "id": 2,
+          "key": "operations",
+          "label": "Operations",
+          "description": "Day-to-day operational management",
+          "is_active": true
+        },
+        {
+          "id": 3,
+          "key": "logistics",
+          "label": "Logistics",
+          "description": "Supply chain and logistics coordination",
+          "is_active": true
+        },
+        {
+          "id": 4,
+          "key": "sales",
+          "label": "Sales",
+          "description": "Sales and business development",
+          "is_active": true
+        },
+        {
+          "id": 5,
+          "key": "marketing",
+          "label": "Marketing",
+          "description": "Marketing and brand management",
+          "is_active": true
+        },
+        {
+          "id": 6,
+          "key": "finance",
+          "label": "Finance",
+          "description": "Financial planning and analysis",
+          "is_active": true
+        },
+        {
+          "id": 7,
+          "key": "accounting",
+          "label": "Accounting",
+          "description": "Bookkeeping and financial reporting",
+          "is_active": true
+        },
+        {
+          "id": 8,
+          "key": "customer_support",
+          "label": "Customer Support",
+          "description": "Customer service and support",
+          "is_active": true
+        },
+        {
+          "id": 9,
+          "key": "health_safety",
+          "label": "Health & Safety",
+          "description": "Safety compliance and protocols",
+          "is_active": true
+        },
+        {
+          "id": 10,
+          "key": "technology",
+          "label": "Technology",
+          "description": "IT and software development",
+          "is_active": true
+        },
+        {
+          "id": 11,
+          "key": "transportation",
+          "label": "Transportation",
+          "description": "Fleet and driver management",
+          "is_active": true
+        },
+        {
+          "id": 12,
+          "key": "legal",
+          "label": "Legal",
+          "description": "Legal compliance and contracts",
+          "is_active": true
+        },
+        {
+          "id": 13,
+          "key": "hr",
+          "label": "HR",
+          "description": "Human resources and recruitment",
+          "is_active": true
+        },
+        {
+          "id": 14,
+          "key": "partners",
+          "label": "Partners",
+          "description": "Partner relationship management",
+          "is_active": true
+        },
+        {
+          "id": 15,
+          "key": "franchise",
+          "label": "Franchise",
+          "description": "Franchise operations and support",
+          "is_active": true
+        },
+        {
+          "id": 16,
+          "key": "subcontractors",
+          "label": "Subcontractors",
+          "description": "Subcontractor coordination",
+          "is_active": true
+        }
+      ]
+    },
+    "devices": {
+      "count": 1,
+      "data": [
+        {
+          "id": "test-device-pGrtR0t9",
+          "user_id": "a2d3abb8-64f9-4629-9cd5-694038b41593",
+          "platform": "iOS",
+          "os_version": null,
+          "app_version": null,
+          "push_token": null,
+          "is_blocked": false,
+          "last_seen_at": "2025-11-19 08:06:39.912",
+          "created_at": "2025-11-19 08:06:39.928716"
+        }
+      ]
+    },
+    "digital_signatures": {
+      "count": 0,
+      "data": []
+    },
+    "discount_usage_log": {
+      "count": 0,
+      "data": []
+    },
+    "dispute_resolutions": {
+      "count": 0,
+      "data": []
+    },
+    "driver_safety_profiles": {
+      "count": 0,
+      "data": []
+    },
+    "drivers": {
+      "count": 3,
+      "data": [
+        {
+          "id": "93b8082c-609a-436c-a073-10c70bc6e08e",
+          "contractor_id": "8c7820bf-0e31-420f-b73e-6ac266be8236",
+          "vehicle_type": "van",
+          "license_number": "US-998822",
+          "license_expiry": "2029-03-09",
+          "areas_of_service": "Manhattan,Brooklyn",
+          "is_active": true,
+          "created_at": "2025-11-19 09:32:56.863197"
+        },
+        {
+          "id": "807677db-0c8c-4f05-8cd8-8dac56dd4c9c",
+          "contractor_id": "7ece0945-52c8-433b-b7b0-6e7b3d37e829",
+          "vehicle_type": "van",
+          "license_number": "US-998822",
+          "license_expiry": "2029-03-09",
+          "areas_of_service": "Manhattan,Brooklyn",
+          "is_active": true,
+          "created_at": "2025-11-19 09:37:01.96262"
+        },
+        {
+          "id": "a86b8a18-2dc3-4a85-9667-f0ee97832172",
+          "contractor_id": "bffdfb29-1894-4a97-b25e-e9c67a56cae2",
+          "vehicle_type": "van",
+          "license_number": "US-998822",
+          "license_expiry": "2029-03-09",
+          "areas_of_service": "Manhattan,Brooklyn",
+          "is_active": true,
+          "created_at": "2025-11-19 09:39:05.06727"
+        }
+      ]
+    },
+    "e_voucher_events": {
+      "count": 0,
+      "data": []
+    },
+    "e_voucher_redemptions": {
+      "count": 0,
+      "data": []
+    },
+    "e_vouchers": {
+      "count": 0,
+      "data": []
+    },
+    "electronic_invoices": {
+      "count": 0,
+      "data": []
+    },
+    "employee_benefits_enrollment": {
+      "count": 0,
+      "data": []
+    },
+    "employee_hierarchy": {
+      "count": 0,
+      "data": []
+    },
+    "employee_terminations": {
+      "count": 0,
+      "data": []
+    },
+    "expenses": {
+      "count": 0,
+      "data": []
+    },
+    "franchise_orders": {
+      "count": 0,
+      "data": []
+    },
+    "franchise_royalty_payments": {
+      "count": 0,
+      "data": []
+    },
+    "franchisees": {
+      "count": 0,
+      "data": []
+    },
+    "general_ledger": {
+      "count": 0,
+      "data": []
+    },
+    "generated_contracts": {
+      "count": 0,
+      "data": []
+    },
+    "google_calendar_integrations": {
+      "count": 0,
+      "data": []
+    },
+    "gusto_integration": {
+      "count": 0,
+      "data": []
+    },
+    "handbook_categories": {
+      "count": 0,
+      "data": []
+    },
+    "handbook_manual_states": {
+      "count": 0,
+      "data": []
+    },
+    "handbook_manuals": {
+      "count": 0,
+      "data": []
+    },
+    "handbook_tasks": {
+      "count": 0,
+      "data": []
+    },
+    "handbook_versions": {
+      "count": 0,
+      "data": []
+    },
+    "hr_documents": {
+      "count": 0,
+      "data": []
+    },
+    "hr_employees": {
+      "count": 0,
+      "data": []
+    },
+    "hr_job_applications": {
+      "count": 0,
+      "data": []
+    },
+    "hr_payroll": {
+      "count": 0,
+      "data": []
+    },
+    "hr_performance_reviews": {
+      "count": 0,
+      "data": []
+    },
+    "hr_recruitment": {
+      "count": 0,
+      "data": []
+    },
+    "hr_time_tracking": {
+      "count": 0,
+      "data": []
+    },
+    "identity_document_files": {
+      "count": 0,
+      "data": []
+    },
+    "identity_documents": {
+      "count": 3,
+      "data": [
+        {
+          "id": "413bcb52-8eb7-440d-ae87-801a59ad0e87",
+          "contractor_id": "8c7820bf-0e31-420f-b73e-6ac266be8236",
+          "document_type": "passport",
+          "document_number": "A1234567",
+          "issued_country": "US",
+          "expiry_date": "2031-05-10",
+          "created_at": "2025-11-19 09:32:56.830904"
+        },
+        {
+          "id": "2a432ffd-275b-4077-9baf-cb90928ff596",
+          "contractor_id": "7ece0945-52c8-433b-b7b0-6e7b3d37e829",
+          "document_type": "passport",
+          "document_number": "A1234567",
+          "issued_country": "US",
+          "expiry_date": "2031-05-10",
+          "created_at": "2025-11-19 09:37:01.903803"
+        },
+        {
+          "id": "b40d85d8-dd5a-4c13-8fff-d322e768d2c4",
+          "contractor_id": "bffdfb29-1894-4a97-b25e-e9c67a56cae2",
+          "document_type": "passport",
+          "document_number": "A1234567",
+          "issued_country": "US",
+          "expiry_date": "2031-05-10",
+          "created_at": "2025-11-19 09:39:05.008036"
+        }
+      ]
+    },
+    "identity_verifications": {
+      "count": 0,
+      "data": []
+    },
+    "intercompany_agreements": {
+      "count": 0,
+      "data": []
+    },
+    "inventory_items": {
+      "count": 0,
+      "data": []
+    },
+    "israeli_expenses": {
+      "count": 0,
+      "data": []
+    },
+    "israeli_income_tax_declarations": {
+      "count": 0,
+      "data": []
+    },
+    "israeli_monthly_financial_packages": {
+      "count": 0,
+      "data": []
+    },
+    "israeli_national_insurance_declarations": {
+      "count": 0,
+      "data": []
+    },
+    "israeli_vat_declarations": {
+      "count": 0,
+      "data": []
+    },
+    "job_descriptions": {
+      "count": 0,
+      "data": []
+    },
+    "job_offers": {
+      "count": 0,
+      "data": []
+    },
+    "jv_contracts": {
+      "count": 0,
+      "data": []
+    },
+    "jv_partners": {
+      "count": 0,
+      "data": []
+    },
+    "jv_revenue_shares": {
+      "count": 0,
+      "data": []
+    },
+    "kiosk_inventory": {
+      "count": 0,
+      "data": []
+    },
+    "kiosk_machines": {
+      "count": 0,
+      "data": []
+    },
+    "kiosk_products": {
+      "count": 0,
+      "data": []
+    },
+    "kiosk_sales": {
+      "count": 0,
+      "data": []
+    },
+    "legal_compliance_reviews": {
+      "count": 0,
+      "data": []
+    },
+    "legal_document_versions": {
+      "count": 0,
+      "data": []
+    },
+    "legal_entities": {
+      "count": 0,
+      "data": []
+    },
+    "liveness_checks": {
+      "count": 0,
+      "data": []
+    },
+    "locations": {
+      "count": 0,
+      "data": []
+    },
+    "logistics_fulfillment_orders": {
+      "count": 0,
+      "data": []
+    },
+    "logistics_inventory": {
+      "count": 0,
+      "data": []
+    },
+    "logistics_warehouses": {
+      "count": 0,
+      "data": []
+    },
+    "loyalty_analytics": {
+      "count": 0,
+      "data": []
+    },
+    "loyalty_campaigns": {
+      "count": 0,
+      "data": []
+    },
+    "memberships": {
+      "count": 0,
+      "data": []
+    },
+    "merkle_snapshots": {
+      "count": 0,
+      "data": []
+    },
+    "message_attachments": {
+      "count": 0,
+      "data": []
+    },
+    "message_signature_requests": {
+      "count": 0,
+      "data": []
+    },
+    "nayax_qr_redemptions": {
+      "count": 0,
+      "data": []
+    },
+    "nayax_station_keys": {
+      "count": 0,
+      "data": []
+    },
+    "nayax_telemetry": {
+      "count": 0,
+      "data": []
+    },
+    "nayax_terminals": {
+      "count": 0,
+      "data": []
+    },
+    "nayax_transactions": {
+      "count": 0,
+      "data": []
+    },
+    "nayax_webhook_events": {
+      "count": 0,
+      "data": []
+    },
+    "oauth_consents": {
+      "count": 0,
+      "data": []
+    },
+    "operator_presence": {
+      "count": 0,
+      "data": []
+    },
+    "ops_incidents": {
+      "count": 0,
+      "data": []
+    },
+    "ops_sla_tracking": {
+      "count": 0,
+      "data": []
+    },
+    "ops_tasks": {
+      "count": 0,
+      "data": []
+    },
+    "organizational_chart": {
+      "count": 0,
+      "data": []
+    },
+    "passport_verifications": {
+      "count": 0,
+      "data": []
+    },
+    "payment_intents": {
+      "count": 0,
+      "data": []
+    },
+    "payroll_employee_mappings": {
+      "count": 0,
+      "data": []
+    },
+    "payroll_pay_periods": {
+      "count": 0,
+      "data": []
+    },
+    "payroll_paychecks": {
+      "count": 0,
+      "data": []
+    },
+    "payroll_providers": {
+      "count": 0,
+      "data": []
+    },
+    "payroll_sync_logs": {
+      "count": 0,
+      "data": []
+    },
+    "payroll_timesheets": {
+      "count": 0,
+      "data": []
+    },
+    "pending_transactions": {
+      "count": 0,
+      "data": []
+    },
+    "pet_avatars": {
+      "count": 0,
+      "data": []
+    },
+    "pet_profiles_for_sitting": {
+      "count": 0,
+      "data": []
+    },
+    "petfinder_listings": {
+      "count": 0,
+      "data": []
+    },
+    "pets": {
+      "count": 0,
+      "data": []
+    },
+    "pettrek_dispatch_records": {
+      "count": 0,
+      "data": []
+    },
+    "pettrek_gps_tracking": {
+      "count": 0,
+      "data": []
+    },
+    "pettrek_providers": {
+      "count": 0,
+      "data": []
+    },
+    "pettrek_trips": {
+      "count": 0,
+      "data": []
+    },
+    "platforms": {
+      "count": 0,
+      "data": []
+    },
+    "policy_acknowledgments": {
+      "count": 0,
+      "data": []
+    },
+    "policy_documents": {
+      "count": 0,
+      "data": []
+    },
+    "provider_applications": {
+      "count": 0,
+      "data": []
+    },
+    "provider_commissions": {
+      "count": 0,
+      "data": []
+    },
+    "provider_independence_score": {
+      "count": 0,
+      "data": []
+    },
+    "provider_invite_codes": {
+      "count": 0,
+      "data": []
+    },
+    "provider_licenses": {
+      "count": 0,
+      "data": []
+    },
+    "provider_tax_compliance": {
+      "count": 0,
+      "data": []
+    },
+    "providers": {
+      "count": 0,
+      "data": []
+    },
+    "ratings": {
+      "count": 9,
+      "data": [
+        {
+          "id": "c1b66f08-b422-44c0-a510-935f294839e2",
+          "contractor_id": "8c7820bf-0e31-420f-b73e-6ac266be8236",
+          "given_by_user_id": "11111111-1111-1111-1111-111111111111",
+          "score": 5,
+          "category": "professionalism",
+          "comment": "Excellent",
+          "created_at": "2025-11-19 09:32:56.894162"
+        },
+        {
+          "id": "d4798f4d-b3fc-4abd-a9da-418b984240f0",
+          "contractor_id": "8c7820bf-0e31-420f-b73e-6ac266be8236",
+          "given_by_user_id": "22222222-2222-2222-2222-222222222222",
+          "score": 5,
+          "category": "reliability",
+          "comment": "Always on time",
+          "created_at": "2025-11-19 09:32:56.925021"
+        },
+        {
+          "id": "1cea304a-6884-4b52-b2b4-e49f43c03fed",
+          "contractor_id": "8c7820bf-0e31-420f-b73e-6ac266be8236",
+          "given_by_user_id": "33333333-3333-3333-3333-333333333333",
+          "score": 4,
+          "category": "communication",
+          "comment": "Good communication",
+          "created_at": "2025-11-19 09:32:56.955491"
+        },
+        {
+          "id": "a729134e-0650-40cf-8f5b-4f34c8ca7695",
+          "contractor_id": "7ece0945-52c8-433b-b7b0-6e7b3d37e829",
+          "given_by_user_id": "11111111-1111-1111-1111-111111111111",
+          "score": 5,
+          "category": "professionalism",
+          "comment": "Excellent",
+          "created_at": "2025-11-19 09:37:02.018402"
+        },
+        {
+          "id": "06f2505d-f38e-45cc-807e-09f0e6d239c7",
+          "contractor_id": "7ece0945-52c8-433b-b7b0-6e7b3d37e829",
+          "given_by_user_id": "22222222-2222-2222-2222-222222222222",
+          "score": 5,
+          "category": "reliability",
+          "comment": "Always on time",
+          "created_at": "2025-11-19 09:37:02.072809"
+        },
+        {
+          "id": "65a824b6-0f84-48ca-8d12-736d9d4328f2",
+          "contractor_id": "7ece0945-52c8-433b-b7b0-6e7b3d37e829",
+          "given_by_user_id": "33333333-3333-3333-3333-333333333333",
+          "score": 4,
+          "category": "communication",
+          "comment": "Good communication",
+          "created_at": "2025-11-19 09:37:02.121132"
+        },
+        {
+          "id": "e7927971-8af0-4871-a960-714cd2d4868d",
+          "contractor_id": "bffdfb29-1894-4a97-b25e-e9c67a56cae2",
+          "given_by_user_id": "11111111-1111-1111-1111-111111111111",
+          "score": 5,
+          "category": "professionalism",
+          "comment": "Excellent",
+          "created_at": "2025-11-19 09:39:05.126353"
+        },
+        {
+          "id": "25dbbded-bb03-45b1-b4e6-53f1e5d984c8",
+          "contractor_id": "bffdfb29-1894-4a97-b25e-e9c67a56cae2",
+          "given_by_user_id": "22222222-2222-2222-2222-222222222222",
+          "score": 5,
+          "category": "reliability",
+          "comment": "Always on time",
+          "created_at": "2025-11-19 09:39:05.190207"
+        },
+        {
+          "id": "f5b45335-44a1-42b2-b3c9-de58a2a95a10",
+          "contractor_id": "bffdfb29-1894-4a97-b25e-e9c67a56cae2",
+          "given_by_user_id": "33333333-3333-3333-3333-333333333333",
+          "score": 4,
+          "category": "communication",
+          "comment": "Good communication",
+          "created_at": "2025-11-19 09:39:05.251113"
+        }
+      ]
+    },
+    "refresh_tokens": {
+      "count": 3,
+      "data": [
+        {
+          "id": 1,
+          "user_id": "a2d3abb8-64f9-4629-9cd5-694038b41593",
+          "device_id": "test-device-pGrtR0t9",
+          "token_hash": "$2b$10$FHRojgfzEy1UJIHSPefdBuk3fRKrl4/cVdvfy3aWprWMTTS3lHun2",
+          "created_at": "2025-11-19 08:06:40.03341",
+          "expires_at": "2025-12-19 08:06:40.021",
+          "revoked_at": null,
+          "jti": "legacy"
+        },
+        {
+          "id": 8,
+          "user_id": "3353c023-c2d2-4dd1-bff5-7a7eee23a847",
+          "device_id": null,
+          "token_hash": "$2b$10$RUjge/Pz2lC9yOOj1XY7m.0jQocvM/N3hJpRo2dLIASARvve3TvyW",
+          "created_at": "2025-11-19 08:37:26.024393",
+          "expires_at": "2025-12-19 08:37:26.007",
+          "revoked_at": "2025-11-19 08:37:26.189",
+          "jti": "3353c023-c2d2-4dd1-bff5-7a7eee23a847-1763541445917-qbf1aq6poqd"
+        },
+        {
+          "id": 9,
+          "user_id": "3353c023-c2d2-4dd1-bff5-7a7eee23a847",
+          "device_id": null,
+          "token_hash": "$2b$10$6aMcVbLo7J7WhvGFuSh7ruk1DN7HEmrmQE89zLI/lWPaH3AenkLkm",
+          "created_at": "2025-11-19 08:37:26.285983",
+          "expires_at": "2025-12-19 08:37:26.273",
+          "revoked_at": null,
+          "jti": "3353c023-c2d2-4dd1-bff5-7a7eee23a847-1763541446188-b9t4pb71mbe"
+        }
+      ]
+    },
+    "review_flagging_rules": {
+      "count": 0,
+      "data": []
+    },
+    "review_moderation": {
+      "count": 0,
+      "data": []
+    },
+    "review_moderation_rules": {
+      "count": 0,
+      "data": []
+    },
+    "roles": {
+      "count": 11,
+      "data": [
+        {
+          "id": 1,
+          "key": "super_admin",
+          "label": "Super Admin",
+          "department_id": 1,
+          "description": "Full system access and control",
+          "is_active": true
+        },
+        {
+          "id": 2,
+          "key": "company_admin",
+          "label": "Company Admin",
+          "department_id": 1,
+          "description": "Company-wide administrative access",
+          "is_active": true
+        },
+        {
+          "id": 3,
+          "key": "city_manager",
+          "label": "City Manager",
+          "department_id": 2,
+          "description": "Manages operations for a specific city",
+          "is_active": true
+        },
+        {
+          "id": 4,
+          "key": "field_technician",
+          "label": "Field Technician",
+          "department_id": 2,
+          "description": "On-site station maintenance and support",
+          "is_active": true
+        },
+        {
+          "id": 5,
+          "key": "driver",
+          "label": "Driver",
+          "department_id": 11,
+          "description": "Transportation and delivery services",
+          "is_active": true
+        },
+        {
+          "id": 6,
+          "key": "customer_support_agent",
+          "label": "Customer Support Agent",
+          "department_id": 8,
+          "description": "Customer service and issue resolution",
+          "is_active": true
+        },
+        {
+          "id": 7,
+          "key": "finance_controller",
+          "label": "Finance Controller",
+          "department_id": 6,
+          "description": "Financial oversight and reporting",
+          "is_active": true
+        },
+        {
+          "id": 8,
+          "key": "sales_manager",
+          "label": "Sales Manager",
+          "department_id": 4,
+          "description": "Sales team management and strategy",
+          "is_active": true
+        },
+        {
+          "id": 9,
+          "key": "franchise_owner",
+          "label": "Franchise Owner",
+          "department_id": 15,
+          "description": "Franchise location owner/operator",
+          "is_active": true
+        },
+        {
+          "id": 10,
+          "key": "partner_account_manager",
+          "label": "Partner Account Manager",
+          "department_id": 14,
+          "description": "Manages partner relationships and accounts",
+          "is_active": true
+        },
+        {
+          "id": 11,
+          "key": "view_only_auditor",
+          "label": "View-Only Auditor",
+          "department_id": 6,
+          "description": "Read-only access for auditing purposes",
+          "is_active": true
+        }
+      ]
+    },
+    "sessions": {
+      "count": 0,
+      "data": []
+    },
+    "signed_documents": {
+      "count": 0,
+      "data": []
+    },
+    "signing_sessions": {
+      "count": 0,
+      "data": []
+    },
+    "sitter_bookings": {
+      "count": 0,
+      "data": []
+    },
+    "sitter_complaints": {
+      "count": 0,
+      "data": []
+    },
+    "sitter_messages": {
+      "count": 0,
+      "data": []
+    },
+    "sitter_profiles": {
+      "count": 0,
+      "data": []
+    },
+    "sitter_reviews": {
+      "count": 0,
+      "data": []
+    },
+    "smart_wash_receipts": {
+      "count": 0,
+      "data": []
+    },
+    "social_comments": {
+      "count": 0,
+      "data": []
+    },
+    "social_direct_messages": {
+      "count": 0,
+      "data": []
+    },
+    "social_friendships": {
+      "count": 0,
+      "data": []
+    },
+    "social_likes": {
+      "count": 0,
+      "data": []
+    },
+    "social_posts": {
+      "count": 0,
+      "data": []
+    },
+    "staff_applications": {
+      "count": 0,
+      "data": []
+    },
+    "staff_background_checks": {
+      "count": 0,
+      "data": []
+    },
+    "staff_documents": {
+      "count": 0,
+      "data": []
+    },
+    "staff_esignatures": {
+      "count": 0,
+      "data": []
+    },
+    "staff_expenses": {
+      "count": 0,
+      "data": []
+    },
+    "staff_logbook": {
+      "count": 0,
+      "data": []
+    },
+    "station_registry": {
+      "count": 0,
+      "data": []
+    },
+    "stations": {
+      "count": 0,
+      "data": []
+    },
+    "subscription_box_types": {
+      "count": 0,
+      "data": []
+    },
+    "subscription_products": {
+      "count": 0,
+      "data": []
+    },
+    "subscription_shipments": {
+      "count": 0,
+      "data": []
+    },
+    "super_app_messages": {
+      "count": 0,
+      "data": []
+    },
+    "super_app_notifications": {
+      "count": 0,
+      "data": []
+    },
+    "super_app_payments": {
+      "count": 0,
+      "data": []
+    },
+    "super_app_payouts": {
+      "count": 0,
+      "data": []
+    },
+    "super_app_reviews": {
+      "count": 0,
+      "data": []
+    },
+    "supplier_contracts": {
+      "count": 0,
+      "data": []
+    },
+    "supplier_payments": {
+      "count": 0,
+      "data": []
+    },
+    "supplier_quality_scores": {
+      "count": 0,
+      "data": []
+    },
+    "suppliers": {
+      "count": 0,
+      "data": []
+    },
+    "tax_audit_logs": {
+      "count": 0,
+      "data": []
+    },
+    "tax_invoices": {
+      "count": 0,
+      "data": []
+    },
+    "tax_payments": {
+      "count": 0,
+      "data": []
+    },
+    "tax_rate_history": {
+      "count": 0,
+      "data": []
+    },
+    "tax_returns": {
+      "count": 0,
+      "data": []
+    },
+    "tax_treaties": {
+      "count": 0,
+      "data": []
+    },
+    "trainer_bookings": {
+      "count": 0,
+      "data": []
+    },
+    "trainers": {
+      "count": 0,
+      "data": []
+    },
+    "transaction_records": {
+      "count": 0,
+      "data": []
+    },
+    "transfer_pricing_documentation": {
+      "count": 0,
+      "data": []
+    },
+    "uk_tax": {
+      "count": 0,
+      "data": []
+    },
+    "us_federal_tax": {
+      "count": 0,
+      "data": []
+    },
+    "us_federal_tax_filings": {
+      "count": 0,
+      "data": []
+    },
+    "us_payroll_tax": {
+      "count": 0,
+      "data": []
+    },
+    "us_state_nexus": {
+      "count": 0,
+      "data": []
+    },
+    "us_state_tax": {
+      "count": 0,
+      "data": []
+    },
+    "us_state_tax_filings": {
+      "count": 0,
+      "data": []
+    },
+    "user_coupons": {
+      "count": 0,
+      "data": []
+    },
+    "user_device_events": {
+      "count": 0,
+      "data": []
+    },
+    "user_devices": {
+      "count": 0,
+      "data": []
+    },
+    "user_interaction_logs": {
+      "count": 0,
+      "data": []
+    },
+    "user_messages": {
+      "count": 0,
+      "data": []
+    },
+    "user_roles": {
+      "count": 0,
+      "data": []
+    },
+    "users": {
+      "count": 2,
+      "data": [
+        {
+          "id": "a2d3abb8-64f9-4629-9cd5-694038b41593",
+          "email": "test-contractor@petwash.co.il",
+          "first_name": "Test",
+          "last_name": "Contractor",
+          "profile_image_url": null,
+          "phone": "+972501234567",
+          "date_of_birth": null,
+          "country": "IL",
+          "gender": null,
+          "language": "en",
+          "loyalty_tier": "bronze",
+          "is_club_member": false,
+          "is_senior_verified": false,
+          "is_disability_verified": false,
+          "id_verification_status": "none",
+          "id_document_url": null,
+          "selfie_photo_url": null,
+          "id_photo_url": null,
+          "biometric_match_status": "pending",
+          "biometric_match_score": null,
+          "biometric_verified_at": null,
+          "biometric_verified_by": null,
+          "has_used_new_member_discount": false,
+          "current_discount_type": "none",
+          "max_discount_percent": 5,
+          "total_spent": "0.00",
+          "wash_balance": 0,
+          "gift_card_balance": "0.00",
+          "created_at": "2025-11-19 08:02:43.154185",
+          "updated_at": "2025-11-19 08:02:43.154185",
+          "analytics_consent": false,
+          "ip_tracking_consent": false,
+          "email_tracking_consent": false,
+          "marketing_consent": false,
+          "privacy_consent_updated_at": null,
+          "loyalty_points": 0,
+          "communication_preferences": {
+            "sms": {
+              "marketing": false,
+              "reminders": true,
+              "transactional": true
+            },
+            "push": {
+              "marketing": false,
+              "reminders": true,
+              "transactional": true
+            },
+            "email": {
+              "marketing": false,
+              "reminders": true,
+              "transactional": true
+            },
+            "whatsapp": {
+              "marketing": false,
+              "reminders": true,
+              "transactional": true
+            }
+          },
+          "suppression_list": {
+            "all": false,
+            "sms": false,
+            "push": false,
+            "email": false,
+            "whatsapp": false
+          },
+          "unsubscribed_at": null,
+          "password_hash": "$2b$10$4AZQ1g4eE0C7KDyOhLpdqea6iSqRKp6X0zh6eLJxcJbYu/hbu3IQu",
+          "roles": [
+            "contractor"
+          ],
+          "permissions": [
+            "contractor:read",
+            "contractor:write"
+          ]
+        },
+        {
+          "id": "3353c023-c2d2-4dd1-bff5-7a7eee23a847",
+          "email": "qa-test@petwash.co.il",
+          "first_name": "QA",
+          "last_name": "Tester",
+          "profile_image_url": null,
+          "phone": "+972501234567",
+          "date_of_birth": null,
+          "country": "IL",
+          "gender": null,
+          "language": "en",
+          "loyalty_tier": "bronze",
+          "is_club_member": false,
+          "is_senior_verified": false,
+          "is_disability_verified": false,
+          "id_verification_status": "none",
+          "id_document_url": null,
+          "selfie_photo_url": null,
+          "id_photo_url": null,
+          "biometric_match_status": "pending",
+          "biometric_match_score": null,
+          "biometric_verified_at": null,
+          "biometric_verified_by": null,
+          "has_used_new_member_discount": false,
+          "current_discount_type": "none",
+          "max_discount_percent": 5,
+          "total_spent": "0.00",
+          "wash_balance": 0,
+          "gift_card_balance": "0.00",
+          "created_at": "2025-11-19 08:27:29.792545",
+          "updated_at": "2025-11-19 08:27:29.792545",
+          "analytics_consent": false,
+          "ip_tracking_consent": false,
+          "email_tracking_consent": false,
+          "marketing_consent": false,
+          "privacy_consent_updated_at": null,
+          "loyalty_points": 0,
+          "communication_preferences": {
+            "sms": {
+              "marketing": false,
+              "reminders": true,
+              "transactional": true
+            },
+            "push": {
+              "marketing": false,
+              "reminders": true,
+              "transactional": true
+            },
+            "email": {
+              "marketing": false,
+              "reminders": true,
+              "transactional": true
+            },
+            "whatsapp": {
+              "marketing": false,
+              "reminders": true,
+              "transactional": true
+            }
+          },
+          "suppression_list": {
+            "all": false,
+            "sms": false,
+            "push": false,
+            "email": false,
+            "whatsapp": false
+          },
+          "unsubscribed_at": null,
+          "password_hash": "$2b$10$AIsjtIoM/1HWYZ5jRZc9zODxMKYD3q.g6KzWEbhtYeoj8q6aYUhQy",
+          "roles": [
+            "customer"
+          ],
+          "permissions": []
+        }
+      ]
+    },
+    "vehicles": {
+      "count": 0,
+      "data": []
+    },
+    "voucher_redemptions": {
+      "count": 0,
+      "data": []
+    },
+    "walk_alerts": {
+      "count": 0,
+      "data": []
+    },
+    "walk_blockchain_audit": {
+      "count": 0,
+      "data": []
+    },
+    "walk_bookings": {
+      "count": 0,
+      "data": []
+    },
+    "walk_gps_tracking": {
+      "count": 0,
+      "data": []
+    },
+    "walk_health_data": {
+      "count": 0,
+      "data": []
+    },
+    "walk_videos": {
+      "count": 0,
+      "data": []
+    },
+    "walker_profiles": {
+      "count": 0,
+      "data": []
+    },
+    "walker_reviews": {
+      "count": 0,
+      "data": []
+    },
+    "walker_schedule": {
+      "count": 0,
+      "data": []
+    },
+    "wash_history": {
+      "count": 0,
+      "data": []
+    },
+    "wash_packages": {
+      "count": 3,
+      "data": [
+        {
+          "id": 1,
+          "name": "Premium Single Wash",
+          "name_he": "שטיפה פרימיום יחידה",
+          "description": "One premium organic wash session with luxury organic shampoo",
+          "description_he": "שטיפה פרימיום אחת עם שמפו אורגני יוקרתי",
+          "price": "39.00",
+          "wash_count": 1,
+          "is_active": true,
+          "created_at": "2025-11-16 11:29:08.822676"
+        },
+        {
+          "id": 2,
+          "name": "Royal Triple Pack",
+          "name_he": "חבילת שלוש שטיפות מלכותית",
+          "description": "Three premium washes - save 10% with our most popular package!",
+          "description_he": "שלוש שטיפות פרימיום - חסכו 10% עם החבילה הפופולרית ביותר!",
+          "price": "105.30",
+          "wash_count": 3,
+          "is_active": true,
+          "created_at": "2025-11-16 11:29:08.822676"
+        },
+        {
+          "id": 3,
+          "name": "Elite Five Pack",
+          "name_he": "חבילת חמש שטיפות אליט",
+          "description": "Five premium washes - best value with 20% savings!",
+          "description_he": "חמש שטיפות פרימיום - הערך הטוב ביותר עם 20% חיסכון!",
+          "price": "156.00",
+          "wash_count": 5,
+          "is_active": true,
+          "created_at": "2025-11-16 11:29:08.822676"
+        }
+      ]
+    },
+    "watchdog_auto_fixes": {
+      "count": 0,
+      "data": []
+    },
+    "watchdog_checkout_monitoring": {
+      "count": 0,
+      "data": []
+    },
+    "watchdog_issues": {
+      "count": 0,
+      "data": []
+    },
+    "watchdog_registration_monitoring": {
+      "count": 0,
+      "data": []
+    },
+    "watchdog_user_journeys": {
+      "count": 0,
+      "data": []
+    },
+    "watchdog_user_struggles": {
+      "count": 0,
+      "data": []
+    }
+  }
+}
