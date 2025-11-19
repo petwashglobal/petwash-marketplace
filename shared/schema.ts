@@ -104,6 +104,52 @@ export const domainEvents = pgTable("domain_events", {
   index("idx_domain_events_occurred_at").on(table.occurredAt),
 ]);
 
+// Notification Templates (Multi-Channel Template Management)
+export const notificationTemplates = pgTable("notification_templates", {
+  id: serial("id").primaryKey(),
+  key: varchar("key").unique().notNull(), // "incident_reported", "inventory_low", "settlement_generated"
+  name: varchar("name").notNull(),
+  description: text("description"),
+  channels: jsonb("channels").notNull(), // ["email", "sms", "whatsapp", "push", "in_app"]
+  emailSubject: varchar("email_subject"),
+  emailBody: text("email_body"), // HTML template with {{variables}}
+  smsBody: text("sms_body"), // Plain text with {{variables}}
+  whatsappBody: text("whatsapp_body"),
+  pushTitle: varchar("push_title"),
+  pushBody: text("push_body"),
+  inAppTitle: varchar("in_app_title"),
+  inAppBody: text("in_app_body"),
+  defaultRecipients: jsonb("default_recipients"), // ["role:health_safety_manager", "department:operations"]
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_notification_templates_key").on(table.key),
+  index("idx_notification_templates_active").on(table.isActive),
+]);
+
+// Notification Logs (Delivery Tracking)
+export const notificationLogs = pgTable("notification_logs", {
+  id: serial("id").primaryKey(),
+  templateKey: varchar("template_key").notNull(),
+  channel: varchar("channel").notNull(), // "email", "sms", "whatsapp", "push", "in_app"
+  recipientUserId: varchar("recipient_user_id"),
+  recipientEmail: varchar("recipient_email"),
+  recipientPhone: varchar("recipient_phone"),
+  status: varchar("status").default("pending"), // "pending", "sent", "delivered", "failed", "bounced"
+  payload: jsonb("payload"), // Variables used in template
+  sentAt: timestamp("sent_at"),
+  deliveredAt: timestamp("delivered_at"),
+  failureReason: text("failure_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_notification_logs_template").on(table.templateKey),
+  index("idx_notification_logs_user").on(table.recipientUserId),
+  index("idx_notification_logs_status").on(table.status),
+  index("idx_notification_logs_channel").on(table.channel),
+  index("idx_notification_logs_created").on(table.createdAt),
+]);
+
 // Customer table (for custom authentication system)
 export const customers = pgTable("customers", {
   id: serial("id").primaryKey(),
@@ -413,6 +459,12 @@ export type InsertNayaxStationKey = typeof nayaxStationKeys.$inferInsert;
 export type GiftCard = EVoucher;
 export type InsertGiftCard = InsertEVoucher;
 
+// Notification types
+export type NotificationTemplate = typeof notificationTemplates.$inferSelect;
+export type InsertNotificationTemplate = typeof notificationTemplates.$inferInsert;
+export type NotificationLog = typeof notificationLogs.$inferSelect;
+export type InsertNotificationLog = typeof notificationLogs.$inferInsert;
+
 // Zod schemas
 export const insertCustomerSchema = createInsertSchema(customers);
 export const insertCustomerPetSchema = createInsertSchema(customerPets);
@@ -431,6 +483,17 @@ export const insertNayaxStationKeySchema = createInsertSchema(nayaxStationKeys);
 
 // Legacy schema for backward compatibility
 export const insertGiftCardSchema = insertEVoucherSchema;
+
+// Notification schemas
+export const insertNotificationTemplateSchema = createInsertSchema(notificationTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertNotificationLogSchema = createInsertSchema(notificationLogs).omit({
+  id: true,
+  createdAt: true,
+});
 
 // Admin system tables
 export const adminUsers = pgTable("admin_users", {
@@ -6699,6 +6762,59 @@ export const stations = pgTable("stations", {
   locationIdx: index("station_location_idx").on(table.locationId),
 }));
 
+// ===== INVENTORY MANAGEMENT =====
+
+// Supplies master catalog
+export const supplies = pgTable("supplies", {
+  id: serial("id").primaryKey(),
+  sku: varchar("sku").unique().notNull(),
+  name: varchar("name").notNull(),
+  category: varchar("category").notNull(),
+  unitType: varchar("unit_type").notNull(),
+  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }),
+  supplier: varchar("supplier"),
+  reorderThreshold: integer("reorder_threshold").default(10),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  categoryIdx: index("supply_category_idx").on(table.category),
+  activeIdx: index("supply_active_idx").on(table.isActive),
+}));
+
+// Station-specific inventory levels
+export const stationSupplies = pgTable("station_supplies", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").references(() => stations.id).notNull(),
+  supplyId: integer("supply_id").references(() => supplies.id).notNull(),
+  currentLevel: integer("current_level").default(0),
+  reorderThreshold: integer("reorder_threshold"),
+  lastRefillAt: timestamp("last_refill_at"),
+  lastRefillAmount: integer("last_refill_amount"),
+  lastRefillByUserId: varchar("last_refill_by_user_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  stationIdx: index("station_supply_station_idx").on(table.stationId),
+  supplyIdx: index("station_supply_supply_idx").on(table.supplyId),
+  levelIdx: index("station_supply_level_idx").on(table.currentLevel),
+}));
+
+// Inventory refill history
+export const inventoryRefills = pgTable("inventory_refills", {
+  id: serial("id").primaryKey(),
+  stationSupplyId: integer("station_supply_id").references(() => stationSupplies.id).notNull(),
+  amount: integer("amount").notNull(),
+  previousLevel: integer("previous_level").notNull(),
+  newLevel: integer("new_level").notNull(),
+  refilledByUserId: varchar("refilled_by_user_id").notNull(),
+  notes: text("notes"),
+  refilledAt: timestamp("refilled_at").defaultNow(),
+}, (table) => ({
+  stationSupplyIdx: index("inventory_refill_station_supply_idx").on(table.stationSupplyId),
+  refilledAtIdx: index("inventory_refill_date_idx").on(table.refilledAt),
+}));
+
 // ===== LOGISTICS & FLEET MANAGEMENT =====
 
 // Logistics tasks for field operations (deliveries, installations, etc.)
@@ -7472,3 +7588,106 @@ export const updateLogisticsVehicleSchema = insertLogisticsVehicleSchema.partial
   id: true, 
   createdAt: true 
 });
+
+// ============================================================================
+// HEALTH & SAFETY MODULE - Incident Reporting System
+// ============================================================================
+
+// Health & Safety incidents table
+export const healthSafetyIncidents = pgTable("health_safety_incidents", {
+  id: serial("id").primaryKey(),
+  incidentNumber: varchar("incident_number").unique().notNull(), // "INC-2025-001"
+  stationId: integer("station_id").references(() => stations.id).notNull(),
+  reportedByUserId: varchar("reported_by_user_id").notNull(), // Firebase UID
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  type: varchar("type").notNull(), // "slip_and_fall", "electrical", "water_leak", "injury", "equipment_malfunction", "other"
+  severity: varchar("severity").notNull(), // "low", "medium", "high", "critical"
+  status: varchar("status").default("open"), // "open", "in_review", "resolved", "closed"
+  actionTaken: text("action_taken"),
+  resolutionNotes: text("resolution_notes"),
+  resolvedByUserId: varchar("resolved_by_user_id"),
+  resolvedAt: timestamp("resolved_at"),
+  reportedAt: timestamp("reported_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_hs_incidents_station").on(table.stationId),
+  index("idx_hs_incidents_status").on(table.status),
+  index("idx_hs_incidents_severity").on(table.severity),
+  index("idx_hs_incidents_reported").on(table.reportedAt),
+]);
+
+// Incident photos table
+export const incidentPhotos = pgTable("incident_photos", {
+  id: serial("id").primaryKey(),
+  incidentId: integer("incident_id").references(() => healthSafetyIncidents.id, { onDelete: "cascade" }).notNull(),
+  fileName: varchar("file_name").notNull(),
+  fileUrl: varchar("file_url").notNull(), // Firebase Storage
+  fileSizeBytes: integer("file_size_bytes"),
+  mimeType: varchar("mime_type"),
+  uploadedByUserId: varchar("uploaded_by_user_id").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+}, (table) => [
+  index("idx_incident_photos_incident").on(table.incidentId),
+]);
+
+// Type exports
+export type HealthSafetyIncident = typeof healthSafetyIncidents.$inferSelect;
+export type InsertHealthSafetyIncident = typeof healthSafetyIncidents.$inferInsert;
+export type IncidentPhoto = typeof incidentPhotos.$inferSelect;
+export type InsertIncidentPhoto = typeof incidentPhotos.$inferInsert;
+
+// Zod validation schemas
+export const insertHealthSafetyIncidentSchema = createInsertSchema(healthSafetyIncidents, {
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(5000),
+  type: z.enum(['slip_and_fall', 'electrical', 'water_leak', 'injury', 'equipment_malfunction', 'other']),
+  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  status: z.enum(['open', 'in_review', 'resolved', 'closed']).optional(),
+}).omit({ id: true, incidentNumber: true, createdAt: true, updatedAt: true, reportedAt: true });
+
+export const updateHealthSafetyIncidentSchema = insertHealthSafetyIncidentSchema.partial();
+
+export const insertIncidentPhotoSchema = createInsertSchema(incidentPhotos, {
+  fileName: z.string().min(1),
+  fileUrl: z.string().url(),
+  mimeType: z.string().regex(/^image\/(jpeg|jpg|png|webp)$/),
+  fileSizeBytes: z.number().max(5 * 1024 * 1024), // 5MB max
+}).omit({ id: true, uploadedAt: true });
+
+// ===== INVENTORY MANAGEMENT TYPES & SCHEMAS =====
+
+// Type exports
+export type Supply = typeof supplies.$inferSelect;
+export type InsertSupply = typeof supplies.$inferInsert;
+export type StationSupply = typeof stationSupplies.$inferSelect;
+export type InsertStationSupply = typeof stationSupplies.$inferInsert;
+export type InventoryRefill = typeof inventoryRefills.$inferSelect;
+export type InsertInventoryRefill = typeof inventoryRefills.$inferInsert;
+
+// Zod validation schemas
+export const insertSupplySchema = createInsertSchema(supplies, {
+  sku: z.string().min(1).max(50),
+  name: z.string().min(1).max(200),
+  category: z.enum(['shampoo', 'conditioner', 'disinfectant', 'towels', 'accessories', 'other']),
+  unitType: z.enum(['liters', 'bottles', 'units', 'boxes', 'kg']),
+  unitCost: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+  reorderThreshold: z.number().min(0).optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const updateSupplySchema = insertSupplySchema.partial();
+
+export const insertStationSupplySchema = createInsertSchema(stationSupplies, {
+  currentLevel: z.number().min(0).optional(),
+  reorderThreshold: z.number().min(0).optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const updateStationSupplySchema = insertStationSupplySchema.partial();
+
+export const insertInventoryRefillSchema = createInsertSchema(inventoryRefills, {
+  amount: z.number().min(1),
+  previousLevel: z.number().min(0),
+  newLevel: z.number().min(0),
+  notes: z.string().max(1000).optional(),
+}).omit({ id: true, refilledAt: true });

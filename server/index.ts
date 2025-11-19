@@ -207,7 +207,13 @@ ensureBiometricStorage()
     // 5. Register all API routes (AFTER static files, BEFORE catchall)
     await registerRoutes(app);
     
-    // 5a. Initialize automated cron jobs (AFTER routes, BEFORE error handlers)
+    // 5a. Initialize notification event handlers (AFTER routes)
+    console.log('[Notifications] Registering event handlers...');
+    const { registerNotificationEventHandlers } = await import('./services/events/NotificationEventHandlers');
+    registerNotificationEventHandlers();
+    console.log('[Notifications] Event handlers registered successfully');
+    
+    // 5b. Initialize automated cron jobs (AFTER routes, BEFORE error handlers)
     console.log('[Cron] Initializing automated jobs...');
     startMonthlySettlementsCron();
     console.log('[Cron] All cron jobs initialized successfully');

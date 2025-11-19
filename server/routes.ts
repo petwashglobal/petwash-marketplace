@@ -27,6 +27,7 @@ import gmailRoutes from "./routes/gmail";
 import mobileAuthRoutes from "./routes/mobile-auth";
 import mobileBiometricRoutes from "./routes/mobile-biometric";
 import mobileFieldOpsRoutes from "./routes/mobile/field-ops";
+import healthSafetyRoutes from "./routes/health-safety";
 import biometricCertificatesRoutes from "./routes/biometric-certificates";
 import voiceRoutes from "./routes/voice";
 import aiFeedbackRoutes from "./routes/ai-feedback";
@@ -104,6 +105,7 @@ import enterpriseSalesRoutes from "./routes/enterprise-sales";
 import enterpriseSalesCRMRoutes from "./routes/enterprise-sales-crm";
 import expensesRoutes from "./routes/expenses";
 import franchiseRoutes from "./routes/franchise";
+import inventoryRoutes from "./routes/inventory";
 import franchiseMgmtRoutes from "./routes/franchise-mgmt";
 import geminiWatchdogRoutes from "./routes/gemini-watchdog";
 import globalFormsRoutes from "./routes/globalForms";
@@ -7955,6 +7957,12 @@ self.addEventListener('notificationclick', (event) => {
 
   // 📱 Mobile Field Operations - Field updates, photo uploads, Waze integration for technicians
   app.use('/api/mobile', apiLimiter, mobileFieldOpsRoutes);
+
+  // 🏥 Health & Safety - Incident reporting with photo documentation
+  app.use('/api/health-safety', apiLimiter, healthSafetyRoutes);
+
+  // 📦 Inventory Management - Station supplies, low stock alerts, purchase orders
+  app.use('/api/inventory', apiLimiter, inventoryRoutes);
 
   // 🔐 Biometric Certificate Verification - תעודת נכה, גימלאים, תעודת זהות, רשיון נהיגה (Document Upload + Face Matching)
   app.use('/api/biometric-certificates', uploadLimiter, biometricCertificatesRoutes);

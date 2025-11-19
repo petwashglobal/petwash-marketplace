@@ -94,6 +94,16 @@ export interface InventoryLowPayload {
   threshold: number;
 }
 
+export interface InventoryRefilledPayload {
+  stationSupplyId: number;
+  stationId: string;
+  supplyName: string;
+  previousLevel: number;
+  newLevel: number;
+  amount: number;
+  refilledBy: string;
+}
+
 export interface IncidentReportedPayload {
   incidentId: string;
   stationId: string;
