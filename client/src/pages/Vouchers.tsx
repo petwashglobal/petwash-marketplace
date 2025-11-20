@@ -138,7 +138,7 @@ export default function Vouchers() {
             </p>
           </div>
           <Button
-            onClick={() => navigate('/egift')}
+            onClick={() => setLocation('/egift')}
             size="lg"
             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90"
             data-testid="button-create-voucher"
@@ -199,7 +199,7 @@ export default function Vouchers() {
                 Create your first luxury voucher to get started
               </p>
               <Button
-                onClick={() => navigate('/egift')}
+                onClick={() => setLocation('/egift')}
                 className="bg-gradient-to-r from-purple-600 to-pink-600"
               >
                 <Plus className="w-4 h-4 mr-2" />
