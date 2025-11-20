@@ -7,7 +7,7 @@ import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { FaInstagram, FaFacebookF, FaTiktok } from 'react-icons/fa';
-import { LanguageToggle } from './LanguageToggle';
+import { LuxuryLanguageSwitcher } from './LuxuryLanguageSwitcher';
 import { GlobalNavigation } from './GlobalNavigation';
 import { 
   getPlatformByPath, 
@@ -131,11 +131,10 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             padding-bottom: 4px;
             /* CSS Grid for locked positioning */
             display: grid;
-            grid-template-rows: auto auto auto;
+            grid-template-rows: auto auto;
             grid-template-areas:
               "logo"
-              "utility"
-              "language";
+              "utility";
             gap: 4px;
             align-items: center;
           }
@@ -216,36 +215,6 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             background: #000;
             display: block;
           }
-
-          .lang-row {
-            grid-area: language;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            font-size: clamp(11px, 1.6vw, 14px);
-            line-height: 1;
-          }
-
-          .lang-btn {
-            background: none;
-            border: none;
-            padding: 4px 8px;
-            cursor: pointer;
-            text-decoration: underline;
-            transition: all 0.2s;
-          }
-
-          .lang-btn:hover,
-          .lang-btn:active {
-            text-decoration: none;
-            transform: scale(0.95);
-          }
-
-          .lang-separator {
-            margin: 0 8px;
-            opacity: 0.4;
-          }
         }
 
         /* ===== LANDSCAPE MODE (≤480px) ===== */
@@ -282,10 +251,6 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             min-width: 40px;
             min-height: 40px;
           }
-
-          .lang-row {
-            font-size: clamp(11px, 1.6vw, 14px);
-          }
         }
 
         /* ===== LARGER PHONES & TABLETS (481px - 767px) ===== */
@@ -296,11 +261,10 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             padding-right: max(16px, env(safe-area-inset-right));
             padding-bottom: 6px;
             display: grid;
-            grid-template-rows: auto auto auto;
+            grid-template-rows: auto auto;
             grid-template-areas:
               "logo"
-              "utility"
-              "language";
+              "utility";
             gap: 8px;
             align-items: center;
           }
@@ -347,11 +311,6 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             width: 48px;
             height: 48px;
           }
-
-          .lang-row {
-            text-align: center;
-            font-size: 14px;
-          }
         }
 
         /* ===== LARGE TABLETS & iPAD PRO (768px - 1279px) ===== */
@@ -362,11 +321,10 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             padding-right: max(20px, env(safe-area-inset-right));
             padding-bottom: 8px;
             display: grid;
-            grid-template-rows: auto auto auto;
+            grid-template-rows: auto auto;
             grid-template-areas:
               "logo"
-              "utility"
-              "language";
+              "utility";
             gap: 10px;
             align-items: center;
           }
@@ -443,13 +401,6 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             background: #000;
             display: block;
             border-radius: 2px;
-          }
-
-          .lang-row {
-            grid-area: language;
-            text-align: center;
-            font-size: 15px;
-            padding: 0 10px;
           }
         }
 
@@ -529,6 +480,14 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             </a>
           </nav>
 
+          {onLanguageChange && (
+            <LuxuryLanguageSwitcher 
+              language={language} 
+              onLanguageChange={onLanguageChange}
+              className="mr-3"
+            />
+          )}
+          
           <button
             type="button"
             aria-label="Open menu"
@@ -540,17 +499,6 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
             <span className="hamburger-line" />
             <span className="hamburger-line" />
           </button>
-        </div>
-
-        {/* Row 3: Language toggle centered */}
-        <div className="lang-row">
-          {onLanguageChange && (
-            <LanguageToggle 
-              language={language} 
-              onLanguageChange={onLanguageChange}
-              testIdPrefix="header-mobile-language-button"
-            />
-          )}
         </div>
       </div>
 
@@ -624,13 +572,11 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
                 </>
               )}
               {onLanguageChange && (
-                <div className="flex-shrink-0">
-                  <LanguageToggle 
-                    language={language} 
-                    onLanguageChange={onLanguageChange} 
-                    testIdPrefix="header-desktop-language-button"
-                  />
-                </div>
+                <LuxuryLanguageSwitcher 
+                  language={language} 
+                  onLanguageChange={onLanguageChange}
+                  className="flex-shrink-0"
+                />
               )}
             </nav>
           </div>
