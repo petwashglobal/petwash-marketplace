@@ -7,7 +7,7 @@ import { db } from '../server/db';
 import { Storage } from '@google-cloud/storage';
 import { sql } from 'drizzle-orm';
 
-const BACKUP_BUCKET = process.env.BIOMETRIC_BUCKET_NAME || 'petwash-backups';
+const BACKUP_BUCKET = process.env.BIOMETRIC_BUCKET_NAME || 'petwash-backups-93383';
 const BACKUP_PREFIX = 'petwash-database-backups/';
 
 // Initialize Google Cloud Storage with credentials from environment
