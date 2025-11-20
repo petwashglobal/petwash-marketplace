@@ -53,11 +53,19 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 
 ## System Architecture
 
+### Production Deployment (Updated Nov 20, 2025)
+- **Production Hosting**: Replit Deployments (Cloud Run on Google Cloud Platform)
+- **Production Domain**: petwash.co.il
+- **Development Environment**: Replit workspace with Vite HMR
+- **Source Control**: GitHub repository `petwashglobal/petwash-marketplace`
+- **Firebase Project**: nifty-quanta-475212-v3 (Auth/Firestore/Storage ONLY - NOT for hosting)
+- **Deployment Guide**: See PRODUCTION_DEPLOYMENT_GUIDE.md for complete instructions
+
 ### Core Features & Design Decisions
 - **Global Architecture Module**: `shared/petwashGlobal.ts` for core platform catalog, KYC, wallet, payments, booking, and mobile contracts.
 - **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Focus on responsive, mobile-first, luxury designs with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
-- **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
+- **Authentication & User Management**: Firebase Auth (project: nifty-quanta-475212-v3), WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
 - **AI Chat Assistant**: Google Dialogflow CX powered by Gemini 2.5 Flash with Kenzo mascot, bilingual Hebrew/English, WCAG 2.1 AA compliant.
 - **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™.
 - **The Plush Lab™**: AI-powered pet avatar creator.
