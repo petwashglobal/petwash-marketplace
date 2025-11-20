@@ -7,7 +7,7 @@ import { db } from '../server/db';
 import { Storage } from '@google-cloud/storage';
 import { sql } from 'drizzle-orm';
 
-const BACKUP_BUCKET = process.env.BIOMETRIC_BUCKET_NAME || 'signinpetwash.firebasestorage.app';
+const BACKUP_BUCKET = process.env.BIOMETRIC_BUCKET_NAME || 'nifty-quanta-475212-v3.appspot.com';
 const BACKUP_PREFIX = 'petwash-database-backups/';
 
 // Initialize Google Cloud Storage with credentials from environment
