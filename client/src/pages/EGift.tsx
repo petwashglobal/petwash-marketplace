@@ -100,31 +100,46 @@ export default function EGift() {
   const suggestedAmounts = [50, 100, 200, 500];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
-      <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
-        {/* Header */}
-        <div className="text-center mb-8 sm:mb-12">
-          <div className="inline-flex items-center justify-center gap-3 mb-4">
-            <Gift className="w-10 h-10 sm:w-12 sm:h-12 text-pink-600" />
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Pet Wash™ 7-Star Vouchers
-            </h1>
-            <Heart className="w-10 h-10 sm:w-12 sm:h-12 text-purple-600" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 relative overflow-hidden">
+      {/* Luxury Background Effects */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(168,85,247,0.08),transparent_50%)]"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(236,72,153,0.08),transparent_50%)]"></div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 relative z-10">
+        {/* Luxury Header Section */}
+        <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+          {/* Premium Badge */}
+          <div className="inline-flex items-center justify-center p-2 bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-full mb-4 sm:mb-6">
+            <span className="px-4 py-2 bg-white rounded-full text-xs sm:text-sm font-semibold text-gray-700 shadow-sm">
+              7-STAR LUXURY VOUCHERS
+            </span>
           </div>
-          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
-            Premium luxury vouchers with metallic themes, QR codes, and SHA256 security 💎🔒
+
+          {/* Main Title */}
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-pink-900 bg-clip-text text-transparent mb-4 sm:mb-6 px-4">
+            Pet Wash™ Digital Gifts
+          </h1>
+          
+          {/* Subtitle */}
+          <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-2 sm:mb-4 px-4">
+            Premium luxury vouchers with metallic themes, QR codes, and SHA256 security
+          </p>
+          
+          {/* Additional tagline */}
+          <p className="text-base sm:text-lg text-gray-500 max-w-2xl mx-auto italic px-4">
+            Send the perfect gift of pet pampering
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
           {/* E-Gift Form */}
-          <Card className="border-2 border-purple-200 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-pink-50 to-purple-50">
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
+          <Card className="border-2 border-purple-200 shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-purple-50 via-pink-50 to-blue-50">
+              <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
                 Create 7-Star Voucher
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-base">
                 Luxury digital voucher with metallic themes & enhanced security
               </CardDescription>
             </CardHeader>
@@ -376,13 +391,13 @@ export default function EGift() {
           {/* Live Preview & Benefits Section */}
           <div className="space-y-6">
             {/* Live Voucher Preview Card */}
-            <Card className="border-2 border-gradient overflow-hidden bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+            <Card className="border-2 border-purple-200 shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
               <CardHeader>
-                <CardTitle className="text-purple-700 flex items-center gap-2">
-                  <Gift className="w-5 h-5" />
+                <CardTitle className="text-purple-700 flex items-center gap-2 text-xl sm:text-2xl">
+                  <Gift className="w-5 h-5 sm:w-6 sm:h-6" />
                   Live Preview
                 </CardTitle>
-                <CardDescription>See your voucher in real-time</CardDescription>
+                <CardDescription className="text-base">See your voucher in real-time</CardDescription>
               </CardHeader>
               <CardContent>
                 {/* Voucher Card Preview */}
@@ -438,9 +453,9 @@ export default function EGift() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-pink-200">
+            <Card className="border-2 border-pink-200 shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden">
               <CardHeader className="bg-gradient-to-r from-pink-50 to-rose-50">
-                <CardTitle className="text-pink-700">7-Star Features</CardTitle>
+                <CardTitle className="text-pink-700 text-xl sm:text-2xl">7-Star Features</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
                 <ul className="space-y-3">
@@ -476,12 +491,12 @@ export default function EGift() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+            <Card className="border-2 border-purple-200 shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <CreditCard className="w-12 h-12 text-purple-600 mx-auto mb-3" />
-                  <h3 className="font-bold text-lg mb-2">Secure Payment</h3>
-                  <p className="text-sm text-gray-600">
+                  <Shield className="w-12 h-12 text-purple-600 mx-auto mb-3" />
+                  <h3 className="font-bold text-lg sm:text-xl mb-2">Secure Payment</h3>
+                  <p className="text-sm sm:text-base text-gray-600">
                     Powered by Nayax Payment Gateway with bank-level encryption
                   </p>
                 </div>
