@@ -1,0 +1,37 @@
+
+From now on I want all production code to be managed through GitHub and automatically scanned so no old 2024 / legacy UI can ever be deployed.
+
+A. Git + GitHub setup
+	1.	Initialize git in this Replit project if not already done.
+	2.	Connect this workspace to my GitHub repo (create one if needed) and push the current, correct 2025 luxury version as the main branch.
+	3.	From now on: never deploy code that is not committed and pushed to GitHub.
+
+B. Create a “legacy UI scanner” script
+	1.	Create a new file at scripts/scan-legacy-ui.js with the exact content I give below.
+	2.	This script must:
+	•	Recursively scan client/src and client/src/styles (or our actual folders) for forbidden legacy patterns.
+	•	At minimum block any use of old Apple style classes like apple-package- and any other old identifiers you find such as apple-old-ui, old GiftCards layouts, etc.
+	•	Exit with code 1 and print a clear error if any of these are found.
+	•	Exit with code 0 and print a green message if everything is clean.
+
+C. Wire the scanner into npm scripts
+	1.	In package.json add:
+	•	"scan:ui": "node scripts/scan-legacy-ui.js"
+	•	Make sure predeploy or the main build script runs npm run scan:ui before building or deploying. For example:
+	•	"predeploy": "npm run scan:ui"
+	•	Keep using our existing build / start commands exactly as they were.
+	2.	Ensure npm run scan:ui can be executed successfully from the Replit shell.
+
+D. Enforce scan before every deploy
+	1.	For any Replit deployment / Cloud Run deploy command, make sure it runs in this order:
+	•	npm install (if needed)
+	•	npm run scan:ui
+	•	only if scan passes → npm run build and deployment.
+	2.	If you configure GitHub Actions later, the workflow must also run npm run scan:ui before build and deploy.
+
+E. Verify
+	1.	Run npm run scan:ui now and show me the output.
+	2.	Fix any legacy matches you find (remove old CSS blocks like apple-package-* and old layout files) until the scan passes.
+	3.	Only then rebuild and redeploy the app.
+
+Use the exact scan script below, do not simplify it:

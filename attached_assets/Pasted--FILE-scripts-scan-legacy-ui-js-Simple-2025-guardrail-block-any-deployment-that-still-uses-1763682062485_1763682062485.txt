@@ -1,0 +1,103 @@
+// FILE: scripts/scan-legacy-ui.js
+//
+// Simple 2025 guardrail: block any deployment that still uses old
+// non-luxury UI code. The script scans all .ts, .tsx and .css files
+// under client/src and fails if it finds forbidden patterns.
+
+const fs = require('fs');
+const path = require('path');
+
+// Adjust if our frontend lives in a different folder
+const ROOT_DIR = path.join(__dirname, '..', 'client', 'src');
+
+// Add or tweak patterns as we discover more legacy code
+const forbiddenPatterns = [
+  {
+    pattern: 'apple-package-',
+    reason: 'Old Apple package CSS (non-luxury design)',
+  },
+  {
+    pattern: 'apple-old-ui',
+    reason: 'Legacy Apple UI component',
+  },
+  {
+    pattern: 'legacy-ui',
+    reason: 'Generic legacy UI marker',
+  },
+  {
+    pattern: 'OldGiftCards',
+    reason: 'Old gift cards screen, should not be used',
+  },
+  // Add more patterns here if you find other legacy components
+];
+
+function walk(dir, results = []) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walk(full, results);
+    } else if (entry.isFile()) {
+      // scan only code / style files
+      if (/\.(ts|tsx|js|jsx|css|scss)$/.test(entry.name)) {
+        results.push(full);
+      }
+    }
+  }
+  return results;
+}
+
+function scanFile(filePath, patterns) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  const hits = [];
+  patterns.forEach(p => {
+    if (content.includes(p.pattern)) {
+      // capture a few lines around the first match
+      const idx = content.indexOf(p.pattern);
+      const start = Math.max(0, idx - 80);
+      const end = Math.min(content.length, idx + p.pattern.length + 80);
+      const snippet = content.slice(start, end).replace(/\s+/g, ' ').trim();
+      hits.push({ pattern: p.pattern, reason: p.reason, snippet });
+    }
+  });
+  return hits;
+}
+
+function main() {
+  if (!fs.existsSync(ROOT_DIR)) {
+    console.error(`❌ Legacy UI scan: folder not found: ${ROOT_DIR}`);
+    process.exit(1);
+  }
+
+  const files = walk(ROOT_DIR);
+  const allProblems = [];
+
+  for (const file of files) {
+    const rel = path.relative(process.cwd(), file);
+    const hits = scanFile(file, forbiddenPatterns);
+    if (hits.length > 0) {
+      hits.forEach(hit => {
+        allProblems.push({ file: rel, ...hit });
+      });
+    }
+  }
+
+  if (allProblems.length > 0) {
+    console.error('\n❌ Legacy UI scan FAILED.');
+    console.error('The following legacy patterns are still present:\n');
+    allProblems.forEach((p, index) => {
+      console.error(
+        `${index + 1}. File: ${p.file}\n   Pattern: "${p.pattern}"\n   Reason: ${p.reason}\n   Snippet: ${p.snippet}\n`
+      );
+    });
+    console.error(
+      '🚫 Deployment blocked. Please remove/replace these legacy fragments with the 2025 luxury UI before building or deploying.\n'
+    );
+    process.exit(1);
+  }
+
+  console.log('✅ Legacy UI scan passed. Only 2025 luxury UI code detected.');
+  process.exit(0);
+}
+
+main();
