@@ -42,8 +42,6 @@ import StaffOnboarding from "@/pages/admin/StaffOnboarding";
 
 // LAZY LOAD: All other routes (code split for performance)
 const SignIn = lazy(() => import("@/pages/SignIn"));
-const FastSignIn = lazy(() => import("@/pages/FastSignIn"));
-const SimpleSignIn = lazy(() => import("@/pages/SimpleSignIn"));
 const SignUp = lazy(() => import("@/pages/SignUp"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Marketplace = lazy(() => import("@/pages/Marketplace"));
@@ -122,7 +120,6 @@ const MobileStationHub = lazy(() => import("@/pages/MobileStationHub"));
 const MobileStationSheet = lazy(() => import("@/pages/MobileStationSheet"));
 const MobileOpsHub = lazy(() => import("@/pages/MobileOpsHub"));
 const OpsTodayPage = lazy(() => import("@/pages/OpsTodayPage"));
-const FirebaseDebug = lazy(() => import("@/pages/FirebaseDebug"));
 const WelcomeConsent = lazy(() => import("@/pages/WelcomeConsent"));
 const OpsDashboard = lazy(() => import("@/pages/OpsDashboard"));
 const EnterpriseHQ = lazy(() => import("@/pages/EnterpriseHQ"));
@@ -161,7 +158,6 @@ const ComplianceControlTower = lazy(() => import("@/pages/ComplianceControlTower
 const GeminiWatchdogDashboard = lazy(() => import("@/pages/GeminiWatchdogDashboard"));
 const PerformanceMonitoring = lazy(() => import("@/pages/PerformanceMonitoring"));
 const NotificationPreferences = lazy(() => import("@/pages/NotificationPreferences"));
-const GoogleServicesConsent = lazy(() => import("@/pages/GoogleServicesConsent"));
 const PetWashDayPlanner = lazy(() => import("@/pages/PetWashDayPlanner"));
 const RoleAwareWeatherPlanner = lazy(() => import("@/pages/RoleAwareWeatherPlanner"));
 
@@ -1068,15 +1064,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* Protected route - Settings */}
-        {/* Google Services Consent - All 13 Google Cloud APIs with pre-checked boxes */}
-        <Route path="/google-services-consent">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <GoogleServicesConsent language={language} onLanguageChange={handleLanguageChange} />
-            </Suspense>
-          )}
-        </Route>
-
         {/* Pet Wash Day Planner - Luxury Weather Intelligence */}
         <Route path="/pet-wash-day-planner">
           {() => (
@@ -1768,10 +1755,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/claim">
           {() => <ClaimVoucher />}
         </Route>
-        {/* 🔒 SECURITY: Debug route only in development */}
-        {IS_DEV && (
-          <Route path="/firebase-debug">{() => <FirebaseDebug language={language} onLanguageChange={handleLanguageChange} />}</Route>
-        )}
         <Route path="/ops-dashboard">{() => <OpsDashboard language={language} onLanguageChange={handleLanguageChange} />}</Route>
         <Route component={NotFound} />
       </Switch>
