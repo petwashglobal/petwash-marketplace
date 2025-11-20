@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { PaymentMethodsStrip } from '@/components/payments/PaymentMethodsStrip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -29,7 +30,6 @@ export default function EGift() {
   const [, setLocation] = useLocation();
   const { user } = useFirebaseAuth();
   const { toast } = useToast();
-  const [selectedPayment, setSelectedPayment] = useState<string>('apple_pay');
 
   const form = useForm<EGiftFormData>({
     resolver: zodResolver(eGiftFormSchema),
@@ -328,136 +328,16 @@ export default function EGift() {
                     )}
                   />
 
-                  {/* Payment Method Selection - 7-Star Luxury */}
+                  {/* Payment Methods - Modern 2025 Design */}
                   <div className="space-y-4 pt-4 border-t-2 border-purple-100">
                     <div>
                       <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
                         <CreditCard className="w-5 h-5 text-purple-600" />
-                        Choose Payment Method
+                        Accepted Payment Methods
                       </h3>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Apple Pay */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPayment('apple_pay')}
-                        className={`relative p-4 rounded-xl border-2 transition-all ${
-                          selectedPayment === 'apple_pay'
-                            ? 'border-black bg-gradient-to-br from-gray-900 to-black text-white shadow-lg'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        data-testid="button-payment-apple-pay"
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <Smartphone className="w-6 h-6" />
-                          <span className="text-sm font-bold">Apple Pay</span>
-                        </div>
-                        {selectedPayment === 'apple_pay' && (
-                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
-                        )}
-                      </button>
-
-                      {/* Google Pay */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPayment('google_pay')}
-                        className={`relative p-4 rounded-xl border-2 transition-all ${
-                          selectedPayment === 'google_pay'
-                            ? 'border-blue-500 bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-lg'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        data-testid="button-payment-google-pay"
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <Smartphone className="w-6 h-6" />
-                          <span className="text-sm font-bold">Google Pay</span>
-                        </div>
-                        {selectedPayment === 'google_pay' && (
-                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
-                        )}
-                      </button>
-
-                      {/* Visa */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPayment('visa')}
-                        className={`relative p-4 rounded-xl border-2 transition-all ${
-                          selectedPayment === 'visa'
-                            ? 'border-blue-600 bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        data-testid="button-payment-visa"
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <CreditCard className="w-6 h-6" />
-                          <span className="text-sm font-bold">Visa</span>
-                        </div>
-                        {selectedPayment === 'visa' && (
-                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
-                        )}
-                      </button>
-
-                      {/* Mastercard */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPayment('mastercard')}
-                        className={`relative p-4 rounded-xl border-2 transition-all ${
-                          selectedPayment === 'mastercard'
-                            ? 'border-red-500 bg-gradient-to-br from-red-600 to-orange-500 text-white shadow-lg'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        data-testid="button-payment-mastercard"
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <CreditCard className="w-6 h-6" />
-                          <span className="text-sm font-bold">Mastercard</span>
-                        </div>
-                        {selectedPayment === 'mastercard' && (
-                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
-                        )}
-                      </button>
-
-                      {/* Amex */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPayment('amex')}
-                        className={`relative p-4 rounded-xl border-2 transition-all ${
-                          selectedPayment === 'amex'
-                            ? 'border-blue-400 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        data-testid="button-payment-amex"
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <CreditCard className="w-6 h-6" />
-                          <span className="text-sm font-bold">Amex</span>
-                        </div>
-                        {selectedPayment === 'amex' && (
-                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
-                        )}
-                      </button>
-
-                      {/* Diners */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPayment('diners')}
-                        className={`relative p-4 rounded-xl border-2 transition-all ${
-                          selectedPayment === 'diners'
-                            ? 'border-indigo-500 bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-lg'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        data-testid="button-payment-diners"
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <CreditCard className="w-6 h-6" />
-                          <span className="text-sm font-bold">Diners</span>
-                        </div>
-                        {selectedPayment === 'diners' && (
-                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
-                        )}
-                      </button>
-                    </div>
+                    <PaymentMethodsStrip className="justify-center" />
 
                     <p className="text-xs text-gray-500 text-center">
                       🔒 Secured by Nayax Payment Gateway • Bank-level encryption
