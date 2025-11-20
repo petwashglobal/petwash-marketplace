@@ -1,0 +1,45 @@
+name: Legacy UI Scanner - Deployment Protection
+
+# This workflow blocks any deployment with old 2024 template code
+# Runs automatically on all pushes to main and all pull requests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  scan-legacy-ui:
+    runs-on: ubuntu-latest
+    name: Block Legacy UI from Production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Legacy UI Scanner
+        run: npm run scan:ui
+        env:
+          NODE_ENV: production
+
+      - name: Build verification (if scanner passed)
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Success notification
+        if: success()
+        run: |
+          echo "✅ Legacy UI scan passed!"
+          echo "✅ Production build successful!"
+          echo "🚀 Code is ready for deployment to petwash.co.il"

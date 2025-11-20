@@ -32,9 +32,30 @@
 - ✅ K9000 IoT, backup scripts, compliance modules intact
 - ✅ Firebase Auth/Firestore/Storage configured
 
-### 2. Build Verification
+### 2. Legacy UI Scanner (MANDATORY)
 ```bash
-# Run production build
+# Run legacy UI scanner - blocks deployment if old 2024 code detected
+npm run scan:ui
+
+# Expected output:
+# ✅ Legacy UI scan passed. Only 2025 luxury UI code detected.
+```
+
+**This scanner protects your production deployment by:**
+- Blocking any old Apple package CSS classes (`apple-package-*`)
+- Detecting legacy components (`OldGiftCards`, `apple-old-ui`)
+- Ensuring only luxury 2025 UI reaches production
+- Automatically runs before `npm run build` via `prebuild` hook
+
+**If the scan fails:**
+1. Review the error output showing which files contain legacy patterns
+2. Remove or replace the legacy code with 2025 luxury components
+3. Re-run `npm run scan:ui` until it passes
+4. Only then proceed with deployment
+
+### 3. Build Verification
+```bash
+# Run production build (automatically runs scan:ui first)
 npm run build
 
 # Verify output
@@ -43,7 +64,7 @@ ls -lh dist/public/brand/petwash-logo-official.png
 find dist/public -type f | wc -l  # Should be 300+ files
 ```
 
-### 3. Environment Variables
+### 4. Environment Variables
 Ensure all secrets are configured in Replit Secrets:
 - `FIREBASE_PROJECT_ID`: nifty-quanta-475212-v3
 - `GOOGLE_APPLICATION_CREDENTIALS`: Service account JSON
@@ -80,7 +101,15 @@ Ensure all secrets are configured in Replit Secrets:
 
 ### Option 2: GitHub Actions CI/CD
 
-See `.github/workflows/deploy-replit.yml` for automated deployments from GitHub.
+**Automated Deployment Protection**
+
+The repository includes `.github/workflows/deploy-protection.yml` which automatically:
+1. Runs `npm run scan:ui` on every push to main
+2. Blocks merges if legacy UI is detected
+3. Verifies production build succeeds
+4. Ensures only clean code reaches production
+
+This workflow runs automatically on GitHub - no manual setup required.
 
 ---
 
