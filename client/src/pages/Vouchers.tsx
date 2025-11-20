@@ -8,7 +8,7 @@ import { VoucherCard2025 } from '@/components/VoucherCard2025';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sparkles, TrendingUp, Wallet, Plus } from 'lucide-react';
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import type { PetWashVoucher2025 } from '@shared/petwashVoucher2025';
 
 interface VoucherWithHistory extends Omit<PetWashVoucher2025, 'rules' | 'visual' | 'owner' | 'security' | 'usage'> {
@@ -42,7 +42,7 @@ interface VoucherWithHistory extends Omit<PetWashVoucher2025, 'rules' | 'visual'
 
 export default function Vouchers() {
   const { user } = useFirebaseAuth();
-  const [, navigate] = useNavigate();
+  const [, setLocation] = useLocation();
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/vouchers-2025/my-vouchers'],
@@ -63,7 +63,7 @@ export default function Vouchers() {
             <CardDescription>Please sign in to view your vouchers</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => navigate('/signin')} className="w-full">
+            <Button onClick={() => setLocation('/signin')} className="w-full">
               Sign In
             </Button>
           </CardContent>

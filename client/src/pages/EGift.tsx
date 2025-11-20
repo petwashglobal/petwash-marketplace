@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
@@ -26,7 +26,7 @@ const eGiftFormSchema = z.object({
 type EGiftFormData = z.infer<typeof eGiftFormSchema>;
 
 export default function EGift() {
-  const [, navigate] = useNavigate();
+  const [, setLocation] = useLocation();
   const { user } = useFirebaseAuth();
   const { toast } = useToast();
   const [selectedPayment, setSelectedPayment] = useState<string>('apple_pay');
@@ -73,7 +73,7 @@ export default function EGift() {
       });
       
       form.reset();
-      setTimeout(() => navigate('/vouchers'), 2000);
+      setTimeout(() => setLocation('/vouchers'), 2000);
     },
     onError: (error: any) => {
       toast({
@@ -91,7 +91,7 @@ export default function EGift() {
         title: "Authentication Required",
         description: "Please sign in to send e-gift cards."
       });
-      navigate('/signin');
+      setLocation('/signin');
       return;
     }
     
