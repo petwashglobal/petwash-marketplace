@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "nifty-quanta-475212-v3"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }
