@@ -2,7 +2,6 @@ import { t, type Language } from '@/lib/i18n';
 import { Link } from 'wouter';
 import { FaWhatsapp } from 'react-icons/fa';
 import { Mail, Shield, Award, Leaf, CheckCircle2 } from 'lucide-react';
-import PaymentIcons from '@/components/PaymentIcons';
 
 interface FooterProps {
   language: Language;
@@ -121,7 +120,12 @@ export function Footer({ language }: FooterProps) {
               <p className="text-xs uppercase tracking-[0.2em] text-gray-400 font-light mb-5">
                 {t('footer.securePayment', language)}
               </p>
-              <PaymentIcons variant="compact" />
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 px-4 py-2 rounded-lg border border-white/20">
+                <Shield className="w-4 h-4 text-white" />
+                <span className="text-white text-sm font-semibold">
+                  {language === 'he' ? 'תשלום מאובטח' : 'Secure Payment'}
+                </span>
+              </div>
             </div>
 
             {/* Trust Badges - Minimalist Luxury */}

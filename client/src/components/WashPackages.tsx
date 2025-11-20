@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Check, Sparkles, Crown } from 'lucide-react';
+import { Check, Sparkles, Crown, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ExpressCheckoutModal } from '@/components/ExpressCheckoutModal';
 import { CustomerSignupModal } from '@/components/CustomerSignupModal';
-import PaymentIcons from '@/components/PaymentIcons';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { t, type Language } from '@/lib/i18n';
@@ -303,12 +302,14 @@ export function WashPackages({ language }: WashPackagesProps) {
           })}
         </div>
 
-        {/* Payment Methods - Ultra-Modern 2025 */}
-        <div className="mt-12 sm:mt-16 lg:mt-20">
-          <h3 className="text-2xl sm:text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            {language === 'he' ? 'אמצעי תשלום מאובטחים' : 'Secure Payment Methods'}
-          </h3>
-          <PaymentIcons variant="default" />
+        {/* Secure Payment Badge */}
+        <div className="mt-12 sm:mt-16 lg:mt-20 flex justify-center">
+          <div className="inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500 via-teal-600 to-cyan-600 px-6 py-3 rounded-xl shadow-lg border border-white/20">
+            <Shield className="w-6 h-6 text-white" />
+            <span className="text-white text-base font-semibold tracking-wide">
+              {language === 'he' ? 'תשלום מאובטח' : 'Secure Payment'}
+            </span>
+          </div>
         </div>
 
         {/* Trust Indicators */}

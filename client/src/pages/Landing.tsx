@@ -6,7 +6,6 @@ import { Layout } from '@/components/Layout';
 import { LegalFooter } from '@/components/LegalFooter';
 import { PetWashDivisions } from '@/components/PetWashDivisions';
 import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/components/LuxuryThemeWrapper';
-import PaymentIcons from '@/components/PaymentIcons';
 import { t, type Language } from '@/lib/i18n';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 
@@ -188,10 +187,6 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Payment Methods Accepted Section - Sharp SVG Icons */}
         <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-8 sm:mb-12">
-              {t('landing.paymentMethods', language)}
-            </h2>
-            <PaymentIcons variant="default" />
           </div>
         </section>
 
