@@ -1,86 +1,22 @@
-/* override-2025.css — Mobile menu white background only */
+/* override-2025.css — Mobile menu white background ONLY */
 
-/* Mobile hamburger menu - white background for readability */
+/* CRITICAL: This file should ONLY style the mobile hamburger menu.
+   DO NOT add global CSS resets that affect the entire site.
+   All luxury gradients, glassmorphism, and premium styling must be preserved. */
+
+/* Mobile hamburger menu - pure white background for readability */
+.mobile-hamburger-menu-container,
+.mobile-hamburger-menu-container * {
+  background-color: #FFFFFF !important;
+}
+
 .mobile-hamburger-menu-container {
   width: clamp(280px, 75vw, 400px) !important;
-  background-color: #FFFFFF !important;
   border-left: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Preserve luxury glassmorphism and gradients everywhere else */
-.glass-bg,
-.glassmorphism,
-[class*="glass"],
-[class*="gradient"],
-.luxury-card,
-.luxury-section {
-  background: initial !important;
-  background-color: initial !important;
-  background-image: initial !important;
-}
-
-/* ========================================================================
-   EXEMPTIONS - Allow these elements to keep their designed backgrounds
-   ======================================================================== */
-
-/* Buttons - need colors for UX */
-button, 
-[role="button"],
-[type="button"],
-[type="submit"],
-.btn,
-.button,
-a.button {
-  background: initial;
-  background-color: initial;
-  background-image: initial;
-  box-shadow: initial;
-}
-
-/* Cards - allow shadows and backgrounds for depth */
-.card:not(button),
-[class*="card"]:not(button),
-.rounded-xl:not(section):not(main),
-.rounded-2xl:not(section):not(main),
-.shadow-lg,
-.shadow-xl,
-.shadow-2xl {
-  background: initial;
-  background-color: initial;
-  background-image: initial;
-  box-shadow: initial;
-}
-
-/* Media elements - transparent backgrounds */
-img, video, canvas, iframe, svg, path, circle, rect, line, polygon, polyline {
-  background: transparent !important;
-  background-color: transparent !important;
-}
-
-/* Icons - keep their designs */
-.lucide, [class*="icon"], .avatar-head, .avatar-body, [class*="avatar"] {
-  background: initial;
-  background-color: initial;
-  background-image: initial;
-}
-
-/* Charts and data viz */
-[class*="recharts"], [class*="chart"] {
-  background: #fff !important;
-  background-color: #fff !important;
-}
-
-/* Badges and pills - allow colored backgrounds */
-.badge, .pill, .tag, [class*="badge"], [class*="rounded-full"] {
-  background: initial;
-  background-color: initial;
-  background-image: initial;
-}
-
-/* Gradient sections that are INTENTIONAL design elements */
-.keep-bg,
-[data-keep-bg="true"] {
-  background: initial !important;
-  background-color: initial !important;
-  background-image: initial !important;
+/* RTL support for mobile menu */
+.mobile-hamburger-menu-container.rtl {
+  border-left: none !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
