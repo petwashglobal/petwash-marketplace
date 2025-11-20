@@ -5,7 +5,7 @@
 
 import { Storage } from '@google-cloud/storage';
 
-const BUCKET_NAME = process.env.BIOMETRIC_BUCKET_NAME || 'petwash-backups-93383';
+const BUCKET_NAME = process.env.GCS_BACKUP_BUCKET || process.env.BIOMETRIC_BUCKET_NAME || 'petwash-backups-93383';
 
 async function diagnosePermissions() {
   console.log('🔍 Google Cloud Storage Permission Diagnostics');
