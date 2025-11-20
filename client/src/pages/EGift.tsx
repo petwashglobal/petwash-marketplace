@@ -3,13 +3,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gift, Heart, Sparkles, CreditCard, Mail, User } from 'lucide-react';
+import { Gift, Heart, Sparkles, CreditCard, Mail, User, Smartphone, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Voucher 2025 form schema
@@ -28,6 +29,7 @@ export default function EGift() {
   const [, navigate] = useNavigate();
   const { user } = useFirebaseAuth();
   const { toast } = useToast();
+  const [selectedPayment, setSelectedPayment] = useState<string>('apple_pay');
 
   const form = useForm<EGiftFormData>({
     resolver: zodResolver(eGiftFormSchema),
@@ -324,6 +326,142 @@ export default function EGift() {
                     )}
                   />
 
+                  {/* Payment Method Selection - 7-Star Luxury */}
+                  <div className="space-y-4 pt-4 border-t-2 border-purple-100">
+                    <div>
+                      <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-purple-600" />
+                        Choose Payment Method
+                      </h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Apple Pay */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPayment('apple_pay')}
+                        className={`relative p-4 rounded-xl border-2 transition-all ${
+                          selectedPayment === 'apple_pay'
+                            ? 'border-black bg-gradient-to-br from-gray-900 to-black text-white shadow-lg'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                        data-testid="button-payment-apple-pay"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <Smartphone className="w-6 h-6" />
+                          <span className="text-sm font-bold">Apple Pay</span>
+                        </div>
+                        {selectedPayment === 'apple_pay' && (
+                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
+                        )}
+                      </button>
+
+                      {/* Google Pay */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPayment('google_pay')}
+                        className={`relative p-4 rounded-xl border-2 transition-all ${
+                          selectedPayment === 'google_pay'
+                            ? 'border-blue-500 bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-lg'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                        data-testid="button-payment-google-pay"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <Smartphone className="w-6 h-6" />
+                          <span className="text-sm font-bold">Google Pay</span>
+                        </div>
+                        {selectedPayment === 'google_pay' && (
+                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
+                        )}
+                      </button>
+
+                      {/* Visa */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPayment('visa')}
+                        className={`relative p-4 rounded-xl border-2 transition-all ${
+                          selectedPayment === 'visa'
+                            ? 'border-blue-600 bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                        data-testid="button-payment-visa"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <CreditCard className="w-6 h-6" />
+                          <span className="text-sm font-bold">Visa</span>
+                        </div>
+                        {selectedPayment === 'visa' && (
+                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
+                        )}
+                      </button>
+
+                      {/* Mastercard */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPayment('mastercard')}
+                        className={`relative p-4 rounded-xl border-2 transition-all ${
+                          selectedPayment === 'mastercard'
+                            ? 'border-red-500 bg-gradient-to-br from-red-600 to-orange-500 text-white shadow-lg'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                        data-testid="button-payment-mastercard"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <CreditCard className="w-6 h-6" />
+                          <span className="text-sm font-bold">Mastercard</span>
+                        </div>
+                        {selectedPayment === 'mastercard' && (
+                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
+                        )}
+                      </button>
+
+                      {/* Amex */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPayment('amex')}
+                        className={`relative p-4 rounded-xl border-2 transition-all ${
+                          selectedPayment === 'amex'
+                            ? 'border-blue-400 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                        data-testid="button-payment-amex"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <CreditCard className="w-6 h-6" />
+                          <span className="text-sm font-bold">Amex</span>
+                        </div>
+                        {selectedPayment === 'amex' && (
+                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
+                        )}
+                      </button>
+
+                      {/* Diners */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPayment('diners')}
+                        className={`relative p-4 rounded-xl border-2 transition-all ${
+                          selectedPayment === 'diners'
+                            ? 'border-indigo-500 bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-lg'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                        data-testid="button-payment-diners"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <CreditCard className="w-6 h-6" />
+                          <span className="text-sm font-bold">Diners</span>
+                        </div>
+                        {selectedPayment === 'diners' && (
+                          <CheckCircle2 className="absolute top-2 right-2 w-5 h-5 text-green-400" />
+                        )}
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-gray-500 text-center">
+                      🔒 Secured by Nayax Payment Gateway • Bank-level encryption
+                    </p>
+                  </div>
+
                   {/* Submit Button */}
                   <Button
                     type="submit"
@@ -349,8 +487,71 @@ export default function EGift() {
             </CardContent>
           </Card>
 
-          {/* Benefits Section */}
+          {/* Live Preview & Benefits Section */}
           <div className="space-y-6">
+            {/* Live Voucher Preview Card */}
+            <Card className="border-2 border-gradient overflow-hidden bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+              <CardHeader>
+                <CardTitle className="text-purple-700 flex items-center gap-2">
+                  <Gift className="w-5 h-5" />
+                  Live Preview
+                </CardTitle>
+                <CardDescription>See your voucher in real-time</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Voucher Card Preview */}
+                <div
+                  className={`relative p-6 rounded-2xl shadow-2xl min-h-[280px] flex flex-col justify-between ${
+                    form.watch('theme') === 'neo_black_platinum'
+                      ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white'
+                      : form.watch('theme') === 'neo_emerald'
+                      ? 'bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-800 text-white'
+                      : 'bg-gradient-to-br from-gray-400 via-gray-300 to-gray-500 text-gray-900'
+                  }`}
+                  data-testid="voucher-preview-card"
+                >
+                  {/* Top Section */}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-semibold opacity-90">PetWash™ Luxury</p>
+                      <p className="text-xs opacity-75">7-Star Metal Card</p>
+                    </div>
+                    <Sparkles className="w-6 h-6 opacity-80" />
+                  </div>
+
+                  {/* Middle Section */}
+                  <div className="flex-1 flex flex-col justify-center py-4">
+                    <h2 className="text-2xl font-bold mb-2">E-Gift Voucher</h2>
+                    <p className="text-sm opacity-90 mb-1">
+                      For: {form.watch('recipientName') || 'Your Favourite Pet Parent'}
+                    </p>
+                    <p className="text-3xl font-black mt-2">
+                      ₪{form.watch('amount') || 100}
+                    </p>
+                  </div>
+
+                  {/* Bottom Section */}
+                  <div className="text-xs opacity-75">
+                    <p>From: {form.watch('purchaserEmail') || 'PetWash™ Member'}</p>
+                    {form.watch('message') && (
+                      <p className="mt-2 italic">"{form.watch('message')}"</p>
+                    )}
+                  </div>
+
+                  {/* Decorative Elements */}
+                  <div className="absolute bottom-4 right-4 opacity-20">
+                    <Gift className="w-16 h-16" />
+                  </div>
+                </div>
+
+                <div className="mt-4 text-center">
+                  <p className="text-xs text-gray-500">
+                    ✨ Theme: <span className="font-semibold capitalize">{form.watch('theme')?.replace('neo_', '').replace('_', ' ')}</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="border-2 border-pink-200">
               <CardHeader className="bg-gradient-to-r from-pink-50 to-rose-50">
                 <CardTitle className="text-pink-700">7-Star Features</CardTitle>
