@@ -185,7 +185,11 @@ ensureBiometricStorage()
     
     console.log('--------------------------------------------------');
     
-    // 4. Serve static files - CONDITIONAL based on environment
+    // 4. Register all API routes FIRST (critical for dev mode)
+    // MUST be BEFORE Vite middleware or production static files
+    await registerRoutes(app);
+    
+    // 5. Serve static files - CONDITIONAL based on environment
     // DEVELOPMENT: Use Vite dev server with HMR for hot reloading
     // PRODUCTION: Serve pre-built static files from dist/public
     if (process.env.NODE_ENV === 'development') {
@@ -207,7 +211,7 @@ ensureBiometricStorage()
     } else {
       console.log('📦 [Production Mode] Serving pre-built static files from dist/public');
       // Serve static files from the DIST directory with explicit configuration
-      // MOUNTED BEFORE API ROUTES for proper request handling order
+      // MOUNTED AFTER API ROUTES for proper request handling order
       app.use(express.static(DIST_PUBLIC_PATH, {
         maxAge: '1d', // Cache static assets for 1 day
         etag: true,
@@ -225,9 +229,6 @@ ensureBiometricStorage()
         }
       }));
     }
-    
-    // 5. Register all API routes (AFTER static files, BEFORE catchall)
-    await registerRoutes(app);
     
     // 5a. Initialize notification event handlers (AFTER routes)
     console.log('[Notifications] Registering event handlers...');
