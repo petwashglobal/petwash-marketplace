@@ -6,12 +6,11 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
-import { PaymentMethodsStrip } from '@/components/payments/PaymentMethodsStrip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gift, Heart, Sparkles, CreditCard, Mail, User, Smartphone, CheckCircle2 } from 'lucide-react';
+import { Gift, Heart, Sparkles, CreditCard, Mail, User, Smartphone, CheckCircle2, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Voucher 2025 form schema
@@ -337,7 +336,12 @@ export default function EGift() {
                       </h3>
                     </div>
                     
-                    <PaymentMethodsStrip className="justify-center" />
+                    <div className="flex justify-center">
+                      <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 px-4 py-2 rounded-lg border border-white/20">
+                        <Shield className="w-4 h-4 text-white" />
+                        <span className="text-white text-sm font-semibold">Secure Payment</span>
+                      </div>
+                    </div>
 
                     <p className="text-xs text-gray-500 text-center">
                       🔒 Secured by Nayax Payment Gateway • Bank-level encryption

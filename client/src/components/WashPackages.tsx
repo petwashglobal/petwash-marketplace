@@ -14,6 +14,40 @@ interface WashPackagesProps {
   language: Language;
 }
 
+// Fallback packages when API fails
+const FALLBACK_PACKAGES: WashPackage[] = [
+  {
+    id: '1',
+    name: 'Single Wash',
+    description: 'One premium organic wash',
+    price: '79',
+    washCount: 1,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: '2',
+    name: '3 Wash Package',
+    description: 'Three premium washes - Save 10%',
+    price: '213',
+    washCount: 3,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: '3',
+    name: '5 Wash Package',
+    description: 'Five premium washes - Save 20%',
+    price: '316',
+    washCount: 5,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+
 export function WashPackages({ language }: WashPackagesProps) {
   const [selectedPackage, setSelectedPackage] = useState<WashPackage | null>(null);
   const [isExpressCheckoutOpen, setIsExpressCheckoutOpen] = useState(false);
@@ -24,6 +58,9 @@ export function WashPackages({ language }: WashPackagesProps) {
   const { data: packages, isLoading, isError, error } = useQuery<WashPackage[]>({
     queryKey: ['/api/packages'],
   });
+  
+  // Use fallback packages if API fails
+  const displayPackages = packages || (isError ? FALLBACK_PACKAGES : []);
 
   const handleExpressCheckout = (pkg: WashPackage) => {
     logger.debug('Express checkout clicked', { packageName: pkg.name });
@@ -53,28 +90,8 @@ export function WashPackages({ language }: WashPackagesProps) {
     );
   }
 
-  if (isError) {
-    return (
-      <section className="py-16 sm:py-20 lg:py-24 bg-gradient-to-br from-slate-50 via-white to-slate-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <div className="text-red-500 text-5xl mb-4">⚠️</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {t('packages.errorLoading', language)}
-            </h3>
-            <p className="text-gray-600">
-              {t('packages.tryAgainLater', language)}
-            </p>
-            {error && (
-              <p className="text-sm text-gray-500 mt-2">
-                {error instanceof Error ? error.message : 'Unknown error'}
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
-    );
-  }
+  // Show compact error notice if API fails (but still display fallback packages)
+  const showErrorNotice = isError;
 
   const getDiscountPercentage = (washCount: number): number => {
     if (washCount === 3) return 10;
@@ -144,9 +161,20 @@ export function WashPackages({ language }: WashPackagesProps) {
           </p>
         </div>
 
+        {/* Compact error notice if API fails */}
+        {showErrorNotice && (
+          <div className="mb-6 max-w-4xl mx-auto">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+              <p className="text-sm text-amber-800">
+                {t('packages.errorLoading', language)} - {language === 'he' ? 'מציג מחירים בסיסיים' : 'Showing standard pricing'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Luxury Package Cards Grid - Responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto">
-          {packages?.map((pkg, index) => {
+          {displayPackages.map((pkg, index) => {
             const discount = getDiscountPercentage(pkg.washCount);
             const pricePerWash = pkg.washCount > 1 
               ? Math.round(Number(pkg.price) / pkg.washCount) 
