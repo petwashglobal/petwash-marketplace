@@ -1,0 +1,320 @@
+// FILE: client/src/pages/EGift.tsx
+
+import React, { useState } from "react";
+import { useLocation } from "wouter";
+
+function useNavigate() {
+  const [, setLocation] = useLocation();
+  return setLocation;
+}
+
+type VoucherType = "egift" | "package_single" | "package_multi";
+
+const EGiftPage: React.FC = () => {
+  const navigate = useNavigate();
+
+  const [voucherType, setVoucherType] = useState<VoucherType>("egift");
+  const [amount, setAmount] = useState<number>(100);
+  const [washes, setWashes] = useState<number>(5);
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [fromName, setFromName] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // send to backend here
+    // after success:
+    navigate("/egift/success");
+  };
+
+  return (
+    <div className="pw-egift-page">
+      <header className="pw-egift-header">
+        <h1 className="pw-egift-title">PetWash™ Lux E-Gift & Packages</h1>
+        <p className="pw-egift-subtitle">
+          7-Star metallic digital cards for e-gifts and wash packages.
+        </p>
+      </header>
+
+      <main className="pw-egift-main">
+        <section className="pw-egift-layout">
+          <form className="pw-egift-form" onSubmit={handleSubmit}>
+            <div className="pw-egift-switch">
+              <button
+                type="button"
+                className={
+                  voucherType === "egift"
+                    ? "pw-egift-switch-btn pw-egift-switch-btn--active"
+                    : "pw-egift-switch-btn"
+                }
+                onClick={() => setVoucherType("egift")}
+              >
+                E-Gift card
+              </button>
+              <button
+                type="button"
+                className={
+                  voucherType === "package_single"
+                    ? "pw-egift-switch-btn pw-egift-switch-btn--active"
+                    : "pw-egift-switch-btn"
+                }
+                onClick={() => setVoucherType("package_single")}
+              >
+                Single wash
+              </button>
+              <button
+                type="button"
+                className={
+                  voucherType === "package_multi"
+                    ? "pw-egift-switch-btn pw-egift-switch-btn--active"
+                    : "pw-egift-switch-btn"
+                }
+                onClick={() => setVoucherType("package_multi")}
+              >
+                Multi-wash package
+              </button>
+            </div>
+
+            {voucherType === "egift" && (
+              <div className="pw-egift-field">
+                <label>Amount (₪)</label>
+                <input
+                  type="number"
+                  min={10}
+                  step={10}
+                  value={amount}
+                  onChange={e => setAmount(Number(e.target.value || 0))}
+                />
+              </div>
+            )}
+
+            {voucherType !== "egift" && (
+              <div className="pw-egift-field">
+                <label>Number of washes</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={washes}
+                  onChange={e => setWashes(Number(e.target.value || 0))}
+                />
+              </div>
+            )}
+
+            <div className="pw-egift-grid">
+              <div className="pw-egift-field">
+                <label>Recipient name</label>
+                <input
+                  type="text"
+                  value={recipientName}
+                  onChange={e => setRecipientName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="pw-egift-field">
+                <label>Recipient email</label>
+                <input
+                  type="email"
+                  value={recipientEmail}
+                  onChange={e => setRecipientEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="pw-egift-grid">
+              <div className="pw-egift-field">
+                <label>Your name</label>
+                <input
+                  type="text"
+                  value={fromName}
+                  onChange={e => setFromName(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="pw-egift-field">
+              <label>Personal message (optional)</label>
+              <textarea
+                rows={3}
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+              />
+            </div>
+
+            <section className="pw-payments">
+              <h3 className="pw-payments-title">Choose payment method</h3>
+
+              <div className="pw-payments-grid">
+                <button
+                  type="button"
+                  className="pw-pay-card pw-pay-card--selected"
+                  data-method="apple_pay"
+                >
+                  <div className="pw-pay-card-inner">
+                    <div className="pw-pay-logo-wrap">
+                      <img
+                        src="/assets/payments/apple-pay-full.svg"
+                        alt="Apple Pay"
+                        className="pw-pay-logo"
+                      />
+                    </div>
+                    <div className="pw-pay-text">
+                      <span className="pw-pay-name">Apple Pay</span>
+                      <span className="pw-pay-meta">
+                        Fast secure pay on this device
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="pw-pay-card"
+                  data-method="google_pay"
+                >
+                  <div className="pw-pay-card-inner">
+                    <div className="pw-pay-logo-wrap">
+                      <img
+                        src="/assets/payments/google-pay-full.svg"
+                        alt="Google Pay"
+                        className="pw-pay-logo"
+                      />
+                    </div>
+                    <div className="pw-pay-text">
+                      <span className="pw-pay-name">Google Pay</span>
+                      <span className="pw-pay-meta">
+                        Pay with your Google wallet
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="pw-pay-card"
+                  data-method="visa"
+                >
+                  <div className="pw-pay-card-inner">
+                    <div className="pw-pay-logo-wrap">
+                      <img
+                        src="/assets/payments/visa-color.svg"
+                        alt="Visa"
+                        className="pw-pay-logo"
+                      />
+                    </div>
+                    <div className="pw-pay-text">
+                      <span className="pw-pay-name">Visa</span>
+                      <span className="pw-pay-meta">
+                        All major Visa credit and debit
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="pw-pay-card"
+                  data-method="mastercard"
+                >
+                  <div className="pw-pay-card-inner">
+                    <div className="pw-pay-logo-wrap">
+                      <img
+                        src="/assets/payments/mastercard-color.svg"
+                        alt="Mastercard"
+                        className="pw-pay-logo"
+                      />
+                    </div>
+                    <div className="pw-pay-text">
+                      <span className="pw-pay-name">Mastercard</span>
+                      <span className="pw-pay-meta">
+                        Credit and debit cards supported
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="pw-pay-card"
+                  data-method="amex"
+                >
+                  <div className="pw-pay-card-inner">
+                    <div className="pw-pay-logo-wrap">
+                      <img
+                        src="/assets/payments/amex-color.svg"
+                        alt="American Express"
+                        className="pw-pay-logo"
+                      />
+                    </div>
+                    <div className="pw-pay-text">
+                      <span className="pw-pay-name">American Express</span>
+                      <span className="pw-pay-meta">
+                        Rewards and charge cards
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="pw-pay-card"
+                  data-method="diners"
+                >
+                  <div className="pw-pay-card-inner">
+                    <div className="pw-pay-logo-wrap">
+                      <img
+                        src="/assets/payments/diners-color.svg"
+                        alt="Diners"
+                        className="pw-pay-logo"
+                      />
+                    </div>
+                    <div className="pw-pay-text">
+                      <span className="pw-pay-name">Diners</span>
+                      <span className="pw-pay-meta">Selected premium cards</span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </section>
+
+            <button type="submit" className="pw-egift-submit">
+              Continue to payment
+            </button>
+          </form>
+
+          <aside className="pw-egift-preview">
+            <div className="pw-egift-card">
+              <div className="pw-egift-card-top">
+                <span className="pw-egift-card-label">PetWash™ Lux</span>
+                <span className="pw-egift-card-tier">7 Star Metal</span>
+              </div>
+              <div className="pw-egift-card-middle">
+                <h2 className="pw-egift-card-title">
+                  {voucherType === "egift" ? "E-Gift card" : "Wash package"}
+                </h2>
+                <p className="pw-egift-card-subtitle">
+                  For {recipientName || "your favourite pet"}
+                </p>
+                <p className="pw-egift-card-meta">
+                  {voucherType === "egift"
+                    ? `Amount: ₪${amount}`
+                    : `Washes: ${washes}`}
+                </p>
+              </div>
+              <div className="pw-egift-card-bottom">
+                <span className="pw-egift-card-from">
+                  From {fromName || "PetWash™ member"}
+                </span>
+              </div>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+  );
+};
+
+export default EGiftPage;
