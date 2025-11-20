@@ -185,24 +185,46 @@ ensureBiometricStorage()
     
     console.log('--------------------------------------------------');
     
-    // 4. Serve static files from the DIST directory with explicit configuration
-    // MOUNTED BEFORE API ROUTES for proper request handling order
-    app.use(express.static(DIST_PUBLIC_PATH, {
-      maxAge: '1d', // Cache static assets for 1 day
-      etag: true,
-      lastModified: true,
-      index: false, // Don't serve index.html for directory requests - let SPA handle routing
-      setHeaders: (res, filePath) => {
-        // Set correct MIME types for images
-        if (filePath.endsWith('.png')) {
-          res.setHeader('Content-Type', 'image/png');
-        } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
-          res.setHeader('Content-Type', 'image/jpeg');
-        } else if (filePath.endsWith('.svg')) {
-          res.setHeader('Content-Type', 'image/svg+xml');
+    // 4. Serve static files - CONDITIONAL based on environment
+    // DEVELOPMENT: Use Vite dev server with HMR for hot reloading
+    // PRODUCTION: Serve pre-built static files from dist/public
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 [Dev Mode] Initializing Vite dev server with HMR...');
+      const { setupVite } = await import('./vite');
+      const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`--------------------------------------------------`);
+        console.log(`✅ [Server] listening on port ${PORT} in development mode`);
+        console.log(`📁 [Server] Using Vite dev server (source files with HMR)`);
+        console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/`);
+        console.log(`--------------------------------------------------`);
+      });
+      await setupVite(app, server);
+      console.log('✅ [Vite] Dev server initialized - source files will hot-reload');
+      
+      // Skip the rest of initialization in development mode
+      // (Vite handles serving index.html and static assets)
+      return;
+    } else {
+      console.log('📦 [Production Mode] Serving pre-built static files from dist/public');
+      // Serve static files from the DIST directory with explicit configuration
+      // MOUNTED BEFORE API ROUTES for proper request handling order
+      app.use(express.static(DIST_PUBLIC_PATH, {
+        maxAge: '1d', // Cache static assets for 1 day
+        etag: true,
+        lastModified: true,
+        index: false, // Don't serve index.html for directory requests - let SPA handle routing
+        setHeaders: (res, filePath) => {
+          // Set correct MIME types for images
+          if (filePath.endsWith('.png')) {
+            res.setHeader('Content-Type', 'image/png');
+          } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+            res.setHeader('Content-Type', 'image/jpeg');
+          } else if (filePath.endsWith('.svg')) {
+            res.setHeader('Content-Type', 'image/svg+xml');
+          }
         }
-      }
-    }));
+      }));
+    }
     
     // 5. Register all API routes (AFTER static files, BEFORE catchall)
     await registerRoutes(app);

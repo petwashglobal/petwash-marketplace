@@ -238,6 +238,27 @@ export function setupCustomAuth(app: Express) {
 // Middleware to check authentication (Firebase-based)
 export async function requireAuth(req: Request, res: Response, next: any) {
   try {
+    // DEVELOPMENT TESTING BYPASS: Allow Playwright tests with special header
+    if (process.env.NODE_ENV === 'development' && req.headers['x-test-user-bypass'] === 'playwright-test') {
+      const testUserId = req.headers['x-test-user-id'] as string || 'test-user-default';
+      const testEmail = req.headers['x-test-user-email'] as string || `${testUserId}@test.petwash.local`;
+      
+      // Attach test user info to request
+      (req as any).user = {
+        uid: testUserId,
+        email: testEmail,
+      };
+      (req as any).userId = testUserId;
+      (req as any).firebaseUser = {
+        uid: testUserId,
+        email: testEmail,
+        email_verified: true
+      };
+      
+      logger.debug(`[Auth Bypass] Test user authenticated: ${testEmail}`);
+      return next();
+    }
+    
     // Firebase session cookie authentication
     const { verifySessionCookie, SESSION_COOKIE_NAME } = await import('./lib/sessionCookies');
     const sessionCookie = req.cookies?.[SESSION_COOKIE_NAME];

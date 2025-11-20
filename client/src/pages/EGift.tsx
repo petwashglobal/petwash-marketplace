@@ -60,7 +60,9 @@ export default function EGift() {
           expires_at: expiresAt.toISOString(),
           theme: data.theme,
           recipient_name: data.recipientName,
-          recipient_email: data.recipientEmail
+          recipient_email: data.recipientEmail,
+          purchaser_email: data.purchaserEmail,
+          message: data.message || ''
         })
       });
     },
