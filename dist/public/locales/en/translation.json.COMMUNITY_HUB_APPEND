@@ -1,0 +1,141 @@
+{
+  "communityHub": {
+    "title": "Global Community Hub",
+    "subtitle": "Making the world better for pets and people",
+    "hero": {
+      "title": "Heroes of 2025",
+      "subtitle": "Pet Wash™ is committed to social good and community impact"
+    },
+    "sections": {
+      "discounts": {
+        "title": "Special Discounts",
+        "disabled": {
+          "title": "Disability Support Program",
+          "description": "50% discount on all Pet Wash services for people with disabilities",
+          "eligibility": "Valid disability ID or medical certificate required",
+          "badge": "50% OFF"
+        },
+        "seniors": {
+          "title": "Senior Citizen Program",
+          "description": "40% discount for senior citizens aged 65+",
+          "eligibility": "Valid ID showing age 65 or older",
+          "badge": "40% OFF"
+        },
+        "veterans": {
+          "title": "Veterans Appreciation",
+          "description": "35% discount for military veterans and active service members",
+          "eligibility": "Military ID or veteran card",
+          "badge": "35% OFF"
+        }
+      },
+      "shelters": {
+        "title": "Pet Shelter Partnerships",
+        "description": "Free wash services for all shelter animals",
+        "programs": {
+          "freewashes": {
+            "title": "Free Shelter Washes",
+            "description": "Unlimited free K9000 washes for registered pet shelters"
+          },
+          "adoption": {
+            "title": "Adoption Support",
+            "description": "Free grooming for newly adopted pets (first 30 days)"
+          },
+          "emergency": {
+            "title": "Emergency Relief",
+            "description": "Free services during natural disasters and emergencies"
+          }
+        },
+        "partners": {
+          "title": "Partner Shelters",
+          "count": "147 shelters worldwide",
+          "countries": ["Israel", "USA", "Canada", "UK", "Australia", "France"]
+        }
+      },
+      "events": {
+        "title": "Special Events & Campaigns",
+        "types": {
+          "adoptathon": {
+            "title": "Monthly Adopt-a-thons",
+            "description": "Free services for all adoption events"
+          },
+          "awareness": {
+            "title": "Pet Awareness Days",
+            "description": "Educational campaigns and free wash days"
+          },
+          "fundraisers": {
+            "title": "Charity Fundraisers",
+            "description": "100% of proceeds go to local animal welfare organizations"
+          }
+        }
+      },
+      "perks": {
+        "title": "Member Exclusive Perks",
+        "vip": {
+          "title": "VIP Loyalty Members",
+          "benefits": [
+            "Priority booking at all locations",
+            "Exclusive access to new features",
+            "Invitations to special events",
+            "Double loyalty points on special days",
+            "Free birthday wash for your pet",
+            "Quarterly gift packages"
+          ]
+        },
+        "royal": {
+          "title": "Royal Tier Benefits",
+          "benefits": [
+            "Personal concierge service",
+            "Unlimited free washes",
+            "VIP lounge access",
+            "Premium pet care consultation",
+            "Priority customer support",
+            "Exclusive merchandise"
+          ]
+        }
+      },
+      "impact": {
+        "title": "Our Impact in 2025",
+        "stats": {
+          "petsHelped": {
+            "number": "12,847",
+            "label": "Pets Helped This Year"
+          },
+          "freewashes": {
+            "number": "3,256",
+            "label": "Free Washes Provided"
+          },
+          "shelters": {
+            "number": "147",
+            "label": "Partner Shelters"
+          },
+          "donations": {
+            "number": "₪425,000",
+            "label": "Donated to Animal Welfare"
+          },
+          "volunteers": {
+            "number": "892",
+            "label": "Active Volunteers"
+          },
+          "events": {
+            "number": "43",
+            "label": "Community Events Hosted"
+          }
+        }
+      },
+      "cta": {
+        "apply": {
+          "title": "Apply for Support",
+          "button": "Apply Now"
+        },
+        "partner": {
+          "title": "Partner with Us",
+          "button": "Become a Partner"
+        },
+        "donate": {
+          "title": "Support Our Mission",
+          "button": "Donate"
+        }
+      }
+    }
+  }
+}
