@@ -149,6 +149,7 @@ import syntheticRoutes from "./routes/synthetic";
 import walkPaymentFlowRoutes from "./routes/walk-payment-flow";
 import walletTelemetryRoutes from "./routes/wallet-telemetry";
 import weatherTestRoutes from "./routes/weather-test";
+import { publicAuthRouter } from "./routes/publicAuthRoutes";
 // SSL certificate endpoints removed - handled by Replit platform
 import { 
   insertWashPackageSchema, 
@@ -630,55 +631,56 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // GET /api/consent - Retrieve user's latest consent preferences
-  app.get('/api/consent', async (req, res) => {
-    try {
-      // Get Firebase user ID if authenticated
-      const firebaseUser = (req as any).firebaseUser;
-      const userId = firebaseUser?.uid;
-      
-      if (!userId) {
-        // Anonymous users don't have stored preferences
-        return res.json({ 
-          ok: true, 
-          consent: null 
-        });
-      }
-      
-      // Retrieve latest consent from Firestore
-      const { getFirestore } = await import('firebase-admin/firestore');
-      const firestore = getFirestore();
-      const snapshot = await firestore
-        .collection('consent_records')
-        .where('userId', '==', userId)
-        .orderBy('timestamp', 'desc')
-        .limit(1)
-        .get();
-      
-      if (snapshot.empty) {
-        return res.json({ ok: true, consent: null });
-      }
-      
-      const latestConsent = snapshot.docs[0].data();
-      res.json({
-        ok: true,
-        consent: {
-          necessary: latestConsent.necessary,
-          functional: latestConsent.functional,
-          analytics: latestConsent.analytics,
-          marketing: latestConsent.marketing,
-          location: latestConsent.location ?? false,
-          camera: latestConsent.camera ?? false,
-          washReminders: latestConsent.washReminders ?? false,
-          vaccinationReminders: latestConsent.vaccinationReminders ?? false,
-          promotionalNotifications: latestConsent.promotionalNotifications ?? false,
-          timestamp: latestConsent.timestamp,
-        }
-      });
-    } catch (error) {
-      logger.error('[Consent] Failed to retrieve consent preferences:', error);
-      res.status(500).json({ ok: false, error: 'Failed to retrieve consent' });
-    }
-  });
+  // DISABLED: Now handled by publicAuthRouter (clean console mode - returns 200 for logged-out users)
+  // app.get('/api/consent', async (req, res) => {
+  //   try {
+  //     // Get Firebase user ID if authenticated
+  //     const firebaseUser = (req as any).firebaseUser;
+  //     const userId = firebaseUser?.uid;
+  //     
+  //     if (!userId) {
+  //       // Anonymous users don't have stored preferences
+  //       return res.json({ 
+  //         ok: true, 
+  //         consent: null 
+  //       });
+  //     }
+  //     
+  //     // Retrieve latest consent from Firestore
+  //     const { getFirestore } = await import('firebase-admin/firestore');
+  //     const firestore = getFirestore();
+  //     const snapshot = await firestore
+  //       .collection('consent_records')
+  //       .where('userId', '==', userId)
+  //       .orderBy('timestamp', 'desc')
+  //       .limit(1)
+  //       .get();
+  //     
+  //     if (snapshot.empty) {
+  //       return res.json({ ok: true, consent: null });
+  //     }
+  //     
+  //     const latestConsent = snapshot.docs[0].data();
+  //     res.json({
+  //       ok: true,
+  //       consent: {
+  //         necessary: latestConsent.necessary,
+  //         functional: latestConsent.functional,
+  //         analytics: latestConsent.analytics,
+  //         marketing: latestConsent.marketing,
+  //         location: latestConsent.location ?? false,
+  //         camera: latestConsent.camera ?? false,
+  //         washReminders: latestConsent.washReminders ?? false,
+  //         vaccinationReminders: latestConsent.vaccinationReminders ?? false,
+  //         promotionalNotifications: latestConsent.promotionalNotifications ?? false,
+  //         timestamp: latestConsent.timestamp,
+  //       }
+  //     });
+  //   } catch (error) {
+  //     logger.error('[Consent] Failed to retrieve consent preferences:', error);
+  //     res.status(500).json({ ok: false, error: 'Failed to retrieve consent' });
+  //   }
+  // });
 
   // POST /api/consent - Save user consent preferences with audit trail
   app.post('/api/consent', async (req, res) => {
@@ -1045,20 +1047,21 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // GET /api/simple-auth/me - Get current authenticated user
-  app.get('/api/simple-auth/me', async (req, res) => {
-    try {
-      const user = await getCurrentUser(req);
-      
-      if (!user) {
-        return res.status(401).json({ ok: false, error: 'Not authenticated' });
-      }
-
-      res.json({ ok: true, user });
-    } catch (error) {
-      logger.error('[Simple Auth] Get current user error:', error);
-      res.status(500).json({ ok: false, error: 'Failed to get user' });
-    }
-  });
+  // DISABLED: Now handled by publicAuthRouter (clean console mode - returns 200 for logged-out users)
+  // app.get('/api/simple-auth/me', async (req, res) => {
+  //   try {
+  //     const user = await getCurrentUser(req);
+  //     
+  //     if (!user) {
+  //       return res.status(401).json({ ok: false, error: 'Not authenticated' });
+  //     }
+  //
+  //     res.json({ ok: true, user });
+  //   } catch (error) {
+  //     logger.error('[Simple Auth] Get current user error:', error);
+  //     res.status(500).json({ ok: false, error: 'Failed to get user' });
+  //   }
+  // });
 
   // ========================================================================
   // 🔐 FIREBASE AUTH SYSTEM (Legacy - for admin/employee access)
@@ -7835,6 +7838,13 @@ self.addEventListener('notificationclick', (event) => {
       });
     }
   });
+
+  // ========================================================================
+  // 🌐 PUBLIC AUTH ROUTES (Clean Console Mode - No 401 for logged-out users)
+  // ========================================================================
+  // Mount BEFORE other routes to handle /api/simple-auth/me and /api/consent
+  app.use(publicAuthRouter);
+  logger.info('[Routes] ✅ Public auth routes registered (clean console mode)');
 
   // KYC Verification routes
   app.use('/api/kyc', uploadLimiter, kycRoutes);

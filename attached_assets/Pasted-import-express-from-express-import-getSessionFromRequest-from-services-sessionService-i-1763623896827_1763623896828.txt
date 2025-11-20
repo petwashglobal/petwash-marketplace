@@ -1,0 +1,104 @@
+import express from "express";
+import { getSessionFromRequest } from "../services/sessionService";
+import { getUserConsent } from "../services/consentService";
+
+export const publicAuthRouter = express.Router();
+
+/**
+ * Sends guaranteed JSON response with a safe status code.
+ * use200 = return HTTP 200 always (for unauthenticated cases)
+ */
+function sendSafeJSON(res, data, use200 = true) {
+  if (use200) {
+    return res.status(200).json(data);
+  } else {
+    return res.status(data.status || 400).json(data);
+  }
+}
+
+/**
+ * Authentication status endpoint
+ * NEVER returns 401 for normal visitors
+ * ONLY returns 401 if a token is present but INVALID
+ */
+publicAuthRouter.get("/api/simple-auth/me", async (req, res) => {
+  try {
+    const session = await getSessionFromRequest(req);
+
+    // No token / user not logged in → normal → HTTP 200
+    if (!session) {
+      return sendSafeJSON(res, {
+        ok: true,
+        authenticated: false,
+        user: null,
+      });
+    }
+
+    // Valid session
+    return sendSafeJSON(res, {
+      ok: true,
+      authenticated: true,
+      user: {
+        id: session.userId,
+        email: session.email,
+        name: session.name,
+      },
+    });
+
+  } catch (err) {
+    // If this error indicates a bad token, return real 401
+    if (String(err).includes("INVALID_TOKEN")) {
+      return res.status(401).json({
+        ok: false,
+        error: "Invalid authentication token",
+      });
+    }
+
+    // Other server error
+    return res.status(500).json({
+      ok: false,
+      error: "Server error",
+    });
+  }
+});
+
+/**
+ * Consent status endpoint
+ * NEVER throws console errors for unauthenticated visitors
+ */
+publicAuthRouter.get("/api/consent", async (req, res) => {
+  try {
+    const session = await getSessionFromRequest(req);
+
+    // Not authenticated → normal → HTTP 200
+    if (!session) {
+      return sendSafeJSON(res, {
+        ok: true,
+        authenticated: false,
+        hasConsent: false,
+      });
+    }
+
+    // Authenticated → fetch consent
+    const hasConsent = await getUserConsent(session.userId);
+
+    return sendSafeJSON(res, {
+      ok: true,
+      authenticated: true,
+      hasConsent,
+    });
+
+  } catch (err) {
+    if (String(err).includes("INVALID_TOKEN")) {
+      return res.status(401).json({
+        ok: false,
+        error: "Invalid authentication token",
+      });
+    }
+
+    return res.status(500).json({
+      ok: false,
+      error: "Server error",
+    });
+  }
+});
