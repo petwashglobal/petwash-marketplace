@@ -136,51 +136,56 @@ ensureBiometricStorage()
     console.log(`   Working Directory: ${process.cwd()}`);
     console.log(`   Node Environment: ${process.env.NODE_ENV || "development"}`);
     
-    // 3. Verify build exists before starting server
-    const indexPath = path.join(DIST_PUBLIC_PATH, "index.html");
-    const fs = await import("fs");
-    
-    if (!fs.existsSync(indexPath)) {
-      console.error('--------------------------------------------------');
-      console.error('❌ CRITICAL: index.html not found!');
-      console.error(`   Expected path: ${indexPath}`);
-      console.error(`   Current working directory: ${process.cwd()}`);
-      console.error(`   __dirname: ${__dirname}`);
+    // 3. Verify build exists before starting server (PRODUCTION ONLY)
+    // In development, Vite serves source files directly - no build needed
+    if (process.env.NODE_ENV !== 'development') {
+      const indexPath = path.join(DIST_PUBLIC_PATH, "index.html");
+      const fs = await import("fs");
       
-      // List what's actually in the directory
-      try {
-        const distExists = fs.existsSync(path.join(process.cwd(), "dist"));
-        console.error(`   dist/ exists: ${distExists}`);
-        if (distExists) {
-          const distContents = fs.readdirSync(path.join(process.cwd(), "dist"));
-          console.error(`   dist/ contents: ${distContents.join(", ")}`);
-          
-          const publicExists = fs.existsSync(DIST_PUBLIC_PATH);
-          console.error(`   dist/public/ exists: ${publicExists}`);
-          if (publicExists) {
-            const publicContents = fs.readdirSync(DIST_PUBLIC_PATH);
-            console.error(`   dist/public/ contents: ${publicContents.slice(0, 10).join(", ")}...`);
+      if (!fs.existsSync(indexPath)) {
+        console.error('--------------------------------------------------');
+        console.error('❌ CRITICAL: index.html not found!');
+        console.error(`   Expected path: ${indexPath}`);
+        console.error(`   Current working directory: ${process.cwd()}`);
+        console.error(`   __dirname: ${__dirname}`);
+        
+        // List what's actually in the directory
+        try {
+          const distExists = fs.existsSync(path.join(process.cwd(), "dist"));
+          console.error(`   dist/ exists: ${distExists}`);
+          if (distExists) {
+            const distContents = fs.readdirSync(path.join(process.cwd(), "dist"));
+            console.error(`   dist/ contents: ${distContents.join(", ")}`);
+            
+            const publicExists = fs.existsSync(DIST_PUBLIC_PATH);
+            console.error(`   dist/public/ exists: ${publicExists}`);
+            if (publicExists) {
+              const publicContents = fs.readdirSync(DIST_PUBLIC_PATH);
+              console.error(`   dist/public/ contents: ${publicContents.slice(0, 10).join(", ")}...`);
+            }
           }
+        } catch (e) {
+          console.error(`   Could not list directory contents:`, e);
         }
-      } catch (e) {
-        console.error(`   Could not list directory contents:`, e);
+        console.error('--------------------------------------------------');
+        console.error('💡 Solution: Run "npm run build" before starting the server');
+        console.error('--------------------------------------------------');
+        
+        throw new Error("Build files not found - run 'npm run build' before starting production server");
       }
-      console.error('--------------------------------------------------');
-      console.error('💡 Solution: Run "npm run build" before starting the server');
-      console.error('--------------------------------------------------');
       
-      throw new Error("Build files not found - run 'npm run build' before starting production server");
-    }
-    
-    console.log(`   index.html found: ✅`);
-    
-    // Verify critical assets exist
-    const logoPath = path.join(DIST_PUBLIC_PATH, "brand", "petwash-logo-official.png");
-    const logoExists = fs.existsSync(logoPath);
-    console.log(`   Logo exists: ${logoExists ? '✅' : '❌'} (${logoPath})`);
-    
-    if (!logoExists) {
-      console.error('   WARNING: Logo not found - images may be broken in production!');
+      console.log(`   index.html found: ✅`);
+      
+      // Verify critical assets exist
+      const logoPath = path.join(DIST_PUBLIC_PATH, "brand", "petwash-logo-official.png");
+      const logoExists = fs.existsSync(logoPath);
+      console.log(`   Logo exists: ${logoExists ? '✅' : '❌'} (${logoPath})`);
+      
+      if (!logoExists) {
+        console.error('   WARNING: Logo not found - images may be broken in production!');
+      }
+    } else {
+      console.log(`   ✅ Development mode - Vite will serve source files directly`);
     }
     
     console.log('--------------------------------------------------');
