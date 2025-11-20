@@ -85,7 +85,6 @@ const CustomerManagement = lazy(() => import("@/pages/CustomerManagement"));
 const LeadManagement = lazy(() => import("@/pages/LeadManagement"));
 const CommunicationCenter = lazy(() => import("@/pages/CommunicationCenter"));
 const ReceiptPage = lazy(() => import("@/pages/ReceiptPage"));
-const TestPurchase = lazy(() => import("@/pages/TestPurchase"));
 const FounderMember = lazy(() => import("@/pages/FounderMember"));
 const ClaimVoucher = lazy(() => import("@/pages/ClaimVoucher"));
 const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
@@ -124,8 +123,6 @@ const MobileStationSheet = lazy(() => import("@/pages/MobileStationSheet"));
 const MobileOpsHub = lazy(() => import("@/pages/MobileOpsHub"));
 const OpsTodayPage = lazy(() => import("@/pages/OpsTodayPage"));
 const FirebaseDebug = lazy(() => import("@/pages/FirebaseDebug"));
-const AuthTest = lazy(() => import("@/pages/AuthTest"));
-const WeatherTest = lazy(() => import("@/pages/WeatherTest"));
 const WelcomeConsent = lazy(() => import("@/pages/WelcomeConsent"));
 const OpsDashboard = lazy(() => import("@/pages/OpsDashboard"));
 const EnterpriseHQ = lazy(() => import("@/pages/EnterpriseHQ"));
@@ -140,7 +137,6 @@ const Subscriptions = lazy(() => import("@/pages/Subscriptions"));
 const MySubscriptions = lazy(() => import("@/pages/MySubscriptions"));
 const BackendTeam = lazy(() => import("@/pages/BackendTeam"));
 const Locations = lazy(() => import("@/pages/Locations"));
-const PushNotificationTest = lazy(() => import("@/pages/PushNotificationTest"));
 const Packages = lazy(() => import("@/pages/Packages"));
 const CompanyReports = lazy(() => import("@/pages/CompanyReports"));
 const InvestorPresentation = lazy(() => import("@/pages/InvestorPresentation"));
@@ -165,7 +161,6 @@ const ComplianceControlTower = lazy(() => import("@/pages/ComplianceControlTower
 const GeminiWatchdogDashboard = lazy(() => import("@/pages/GeminiWatchdogDashboard"));
 const PerformanceMonitoring = lazy(() => import("@/pages/PerformanceMonitoring"));
 const NotificationPreferences = lazy(() => import("@/pages/NotificationPreferences"));
-const GmailDemo = lazy(() => import("@/pages/GmailDemo"));
 const GoogleServicesConsent = lazy(() => import("@/pages/GoogleServicesConsent"));
 const PetWashDayPlanner = lazy(() => import("@/pages/PetWashDayPlanner"));
 const RoleAwareWeatherPlanner = lazy(() => import("@/pages/RoleAwareWeatherPlanner"));
@@ -218,8 +213,6 @@ const GlobalCommunityHub = lazy(() => import("@/pages/GlobalCommunityHub"));
 const K9000Overview = lazy(() => import("@/pages/k9000/Overview"));
 const K9000BookingFlow = lazy(() => import("@/pages/k9000/BookingFlow"));
 
-const FirebaseTest = lazy(() => import("@/pages/FirebaseTest"));
-const ConsentDemo = lazy(() => import("@/pages/ConsentDemo"));
 const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
 
@@ -357,8 +350,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/register">
           {() => <SignUp language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
-        <Route path="/auth-test">{() => <AuthTest />}</Route>
-        <Route path="/weather-test">{() => <WeatherTest />}</Route>
         <Route path="/enterprise-features">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -1077,24 +1068,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* Protected route - Settings */}
-        {/* Gmail OAuth Demo Page */}
-        <Route path="/gmail-demo">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <GmailDemo language={language} onLanguageChange={handleLanguageChange} />
-            </Suspense>
-          )}
-        </Route>
-
-        {/* Consent Demo - Premium OAuth and iOS permissions showcase */}
-        <Route path="/consent-demo">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ConsentDemo language={language} />
-            </Suspense>
-          )}
-        </Route>
-
         {/* Google Services Consent - All 13 Google Cloud APIs with pre-checked boxes */}
         <Route path="/google-services-consent">
           {() => (
@@ -1109,15 +1082,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <PetWashDayPlanner />
-            </Suspense>
-          )}
-        </Route>
-
-        {/* Firebase Test Page - Comprehensive feature testing */}
-        <Route path="/firebase-test">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <FirebaseTest />
             </Suspense>
           )}
         </Route>
@@ -1797,7 +1761,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/status/uptime" component={StatusDashboard} />
         
         <Route path="/receipt/:transactionId" component={ReceiptPage} />
-        <Route path="/test-purchase" component={TestPurchase} />
         <Route path="/founder-member" component={FounderMember} />
         <Route path="/buy-gift-card">
           {() => <BuyGiftCard language={language} onLanguageChange={setLanguage} />}
