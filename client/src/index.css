@@ -3303,40 +3303,6 @@ html[lang="en"] *,
   border-color: rgba(255, 255, 255, 0.5);
 }
 
-/* Button Themes */
-.apple-essential-btn {
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
-}
-
-.apple-essential-btn:hover {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  box-shadow: 0 12px 24px rgba(59, 130, 246, 0.4);
-  transform: translateY(-2px);
-}
-
-.apple-premium-btn {
-  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
-  box-shadow: 0 8px 16px rgba(20, 184, 166, 0.3);
-}
-
-.apple-premium-btn:hover {
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
-  box-shadow: 0 12px 24px rgba(20, 184, 166, 0.4);
-  transform: translateY(-2px);
-}
-
-.apple-platinum-btn {
-  background: linear-gradient(135deg, #db2777 0%, #ec4899 100%);
-  box-shadow: 0 8px 16px rgba(236, 72, 153, 0.3);
-}
-
-.apple-platinum-btn:hover {
-  background: linear-gradient(135deg, #be185d 0%, #db2777 100%);
-  box-shadow: 0 12px 24px rgba(236, 72, 153, 0.4);
-  transform: translateY(-2px);
-}
-
 /* Package Shine Effect */
 .apple-package-shine {
   position: absolute;
