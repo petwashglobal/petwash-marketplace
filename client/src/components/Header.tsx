@@ -7,7 +7,7 @@ import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { FaInstagram, FaFacebookF, FaTiktok } from 'react-icons/fa';
-import { LuxuryLanguageSwitcher } from './LuxuryLanguageSwitcher';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { GlobalNavigation } from './GlobalNavigation';
 import { 
   getPlatformByPath, 
@@ -481,10 +481,9 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
           </nav>
 
           {onLanguageChange && (
-            <LuxuryLanguageSwitcher 
-              language={language} 
-              onLanguageChange={onLanguageChange}
-              className="mr-3"
+            <LanguageSwitcher 
+              current={language} 
+              onChange={onLanguageChange}
             />
           )}
           
@@ -572,10 +571,9 @@ export function Header({ language, onLanguageChange }: HeaderProps) {
                 </>
               )}
               {onLanguageChange && (
-                <LuxuryLanguageSwitcher 
-                  language={language} 
-                  onLanguageChange={onLanguageChange}
-                  className="flex-shrink-0"
+                <LanguageSwitcher 
+                  current={language} 
+                  onChange={onLanguageChange}
                 />
               )}
             </nav>
