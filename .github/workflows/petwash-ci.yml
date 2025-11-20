@@ -1,0 +1,33 @@
+name: PetWash 2025 CI
+
+on:
+  push:
+    branches: [ main, production ]
+  pull_request:
+    branches: [ main, production ]
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run PetWash 2025 preflight guardian
+        env:
+          GCS_BACKUP_BUCKET: ${{ secrets.GCS_BACKUP_BUCKET }}
+          GCS_BACKUP_PROJECT_ID: ${{ secrets.GCS_BACKUP_PROJECT_ID }}
+        run: npm run preflight
+
+      - name: Build app
+        if: success()
+        run: npm run build
