@@ -402,7 +402,7 @@ export default function WalkerDashboard() {
         {/* Stats Cards */}
         {earnings && (
           <div className="luxury-grid-4 mb-8">
-            <div className="luxury-glass-card luxury-shadow-xl luxury-hover-lift luxury-animate-fade-in luxury-delay-1">
+            <div className="luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-fade-in luxury-delay-1">
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -418,7 +418,7 @@ export default function WalkerDashboard() {
               </div>
             </div>
 
-            <div className="luxury-glass-card luxury-shadow-xl luxury-hover-lift luxury-animate-fade-in luxury-delay-2">
+            <div className="luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-fade-in luxury-delay-2">
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -434,7 +434,7 @@ export default function WalkerDashboard() {
               </div>
             </div>
 
-            <div className="luxury-glass-card luxury-shadow-xl luxury-hover-lift luxury-animate-fade-in luxury-delay-3">
+            <div className="luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-fade-in luxury-delay-3">
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -450,7 +450,7 @@ export default function WalkerDashboard() {
               </div>
             </div>
 
-            <div className="luxury-glass-card luxury-shadow-xl luxury-hover-lift luxury-animate-fade-in luxury-delay-4">
+            <div className="luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-fade-in luxury-delay-4">
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -478,14 +478,14 @@ export default function WalkerDashboard() {
               <Calendar className="w-4 h-4 mr-2" />
               {isHebrew ? 'בקשות' : 'Requests'}
               {pendingRequests.length > 0 && (
-                <Badge variant="destructive" className="ml-2">{pendingRequests.length}</Badge>
+                <span className="luxury-badge luxury-badge-gold ml-2 text-xs px-2 py-0.5">{pendingRequests.length}</span>
               )}
             </TabsTrigger>
             <TabsTrigger value="active">
               <Navigation className="w-4 h-4 mr-2" />
               {isHebrew ? 'פעיל' : 'Active'}
               {activeWalks.length > 0 && (
-                <Badge className="ml-2">{activeWalks.length}</Badge>
+                <span className="luxury-badge ml-2 text-xs px-2 py-0.5">{activeWalks.length}</span>
               )}
             </TabsTrigger>
             <TabsTrigger value="completed">
@@ -500,7 +500,7 @@ export default function WalkerDashboard() {
               <Star className="w-4 h-4 mr-2" />
               {isHebrew ? 'ביקורות' : 'Reviews'}
               {reviews.length > 0 && (
-                <Badge className="ml-2">{reviews.length}</Badge>
+                <span className="luxury-badge ml-2 text-xs px-2 py-0.5">{reviews.length}</span>
               )}
             </TabsTrigger>
             <TabsTrigger value="achievements">
@@ -531,7 +531,9 @@ export default function WalkerDashboard() {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         {request.petPhotoUrl ? (
-                          <img src={request.petPhotoUrl} alt={request.petName} className="w-16 h-16 rounded-full object-cover luxury-shadow-md" />
+                          <div className="p-0.5 rounded-full bg-gradient-to-br from-purple-500 to-blue-500">
+                            <img src={request.petPhotoUrl} alt={request.petName} className="w-16 h-16 rounded-full object-cover luxury-shadow-md border-2 border-white dark:border-gray-900" />
+                          </div>
                         ) : (
                           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center luxury-shadow-md">
                             <Dog className="w-8 h-8 text-white" />
@@ -627,12 +629,14 @@ export default function WalkerDashboard() {
               </div>
             ) : (
               activeWalks.map((walk, index) => (
-                <div key={walk.id} className={`luxury-glass-card luxury-hover-glow luxury-shadow-lg luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}>
+                <div key={walk.id} className={`luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}>
                   <div className="p-6 space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         {walk.petPhotoUrl ? (
-                          <img src={walk.petPhotoUrl} alt={walk.petName} className="w-16 h-16 rounded-full object-cover luxury-shadow-md" />
+                          <div className="p-0.5 rounded-full bg-gradient-to-br from-purple-500 to-blue-500">
+                            <img src={walk.petPhotoUrl} alt={walk.petName} className="w-16 h-16 rounded-full object-cover luxury-shadow-md border-2 border-white dark:border-gray-900" />
+                          </div>
                         ) : (
                           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center luxury-shadow-md">
                             <Dog className="w-8 h-8 text-white" />
@@ -645,7 +649,7 @@ export default function WalkerDashboard() {
                               <span className="luxury-badge">{isHebrew ? 'ממתין להתחלה' : 'Ready to Start'}</span>
                             )}
                             {walk.status === 'active' && (
-                              <span className="luxury-badge-success">{isHebrew ? '🚶 בטיול' : '🚶 In Progress'}</span>
+                              <span className="luxury-badge luxury-badge-success">{isHebrew ? '🚶 בטיול' : '🚶 In Progress'}</span>
                             )}
                           </h3>
                           <p className="luxury-text-small">{walk.petBreed}</p>
@@ -713,12 +717,14 @@ export default function WalkerDashboard() {
               </div>
             ) : (
               completedWalks.map((walk, index) => (
-                <div key={walk.id} className={`luxury-glass-minimal luxury-hover-lift luxury-shadow-md luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}>
+                <div key={walk.id} className={`luxury-glass-minimal luxury-hover-lift luxury-shadow-lg luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}>
                   <div className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {walk.petPhotoUrl ? (
-                          <img src={walk.petPhotoUrl} alt={walk.petName} className="w-12 h-12 rounded-full object-cover luxury-shadow-sm" />
+                          <div className="p-0.5 rounded-full bg-gradient-to-br from-purple-500 to-blue-500">
+                            <img src={walk.petPhotoUrl} alt={walk.petName} className="w-12 h-12 rounded-full object-cover luxury-shadow-sm border-2 border-white dark:border-gray-900" />
+                          </div>
                         ) : (
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center luxury-shadow-sm">
                             <Dog className="w-6 h-6 text-white" />
@@ -748,7 +754,7 @@ export default function WalkerDashboard() {
               </div>
             ) : earnings ? (
               <div className="space-y-6">
-                <div className="luxury-glass-card luxury-shadow-xl luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)'}}>
+                <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)'}}>
                   <div className="p-8 text-center">
                     <h2 className="luxury-heading-xl luxury-text-gradient mb-2">
                       {formatCurrency(earnings.totalEarnings)}
@@ -905,7 +911,7 @@ export default function WalkerDashboard() {
               </div>
             ) : (
               <>
-                <div className="luxury-glass-card luxury-shadow-xl luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)'}}>
+                <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)'}}>
                   <div className="p-8 text-center">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <span className="luxury-heading-xl luxury-text-gradient">{earnings?.rating.toFixed(2)}</span>
@@ -923,7 +929,9 @@ export default function WalkerDashboard() {
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
                           {review.ownerAvatar ? (
-                            <img src={review.ownerAvatar} alt={review.ownerName} className="w-12 h-12 rounded-full object-cover luxury-shadow-md" />
+                            <div className="p-0.5 rounded-full bg-gradient-to-br from-blue-500 to-purple-500">
+                              <img src={review.ownerAvatar} alt={review.ownerName} className="w-12 h-12 rounded-full object-cover luxury-shadow-md border-2 border-white dark:border-gray-900" />
+                            </div>
                           ) : (
                             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center luxury-shadow-md">
                               <User className="w-6 h-6 text-white" />
@@ -969,7 +977,7 @@ export default function WalkerDashboard() {
               </div>
             ) : (
               <>
-                <div className="luxury-glass-card luxury-shadow-xl luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)'}}>
+                <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)'}}>
                   <div className="p-8 text-center">
                     <h3 className="luxury-heading-lg luxury-text-gradient mb-2">
                       {achievements.filter(a => a.unlocked).length} / {achievements.length}

@@ -739,7 +739,7 @@ export default function WalkMyPet() {
           </div>
 
           <div className="luxury-grid-3 luxury-gap-lg">
-            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift luxury-animate-fade-in luxury-delay-1">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
                   <Navigation className="w-8 h-8 text-[#667eea]" />
@@ -755,7 +755,7 @@ export default function WalkMyPet() {
               </div>
             </div>
 
-            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift luxury-animate-fade-in luxury-delay-2">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
                   <Shield className="w-8 h-8 text-[#667eea]" />
@@ -771,7 +771,7 @@ export default function WalkMyPet() {
               </div>
             </div>
 
-            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift luxury-animate-fade-in luxury-delay-3">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
                   <Activity className="w-8 h-8 text-[#667eea]" />
@@ -787,7 +787,7 @@ export default function WalkMyPet() {
               </div>
             </div>
 
-            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift luxury-animate-fade-in luxury-delay-4">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
                   <Shield className="w-8 h-8 text-[#667eea]" />
@@ -803,7 +803,7 @@ export default function WalkMyPet() {
               </div>
             </div>
 
-            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift luxury-animate-fade-in luxury-delay-5">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
                   <Video className="w-8 h-8 text-[#667eea]" />
@@ -819,7 +819,7 @@ export default function WalkMyPet() {
               </div>
             </div>
 
-            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift luxury-animate-fade-in luxury-delay-6">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
                   <DollarSign className="w-8 h-8 text-[#667eea]" />
@@ -851,8 +851,8 @@ export default function WalkMyPet() {
               </div>
 
               <div className="luxury-grid-4 luxury-gap-lg">
-                {featuredWalkers.map((walker) => (
-                  <div key={walker.id} className="luxury-glass-card luxury-shadow-md luxury-hover-glow p-0 overflow-hidden">
+                {featuredWalkers.map((walker, idx) => (
+                  <div key={walker.id} className={`luxury-glass-card luxury-shadow-md luxury-hover-glow p-0 overflow-hidden luxury-animate-scale-in luxury-delay-${Math.min(idx + 1, 10)}`}>
                     <div className="aspect-square luxury-bg-soft flex items-center justify-center relative overflow-hidden">
                       {walker.profilePhotoUrl ? (
                         <div className="w-full h-full relative">
@@ -860,7 +860,13 @@ export default function WalkMyPet() {
                           <img src={walker.profilePhotoUrl} alt={walker.fullName} className="w-full h-full object-cover" />
                         </div>
                       ) : (
-                        <div className="w-32 h-32 rounded-full luxury-bg-primary flex items-center justify-center luxury-shadow-lg border-4 border-white/50">
+                        <div className="w-32 h-32 rounded-full luxury-bg-primary flex items-center justify-center luxury-shadow-lg relative"
+                          style={{
+                            border: '4px solid transparent',
+                            backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #667eea, #764ba2)',
+                            backgroundOrigin: 'border-box',
+                            backgroundClip: 'padding-box, border-box'
+                          }}>
                           <div className="text-5xl font-black text-white">
                             {walker.fullName.charAt(0)}
                           </div>
@@ -1043,7 +1049,7 @@ export default function WalkMyPet() {
               t.requirements.req7,
               t.requirements.req8,
             ].map((req, index) => (
-              <div key={index} className="luxury-glass-minimal p-4 flex items-center gap-3 luxury-hover-lift">
+              <div key={index} className={`luxury-glass-minimal p-4 flex items-center gap-3 luxury-hover-lift luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}>
                 <div className="w-8 h-8 rounded-full luxury-bg-primary flex items-center justify-center flex-shrink-0 luxury-shadow-sm">
                   <CheckCircle2 className="w-5 h-5 text-white" />
                 </div>
@@ -1069,7 +1075,7 @@ export default function WalkMyPet() {
                 { name: t.testimonials.test3Name, text: t.testimonials.test3Text },
                 { name: t.testimonials.test4Name, text: t.testimonials.test4Text },
               ].map((testimonial, index) => (
-                <div key={index} className="luxury-glass-card luxury-shadow-md p-6 luxury-hover-lift">
+                <div key={index} className={`luxury-glass-card luxury-shadow-md p-6 luxury-hover-lift luxury-animate-scale-in luxury-delay-${Math.min(index + 1, 10)}`}>
                   <div className="flex items-center gap-1 mb-4">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className="w-4 h-4 text-yellow-500 fill-current" />
@@ -1110,7 +1116,7 @@ export default function WalkMyPet() {
           </div>
 
           {showFilters && (
-            <div className="luxury-glass-card luxury-shadow-md p-6 mb-8">
+            <div className="luxury-glass-panel luxury-shadow-md p-6 mb-8 luxury-animate-slide-up">
               <div className="space-y-6">
                 <div>
                   <Label className="text-lg font-semibold mb-3 block">{t.filters.priceRange}</Label>
@@ -1335,7 +1341,7 @@ function EarningsCalculator({ isHebrew, t }: { isHebrew: boolean; t: any }) {
 // Walker Card Component
 function WalkerCard({ walker, isHebrew }: { walker: WalkerProfile; isHebrew: boolean }) {
   return (
-    <div className="luxury-glass-card luxury-shadow-md luxury-hover-glow p-0 overflow-hidden">
+    <div className="luxury-glass-card luxury-shadow-md luxury-hover-glow p-0 overflow-hidden luxury-animate-fade-in">
       <div className="aspect-[4/3] luxury-bg-soft flex items-center justify-center relative overflow-hidden">
         {walker.profilePhotoUrl ? (
           <div className="w-full h-full relative">
@@ -1343,7 +1349,13 @@ function WalkerCard({ walker, isHebrew }: { walker: WalkerProfile; isHebrew: boo
             <img src={walker.profilePhotoUrl} alt={walker.fullName} className="w-full h-full object-cover" />
           </div>
         ) : (
-          <div className="w-32 h-32 rounded-full luxury-bg-primary flex items-center justify-center luxury-shadow-lg border-4 border-white/50">
+          <div className="w-32 h-32 rounded-full luxury-bg-primary flex items-center justify-center luxury-shadow-lg relative"
+            style={{
+              border: '4px solid transparent',
+              backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #667eea, #764ba2)',
+              backgroundOrigin: 'border-box',
+              backgroundClip: 'padding-box, border-box'
+            }}>
             <div className="text-5xl font-black text-white">
               {walker.fullName.charAt(0)}
             </div>
@@ -1406,7 +1418,7 @@ function WalkerCard({ walker, isHebrew }: { walker: WalkerProfile; isHebrew: boo
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="luxury-text-gradient text-2xl font-black">
+          <div className="luxury-heading-lg luxury-text-gradient">
             ₪{walker.hourlyRateIls}
             <span className="text-sm luxury-text-body">/hr</span>
           </div>

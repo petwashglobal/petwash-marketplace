@@ -312,7 +312,7 @@ export default function SitterSuite() {
 
   return (
     <Layout>
-      <div className="min-h-screen luxury-bg-purple-fade">
+      <div className="min-h-screen luxury-bg-mesh">
         
         {/* 7-STAR LUXURY HERO SECTION */}
         <div className="relative overflow-hidden luxury-bg-primary text-white py-32 luxury-animate-fade-in">
@@ -498,11 +498,11 @@ export default function SitterSuite() {
                 { icon: Award, title: isHebrew ? 'אישורים' : 'Certifications', desc: isHebrew ? 'שמרטפים מוסמכים ומאומנים' : 'Certified & trained professionals' },
                 { icon: ThumbsUp, title: isHebrew ? 'ערבות החזר כסף' : 'Money-Back Guarantee', desc: isHebrew ? 'החזר מלא אם לא מרוצה' : 'Full refund if not satisfied' },
               ].map((item, i) => (
-                <div key={i} className={`luxury-glass-minimal luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-scale-in luxury-delay-${i + 1}`}>
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center luxury-shadow-md">
-                    <item.icon className="w-8 h-8 text-white" />
+                <div key={i} className={`luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-scale-in luxury-delay-${i + 1}`}>
+                  <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center luxury-shadow-lg">
+                    <item.icon className="w-10 h-10 text-white" />
                   </div>
-                  <h3 className="luxury-heading-sm mb-2">{item.title}</h3>
+                  <h3 className="luxury-heading-sm mb-3">{item.title}</h3>
                   <p className="luxury-text-small">{item.desc}</p>
                 </div>
               ))}
@@ -540,26 +540,28 @@ export default function SitterSuite() {
                       </span>
                     </div>
 
-                  {/* Large Profile Photo */}
-                  <div className="relative h-64 overflow-hidden">
-                    {sitter.profilePhotoUrl ? (
-                      <img 
-                        src={sitter.profilePhotoUrl} 
-                        alt={sitter.fullName}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                        <span className="text-white text-6xl font-bold">{sitter.fullName.charAt(0)}</span>
-                      </div>
-                    )}
+                  {/* Large Profile Photo - Circular with Gradient Border */}
+                  <div className="relative h-64 flex items-center justify-center p-8">
+                    <div className="w-48 h-48 rounded-full p-1 bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-2xl luxury-hover-glow">
+                      {sitter.profilePhotoUrl ? (
+                        <img 
+                          src={sitter.profilePhotoUrl} 
+                          alt={sitter.fullName}
+                          className="w-full h-full object-cover rounded-full group-hover:scale-110 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-6xl font-bold">{sitter.fullName.charAt(0)}</span>
+                        </div>
+                      )}
+                    </div>
                     {/* Instant Book Badge */}
                     {sitter.instantBook && (
-                      <div className="absolute bottom-4 left-4">
-                        <Badge className="bg-green-500 text-white">
-                          <Zap className="w-3 h-3 mr-1" />
+                      <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+                        <span className="luxury-badge luxury-badge-success flex items-center gap-1">
+                          <Zap className="w-3 h-3" />
                           {isHebrew ? 'הזמנה מיידית' : 'Instant Book'}
-                        </Badge>
+                        </span>
                       </div>
                     )}
                   </div>
@@ -573,10 +575,10 @@ export default function SitterSuite() {
                             {sitter.city}
                           </div>
                           <div className="flex items-center gap-3 mb-4">
-                            <div className="flex items-center gap-1">
-                              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                              <span className="font-bold text-lg luxury-text-gradient">{sitter.rating.toFixed(1)}</span>
-                            </div>
+                            <span className="luxury-badge luxury-badge-gold flex items-center gap-1">
+                              <Star className="w-4 h-4 fill-yellow-600" />
+                              <span className="font-bold">{sitter.rating.toFixed(1)}</span>
+                            </span>
                             <span className="luxury-text-small">({sitter.totalReviews} {isHebrew ? 'ביקורות' : 'reviews'})</span>
                           </div>
                         </div>
@@ -607,7 +609,7 @@ export default function SitterSuite() {
 
                       <div className="flex items-center justify-between pt-4">
                         <div>
-                          <div className="text-3xl font-bold luxury-text-gradient">
+                          <div className="luxury-heading-lg luxury-text-gradient">
                             ₪{sitter.hourlyRateIls}
                           </div>
                           <div className="luxury-text-small">{isHebrew ? 'לשעה' : 'per hour'}</div>
@@ -773,28 +775,30 @@ export default function SitterSuite() {
               </div>
             ) : filteredSitters && filteredSitters.length > 0 ? (
               <div className="luxury-grid-3">
-                {filteredSitters.map((sitter) => (
+                {filteredSitters.map((sitter, idx) => (
                   <div 
                     key={sitter.id}
-                    className="luxury-glass-card luxury-hover-lift luxury-shadow-md overflow-hidden"
+                    className={`luxury-glass-card luxury-hover-glow luxury-shadow-md overflow-hidden luxury-animate-scale-in luxury-delay-${(idx % 6) + 1}`}
                     data-testid={`card-sitter-${sitter.id}`}
                   >
-                    {/* Profile Photo */}
-                    <div className="relative h-56 overflow-hidden">
-                    {sitter.profilePhotoUrl ? (
-                      <img 
-                        src={sitter.profilePhotoUrl} 
-                        alt={sitter.fullName}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                        <span className="text-white text-5xl font-bold">{sitter.fullName.charAt(0)}</span>
+                    {/* Profile Photo - Circular with Gradient Border */}
+                    <div className="relative h-56 flex items-center justify-center p-6">
+                      <div className="w-40 h-40 rounded-full p-1 bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-xl">
+                        {sitter.profilePhotoUrl ? (
+                          <img 
+                            src={sitter.profilePhotoUrl} 
+                            alt={sitter.fullName}
+                            className="w-full h-full object-cover rounded-full group-hover:scale-110 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                            <span className="text-white text-5xl font-bold">{sitter.fullName.charAt(0)}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
                     
                       {/* Status Badge */}
-                      <div className="absolute top-3 left-3">
+                      <div className="absolute top-6 left-1/2 -translate-x-1/2">
                         {sitter.available && (
                           <span className="luxury-badge luxury-badge-success">
                             {isHebrew ? 'זמין' : 'Available'}
@@ -804,10 +808,10 @@ export default function SitterSuite() {
 
                       {/* Favorite Button */}
                       <button 
-                        className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center text-gray-600 hover:text-pink-500 hover:scale-110 transition-all shadow-lg"
+                        className="absolute bottom-4 right-4 w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-600 hover:text-pink-500 hover:scale-110 transition-all shadow-xl luxury-hover-glow"
                         data-testid={`button-favorite-${sitter.id}`}
                       >
-                        <Heart className="w-5 h-5" />
+                        <Heart className="w-6 h-6" />
                       </button>
                     </div>
 
@@ -822,16 +826,11 @@ export default function SitterSuite() {
                       
                       {sitter.totalReviews > 0 && (
                         <div className="flex items-center gap-2 mb-4">
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star 
-                                key={i}
-                                className={`w-4 h-4 ${i < Math.floor(sitter.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-                              />
-                            ))}
-                          </div>
-                          <span className="font-semibold luxury-text-gradient">{sitter.rating.toFixed(1)}</span>
-                          <span className="luxury-text-small">({sitter.totalReviews})</span>
+                          <span className="luxury-badge luxury-badge-gold flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-yellow-600" />
+                            <span className="font-bold">{sitter.rating.toFixed(1)}</span>
+                          </span>
+                          <span className="luxury-text-small">({sitter.totalReviews} {isHebrew ? 'ביקורות' : 'reviews'})</span>
                         </div>
                       )}
 
@@ -868,7 +867,7 @@ export default function SitterSuite() {
 
                       <div className="flex items-center justify-between pt-4">
                         <div>
-                          <div className="text-2xl font-bold luxury-text-gradient">
+                          <div className="luxury-heading-lg luxury-text-gradient">
                             ₪{sitter.hourlyRateIls}
                           </div>
                           <div className="luxury-text-small">{isHebrew ? 'לשעה' : 'per hour'}</div>
@@ -950,16 +949,16 @@ export default function SitterSuite() {
                   desc: isHebrew ? 'חיית המחמד שלך בידיים מהימנות. השאר ביקורת לאחר סיום השירות' : 'Your pet is in trusted hands. Leave a review after service completion'
                 },
               ].map((step, idx) => (
-                <div key={step.num} className={`luxury-glass-card luxury-hover-glow luxury-shadow-md text-center p-6 luxury-animate-scale-in luxury-delay-${idx + 1}`}>
-                  <div className="relative inline-block mb-4">
-                    <div className="w-20 h-20 mx-auto bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-2xl">
+                <div key={step.num} className={`luxury-glass-card luxury-hover-glow luxury-shadow-lg text-center p-8 luxury-animate-scale-in luxury-delay-${idx + 1}`}>
+                  <div className="relative inline-block mb-6">
+                    <div className="w-24 h-24 mx-auto bg-gradient-to-br from-purple-600 via-pink-600 to-purple-700 rounded-2xl flex items-center justify-center text-white text-4xl font-black shadow-2xl luxury-hover-glow">
                       {step.num}
                     </div>
-                    <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-lg">
-                      <step.icon className="w-6 h-6 text-purple-600" />
+                    <div className="absolute -bottom-3 -right-3 w-14 h-14 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-xl border-4 border-purple-100 dark:border-purple-900">
+                      <step.icon className="w-7 h-7 text-purple-600" />
                     </div>
                     </div>
-                    <h3 className="luxury-heading-sm mb-2">{step.title}</h3>
+                    <h3 className="luxury-heading-sm mb-3">{step.title}</h3>
                     <p className="luxury-text-small">{step.desc}</p>
                   </div>
                 ))}

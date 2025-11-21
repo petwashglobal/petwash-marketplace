@@ -176,12 +176,12 @@ export default function SitterBooking() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 py-12">
+    <div className="min-h-screen luxury-bg-mesh py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left Column - Sitter Info */}
-          <div>
-            <Card className="mb-6 sticky top-4">
+          <div className="luxury-animate-fade-in luxury-delay-1">
+            <Card className="luxury-glass-card luxury-shadow-xl luxury-hover-glow mb-6 sticky top-4">
               <CardHeader>
                 <div className="flex items-start gap-4">
                   {sitter.profilePhotoUrl ? (
@@ -222,22 +222,22 @@ export default function SitterBooking() {
                 </p>
                 
                 <div className="flex items-center gap-2 mb-4">
-                  <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30">
+                  <Badge variant="secondary" className="luxury-badge-gold">
                     {sitter.experienceYears}+ {t('booking.common.experience')}
                   </Badge>
-                  <Badge variant="outline">
+                  <Badge variant="outline" className="luxury-badge-success">
                     <Shield className="w-3 h-3 mr-1" />
                     {t('booking.common.verified')}
                   </Badge>
                 </div>
 
-                <Separator className="my-4" />
+                <Separator className="my-4 luxury-divider" />
                 
                 <div>
                   <h4 className="font-semibold mb-2">{t('sitter.selectService')}:</h4>
                   <div className="flex flex-wrap gap-2">
                     {sitter.services.map((service, i) => (
-                      <Badge key={i} variant="outline" className="border-purple-200">
+                      <Badge key={i} className="luxury-badge">
                         {service}
                       </Badge>
                     ))}
@@ -248,21 +248,21 @@ export default function SitterBooking() {
           </div>
 
           {/* Right Column - Booking Form */}
-          <div>
-            <Card>
+          <div className="luxury-animate-fade-in luxury-delay-2">
+            <Card className="luxury-glass-card luxury-shadow-xl">
               <CardHeader>
-                <CardTitle>{t('sitter.title')}</CardTitle>
-                <CardDescription>
+                <CardTitle className="luxury-heading-md luxury-text-gradient">{t('sitter.title')}</CardTitle>
+                <CardDescription className="luxury-text-small">
                   {t('sitter.requestDesc')}
                 </CardDescription>
               </CardHeader>
               
               <CardContent className="space-y-6">
                 {/* Pet Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="pet">{t('booking.pet.selectYourPet')}</Label>
+                <div className="space-y-2 luxury-animate-fade-in luxury-delay-3">
+                  <Label htmlFor="pet" className="luxury-text-small font-semibold">{t('booking.pet.selectYourPet')}</Label>
                   <Select value={selectedPetId} onValueChange={setSelectedPetId}>
-                    <SelectTrigger id="pet" data-testid="select-pet">
+                    <SelectTrigger id="pet" data-testid="select-pet" className="luxury-glass-minimal">
                       <SelectValue placeholder={t('booking.pet.choosePet')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -291,7 +291,7 @@ export default function SitterBooking() {
                 )}
 
                 {selectedPet && (
-                  <Card className="bg-purple-50/50 dark:bg-purple-900/10 border-purple-200">
+                  <Card className="luxury-glass-minimal luxury-hover-lift luxury-animate-scale-in">
                     <CardContent className="pt-4">
                       <p className="text-sm"><strong>{t('pets.petType')}:</strong> {selectedPet.petType}</p>
                       <p className="text-sm"><strong>{t('booking.pet.breed')}:</strong> {selectedPet.breed}</p>
@@ -306,10 +306,10 @@ export default function SitterBooking() {
                 )}
 
                 {/* Service Type */}
-                <div className="space-y-2">
-                  <Label htmlFor="service">{t('sitter.selectService')}</Label>
+                <div className="space-y-2 luxury-animate-fade-in luxury-delay-4">
+                  <Label htmlFor="service" className="luxury-text-small font-semibold">{t('sitter.selectService')}</Label>
                   <Select value={selectedService} onValueChange={setSelectedService}>
-                    <SelectTrigger id="service" data-testid="select-service">
+                    <SelectTrigger id="service" data-testid="select-service" className="luxury-glass-minimal">
                       <SelectValue placeholder={t('booking.pet.choosePet')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -323,15 +323,15 @@ export default function SitterBooking() {
                 </div>
 
                 {/* Date Selection */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 luxury-animate-fade-in luxury-delay-5">
                   <div className="space-y-2">
-                    <Label>{t('sitter.startDate')}</Label>
+                    <Label className="luxury-text-small font-semibold">{t('sitter.startDate')}</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal",
+                            "w-full justify-start text-left font-normal luxury-glass-minimal",
                             !startDate && "text-muted-foreground"
                           )}
                           data-testid="button-start-date"
@@ -340,7 +340,7 @@ export default function SitterBooking() {
                           {startDate ? format(startDate, "PPP") : t('booking.common.pickDate')}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0 luxury-glass-card">
                         <Calendar
                           mode="single"
                           selected={startDate}
@@ -353,13 +353,13 @@ export default function SitterBooking() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>{t('sitter.endDate')}</Label>
+                    <Label className="luxury-text-small font-semibold">{t('sitter.endDate')}</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal",
+                            "w-full justify-start text-left font-normal luxury-glass-minimal",
                             !endDate && "text-muted-foreground"
                           )}
                           data-testid="button-end-date"
@@ -368,7 +368,7 @@ export default function SitterBooking() {
                           {endDate ? format(endDate, "PPP") : t('booking.common.pickDate')}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0 luxury-glass-card">
                         <Calendar
                           mode="single"
                           selected={endDate}
@@ -382,11 +382,11 @@ export default function SitterBooking() {
                 </div>
 
                 {/* Time Slot Selection */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 luxury-animate-fade-in luxury-delay-6">
                   <div className="space-y-2">
-                    <Label htmlFor="start-time">Start Time</Label>
+                    <Label htmlFor="start-time" className="luxury-text-small font-semibold">Start Time</Label>
                     <Select value={startTimeSlot} onValueChange={setStartTimeSlot}>
-                      <SelectTrigger id="start-time" data-testid="select-start-time">
+                      <SelectTrigger id="start-time" data-testid="select-start-time" className="luxury-glass-minimal">
                         <SelectValue placeholder="Select time slot" />
                       </SelectTrigger>
                       <SelectContent>
@@ -400,9 +400,9 @@ export default function SitterBooking() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="end-time">End Time</Label>
+                    <Label htmlFor="end-time" className="luxury-text-small font-semibold">End Time</Label>
                     <Select value={endTimeSlot} onValueChange={setEndTimeSlot}>
-                      <SelectTrigger id="end-time" data-testid="select-end-time">
+                      <SelectTrigger id="end-time" data-testid="select-end-time" className="luxury-glass-minimal">
                         <SelectValue placeholder="Select time slot" />
                       </SelectTrigger>
                       <SelectContent>
@@ -418,15 +418,15 @@ export default function SitterBooking() {
 
                 {/* Pricing Breakdown - Like Booking.com */}
                 {pricing && (
-                  <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200">
+                  <Card className="luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-animate-scale-in luxury-delay-7">
                     <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
+                      <CardTitle className="text-lg flex items-center gap-2 luxury-text-gradient">
                         <DollarSign className="w-5 h-5" />
                         {t('walker.pricingBreakdown')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm luxury-text-body">
                         <span>Base Rate ({pricing.duration} {pricing.duration > 1 ? 'days' : 'day'})</span>
                         <span>{pricing.currency} {pricing.subtotal.toFixed(2)}</span>
                       </div>
@@ -441,21 +441,21 @@ export default function SitterBooking() {
                         </div>
                       )}
 
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm luxury-text-body">
                         <span>{t('walker.platformFee')} (10%)</span>
                         <span>{pricing.currency} {pricing.platformFee.toFixed(2)}</span>
                       </div>
 
                       {pricing.tax > 0 && (
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-sm luxury-text-body">
                           <span>Tax</span>
                           <span>{pricing.currency} {pricing.tax.toFixed(2)}</span>
                         </div>
                       )}
 
-                      <Separator />
+                      <Separator className="luxury-divider" />
 
-                      <div className="flex justify-between text-lg font-bold text-purple-700 dark:text-purple-400">
+                      <div className="flex justify-between luxury-heading-lg luxury-text-gradient">
                         <span>{t('booking.common.total')}</span>
                         <span>{pricing.currency} {pricing.totalPrice.toFixed(2)}</span>
                       </div>
@@ -469,7 +469,7 @@ export default function SitterBooking() {
 
                 {/* Submit Button */}
                 <Button 
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg py-6"
+                  className="luxury-btn-primary luxury-shadow-xl w-full text-lg py-6 luxury-animate-fade-in luxury-delay-8"
                   onClick={handleSubmit}
                   disabled={createBooking.isPending || pricingLoading}
                   data-testid="button-submit-booking"
@@ -477,7 +477,7 @@ export default function SitterBooking() {
                   {createBooking.isPending ? t('booking.common.processing') : t('sitter.title')}
                 </Button>
 
-                <p className="text-xs text-center text-gray-500">
+                <p className="text-xs text-center text-gray-500 luxury-animate-fade-in luxury-delay-9">
                   By requesting a booking, you agree to our Terms of Service and Privacy Policy
                 </p>
               </CardContent>
@@ -488,37 +488,37 @@ export default function SitterBooking() {
 
       {/* Payment Confirmation Dialog */}
       <Dialog open={showPayment} onOpenChange={setShowPayment}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md luxury-glass-card luxury-shadow-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-purple-600" />
+            <DialogTitle className="flex items-center gap-2 luxury-heading-sm luxury-text-gradient">
+              <CreditCard className="h-5 w-5" />
               Confirm Payment
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="luxury-text-small">
               You will be charged {pricing?.currency} {pricing?.totalPrice.toFixed(2)} for this booking
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg space-y-2">
-              <div className="flex justify-between text-sm">
+            <div className="luxury-glass-minimal p-4 rounded-lg space-y-2">
+              <div className="flex justify-between text-sm luxury-text-body">
                 <span>Service:</span>
                 <span className="font-semibold">{selectedService}</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm luxury-text-body">
                 <span>Dates:</span>
                 <span className="font-semibold">
                   {startDate && format(startDate, "MMM d")} - {endDate && format(endDate, "MMM d")}
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm luxury-text-body">
                 <span>Times:</span>
                 <span className="font-semibold">
                   {TIME_SLOTS.find(s => s.value === startTimeSlot)?.label.split(' ')[0]} - {TIME_SLOTS.find(s => s.value === endTimeSlot)?.label.split(' ')[0]}
                 </span>
               </div>
-              <Separator />
-              <div className="flex justify-between text-lg font-bold text-purple-700">
+              <Separator className="luxury-divider" />
+              <div className="flex justify-between luxury-heading-md luxury-text-gradient">
                 <span>Total:</span>
                 <span>₪{pricing?.totalPrice.toFixed(2)}</span>
               </div>
@@ -534,11 +534,12 @@ export default function SitterBooking() {
               variant="outline" 
               onClick={() => setShowPayment(false)}
               disabled={createBooking.isPending}
+              className="luxury-btn-secondary"
             >
               Cancel
             </Button>
             <Button 
-              className="bg-purple-600 hover:bg-purple-700"
+              className="luxury-btn-primary luxury-shadow-xl"
               onClick={handlePaymentConfirm}
               disabled={createBooking.isPending}
               data-testid="button-confirm-payment"

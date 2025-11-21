@@ -13,67 +13,75 @@ export default function WalkerDashboard() {
       variant="dashboard"
       title={isHebrew ? 'לוח בקרה למטייל' : 'Walker Dashboard'}
     >
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                {isHebrew ? 'הליכות היום' : 'Today\'s Walks'}
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="kpi-today-walks">0</div>
-            </CardContent>
-          </Card>
+      <div className="luxury-bg-mesh min-h-screen py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="luxury-grid-4 mb-8">
+            <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-1">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                  {isHebrew ? 'הליכות היום' : 'Today\'s Walks'}
+                </h3>
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+                  <Calendar className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <div className="luxury-heading-lg luxury-text-gradient" data-testid="kpi-today-walks">0</div>
+            </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                {isHebrew ? 'הכנסות חודשיות' : 'Monthly Earnings'}
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="kpi-monthly-earnings">₪0</div>
-            </CardContent>
-          </Card>
+            <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-2">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                  {isHebrew ? 'הכנסות חודשיות' : 'Monthly Earnings'}
+                </h3>
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <div className="luxury-heading-lg luxury-text-gradient" data-testid="kpi-monthly-earnings">₪0</div>
+            </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                {isHebrew ? 'דירוג ממוצע' : 'Average Rating'}
-              </CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="kpi-avg-rating">--</div>
-            </CardContent>
-          </Card>
+            <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                  {isHebrew ? 'דירוג ממוצע' : 'Average Rating'}
+                </h3>
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+                  <Star className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <div className="luxury-heading-lg luxury-text-gradient" data-testid="kpi-avg-rating">--</div>
+            </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                {isHebrew ? 'סה״כ הליכות' : 'Total Walks'}
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="kpi-total-walks">0</div>
-            </CardContent>
-          </Card>
+            <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                  {isHebrew ? 'סה״כ הליכות' : 'Total Walks'}
+                </h3>
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <div className="luxury-heading-lg luxury-text-gradient" data-testid="kpi-total-walks">0</div>
+            </div>
+          </div>
+
+          <div className="luxury-glass-card luxury-shadow-xl p-8 luxury-animate-fade-in luxury-delay-5">
+            <h2 className="luxury-heading-md mb-6">
+              {isHebrew ? 'הליכות קרובות' : 'Upcoming Walks'}
+            </h2>
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center mb-4">
+                <Calendar className="h-10 w-10 text-purple-500" />
+              </div>
+              <p className="luxury-text-body text-center text-gray-500">
+                {isHebrew ? 'אין הליכות מתוכננות' : 'No upcoming walks scheduled'}
+              </p>
+              <p className="luxury-text-small text-center text-gray-400 mt-2">
+                {isHebrew ? 'הזדמנויות חדשות יופיעו כאן' : 'New opportunities will appear here'}
+              </p>
+            </div>
+          </div>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{isHebrew ? 'הליכות קרובות' : 'Upcoming Walks'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-500 text-center py-8">
-              {isHebrew ? 'אין הליכות מתוכננות' : 'No upcoming walks scheduled'}
-            </p>
-          </CardContent>
-        </Card>
       </div>
     </LuxuryPageWrapper>
   );

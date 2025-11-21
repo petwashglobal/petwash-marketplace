@@ -258,10 +258,10 @@ export default function WalkTracking() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">
+      <div className="min-h-screen flex items-center justify-center luxury-bg-mesh">
+        <div className="text-center luxury-animate-fade-in">
+          <div className="luxury-spinner mx-auto mb-6" />
+          <p className="luxury-text-body">
             {isHebrew ? 'טוען נתוני הליכה...' : 'Loading walk data...'}
           </p>
         </div>
@@ -271,24 +271,24 @@ export default function WalkTracking() {
 
   if (!walk) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertTriangle className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">
+      <div className="min-h-screen flex items-center justify-center luxury-bg-mesh">
+        <div className="luxury-glass-card max-w-md p-8 luxury-animate-scale-in">
+          <div className="text-center">
+            <AlertTriangle className="w-16 h-16 text-yellow-600 mx-auto mb-4" />
+            <h2 className="luxury-heading-md mb-3">
               {isHebrew ? 'הליכה לא נמצאה' : 'Walk Not Found'}
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <p className="luxury-text-body mb-6">
               {isHebrew ? 'לא ניתן למצוא את פרטי הליכה' : 'Unable to find walk details'}
             </p>
             <Link href="/walk-my-pet">
-              <Button>
-                <ArrowLeft className="w-4 h-4 mr-2" />
+              <button className="luxury-btn-primary">
+                <ArrowLeft className="w-4 h-4 mr-2 inline" />
                 {isHebrew ? 'חזרה' : 'Go Back'}
-              </Button>
+              </button>
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -301,26 +301,26 @@ export default function WalkTracking() {
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8 luxury-animate-fade-in">
           <Link href="/walk-my-pet">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
+            <button className="luxury-btn-ghost">
+              <ArrowLeft className="w-4 h-4 mr-2 inline" />
               {isHebrew ? 'חזרה' : 'Back'}
-            </Button>
+            </button>
           </Link>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* Connection Status */}
-            <Badge variant={wsConnected ? 'default' : 'secondary'} className="gap-1">
-              <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+            <div className={`luxury-badge ${wsConnected ? 'luxury-badge-success' : ''} luxury-animate-fade-in luxury-delay-1`}>
+              <div className={`w-2.5 h-2.5 rounded-full ${wsConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
               {wsConnected ? (isHebrew ? 'מחובר בזמן אמת' : 'Live') : (isHebrew ? 'מנותק' : 'Offline')}
-            </Badge>
+            </div>
             
             {/* Walk Status */}
-            <Badge variant={walk.status === 'active' ? 'default' : 'secondary'}>
+            <div className={`luxury-badge text-lg px-5 py-2.5 ${walk.status === 'active' ? 'luxury-badge-gold' : ''} luxury-animate-fade-in luxury-delay-2`}>
               {walk.status === 'active' && '🚶 '}
               {isHebrew ? (
                 walk.status === 'active' ? 'בטיול' :
@@ -329,244 +329,290 @@ export default function WalkTracking() {
               ) : (
                 walk.status.toUpperCase()
               )}
-            </Badge>
+            </div>
           </div>
         </div>
 
         {/* Emergency Alerts */}
         {activeAlerts.length > 0 && (
-          <Alert className="mb-6 border-red-600 bg-red-50 dark:bg-red-900/20">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
-            <AlertDescription className="font-semibold text-red-900 dark:text-red-200">
-              {isHebrew ? '🚨 התראת חירום פעילה!' : '🚨 Active Emergency Alert!'}
-              <div className="mt-2 space-y-1">
-                {activeAlerts.map((alert, i) => (
-                  <div key={i} className="text-sm">
-                    {alert.message} - {new Date(alert.timestamp).toLocaleTimeString()}
-                  </div>
-                ))}
+          <div className="mb-8 luxury-glass-card border-2 border-red-500 bg-red-50/80 dark:bg-red-900/30 p-6 luxury-animate-slide-up luxury-hover-glow">
+            <div className="flex items-start gap-4">
+              <AlertTriangle className="w-6 h-6 text-red-600 animate-pulse" />
+              <div className="flex-1">
+                <h3 className="luxury-heading-sm text-red-900 dark:text-red-200 mb-3">
+                  {isHebrew ? '🚨 התראת חירום פעילה!' : '🚨 Active Emergency Alert!'}
+                </h3>
+                <div className="space-y-2">
+                  {activeAlerts.map((alert, i) => (
+                    <div key={i} className="luxury-glass-minimal p-3 luxury-text-small text-red-900 dark:text-red-100">
+                      {alert.message} - {new Date(alert.timestamp).toLocaleTimeString()}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </AlertDescription>
-          </Alert>
+            </div>
+          </div>
         )}
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left Column - Map & Route */}
           <div className="lg:col-span-2 space-y-6">
             {/* Live Map */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
+            <div className="luxury-glass-card luxury-shadow-xl luxury-animate-slide-up luxury-delay-3">
+              <div className="p-6">
+                <h2 className="luxury-heading-sm flex items-center gap-2 mb-4">
+                  <MapPin className="w-6 h-6 text-purple-600" />
                   {isHebrew ? 'מפה בזמן אמת' : 'Live Map'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </h2>
+                
                 {mapError ? (
-                  <Alert className="mb-4">
-                    <AlertTriangle className="w-4 h-4" />
-                    <AlertDescription>{mapError}</AlertDescription>
-                  </Alert>
+                  <div className="luxury-glass-minimal p-4 mb-4 border-l-4 border-yellow-500">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                      <p className="luxury-text-small text-yellow-900 dark:text-yellow-100">{mapError}</p>
+                    </div>
+                  </div>
                 ) : null}
                 
                 <div className="relative">
                   <div 
                     ref={mapContainerRef}
-                    className="w-full h-96 rounded-lg border-2 border-blue-200 dark:border-blue-700 overflow-hidden z-0"
+                    className="w-full h-96 rounded-2xl border-2 border-purple-200 dark:border-purple-700 overflow-hidden z-0 luxury-shadow-md"
                   />
                   
                   {!walk.currentLocation && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm">
-                      <div className="text-center text-gray-500">
-                        <MapPin className="w-12 h-12 mx-auto mb-2 opacity-50 animate-pulse" />
-                        <p>{isHebrew ? 'ממתין למיקום GPS...' : 'Waiting for GPS location...'}</p>
+                    <div className="absolute inset-0 flex items-center justify-center luxury-glass-panel">
+                      <div className="text-center">
+                        <MapPin className="w-16 h-16 mx-auto mb-3 text-purple-400 animate-pulse" />
+                        <p className="luxury-text-body">{isHebrew ? 'ממתין למיקום GPS...' : 'Waiting for GPS location...'}</p>
                       </div>
                     </div>
                   )}
                   
                   {/* Route Stats Overlay */}
                   {walk.status === 'active' && walk.currentLocation && (
-                    <div className="absolute top-4 left-4 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-lg p-3 shadow-lg z-10">
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-blue-600" />
-                          <span className="font-semibold">{formatDuration(walk.duration)}</span>
+                    <div className="absolute top-4 left-4 luxury-glass-panel p-4 luxury-shadow-lg z-10 luxury-animate-fade-in">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                            <Clock className="w-5 h-5 text-white" />
+                          </div>
+                          <span className="luxury-text-body font-bold">{formatDuration(walk.duration)}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Navigation className="w-4 h-4 text-green-600" />
-                          <span className="font-semibold">{(walk.distance / 1000).toFixed(2)} km</span>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                            <Navigation className="w-5 h-5 text-white" />
+                          </div>
+                          <span className="luxury-text-body font-bold">{(walk.distance / 1000).toFixed(2)} km</span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <MapPin className="w-3 h-3" />
-                          <span className="font-mono">{walk.currentLocation.lat.toFixed(4)}, {walk.currentLocation.lon.toFixed(4)}</span>
+                        <div className="flex items-center gap-3 text-xs">
+                          <MapPin className="w-4 h-4 text-purple-500" />
+                          <span className="font-mono luxury-text-small">{walk.currentLocation.lat.toFixed(4)}, {walk.currentLocation.lon.toFixed(4)}</span>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Photos from Walk */}
             {walk.photos && walk.photos.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Camera className="w-5 h-5" />
+              <div className="luxury-glass-card luxury-animate-slide-up luxury-delay-4">
+                <div className="p-6">
+                  <h2 className="luxury-heading-sm flex items-center gap-2 mb-4">
+                    <Camera className="w-6 h-6 text-purple-600" />
                     {isHebrew ? 'תמונות מהטיול' : 'Walk Photos'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                  </h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {walk.photos.map((photoUrl, index) => (
-                      <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                      <div 
+                        key={index} 
+                        className="aspect-square rounded-2xl overflow-hidden luxury-glass-minimal luxury-hover-lift cursor-pointer"
+                        style={{ animationDelay: `${index * 0.1}s` }}
+                      >
                         <img 
                           src={photoUrl} 
                           alt={`Walk photo ${index + 1}`}
-                          className="w-full h-full object-cover hover:scale-110 transition-transform cursor-pointer"
+                          className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
                         />
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
           </div>
 
           {/* Right Column - Details */}
           <div className="space-y-6">
             {/* Walker & Pet Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{isHebrew ? 'פרטי הטיול' : 'Walk Details'}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Walker */}
-                <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  {walk.walker.photoUrl ? (
-                    <img src={walk.walker.photoUrl} alt={walk.walker.firstName} className="w-12 h-12 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-blue-200 dark:bg-blue-700 flex items-center justify-center">
-                      <User className="w-6 h-6 text-blue-700 dark:text-blue-300" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <p className="font-semibold">{walk.walker.firstName} {walk.walker.lastName}</p>
-                    <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
-                      <span>⭐</span>
-                      <span>{walk.walker.rating.toFixed(1)}</span>
+            <div className="luxury-glass-card luxury-hover-glow luxury-animate-slide-up luxury-delay-5">
+              <div className="p-6">
+                <h2 className="luxury-heading-sm mb-4">{isHebrew ? 'פרטי הטיול' : 'Walk Details'}</h2>
+                
+                <div className="space-y-4">
+                  {/* Walker */}
+                  <div className="luxury-glass-panel p-4">
+                    <div className="flex items-center gap-4">
+                      {walk.walker.photoUrl ? (
+                        <div className="relative">
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 animate-pulse" style={{ padding: '3px' }}></div>
+                          <img 
+                            src={walk.walker.photoUrl} 
+                            alt={walk.walker.firstName} 
+                            className="relative w-16 h-16 rounded-full object-cover border-4 border-white dark:border-gray-800" 
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                          <User className="w-8 h-8 text-white" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="luxury-heading-sm text-base mb-1">{walk.walker.firstName} {walk.walker.lastName}</p>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xl">⭐</span>
+                          <span className="luxury-text-gradient font-bold text-lg">{walk.walker.rating.toFixed(1)}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Pet */}
-                <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                  {walk.pet.photoUrl ? (
-                    <img src={walk.pet.photoUrl} alt={walk.pet.name} className="w-12 h-12 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-purple-200 dark:bg-purple-700 flex items-center justify-center">
-                      <Dog className="w-6 h-6 text-purple-700 dark:text-purple-300" />
+                  {/* Pet */}
+                  <div className="luxury-glass-panel p-4">
+                    <div className="flex items-center gap-4">
+                      {walk.pet.photoUrl ? (
+                        <div className="relative">
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 animate-pulse" style={{ padding: '3px' }}></div>
+                          <img 
+                            src={walk.pet.photoUrl} 
+                            alt={walk.pet.name} 
+                            className="relative w-16 h-16 rounded-full object-cover border-4 border-white dark:border-gray-800" 
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                          <Dog className="w-8 h-8 text-white" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="luxury-heading-sm text-base mb-1">{walk.pet.name}</p>
+                        <p className="luxury-text-small">{walk.pet.breed}</p>
+                      </div>
                     </div>
-                  )}
-                  <div className="flex-1">
-                    <p className="font-semibold">{walk.pet.name}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{walk.pet.breed}</p>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <a href={`tel:${walk.walker.phoneNumber}`}>
+                      <button className="luxury-btn-primary w-full flex items-center justify-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        {isHebrew ? 'התקשר' : 'Call'}
+                      </button>
+                    </a>
+                    <button className="luxury-btn-secondary w-full flex items-center justify-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      {isHebrew ? 'הודעה' : 'Message'}
+                    </button>
                   </div>
                 </div>
-
-                {/* Quick Actions */}
-                <div className="grid grid-cols-2 gap-2">
-                  <a href={`tel:${walk.walker.phoneNumber}`}>
-                    <Button variant="outline" size="sm" className="w-full">
-                      <Phone className="w-4 h-4 mr-2" />
-                      {isHebrew ? 'התקשר' : 'Call'}
-                    </Button>
-                  </a>
-                  <Button variant="outline" size="sm" className="w-full">
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    {isHebrew ? 'הודעה' : 'Message'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Health Metrics */}
             {walk.healthMetrics && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
+              <div className="luxury-glass-card luxury-animate-slide-up luxury-delay-6">
+                <div className="p-6">
+                  <h2 className="luxury-heading-sm flex items-center gap-2 mb-4">
+                    <Activity className="w-6 h-6 text-purple-600" />
                     {isHebrew ? 'מדדי בריאות' : 'Health Metrics'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {walk.healthMetrics.heartRate && (
-                    <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Heart className="w-5 h-5 text-red-600" />
-                        <span className="font-semibold">{isHebrew ? 'דופק' : 'Heart Rate'}</span>
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    {walk.healthMetrics.heartRate && (
+                      <div className="luxury-glass-panel p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center">
+                              <Heart className="w-6 h-6 text-white animate-pulse" />
+                            </div>
+                            <span className="luxury-text-body font-semibold">{isHebrew ? 'דופק' : 'Heart Rate'}</span>
+                          </div>
+                          <span className="luxury-text-gradient text-2xl font-bold">{walk.healthMetrics.heartRate} BPM</span>
+                        </div>
                       </div>
-                      <span className="text-xl font-bold text-red-600">{walk.healthMetrics.heartRate} BPM</span>
-                    </div>
-                  )}
+                    )}
 
-                  <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-5 h-5 text-green-600" />
-                      <span className="font-semibold">{isHebrew ? 'רמת פעילות' : 'Activity'}</span>
+                    <div className="luxury-glass-panel p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                            <Activity className="w-6 h-6 text-white" />
+                          </div>
+                          <span className="luxury-text-body font-semibold">{isHebrew ? 'רמת פעילות' : 'Activity'}</span>
+                        </div>
+                        <div className={`luxury-badge ${
+                          walk.healthMetrics.activityLevel === 'high' ? 'luxury-badge-success' :
+                          walk.healthMetrics.activityLevel === 'medium' ? 'luxury-badge-gold' : ''
+                        }`}>
+                          {walk.healthMetrics.activityLevel.toUpperCase()}
+                        </div>
+                      </div>
                     </div>
-                    <Badge variant={
-                      walk.healthMetrics.activityLevel === 'high' ? 'default' :
-                      walk.healthMetrics.activityLevel === 'medium' ? 'secondary' : 'outline'
-                    }>
-                      {walk.healthMetrics.activityLevel.toUpperCase()}
-                    </Badge>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        {isHebrew ? 'צעדים' : 'Steps'}
-                      </p>
-                      <p className="text-lg font-bold">{walk.healthMetrics.stepsCount.toLocaleString()}</p>
-                    </div>
-                    <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        {isHebrew ? 'קלוריות' : 'Calories'}
-                      </p>
-                      <p className="text-lg font-bold">{walk.healthMetrics.caloriesBurned} kcal</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="luxury-glass-minimal p-4 text-center">
+                        <p className="luxury-text-small mb-2">
+                          {isHebrew ? 'צעדים' : 'Steps'}
+                        </p>
+                        <p className="luxury-text-gradient text-2xl font-bold">{walk.healthMetrics.stepsCount.toLocaleString()}</p>
+                      </div>
+                      <div className="luxury-glass-minimal p-4 text-center">
+                        <p className="luxury-text-small mb-2">
+                          {isHebrew ? 'קלוריות' : 'Calories'}
+                        </p>
+                        <p className="luxury-text-gradient text-2xl font-bold">{walk.healthMetrics.caloriesBurned}</p>
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {/* Walk Summary */}
             {walk.status === 'completed' && (
-              <Card className="border-2 border-green-200 dark:border-green-700">
-                <CardHeader className="bg-green-50 dark:bg-green-900/20">
-                  <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                    <CheckCircle className="w-5 h-5" />
+              <div className="luxury-glass-card border-2 border-green-400 bg-green-50/50 dark:bg-green-900/20 luxury-animate-scale-in luxury-delay-7">
+                <div className="p-6">
+                  <h2 className="luxury-heading-sm flex items-center gap-2 text-green-700 dark:text-green-400 mb-4">
+                    <CheckCircle className="w-6 h-6" />
                     {isHebrew ? 'הטיול הושלם!' : 'Walk Completed!'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">{isHebrew ? 'זמן כולל' : 'Total Time'}</span>
-                    <span className="font-semibold">{formatDuration(walk.duration)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">{isHebrew ? 'מרחק' : 'Distance'}</span>
-                    <span className="font-semibold">{(walk.distance / 1000).toFixed(2)} km</span>
-                  </div>
-                  {walk.endTime && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">{isHebrew ? 'הסתיים ב' : 'Ended At'}</span>
-                      <span className="font-semibold">{new Date(walk.endTime).toLocaleTimeString()}</span>
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    <div className="luxury-glass-minimal p-4">
+                      <div className="flex justify-between items-center">
+                        <span className="luxury-text-body">{isHebrew ? 'זמן כולל' : 'Total Time'}</span>
+                        <span className="luxury-text-gradient text-xl font-bold">{formatDuration(walk.duration)}</span>
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                    <div className="luxury-glass-minimal p-4">
+                      <div className="flex justify-between items-center">
+                        <span className="luxury-text-body">{isHebrew ? 'מרחק' : 'Distance'}</span>
+                        <span className="luxury-text-gradient text-xl font-bold">{(walk.distance / 1000).toFixed(2)} km</span>
+                      </div>
+                    </div>
+                    {walk.endTime && (
+                      <div className="luxury-glass-minimal p-4">
+                        <div className="flex justify-between items-center">
+                          <span className="luxury-text-body">{isHebrew ? 'הסתיים ב' : 'Ended At'}</span>
+                          <span className="luxury-text-gradient text-xl font-bold">{new Date(walk.endTime).toLocaleTimeString()}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

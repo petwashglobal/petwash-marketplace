@@ -172,15 +172,19 @@ export default function SitterDetail() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-amber-50 py-12">
+      <div className="min-h-screen luxury-bg-mesh py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Sitter Profile Header */}
-          <GlassmorphismCard className="mb-8">
+          <div className="luxury-glass-card luxury-shadow-xl mb-8 p-8 luxury-animate-fade-in">
             <div className="grid lg:grid-cols-3 gap-8">
               {/* Left: Profile Photo */}
-              <div className="lg:col-span-1">
-                <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-purple-200 via-pink-200 to-amber-200">
+              <div className="lg:col-span-1 luxury-animate-scale-in luxury-delay-1">
+                <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-purple-200 via-pink-200 to-amber-200 border-4 border-transparent bg-clip-padding" style={{
+                  backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  backgroundOrigin: 'border-box',
+                  backgroundClip: 'padding-box, border-box'
+                }}>
                   {sitter.profilePictureUrl ? (
                     <img 
                       src={sitter.profilePictureUrl} 
@@ -193,30 +197,32 @@ export default function SitterDetail() {
                     </div>
                   )}
                   {sitter.isVerified && (
-                    <div className="absolute top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white p-3 rounded-full shadow-xl backdrop-blur-sm">
-                      <Shield className="w-6 h-6" />
+                    <div className="absolute top-4 right-4">
+                      <div className="luxury-badge-gold p-3 rounded-full">
+                        <Shield className="w-6 h-6" />
+                      </div>
                     </div>
                   )}
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
-                    <div className="flex items-center gap-3">
-                      <Star className="h-8 w-8 fill-amber-300 text-amber-300" />
-                      <span className="text-white font-bold text-3xl">{sitter.rating}</span>
+                    <div className="luxury-badge-gold inline-flex items-center gap-2">
+                      <Star className="h-6 w-6 fill-current" />
+                      <span className="font-bold text-2xl">{sitter.rating}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Middle: Profile Info */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-6 luxury-animate-fade-in luxury-delay-2">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 bg-clip-text text-transparent">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    <h1 className="luxury-heading-xl">
                       {sitter.firstName} {sitter.lastName}
                     </h1>
                     {sitter.isVerified && (
-                      <div className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full shadow-lg">
+                      <div className="luxury-badge-gold">
                         <CheckCircle2 className="w-5 h-5" />
-                        <span className="font-semibold">{isHebrew ? 'מאומת' : 'Verified'}</span>
+                        <span>{isHebrew ? 'מאומת' : 'Verified'}</span>
                       </div>
                     )}
                   </div>
@@ -229,11 +235,13 @@ export default function SitterDetail() {
 
                 {/* Stats Row */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-5 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl border-2 border-amber-200 shadow-lg">
+                  <div className="luxury-glass-card luxury-hover-lift text-center p-5 luxury-animate-scale-in luxury-delay-3">
                     <div className="flex justify-center mb-2">
-                      <Star className="w-7 h-7 text-amber-500 fill-amber-500" />
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center">
+                        <Star className="w-7 h-7 text-white fill-white" />
+                      </div>
                     </div>
-                    <div className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">
+                    <div className="text-3xl font-bold luxury-text-gradient">
                       {sitter.rating || '5.0'}
                     </div>
                     <div className="text-sm font-medium text-gray-600 mt-1">
@@ -241,11 +249,13 @@ export default function SitterDetail() {
                     </div>
                   </div>
 
-                  <div className="text-center p-5 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200 shadow-lg">
+                  <div className="luxury-glass-card luxury-hover-lift text-center p-5 luxury-animate-scale-in luxury-delay-4">
                     <div className="flex justify-center mb-2">
-                      <Award className="w-7 h-7 text-purple-600" />
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                        <Award className="w-7 h-7 text-white" />
+                      </div>
                     </div>
-                    <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    <div className="text-3xl font-bold luxury-text-gradient">
                       {sitter.totalBookings || 0}
                     </div>
                     <div className="text-sm font-medium text-gray-600 mt-1">
@@ -253,11 +263,13 @@ export default function SitterDetail() {
                     </div>
                   </div>
 
-                  <div className="text-center p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 shadow-lg">
+                  <div className="luxury-glass-card luxury-hover-lift text-center p-5 luxury-animate-scale-in luxury-delay-5">
                     <div className="flex justify-center mb-2">
-                      <Clock className="w-7 h-7 text-green-600" />
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                        <Clock className="w-7 h-7 text-white" />
+                      </div>
                     </div>
-                    <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                    <div className="text-3xl font-bold luxury-text-gradient">
                       &lt;1h
                     </div>
                     <div className="text-sm font-medium text-gray-600 mt-1">
@@ -265,11 +277,13 @@ export default function SitterDetail() {
                     </div>
                   </div>
 
-                  <div className="text-center p-5 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border-2 border-blue-200 shadow-lg">
+                  <div className="luxury-glass-card luxury-hover-lift text-center p-5 luxury-animate-scale-in luxury-delay-6">
                     <div className="flex justify-center mb-2">
-                      <TrendingUp className="w-7 h-7 text-blue-600" />
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                        <TrendingUp className="w-7 h-7 text-white" />
+                      </div>
                     </div>
-                    <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                    <div className="text-3xl font-bold luxury-text-gradient">
                       {sitter.yearsOfExperience || 0}
                     </div>
                     <div className="text-sm font-medium text-gray-600 mt-1">
@@ -279,17 +293,17 @@ export default function SitterDetail() {
                 </div>
 
                 {/* Bio */}
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border-2 border-purple-100">
-                  <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-7">
+                  <h3 className="luxury-heading-md mb-3 luxury-text-gradient">
                     {isHebrew ? 'אודות' : 'About Me'}
                   </h3>
-                  <p className="text-gray-700 leading-relaxed text-lg">
+                  <p className="luxury-text-body">
                     {sitter.bio || (isHebrew ? 'אין תיאור זמין' : 'No description available')}
                   </p>
                 </div>
               </div>
             </div>
-          </GlassmorphismCard>
+          </div>
 
           {/* Booking Section */}
           <div className="grid lg:grid-cols-3 gap-8">
@@ -297,122 +311,121 @@ export default function SitterDetail() {
             <div className="lg:col-span-2 space-y-6">
               {/* Select Pet */}
               {user && pets && pets.length > 0 && (
-                <GlassmorphismCard>
-                  <div className="p-6">
-                    <h3 className="text-2xl font-bold mb-4 flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                      <Dog className="w-7 h-7 text-purple-600" />
-                      {isHebrew ? 'בחר חיית מחמד' : 'Select Your Pet'}
-                    </h3>
-                    <div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {pets.map((pet) => (
-                        <div
-                          key={pet.id}
-                          onClick={() => setSelectedPetId(pet.id)}
-                          className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                            selectedPetId === pet.id
-                              ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
-                          }`}
-                          data-testid={`pet-option-${pet.id}`}
-                        >
-                          <div className="flex items-center gap-3">
-                            {pet.photoUrl ? (
-                              <img 
-                                src={pet.photoUrl} 
-                                alt={pet.name}
-                                className="w-16 h-16 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-200 to-pink-200 flex items-center justify-center">
-                                <Dog className="w-8 h-8 text-purple-600" />
-                              </div>
-                            )}
-                            <div>
-                              <h4 className="font-bold text-gray-900 dark:text-white">{pet.name}</h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">{pet.breed}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-500">{pet.weight}</p>
+                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-8">
+                  <h3 className="luxury-heading-md mb-6 flex items-center gap-3 luxury-text-gradient">
+                    <Dog className="w-8 h-8 text-purple-600" />
+                    {isHebrew ? 'בחר חיית מחמד' : 'Select Your Pet'}
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {pets.map((pet, idx) => (
+                      <div
+                        key={pet.id}
+                        onClick={() => setSelectedPetId(pet.id)}
+                        className={`luxury-glass-minimal luxury-hover-lift p-4 cursor-pointer transition-all luxury-animate-scale-in luxury-delay-${Math.min(10, 9 + idx)} ${
+                          selectedPetId === pet.id
+                            ? 'border-2 border-purple-600 luxury-shadow-lg'
+                            : 'border border-gray-200 dark:border-gray-700'
+                        }`}
+                        data-testid={`pet-option-${pet.id}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {pet.photoUrl ? (
+                            <img 
+                              src={pet.photoUrl} 
+                              alt={pet.name}
+                              className="w-16 h-16 rounded-full object-cover ring-2 ring-purple-200"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-200 to-pink-200 flex items-center justify-center ring-2 ring-purple-200">
+                              <Dog className="w-8 h-8 text-purple-600" />
                             </div>
+                          )}
+                          <div>
+                            <h4 className="font-bold text-gray-900 dark:text-white">{pet.name}</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{pet.breed}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-500">{pet.weight}</p>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                </GlassmorphismCard>
+                </div>
               )}
 
               {/* Select Dates */}
-              <GlassmorphismCard>
-                <div className="p-6">
-                  <h3 className="text-2xl font-bold mb-4 flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                    <CalendarIcon className="w-7 h-7 text-purple-600" />
-                    {isHebrew ? 'בחר תאריכים' : 'Select Dates'}
-                  </h3>
+              <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-9">
+                <h3 className="luxury-heading-md mb-6 flex items-center gap-3 luxury-text-gradient">
+                  <CalendarIcon className="w-8 h-8 text-purple-600" />
+                  {isHebrew ? 'בחר תאריכים' : 'Select Dates'}
+                </h3>
+                <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        {isHebrew ? 'תאריך התחלה' : 'Start Date'}
-                      </label>
+                    <label className="block text-sm font-semibold mb-3 text-gray-700">
+                      {isHebrew ? 'תאריך התחלה' : 'Start Date'}
+                    </label>
+                    <div className="luxury-glass-minimal p-2">
                       <Calendar
                         mode="single"
                         selected={startDate}
                         onSelect={setStartDate}
                         disabled={(date) => date < new Date()}
-                        className="rounded-md border"
+                        className="rounded-md"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        {isHebrew ? 'תאריך סיום' : 'End Date'}
-                      </label>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-3 text-gray-700">
+                      {isHebrew ? 'תאריך סיום' : 'End Date'}
+                    </label>
+                    <div className="luxury-glass-minimal p-2">
                       <Calendar
                         mode="single"
                         selected={endDate}
                         onSelect={setEndDate}
                         disabled={(date) => !startDate || date < startDate}
-                        className="rounded-md border"
+                        className="rounded-md"
                       />
                     </div>
                   </div>
+                </div>
 
-                  {startDate && endDate && (
-                    <div className="mt-6 p-5 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-700 font-medium">
-                          {isHebrew ? 'סה"כ ימים:' : 'Total Days:'}
-                        </span>
-                        <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                          {days} {isHebrew ? 'ימים' : days === 1 ? 'day' : 'days'}
-                        </span>
-                      </div>
+                {startDate && endDate && (
+                  <div className="mt-6 luxury-glass-card luxury-shadow-md p-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-700 font-semibold text-lg">
+                        {isHebrew ? 'סה"כ ימים:' : 'Total Days:'}
+                      </span>
+                      <span className="text-4xl font-bold luxury-text-gradient">
+                        {days} {isHebrew ? 'ימים' : days === 1 ? 'day' : 'days'}
+                      </span>
                     </div>
-                  )}
                   </div>
-                  </div>
-              </GlassmorphismCard>
+                )}
+              </div>
 
               {/* Reviews */}
               {reviews.length > 0 && (
-                <GlassmorphismCard>
-                  <div className="p-6">
-                    <h3 className="text-2xl font-bold mb-6 flex items-center gap-2 bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">
-                      <Star className="w-7 h-7 text-amber-500 fill-amber-500" />
+                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-10">
+                  <h3 className="luxury-heading-md mb-6 flex items-center gap-3">
+                    <div className="luxury-badge-gold">
+                      <Star className="w-6 h-6 fill-current" />
+                    </div>
+                    <span className="luxury-text-gradient">
                       {isHebrew ? 'ביקורות' : 'Reviews'} ({reviews.length})
-                    </h3>
-                    <div className="space-y-4">
-                    {reviews.map((review) => (
-                      <div key={review.id} className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border-2 border-amber-100">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="flex">
+                    </span>
+                  </h3>
+                  <div className="space-y-4">
+                    {reviews.map((review, idx) => (
+                      <div key={review.id} className={`luxury-glass-minimal luxury-hover-lift p-5 luxury-animate-fade-in luxury-delay-${Math.min(10, idx + 1)}`}>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="luxury-badge-gold inline-flex items-center gap-1">
                             {[...Array(5)].map((_, i) => (
                               <Star
                                 key={i}
-                                className={`w-5 h-5 ${
+                                className={`w-4 h-4 ${
                                   i < review.rating
-                                    ? 'text-amber-500 fill-amber-500'
-                                    : 'text-gray-300'
+                                    ? 'fill-current'
+                                    : 'text-gray-300 fill-gray-300'
                                 }`}
                               />
                             ))}
@@ -421,37 +434,36 @@ export default function SitterDetail() {
                             {new Date(review.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-gray-700 leading-relaxed">{review.comment}</p>
+                        <p className="luxury-text-body">{review.comment}</p>
                       </div>
                     ))}
                   </div>
-                  </div>
-                </GlassmorphismCard>
+                </div>
               )}
             </div>
 
             {/* Right: Booking Summary */}
             <div className="lg:col-span-1">
-              <GlassmorphismCard className="sticky top-24">
-                <div className="p-6">
-                  <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                    {isHebrew ? 'סיכום הזמנה' : 'Booking Summary'}
-                  </h3>
-                  <div className="space-y-6">
+              <div className="luxury-glass-card luxury-shadow-xl sticky top-24 p-6 luxury-animate-scale-in luxury-delay-8">
+                <h3 className="luxury-heading-lg mb-6 luxury-text-gradient text-center">
+                  {isHebrew ? 'סיכום הזמנה' : 'Booking Summary'}
+                </h3>
+                <div className="space-y-6">
                   {/* Price Breakdown */}
                   <div className="space-y-4">
-                    <div className="flex justify-between text-gray-700 text-lg">
+                    <div className="flex justify-between luxury-text-body">
                       <span className="font-medium">₪{(sitter.pricePerDayCents / 100).toFixed(0)} × {days} {isHebrew ? 'ימים' : 'days'}</span>
                       <span className="font-bold">₪{days > 0 ? ((sitter.pricePerDayCents / 100) * days).toFixed(0) : '0'}</span>
                     </div>
-                    <div className="flex justify-between text-gray-700 text-lg">
+                    <div className="flex justify-between luxury-text-body">
                       <span className="font-medium">{isHebrew ? 'עמלת שירות' : 'Service Fee'} (10%)</span>
                       <span className="font-bold">₪{days > 0 ? (((sitter.pricePerDayCents / 100) * days * 0.1).toFixed(0)) : '0'}</span>
                     </div>
-                    <div className="border-t-2 border-purple-200 pt-4">
+                    <div className="luxury-divider"></div>
+                    <div className="luxury-glass-minimal p-4">
                       <div className="flex justify-between items-center">
-                        <span className="text-xl font-bold text-gray-900">{isHebrew ? 'סה"כ' : 'Total'}</span>
-                        <span className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 bg-clip-text text-transparent">
+                        <span className="luxury-heading-sm">{isHebrew ? 'סה"כ' : 'Total'}</span>
+                        <span className="text-5xl font-bold luxury-text-gradient">
                           ₪{totalCost.toFixed(0)}
                         </span>
                       </div>
@@ -459,33 +471,32 @@ export default function SitterDetail() {
                   </div>
 
                   {/* Book Button */}
-                  <LuxuryButton
-                    className="w-full h-16 text-xl"
+                  <button
+                    className="luxury-btn-primary luxury-shadow-xl w-full h-16 text-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleBooking}
                     disabled={!selectedPetId || !startDate || !endDate || createBookingMutation.isPending}
                     data-testid="button-confirm-booking"
                   >
                     {createBookingMutation.isPending ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                        {isHebrew ? 'מעבד...' : 'Processing...'}
-                      </div>
+                      <>
+                        <div className="luxury-spinner w-6 h-6"></div>
+                        <span>{isHebrew ? 'מעבד...' : 'Processing...'}</span>
+                      </>
                     ) : (
                       <>
-                        <Sparkles className="w-6 h-6 mr-2" />
-                        {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
+                        <Sparkles className="w-6 h-6" />
+                        <span>{isHebrew ? 'הזמן עכשיו' : 'Book Now'}</span>
                       </>
                     )}
-                  </LuxuryButton>
+                  </button>
 
-                  <p className="text-sm text-center text-gray-600 bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200">
+                  <div className="luxury-badge-success w-full text-center p-3">
                     {isHebrew 
                       ? '✅ לא תחויב עד שהשמרטף יאשר'
                       : '✅ You won\'t be charged until confirmed'}
-                  </p>
                   </div>
                 </div>
-              </GlassmorphismCard>
+              </div>
             </div>
           </div>
         </div>

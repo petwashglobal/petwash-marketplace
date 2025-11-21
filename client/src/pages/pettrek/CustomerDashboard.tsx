@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Car, MapPin, Clock, DollarSign, Star, Calendar, Navigation, Package, TrendingUp, ChevronRight, Bell } from "lucide-react";
+import { Car, MapPin, Clock, DollarSign, Star, Calendar, Navigation, Package, TrendingUp, ChevronRight, Bell, Home, Building2, Scissors, Heart, Edit2, Trash2, User } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,9 +21,6 @@ export default function PetTrekCustomerDashboard() {
   const upcomingTrips = allTrips.length > 0 ? allTrips.filter((t: any) => t.status === 'confirmed' && new Date(t.serviceDate) > new Date()) : [];
   const pastTrips = allTrips.length > 0 ? allTrips.filter((t: any) => t.status === 'completed') : [];
   
-  // Mock active trip for now
-  const activeTripMock = null;
-
   // Fallback mock data for development
   const upcomingTripsMock = [
     {
@@ -105,309 +102,455 @@ export default function PetTrekCustomerDashboard() {
       petName: "Max",
       rating: 5,
       duration: 28
+    },
+    {
+      id: "past-3",
+      driverName: "David Cohen",
+      driverPhoto: "https://i.pravatar.cc/150?img=12",
+      date: "2025-10-20",
+      time: "15:30",
+      pickup: "Home",
+      dropoff: "Dog Park",
+      distance: "8 km",
+      price: 65,
+      petName: "Luna",
+      rating: 4,
+      duration: 22
+    }
+  ];
+
+  const savedLocations = [
+    {
+      id: "loc-1",
+      name: "Home",
+      address: "123 Rothschild Blvd, Tel Aviv",
+      icon: Home,
+      color: "from-blue-500 to-blue-600"
+    },
+    {
+      id: "loc-2",
+      name: "Vet Clinic",
+      address: "Veterinary Clinic, Herzliya",
+      icon: Building2,
+      color: "from-green-500 to-green-600"
+    },
+    {
+      id: "loc-3",
+      name: "Pet Groomer",
+      address: "Premium Pet Spa, Ramat Aviv",
+      icon: Scissors,
+      color: "from-purple-500 to-purple-600"
+    }
+  ];
+
+  const favoriteDrivers = [
+    {
+      id: "drv-1",
+      name: "Michael Shapiro",
+      photo: "https://i.pravatar.cc/150?img=11",
+      rating: 4.9,
+      totalTrips: 12
+    },
+    {
+      id: "drv-2",
+      name: "Sarah Levi",
+      photo: "https://i.pravatar.cc/150?img=13",
+      rating: 5.0,
+      totalTrips: 8
+    },
+    {
+      id: "drv-3",
+      name: "David Cohen",
+      photo: "https://i.pravatar.cc/150?img=12",
+      rating: 4.8,
+      totalTrips: 5
+    },
+    {
+      id: "drv-4",
+      name: "Rachel Ben-David",
+      photo: "https://i.pravatar.cc/150?img=14",
+      rating: 4.9,
+      totalTrips: 7
     }
   ];
 
   const stats = {
     totalTrips: 23,
-    totalSpent: 2890,
-    favoriteDriver: "Michael Shapiro",
-    avgRating: 4.9
+    thisMonth: 5,
+    savedLocations: 3,
+    favoriteDrivers: 4
   };
 
-  return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      {/* Premium White Neomorphic Header */}
-      <div className="relative bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent" data-testid="page-title">
-                🚗 PetTrek™
-              </h1>
-              <p className="text-slate-600 text-lg" data-testid="page-subtitle">Premium Pet Transport</p>
-            </div>
-            <Button 
-              variant="outline" 
-              className="gap-2 bg-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] border-slate-200"
-              data-testid="button-alerts"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="hidden sm:inline">Alerts</span>
-            </Button>
-          </div>
+  const displayUpcomingTrips = upcomingTrips.length > 0 ? upcomingTrips : upcomingTripsMock;
+  const displayPastTrips = pastTrips.length > 0 ? pastTrips : pastTripsMock;
 
-          {/* Quick Stats - Pure White Neomorphism with Metallic Gold */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-            <Card className="bg-white p-6 shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2),-12px_-12px_24px_rgba(255,255,255,0.8)] transition-all" data-testid="stat-total-trips">
-              <div className="text-slate-500 text-sm mb-2 font-medium">Total Trips</div>
-              <div className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">
-                {stats.totalTrips}
-              </div>
-            </Card>
-            <Card className="bg-white p-6 shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2),-12px_-12px_24px_rgba(255,255,255,0.8)] transition-all" data-testid="stat-total-spent">
-              <div className="text-slate-500 text-sm mb-2 font-medium">Total Spent</div>
-              <div className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">
-                ₪{stats.totalSpent}
-              </div>
-            </Card>
-            <Card className="bg-white p-6 shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2),-12px_-12px_24px_rgba(255,255,255,0.8)] transition-all" data-testid="stat-avg-rating">
-              <div className="text-slate-500 text-sm mb-2 font-medium">Avg Rating</div>
-              <div className="text-4xl font-bold flex items-center gap-1">
-                <span className="bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">
-                  {stats.avgRating}
-                </span>
-                <Star className="h-6 w-6 fill-amber-400 text-amber-400" />
-              </div>
-            </Card>
-            <Card className="bg-white p-6 shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2),-12px_-12px_24px_rgba(255,255,255,0.8)] transition-all" data-testid="stat-top-driver">
-              <div className="text-slate-500 text-sm mb-2 font-medium">Top Driver</div>
-              <div className="text-lg font-semibold text-slate-800 truncate">{stats.favoriteDriver}</div>
-            </Card>
+  return (
+    <div className="min-h-screen luxury-bg-mesh">
+      {/* Luxury Welcome Header */}
+      <div className="luxury-container luxury-section-compact">
+        <div className="flex items-center justify-between mb-8 luxury-animate-fade-in">
+          <div>
+            <h1 className="luxury-heading-lg luxury-text-gradient mb-2" data-testid="page-title">
+              🚗 Welcome to PetTrek™
+            </h1>
+            <p className="luxury-text-body" data-testid="page-subtitle">Your Premium Pet Transportation Hub</p>
+          </div>
+          <Button 
+            className="luxury-btn-primary luxury-shadow-xl gap-2"
+            data-testid="button-quick-book"
+          >
+            <Car className="h-5 w-5" />
+            <span className="hidden sm:inline">Quick Book</span>
+          </Button>
+        </div>
+
+        {/* Quick Stats - Luxury Grid */}
+        <div className="luxury-grid-4 luxury-animate-fade-in luxury-delay-1">
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6" data-testid="stat-total-trips">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 mb-4">
+              <Car className="h-6 w-6 text-white" />
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient">{stats.totalTrips}</div>
+            <div className="luxury-text-small">Total Trips</div>
+          </div>
+          
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6" data-testid="stat-this-month">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 mb-4">
+              <Calendar className="h-6 w-6 text-white" />
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient">{stats.thisMonth}</div>
+            <div className="luxury-text-small">This Month</div>
+          </div>
+          
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6" data-testid="stat-saved-locations">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 mb-4">
+              <MapPin className="h-6 w-6 text-white" />
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient">{stats.savedLocations}</div>
+            <div className="luxury-text-small">Saved Locations</div>
+          </div>
+          
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6" data-testid="stat-favorite-drivers">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 mb-4">
+              <Star className="h-6 w-6 text-white" />
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient">{stats.favoriteDrivers}</div>
+            <div className="luxury-text-small">Favorite Drivers</div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Active Trip Alert - White Neomorphic with Gold Accent */}
-        {activeTrip && (
-          <Card className="mb-8 p-6 bg-white shadow-[8px_8px_24px_rgba(163,177,198,0.2),-4px_-4px_16px_rgba(255,255,255,0.9)] border-l-4 border-amber-500" data-testid="card-active-trip">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Avatar className="h-14 w-14 border-2 border-amber-400 shadow-lg" data-testid="avatar-driver">
-                    <AvatarImage src={activeTrip.driverPhoto} />
-                    <AvatarFallback>MS</AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-1 -right-1 h-5 w-5 bg-green-500 rounded-full border-2 border-white animate-pulse flex items-center justify-center">
-                    <Car className="h-3 w-3 text-white" />
+      {/* Active Trip Section */}
+      {activeTrip && (
+        <div className="luxury-container luxury-animate-fade-in luxury-delay-2">
+          <div className="luxury-glass-card luxury-shadow-xl p-8 mb-8" data-testid="card-active-trip">
+            <h2 className="luxury-heading-md mb-6">Active Trip</h2>
+            
+            <div className="luxury-glass-minimal luxury-hover-lift p-6 mb-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <Avatar className="h-16 w-16 border-3 border-gradient-to-br from-purple-500 to-purple-600 shadow-lg" data-testid="avatar-active-driver">
+                      <AvatarImage src={activeTrip.driverPhoto} />
+                      <AvatarFallback>MS</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-green-500 rounded-full border-2 border-white animate-pulse flex items-center justify-center">
+                      <Car className="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="luxury-heading-sm mb-1" data-testid="text-pet-name">
+                      {activeTrip.petName} is on the way!
+                    </div>
+                    <div className="luxury-text-small" data-testid="text-driver-info">
+                      {activeTrip.driverName} • {activeTrip.vehicleMake}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="font-semibold text-lg text-slate-900" data-testid="text-active-trip-title">
-                    {activeTrip.petName} is on the way!
-                  </div>
-                  <div className="text-sm text-slate-600" data-testid="text-driver-vehicle">
-                    {activeTrip.driverName} • {activeTrip.vehicleMake} {activeTrip.licensePlate}
-                  </div>
+                <Button 
+                  className="luxury-btn-primary gap-2"
+                  data-testid="button-track-live"
+                >
+                  <Navigation className="h-4 w-4" />
+                  Track Live
+                </Button>
+              </div>
+
+              <div className="mb-6">
+                <div className="flex justify-between luxury-text-small mb-2">
+                  <span>Trip Progress</span>
+                  <span className="luxury-text-gradient font-semibold" data-testid="text-progress">{activeTrip.progress}%</span>
+                </div>
+                <div className="h-3 bg-gradient-to-r from-purple-100 to-purple-50 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-500"
+                    style={{ width: `${activeTrip.progress}%` }}
+                    data-testid="progress-bar"
+                  />
                 </div>
               </div>
-              <Button 
-                className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg hover:shadow-xl"
-                data-testid="button-track-live"
-              >
-                <Navigation className="h-4 w-4" />
-                Track Live
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center" data-testid="stat-eta">
+                  <div className="luxury-heading-sm luxury-text-gradient mb-1">{activeTrip.eta}</div>
+                  <div className="luxury-text-small">ETA</div>
+                </div>
+                <div className="text-center" data-testid="stat-remaining">
+                  <div className="luxury-heading-sm luxury-text-gradient mb-1">{activeTrip.distance}</div>
+                  <div className="luxury-text-small">Remaining</div>
+                </div>
+                <div className="text-center" data-testid="stat-gps">
+                  <div className="luxury-heading-sm luxury-text-gradient mb-1 flex items-center justify-center gap-1">
+                    <MapPin className="h-4 w-4 animate-bounce" /> Live
+                  </div>
+                  <div className="luxury-text-small">GPS Active</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button className="luxury-btn-secondary flex-1" data-testid="button-contact-driver">
+                Call Driver
+              </Button>
+              <Button className="luxury-btn-secondary flex-1" data-testid="button-share-eta">
+                Share ETA
               </Button>
             </div>
-            
-            {/* Progress Bar */}
-            <div className="mb-4">
-              <div className="flex justify-between text-sm mb-2 text-slate-600">
-                <span>Trip Progress</span>
-                <span data-testid="text-progress-percent">{activeTrip.progress}%</span>
-              </div>
-              <div className="h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming Trips & History Tabs */}
+      <div className="luxury-container luxury-animate-fade-in luxury-delay-3">
+        <div className="luxury-glass-card luxury-shadow-lg p-8 mb-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2 lg:w-auto" data-testid="tabs-trips">
+              <TabsTrigger value="upcoming" data-testid="tab-upcoming">Upcoming Trips</TabsTrigger>
+              <TabsTrigger value="past" data-testid="tab-past">Trip History</TabsTrigger>
+            </TabsList>
+
+            {/* Upcoming Trips */}
+            <TabsContent value="upcoming" className="space-y-4">
+              <h2 className="luxury-heading-md mb-4">Scheduled Trips</h2>
+              {displayUpcomingTrips.map((trip, index) => (
                 <div 
-                  className="h-full bg-gradient-to-r from-amber-500 to-yellow-600 rounded-full transition-all duration-500"
-                  style={{ width: `${activeTrip.progress}%` }}
-                  data-testid="progress-bar"
-                ></div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div data-testid="stat-eta">
-                <div className="text-2xl font-bold text-slate-900">{activeTrip.eta}</div>
-                <div className="text-sm text-slate-500">ETA</div>
-              </div>
-              <div data-testid="stat-remaining-distance">
-                <div className="text-2xl font-bold text-slate-900">{activeTrip.distance}</div>
-                <div className="text-sm text-slate-500">Remaining</div>
-              </div>
-              <div data-testid="stat-gps-status">
-                <div className="text-2xl font-bold flex items-center justify-center gap-1 text-slate-900">
-                  <MapPin className="h-5 w-5 animate-bounce text-amber-500" /> Live
-                </div>
-                <div className="text-sm text-slate-500">GPS Active</div>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Tabs - White Neomorphism */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto bg-white shadow-[inset_2px_2px_5px_rgba(163,177,198,0.2),inset_-2px_-2px_5px_rgba(255,255,255,0.9)] p-1" data-testid="tabs-trip-sections">
-            <TabsTrigger value="upcoming" data-testid="tab-upcoming">Upcoming</TabsTrigger>
-            <TabsTrigger value="past" data-testid="tab-past">History</TabsTrigger>
-            <TabsTrigger value="receipts" data-testid="tab-receipts">Receipts</TabsTrigger>
-          </TabsList>
-
-          {/* Upcoming Trips */}
-          <TabsContent value="upcoming" className="space-y-4">
-            {upcomingTrips.map((trip) => (
-              <Card 
-                key={trip.id} 
-                className="p-6 bg-white shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2)] transition-all"
-                data-testid={`card-trip-${trip.id}`}
-              >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="h-16 w-16 border-2 border-slate-100 shadow-lg" data-testid={`avatar-driver-${trip.id}`}>
-                      <AvatarImage src={trip.driverPhoto} />
-                      <AvatarFallback>{trip.driverName.split(" ").map(n => n[0]).join("")}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-lg text-slate-900" data-testid={`text-driver-name-${trip.id}`}>
-                          {trip.driverName}
-                        </h3>
-                        <div className="flex items-center gap-1 text-sm" data-testid={`rating-${trip.id}`}>
-                          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                          <span className="text-slate-700">{trip.rating}</span>
-                        </div>
+                  key={trip.id} 
+                  className={`luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-slide-up luxury-delay-${Math.min(index + 1, 10)}`}
+                  data-testid={`card-trip-${trip.id}`}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className="relative">
+                        <Avatar className="h-14 w-14 border-2 border-gradient-to-br from-purple-500 to-purple-600 shadow-md" data-testid={`avatar-driver-${trip.id}`}>
+                          <AvatarImage src={trip.driverPhoto} />
+                          <AvatarFallback>{trip.driverName.split(" ").map(n => n[0]).join("")}</AvatarFallback>
+                        </Avatar>
                       </div>
-                      <div className="text-sm text-slate-500 mb-2" data-testid={`text-vehicle-${trip.id}`}>
-                        {trip.vehicleMake} • {trip.licensePlate}
-                      </div>
-                      <div className="text-sm text-slate-600 space-y-1">
-                        <div className="flex items-center gap-2" data-testid={`trip-datetime-${trip.id}`}>
-                          <Calendar className="h-4 w-4 text-amber-500" />
-                          <span>{trip.scheduledDate} at {trip.scheduledTime}</span>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <MapPin className="h-4 w-4 text-amber-500 mt-0.5" />
-                          <div className="flex-1" data-testid={`trip-route-${trip.id}`}>
-                            <div className="font-medium">{trip.pickup}</div>
-                            <div className="text-xs text-slate-400 my-1">↓ {trip.distance} • ~{trip.estimatedDuration} min</div>
-                            <div className="font-medium">{trip.dropoff}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="luxury-heading-sm" data-testid={`text-driver-${trip.id}`}>
+                            {trip.driverName}
+                          </h3>
+                          <div className="luxury-badge-gold px-2 py-1 rounded-full text-xs flex items-center gap-1" data-testid={`rating-${trip.id}`}>
+                            <Star className="h-3 w-3 fill-current" />
+                            {trip.rating}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2" data-testid={`trip-pet-${trip.id}`}>
-                          <Package className="h-4 w-4 text-amber-500" />
-                          <span>Pet: {trip.petName}</span>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 luxury-text-body">
+                            <Calendar className="h-4 w-4 text-purple-500" />
+                            <span data-testid={`datetime-${trip.id}`}>{trip.scheduledDate} at {trip.scheduledTime}</span>
+                          </div>
+                          <div className="flex items-start gap-2 luxury-text-body">
+                            <MapPin className="h-4 w-4 text-purple-500 mt-1" />
+                            <div className="flex-1" data-testid={`route-${trip.id}`}>
+                              <div className="font-medium">{trip.pickup}</div>
+                              <div className="luxury-text-small text-gray-400 my-1">↓ {trip.distance} • ~{trip.estimatedDuration} min</div>
+                              <div className="font-medium">{trip.dropoff}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 luxury-text-body">
+                            <Package className="h-4 w-4 text-purple-500" />
+                            <span data-testid={`pet-${trip.id}`}>Pet: {trip.petName}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex flex-col md:items-end gap-2">
-                    <div className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent" data-testid={`price-${trip.id}`}>
-                      ₪{trip.price}
-                    </div>
-                    <Badge className={
-                      trip.status === "confirmed" 
-                        ? "bg-green-500 text-white" 
-                        : "bg-amber-500 text-white"
-                    } data-testid={`badge-status-${trip.id}`}>
-                      {trip.status === "confirmed" ? "Confirmed" : "Pending"}
-                    </Badge>
-                    <div className="flex gap-2 mt-2">
-                      <Button variant="outline" size="sm" className="gap-2 shadow-sm" data-testid={`button-reschedule-${trip.id}`}>
-                        <Calendar className="h-4 w-4" />
-                        Reschedule
-                      </Button>
-                      <Button size="sm" className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white" data-testid={`button-details-${trip.id}`}>
-                        Details
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
+                    <div className="flex flex-col items-end gap-3">
+                      <div className="luxury-heading-lg luxury-text-gradient" data-testid={`price-${trip.id}`}>
+                        ₪{trip.price}
+                      </div>
+                      <div className={trip.status === "confirmed" ? "luxury-badge-success" : "luxury-badge"} data-testid={`status-${trip.id}`}>
+                        {trip.status === "confirmed" ? "Confirmed" : "Pending"}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button className="luxury-btn-secondary text-sm" size="sm" data-testid={`button-reschedule-${trip.id}`}>
+                          Reschedule
+                        </Button>
+                        <Button className="luxury-btn-primary text-sm" size="sm" data-testid={`button-details-${trip.id}`}>
+                          Details
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </Card>
-            ))}
-          </TabsContent>
+              ))}
+            </TabsContent>
 
-          {/* Past Trips */}
-          <TabsContent value="past" className="space-y-4">
-            {pastTrips.map((trip) => (
-              <Card 
-                key={trip.id} 
-                className="p-6 bg-white shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-[12px_12px_24px_rgba(163,177,198,0.2)] transition-all"
-                data-testid={`card-past-trip-${trip.id}`}
+            {/* Past Trips History */}
+            <TabsContent value="past" className="space-y-4">
+              <h2 className="luxury-heading-md mb-4">Recent Trips</h2>
+              {displayPastTrips.map((trip, index) => (
+                <div 
+                  key={trip.id} 
+                  className={`luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-slide-up luxury-delay-${Math.min(index + 1, 10)}`}
+                  data-testid={`card-past-${trip.id}`}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-start gap-4 flex-1">
+                      <Avatar className="h-12 w-12 border-2 border-purple-200 shadow-sm" data-testid={`avatar-past-${trip.id}`}>
+                        <AvatarImage src={trip.driverPhoto} />
+                        <AvatarFallback>{trip.driverName.split(" ").map(n => n[0]).join("")}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h3 className="luxury-heading-sm mb-2" data-testid={`driver-past-${trip.id}`}>{trip.driverName}</h3>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 luxury-text-small">
+                            <Calendar className="h-3 w-3 text-purple-500" />
+                            <span data-testid={`date-past-${trip.id}`}>{trip.date} at {trip.time}</span>
+                          </div>
+                          <div className="luxury-text-body" data-testid={`route-past-${trip.id}`}>
+                            {trip.pickup} → {trip.dropoff}
+                          </div>
+                          <div className="flex items-center gap-2 luxury-text-small">
+                            <Clock className="h-3 w-3 text-purple-500" />
+                            <span data-testid={`duration-past-${trip.id}`}>{trip.duration} min • {trip.distance}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 mt-2">
+                          {[...Array(5)].map((_, i) => (
+                            <Star 
+                              key={i} 
+                              className={`h-4 w-4 ${i < trip.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-3">
+                      <div className="luxury-heading-sm luxury-text-gradient" data-testid={`price-past-${trip.id}`}>
+                        ₪{trip.price}
+                      </div>
+                      <div className="luxury-badge-success" data-testid={`status-past-${trip.id}`}>
+                        Completed
+                      </div>
+                      <div className="flex gap-2">
+                        <Button className="luxury-btn-ghost text-sm" size="sm" data-testid={`button-receipt-${trip.id}`}>
+                          <Package className="h-3 w-3 mr-1" />
+                          Receipt
+                        </Button>
+                        <Button className="luxury-btn-ghost text-sm" size="sm" data-testid={`button-book-again-${trip.id}`}>
+                          <Car className="h-3 w-3 mr-1" />
+                          Book Again
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+
+      {/* Saved Locations */}
+      <div className="luxury-container luxury-animate-fade-in luxury-delay-4">
+        <div className="luxury-glass-card luxury-shadow-lg p-8 mb-8">
+          <h2 className="luxury-heading-md mb-6">Saved Locations</h2>
+          <div className="luxury-grid-3">
+            {savedLocations.map((location, index) => {
+              const IconComponent = location.icon;
+              return (
+                <div 
+                  key={location.id} 
+                  className={`luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-scale-in luxury-delay-${index + 1}`}
+                  data-testid={`card-location-${location.id}`}
+                >
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br ${location.color} mb-4`}>
+                    <IconComponent className="h-6 w-6 text-white" />
+                  </div>
+                  <h3 className="luxury-heading-sm mb-2" data-testid={`location-name-${location.id}`}>{location.name}</h3>
+                  <p className="luxury-text-small mb-4" data-testid={`location-address-${location.id}`}>{location.address}</p>
+                  <div className="flex gap-2">
+                    <Button className="luxury-btn-ghost text-sm flex-1" size="sm" data-testid={`button-edit-${location.id}`}>
+                      <Edit2 className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button className="luxury-btn-ghost text-sm" size="sm" data-testid={`button-delete-${location.id}`}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Favorite Drivers */}
+      <div className="luxury-container luxury-animate-fade-in luxury-delay-5">
+        <div className="luxury-glass-card luxury-shadow-lg p-8 mb-8">
+          <h2 className="luxury-heading-md mb-6">Favorite Drivers</h2>
+          <div className="luxury-grid-4">
+            {favoriteDrivers.map((driver, index) => (
+              <div 
+                key={driver.id} 
+                className={`luxury-glass-card luxury-hover-glow p-6 text-center luxury-animate-scale-in luxury-delay-${index + 1}`}
+                data-testid={`card-driver-${driver.id}`}
               >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="h-14 w-14 border-2 border-slate-100 shadow-md" data-testid={`avatar-past-driver-${trip.id}`}>
-                      <AvatarImage src={trip.driverPhoto} />
-                      <AvatarFallback>{trip.driverName.split(" ").map(n => n[0]).join("")}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-2 text-slate-900" data-testid={`text-past-driver-name-${trip.id}`}>
-                        {trip.driverName}
-                      </h3>
-                      <div className="text-sm text-slate-600 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-amber-500" />
-                          <span data-testid={`past-trip-datetime-${trip.id}`}>{trip.date} at {trip.time}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-amber-500" />
-                          <span data-testid={`past-trip-route-${trip.id}`}>{trip.pickup} → {trip.dropoff}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-amber-500" />
-                          <span data-testid={`past-trip-duration-${trip.id}`}>{trip.duration} min • {trip.distance}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-amber-500" />
-                          <span data-testid={`past-trip-price-${trip.id}`}>₪{trip.price}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 mt-3" data-testid={`rating-past-${trip.id}`}>
-                        {[...Array(5)].map((_, i) => (
-                          <Star 
-                            key={i} 
-                            className={`h-5 w-5 ${i < trip.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Button variant="outline" size="sm" className="gap-2 shadow-sm" data-testid={`button-receipt-${trip.id}`}>
-                      <Package className="h-4 w-4" />
-                      Receipt
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2 shadow-sm" data-testid={`button-book-again-${trip.id}`}>
-                      <Car className="h-4 w-4" />
-                      Book Again
-                    </Button>
+                <div className="relative inline-block mb-4">
+                  <Avatar className="h-20 w-20 border-3 border-gradient-to-br from-purple-500 to-purple-600 shadow-lg mx-auto" data-testid={`avatar-fav-${driver.id}`}>
+                    <AvatarImage src={driver.photo} />
+                    <AvatarFallback>{driver.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
+                    <Heart className="h-3 w-3 text-white fill-white" />
                   </div>
                 </div>
-              </Card>
+                <h3 className="luxury-heading-sm mb-2" data-testid={`driver-name-${driver.id}`}>{driver.name}</h3>
+                <div className="luxury-badge-gold mb-3 inline-flex items-center gap-1" data-testid={`driver-rating-${driver.id}`}>
+                  <Star className="h-3 w-3 fill-current" />
+                  {driver.rating}
+                </div>
+                <p className="luxury-text-small mb-4" data-testid={`driver-trips-${driver.id}`}>{driver.totalTrips} trips together</p>
+                <Button className="luxury-btn-primary w-full text-sm" size="sm" data-testid={`button-book-driver-${driver.id}`}>
+                  Book Again
+                </Button>
+              </div>
             ))}
-          </TabsContent>
+          </div>
+        </div>
+      </div>
 
-          {/* Receipts */}
-          <TabsContent value="receipts">
-            <Card className="p-8 text-center bg-white shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0" data-testid="card-receipts-empty">
-              <TrendingUp className="h-16 w-16 mx-auto mb-4 text-amber-500" />
-              <h3 className="text-xl font-semibold mb-2 text-slate-900">Trip Receipts & Invoices</h3>
-              <p className="text-slate-600 mb-6">
-                Download detailed receipts for all your trips
-              </p>
-              <Button size="lg" className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg" data-testid="button-view-receipts">
-                <DollarSign className="h-5 w-5" />
-                View All Receipts
-              </Button>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Book New Trip CTA - White Neomorphic */}
-        <Card className="mt-8 p-8 bg-white text-center shadow-[8px_8px_24px_rgba(163,177,198,0.2),-8px_-8px_24px_rgba(255,255,255,0.9)] border-0" data-testid="card-book-cta">
-          <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">
-            Need a Ride for Your Pet?
-          </h2>
-          <p className="text-slate-600 mb-6">Professional drivers, climate-controlled vehicles, GPS tracking</p>
-          <Button size="lg" className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg hover:shadow-xl" data-testid="button-book-trip">
-            <Car className="h-5 w-5" />
-            Book a Trip Now
-          </Button>
-        </Card>
+      {/* Quick Book CTA */}
+      <div className="luxury-container pb-12 luxury-animate-fade-in luxury-delay-6">
+        <div className="luxury-glass-panel p-12 text-center">
+          <div className="max-w-2xl mx-auto">
+            <h2 className="luxury-heading-lg luxury-text-gradient mb-4">
+              Need a Ride for Your Pet?
+            </h2>
+            <p className="luxury-text-body mb-8">
+              Professional drivers, climate-controlled vehicles, real-time GPS tracking, and premium care for your beloved pets.
+            </p>
+            <Button className="luxury-btn-primary luxury-shadow-xl gap-3 px-8 py-6 text-lg" data-testid="button-book-trip">
+              <Car className="h-6 w-6" />
+              Book a Trip Now
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

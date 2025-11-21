@@ -231,20 +231,20 @@ export default function PetTrekProviderDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 py-8">
+    <div className="min-h-screen luxury-bg-mesh py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 luxury-animate-fade-in">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
+            <h1 className="luxury-heading-lg luxury-text-gradient">
               Driver Dashboard
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your trips and earnings</p>
+            <p className="luxury-text-body mt-1">Manage your trips and earnings</p>
           </div>
 
           {/* Online/Offline Toggle */}
-          <Card className="border-2 shadow-lg">
+          <Card className="luxury-glass-card luxury-shadow-lg">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className={cn(
@@ -267,75 +267,83 @@ export default function PetTrekProviderDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="border-2 border-green-100 dark:border-green-900 shadow-lg hover:shadow-xl transition-shadow">
+        <div className="luxury-grid-4 mb-8">
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-1">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Earnings</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  <p className="luxury-text-small mb-1">Total Earnings</p>
+                  <p className="luxury-heading-lg luxury-text-gradient">
                     ₪{providerStats.totalEarnings.toFixed(2)}
                   </p>
                 </div>
-                <DollarSign className="w-10 h-10 text-green-500 opacity-20" />
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-blue-100 dark:border-blue-900 shadow-lg hover:shadow-xl transition-shadow">
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-2">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Completed Trips</p>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  <p className="luxury-text-small mb-1">Completed Trips</p>
+                  <p className="text-3xl font-bold luxury-text-gradient">
                     {providerStats.completedTrips}
                   </p>
                 </div>
-                <CheckCircle2 className="w-10 h-10 text-blue-500 opacity-20" />
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-yellow-100 dark:border-yellow-900 shadow-lg hover:shadow-xl transition-shadow">
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-3">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Average Rating</p>
+                  <p className="luxury-text-small mb-1">Average Rating</p>
                   <div className="flex items-center gap-1">
-                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                    <p className="text-3xl font-bold luxury-text-gradient">
                       {providerStats.averageRating.toFixed(1)}
                     </p>
                     <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                   </div>
                 </div>
-                <Star className="w-10 h-10 text-yellow-500 opacity-20" />
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+                  <Star className="w-6 h-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-purple-100 dark:border-purple-900 shadow-lg hover:shadow-xl transition-shadow">
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-4">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Trips</p>
-                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                  <p className="luxury-text-small mb-1">Total Trips</p>
+                  <p className="text-3xl font-bold luxury-text-gradient">
                     {providerStats.totalTrips}
                   </p>
                 </div>
-                <Car className="w-10 h-10 text-purple-500 opacity-20" />
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
+                  <Car className="w-6 h-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Main Content - Tabs */}
-        <Tabs defaultValue="jobs" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto h-12 bg-white dark:bg-gray-800 border-2">
+        <Tabs defaultValue="jobs" className="space-y-6 luxury-animate-fade-in luxury-delay-5">
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto h-12 luxury-glass-card">
             <TabsTrigger value="jobs" className="flex items-center gap-2" data-testid="tab-jobs">
               <Bell className="w-4 h-4" />
               Pending Jobs
               {jobsData && jobsData.jobs.length > 0 && (
-                <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-xs h-5 min-w-5">
+                <Badge className="ml-1 px-1.5 py-0 text-xs h-5 min-w-5 bg-gradient-to-r from-red-500 to-pink-600 border-0 text-white">
                   {jobsData.jobs.length}
                 </Badge>
               )}
@@ -354,10 +362,12 @@ export default function PetTrekProviderDashboard() {
           <TabsContent value="jobs">
             <div className="space-y-4">
               {!isOnline && (
-                <Card className="border-2 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
+                <Card className="luxury-glass-card luxury-shadow-md bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3">
-                      <Power className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+                        <Power className="w-5 h-5 text-white" />
+                      </div>
                       <div>
                         <p className="font-semibold text-yellow-900 dark:text-yellow-100">{"You're Offline"}</p>
                         <p className="text-sm text-yellow-700 dark:text-yellow-300">Turn on availability to receive trip requests</p>
@@ -368,37 +378,40 @@ export default function PetTrekProviderDashboard() {
               )}
 
               {jobsLoading ? (
-                <Card>
+                <Card className="luxury-glass-card luxury-shadow-lg">
                   <CardContent className="p-12 text-center">
-                    <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">Loading jobs...</p>
+                    <div className="luxury-spinner mx-auto mb-4"></div>
+                    <p className="luxury-text-body">Loading jobs...</p>
                   </CardContent>
                 </Card>
               ) : jobsData && jobsData.jobs.length > 0 ? (
-                jobsData.jobs.map((job) => (
+                jobsData.jobs.map((job, index) => (
                   <Card 
                     key={job.dispatchRecord.id} 
-                    className="border-2 border-purple-200 dark:border-purple-800 shadow-xl hover:shadow-2xl transition-all duration-300 animate-in slide-in-from-right"
+                    className={cn(
+                      "luxury-glass-minimal luxury-hover-lift luxury-shadow-lg luxury-animate-slide-up",
+                      `luxury-delay-${Math.min(index + 1, 10)}`
+                    )}
                     data-testid={`job-card-${job.dispatchRecord.id}`}
                   >
-                    <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/50 dark:to-blue-900/50">
+                    <CardHeader className="bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-900/30 dark:to-blue-900/30">
                       <div className="flex items-start justify-between">
                         <div>
-                          <CardTitle className="text-xl">Transport {job.trip.petName}</CardTitle>
+                          <CardTitle className="luxury-heading-sm">Transport {job.trip.petName}</CardTitle>
                           <CardDescription className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="capitalize">
+                            <span className="luxury-badge capitalize">
                               {job.trip.petType}
-                            </Badge>
-                            <Badge variant="outline" className="capitalize">
+                            </span>
+                            <span className="luxury-badge luxury-badge-success capitalize">
                               {job.trip.petSize}
-                            </Badge>
+                            </span>
                           </CardDescription>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          <p className="text-2xl font-bold luxury-text-gradient">
                             ₪{parseFloat(job.trip.driverPayout.toString()).toFixed(2)}
                           </p>
-                          <p className="text-xs text-gray-500">Driver Payout (80%)</p>
+                          <p className="luxury-text-small">Driver Payout (80%)</p>
                         </div>
                       </div>
                     </CardHeader>
@@ -466,35 +479,36 @@ export default function PetTrekProviderDashboard() {
 
                       {/* Action Buttons */}
                       <div className="flex gap-3 pt-2">
-                        <Button
+                        <button
                           onClick={() => handleAccept(job)}
                           disabled={acceptTrip.isPending}
                           data-testid={`button-accept-${job.dispatchRecord.id}`}
-                          className="flex-1 h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg"
+                          className="luxury-btn-primary flex-1 h-12"
                         >
                           <CheckCircle2 className="w-5 h-5 mr-2" />
                           {acceptTrip.isPending ? 'Accepting...' : 'Accept Trip'}
-                        </Button>
-                        <Button
+                        </button>
+                        <button
                           onClick={() => handleDecline(job)}
                           disabled={declineTrip.isPending}
                           data-testid={`button-decline-${job.dispatchRecord.id}`}
-                          variant="outline"
-                          className="flex-1 h-12 border-2 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          className="flex-1 h-12 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-semibold hover:from-red-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
                         >
-                          <XCircle className="w-5 h-5 mr-2" />
+                          <XCircle className="w-5 h-5 mr-2 inline" />
                           {declineTrip.isPending ? 'Declining...' : 'Decline'}
-                        </Button>
+                        </button>
                       </div>
                     </CardContent>
                   </Card>
                 ))
               ) : (
-                <Card>
+                <Card className="luxury-glass-card luxury-shadow-lg">
                   <CardContent className="p-12 text-center">
-                    <Bell className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Pending Jobs</h3>
-                    <p className="text-gray-600 dark:text-gray-400">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center mx-auto mb-4">
+                      <Bell className="w-10 h-10 text-purple-400 dark:text-purple-500" />
+                    </div>
+                    <h3 className="luxury-heading-sm mb-2">No Pending Jobs</h3>
+                    <p className="luxury-text-body">
                       {isOnline ? 'New trip requests will appear here' : 'Go online to receive trip requests'}
                     </p>
                   </CardContent>
@@ -506,34 +520,41 @@ export default function PetTrekProviderDashboard() {
           {/* Active Trips Tab */}
           <TabsContent value="active">
             {activeTripsLoading ? (
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg">
                 <CardContent className="p-12 text-center">
-                  <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                  <p className="text-gray-600 dark:text-gray-400">Loading active trips...</p>
+                  <div className="luxury-spinner mx-auto mb-4"></div>
+                  <p className="luxury-text-body">Loading active trips...</p>
                 </CardContent>
               </Card>
             ) : activeTripsData && activeTripsData.trips?.length > 0 ? (
               <div className="space-y-4">
-                {activeTripsData.trips.map((trip: any) => (
-                  <Card key={trip.id} className="border-2 shadow-lg">
+                {activeTripsData.trips.map((trip: any, index: number) => (
+                  <Card key={trip.id} className={cn(
+                    "luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-fade-in",
+                    `luxury-delay-${Math.min(index + 1, 10)}`
+                  )}>
                     <CardHeader>
-                      <CardTitle>Trip {trip.tripId}</CardTitle>
-                      <CardDescription className="capitalize">{trip.status}</CardDescription>
+                      <CardTitle className="luxury-heading-sm">Trip {trip.tripId}</CardTitle>
+                      <CardDescription className="capitalize">
+                        <span className="luxury-badge luxury-badge-success">{trip.status}</span>
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm">Pet: {trip.petName} ({trip.petType})</p>
-                      <p className="text-sm">From: {trip.pickupAddress}</p>
-                      <p className="text-sm">To: {trip.dropoffAddress}</p>
+                      <p className="luxury-text-body">Pet: {trip.petName} ({trip.petType})</p>
+                      <p className="luxury-text-small">From: {trip.pickupAddress}</p>
+                      <p className="luxury-text-small">To: {trip.dropoffAddress}</p>
                     </CardContent>
                   </Card>
                 ))}
               </div>
             ) : (
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg">
                 <CardContent className="p-12 text-center">
-                  <Car className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Active Trips</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 flex items-center justify-center mx-auto mb-4">
+                    <Car className="w-10 h-10 text-blue-400 dark:text-blue-500" />
+                  </div>
+                  <h3 className="luxury-heading-sm mb-2">No Active Trips</h3>
+                  <p className="luxury-text-body">
                     Your active trips will appear here
                   </p>
                 </CardContent>
@@ -544,40 +565,52 @@ export default function PetTrekProviderDashboard() {
           {/* History Tab */}
           <TabsContent value="history">
             {historyLoading ? (
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg">
                 <CardContent className="p-12 text-center">
-                  <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                  <p className="text-gray-600 dark:text-gray-400">Loading history...</p>
+                  <div className="luxury-spinner mx-auto mb-4"></div>
+                  <p className="luxury-text-body">Loading history...</p>
                 </CardContent>
               </Card>
             ) : historyData && historyData.trips?.length > 0 ? (
               <div className="space-y-4">
-                {historyData.trips.map((trip: any) => (
-                  <Card key={trip.id} className="border-2 shadow-lg">
+                {historyData.trips.map((trip: any, index: number) => (
+                  <Card key={trip.id} className={cn(
+                    "luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-fade-in",
+                    `luxury-delay-${Math.min(index + 1, 10)}`
+                  )}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div>
-                          <CardTitle>Trip {trip.tripId}</CardTitle>
-                          <CardDescription>{new Date(trip.createdAt).toLocaleDateString()}</CardDescription>
+                          <CardTitle className="luxury-heading-sm">Trip {trip.tripId}</CardTitle>
+                          <CardDescription className="luxury-text-small">
+                            {new Date(trip.createdAt).toLocaleDateString()}
+                          </CardDescription>
                         </div>
-                        <Badge className={trip.status === 'completed' ? 'bg-green-500' : 'bg-red-500'}>
+                        <span className={cn(
+                          "luxury-badge",
+                          trip.status === 'completed' ? "luxury-badge-success" : "luxury-badge"
+                        )}>
                           {trip.status}
-                        </Badge>
+                        </span>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm">Pet: {trip.petName} ({trip.petType})</p>
-                      <p className="text-sm">Earnings: ₪{parseFloat(trip.driverPayout || 0).toFixed(2)}</p>
+                      <p className="luxury-text-body">Pet: {trip.petName} ({trip.petType})</p>
+                      <p className="text-lg font-bold luxury-text-gradient mt-2">
+                        Earnings: ₪{parseFloat(trip.driverPayout || 0).toFixed(2)}
+                      </p>
                     </CardContent>
                   </Card>
                 ))}
               </div>
             ) : (
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg">
                 <CardContent className="p-12 text-center">
-                  <Package className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Trip History</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center mx-auto mb-4">
+                    <Package className="w-10 h-10 text-purple-400 dark:text-purple-500" />
+                  </div>
+                  <h3 className="luxury-heading-sm mb-2">Trip History</h3>
+                  <p className="luxury-text-body">
                     Your completed trips will appear here
                   </p>
                 </CardContent>

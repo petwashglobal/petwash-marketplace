@@ -13,64 +13,92 @@ export default function WalkerDashboard() {
     enabled: true,
   });
 
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'luxury-badge-success';
+      case 'pending':
+        return 'luxury-badge-gold';
+      default:
+        return 'luxury-badge';
+    }
+  };
+
   return (
     <LuxuryPageWrapper
       variant="dashboard"
       title="Walker Dashboard"
       subtitle="Manage your dog walking appointments and earnings"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400 font-light">Loading your appointments...</p>
-          </div>
-        ) : bookings.length === 0 ? (
-          <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
-            <CardContent className="py-12 text-center">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400 dark:text-gray-600" />
-              <h3 className="text-xl font-light mb-2 text-gray-900 dark:text-gray-100">No Appointments Yet</h3>
-              <p className="text-gray-600 dark:text-gray-400 font-light">
+      <div className="luxury-bg-mesh min-h-screen py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {isLoading ? (
+            <div className="text-center py-12 luxury-animate-fade-in">
+              <div className="luxury-spinner mx-auto mb-4"></div>
+              <p className="luxury-text-small">Loading your appointments...</p>
+            </div>
+          ) : bookings.length === 0 ? (
+            <div className="luxury-glass-card luxury-shadow-lg p-12 text-center luxury-animate-scale-in">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 mb-6">
+                <Calendar className="h-10 w-10 text-purple-600 dark:text-purple-400" />
+              </div>
+              <h3 className="luxury-heading-md mb-2">No Appointments Yet</h3>
+              <p className="luxury-text-small">
                 Your upcoming dog walking appointments will appear here.
               </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-6">
-            {bookings.map((booking: any) => (
-              <Card key={booking.id} className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 shadow-sm" data-testid={`card-booking-${booking.id}`}>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between font-light">
-                    <span className="text-lg text-gray-900 dark:text-gray-100">
-                      Booking #{booking.bookingNumber}
-                    </span>
-                    <span className={`text-sm px-3 py-1 rounded-full font-light ${
-                      booking.status === 'confirmed' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100' :
-                      booking.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100' :
-                      'bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100'
-                    }`}>
-                      {booking.status}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 font-light">
-                    <Clock className="h-4 w-4" />
-                    <span>{new Date(booking.startTime).toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 font-light">
-                    <MapPin className="h-4 w-4" />
-                    <span>{booking.platformData?.serviceArea || 'Service Area'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-900 dark:text-gray-100 font-light">
-                    <DollarSign className="h-4 w-4" />
-                    <span>₪{booking.total}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+            </div>
+          ) : (
+            <div className="grid gap-6">
+              {bookings.map((booking: any, index: number) => (
+                <div 
+                  key={booking.id} 
+                  className={`luxury-glass-minimal luxury-hover-lift luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}
+                  data-testid={`card-booking-${booking.id}`}
+                  style={{ opacity: 0 }}
+                >
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span className="luxury-heading-sm">
+                        Booking #{booking.bookingNumber}
+                      </span>
+                      <span className={getStatusBadgeClass(booking.status)}>
+                        {booking.status}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30">
+                        <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <span className="luxury-text-body">
+                        {new Date(booking.startTime).toLocaleString()}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30">
+                        <MapPin className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <span className="luxury-text-body">
+                        {booking.platformData?.serviceArea || 'Service Area'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30">
+                        <DollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <span className="luxury-heading-lg luxury-text-gradient">
+                        ₪{booking.total}
+                      </span>
+                    </div>
+                  </CardContent>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </LuxuryPageWrapper>
   );

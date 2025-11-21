@@ -226,18 +226,18 @@ export default function PetTrekBooking() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900 py-12">
+    <div className="min-h-screen luxury-bg-mesh py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 mb-4 px-6 py-3 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-blue-200 dark:border-blue-700">
-            <Car className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent">
+        <div className="text-center mb-10 luxury-animate-fade-in">
+          <div className="luxury-badge inline-flex items-center gap-2 mb-4">
+            <Car className="w-6 h-6" />
+            <h1 className="text-3xl font-bold luxury-text-gradient">
               {t('pettrek.title')}
             </h1>
           </div>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">{t('hero.slogan')}</p>
+          <p className="luxury-text-body">{t('hero.slogan')}</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -245,13 +245,13 @@ export default function PetTrekBooking() {
           <div className="lg:col-span-2 space-y-6">
             
             {/* Pet Information Card */}
-            <Card className="border-2 border-blue-100 dark:border-blue-900 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/50 dark:to-cyan-900/50">
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-blue-600" />
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up luxury-delay-1">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 luxury-heading-sm">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
                   {t('booking.pet.information')}
                 </CardTitle>
-                <CardDescription>{t('booking.pet.selectYourPet')}</CardDescription>
+                <CardDescription className="luxury-text-small">{t('booking.pet.selectYourPet')}</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -265,7 +265,7 @@ export default function PetTrekBooking() {
                       placeholder={t('booking.pet.choosePet')}
                       value={petName}
                       onChange={(e) => setPetName(e.target.value)}
-                      className="h-12 rounded-xl border-2 focus:border-blue-500"
+                      className="luxury-glass-minimal h-12"
                     />
                   </div>
 
@@ -277,7 +277,7 @@ export default function PetTrekBooking() {
                       <SelectTrigger 
                         id="petType" 
                         data-testid="select-pet-type"
-                        className="h-12 rounded-xl border-2"
+                        className="luxury-glass-minimal h-12"
                       >
                         <SelectValue placeholder={t('booking.pet.choosePet')} />
                       </SelectTrigger>
@@ -299,7 +299,7 @@ export default function PetTrekBooking() {
                       <SelectTrigger 
                         id="petSize" 
                         data-testid="select-pet-size"
-                        className="h-12 rounded-xl border-2"
+                        className="luxury-glass-minimal h-12"
                       >
                         <SelectValue placeholder={t('booking.pet.choosePet')} />
                       </SelectTrigger>
@@ -324,14 +324,14 @@ export default function PetTrekBooking() {
                       placeholder="12.5 kg"
                       value={petWeight}
                       onChange={(e) => setPetWeight(e.target.value)}
-                      className="h-12 rounded-xl border-2 focus:border-blue-500"
+                      className="luxury-glass-minimal h-12"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="petDob" className="text-sm font-semibold flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4 text-blue-600" />
+                    <CalendarIcon className="w-4 h-4 text-purple-600" />
                     {t('booking.pet.choosePet')}
                   </Label>
                   <DatePicker
@@ -340,10 +340,10 @@ export default function PetTrekBooking() {
                     placeholder={t('booking.common.pickDate')}
                     maxDate={new Date()}
                     testId="datepicker-pet-dob"
-                    className="h-14 text-lg"
+                    className="luxury-glass-minimal h-14 text-lg"
                   />
                   {petDob && (
-                    <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                    <p className="text-sm luxury-text-gradient font-medium">
                       {Math.floor((new Date().getTime() - new Date(petDob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} {t('booking.common.experience')}
                     </p>
                   )}
@@ -359,25 +359,26 @@ export default function PetTrekBooking() {
                     placeholder={t('booking.pet.specialNeedsPlaceholder')}
                     value={specialInstructions}
                     onChange={(e) => setSpecialInstructions(e.target.value)}
-                    className="min-h-24 rounded-xl border-2 focus:border-blue-500"
+                    className="luxury-glass-minimal min-h-24"
                   />
                 </div>
               </CardContent>
             </Card>
 
             {/* Location Card */}
-            <Card className="border-2 border-cyan-100 dark:border-cyan-900 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-              <CardHeader className="bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/50 dark:to-blue-900/50">
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-cyan-600" />
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up luxury-delay-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 luxury-heading-sm">
+                  <MapPin className="w-5 h-5 text-purple-600" />
                   {t('booking.location.pickupAddress')} & {t('booking.location.dropoffAddress')}
                 </CardTitle>
-                <CardDescription>{t('booking.pet.selectYourPet')}</CardDescription>
+                <CardDescription className="luxury-text-small">{t('booking.pet.selectYourPet')}</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
                 
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">
+                  <Label className="text-sm font-semibold flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-purple-600" />
                     {t('booking.location.pickupAddress')} <span className="text-red-500">*</span>
                   </Label>
                   <div className="flex gap-2">
@@ -386,7 +387,7 @@ export default function PetTrekBooking() {
                       variant="outline"
                       onClick={detectLocation}
                       data-testid="button-detect-location"
-                      className="h-12 rounded-xl border-2 flex-shrink-0"
+                      className="luxury-btn-secondary h-12 flex-shrink-0"
                     >
                       <MapPin className="w-4 h-4 mr-2" />
                       {t('booking.location.detected')}
@@ -396,7 +397,7 @@ export default function PetTrekBooking() {
                       value={pickupAddress}
                       onChange={(e) => setPickupAddress(e.target.value)}
                       data-testid="input-pickup-address"
-                      className="h-12 rounded-xl border-2 focus:border-cyan-500"
+                      className="luxury-glass-minimal h-12"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -405,20 +406,21 @@ export default function PetTrekBooking() {
                       value={pickupLat}
                       onChange={(e) => setPickupLat(e.target.value)}
                       data-testid="input-pickup-lat"
-                      className="h-10 rounded-lg border-2 text-sm"
+                      className="luxury-glass-minimal h-10 text-sm"
                     />
                     <Input
                       placeholder={t('booking.location.longitude')}
                       value={pickupLon}
                       onChange={(e) => setPickupLon(e.target.value)}
                       data-testid="input-pickup-lon"
-                      className="h-10 rounded-lg border-2 text-sm"
+                      className="luxury-glass-minimal h-10 text-sm"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">
+                  <Label className="text-sm font-semibold flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-purple-600" />
                     {t('booking.location.dropoffAddress')} <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -426,7 +428,7 @@ export default function PetTrekBooking() {
                     value={dropoffAddress}
                     onChange={(e) => setDropoffAddress(e.target.value)}
                     data-testid="input-dropoff-address"
-                    className="h-12 rounded-xl border-2 focus:border-cyan-500"
+                    className="luxury-glass-minimal h-12"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <Input
@@ -434,14 +436,14 @@ export default function PetTrekBooking() {
                       value={dropoffLat}
                       onChange={(e) => setDropoffLat(e.target.value)}
                       data-testid="input-dropoff-lat"
-                      className="h-10 rounded-lg border-2 text-sm"
+                      className="luxury-glass-minimal h-10 text-sm"
                     />
                     <Input
                       placeholder={t('booking.location.longitude')}
                       value={dropoffLon}
                       onChange={(e) => setDropoffLon(e.target.value)}
                       data-testid="input-dropoff-lon"
-                      className="h-10 rounded-lg border-2 text-sm"
+                      className="luxury-glass-minimal h-10 text-sm"
                     />
                   </div>
                 </div>
@@ -449,18 +451,19 @@ export default function PetTrekBooking() {
             </Card>
 
             {/* Scheduling Card */}
-            <Card className="border-2 border-purple-100 dark:border-purple-900 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/50 dark:to-pink-900/50">
-                <CardTitle className="flex items-center gap-2">
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up luxury-delay-3">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 luxury-heading-sm">
                   <Clock className="w-5 h-5 text-purple-600" />
                   {t('pettrek.scheduledPickupDate')}
                 </CardTitle>
-                <CardDescription>{t('booking.pet.selectYourPet')}</CardDescription>
+                <CardDescription className="luxury-text-small">{t('booking.pet.selectYourPet')}</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold">
+                    <Label className="text-sm font-semibold flex items-center gap-2">
+                      <CalendarIcon className="w-4 h-4 text-purple-600" />
                       {t('pettrek.scheduledPickupDate')} <span className="text-red-500">*</span>
                     </Label>
                     <DatePicker
@@ -469,12 +472,13 @@ export default function PetTrekBooking() {
                       placeholder={t('booking.common.pickDate')}
                       minDate={new Date()}
                       testId="datepicker-pickup-date"
-                      className="h-14 text-lg"
+                      className="luxury-glass-minimal h-14 text-lg"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="pickupTime" className="text-sm font-semibold">
+                    <Label htmlFor="pickupTime" className="text-sm font-semibold flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-purple-600" />
                       {t('pettrek.scheduledPickupTime')} <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -483,7 +487,7 @@ export default function PetTrekBooking() {
                       value={scheduledPickupTime}
                       onChange={(e) => setScheduledPickupTime(e.target.value)}
                       data-testid="input-pickup-time"
-                      className="h-14 rounded-xl border-2 text-lg focus:border-purple-500"
+                      className="luxury-glass-minimal h-14 text-lg"
                     />
                   </div>
                 </div>
@@ -491,13 +495,13 @@ export default function PetTrekBooking() {
             </Card>
 
             {/* Action Buttons */}
-            <div className="flex gap-4">
+            <div className="flex gap-4 luxury-animate-fade-in luxury-delay-4">
               <Button
                 onClick={handleEstimateFare}
                 disabled={estimateFare.isPending}
                 data-testid="button-estimate-fare"
                 variant="outline"
-                className="flex-1 h-14 rounded-xl text-base font-semibold border-2 border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                className="luxury-btn-secondary flex-1 h-14 text-base font-semibold"
               >
                 <DollarSign className="w-5 h-5 mr-2" />
                 {estimateFare.isPending ? t('booking.common.processing') : t('pettrek.estimateFare')}
@@ -507,7 +511,7 @@ export default function PetTrekBooking() {
                 onClick={handleSubmitTrip}
                 disabled={createTrip.isPending || !showFareEstimate}
                 data-testid="button-submit-trip"
-                className="flex-1 h-14 rounded-xl text-base font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-lg"
+                className="luxury-btn-primary luxury-shadow-xl flex-1 h-14 text-base font-semibold"
               >
                 <Car className="w-5 h-5 mr-2" />
                 {createTrip.isPending ? t('booking.common.processing') : t('pettrek.requestTrip')}
@@ -520,14 +524,14 @@ export default function PetTrekBooking() {
             
             {/* Fare Estimate Card */}
             {showFareEstimate && fareEstimate && (
-              <Card className="border-2 border-green-200 dark:border-green-800 shadow-xl sticky top-4 animate-in slide-in-from-right duration-500">
-                <CardHeader className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/50 dark:to-emerald-900/50">
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-green-600" />
+              <Card className="luxury-glass-card luxury-shadow-xl sticky top-4 luxury-animate-scale-in">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 luxury-heading-sm">
+                    <DollarSign className="w-5 h-5 text-purple-600" />
                     {t('pettrek.estimateFare')}
                   </CardTitle>
                   {fareEstimate.isPeakTime && (
-                    <Badge variant="destructive" className="w-fit">
+                    <Badge className="luxury-badge-gold w-fit mt-2">
                       <TrendingUp className="w-3 h-3 mr-1" />
                       {fareEstimate.surgeMultiplier}x {t('hero.slogan')}
                     </Badge>
@@ -535,40 +539,49 @@ export default function PetTrekBooking() {
                 </CardHeader>
                 <CardContent className="pt-6 space-y-4">
                   
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">{t('booking.common.total')}</span>
-                      <span className="font-semibold">₪{fareEstimate.baseFare.toFixed(2)}</span>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="luxury-text-small">{t('booking.common.total')}</span>
+                      <span className="font-semibold luxury-text-gradient">₪{fareEstimate.baseFare.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">{t('booking.location.latitude')} ({fareEstimate.estimatedDistance}km)</span>
-                      <span className="font-semibold">₪{fareEstimate.distanceFare.toFixed(2)}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="luxury-text-small">{t('booking.location.latitude')} ({fareEstimate.estimatedDistance}km)</span>
+                      <span className="font-semibold luxury-text-gradient">₪{fareEstimate.distanceFare.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">{t('pettrek.scheduledPickupTime')} ({fareEstimate.estimatedDuration}min)</span>
-                      <span className="font-semibold">₪{fareEstimate.timeFare.toFixed(2)}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="luxury-text-small">{t('pettrek.scheduledPickupTime')} ({fareEstimate.estimatedDuration}min)</span>
+                      <span className="font-semibold luxury-text-gradient">₪{fareEstimate.timeFare.toFixed(2)}</span>
                     </div>
                     {fareEstimate.surgeFare > 0 && (
-                      <div className="flex justify-between text-orange-600 dark:text-orange-400">
-                        <span>{t('hero.slogan')}</span>
-                        <span className="font-semibold">₪{fareEstimate.surgeFare.toFixed(2)}</span>
+                      <div className="flex justify-between items-center">
+                        <span className="luxury-text-small text-orange-600 dark:text-orange-400">{t('hero.slogan')}</span>
+                        <span className="font-semibold text-orange-600 dark:text-orange-400">₪{fareEstimate.surgeFare.toFixed(2)}</span>
                       </div>
                     )}
-                    <Separator />
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>{t('booking.common.total')}</span>
-                      <span className="text-green-600 dark:text-green-400">₪{fareEstimate.totalFare.toFixed(2)}</span>
+                    <div className="luxury-divider" />
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="luxury-heading-md">{t('booking.common.total')}</span>
+                      <span className="luxury-heading-lg luxury-text-gradient">₪{fareEstimate.totalFare.toFixed(2)}</span>
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                    <p>• {t('booking.common.total')} (20%): ₪{fareEstimate.platformCommission.toFixed(2)}</p>
-                    <p>• {t('booking.common.verified')} (80%): ₪{fareEstimate.driverPayout.toFixed(2)}</p>
-                    <p className="text-blue-600 dark:text-blue-400 font-medium">• {t('pettrek.scheduledPickupTime')}: {fareEstimate.estimatedDuration} {t('booking.common.experience')}</p>
+                  <div className="luxury-glass-panel p-4 space-y-2 luxury-text-small">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-purple-600"></div>
+                      <p>{t('booking.common.total')} (20%): ₪{fareEstimate.platformCommission.toFixed(2)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-purple-600"></div>
+                      <p>{t('booking.common.verified')} (80%): ₪{fareEstimate.driverPayout.toFixed(2)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-purple-600"></div>
+                      <p className="luxury-text-gradient font-medium">{t('pettrek.scheduledPickupTime')}: {fareEstimate.estimatedDuration} {t('booking.common.experience')}</p>
+                    </div>
                   </div>
 
                   {fareEstimate.isPeakTime && (
-                    <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800">
+                    <Alert className="luxury-glass-panel border-2 border-orange-300">
                       <AlertCircle className="h-4 w-4 text-orange-600" />
                       <AlertDescription className="text-orange-800 dark:text-orange-200 text-xs">
                         {t('hero.slogan')}
@@ -580,38 +593,42 @@ export default function PetTrekBooking() {
             )}
 
             {/* Info Card */}
-            <Card className="border-2 border-blue-100 dark:border-blue-900 shadow-lg">
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-5">
               <CardHeader>
-                <CardTitle className="text-lg">{t('pettrek.title')}</CardTitle>
+                <CardTitle className="luxury-heading-sm">{t('pettrek.title')}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-                    <Car className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <CardContent className="space-y-4 text-sm">
+                <div className="flex items-start gap-3 luxury-hover-lift">
+                  <div className="w-10 h-10 rounded-full luxury-glass-panel flex items-center justify-center flex-shrink-0">
+                    <Car className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="font-semibold">{t('booking.common.verified')}</p>
-                    <p className="text-gray-600 dark:text-gray-400">{t('hero.slogan')}</p>
+                    <p className="font-semibold luxury-text-gradient">{t('booking.common.verified')}</p>
+                    <p className="luxury-text-small">{t('hero.slogan')}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-cyan-100 dark:bg-cyan-900 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                <div className="luxury-divider" />
+                
+                <div className="flex items-start gap-3 luxury-hover-lift">
+                  <div className="w-10 h-10 rounded-full luxury-glass-panel flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="font-semibold">{t('booking.location.detected')}</p>
-                    <p className="text-gray-600 dark:text-gray-400">{t('hero.slogan')}</p>
+                    <p className="font-semibold luxury-text-gradient">{t('booking.location.detected')}</p>
+                    <p className="luxury-text-small">{t('hero.slogan')}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
-                    <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <div className="luxury-divider" />
+                
+                <div className="flex items-start gap-3 luxury-hover-lift">
+                  <div className="w-10 h-10 rounded-full luxury-glass-panel flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="font-semibold">{t('pettrek.estimateFare')}</p>
-                    <p className="text-gray-600 dark:text-gray-400">{t('hero.slogan')}</p>
+                    <p className="font-semibold luxury-text-gradient">{t('pettrek.estimateFare')}</p>
+                    <p className="luxury-text-small">{t('hero.slogan')}</p>
                   </div>
                 </div>
               </CardContent>

@@ -84,29 +84,29 @@ export default function SitterDashboard() {
   const completedBookings = requests.filter(r => r.status === 'completed');
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { color: string; icon: any }> = {
-      pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400', icon: Clock },
-      accepted: { color: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400', icon: CheckCircle2 },
-      completed: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400', icon: CheckCircle2 },
-      rejected: { color: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400', icon: XCircle },
+    const variants: Record<string, { className: string; icon: any }> = {
+      pending: { className: 'luxury-badge', icon: Clock },
+      accepted: { className: 'luxury-badge-success', icon: CheckCircle2 },
+      completed: { className: 'luxury-badge', icon: CheckCircle2 },
+      rejected: { className: 'luxury-badge', icon: XCircle },
     };
-    const { color, icon: Icon } = variants[status] || variants.pending;
+    const { className, icon: Icon } = variants[status] || variants.pending;
     return (
-      <Badge className={`${color} flex items-center gap-1`}>
+      <span className={`${className} flex items-center gap-1`}>
         <Icon className="w-3 h-3" />
         {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
+      </span>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-green-900/20">
+    <div className="min-h-screen luxury-bg-mesh">
       {/* Hero Header */}
-      <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 text-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="luxury-bg-primary text-white py-12 luxury-animate-fade-in">
+        <div className="luxury-container">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 luxury-animate-slide-up luxury-delay-1">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-2" style={{ 
+              <h1 className="luxury-heading-xl mb-2" style={{ 
                 background: 'linear-gradient(135deg, #FFD700, #FFA500, #FFD700)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
@@ -114,77 +114,92 @@ export default function SitterDashboard() {
               }}>
                 💰 Sitter Hub
               </h1>
-              <p className="text-lg text-green-100">Manage requests, bookings & earnings</p>
+              <p className="text-lg text-purple-100">Manage requests, bookings & earnings</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-sm text-green-100">Your Rating</p>
+                <p className="text-sm text-purple-100">Your Rating</p>
                 <div className="flex items-center gap-2">
                   <Star className="w-6 h-6 fill-yellow-400 text-yellow-400" />
                   <span className="text-3xl font-bold">{stats?.rating.toFixed(1) || '5.0'}</span>
-                  <span className="text-sm text-green-100">({stats?.totalReviews || 0} reviews)</span>
+                  <span className="text-sm text-purple-100">({stats?.totalReviews || 0} reviews)</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Earnings Overview */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8">
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-green-100 mb-1">Today</p>
-                <p className="text-2xl font-bold text-white">₪{earnings?.today.toFixed(0) || '0'}</p>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8 luxury-animate-slide-up luxury-delay-2">
+            <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-1">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-full" style={{ background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2))' }}>
+                  <DollarSign className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-sm text-purple-100">Today</p>
+              </div>
+              <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.today.toFixed(0) || '0'}</p>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-green-100 mb-1">This Week</p>
-                <p className="text-2xl font-bold text-white">₪{earnings?.thisWeek.toFixed(0) || '0'}</p>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-2">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-full" style={{ background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2))' }}>
+                  <TrendingUp className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-sm text-purple-100">This Week</p>
+              </div>
+              <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.thisWeek.toFixed(0) || '0'}</p>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-green-100 mb-1">This Month</p>
-                <p className="text-2xl font-bold text-white">₪{earnings?.thisMonth.toFixed(0) || '0'}</p>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-3">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-full" style={{ background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2))' }}>
+                  <CalendarIcon className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-sm text-purple-100">This Month</p>
+              </div>
+              <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.thisMonth.toFixed(0) || '0'}</p>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-green-100 mb-1">Pending</p>
-                <p className="text-2xl font-bold text-yellow-300">₪{earnings?.pending.toFixed(0) || '0'}</p>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-full luxury-badge-gold">
+                  <Clock className="w-5 h-5 text-yellow-300" />
+                </div>
+                <p className="text-sm text-purple-100">Pending</p>
+              </div>
+              <p className="text-2xl font-bold text-yellow-300">₪{earnings?.pending.toFixed(0) || '0'}</p>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-green-100 mb-1">Total Earned</p>
-                <p className="text-2xl font-bold text-white">₪{earnings?.total.toFixed(0) || '0'}</p>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-5">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-full" style={{ background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(245, 158, 11, 0.3))' }}>
+                  <Award className="w-5 h-5 text-yellow-300" />
+                </div>
+                <p className="text-sm text-purple-100">Total Earned</p>
+              </div>
+              <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.total.toFixed(0) || '0'}</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="luxury-container luxury-section-compact">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid bg-white dark:bg-gray-800 shadow-lg">
-            <TabsTrigger value="requests" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid luxury-glass-card luxury-shadow-lg luxury-animate-scale-in luxury-delay-3">
+            <TabsTrigger value="requests" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white transition-all">
               <Clock className="w-4 h-4 mr-2" />
               Requests ({pendingRequests.length})
             </TabsTrigger>
-            <TabsTrigger value="active" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
+            <TabsTrigger value="active" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white transition-all">
               <CalendarIcon className="w-4 h-4 mr-2" />
               Active ({activeBookings.length})
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
+            <TabsTrigger value="calendar" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white transition-all">
               <CalendarIcon className="w-4 h-4 mr-2" />
               Calendar
             </TabsTrigger>
-            <TabsTrigger value="stats" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
+            <TabsTrigger value="stats" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white transition-all">
               <BarChart3 className="w-4 h-4 mr-2" />
               Stats
             </TabsTrigger>
@@ -192,87 +207,95 @@ export default function SitterDashboard() {
 
           {/* Requests Tab */}
           <TabsContent value="requests" className="space-y-4">
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up luxury-delay-4">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-yellow-600" />
+                <CardTitle className="luxury-heading-md flex items-center gap-2">
+                  <div className="p-2 rounded-full luxury-badge-gold">
+                    <Clock className="w-5 h-5" />
+                  </div>
                   Pending Requests ({pendingRequests.length})
                 </CardTitle>
-                <CardDescription>Review and respond to booking requests</CardDescription>
+                <CardDescription className="luxury-text-body">Review and respond to booking requests</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {pendingRequests.length === 0 ? (
-                  <div className="text-center py-12">
+                  <div className="text-center py-12 luxury-animate-fade-in">
                     <CheckCircle2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No pending requests</p>
-                    <p className="text-sm text-gray-400 mt-2">New requests will appear here</p>
+                    <p className="luxury-text-body">No pending requests</p>
+                    <p className="luxury-text-small mt-2">New requests will appear here</p>
                   </div>
                 ) : (
-                  pendingRequests.map((request) => (
-                    <Card key={request.id} className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10">
-                      <CardContent className="p-6">
-                        <div className="flex flex-col md:flex-row gap-6">
-                          <Avatar className="w-20 h-20">
+                  pendingRequests.map((request, index) => (
+                    <div key={request.id} className={`luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-slide-up luxury-delay-${Math.min(index + 1, 10)}`}>
+                      <div className="flex flex-col md:flex-row gap-6">
+                        <div className="relative">
+                          <Avatar className="w-20 h-20 ring-4 ring-purple-200 dark:ring-purple-800">
                             <AvatarImage src={request.ownerPhoto || undefined} />
-                            <AvatarFallback className="bg-gradient-to-br from-green-600 to-teal-600 text-white text-2xl">
+                            <AvatarFallback className="luxury-bg-primary text-white text-2xl">
                               {request.ownerName.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                          
-                          <div className="flex-1 space-y-3">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <h3 className="text-xl font-bold">{request.ownerName}</h3>
-                                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                                  {request.petName} ({request.petType}) • {request.serviceType}
-                                </p>
-                              </div>
-                              {getStatusBadge(request.status)}
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                              <div className="flex items-center gap-2">
-                                <CalendarIcon className="w-4 h-4 text-green-600" />
-                                <span>
-                                  {format(new Date(request.startDate), 'MMM d')} - {format(new Date(request.endDate), 'MMM d')}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-green-600" />
-                                <span className="font-bold">You earn: ₪{request.myEarnings.toFixed(2)}</span>
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                Total: ₪{request.totalPrice.toFixed(2)}
-                              </div>
-                            </div>
-
-                            <div className="flex gap-2 pt-2">
-                              <Button 
-                                className="bg-green-600 hover:bg-green-700 flex-1"
-                                data-testid={`button-accept-${request.id}`}
-                              >
-                                <CheckCircle2 className="w-4 h-4 mr-2" />
-                                Accept
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                className="flex-1"
-                                data-testid={`button-decline-${request.id}`}
-                              >
-                                <XCircle className="w-4 h-4 mr-2" />
-                                Decline
-                              </Button>
-                              <Button 
-                                variant="outline"
-                                data-testid={`button-message-owner-${request.id}`}
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                              </Button>
-                            </div>
+                          <div className="absolute -bottom-1 -right-1 p-1 rounded-full luxury-badge-gold">
+                            <PawPrint className="w-4 h-4" />
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                        
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="luxury-heading-sm">{request.ownerName}</h3>
+                              <p className="luxury-text-small mt-1">
+                                {request.petName} ({request.petType}) • {request.serviceType}
+                              </p>
+                            </div>
+                            {getStatusBadge(request.status)}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 luxury-text-small">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-full luxury-bg-soft">
+                                <CalendarIcon className="w-4 h-4 text-purple-600" />
+                              </div>
+                              <span>
+                                {format(new Date(request.startDate), 'MMM d')} - {format(new Date(request.endDate), 'MMM d')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-full luxury-badge-success">
+                                <DollarSign className="w-4 h-4" />
+                              </div>
+                              <span className="font-bold luxury-text-gradient">You earn: ₪{request.myEarnings.toFixed(2)}</span>
+                            </div>
+                            <div className="luxury-text-small">
+                              Total: ₪{request.totalPrice.toFixed(2)}
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-2">
+                            <button 
+                              className="luxury-btn-primary flex-1"
+                              data-testid={`button-accept-${request.id}`}
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-2" />
+                              Accept
+                            </button>
+                            <button 
+                              className="luxury-btn-secondary flex-1"
+                              data-testid={`button-decline-${request.id}`}
+                            >
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Decline
+                            </button>
+                            <button 
+                              className="luxury-btn-ghost"
+                              data-testid={`button-message-owner-${request.id}`}
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ))
                 )}
               </CardContent>
@@ -281,67 +304,76 @@ export default function SitterDashboard() {
 
           {/* Active Bookings Tab */}
           <TabsContent value="active" className="space-y-4">
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up luxury-delay-4">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PawPrint className="w-5 h-5 text-green-600" />
+                <CardTitle className="luxury-heading-md flex items-center gap-2">
+                  <div className="p-2 rounded-full luxury-badge-success">
+                    <PawPrint className="w-5 h-5" />
+                  </div>
                   Active Bookings ({activeBookings.length})
                 </CardTitle>
-                <CardDescription>Currently confirmed pet sitting assignments</CardDescription>
+                <CardDescription className="luxury-text-body">Currently confirmed pet sitting assignments</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {activeBookings.length === 0 ? (
-                  <div className="text-center py-12">
+                  <div className="text-center py-12 luxury-animate-fade-in">
                     <PawPrint className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No active bookings</p>
+                    <p className="luxury-text-body">No active bookings</p>
                   </div>
                 ) : (
-                  activeBookings.map((booking) => (
-                    <Card key={booking.id} className="border-green-200 hover:shadow-lg transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="flex flex-col md:flex-row gap-6">
-                          <Avatar className="w-16 h-16">
+                  activeBookings.map((booking, index) => (
+                    <div key={booking.id} className={`luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-slide-up luxury-delay-${Math.min(index + 1, 10)}`}>
+                      <div className="flex flex-col md:flex-row gap-6">
+                        <div className="relative">
+                          <Avatar className="w-16 h-16 ring-4 ring-green-200 dark:ring-green-800">
                             <AvatarImage src={booking.ownerPhoto || undefined} />
-                            <AvatarFallback className="bg-gradient-to-br from-green-600 to-teal-600 text-white text-xl">
+                            <AvatarFallback className="luxury-bg-primary text-white text-xl">
                               {booking.ownerName.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                          
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="text-lg font-bold">{booking.ownerName}</h3>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  {booking.petName} ({booking.petType})
-                                </p>
-                              </div>
-                              {getStatusBadge(booking.status)}
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mb-3">
-                              <div className="flex items-center gap-2">
-                                <CalendarIcon className="w-4 h-4 text-green-600" />
-                                <span>{format(new Date(booking.startDate), 'MMM d')} - {format(new Date(booking.endDate), 'MMM d')}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-green-600" />
-                                <span className="font-bold">₪{booking.myEarnings.toFixed(2)}</span>
-                              </div>
-                            </div>
-
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" className="flex-1" data-testid={`button-contact-${booking.id}`}>
-                                <MessageCircle className="w-4 h-4 mr-2" />
-                                Contact Owner
-                              </Button>
-                              <Button variant="outline" size="sm" className="flex-1" data-testid={`button-details-${booking.id}`}>
-                                View Details
-                              </Button>
-                            </div>
+                          <div className="absolute -bottom-1 -right-1 p-1 rounded-full luxury-badge-success">
+                            <CheckCircle2 className="w-3 h-3" />
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h3 className="luxury-heading-sm">{booking.ownerName}</h3>
+                              <p className="luxury-text-small">
+                                {booking.petName} ({booking.petType})
+                              </p>
+                            </div>
+                            {getStatusBadge(booking.status)}
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 luxury-text-small mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-full luxury-bg-soft">
+                                <CalendarIcon className="w-4 h-4 text-purple-600" />
+                              </div>
+                              <span>{format(new Date(booking.startDate), 'MMM d')} - {format(new Date(booking.endDate), 'MMM d')}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-full luxury-badge-success">
+                                <DollarSign className="w-4 h-4" />
+                              </div>
+                              <span className="font-bold luxury-text-gradient">₪{booking.myEarnings.toFixed(2)}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button className="luxury-btn-secondary flex-1 text-sm py-2" data-testid={`button-contact-${booking.id}`}>
+                              <MessageCircle className="w-4 h-4 mr-2" />
+                              Contact Owner
+                            </button>
+                            <button className="luxury-btn-ghost flex-1 text-sm py-2" data-testid={`button-details-${booking.id}`}>
+                              View Details
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ))
                 )}
               </CardContent>
@@ -350,24 +382,29 @@ export default function SitterDashboard() {
 
           {/* Calendar Tab */}
           <TabsContent value="calendar">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
+            <div className="luxury-grid-2 gap-6">
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-scale-in luxury-delay-4">
                 <CardHeader>
-                  <CardTitle>Booking Calendar</CardTitle>
+                  <CardTitle className="luxury-heading-md flex items-center gap-2">
+                    <div className="p-2 rounded-full luxury-bg-soft">
+                      <CalendarIcon className="w-5 h-5 text-purple-600" />
+                    </div>
+                    Booking Calendar
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="flex justify-center">
                   <Calendar
                     mode="single"
                     selected={selectedDate}
                     onSelect={setSelectedDate}
-                    className="rounded-md border"
+                    className="rounded-md border luxury-glass-minimal"
                   />
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-scale-in luxury-delay-5">
                 <CardHeader>
-                  <CardTitle>
+                  <CardTitle className="luxury-heading-md">
                     {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select a date'}
                   </CardTitle>
                 </CardHeader>
@@ -380,11 +417,11 @@ export default function SitterDashboard() {
                         const end = new Date(b.endDate);
                         return selectedDate >= start && selectedDate <= end;
                       })
-                      .map(booking => (
-                        <div key={booking.id} className="p-4 border rounded-lg">
-                          <p className="font-semibold">{booking.ownerName}</p>
-                          <p className="text-sm text-gray-600">{booking.petName} • {booking.serviceType}</p>
-                          <p className="text-sm text-green-600 font-bold mt-2">₪{booking.myEarnings}</p>
+                      .map((booking, index) => (
+                        <div key={booking.id} className={`luxury-glass-minimal p-4 luxury-hover-lift luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}>
+                          <p className="luxury-heading-sm">{booking.ownerName}</p>
+                          <p className="luxury-text-small">{booking.petName} • {booking.serviceType}</p>
+                          <p className="luxury-text-gradient font-bold mt-2">₪{booking.myEarnings}</p>
                         </div>
                       ))}
                     {(!selectedDate || activeBookings.filter(b => {
@@ -392,7 +429,7 @@ export default function SitterDashboard() {
                       const end = new Date(b.endDate);
                       return selectedDate >= start && selectedDate <= end;
                     }).length === 0) && (
-                      <p className="text-gray-500 text-center py-8">No bookings on this date</p>
+                      <p className="luxury-text-body text-center py-8">No bookings on this date</p>
                     )}
                   </div>
                 </CardContent>
@@ -402,78 +439,83 @@ export default function SitterDashboard() {
 
           {/* Stats Tab */}
           <TabsContent value="stats">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
+            <div className="luxury-grid-4 gap-6">
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-scale-in luxury-delay-4">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="bg-green-100 dark:bg-green-900/20 p-3 rounded-full">
-                      <Users className="w-6 h-6 text-green-600" />
+                    <div className="p-3 rounded-full luxury-badge-success">
+                      <Users className="w-6 h-6" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total Bookings</p>
-                      <p className="text-3xl font-bold">{stats?.totalBookings || 0}</p>
+                      <p className="luxury-text-small">Total Bookings</p>
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.totalBookings || 0}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-scale-in luxury-delay-5">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="bg-blue-100 dark:bg-blue-900/20 p-3 rounded-full">
-                      <TrendingUp className="w-6 h-6 text-blue-600" />
+                    <div className="p-3 rounded-full luxury-badge">
+                      <TrendingUp className="w-6 h-6" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Active Now</p>
-                      <p className="text-3xl font-bold">{stats?.activeBookings || 0}</p>
+                      <p className="luxury-text-small">Active Now</p>
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.activeBookings || 0}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-scale-in luxury-delay-6">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="bg-yellow-100 dark:bg-yellow-900/20 p-3 rounded-full">
-                      <Star className="w-6 h-6 text-yellow-600" />
+                    <div className="p-3 rounded-full luxury-badge-gold">
+                      <Star className="w-6 h-6" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Rating</p>
-                      <p className="text-3xl font-bold">{stats?.rating.toFixed(1) || '5.0'}</p>
+                      <p className="luxury-text-small">Rating</p>
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.rating.toFixed(1) || '5.0'}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-scale-in luxury-delay-7">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="bg-purple-100 dark:bg-purple-900/20 p-3 rounded-full">
-                      <Award className="w-6 h-6 text-purple-600" />
+                    <div className="p-3 rounded-full luxury-badge">
+                      <Award className="w-6 h-6" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Completion Rate</p>
-                      <p className="text-3xl font-bold">{stats?.completionRate || 100}%</p>
+                      <p className="luxury-text-small">Completion Rate</p>
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.completionRate || 100}%</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="mt-6">
+            <Card className="mt-6 luxury-glass-card luxury-shadow-lg luxury-animate-slide-up luxury-delay-8">
               <CardHeader>
-                <CardTitle>Performance Overview</CardTitle>
+                <CardTitle className="luxury-heading-md flex items-center gap-2">
+                  <div className="p-2 rounded-full luxury-bg-soft">
+                    <BarChart3 className="w-5 h-5 text-purple-600" />
+                  </div>
+                  Performance Overview
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between mb-2">
-                      <span className="text-sm font-medium">Completion Rate</span>
-                      <span className="text-sm text-gray-500">{stats?.completionRate || 100}%</span>
+                      <span className="luxury-text-small font-medium">Completion Rate</span>
+                      <span className="luxury-text-gradient font-bold">{stats?.completionRate || 100}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div className="w-full luxury-glass-minimal rounded-full h-3 overflow-hidden">
                       <div 
-                        className="bg-green-600 h-2 rounded-full transition-all" 
+                        className="luxury-bg-primary h-3 rounded-full transition-all luxury-animate-scale-in" 
                         style={{ width: `${stats?.completionRate || 100}%` }}
                       />
                     </div>

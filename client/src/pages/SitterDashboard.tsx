@@ -161,17 +161,61 @@ export default function SitterDashboard() {
       {/* MAIN CONTENT */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* World Clock Widget - Top Right */}
-        <div className="flex justify-end mb-6">
+        <div className="flex justify-end mb-6 luxury-animate-fade-in">
           <WorldClock compact={true} />
         </div>
+
+        {/* LUXURY STATS OVERVIEW - Mobile/Tablet visible stats grid */}
+        <div className="luxury-grid-4 mb-8 lg:hidden luxury-animate-fade-in luxury-delay-1">
+          <div className="luxury-glass-card luxury-shadow-lg p-4 luxury-hover-lift">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-3 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white luxury-shadow-md">
+                <Calendar className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="luxury-text-small mb-1">{isHebrew ? 'הזמנות קרובות' : 'Upcoming'}</p>
+            <p className="luxury-heading-md luxury-text-gradient">{upcomingBookings}</p>
+          </div>
+          
+          <div className="luxury-glass-card luxury-shadow-lg p-4 luxury-hover-lift luxury-animate-fade-in luxury-delay-2">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-3 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 text-white luxury-shadow-md">
+                <Star className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="luxury-text-small mb-1">{isHebrew ? 'דירוג' : 'Rating'}</p>
+            <p className="luxury-heading-md luxury-text-gradient">{profile?.averageRating?.toFixed(1) || '5.0'}</p>
+          </div>
+          
+          <div className="luxury-glass-card luxury-shadow-lg p-4 luxury-hover-lift luxury-animate-fade-in luxury-delay-3">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 text-white luxury-shadow-md">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="luxury-text-small mb-1">{isHebrew ? 'החודש' : 'This Month'}</p>
+            <p className="luxury-heading-md luxury-text-gradient">₪{earnings?.currentMonthTotal || 0}</p>
+          </div>
+          
+          <div className="luxury-glass-card luxury-shadow-lg p-4 luxury-hover-lift luxury-animate-fade-in luxury-delay-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-3 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white luxury-shadow-md">
+                <Users className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="luxury-text-small mb-1">{isHebrew ? 'לקוחות פעילים' : 'Active Clients'}</p>
+            <p className="luxury-heading-md luxury-text-gradient">{bookings?.length || 0}</p>
+          </div>
+        </div>
+
         {activeTab === 'bookings' && (
           <div>
-            <div className="flex items-center justify-between mb-6 luxury-animate-fade-in">
-              <h2 className="luxury-heading-lg">
+            <div className="flex items-center justify-between mb-6 luxury-animate-fade-in luxury-delay-5">
+              <h2 className="luxury-heading-lg luxury-text-gradient">
                 {isHebrew ? 'ההזמנות שלי' : 'My Bookings'}
               </h2>
               <div className="flex items-center gap-3">
-                <select className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl">
+                <select className="px-4 py-2 luxury-glass-minimal border border-purple-200 dark:border-purple-800 rounded-xl luxury-hover-lift transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium text-gray-700 dark:text-gray-300">
                   <option>{isHebrew ? 'הכל' : 'All'}</option>
                   <option>{isHebrew ? 'ממתינים' : 'Pending'}</option>
                   <option>{isHebrew ? 'מאושרים' : 'Confirmed'}</option>
@@ -182,14 +226,14 @@ export default function SitterDashboard() {
 
             {loadingBookings ? (
               <div className="luxury-grid-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-64 luxury-skeleton"></div>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className={`h-64 luxury-skeleton luxury-animate-fade-in luxury-delay-${i}`}></div>
                 ))}
               </div>
             ) : bookings && bookings.length > 0 ? (
               <div className="luxury-grid-2">
                 {bookings.map((booking: any, index: number) => (
-                  <div key={booking.id} className={`luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}>
+                  <div key={booking.id} className={`luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}>
                     <SitterBookingCard booking={booking} isHebrew={isHebrew} />
                   </div>
                 ))}
@@ -206,20 +250,22 @@ export default function SitterDashboard() {
 
         {activeTab === 'inbox' && (
           <div className="luxury-animate-fade-in">
-            <h2 className="luxury-heading-lg mb-6">
+            <h2 className="luxury-heading-lg luxury-text-gradient mb-6">
               {isHebrew ? 'תיבת הדואר שלי' : 'My Inbox'}
             </h2>
             
             {loadingMessages ? (
               <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 luxury-skeleton"></div>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className={`h-24 luxury-skeleton luxury-animate-fade-in luxury-delay-${i}`}></div>
                 ))}
               </div>
             ) : messages && messages.length > 0 ? (
               <div className="luxury-glass-card luxury-shadow-xl p-6">
-                {messages.map((message: any) => (
-                  <MessagePreview key={message.id} message={message} isHebrew={isHebrew} />
+                {messages.map((message: any, index: number) => (
+                  <div key={message.id} className={`luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}>
+                    <MessagePreview message={message} isHebrew={isHebrew} />
+                  </div>
                 ))}
               </div>
             ) : (
@@ -234,14 +280,14 @@ export default function SitterDashboard() {
 
         {activeTab === 'earnings' && (
           <div className="luxury-animate-fade-in">
-            <h2 className="luxury-heading-lg mb-6">
+            <h2 className="luxury-heading-lg luxury-text-gradient mb-6">
               {isHebrew ? 'סיכום רווחים' : 'Earnings Summary'}
             </h2>
 
             {loadingEarnings ? (
               <div className="luxury-grid-3 mb-8">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-32 luxury-skeleton"></div>
+                  <div key={i} className={`h-32 luxury-skeleton luxury-animate-fade-in luxury-delay-${i}`}></div>
                 ))}
               </div>
             ) : (
@@ -288,27 +334,34 @@ export default function SitterDashboard() {
 
         {activeTab === 'profile' && (
           <div className="luxury-animate-fade-in">
-            <h2 className="luxury-heading-lg mb-6">
+            <h2 className="luxury-heading-lg luxury-text-gradient mb-6">
               {isHebrew ? 'הפרופיל שלי' : 'My Profile'}
             </h2>
             <div className="luxury-glass-card luxury-shadow-xl luxury-hover-glow p-8">
               <div className="flex items-center gap-6 mb-8">
-                <div className="h-24 w-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-4xl font-bold">
-                  {profile?.fullName?.charAt(0) || 'S'}
+                <div className="relative luxury-animate-scale-in">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-full blur-md opacity-75 animate-pulse"></div>
+                  <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-1">
+                    <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                      <span className="text-4xl font-bold bg-gradient-to-br from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                        {profile?.fullName?.charAt(0) || 'S'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="luxury-heading-md">{profile?.fullName}</h3>
+                <div className="luxury-animate-fade-in luxury-delay-1">
+                  <h3 className="luxury-heading-md luxury-text-gradient">{profile?.fullName}</h3>
                   <p className="luxury-text-body">{profile?.email}</p>
                   <div className="flex items-center gap-2 mt-2">
                     {profile?.biometricMatchStatus === 'matched' ? (
-                      <div className="flex items-center gap-2 text-green-600">
+                      <div className="flex items-center gap-2 luxury-badge-success">
                         <Shield className="h-4 w-4" />
                         <span className="text-sm font-semibold">
                           {isHebrew ? 'מאומת ביומטרית' : 'Biometrically Verified'}
                         </span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 text-yellow-600">
+                      <div className="flex items-center gap-2 luxury-badge-gold">
                         <Shield className="h-4 w-4" />
                         <span className="text-sm font-semibold">
                           {isHebrew ? 'ממתין לאימות' : 'Pending Verification'}
@@ -319,11 +372,29 @@ export default function SitterDashboard() {
                 </div>
               </div>
 
-              <Link href="/sitter-suite/sitter/edit-profile">
-                <button className="w-full luxury-btn-primary">
-                  {isHebrew ? 'ערוך פרופיל' : 'Edit Profile'}
-                </button>
-              </Link>
+              <div className="space-y-4 luxury-animate-fade-in luxury-delay-2">
+                <Link href="/sitter-suite/sitter/edit-profile">
+                  <button className="w-full luxury-btn-primary">
+                    <Settings className="h-5 w-5 inline-block mr-2" />
+                    {isHebrew ? 'ערוך פרופיל' : 'Edit Profile'}
+                  </button>
+                </Link>
+                
+                <div className="luxury-grid-2 gap-3">
+                  <Link href="/settings">
+                    <button className="w-full luxury-btn-secondary py-3">
+                      <Shield className="h-5 w-5 inline-block mr-2" />
+                      {isHebrew ? 'הגדרות אבטחה' : 'Security'}
+                    </button>
+                  </Link>
+                  <Link href="/notification-preferences">
+                    <button className="w-full luxury-btn-secondary py-3">
+                      <Bell className="h-5 w-5 inline-block mr-2" />
+                      {isHebrew ? 'התראות' : 'Notifications'}
+                    </button>
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -335,14 +406,14 @@ export default function SitterDashboard() {
 // Stat Card Component
 function StatCard({ icon, label, value, color }: any) {
   const colorClasses = {
-    blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-    yellow: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
-    green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+    blue: 'from-blue-500 to-cyan-500',
+    yellow: 'from-yellow-500 to-orange-500',
+    green: 'from-green-500 to-emerald-500',
   };
 
   return (
     <div className="flex items-center gap-3 luxury-glass-minimal luxury-hover-lift px-4 py-2 rounded-xl">
-      <div className={`p-2 rounded-lg ${colorClasses[color as keyof typeof colorClasses]}`}>
+      <div className={`p-3 rounded-full bg-gradient-to-br ${colorClasses[color as keyof typeof colorClasses]} text-white luxury-shadow-md`}>
         {icon}
       </div>
       <div>
@@ -388,8 +459,13 @@ function SitterBookingCard({ booking, isHebrew }: any) {
     <div className="luxury-glass-card luxury-shadow-lg luxury-hover-lift p-6">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <PawPrint className="h-6 w-6 text-white" />
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-full blur-sm opacity-75"></div>
+            <div className="relative h-14 w-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-0.5">
+              <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                <PawPrint className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
           </div>
           <div>
             <h3 className="luxury-heading-sm">{booking.ownerName}</h3>
@@ -444,8 +520,15 @@ function SitterBookingCard({ booking, isHebrew }: any) {
 function MessagePreview({ message, isHebrew }: any) {
   return (
     <div className={`flex items-center gap-4 p-4 luxury-glass-minimal luxury-hover-lift rounded-xl cursor-pointer transition-all mb-2 ${!message.isRead ? 'bg-purple-50 dark:bg-purple-900/20' : ''}`}>
-      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-        {message.senderName?.charAt(0) || 'O'}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full blur-sm opacity-60"></div>
+        <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 p-0.5">
+          <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+            <span className="text-lg font-bold bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              {message.senderName?.charAt(0) || 'O'}
+            </span>
+          </div>
+        </div>
       </div>
       <div className="flex-1">
         <div className="flex items-center justify-between">
@@ -455,7 +538,7 @@ function MessagePreview({ message, isHebrew }: any) {
         <p className="luxury-text-body truncate">{message.messageText}</p>
       </div>
       {!message.isRead && (
-        <div className="h-3 w-3 bg-purple-600 rounded-full"></div>
+        <div className="h-3 w-3 bg-purple-600 rounded-full luxury-shadow-md"></div>
       )}
     </div>
   );
@@ -484,15 +567,20 @@ function EarningsCard({ title, amount, icon, color }: any) {
 function EmptyState({ icon, title, description, actionLabel, actionLink }: any) {
   return (
     <div className="luxury-glass-card luxury-shadow-lg p-12 flex flex-col items-center justify-center text-center luxury-animate-fade-in">
-      <div className="text-gray-400 dark:text-gray-600 mb-4">{icon}</div>
-      <h3 className="luxury-heading-md mb-2">{title}</h3>
-      <p className="luxury-text-body mb-6 max-w-md">{description}</p>
+      <div className="relative mb-6 luxury-animate-scale-in">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full blur-xl opacity-30"></div>
+        <div className="relative text-gray-400 dark:text-gray-600">{icon}</div>
+      </div>
+      <h3 className="luxury-heading-md luxury-text-gradient mb-2 luxury-animate-fade-in luxury-delay-1">{title}</h3>
+      <p className="luxury-text-body mb-6 max-w-md luxury-animate-fade-in luxury-delay-2">{description}</p>
       {actionLabel && (
-        <Link href={actionLink || '#'}>
-          <button className="luxury-btn-primary">
-            {actionLabel}
-          </button>
-        </Link>
+        <div className="luxury-animate-fade-in luxury-delay-3">
+          <Link href={actionLink || '#'}>
+            <button className="luxury-btn-primary">
+              {actionLabel}
+            </button>
+          </Link>
+        </div>
       )}
     </div>
   );

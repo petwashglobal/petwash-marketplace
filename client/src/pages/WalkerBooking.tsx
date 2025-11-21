@@ -166,18 +166,18 @@ export default function WalkerBooking() {
 
   if (walkerLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-lg">{t('walker.loadingProfile')}</div>
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="luxury-spinner"></div>
       </div>
     );
   }
 
   if (!walker) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card>
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <Card className="luxury-glass-card luxury-shadow-xl">
           <CardHeader>
-            <CardTitle>{t('walker.notFound')}</CardTitle>
+            <CardTitle className="luxury-heading-md">{t('walker.notFound')}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -185,12 +185,12 @@ export default function WalkerBooking() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900 py-12">
+    <div className="min-h-screen luxury-bg-mesh py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left Column - Walker Info */}
-          <div>
-            <Card className="mb-6 sticky top-4">
+          <div className="luxury-animate-fade-in luxury-delay-1">
+            <Card className="mb-6 sticky top-4 luxury-glass-card luxury-hover-glow luxury-shadow-xl">
               <CardHeader>
                 <div className="flex items-start gap-4">
                   {walker.profilePhotoUrl ? (
@@ -234,24 +234,24 @@ export default function WalkerBooking() {
                 
                 <div className="flex items-center gap-2 mb-4 flex-wrap">
                   {walker.experienceYears && (
-                    <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30">
+                    <Badge variant="secondary" className="luxury-badge">
                       {walker.experienceYears}+ {t('booking.common.experience')}
                     </Badge>
                   )}
                   {walker.verificationStatus === 'verified' && (
-                    <Badge variant="outline">
+                    <Badge variant="outline" className="luxury-badge luxury-badge-success">
                       <Shield className="w-3 h-3 mr-1" />
                       {t('booking.common.verified')}
                     </Badge>
                   )}
                   {walker.hasBodyCamera && (
-                    <Badge variant="outline" className="border-blue-300">
+                    <Badge variant="outline" className="luxury-badge">
                       <Camera className="w-3 h-3 mr-1" />
                       {t('walker.bodyCamera')}
                     </Badge>
                   )}
                   {walker.hasDroneAccess && (
-                    <Badge variant="outline" className="border-purple-300">
+                    <Badge variant="outline" className="luxury-badge">
                       <Video className="w-3 h-3 mr-1" />
                       {t('walker.droneMonitoring')}
                     </Badge>
@@ -277,10 +277,10 @@ export default function WalkerBooking() {
           </div>
 
           {/* Right Column - Booking Form */}
-          <div>
-            <Card>
+          <div className="luxury-animate-fade-in luxury-delay-2">
+            <Card className="luxury-glass-card luxury-shadow-xl">
               <CardHeader>
-                <CardTitle>{t('walker.title')}</CardTitle>
+                <CardTitle className="luxury-heading-md">{t('walker.title')}</CardTitle>
                 <CardDescription>
                   {t('walker.subtitle')} {walker.displayName}
                 </CardDescription>
@@ -288,7 +288,7 @@ export default function WalkerBooking() {
               
               <CardContent className="space-y-6">
                 {/* Date & Time Selection */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 luxury-animate-slide-up luxury-delay-3">
                   <div className="space-y-2">
                     <Label>{t('walker.walkDate')}</Label>
                     <Popover>
@@ -296,7 +296,7 @@ export default function WalkerBooking() {
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal",
+                            "w-full justify-start text-left font-normal luxury-glass-minimal",
                             !scheduledDate && "text-muted-foreground"
                           )}
                           data-testid="button-scheduled-date"
@@ -305,7 +305,7 @@ export default function WalkerBooking() {
                           {scheduledDate ? format(scheduledDate, "PPP") : t('booking.common.pickDate')}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0 luxury-glass-card">
                         <Calendar
                           mode="single"
                           selected={scheduledDate}
@@ -324,19 +324,20 @@ export default function WalkerBooking() {
                       type="time"
                       value={scheduledTime}
                       onChange={(e) => setScheduledTime(e.target.value)}
+                      className="luxury-glass-minimal"
                       data-testid="input-scheduled-time"
                     />
                   </div>
                 </div>
 
                 {/* Duration Selection */}
-                <div className="space-y-2">
+                <div className="space-y-2 luxury-animate-slide-up luxury-delay-4">
                   <Label htmlFor="duration">{t('walker.duration')}</Label>
                   <Select value={duration.toString()} onValueChange={(val) => setDuration(parseInt(val))}>
-                    <SelectTrigger id="duration" data-testid="select-duration">
+                    <SelectTrigger id="duration" className="luxury-glass-minimal" data-testid="select-duration">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="luxury-glass-card">
                       <SelectItem value="30">{t('walker.30min')}</SelectItem>
                       <SelectItem value="60">{t('walker.1hour')}</SelectItem>
                       <SelectItem value="90">{t('walker.1_5hours')}</SelectItem>
@@ -346,7 +347,7 @@ export default function WalkerBooking() {
                 </div>
 
                 {/* Pickup Location */}
-                <div className="space-y-2">
+                <div className="space-y-2 luxury-animate-slide-up luxury-delay-5">
                   <Label htmlFor="pickup">{t('booking.location.pickupAddress')}</Label>
                   <div className="flex gap-2">
                     <Input
@@ -354,13 +355,14 @@ export default function WalkerBooking() {
                       value={pickupAddress}
                       onChange={(e) => setPickupAddress(e.target.value)}
                       placeholder={t('booking.location.enterAddress')}
-                      className="flex-1"
+                      className="flex-1 luxury-glass-minimal"
                       data-testid="input-pickup-address"
                     />
                     <Button 
                       type="button" 
                       variant="outline" 
                       onClick={detectLocation}
+                      className="luxury-glass-minimal luxury-hover-lift"
                       data-testid="button-detect-location"
                     >
                       <Navigation className="w-4 h-4" />
@@ -371,24 +373,26 @@ export default function WalkerBooking() {
                       placeholder={t('booking.location.latitude')}
                       value={pickupLat}
                       onChange={(e) => setPickupLat(e.target.value)}
+                      className="luxury-glass-minimal"
                       data-testid="input-pickup-lat"
                     />
                     <Input
                       placeholder={t('booking.location.longitude')}
                       value={pickupLon}
                       onChange={(e) => setPickupLon(e.target.value)}
+                      className="luxury-glass-minimal"
                       data-testid="input-pickup-lon"
                     />
                   </div>
                 </div>
 
                 {/* Pet Information */}
-                <Separator />
-                <h4 className="font-semibold">{t('booking.pet.information')}</h4>
+                <Separator className="luxury-divider" />
+                <h4 className="font-semibold luxury-heading-sm luxury-animate-slide-up luxury-delay-6">{t('booking.pet.information')}</h4>
 
                 {/* Pet Selection or Manual Entry */}
                 {pets && pets.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 luxury-animate-slide-up luxury-delay-7">
                     <Label>{t('booking.pet.selectYourPet')}</Label>
                     <Select 
                       onValueChange={(petId) => {
@@ -401,10 +405,10 @@ export default function WalkerBooking() {
                         }
                       }}
                     >
-                      <SelectTrigger data-testid="select-pet">
+                      <SelectTrigger className="luxury-glass-minimal luxury-hover-lift" data-testid="select-pet">
                         <SelectValue placeholder={t('booking.pet.choosePet')} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="luxury-glass-card">
                         {pets.map((pet) => (
                           <SelectItem key={pet.id} value={pet.id}>
                             {pet.petName} ({pet.breed})
@@ -415,7 +419,7 @@ export default function WalkerBooking() {
                   </div>
                 ) : null}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 luxury-animate-slide-up luxury-delay-8">
                   <div className="space-y-2">
                     <Label htmlFor="petName">{t('booking.pet.name')} *</Label>
                     <Input
@@ -423,6 +427,7 @@ export default function WalkerBooking() {
                       value={petName}
                       onChange={(e) => setPetName(e.target.value)}
                       placeholder="e.g., Buddy"
+                      className="luxury-glass-minimal"
                       data-testid="input-pet-name"
                     />
                   </div>
@@ -433,12 +438,13 @@ export default function WalkerBooking() {
                       value={petBreed}
                       onChange={(e) => setPetBreed(e.target.value)}
                       placeholder="e.g., Golden Retriever"
+                      className="luxury-glass-minimal"
                       data-testid="input-pet-breed"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 luxury-animate-slide-up luxury-delay-9">
                   <Label htmlFor="petWeight">{t('booking.pet.weight')}</Label>
                   <Input
                     id="petWeight"
@@ -446,11 +452,12 @@ export default function WalkerBooking() {
                     value={petWeight}
                     onChange={(e) => setPetWeight(e.target.value)}
                     placeholder="e.g., 25"
+                    className="luxury-glass-minimal"
                     data-testid="input-pet-weight"
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 luxury-animate-slide-up luxury-delay-10">
                   <Label htmlFor="specialNeeds">{t('booking.pet.specialNeeds')}</Label>
                   <Textarea
                     id="specialNeeds"
@@ -458,39 +465,40 @@ export default function WalkerBooking() {
                     onChange={(e) => setPetSpecialNeeds(e.target.value)}
                     placeholder={t('booking.pet.specialNeedsPlaceholder')}
                     rows={3}
+                    className="luxury-glass-minimal"
                     data-testid="input-special-needs"
                   />
                 </div>
 
                 {/* Pricing Breakdown */}
                 {scheduledDate && duration > 0 && (
-                  <Card className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200">
+                  <Card className="luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-animate-scale-in luxury-delay-7">
                     <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
+                      <CardTitle className="luxury-heading-sm flex items-center gap-2">
                         <DollarSign className="w-5 h-5" />
                         {t('walker.pricingBreakdown')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm luxury-text-body">
                         <span>{t('walker.walkerRate')} ({duration} min @ {walker.currency} {hourlyRate}/hr)</span>
-                        <span>{walker.currency} {walkerRate.toFixed(2)}</span>
+                        <span className="font-semibold">{walker.currency} {walkerRate.toFixed(2)}</span>
                       </div>
                       
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm luxury-text-body">
                         <span>{t('walker.platformFee')} (6%)</span>
-                        <span>{walker.currency} {platformFeeOwner.toFixed(2)}</span>
+                        <span className="font-semibold">{walker.currency} {platformFeeOwner.toFixed(2)}</span>
                       </div>
 
-                      <Separator />
+                      <Separator className="luxury-divider" />
 
-                      <div className="flex justify-between text-lg font-bold text-blue-700 dark:text-blue-400">
-                        <span>{t('booking.common.total')}</span>
-                        <span>{walker.currency} {totalCost.toFixed(2)}</span>
+                      <div className="flex justify-between items-center">
+                        <span className="luxury-heading-sm">{t('booking.common.total')}</span>
+                        <span className="luxury-heading-lg luxury-text-gradient">{walker.currency} {totalCost.toFixed(2)}</span>
                       </div>
 
-                      <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 mt-3">
-                        <AlertDescription className="text-xs">
+                      <Alert className="luxury-glass-minimal border-none mt-3">
+                        <AlertDescription className="text-xs luxury-text-small">
                           <p className="font-semibold mb-1">{t('walker.whatsIncluded')}</p>
                           <ul className="list-disc list-inside space-y-0.5">
                             <li>{t('walker.realTimeGPS')}</li>
@@ -507,7 +515,7 @@ export default function WalkerBooking() {
 
                 {/* Submit Button */}
                 <Button 
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-6"
+                  className="w-full luxury-btn-primary luxury-shadow-xl text-lg py-6 luxury-animate-scale-in luxury-delay-8"
                   onClick={handleSubmit}
                   disabled={createBooking.isPending}
                   data-testid="button-submit-booking"

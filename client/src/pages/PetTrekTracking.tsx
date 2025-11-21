@@ -92,22 +92,22 @@ export default function PetTrekTracking() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      requested: { color: 'bg-blue-500', text: 'Searching for Driver', icon: Loader2 },
-      dispatched: { color: 'bg-yellow-500', text: 'Driver Notified', icon: AlertCircle },
-      accepted: { color: 'bg-green-500', text: 'Driver Accepted', icon: CheckCircle2 },
-      in_progress: { color: 'bg-purple-500', text: 'En Route', icon: Car },
-      completed: { color: 'bg-emerald-500', text: 'Completed', icon: CheckCircle2 },
-      canceled: { color: 'bg-red-500', text: 'Canceled', icon: AlertCircle },
+      requested: { className: 'luxury-badge', text: 'Searching for Driver', icon: Loader2 },
+      dispatched: { className: 'luxury-badge-gold', text: 'Driver Notified', icon: AlertCircle },
+      accepted: { className: 'luxury-badge-success', text: 'Driver Accepted', icon: CheckCircle2 },
+      in_progress: { className: 'luxury-badge', text: 'En Route', icon: Car },
+      completed: { className: 'luxury-badge-success', text: 'Completed', icon: CheckCircle2 },
+      canceled: { className: 'luxury-badge', text: 'Canceled', icon: AlertCircle },
     };
     
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.requested;
     const Icon = config.icon;
     
     return (
-      <Badge className={cn('text-white', config.color)}>
-        <Icon className="w-3 h-3 mr-1 animate-pulse" />
+      <div className={cn(config.className, 'text-lg px-6 py-3')}>
+        <Icon className="w-5 h-5 mr-2 animate-pulse" />
         {config.text}
-      </Badge>
+      </div>
     );
   };
 
@@ -125,10 +125,10 @@ export default function PetTrekTracking() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400 font-medium">Loading trip details...</p>
+      <div className="min-h-screen flex items-center justify-center luxury-bg-mesh">
+        <div className="text-center luxury-animate-scale-in">
+          <div className="luxury-spinner mx-auto mb-6"></div>
+          <p className="luxury-text-body font-semibold">Loading trip details...</p>
         </div>
       </div>
     );
@@ -136,19 +136,23 @@ export default function PetTrekTracking() {
 
   if (error || !trip) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900">
-        <Card className="max-w-md">
+      <div className="min-h-screen flex items-center justify-center luxury-bg-mesh">
+        <Card className="max-w-md luxury-glass-card luxury-shadow-xl luxury-animate-scale-in">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
+            <CardTitle className="flex items-center gap-2 text-red-600 luxury-heading-sm">
               <AlertCircle className="w-5 h-5" />
               Trip Not Found
             </CardTitle>
-            <CardDescription>Unable to load trip details</CardDescription>
+            <CardDescription className="luxury-text-small">Unable to load trip details</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => setLocation('/dashboard')} data-testid="button-back-to-dashboard">
+            <button 
+              onClick={() => setLocation('/dashboard')} 
+              data-testid="button-back-to-dashboard"
+              className="luxury-btn-primary w-full"
+            >
               Back to Dashboard
-            </Button>
+            </button>
           </CardContent>
         </Card>
       </div>
@@ -156,42 +160,52 @@ export default function PetTrekTracking() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900 py-8">
+    <div className="min-h-screen luxury-bg-mesh py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent">
+        <div className="mb-8 luxury-animate-fade-in">
+          <div className="flex items-center justify-between mb-6">
+            <div className="luxury-delay-1 luxury-animate-slide-up">
+              <h1 className="luxury-heading-lg luxury-text-gradient">
                 Track {trip.petName}'s Journey
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">Trip ID: {trip.tripId}</p>
+              <p className="luxury-text-small mt-2">Trip ID: {trip.tripId}</p>
             </div>
-            {getStatusBadge(trip.status)}
+            <div className="luxury-delay-2 luxury-animate-scale-in">
+              {getStatusBadge(trip.status)}
+            </div>
           </div>
           
           {/* Progress Bar */}
-          <div className="space-y-2">
-            <Progress value={calculateProgress(trip.status)} className="h-3" data-testid="progress-trip-status" />
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-              <span>Requested</span>
-              <span>Dispatched</span>
-              <span>Accepted</span>
-              <span>En Route</span>
-              <span>Completed</span>
+          <div className="space-y-3 luxury-delay-3 luxury-animate-fade-in">
+            <div className="relative">
+              <Progress 
+                value={calculateProgress(trip.status)} 
+                className="h-4 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30" 
+                data-testid="progress-trip-status" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 rounded-full" 
+                   style={{ width: `${calculateProgress(trip.status)}%`, transition: 'width 0.5s ease' }}></div>
+            </div>
+            <div className="flex justify-between luxury-text-small font-medium">
+              <span className={calculateProgress(trip.status) >= 10 ? 'luxury-text-gradient' : ''}>Requested</span>
+              <span className={calculateProgress(trip.status) >= 25 ? 'luxury-text-gradient' : ''}>Dispatched</span>
+              <span className={calculateProgress(trip.status) >= 50 ? 'luxury-text-gradient' : ''}>Accepted</span>
+              <span className={calculateProgress(trip.status) >= 75 ? 'luxury-text-gradient' : ''}>En Route</span>
+              <span className={calculateProgress(trip.status) >= 100 ? 'luxury-text-gradient' : ''}>Completed</span>
             </div>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
           
           {/* Main Content - Live Activity Card */}
           <div className="lg:col-span-2 space-y-6">
             
             {/* Live Activity Card - Apple-inspired */}
             {trip.status === 'in_progress' && trip.tracking && (
-              <Card className="border-2 border-purple-200 dark:border-purple-800 shadow-2xl overflow-hidden animate-in slide-in-from-top duration-500">
+              <Card className="luxury-glass-card luxury-shadow-xl overflow-hidden luxury-animate-slide-up luxury-delay-4 border-2 border-purple-200/50 dark:border-purple-500/30">
                 <div className="bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500 p-6 text-white">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -237,19 +251,19 @@ export default function PetTrekTracking() {
             )}
 
             {/* Map Placeholder */}
-            <Card className="border-2 border-blue-100 dark:border-blue-900 shadow-xl">
+            <Card className="luxury-glass-card luxury-shadow-xl luxury-animate-slide-up luxury-delay-5">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Navigation className="w-5 h-5 text-blue-600" />
+                <CardTitle className="flex items-center gap-2 luxury-heading-sm">
+                  <Navigation className="w-5 h-5 luxury-text-gradient" />
                   Live Map
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="aspect-video bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 rounded-xl flex items-center justify-center border-2 border-dashed border-blue-300 dark:border-blue-700">
+                <div className="aspect-video bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-cyan-900/20 rounded-2xl flex items-center justify-center border-2 border-dashed border-purple-300/50 dark:border-purple-500/30 luxury-hover-glow transition-all">
                   <div className="text-center">
-                    <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-3" />
-                    <p className="text-gray-600 dark:text-gray-400 font-medium">Real-time GPS Map</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                    <MapPin className="w-16 h-16 luxury-text-gradient mx-auto mb-4 animate-pulse" />
+                    <p className="luxury-text-body font-semibold mb-2">Real-time GPS Map</p>
+                    <p className="luxury-text-small">
                       {trip.tracking ? 
                         `Driver at ${trip.tracking.latitude.toFixed(4)}, ${trip.tracking.longitude.toFixed(4)}` :
                         'Waiting for driver location...'
@@ -261,37 +275,39 @@ export default function PetTrekTracking() {
             </Card>
 
             {/* Route Details */}
-            <Card className="border-2 border-green-100 dark:border-green-900 shadow-xl">
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up luxury-delay-6">
               <CardHeader>
-                <CardTitle>Route Details</CardTitle>
+                <CardTitle className="luxury-heading-sm">Route Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <MapPin className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-1">PICKUP</p>
-                    <p className="font-medium">{trip.pickupAddress}</p>
+                    <p className="font-bold text-xs luxury-text-gradient uppercase tracking-wider mb-1">PICKUP</p>
+                    <p className="luxury-text-body font-semibold">{trip.pickupAddress}</p>
                     {trip.actualPickupTime && (
-                      <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                      <p className="luxury-text-small text-green-600 dark:text-green-400 mt-2 font-medium">
                         ✓ Picked up at {new Date(trip.actualPickupTime).toLocaleTimeString()}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="ml-5 border-l-2 border-dashed border-gray-300 dark:border-gray-600 h-8"></div>
+                <div className="ml-6 border-l-2 border-dashed border-gradient-to-b from-green-300 via-purple-300 to-red-300 h-10 relative">
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-gradient-to-r from-purple-400 to-blue-400 animate-pulse"></div>
+                </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-400 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <MapPin className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-1">DROPOFF</p>
-                    <p className="font-medium">{trip.dropoffAddress}</p>
+                    <p className="font-bold text-xs luxury-text-gradient uppercase tracking-wider mb-1">DROPOFF</p>
+                    <p className="luxury-text-body font-semibold">{trip.dropoffAddress}</p>
                     {trip.tracking && (
-                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                      <p className="luxury-text-small luxury-text-gradient mt-2 font-semibold">
                         {trip.tracking.distanceToDestination.toFixed(1)} km away • {trip.tracking.estimatedArrival} mins
                       </p>
                     )}
@@ -306,108 +322,105 @@ export default function PetTrekTracking() {
             
             {/* Driver Info */}
             {trip.provider && (
-              <Card className="border-2 border-purple-100 dark:border-purple-900 shadow-xl sticky top-4">
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-glow sticky top-4 luxury-animate-scale-in luxury-delay-7">
                 <CardHeader className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/50 dark:to-pink-900/50">
-                  <CardTitle>Your Driver</CardTitle>
+                  <CardTitle className="luxury-heading-sm">Your Driver</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-4">
                   <div className="flex items-center gap-4">
-                    <Avatar className="w-16 h-16 ring-2 ring-purple-200 dark:ring-purple-700">
-                      <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xl">
+                    <Avatar className="w-20 h-20 ring-4 ring-purple-200 dark:ring-purple-700 ring-offset-2 shadow-xl">
+                      <AvatarFallback className="bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 text-white text-2xl font-bold">
                         {trip.provider.firstName.charAt(0)}{trip.provider.lastName.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <h3 className="font-bold text-lg">
+                      <h3 className="luxury-heading-sm">
                         {trip.provider.firstName} {trip.provider.lastName}
                       </h3>
-                      <div className="flex items-center gap-1 mt-1">
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-semibold">{trip.provider.averageRating.toFixed(1)}</span>
+                      <div className="flex items-center gap-1 mt-2">
+                        <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                        <span className="font-bold text-lg luxury-text-gradient">{trip.provider.averageRating.toFixed(1)}</span>
                       </div>
                     </div>
                   </div>
 
-                  <Separator />
+                  <div className="luxury-divider"></div>
 
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Car className="w-4 h-4 text-gray-500" />
-                      <span className="font-medium">{trip.provider.vehicleType}</span>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 luxury-glass-panel p-3 rounded-xl">
+                      <Car className="w-5 h-5 luxury-text-gradient" />
+                      <span className="luxury-text-body font-semibold">{trip.provider.vehicleType}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-gray-500" />
-                      <span className="capitalize">{trip.provider.vehicleCapacity} capacity</span>
+                    <div className="flex items-center gap-3 luxury-glass-panel p-3 rounded-xl">
+                      <MapPin className="w-5 h-5 luxury-text-gradient" />
+                      <span className="luxury-text-body font-semibold capitalize">{trip.provider.vehicleCapacity} capacity</span>
                     </div>
                   </div>
 
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-12 rounded-xl border-2"
+                  <button 
+                    className="luxury-btn-primary w-full flex items-center justify-center gap-2"
                     data-testid="button-call-driver"
                   >
-                    <Phone className="w-4 h-4 mr-2" />
+                    <Phone className="w-5 h-5" />
                     Call Driver
-                  </Button>
+                  </button>
                 </CardContent>
               </Card>
             )}
 
             {/* Pet Info */}
-            <Card className="border-2 border-blue-100 dark:border-blue-900 shadow-xl">
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-scale-in luxury-delay-8">
               <CardHeader>
-                <CardTitle>Pet Details</CardTitle>
+                <CardTitle className="luxury-heading-sm">Pet Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Name</span>
-                  <span className="font-semibold">{trip.petName}</span>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="luxury-text-small">Name</span>
+                  <span className="luxury-text-body font-bold">{trip.petName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Type</span>
-                  <span className="font-semibold capitalize">{trip.petType}</span>
+                <div className="flex justify-between items-center">
+                  <span className="luxury-text-small">Type</span>
+                  <span className="luxury-text-body font-bold capitalize">{trip.petType}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Size</span>
-                  <span className="font-semibold capitalize">{trip.petSize}</span>
+                <div className="flex justify-between items-center">
+                  <span className="luxury-text-small">Size</span>
+                  <span className="luxury-text-body font-bold capitalize">{trip.petSize}</span>
                 </div>
-                <Separator />
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Estimated Fare</span>
-                  <span className="font-bold text-green-600 dark:text-green-400">
+                <div className="luxury-divider"></div>
+                <div className="flex justify-between items-center luxury-glass-panel p-3 rounded-xl">
+                  <span className="luxury-text-body font-semibold">Estimated Fare</span>
+                  <span className="luxury-heading-sm luxury-text-gradient">
                     ₪{trip.estimatedFare.toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Est. Duration</span>
-                  <span className="font-semibold">{trip.estimatedDuration} mins</span>
+                <div className="flex justify-between items-center luxury-glass-panel p-3 rounded-xl">
+                  <span className="luxury-text-body font-semibold">Est. Duration</span>
+                  <span className="luxury-text-body font-bold luxury-text-gradient">{trip.estimatedDuration} mins</span>
                 </div>
               </CardContent>
             </Card>
 
             {/* Help Card */}
-            <Card className="border-2 border-gray-100 dark:border-gray-800 shadow-lg">
+            <Card className="luxury-glass-card luxury-shadow-md luxury-animate-scale-in luxury-delay-9">
               <CardHeader>
-                <CardTitle className="text-base">Need Help?</CardTitle>
+                <CardTitle className="luxury-heading-sm">Need Help?</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
+              <CardContent className="space-y-3">
+                <button 
+                  className="luxury-btn-secondary w-full flex items-center justify-center gap-2"
                   data-testid="button-contact-support"
                 >
-                  <Phone className="w-4 h-4 mr-2" />
+                  <Phone className="w-5 h-5" />
                   Contact Support
-                </Button>
+                </button>
                 {trip.status !== 'completed' && trip.status !== 'canceled' && (
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+                  <button 
+                    className="luxury-btn-ghost w-full flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                     data-testid="button-cancel-trip"
                   >
-                    <AlertCircle className="w-4 h-4 mr-2" />
+                    <AlertCircle className="w-5 h-5" />
                     Cancel Trip
-                  </Button>
+                  </button>
                 )}
               </CardContent>
             </Card>
