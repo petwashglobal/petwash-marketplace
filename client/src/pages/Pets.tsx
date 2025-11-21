@@ -324,7 +324,6 @@ export default function Pets() {
         </div>
 
         <div className="luxury-glass-card luxury-shadow-xl mb-6">
-          <CardHeader className="border-b border-gray-200/50 dark:border-gray-700/50">
           <CardContent className="p-6">
             {isLoading ? (
               <div className="flex items-center justify-center h-64">

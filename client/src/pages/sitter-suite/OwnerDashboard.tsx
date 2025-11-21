@@ -254,7 +254,7 @@ export default function OwnerDashboard() {
                     </div>
                   ))}
                 </CardContent>
-              </Card>
+              </div>
             )}
 
             {/* Upcoming Bookings */}

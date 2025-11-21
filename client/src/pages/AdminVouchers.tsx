@@ -32,7 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { trackVoucherIssued } from '@/lib/analytics';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG as QRCode } from 'qrcode.react';
 
 interface VoucherStats {
   total: number;

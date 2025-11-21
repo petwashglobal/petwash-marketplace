@@ -306,7 +306,7 @@ export default function Inbox() {
         {pets.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {pets.map((pet) => (
-              <Card key={pet.id} className="luxury-glass-minimal luxury-hover-lift"
+              <Card key={pet.id} className="luxury-glass-minimal luxury-hover-lift">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-16 w-16 border-2" style={{
@@ -440,7 +440,7 @@ export default function Inbox() {
         )}
         
         {!selectedMessage ? (
-          <Card className="luxury-glass-card luxury-shadow-lg"
+          <Card className="luxury-glass-card luxury-shadow-lg">
             <CardHeader className="border-b" style={{
               borderColor: 'rgba(212, 175, 55, 0.2)',
               background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 249, 240, 0.95) 100%)',

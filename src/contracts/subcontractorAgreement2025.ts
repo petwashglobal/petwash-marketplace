@@ -159,7 +159,7 @@ export interface SubcontractorSignature {
   deviceInfo?: string;              // Required for Israeli digital signature law 2025
   signatureMethod: DigitalSignatureMethod;
   signaturePayload: string;         // SHA-256 hash of signature data
-  agreementSnapshotJson: string;    // Full agreement JSON at time of signing - REQUIRED for evidence
+  agreementSnapshotJson: typeof SUBCONTRACTOR_AGREEMENT_2025; // Full agreement JSON object at time of signing - REQUIRED for evidence
   agreedToPrivacy: boolean;
   agreedToTerms: boolean;
   auditTrailId?: string;            // Audit trail reference - REQUIRED for Israeli compliance 2025
@@ -205,7 +205,7 @@ export function createSubcontractorSignature(input: {
     deviceInfo: input.deviceInfo,
     signatureMethod: input.signatureMethod,
     signaturePayload: signatureHash,
-    agreementSnapshotJson: JSON.stringify(SUBCONTRACTOR_AGREEMENT_2025),
+    agreementSnapshotJson: SUBCONTRACTOR_AGREEMENT_2025,
     agreedToPrivacy: true,
     agreedToTerms: true,
     auditTrailId: `audit_${Date.now()}_${Math.floor(Math.random() * 9999)}`

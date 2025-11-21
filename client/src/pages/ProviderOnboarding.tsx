@@ -895,6 +895,5 @@ export default function ProviderOnboarding() {
           </div>
         </div>
       </div>
-    </div>
   );
 }

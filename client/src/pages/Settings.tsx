@@ -849,7 +849,6 @@ export default function Settings() {
         </AlertDialogContent>
       </AlertDialog>
       </div>
-      </div>
     </Layout>
   );
 }

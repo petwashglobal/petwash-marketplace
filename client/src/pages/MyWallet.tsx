@@ -599,5 +599,6 @@ export default function MyWallet() {
         cardType="business"
       />
     </div>
+    </div>
   );
 }

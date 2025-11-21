@@ -86,7 +86,7 @@ router.post('/api/subcontractors/agreements/2025/sign', async (req: Request, res
       deviceInfo: signatureData.deviceInfo,
       signatureMethod: signatureData.signatureMethod,
       signaturePayload: signatureData.signaturePayload,
-      agreementSnapshotJson: JSON.parse(signatureData.agreementSnapshotJson),
+      agreementSnapshotJson: signatureData.agreementSnapshotJson,
       agreedToPrivacy: signatureData.agreedToPrivacy,
       agreedToTerms: signatureData.agreedToTerms,
       auditTrailId: signatureData.auditTrailId,
@@ -114,7 +114,7 @@ router.post('/api/subcontractors/agreements/2025/sign', async (req: Request, res
       deviceInfo: signatureData.deviceInfo,
       signatureMethod: signatureData.signatureMethod,
       signaturePayload: signatureData.signaturePayload,
-      agreementSnapshotJson: JSON.parse(signatureData.agreementSnapshotJson), // Store as JSONB
+      agreementSnapshotJson: signatureData.agreementSnapshotJson, // Store as JSONB
       agreedToPrivacy: signatureData.agreedToPrivacy,
       agreedToTerms: signatureData.agreedToTerms,
       auditTrailId: signatureData.auditTrailId,

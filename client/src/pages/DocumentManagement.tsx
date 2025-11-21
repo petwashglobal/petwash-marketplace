@@ -334,6 +334,7 @@ export default function DocumentManagement() {
                   </div>
                 </div>
               </div>
+              </div>
             ))}
           </div>
         )}

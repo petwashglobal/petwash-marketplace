@@ -460,7 +460,8 @@ export default function SuppliersDashboard() {
           </Tabs>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+      </div>
     </LuxuryPageWrapper>
   );
 }

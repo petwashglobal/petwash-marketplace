@@ -341,6 +341,7 @@ export default function FranchiseManagementDashboard() {
                       </div>
                     </div>
                   </div>
+                </div>
               ))
             )}
           </div>
@@ -436,6 +437,7 @@ export default function FranchiseManagementDashboard() {
                       </div>
                     </div>
                   </div>
+                </div>
               ))
             )}
           </div>

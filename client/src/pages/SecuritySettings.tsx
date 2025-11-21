@@ -191,8 +191,6 @@ export default function SecuritySettings() {
     );
   };
 
-  const { language, setLanguage } = useLanguage();
-
   return (
     <Layout language={language} onLanguageChange={setLanguage}>
       <div className="min-h-screen luxury-bg-mesh">

@@ -489,7 +489,7 @@ export function Academy() {
                   </Button>
                 </div>
               )}
-            </GlassCard>
+            </div>
           )}
 
           {/* Trainer Cards Grid */}
@@ -669,6 +669,6 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
           </Link>
         </div>
       </CardContent>
-    </GlassCard>
+    </div>
   );
 }
