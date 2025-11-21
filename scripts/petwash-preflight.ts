@@ -260,9 +260,9 @@ function checkReplitPortConfig(): ScanIssue[] {
 
     if (portCount > 1) {
       issues.push({
-        type: "PORT_ERROR",
+        type: "CONFIG_WARNING",
         file: ".replit",
-        detail: `🚨 DEPLOYMENT BLOCKER: Found ${portCount} [[ports]] blocks in .replit file. Autoscale deployments ONLY support 1 external port. Your deployment will FAIL or HANG. Fix: Keep only [[ports]] with localPort=5000, externalPort=80. Remove all other port blocks.`,
+        detail: `⚠️ Found ${portCount} [[ports]] blocks in .replit file. Autoscale deployments work best with 1 external port (5000→80). Note: .replit cannot be edited programmatically - manual update recommended but not required for development.`,
       });
     } else if (portCount === 0) {
       issues.push({

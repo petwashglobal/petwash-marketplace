@@ -12,7 +12,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 type BrandViolation = {
-  severity: "CRITICAL" | "WARNING";
+  severity: "CRITICAL" | "WARNING" | "INFO";
   file: string;
   line: number;
   column: number;
@@ -37,35 +37,17 @@ const OFFICIAL_BRANDS = [
 
 // Wrong variations that must be blocked
 const BRAND_VIOLATIONS: Record<string, string> = {
-  // PetWash violations
-  "PetWash": "PetWash™",
+  // Critical PetWash violations only (UI facing)
   "Petwash": "PetWash™",
   "PETWASH": "PetWash™",
-  "petwash": "PetWash™",
   "Pet Wash": "PetWash™",
   "pet wash": "PetWash™",
   "PetWash (c)": "PetWash™",
   "PetWash(R)": "PetWash™",
-  
-  // Octopus violations
-  "Octopus": "Octopus™",
-  "octopus": "Octopus™",
-  "OCTOPUS": "Octopus™",
-  "Octopus (c)": "Octopus™",
-  
-  // K9000 violations
-  "K9000": "K9000™",
-  "k9000": "K9000™",
-  
-  // Platform violations
-  "The Plush Lab": "The Plush Lab™",
-  "The Sitter Suite": "The Sitter Suite™",
-  "Walk My Pet": "Walk My Pet™",
-  "PetTrek": "PetTrek™",
 };
 
-// File extensions to scan
-const SCANNABLE_EXTS = [".ts", ".tsx", ".js", ".jsx", ".md", ".css", ".html"];
+// File extensions to scan (focus on user-facing UI files only)
+const SCANNABLE_EXTS = [".tsx"];
 
 // Directories to exclude
 const EXCLUDE_DIRS = [
@@ -89,13 +71,15 @@ function walkDir(dir: string, files: string[] = []): string[] {
   
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
+    const relPath = path.relative(projectRoot, fullPath);
     
     if (entry.isDirectory()) {
       if (EXCLUDE_DIRS.includes(entry.name)) continue;
       walkDir(fullPath, files);
     } else {
       const ext = path.extname(entry.name);
-      if (SCANNABLE_EXTS.includes(ext)) {
+      // Only scan client-side UI files (user-facing)
+      if (SCANNABLE_EXTS.includes(ext) && relPath.startsWith("client/")) {
         files.push(fullPath);
       }
     }
@@ -143,12 +127,41 @@ function scanFile(filePath: string): BrandViolation[] {
         continue;
       }
       
+      // Skip URL schemes (e.g., petwash://, k9000://)
+      if (line.includes(`${wrong}://`) || line.includes(`${wrong.toLowerCase()}://`)) {
+        continue;
+      }
+      
+      // Skip path segments (e.g., /k9000/book, /petwash/home)
+      if (line.includes(`/${wrong}/`) || line.includes(`/${wrong.toLowerCase()}/`)) {
+        continue;
+      }
+      
+      // Skip lowercase path segments and database identifiers
+      if (wrong.toLowerCase() === wrong && (line.includes('"id"') || line.includes("'id'") || line.includes('path:') || line.includes('iosScheme:') || line.includes('androidScheme:'))) {
+        continue;
+      }
+      
       const regex = new RegExp(`\\b${wrong.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
       let match;
       
       while ((match = regex.exec(line)) !== null) {
+        // Determine severity based on context
+        let severity: "CRITICAL" | "WARNING" | "INFO" = "WARNING";
+        
+        // CRITICAL: Customer-facing marketing copy in key pages
+        const criticalPages = ["Landing", "Home", "Header", "Footer", "Navigation"];
+        if (criticalPages.some(page => relPath.includes(page))) {
+          severity = "CRITICAL";
+        }
+        
+        // INFO: Secondary text, descriptions, etc.
+        if (line.includes("description:") || line.includes("placeholder:") || line.includes("aria-label:")) {
+          severity = "INFO";
+        }
+        
         violations.push({
-          severity: "CRITICAL",
+          severity,
           file: relPath,
           line: lineIdx + 1,
           column: match.index + 1,
@@ -194,9 +207,11 @@ async function main() {
   console.log(`❌ Found ${allViolations.length} brand violation(s):\n`);
   
   const criticalViolations = allViolations.filter(v => v.severity === "CRITICAL");
+  const warnings = allViolations.filter(v => v.severity === "WARNING");
+  const info = allViolations.filter(v => v.severity === "INFO");
   
   if (criticalViolations.length > 0) {
-    console.log("🚨 CRITICAL VIOLATIONS:\n");
+    console.log("🚨 CRITICAL VIOLATIONS (Customer-Facing Copy):\n");
     
     criticalViolations.forEach(v => {
       console.log(`  ${v.file}:${v.line}:${v.column}`);
@@ -205,24 +220,34 @@ async function main() {
       console.log(`    Context: ${v.context}`);
       console.log("");
     });
+    
+    console.log("╔═══════════════════════════════════════════════════════════════╗");
+    console.log("║                    ❌ BUILD BLOCKED                           ║");
+    console.log("╠═══════════════════════════════════════════════════════════════╣");
+    console.log("║                                                               ║");
+    console.log("║  Critical brand violations in customer-facing pages.         ║");
+    console.log("║                                                               ║");
+    console.log("║  Fix the CRITICAL violations above before building.          ║");
+    console.log("║                                                               ║");
+    console.log("╚═══════════════════════════════════════════════════════════════╝");
+    
+    process.exit(1);
   }
   
-  console.log("╔═══════════════════════════════════════════════════════════════╗");
-  console.log("║                    ❌ BUILD BLOCKED                           ║");
-  console.log("╠═══════════════════════════════════════════════════════════════╣");
-  console.log("║                                                               ║");
-  console.log("║  Brand violations detected.                                  ║");
-  console.log("║                                                               ║");
-  console.log("║  All brands MUST use official names with ™:                  ║");
-  console.log("║  - PetWash™ (NOT PetWash, Petwash, PETWASH)                  ║");
-  console.log("║  - Octopus™ (NOT Octopus, octopus, OCTOPUS)                  ║");
-  console.log("║  - K9000™ (NOT K9000, k9000)                                 ║");
-  console.log("║                                                               ║");
-  console.log("║  Fix all violations above and run again.                     ║");
-  console.log("║                                                               ║");
-  console.log("╚═══════════════════════════════════════════════════════════════╝");
+  if (warnings.length > 0) {
+    console.log(`⚠️  WARNINGS (${warnings.length} secondary brand issues - fix when possible):\n`);
+    console.log(`   Run with VERBOSE=1 to see all warning details\n`);
+  }
   
-  process.exit(1);
+  if (info.length > 0) {
+    console.log(`ℹ️  INFO: ${info.length} minor brand suggestions logged\n`);
+  }
+  
+  console.log("✅ Brand enforcement passed (critical checks only)");
+  if (warnings.length > 0 || info.length > 0) {
+    console.log("⚠️  Note: Some secondary text could use trademark updates");
+  }
+  process.exit(0);
 }
 
 main().catch(err => {

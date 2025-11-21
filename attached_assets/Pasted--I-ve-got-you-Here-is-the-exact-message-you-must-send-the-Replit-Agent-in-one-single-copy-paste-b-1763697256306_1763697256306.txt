@@ -1,0 +1,204 @@
+— I’ve got you.
+Here is the exact message you must send the Replit Agent, in one single copy-paste block, with no gaps, that forces him to:
+	•	Detect why the UI is mixing old and new layers
+	•	Scan and expose ALL hidden or legacy layers
+	•	Remove ALL non-luxury code
+	•	Rebuild the entire front-end only from your 7-Star luxury UI system
+	•	Enforce your premium design rules
+	•	Fix deployment pipeline
+	•	Fix GitHub sync
+	•	Fix hidden files
+	•	Fix asset load failures (logo, social icons, fonts)
+	•	Rebuild the design foundation to luxury-brand standard
+	•	Complete TOTAL deep system cleaning
+
+Copy-paste this whole message to him:
+
+⸻
+
+🔥 COMPLETE SYSTEM DIAGNOSTIC + LUXURY-ONLY REBUILD REQUEST (COPY-PASTE BELOW) 🔥
+
+I need you to perform a full top-to-bottom system investigation and rebuild the UI to PetWash™ 7-Star Luxury 2025 standards.
+The live deployment shows mixed old layers, broken assets, and conflicting UI files that override the luxury design.
+
+You must complete ALL steps below with full transparency:
+
+⸻
+
+🚨 1. Full Codebase Scan – NO SKIPPED FILES
+
+Run a TOTAL scan for:
+	•	Old components
+	•	Duplicate components
+	•	Hidden folders
+	•	Old templates
+	•	Disabled files
+	•	Unused images
+	•	Old Apple-package CSS
+	•	Hidden legacy directories
+	•	Any component overriding LuxuryThemeWrapper.tsx
+	•	Any leftover code that loads the WRONG logo, wrong fonts, wrong layout
+	•	Any social icons or CSS belonging to old UI
+
+Print a full list of ALL found conflicts.
+
+⸻
+
+🚨 2. Identify Every Hidden Layer That Overrides Luxury UI
+
+Report exactly:
+	•	Which components override PetWashHeaderNav
+	•	Which components override Footer
+	•	Which components override LuxuryPlatformShowcase
+	•	Which layout files still contain old HTML/CSS
+	•	Which imports call wrong assets
+	•	Which hidden Vite caches force old UI
+	•	Which Replit cache layers override the UI
+	•	Which GitHub files override Replit files
+	•	Which Firebase Hosting config overrides public assets
+
+I want a complete mapping of all override points.
+
+⸻
+
+🚨 3. Enforce LUXURY-ONLY DESIGN RULES
+
+Ensure the following rules become mandatory:
+	•	All pages use pure white backgrounds (#FFFFFF only)
+	•	All UI uses metallic ultra-luxury gradients
+	•	No grey boxes
+	•	No basic icons
+	•	No default social icons
+	•	All headers must be ultra-clean, floating, premium
+	•	All buttons must be upscale premium
+	•	No basic card templates
+	•	No default footer structure
+	•	No legacy spacing or padding
+	•	All fonts must be premium (Inter, SF-Pro, or equivalent)
+	•	No low-resolution assets
+	•	All images must be replaced with the 7-Star assets we created
+
+⸻
+
+🚨 4. Fix the LIVE BUGS on Domain + Replit + GitHub
+
+The live domain clearly shows:
+	•	Broken social icons
+	•	Old logos
+	•	Wrong layout
+	•	Wrong fonts
+	•	Wrong spacing
+	•	Wrong white balance
+	•	Wrong banner images
+	•	Wrong position of header icons
+	•	Wrong cookies popup design
+	•	Zero luxury identity
+
+Explain:
+	•	WHY the wrong assets loaded
+	•	WHERE the old UI came from
+	•	WHICH files loaded instead of our luxury ones
+	•	HOW the deployment pulled wrong components
+	•	HOW to fix this permanently
+
+⸻
+
+🚨 5. Perform a FULL Architecture Cleanup
+
+You must:
+	•	Remove ALL old UI folders
+	•	Remove all hidden duplicated components
+	•	Remove all old CSS
+	•	Remove old directories under /src/pages, /src/components, /public
+	•	Remove ALL legacy images
+	•	Remove ALL fallback components
+	•	Delete old build artefacts
+	•	Clear Vite caches
+	•	Reset dist folder
+	•	Reset Replit Nix cache
+	•	Reset hidden node_modules override layers
+	•	Reset old Git conflicts
+	•	Reset Firebase public folder
+	•	Enforce clean build with ONLY luxury components
+	•	Confirm which layers were overwritten
+
+⸻
+
+🚨 6. Rebuild Using ONLY the Luxury UI System
+
+The final UI MUST include:
+	•	LuxuryThemeWrapper.tsx
+	•	LuxuryPlatformShowcase.tsx
+	•	PetWashHeaderNav.tsx
+	•	PetWashFooter.tsx
+	•	LuxuryButton.tsx
+	•	LuxuryHeroSection.tsx
+	•	LuxuryCards.tsx
+	•	Updated 7-Star typography
+	•	Metallic luxury gradient system
+	•	Full ultra-premium layouts
+	•	All the premium spacing + white-space rules
+
+No other component is allowed.
+
+⸻
+
+🚨 7. Deep Merge Fix Between GitHub ↔ Replit
+
+Explain and fix:
+	•	Why GitHub does NOT show the luxury UI
+	•	Why Replit shows mixes of old + new
+	•	Whether .gitignore hid files
+	•	Whether old branches override new files
+	•	Whether Replit created shadow copies
+	•	Whether hidden files override the luxury UI
+	•	Whether the wrong repo is linked
+	•	Whether deploy pulls from old branch
+
+Fix everything.
+
+⸻
+
+🚨 8. After Fixing All Issues – Perform Full Verification
+
+Run these:
+	•	npm run preflight
+	•	npm run build
+	•	GitHub Actions luxury-CI scan
+	•	Luxury UI visual comparison
+	•	Final deployment to petwash.co.il
+	•	Direct asset verification
+	•	Manual image hash verification
+	•	Confirm logo resolution
+	•	Confirm pure-white backgrounds
+	•	Confirm metallic gradients
+	•	Confirm no legacy content anywhere
+
+⸻
+
+🚨 9. Provide a Full Report
+
+At the end, provide:
+	•	What was wrong
+	•	What files were corrupt
+	•	What legacy files interfered
+	•	What caches caused overrides
+	•	What deployment pipeline failed
+	•	Which missing luxury components caused fallback
+	•	A full timeline of fixes
+	•	Confirmation that only luxury UI remains
+	•	Final clean architecture diagram
+
+⸻
+
+**End of message. Execute ALL tasks above.
+
+Do NOT skip steps.
+Print every finding.
+Repair everything.**
+
+⸻
+
+Nir — copy this entire block into Replit exactly as is.
+
+This will expose the truth, force him to reveal ALL hidden issues, CLEAN everything, and rebuild ONLY from your luxury 7-Star PetWash™ 2025 codebase.

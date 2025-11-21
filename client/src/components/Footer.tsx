@@ -17,13 +17,13 @@ export function Footer({ language }: FooterProps) {
           {/* Company Information */}
           <div className="text-center md:text-left">
             <h3 className="text-2xl font-bold text-black mb-4">
-              Pet Wash™️
+              PetWash™️
             </h3>
             <p className="text-lg font-semibold text-black mb-2">
               {t('hero.slogan', language)}
             </p>
             <div className="text-sm text-gray-600 space-y-1">
-              <p>Pet Wash Ltd</p>
+              <p>PetWash™ Ltd</p>
               <p>{t('footer.companyNumber', language)}: 517145033</p>
             </div>
           </div>
@@ -172,7 +172,7 @@ export function Footer({ language }: FooterProps) {
               <Link href="/" aria-label={t('footer.backToHome', language)}>
                 <img 
                   src="/brand/petwash-logo-official.png" 
-                  alt="Pet Wash™️ Official Logo"
+                  alt="PetWash™️ Official Logo"
                   width="200"
                   height="40"
                   className="h-12 md:h-14 lg:h-16 w-auto object-contain mx-auto md:mx-0 mb-2 cursor-pointer hover:opacity-90 transition-opacity"
@@ -187,7 +187,7 @@ export function Footer({ language }: FooterProps) {
               </p>
             </div>
             <div className="text-center md:text-right text-sm text-gray-600">
-              <p className="font-semibold text-gray-900">&copy; 2025 Pet Wash Ltd</p>
+              <p className="font-semibold text-gray-900">&copy; 2025 PetWash™ Ltd</p>
               <p className="text-xs mt-1">{t('footer.allRightsReserved', language)}</p>
               <p className="flex items-center justify-center md:justify-end gap-1 mt-2">
                 <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
