@@ -6,7 +6,6 @@
 import { useLanguage } from "@/lib/languageStore";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { BrandHeader } from "@/components/BrandHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function PrivacyPolicy() {
@@ -16,7 +15,6 @@ export default function PrivacyPolicy() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
         <Header language={language} onLanguageChange={setLanguage} />
-        <BrandHeader />
         
         <div className="max-w-4xl mx-auto px-4 py-12" dir="rtl">
           <h1 className="text-4xl font-bold mb-8 text-center">מדיניות פרטיות</h1>
@@ -240,7 +238,6 @@ export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
       <Header language={language} onLanguageChange={setLanguage} />
-      <BrandHeader />
       
       <div className="max-w-4xl mx-auto px-4 py-12">
         <h1 className="text-4xl font-bold mb-8 text-center">Privacy Policy</h1>
