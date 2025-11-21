@@ -60,7 +60,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Source Control**: GitHub repository `petwashglobal/petwash-marketplace`
 - **Firebase Project**: nifty-quanta-475212-v3 (Auth/Firestore/Storage ONLY - NOT for hosting)
 - **Deployment Guide**: See PRODUCTION_DEPLOYMENT_GUIDE.md for complete instructions
-- **Legacy UI Scanner**: Automated deployment protection (`scripts/scan-legacy-ui.cjs`) blocks any old 2024 template code from reaching production. Runs automatically before every build via `prebuild` hook and on GitHub via `.github/workflows/deploy-protection.yml`. Scans for forbidden patterns: `apple-package-*`, `apple-old-ui`, `legacy-ui`, `OldGiftCards`. All deployments (Replit, Cloud Run, GitHub Actions) must pass `npm run scan:ui` before building.
+- **Legacy UI Scanner**: Automated deployment protection (`scripts/petwash-preflight.ts`) blocks any old 2024 template code from reaching production. Runs automatically before every build via `prebuild` hook and on GitHub via `.github/workflows/petwash-ci.yml`. Scans for forbidden patterns: `apple-package-*`, `apple-old-ui`, `legacy-ui`, `OldGiftCards`. All deployments (Replit, Cloud Run, GitHub Actions) must pass `npm run scan:ui` before building.
 
 ### Core Features & Design Decisions
 - **Global Architecture Module**: `shared/petwashGlobal.ts` for core platform catalog, KYC, wallet, payments, booking, and mobile contracts.

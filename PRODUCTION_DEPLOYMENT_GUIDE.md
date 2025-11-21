@@ -32,31 +32,52 @@
 - ✅ K9000 IoT, backup scripts, compliance modules intact
 - ✅ Firebase Auth/Firestore/Storage configured
 
-### 2. Legacy UI Scanner (MANDATORY)
+### 2. PetWash 2025 Preflight Guardian (MANDATORY)
 ```bash
-# Run legacy UI scanner - blocks deployment if old 2024 code detected
+# Run comprehensive preflight guardian - blocks deployment if issues detected
+npm run preflight
+
+# Or use the alias:
 npm run scan:ui
 
 # Expected output:
-# ✅ Legacy UI scan passed. Only 2025 luxury UI code detected.
+# ✅ No issues found. Codebase looks clean and modern.
+# You are safe to build, deploy and push to GitHub.
 ```
 
-**This scanner protects your production deployment by:**
-- Blocking any old Apple package CSS classes (`apple-package-*`)
-- Detecting legacy components (`OldGiftCards`, `apple-old-ui`)
-- Ensuring only luxury 2025 UI reaches production
-- Automatically runs before `npm run build` via `prebuild` hook
+**The Preflight Guardian protects your production deployment by:**
+
+1. **Legacy UI Detection** - Blocks old Apple package CSS, template code, placeholder content
+2. **Brand Protection** - Detects wrong capitalization or trademark usage  
+3. **Required Files Verification** - Ensures core 2025 luxury components exist:
+   - LuxuryThemeWrapper.tsx
+   - PetWashDivisions.tsx
+   - GiftCards.tsx
+   - PetWashHeaderNav.tsx
+   - Footer.tsx
+   - LuxuryPlatformShowcase.tsx
+4. **Environment Config Checks** - Verifies GCS backup bucket configuration
+5. **Git Sanity Check** - Ensures repository is connected to GitHub
+6. **Detailed Reporting** - Categorizes issues by severity with file locations
+
+**Automatically runs before `npm run build` via `prebuild` hook**
 
 **If the scan fails:**
-1. Review the error output showing which files contain legacy patterns
-2. Remove or replace the legacy code with 2025 luxury components
-3. Re-run `npm run scan:ui` until it passes
-4. Only then proceed with deployment
+1. Review the categorized error output (CONFIG_ERROR, LEGACY_UI, BANNED_PATTERN, etc.)
+2. Fix hard failures (CONFIG_ERROR, LEGACY_UI, BANNED_PATTERN) before deployment
+3. Address warnings (CONFIG_WARNING, MISSING_REQUIRED_FILE) when possible
+4. Re-run `npm run preflight` until clean or warnings-only
+5. Only then proceed with deployment
 
 ### 3. Build Verification
 ```bash
-# Run production build (automatically runs scan:ui first)
+# Run production build (automatically runs preflight guardian first)
 npm run build
+
+# Build process:
+# 1. npm run preflight (scans codebase)
+# 2. vite build (if preflight passes)
+# 3. Output to dist/public/
 
 # Verify output
 ls -lh dist/public/index.html
@@ -103,13 +124,17 @@ Ensure all secrets are configured in Replit Secrets:
 
 **Automated Deployment Protection**
 
-The repository includes `.github/workflows/deploy-protection.yml` which automatically:
-1. Runs `npm run scan:ui` on every push to main
-2. Blocks merges if legacy UI is detected
-3. Verifies production build succeeds
-4. Ensures only clean code reaches production
+The repository includes `.github/workflows/petwash-ci.yml` which automatically:
+1. Runs `npm run preflight` on every push to main/production
+2. Blocks merges if preflight fails (legacy UI, banned patterns, config errors)
+3. Verifies production build succeeds  
+4. Ensures only clean luxury 2025 code reaches production
 
 This workflow runs automatically on GitHub - no manual setup required.
+
+**CI/CD Environment Variables Required:**
+- `GCS_BACKUP_BUCKET` (GitHub Secrets)
+- `GCS_BACKUP_PROJECT_ID` (GitHub Secrets)
 
 ---
 
