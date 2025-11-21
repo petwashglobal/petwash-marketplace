@@ -1,0 +1,245 @@
+MASTER DIRECTIVE – PETWASH™ 2025 GLOBAL ARCHITECTURE
+====================================================
+
+From now on, Replit is a DEVELOPMENT ENVIRONMENT ONLY.
+Replit must NEVER deploy to production again.
+Production = GitHub → Google Cloud (Firebase Hosting / Cloud Run ONLY).
+
+You must implement EVERYTHING in this message EXACTLY, permanently, and enforce it using code, scanners, and deployment rules.
+
+====================================================
+SECTION 1 – REPLIT RULES (DEV ONLY)
+====================================================
+
+1. Replit runs dev server ONLY:
+   run = "npm run dev"
+
+2. Replit must use ONLY ONE PORT:
+   [[ports]]
+   localPort = 5000
+   externalPort = 80
+
+3. REMOVE all other port entries forever.
+
+4. Replit Deploy must be BLOCKED permanently.
+   Create this file: scripts/block-replit-deploy.ts
+
+   -----------------------------
+   // Replit deploy blocker
+   console.error(`❌ Replit deploy is disabled.
+   Replit = development only.
+   Production = GitHub → Google Cloud.`);
+   process.exit(1);
+   -----------------------------
+
+5. In package.json force this rule:
+
+   "scripts": {
+     "dev": "next dev",
+     "build": "next build",
+     "start": "next start",
+     "preflight": "tsx scripts/petwash-preflight.ts",
+     "scan:ui": "npm run preflight",
+     "deploy:replit": "node scripts/block-replit-deploy.ts"
+   }
+
+6. Any attempt to deploy from Replit MUST FAIL immediately with an error.
+
+====================================================
+SECTION 2 – PRE-FLIGHT GUARDIAN (LUXURY 2025)
+====================================================
+
+The preflight guardian MUST run before ANY build (Replit or GitHub).
+Add:
+
+"prebuild": "npm run preflight"
+
+The guardian must enforce:
+
+1. NO legacy UI (old CSS, old screens, old templates).
+2. NO public/build fallback.
+3. ONLY 2025 Luxury UI allowed:
+   - 7-Star animations
+   - Premium typography
+   - Full platform hamburger menu
+   - All platforms:
+       Pet Wash™, Pet Sitter™, Pet Transport™, Pet Walk™, Academy™, VIP & Loyalty
+4. REQUIRED files must exist before build:
+   - client/dist
+   - luxury layout components
+   - booking flows
+   - dashboard
+   - control panel modules
+5. Block ANY missing TM trademark usage when required.
+6. Block incorrect PetWash / Pet Wash / PETWASH formats.
+7. Block ANY file under:
+   legacy/
+   old/
+   template/
+   experiments/
+
+Guardian must FAIL the build with:
+
+throw new Error("❌ Preflight failed: Legacy UI or non-luxury code detected. Only 2025 luxury code is allowed.");
+
+====================================================
+SECTION 3 – GitHub BECOMES THE SOURCE OF TRUTH
+====================================================
+
+Everything approved in Replit → PUSH TO GITHUB.
+GitHub = version control + audits + deploy.
+
+The pipeline MUST run:
+
+1. Checkout
+2. Install deps
+3. Preflight guardian
+4. Tests
+5. Build
+6. Deploy to Google Cloud or Firebase Hosting
+
+====================================================
+SECTION 4 – GitHub Actions CI/CD (CREATE THIS FILE)
+====================================================
+
+Create folder: .github/workflows/petwash-ci.yml
+
+Paste EXACTLY this:
+
+--------------------------
+name: PetWash 2025 CI
+
+on:
+  push:
+    branches: [ "main", "production" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Preflight Guardian – Luxury Scan
+        run: npm run preflight
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Firebase Hosting
+        if: github.ref == 'refs/heads/main'
+        uses: w9jds/firebase-action@v13.15.0
+        with:
+          args: deploy --only hosting
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          PROJECT_ID: nifty-quanta-475212-v3
+--------------------------
+
+====================================================
+SECTION 5 – GOOGLE CLOUD RULES
+====================================================
+
+Google Cloud is the ONLY production environment.
+
+Use:
+- Firebase Auth
+- Firestore
+- Storage
+- Cloud Run (optional)
+- Hosting
+- Monitoring
+- Logging
+- petwash-backups-93383 (backup bucket)
+
+The backup service account MUST remain:
+petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+
+====================================================
+SECTION 6 – PLATFORMS ARCHITECTURE
+====================================================
+
+All PetWash platforms must behave as stand-alone modules but still connect to the main brain:
+
+- PetWash™ (stations, sessions, LEDs, automation)
+- PetSitter™
+- PetTransport™
+- PetWalk™
+- PetWash Academy™
+- Loyalty & VIP
+- Owners Dashboard
+- Technicians Dashboard
+- Control Panel HQ
+
+Booking flows MUST be luxury 2025:
+
+1. Select platform
+2. Select service
+3. Choose location
+4. Choose time
+5. Price preview
+6. Payment (Apple/Google Pay, cards)
+7. Confirmation + loyalty
+
+====================================================
+SECTION 7 – 7 STAR LUXURY UI (MANDATORY)
+====================================================
+
+Everything must use the luxury components:
+
+- Premium card designs
+- 7-Star metallic edges
+- Smooth transitions
+- High-end animations
+- Luxury menu + platform selector
+- Elegant booking flow
+- Luxury voucher/gift cards
+- Luxury loyalty dashboard
+- Luxury pet profiles with medical & vaccine info
+
+ANY UI that is not luxury = BLOCK.
+
+====================================================
+SECTION 8 – FINAL SYSTEM BEHAVIOR
+====================================================
+
+Replit:
+- Write code
+- Test
+- Run dev
+- Preflight scan
+- Push to GitHub
+
+GitHub:
+- Runs CI
+- Ensures luxury compliance
+- Deploys to Google Cloud
+
+Google Cloud:
+- Serves public web/app
+- Hosts API
+- Handles auth
+- Stores data
+- Runs production
+
+NO OTHER DEPLOYMENT PATHS ALLOWED.
+
+====================================================
+CONFIRMATION
+====================================================
+
+Implement EVERYTHING above.
+Make these rules permanent.
+Acknowledge when complete.

@@ -2,32 +2,38 @@ name: PetWash 2025 CI
 
 on:
   push:
-    branches: [ main, production ]
+    branches: [ "main", "production" ]
   pull_request:
-    branches: [ main, production ]
+    branches: [ "main" ]
 
 jobs:
-  preflight:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Use Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run PetWash 2025 preflight guardian
-        env:
-          GCS_BACKUP_BUCKET: ${{ secrets.GCS_BACKUP_BUCKET }}
-          GCS_BACKUP_PROJECT_ID: ${{ secrets.GCS_BACKUP_PROJECT_ID }}
+      - name: Preflight Guardian – Luxury Scan
         run: npm run preflight
 
-      - name: Build app
-        if: success()
+      - name: Build
         run: npm run build
+
+      - name: Deploy to Firebase Hosting
+        if: github.ref == 'refs/heads/main'
+        uses: w9jds/firebase-action@v13.15.0
+        with:
+          args: deploy --only hosting
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          PROJECT_ID: nifty-quanta-475212-v3
