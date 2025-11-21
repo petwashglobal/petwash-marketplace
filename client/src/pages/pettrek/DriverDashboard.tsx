@@ -104,13 +104,13 @@ export default function DriverDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900/20">
-      {/* Hero Header - Uber Style */}
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white py-10">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+    <div className="min-h-screen luxury-bg-mesh">
+      {/* Hero Header - Luxury Style */}
+      <div className="luxury-bg-primary text-white py-10">
+        <div className="luxury-container">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 luxury-animate-fade-in">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-2" style={{ 
+              <h1 className="luxury-heading-xl mb-2" style={{ 
                 background: 'linear-gradient(135deg, #FFD700, #FFA500, #FFD700)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
@@ -118,137 +118,123 @@ export default function DriverDashboard() {
               }}>
                 🚗 PetTrek Driver
               </h1>
-              <p className="text-lg text-blue-100">Premium pet transport service</p>
+              <p className="text-lg text-blue-100 luxury-text-body">Premium pet transport service</p>
             </div>
             
             {/* Online Toggle */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 luxury-animate-fade-in luxury-delay-1">
               <div className="text-right mr-4">
-                <p className="text-sm text-blue-100">Status</p>
+                <p className="luxury-text-small text-blue-100">Status</p>
                 <p className="text-xl font-bold">{isOnline ? '🟢 Online' : '🔴 Offline'}</p>
               </div>
-              <Button 
-                size="lg" 
+              <button 
                 className={`${
                   isOnline 
                     ? 'bg-red-600 hover:bg-red-700' 
                     : 'bg-green-600 hover:bg-green-700'
-                } text-lg px-8 py-6 shadow-2xl`}
+                } luxury-btn-primary text-lg px-8 py-3`}
                 onClick={() => setIsOnline(!isOnline)}
                 data-testid="button-toggle-online"
               >
                 {isOnline ? 'Go Offline' : 'Go Online'}
-              </Button>
+              </button>
             </div>
           </div>
 
           {/* Stats Bar */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mt-8">
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-blue-100 mb-1">Today</p>
-                <p className="text-2xl font-bold text-white">
-                  {stats?.todayTrips || 0} trips
-                </p>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-1">
+              <p className="luxury-text-small text-blue-100 mb-1">Today</p>
+              <p className="text-2xl font-bold text-white">
+                {stats?.todayTrips || 0} trips
+              </p>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-blue-100 mb-1">Today's $</p>
-                <p className="text-2xl font-bold text-white">₪{stats?.todayEarnings.toFixed(0) || '0'}</p>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-2">
+              <p className="luxury-text-small text-blue-100 mb-1">Today's $</p>
+              <p className="text-2xl font-bold text-white">₪{stats?.todayEarnings.toFixed(0) || '0'}</p>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-blue-100 mb-1">This Week</p>
-                <p className="text-2xl font-bold text-white">
-                  {stats?.weeklyTrips || 0} trips
-                </p>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-3">
+              <p className="luxury-text-small text-blue-100 mb-1">This Week</p>
+              <p className="text-2xl font-bold text-white">
+                {stats?.weeklyTrips || 0} trips
+              </p>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-blue-100 mb-1">Weekly $</p>
-                <p className="text-2xl font-bold text-white">₪{stats?.weeklyEarnings.toFixed(0) || '0'}</p>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-4">
+              <p className="luxury-text-small text-blue-100 mb-1">Weekly $</p>
+              <p className="text-2xl font-bold text-white">₪{stats?.weeklyEarnings.toFixed(0) || '0'}</p>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-blue-100 mb-1">Rating</p>
-                <div className="flex items-center gap-1">
-                  <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                  <p className="text-2xl font-bold text-white">{stats?.rating.toFixed(1) || '5.0'}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-5">
+              <p className="luxury-text-small text-blue-100 mb-1">Rating</p>
+              <div className="flex items-center gap-1">
+                <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                <p className="text-2xl font-bold text-white">{stats?.rating.toFixed(1) || '5.0'}</p>
+              </div>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <p className="text-sm text-blue-100 mb-1">Completion</p>
-                <p className="text-2xl font-bold text-white">{stats?.completionRate || 100}%</p>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-5">
+              <p className="luxury-text-small text-blue-100 mb-1">Completion</p>
+              <p className="text-2xl font-bold text-white">{stats?.completionRate || 100}%</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* New Request Alert */}
       {pendingRequests.length > 0 && isOnline && (
-        <div className="container mx-auto px-4 -mt-6 mb-6">
-          <Card className="border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 shadow-2xl animate-pulse">
-            <CardContent className="p-6">
+        <div className="luxury-container -mt-6 mb-6 luxury-animate-slide-up">
+          <div className="luxury-glass-card luxury-shadow-xl border-2 border-yellow-400 animate-pulse">
+            <div className="p-6">
               <div className="flex items-center gap-4">
-                <div className="bg-yellow-600 p-4 rounded-full">
+                <div className="bg-gradient-to-br from-yellow-500 to-amber-600 p-4 rounded-full luxury-shadow-lg">
                   <Bell className="w-8 h-8 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-yellow-800 dark:text-yellow-400">
+                  <h3 className="luxury-heading-sm text-yellow-800 dark:text-yellow-400">
                     🔔 {pendingRequests.length} New Trip {pendingRequests.length === 1 ? 'Request' : 'Requests'}
                   </h3>
-                  <p className="text-yellow-700 dark:text-yellow-500">
+                  <p className="luxury-text-small text-yellow-700 dark:text-yellow-500">
                     Review and accept trip requests below
                   </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="luxury-container luxury-section-compact">
         {!isOnline ? (
-          <Card>
-            <CardContent className="p-12 text-center">
+          <div className="luxury-glass-card luxury-shadow-xl luxury-animate-scale-in">
+            <div className="p-12 text-center">
               <Car className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold mb-2">You're Offline</h3>
-              <p className="text-gray-500 mb-6">Go online to start receiving trip requests</p>
-              <Button 
-                size="lg"
-                className="bg-green-600 hover:bg-green-700"
+              <h3 className="luxury-heading-md mb-2">You're Offline</h3>
+              <p className="luxury-text-body text-gray-500 mb-6">Go online to start receiving trip requests</p>
+              <button 
+                className="luxury-btn-primary"
                 onClick={() => setIsOnline(true)}
                 data-testid="button-go-online"
               >
                 Go Online
-              </Button>
-            </CardContent>
-          </Card>
+              </button>
+            </div>
+          </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid bg-white dark:bg-gray-800 shadow-lg">
-              <TabsTrigger value="requests" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+            <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid luxury-glass-card luxury-shadow-lg">
+              <TabsTrigger value="requests" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white">
                 <Bell className="w-4 h-4 mr-2" />
                 Requests ({pendingRequests.length})
               </TabsTrigger>
-              <TabsTrigger value="active" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <TabsTrigger value="active" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white">
                 <Navigation className="w-4 h-4 mr-2" />
                 Active ({activeTrips.length})
               </TabsTrigger>
-              <TabsTrigger value="earnings" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <TabsTrigger value="earnings" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white">
                 <DollarSign className="w-4 h-4 mr-2" />
                 Earnings
               </TabsTrigger>
@@ -257,111 +243,108 @@ export default function DriverDashboard() {
             {/* Requests Tab */}
             <TabsContent value="requests" className="space-y-4">
               {pendingRequests.length === 0 ? (
-                <Card>
-                  <CardContent className="p-12 text-center">
+                <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
+                  <div className="p-12 text-center">
                     <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">No new requests</h3>
-                    <p className="text-gray-500">New trip requests will appear here</p>
-                  </CardContent>
-                </Card>
+                    <h3 className="luxury-heading-md mb-2">No new requests</h3>
+                    <p className="luxury-text-body text-gray-500">New trip requests will appear here</p>
+                  </div>
+                </div>
               ) : (
-                pendingRequests.map((request) => (
-                  <Card key={request.id} className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10 hover:shadow-2xl transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col md:flex-row gap-6">
-                        {/* Customer Info */}
-                        <div className="flex gap-4">
-                          <Avatar className="w-20 h-20">
-                            <AvatarImage src={request.customerPhoto || undefined} />
-                            <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-2xl">
-                              {request.customerName.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h3 className="text-xl font-bold">{request.customerName}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {request.petName} • {request.petType}
-                            </p>
-                            <div className="flex items-center gap-2 mt-2">
-                              {getVehicleIcon(request.vehicleType)}
-                              <span className="text-sm capitalize">{request.vehicleType}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Trip Details */}
-                        <div className="flex-1 space-y-3">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="flex items-center gap-2 text-sm">
-                              <Clock className="w-4 h-4 text-blue-600" />
-                              <span className="font-semibold">{format(new Date(request.scheduledTime), 'h:mm a')}</span>
-                              <span className="text-gray-500">({request.estimatedDuration} min)</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                              <Route className="w-4 h-4 text-blue-600" />
-                              <span>{request.distance.toFixed(1)} km</span>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-start gap-2">
-                              <MapPin className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
-                              <div>
-                                <p className="font-medium text-gray-700 dark:text-gray-300">Pickup</p>
-                                <p className="text-gray-600 dark:text-gray-400">{request.pickupAddress}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <MapPin className="w-4 h-4 text-red-600 mt-1 flex-shrink-0" />
-                              <div>
-                                <p className="font-medium text-gray-700 dark:text-gray-300">Dropoff</p>
-                                <p className="text-gray-600 dark:text-gray-400">{request.dropoffAddress}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {request.specialRequirements && (
-                            <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
-                              <p className="text-sm font-semibold text-amber-800 dark:text-amber-400 mb-1">
-                                ℹ️ Special Requirements
-                              </p>
-                              <p className="text-sm text-amber-700 dark:text-amber-500">
-                                {request.specialRequirements}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Action Buttons */}
-                          <div className="flex gap-2 pt-2">
-                            <Button 
-                              className="bg-green-600 hover:bg-green-700 flex-1"
-                              data-testid={`button-accept-trip-${request.id}`}
-                            >
-                              <CheckCircle2 className="w-4 h-4 mr-2" />
-                              Accept Trip
-                            </Button>
-                            <Button 
-                              variant="outline"
-                              className="flex-1"
-                              data-testid={`button-decline-trip-${request.id}`}
-                            >
-                              <XCircle className="w-4 h-4 mr-2" />
-                              Decline
-                            </Button>
-                          </div>
-
-                          {/* Earnings */}
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <div>
-                              <p className="text-sm text-gray-500">You'll earn</p>
-                              <p className="text-xs text-gray-400">Total fare: ₪{request.fare.toFixed(2)}</p>
-                            </div>
-                            <span className="text-3xl font-bold text-blue-600">₪{request.driverEarnings.toFixed(2)}</span>
+                pendingRequests.map((request, idx) => (
+                  <div key={request.id} className={`luxury-glass-minimal luxury-hover-lift border-2 border-yellow-200 p-6 luxury-animate-slide-up luxury-delay-${Math.min(idx + 1, 5)}`}>
+                    <div className="flex flex-col md:flex-row gap-6">
+                      {/* Customer Info */}
+                      <div className="flex gap-4">
+                        <Avatar className="w-20 h-20">
+                          <AvatarImage src={request.customerPhoto || undefined} />
+                          <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-2xl">
+                            {request.customerName.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="luxury-heading-sm">{request.customerName}</h3>
+                          <p className="luxury-text-small text-gray-600 dark:text-gray-400">
+                            {request.petName} • {request.petType}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            {getVehicleIcon(request.vehicleType)}
+                            <span className="luxury-text-small capitalize">{request.vehicleType}</span>
                           </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+
+                      {/* Trip Details */}
+                      <div className="flex-1 space-y-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex items-center gap-2 luxury-text-small">
+                            <Clock className="w-4 h-4 text-blue-600" />
+                            <span className="font-semibold">{format(new Date(request.scheduledTime), 'h:mm a')}</span>
+                            <span className="text-gray-500">({request.estimatedDuration} min)</span>
+                          </div>
+                          <div className="flex items-center gap-2 luxury-text-small">
+                            <Route className="w-4 h-4 text-blue-600" />
+                            <span>{request.distance.toFixed(1)} km</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-2">
+                            <MapPin className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
+                            <div>
+                              <p className="luxury-heading-sm text-xs">Pickup</p>
+                              <p className="luxury-text-small">{request.pickupAddress}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <MapPin className="w-4 h-4 text-red-600 mt-1 flex-shrink-0" />
+                            <div>
+                              <p className="luxury-heading-sm text-xs">Dropoff</p>
+                              <p className="luxury-text-small">{request.dropoffAddress}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {request.specialRequirements && (
+                          <div className="luxury-glass-panel border-l-4 border-amber-500 p-3">
+                            <p className="luxury-text-small font-semibold text-amber-800 dark:text-amber-400 mb-1">
+                              ℹ️ Special Requirements
+                            </p>
+                            <p className="luxury-text-small text-amber-700 dark:text-amber-500">
+                              {request.specialRequirements}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 pt-2">
+                          <button 
+                            className="luxury-btn-primary flex-1"
+                            data-testid={`button-accept-trip-${request.id}`}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2 inline" />
+                            Accept Trip
+                          </button>
+                          <button 
+                            className="luxury-btn-secondary flex-1"
+                            data-testid={`button-decline-trip-${request.id}`}
+                          >
+                            <XCircle className="w-4 h-4 mr-2 inline" />
+                            Decline
+                          </button>
+                        </div>
+
+                        {/* Earnings */}
+                        <div className="flex items-center justify-between pt-2 luxury-divider">
+                          <div>
+                            <p className="luxury-text-small text-gray-500">You'll earn</p>
+                            <p className="text-xs text-gray-400">Total fare: ₪{request.fare.toFixed(2)}</p>
+                          </div>
+                          <span className="luxury-heading-lg luxury-text-gradient">₪{request.driverEarnings.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ))
               )}
             </TabsContent>
@@ -369,145 +352,232 @@ export default function DriverDashboard() {
             {/* Active Trips Tab */}
             <TabsContent value="active" className="space-y-4">
               {activeTrips.length === 0 ? (
-                <Card>
-                  <CardContent className="p-12 text-center">
+                <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
+                  <div className="p-12 text-center">
                     <Navigation className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">No active trips</h3>
-                    <p className="text-gray-500">Accept a trip request to get started</p>
-                  </CardContent>
-                </Card>
+                    <h3 className="luxury-heading-md mb-2">No active trips</h3>
+                    <p className="luxury-text-body text-gray-500">Accept a trip request to get started</p>
+                  </div>
+                </div>
               ) : (
-                activeTrips.map((trip) => (
-                  <Card key={trip.id} className="border-green-200 bg-green-50 dark:bg-green-900/10">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col md:flex-row gap-6">
-                        <Avatar className="w-16 h-16">
-                          <AvatarImage src={trip.customerPhoto || undefined} />
-                          <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-xl">
-                            {trip.customerName.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="text-xl font-bold">{trip.customerName}</h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {trip.petName} • {trip.petType}
-                              </p>
-                            </div>
-                            {getStatusBadge(trip.status)}
+                activeTrips.map((trip, idx) => (
+                  <div key={trip.id} className={`luxury-glass-card luxury-shadow-lg luxury-hover-lift border-2 border-green-200 p-6 luxury-animate-slide-up luxury-delay-${Math.min(idx + 1, 5)}`}>
+                    <div className="flex flex-col md:flex-row gap-6">
+                      <Avatar className="w-16 h-16">
+                        <AvatarImage src={trip.customerPhoto || undefined} />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-xl">
+                          {trip.customerName.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="luxury-heading-sm">{trip.customerName}</h3>
+                            <p className="luxury-text-small text-gray-600 dark:text-gray-400">
+                              {trip.petName} • {trip.petType}
+                            </p>
                           </div>
-
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-start gap-2">
-                              <MapPin className="w-4 h-4 text-green-600 mt-1" />
-                              <div>
-                                <p className="font-medium">Pickup</p>
-                                <p className="text-gray-600 dark:text-gray-400">{trip.pickupAddress}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <MapPin className="w-4 h-4 text-red-600 mt-1" />
-                              <div>
-                                <p className="font-medium">Dropoff</p>
-                                <p className="text-gray-600 dark:text-gray-400">{trip.dropoffAddress}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-2 pt-2">
-                            <Button 
-                              className="bg-blue-600 hover:bg-blue-700 flex-1"
-                              data-testid={`button-navigate-trip-${trip.id}`}
-                            >
-                              <Navigation className="w-4 h-4 mr-2" />
-                              Navigate
-                            </Button>
-                            <Button 
-                              variant="outline"
-                              data-testid={`button-call-customer-${trip.id}`}
-                            >
-                              <Phone className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="outline"
-                              data-testid={`button-message-customer-${trip.id}`}
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </Button>
-                          </div>
-
-                          {trip.status === 'in_progress' && (
-                            <Button 
-                              className="w-full bg-green-600 hover:bg-green-700"
-                              size="lg"
-                              data-testid={`button-complete-trip-${trip.id}`}
-                            >
-                              <CheckCircle2 className="w-5 h-5 mr-2" />
-                              Complete Trip
-                            </Button>
-                          )}
+                          <span className="luxury-badge luxury-badge-success">
+                            {trip.status === 'accepted' && 'Accepted'}
+                            {trip.status === 'arrived' && 'Arrived'}
+                            {trip.status === 'in_progress' && 'In Transit'}
+                          </span>
                         </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-2">
+                            <MapPin className="w-4 h-4 text-green-600 mt-1" />
+                            <div>
+                              <p className="luxury-heading-sm text-xs">Pickup</p>
+                              <p className="luxury-text-small">{trip.pickupAddress}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <MapPin className="w-4 h-4 text-red-600 mt-1" />
+                            <div>
+                              <p className="luxury-heading-sm text-xs">Dropoff</p>
+                              <p className="luxury-text-small">{trip.dropoffAddress}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                          <button 
+                            className="luxury-btn-primary flex-1"
+                            data-testid={`button-navigate-trip-${trip.id}`}
+                          >
+                            <Navigation className="w-4 h-4 mr-2 inline" />
+                            Navigate
+                          </button>
+                          <button 
+                            className="luxury-btn-ghost px-4"
+                            data-testid={`button-call-customer-${trip.id}`}
+                          >
+                            <Phone className="w-4 h-4" />
+                          </button>
+                          <button 
+                            className="luxury-btn-ghost px-4"
+                            data-testid={`button-message-customer-${trip.id}`}
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {trip.status === 'in_progress' && (
+                          <button 
+                            className="w-full luxury-btn-secondary py-3"
+                            data-testid={`button-complete-trip-${trip.id}`}
+                          >
+                            <CheckCircle2 className="w-5 h-5 mr-2 inline" />
+                            Complete Trip
+                          </button>
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))
               )}
             </TabsContent>
 
             {/* Earnings Tab */}
             <TabsContent value="earnings">
-              <div className="grid gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-blue-600" />
-                      Earnings Overview
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Today</p>
-                        <p className="text-4xl font-bold text-blue-600">₪{stats?.todayEarnings.toFixed(2) || '0.00'}</p>
-                        <p className="text-sm text-gray-500 mt-1">{stats?.todayTrips || 0} trips</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">This Week</p>
-                        <p className="text-4xl font-bold text-blue-600">₪{stats?.weeklyEarnings.toFixed(2) || '0.00'}</p>
-                        <p className="text-sm text-gray-500 mt-1">{stats?.weeklyTrips || 0} trips</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">All Time</p>
-                        <p className="text-4xl font-bold text-blue-600">₪{stats?.totalEarnings.toFixed(2) || '0.00'}</p>
-                        <p className="text-sm text-gray-500 mt-1">{stats?.totalTrips || 0} trips</p>
-                      </div>
+              <div className="space-y-6">
+                <div className="luxury-glass-card luxury-shadow-xl p-6 luxury-animate-fade-in">
+                  <div className="flex items-center gap-2 mb-6">
+                    <div className="w-10 h-10 rounded-full luxury-bg-primary flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-white" />
                     </div>
-                  </CardContent>
-                </Card>
+                    <h3 className="luxury-heading-md">Earnings Overview</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="luxury-glass-minimal p-6 luxury-hover-lift">
+                      <p className="luxury-text-small text-gray-500 mb-2">Today</p>
+                      <p className="luxury-heading-lg luxury-text-gradient mb-1">₪{stats?.todayEarnings.toFixed(2) || '0.00'}</p>
+                      <p className="luxury-text-small text-gray-500">{stats?.todayTrips || 0} trips</p>
+                    </div>
+                    <div className="luxury-glass-minimal p-6 luxury-hover-lift">
+                      <p className="luxury-text-small text-gray-500 mb-2">This Week</p>
+                      <p className="luxury-heading-lg luxury-text-gradient mb-1">₪{stats?.weeklyEarnings.toFixed(2) || '0.00'}</p>
+                      <p className="luxury-text-small text-gray-500">{stats?.weeklyTrips || 0} trips</p>
+                    </div>
+                    <div className="luxury-glass-minimal p-6 luxury-hover-lift">
+                      <p className="luxury-text-small text-gray-500 mb-2">All Time</p>
+                      <p className="luxury-heading-lg luxury-text-gradient mb-1">₪{stats?.totalEarnings.toFixed(2) || '0.00'}</p>
+                      <p className="luxury-text-small text-gray-500">{stats?.totalTrips || 0} trips</p>
+                    </div>
+                  </div>
+                  <div className="mt-6">
+                    <button className="luxury-btn-primary w-full md:w-auto">
+                      Request Payout
+                    </button>
+                  </div>
+                </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Performance Metrics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <p className="text-3xl font-bold text-blue-600">{stats?.rating.toFixed(1) || '5.0'}</p>
-                        <p className="text-sm text-gray-500 mt-1">Rating ({stats?.totalReviews || 0} reviews)</p>
+                <div className="luxury-glass-card luxury-shadow-xl p-6 luxury-animate-fade-in luxury-delay-1">
+                  <h3 className="luxury-heading-md mb-6">Performance Metrics</h3>
+                  <div className="luxury-grid-4">
+                    <div className="luxury-glass-card luxury-hover-lift text-center p-6">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
+                        <Star className="w-8 h-8 text-white fill-white" />
                       </div>
-                      <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <p className="text-3xl font-bold text-green-600">{stats?.acceptanceRate || 100}%</p>
-                        <p className="text-sm text-gray-500 mt-1">Acceptance Rate</p>
-                      </div>
-                      <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                        <p className="text-3xl font-bold text-purple-600">{stats?.completionRate || 100}%</p>
-                        <p className="text-sm text-gray-500 mt-1">Completion Rate</p>
-                      </div>
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.rating.toFixed(1) || '5.0'}</p>
+                      <p className="luxury-text-small text-gray-500 mt-2">Rating</p>
+                      <p className="text-xs text-gray-400">({stats?.totalReviews || 0} reviews)</p>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="luxury-glass-card luxury-hover-lift text-center p-6">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mx-auto mb-4">
+                        <Navigation className="w-8 h-8 text-white" />
+                      </div>
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.totalTrips || 0}</p>
+                      <p className="luxury-text-small text-gray-500 mt-2">Total Rides</p>
+                    </div>
+                    <div className="luxury-glass-card luxury-hover-lift text-center p-6">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mx-auto mb-4">
+                        <Route className="w-8 h-8 text-white" />
+                      </div>
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.acceptanceRate || 100}%</p>
+                      <p className="luxury-text-small text-gray-500 mt-2">Acceptance</p>
+                    </div>
+                    <div className="luxury-glass-card luxury-hover-lift text-center p-6">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle2 className="w-8 h-8 text-white" />
+                      </div>
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.completionRate || 100}%</p>
+                      <p className="luxury-text-small text-gray-500 mt-2">On-Time %</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vehicle Status */}
+                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-2">
+                  <h3 className="luxury-heading-md mb-6">Vehicle Status</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between luxury-glass-minimal p-4">
+                      <div className="flex items-center gap-3">
+                        <Car className="w-6 h-6 text-blue-600" />
+                        <div>
+                          <p className="luxury-heading-sm text-sm">Vehicle Inspection</p>
+                          <p className="luxury-text-small text-gray-500">Last checked: Today</p>
+                        </div>
+                      </div>
+                      <span className="luxury-badge luxury-badge-success">✓ Approved</span>
+                    </div>
+                    <div className="flex items-center justify-between luxury-glass-minimal p-4">
+                      <div className="flex items-center gap-3">
+                        <Car className="w-6 h-6 text-blue-600" />
+                        <div>
+                          <p className="luxury-heading-sm text-sm">Insurance</p>
+                          <p className="luxury-text-small text-gray-500">Valid until: Dec 2025</p>
+                        </div>
+                      </div>
+                      <span className="luxury-badge luxury-badge-success">✓ Valid</span>
+                    </div>
+                    <div className="luxury-glass-panel border-l-4 border-amber-500 p-4">
+                      <p className="luxury-text-small font-semibold text-amber-800 dark:text-amber-400 mb-1">
+                        ⚠️ Maintenance Reminder
+                      </p>
+                      <p className="luxury-text-small text-amber-700 dark:text-amber-500">
+                        Your next service is due in 500 km
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rating & Reviews */}
+                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-3">
+                  <h3 className="luxury-heading-md mb-6">Recent Reviews</h3>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="text-center">
+                      <p className="luxury-heading-lg luxury-text-gradient">{stats?.rating.toFixed(1) || '5.0'}</p>
+                      <div className="flex gap-1 mt-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star key={star} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                        ))}
+                      </div>
+                      <p className="luxury-text-small text-gray-500 mt-2">{stats?.totalReviews || 0} reviews</p>
+                    </div>
+                    <div className="luxury-divider-vertical h-16" />
+                    <div className="flex-1">
+                      <p className="luxury-text-small text-gray-600 mb-2">Customers love your service! 🎉</p>
+                      <p className="luxury-text-small text-gray-500">Keep up the excellent work to maintain your high rating.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="luxury-glass-minimal p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star key={star} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          ))}
+                        </div>
+                        <span className="luxury-text-small text-gray-500">• 2 days ago</span>
+                      </div>
+                      <p className="luxury-text-small">"Excellent service! Very careful with my pet. Highly recommend!"</p>
+                      <p className="text-xs text-gray-400 mt-1">- Sarah M.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </TabsContent>
           </Tabs>

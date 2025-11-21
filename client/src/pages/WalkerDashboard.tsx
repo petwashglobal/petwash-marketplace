@@ -367,19 +367,19 @@ export default function WalkerDashboard() {
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+      <div className="luxury-glass-panel sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center luxury-shadow-md">
               <Navigation className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h1 className="luxury-heading-sm luxury-text-gradient">
                 {isHebrew ? 'Walk My Pet™ - מטיילים' : 'Walk My Pet™ - Walker'}
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="luxury-text-small">
                 {isHebrew ? 'שלום' : 'Welcome'}, {user?.displayName || user?.email?.split('@')[0]}
               </p>
             </div>
@@ -387,7 +387,7 @@ export default function WalkerDashboard() {
           
           <div className="flex items-center gap-2">
             <Link href="/">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="luxury-btn-secondary">
                 {isHebrew ? 'עמוד הבית' : 'Home'}
               </Button>
             </Link>
@@ -401,65 +401,73 @@ export default function WalkerDashboard() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Stats Cards */}
         {earnings && (
-          <div className="grid md:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardContent className="pt-6">
+          <div className="luxury-grid-4 mb-8">
+            <div className="luxury-glass-card luxury-shadow-xl luxury-hover-lift luxury-animate-fade-in luxury-delay-1">
+              <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    <p className="luxury-text-small mb-1">
                       {isHebrew ? 'היום' : 'Today'}
                     </p>
-                    <p className="text-2xl font-bold">{formatCurrency(earnings.today)}</p>
+                    <p className="luxury-heading-lg luxury-text-gradient">{formatCurrency(earnings.today)}</p>
                   </div>
-                  <DollarSign className="w-8 h-8 text-green-600" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center luxury-shadow-md">
+                    <DollarSign className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardContent className="pt-6">
+            <div className="luxury-glass-card luxury-shadow-xl luxury-hover-lift luxury-animate-fade-in luxury-delay-2">
+              <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    <p className="luxury-text-small mb-1">
                       {isHebrew ? 'השבוע' : 'This Week'}
                     </p>
-                    <p className="text-2xl font-bold">{formatCurrency(earnings.thisWeek)}</p>
+                    <p className="luxury-heading-lg luxury-text-gradient">{formatCurrency(earnings.thisWeek)}</p>
                   </div>
-                  <TrendingUp className="w-8 h-8 text-blue-600" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center luxury-shadow-md">
+                    <TrendingUp className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardContent className="pt-6">
+            <div className="luxury-glass-card luxury-shadow-xl luxury-hover-lift luxury-animate-fade-in luxury-delay-3">
+              <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    <p className="luxury-text-small mb-1">
                       {isHebrew ? 'טיולים שהושלמו' : 'Completed Walks'}
                     </p>
-                    <p className="text-2xl font-bold">{earnings.completedWalks}</p>
+                    <p className="luxury-heading-lg luxury-text-gradient">{earnings.completedWalks}</p>
                   </div>
-                  <CheckCircle className="w-8 h-8 text-purple-600" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center luxury-shadow-md">
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardContent className="pt-6">
+            <div className="luxury-glass-card luxury-shadow-xl luxury-hover-lift luxury-animate-fade-in luxury-delay-4">
+              <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    <p className="luxury-text-small mb-1">
                       {isHebrew ? 'דירוג' : 'Rating'}
                     </p>
                     <div className="flex items-center gap-2">
-                      <p className="text-2xl font-bold">{earnings.rating.toFixed(1)}</p>
+                      <p className="luxury-heading-lg luxury-text-gradient">{earnings.rating.toFixed(1)}</p>
                       <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
                     </div>
                   </div>
-                  <Award className="w-8 h-8 text-yellow-600" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center luxury-shadow-md">
+                    <Award className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
 
@@ -508,52 +516,51 @@ export default function WalkerDashboard() {
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
             ) : pendingRequests.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
+              <div className="luxury-glass-card luxury-shadow-lg">
+                <div className="py-12 text-center">
                   <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="luxury-text-body">
                     {isHebrew ? 'אין בקשות חדשות כרגע' : 'No new walk requests at the moment'}
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ) : (
-              pendingRequests.map((request) => (
-                <Card key={request.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
+              pendingRequests.map((request, index) => (
+                <div key={request.id} className={`luxury-glass-minimal luxury-hover-lift luxury-shadow-lg luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}>
+                  <div className="p-6 space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         {request.petPhotoUrl ? (
-                          <img src={request.petPhotoUrl} alt={request.petName} className="w-16 h-16 rounded-full object-cover" />
+                          <img src={request.petPhotoUrl} alt={request.petName} className="w-16 h-16 rounded-full object-cover luxury-shadow-md" />
                         ) : (
-                          <div className="w-16 h-16 rounded-full bg-purple-200 dark:bg-purple-700 flex items-center justify-center">
-                            <Dog className="w-8 h-8 text-purple-700 dark:text-purple-300" />
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center luxury-shadow-md">
+                            <Dog className="w-8 h-8 text-white" />
                           </div>
                         )}
                         <div>
-                          <CardTitle>{request.petName}</CardTitle>
-                          <CardDescription>{request.petBreed} • {request.petSize}</CardDescription>
+                          <h3 className="luxury-heading-sm">{request.petName}</h3>
+                          <p className="luxury-text-small">{request.petBreed} • {request.petSize}</p>
                         </div>
                       </div>
-                      <Badge className="text-lg font-bold bg-green-600">{formatCurrency(request.priceOffered)}</Badge>
+                      <span className="luxury-badge luxury-badge-gold text-lg">{formatCurrency(request.priceOffered)}</span>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                    
                     <div className="grid md:grid-cols-2 gap-4">
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-gray-600" />
-                        <span>{request.ownerName}</span>
+                        <span className="luxury-text-small">{request.ownerName}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-gray-600" />
-                        <span>{formatDate(request.scheduledStart)} • {request.duration}min</span>
+                        <span className="luxury-text-small">{formatDate(request.scheduledStart)} • {request.duration}min</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-gray-600" />
-                        <span className="truncate">{request.pickupAddress}</span>
+                        <span className="luxury-text-small truncate">{request.pickupAddress}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4 text-gray-600" />
-                        <span>{request.ownerPhone}</span>
+                        <span className="luxury-text-small">{request.ownerPhone}</span>
                       </div>
                     </div>
 
@@ -562,7 +569,7 @@ export default function WalkerDashboard() {
                         <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
                           {isHebrew ? '📝 הוראות מיוחדות:' : '📝 Special Instructions:'}
                         </p>
-                        <p className="text-sm text-yellow-800 dark:text-yellow-300">{request.specialInstructions}</p>
+                        <p className="luxury-text-small text-yellow-800 dark:text-yellow-300">{request.specialInstructions}</p>
                       </div>
                     )}
 
@@ -571,35 +578,34 @@ export default function WalkerDashboard() {
                         <p className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">
                           {isHebrew ? '🐾 הערות על חיית המחמד:' : '🐾 Pet Notes:'}
                         </p>
-                        <p className="text-sm text-blue-800 dark:text-blue-300">{request.petNotes}</p>
+                        <p className="luxury-text-small text-blue-800 dark:text-blue-300">{request.petNotes}</p>
                       </div>
                     )}
 
                     <div className="flex gap-2">
-                      <Button 
-                        className="flex-1 bg-green-600 hover:bg-green-700"
+                      <button 
+                        className="flex-1 luxury-btn-primary"
                         onClick={() => acceptMutation.mutate(request.id)}
                         disabled={acceptMutation.isPending}
                       >
                         {acceptMutation.isPending ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
                         ) : (
-                          <CheckCircle className="w-4 h-4 mr-2" />
+                          <CheckCircle className="w-4 h-4 mr-2 inline" />
                         )}
                         {isHebrew ? 'קבל טיול' : 'Accept Walk'}
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        className="flex-1"
+                      </button>
+                      <button 
+                        className="flex-1 luxury-btn-secondary"
                         onClick={() => rejectMutation.mutate(request.id)}
                         disabled={rejectMutation.isPending}
                       >
-                        <XCircle className="w-4 h-4 mr-2" />
+                        <XCircle className="w-4 h-4 mr-2 inline" />
                         {isHebrew ? 'דחה' : 'Decline'}
-                      </Button>
+                      </button>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))
             )}
           </TabsContent>
@@ -611,82 +617,81 @@ export default function WalkerDashboard() {
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
             ) : activeWalks.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
+              <div className="luxury-glass-card luxury-shadow-lg">
+                <div className="py-12 text-center">
                   <Navigation className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="luxury-text-body">
                     {isHebrew ? 'אין טיולים פעילים כרגע' : 'No active walks at the moment'}
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ) : (
-              activeWalks.map((walk) => (
-                <Card key={walk.id} className="border-2 border-green-500">
-                  <CardHeader>
+              activeWalks.map((walk, index) => (
+                <div key={walk.id} className={`luxury-glass-card luxury-hover-glow luxury-shadow-lg luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}>
+                  <div className="p-6 space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         {walk.petPhotoUrl ? (
-                          <img src={walk.petPhotoUrl} alt={walk.petName} className="w-16 h-16 rounded-full object-cover" />
+                          <img src={walk.petPhotoUrl} alt={walk.petName} className="w-16 h-16 rounded-full object-cover luxury-shadow-md" />
                         ) : (
-                          <div className="w-16 h-16 rounded-full bg-purple-200 dark:bg-purple-700 flex items-center justify-center">
-                            <Dog className="w-8 h-8 text-purple-700 dark:text-purple-300" />
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center luxury-shadow-md">
+                            <Dog className="w-8 h-8 text-white" />
                           </div>
                         )}
                         <div>
-                          <CardTitle className="flex items-center gap-2">
+                          <h3 className="luxury-heading-sm flex items-center gap-2">
                             {walk.petName}
                             {walk.status === 'accepted' && (
-                              <Badge variant="outline">{isHebrew ? 'ממתין להתחלה' : 'Ready to Start'}</Badge>
+                              <span className="luxury-badge">{isHebrew ? 'ממתין להתחלה' : 'Ready to Start'}</span>
                             )}
                             {walk.status === 'active' && (
-                              <Badge className="bg-green-600">{isHebrew ? '🚶 בטיול' : '🚶 In Progress'}</Badge>
+                              <span className="luxury-badge-success">{isHebrew ? '🚶 בטיול' : '🚶 In Progress'}</span>
                             )}
-                          </CardTitle>
-                          <CardDescription>{walk.petBreed}</CardDescription>
+                          </h3>
+                          <p className="luxury-text-small">{walk.petBreed}</p>
                         </div>
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-2 text-sm">
+                    
+                    <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-gray-600" />
-                      <span>{formatDate(walk.scheduledStart)} • {walk.duration}min</span>
+                      <span className="luxury-text-small">{formatDate(walk.scheduledStart)} • {walk.duration}min</span>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-2">
                       {walk.status === 'accepted' && (
-                        <Button 
-                          className="w-full bg-green-600 hover:bg-green-700"
+                        <button 
+                          className="w-full luxury-btn-primary"
                           onClick={() => startWalkMutation.mutate(walk.id)}
                           disabled={startWalkMutation.isPending}
                         >
                           {startWalkMutation.isPending ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
                           ) : (
-                            <Navigation className="w-4 h-4 mr-2" />
+                            <Navigation className="w-4 h-4 mr-2 inline" />
                           )}
                           {isHebrew ? 'התחל טיול' : 'Start Walk'}
-                        </Button>
+                        </button>
                       )}
                       
                       {walk.status === 'active' && (
                         <Link href={`/walk-tracking/${walk.id}`}>
-                          <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                            <MapPin className="w-4 h-4 mr-2" />
+                          <button className="w-full luxury-btn-primary">
+                            <MapPin className="w-4 h-4 mr-2 inline" />
                             {isHebrew ? 'מעקב GPS' : 'GPS Tracking'}
-                          </Button>
+                          </button>
                         </Link>
                       )}
                       
                       <a href={`tel:${walk.ownerPhone}`}>
-                        <Button variant="outline" className="w-full">
-                          <Phone className="w-4 h-4 mr-2" />
+                        <button className="w-full luxury-btn-secondary">
+                          <Phone className="w-4 h-4 mr-2 inline" />
                           {isHebrew ? 'התקשר' : 'Call Owner'}
-                        </Button>
+                        </button>
                       </a>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))
             )}
           </TabsContent>
@@ -698,39 +703,39 @@ export default function WalkerDashboard() {
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
             ) : completedWalks.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
+              <div className="luxury-glass-card luxury-shadow-lg">
+                <div className="py-12 text-center">
                   <CheckCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="luxury-text-body">
                     {isHebrew ? 'עדיין לא השלמת טיולים' : 'No completed walks yet'}
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ) : (
-              completedWalks.map((walk) => (
-                <Card key={walk.id}>
-                  <CardContent className="pt-6">
+              completedWalks.map((walk, index) => (
+                <div key={walk.id} className={`luxury-glass-minimal luxury-hover-lift luxury-shadow-md luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}>
+                  <div className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {walk.petPhotoUrl ? (
-                          <img src={walk.petPhotoUrl} alt={walk.petName} className="w-12 h-12 rounded-full object-cover" />
+                          <img src={walk.petPhotoUrl} alt={walk.petName} className="w-12 h-12 rounded-full object-cover luxury-shadow-sm" />
                         ) : (
-                          <div className="w-12 h-12 rounded-full bg-purple-200 dark:bg-purple-700 flex items-center justify-center">
-                            <Dog className="w-6 h-6 text-purple-700 dark:text-purple-300" />
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center luxury-shadow-sm">
+                            <Dog className="w-6 h-6 text-white" />
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold">{walk.petName}</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(walk.scheduledStart)}</p>
+                          <p className="luxury-heading-sm">{walk.petName}</p>
+                          <p className="luxury-text-small">{formatDate(walk.scheduledStart)}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-green-600">{formatCurrency(walk.priceOffered)}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{walk.duration}min</p>
+                        <p className="luxury-heading-sm luxury-text-gradient">{formatCurrency(walk.priceOffered)}</p>
+                        <p className="luxury-text-small">{walk.duration}min</p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))
             )}
           </TabsContent>
@@ -743,155 +748,142 @@ export default function WalkerDashboard() {
               </div>
             ) : earnings ? (
               <div className="space-y-6">
-                <Card className="border-2 border-green-500">
-                  <CardHeader className="bg-green-50 dark:bg-green-900/20">
-                    <CardTitle className="text-3xl text-green-700 dark:text-green-400">
+                <div className="luxury-glass-card luxury-shadow-xl luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)'}}>
+                  <div className="p-8 text-center">
+                    <h2 className="luxury-heading-xl luxury-text-gradient mb-2">
                       {formatCurrency(earnings.totalEarnings)}
-                    </CardTitle>
-                    <CardDescription className="text-lg">
+                    </h2>
+                    <p className="luxury-text-body">
                       {isHebrew ? 'סך כל הרווחים' : 'Total Lifetime Earnings'}
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
+                    </p>
+                    <button className="luxury-btn-primary mt-4">
+                      <DollarSign className="w-4 h-4 mr-2 inline" />
+                      {isHebrew ? 'משוך כסף' : 'Withdraw'}
+                    </button>
+                  </div>
+                </div>
 
-                <div className="grid md:grid-cols-3 gap-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                <div className="luxury-grid-3">
+                  <div className="luxury-glass-minimal luxury-hover-lift luxury-shadow-md luxury-animate-fade-in luxury-delay-2">
+                    <div className="p-6">
+                      <p className="luxury-text-small mb-1">
                         {isHebrew ? 'החודש' : 'This Month'}
                       </p>
-                      <p className="text-2xl font-bold">{formatCurrency(earnings.thisMonth)}</p>
-                    </CardContent>
-                  </Card>
+                      <p className="luxury-heading-lg luxury-text-gradient">{formatCurrency(earnings.thisMonth)}</p>
+                    </div>
+                  </div>
 
-                  <Card>
-                    <CardContent className="pt-6">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  <div className="luxury-glass-minimal luxury-hover-lift luxury-shadow-md luxury-animate-fade-in luxury-delay-3">
+                    <div className="p-6">
+                      <p className="luxury-text-small mb-1">
                         {isHebrew ? 'השבוע' : 'This Week'}
                       </p>
-                      <p className="text-2xl font-bold">{formatCurrency(earnings.thisWeek)}</p>
-                    </CardContent>
-                  </Card>
+                      <p className="luxury-heading-lg luxury-text-gradient">{formatCurrency(earnings.thisWeek)}</p>
+                    </div>
+                  </div>
 
-                  <Card>
-                    <CardContent className="pt-6">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  <div className="luxury-glass-minimal luxury-hover-lift luxury-shadow-md luxury-animate-fade-in luxury-delay-4">
+                    <div className="p-6">
+                      <p className="luxury-text-small mb-1">
                         {isHebrew ? 'היום' : 'Today'}
                       </p>
-                      <p className="text-2xl font-bold">{formatCurrency(earnings.today)}</p>
-                    </CardContent>
-                  </Card>
+                      <p className="luxury-heading-lg luxury-text-gradient">{formatCurrency(earnings.today)}</p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Earnings Breakdown */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{isHebrew ? 'פירוט רווחים' : 'Earnings Breakdown'}</CardTitle>
-                    <CardDescription>{isHebrew ? 'ניתוח מפורט של ההכנסות שלך' : 'Detailed analysis of your income'}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-green-900 dark:text-green-200">{isHebrew ? '💰 שכר בסיס' : '💰 Base Pay'}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? 'תשלום עבור טיולים' : 'Payment for walks'}</p>
+                <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-5">
+                  <div className="p-6">
+                    <h3 className="luxury-heading-md mb-2">{isHebrew ? 'פירוט רווחים' : 'Earnings Breakdown'}</h3>
+                    <p className="luxury-text-small mb-6">{isHebrew ? 'ניתוח מפורט של ההכנסות שלך' : 'Detailed analysis of your income'}</p>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <div>
+                          <p className="font-semibold text-green-900 dark:text-green-200">{isHebrew ? '💰 שכר בסיס' : '💰 Base Pay'}</p>
+                          <p className="luxury-text-small">{isHebrew ? 'תשלום עבור טיולים' : 'Payment for walks'}</p>
+                        </div>
+                        <span className="luxury-heading-md text-green-700 dark:text-green-400">{formatCurrency(earnings.basePay)}</span>
                       </div>
-                      <span className="text-2xl font-bold text-green-700 dark:text-green-400">{formatCurrency(earnings.basePay)}</span>
-                    </div>
 
-                    <div className="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-yellow-900 dark:text-yellow-200">{isHebrew ? '🎁 טיפים' : '🎁 Tips'}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? 'טיפים מלקוחות' : 'Tips from customers'}</p>
+                      <div className="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                        <div>
+                          <p className="font-semibold text-yellow-900 dark:text-yellow-200">{isHebrew ? '🎁 טיפים' : '🎁 Tips'}</p>
+                          <p className="luxury-text-small">{isHebrew ? 'טיפים מלקוחות' : 'Tips from customers'}</p>
+                        </div>
+                        <span className="luxury-heading-md text-yellow-700 dark:text-yellow-400">{formatCurrency(earnings.tips)}</span>
                       </div>
-                      <span className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{formatCurrency(earnings.tips)}</span>
-                    </div>
 
-                    <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-blue-900 dark:text-blue-200">{isHebrew ? '⭐ בונוסים' : '⭐ Bonuses'}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? 'בונוסי ביצועים' : 'Performance bonuses'}</p>
+                      <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div>
+                          <p className="font-semibold text-blue-900 dark:text-blue-200">{isHebrew ? '⭐ בונוסים' : '⭐ Bonuses'}</p>
+                          <p className="luxury-text-small">{isHebrew ? 'בונוסי ביצועים' : 'Performance bonuses'}</p>
+                        </div>
+                        <span className="luxury-heading-md text-blue-700 dark:text-blue-400">{formatCurrency(earnings.bonuses)}</span>
                       </div>
-                      <span className="text-2xl font-bold text-blue-700 dark:text-blue-400">{formatCurrency(earnings.bonuses)}</span>
-                    </div>
 
-                    <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-red-900 dark:text-red-200">{isHebrew ? '📉 עמלת פלטפורמה' : '📉 Platform Fees'}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? '24% עמלה' : '24% commission'}</p>
+                      <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                        <div>
+                          <p className="font-semibold text-red-900 dark:text-red-200">{isHebrew ? '📉 עמלת פלטפורמה' : '📉 Platform Fees'}</p>
+                          <p className="luxury-text-small">{isHebrew ? '24% עמלה' : '24% commission'}</p>
+                        </div>
+                        <span className="luxury-heading-md text-red-700 dark:text-red-400">{formatCurrency(earnings.platformFees)}</span>
                       </div>
-                      <span className="text-2xl font-bold text-red-700 dark:text-red-400">{formatCurrency(earnings.platformFees)}</span>
-                    </div>
 
-                    <div className="border-t-2 border-gray-300 dark:border-gray-600 pt-3 mt-3">
-                      <div className="flex items-center justify-between p-4 bg-green-100 dark:bg-green-800/30 rounded-lg">
-                        <p className="text-lg font-bold">{isHebrew ? 'סה"כ נטו' : 'Net Total'}</p>
-                        <span className="text-3xl font-bold text-green-700 dark:text-green-400">
+                      <div className="luxury-divider"></div>
+                      
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-100 to-green-50 dark:from-green-800/30 dark:to-green-900/20 rounded-lg">
+                        <p className="luxury-heading-sm">{isHebrew ? 'סה"כ נטו' : 'Net Total'}</p>
+                        <span className="luxury-heading-lg luxury-text-gradient">
                           {formatCurrency(earnings.basePay + earnings.tips + earnings.bonuses + earnings.platformFees)}
                         </span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
                 {/* Performance Metrics */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{isHebrew ? 'מדדי ביצועים' : 'Performance Metrics'}</CardTitle>
-                    <CardDescription>{isHebrew ? 'נתונים מפתח על הביצועים שלך' : 'Key data about your performance'}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                      <div>
-                        <p className="font-semibold">{isHebrew ? 'טיולים שהושלמו' : 'Completed Walks'}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? 'סך כל הטיולים' : 'Total walks completed'}</p>
+                <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
+                  <div className="p-6">
+                    <h3 className="luxury-heading-md mb-2">{isHebrew ? 'מדדי ביצועים' : 'Performance Metrics'}</h3>
+                    <p className="luxury-text-small mb-6">{isHebrew ? 'נתונים מפתח על הביצועים שלך' : 'Key data about your performance'}</p>
+                    
+                    <div className="luxury-grid-4">
+                      <div className="luxury-glass-minimal luxury-hover-lift p-4 text-center">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center luxury-shadow-md mx-auto mb-3">
+                          <CheckCircle className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="luxury-heading-lg luxury-text-gradient mb-1">{earnings.completedWalks}</p>
+                        <p className="luxury-text-small">{isHebrew ? 'טיולים' : 'Walks'}</p>
                       </div>
-                      <span className="text-2xl font-bold">{earnings.completedWalks}</span>
-                    </div>
 
-                    <div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                      <div>
-                        <p className="font-semibold">{isHebrew ? 'דירוג ממוצע' : 'Average Rating'}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? 'מבוסס על ביקורות' : 'Based on reviews'}</p>
+                      <div className="luxury-glass-minimal luxury-hover-lift p-4 text-center">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center luxury-shadow-md mx-auto mb-3">
+                          <Star className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="luxury-heading-lg luxury-text-gradient mb-1">{earnings.rating.toFixed(2)}</p>
+                        <p className="luxury-text-small">{isHebrew ? 'דירוג' : 'Rating'}</p>
                       </div>
-                      <span className="text-2xl font-bold flex items-center gap-2">
-                        {earnings.rating.toFixed(2)}
-                        <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-                      </span>
-                    </div>
 
-                    <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <div>
-                        <p className="font-semibold">{isHebrew ? 'שיעור קבלה' : 'Acceptance Rate'}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? 'בקשות שהתקבלו' : 'Requests accepted'}</p>
+                      <div className="luxury-glass-minimal luxury-hover-lift p-4 text-center">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center luxury-shadow-md mx-auto mb-3">
+                          <TrendingUp className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="luxury-heading-lg luxury-text-gradient mb-1">{earnings.acceptanceRate}%</p>
+                        <p className="luxury-text-small">{isHebrew ? 'קבלה' : 'Acceptance'}</p>
                       </div>
-                      <span className="text-2xl font-bold">{earnings.acceptanceRate}%</span>
-                    </div>
 
-                    <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <div>
-                        <p className="font-semibold">{isHebrew ? 'שיעור השלמה' : 'Completion Rate'}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? 'טיולים שהושלמו' : 'Walks completed successfully'}</p>
+                      <div className="luxury-glass-minimal luxury-hover-lift p-4 text-center">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center luxury-shadow-md mx-auto mb-3">
+                          <DollarSign className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="luxury-heading-lg luxury-text-gradient mb-1">{earnings.completionRate}%</p>
+                        <p className="luxury-text-small">{isHebrew ? 'השלמה' : 'Completion'}</p>
                       </div>
-                      <span className="text-2xl font-bold">{earnings.completionRate}%</span>
                     </div>
-
-                    <div className="flex items-center justify-between p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-                      <div>
-                        <p className="font-semibold">{isHebrew ? 'זמן תגובה ממוצע' : 'Average Response Time'}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? 'מהירות תגובה לבקשות' : 'Speed of responding to requests'}</p>
-                      </div>
-                      <span className="text-2xl font-bold">{earnings.avgResponseTime} {isHebrew ? 'דק׳' : 'min'}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                      <div>
-                        <p className="font-semibold">{isHebrew ? 'סך ביקורות' : 'Total Reviews'}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{isHebrew ? 'מלקוחות מרוצים' : 'From satisfied customers'}</p>
-                      </div>
-                      <span className="text-2xl font-bold">{earnings.totalReviews}</span>
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
             ) : null}
           </TabsContent>
@@ -903,47 +895,45 @@ export default function WalkerDashboard() {
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
             ) : reviews.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
+              <div className="luxury-glass-card luxury-shadow-lg">
+                <div className="py-12 text-center">
                   <Star className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="luxury-text-body">
                     {isHebrew ? 'עדיין אין לך ביקורות' : 'No reviews yet'}
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ) : (
               <>
-                <Card className="bg-gradient-to-r from-yellow-50 to-green-50 dark:from-yellow-900/20 dark:to-green-900/20">
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center gap-2 mb-2">
-                        <span className="text-5xl font-bold">{earnings?.rating.toFixed(2)}</span>
-                        <Star className="w-12 h-12 text-yellow-500 fill-yellow-500" />
-                      </div>
-                      <p className="text-lg text-gray-600 dark:text-gray-300">
-                        {isHebrew ? 'על בסיס' : 'Based on'} {reviews.length} {isHebrew ? 'ביקורות' : 'reviews'}
-                      </p>
+                <div className="luxury-glass-card luxury-shadow-xl luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)'}}>
+                  <div className="p-8 text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <span className="luxury-heading-xl luxury-text-gradient">{earnings?.rating.toFixed(2)}</span>
+                      <Star className="w-12 h-12 text-yellow-500 fill-yellow-500" />
                     </div>
-                  </CardContent>
-                </Card>
+                    <p className="luxury-text-body">
+                      {isHebrew ? 'על בסיס' : 'Based on'} {reviews.length} {isHebrew ? 'ביקורות' : 'reviews'}
+                    </p>
+                  </div>
+                </div>
 
-                {reviews.map((review) => (
-                  <Card key={review.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
+                {reviews.map((review, index) => (
+                  <div key={review.id} className={`luxury-glass-minimal luxury-hover-lift luxury-shadow-lg luxury-animate-fade-in luxury-delay-${Math.min(index + 2, 5)}`}>
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
                           {review.ownerAvatar ? (
-                            <img src={review.ownerAvatar} alt={review.ownerName} className="w-12 h-12 rounded-full object-cover" />
+                            <img src={review.ownerAvatar} alt={review.ownerName} className="w-12 h-12 rounded-full object-cover luxury-shadow-md" />
                           ) : (
-                            <div className="w-12 h-12 rounded-full bg-blue-200 dark:bg-blue-700 flex items-center justify-center">
-                              <User className="w-6 h-6 text-blue-700 dark:text-blue-300" />
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center luxury-shadow-md">
+                              <User className="w-6 h-6 text-white" />
                             </div>
                           )}
                           <div>
-                            <CardTitle className="text-lg">{review.ownerName}</CardTitle>
-                            <CardDescription className="flex items-center gap-1">
+                            <h3 className="luxury-heading-sm">{review.ownerName}</h3>
+                            <p className="luxury-text-small">
                               {isHebrew ? 'עבור' : 'for'} {review.petName} • {formatDate(review.date)}
-                            </CardDescription>
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -959,16 +949,13 @@ export default function WalkerDashboard() {
                           ))}
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{review.comment}</p>
-                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {isHebrew ? 'משך טיול:' : 'Walk duration:'} {review.walkDuration} {isHebrew ? 'דקות' : 'minutes'}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      <p className="luxury-text-body leading-relaxed mb-3">{review.comment}</p>
+                      <div className="luxury-divider my-3"></div>
+                      <p className="luxury-text-small">
+                        {isHebrew ? 'משך טיול:' : 'Walk duration:'} {review.walkDuration} {isHebrew ? 'דקות' : 'minutes'}
+                      </p>
+                    </div>
+                  </div>
                 ))}
               </>
             )}
@@ -982,49 +969,48 @@ export default function WalkerDashboard() {
               </div>
             ) : (
               <>
-                <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <h3 className="text-2xl font-bold mb-2">
-                        {achievements.filter(a => a.unlocked).length} / {achievements.length}
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {isHebrew ? 'הישגים שהושגו' : 'Achievements Unlocked'}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="luxury-glass-card luxury-shadow-xl luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)'}}>
+                  <div className="p-8 text-center">
+                    <h3 className="luxury-heading-lg luxury-text-gradient mb-2">
+                      {achievements.filter(a => a.unlocked).length} / {achievements.length}
+                    </h3>
+                    <p className="luxury-text-body">
+                      {isHebrew ? 'הישגים שהושגו' : 'Achievements Unlocked'}
+                    </p>
+                  </div>
+                </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  {achievements.map((achievement) => (
-                    <Card 
+                <div className="luxury-grid-2">
+                  {achievements.map((achievement, index) => (
+                    <div 
                       key={achievement.id} 
-                      className={`${
+                      className={`luxury-glass-card luxury-hover-lift luxury-shadow-lg luxury-animate-fade-in luxury-delay-${Math.min(index + 2, 5)} ${
                         achievement.unlocked 
-                          ? 'border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' 
+                          ? 'border-2 border-yellow-500' 
                           : 'opacity-75'
                       }`}
+                      style={achievement.unlocked ? {background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, rgba(245, 158, 11, 0.05) 100%)'} : {}}
                     >
-                      <CardContent className="pt-6">
+                      <div className="p-6">
                         <div className="flex items-start gap-4">
                           <div className="text-5xl">{achievement.icon}</div>
                           <div className="flex-1">
-                            <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
+                            <h3 className="luxury-heading-sm mb-1 flex items-center gap-2">
                               {achievement.title}
                               {achievement.unlocked && (
                                 <CheckCircle className="w-5 h-5 text-green-600" />
                               )}
                             </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            <p className="luxury-text-small mb-3">
                               {achievement.description}
                             </p>
                             {achievement.unlocked ? (
-                              <Badge className="bg-green-600">
+                              <span className="luxury-badge-success">
                                 {isHebrew ? 'הושג' : 'Unlocked'} • {formatDate(achievement.unlockedDate!)}
-                              </Badge>
+                              </span>
                             ) : achievement.progress !== undefined && achievement.maxProgress !== undefined ? (
                               <div>
-                                <div className="flex justify-between text-sm mb-1">
+                                <div className="flex justify-between luxury-text-small mb-1">
                                   <span>{isHebrew ? 'התקדמות' : 'Progress'}</span>
                                   <span className="font-semibold">
                                     {achievement.progress} / {achievement.maxProgress}
@@ -1032,18 +1018,18 @@ export default function WalkerDashboard() {
                                 </div>
                                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
                                   <div
-                                    className="bg-blue-600 h-2.5 rounded-full transition-all"
+                                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all"
                                     style={{ width: `${(achievement.progress / achievement.maxProgress) * 100}%` }}
                                   />
                                 </div>
                               </div>
                             ) : (
-                              <Badge variant="outline">{isHebrew ? 'נעול' : 'Locked'}</Badge>
+                              <span className="luxury-badge">{isHebrew ? 'נעול' : 'Locked'}</span>
                             )}
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </>
