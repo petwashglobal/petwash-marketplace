@@ -1,0 +1,134 @@
+After you complete the TOTAL SYSTEM PURGE, perform these mandatory verification and deployment steps. Do NOT skip anything:
+
+12. RUN FULL HARD VERIFICATION (MANDATORY)
+
+Run the following commands exactly:
+
+   npm run preflight
+
+This MUST return:
+   • 0 hard errors
+   • no legacy matches
+   • no parallel UI systems
+
+If ANY hard error appears:
+   • stop everything
+   • fix it immediately
+   • re-run again until perfectly clean
+
+13. RUN ULTRA CLEAN BUILD (MANDATORY)
+
+Only after preflight is 100 percent clean:
+
+   npm run build
+
+Build must:
+   • compile only the luxury 7 star UI
+   • not include ANY old CSS or layout
+   • produce clean dist/ output
+
+If the build encounters:
+   • old components
+   • hidden layouts
+   • duplicated headers/footers
+   → FAIL THE BUILD and fix immediately.
+
+14. FINAL MANUAL CROSS-CHECK BEFORE DEPLOYMENT
+
+You must manually inspect the built production files:
+
+   • dist/index.html must reference ONLY luxury components
+   • There must be no references to:
+        EnterpriseLayout
+        BrandHeader
+        OldLayout
+        LegacyLayout
+        global.css
+        index.css
+        any old icons or images
+   • All images must be the official PetWash luxury images only
+   • No second header
+   • No wrong icons
+   • No duplicated UI elements
+   • No hidden parallel worlds
+
+15. RUN PREFLIGHT + BUILD AGAIN (DOUBLE VERIFICATION)
+
+Repeat:
+
+   npm run preflight && npm run build
+
+This double run ensures no ghost files or cached artifacts remain.
+
+16. LOCK THE FINAL STATE BEFORE DEPLOYMENT
+
+You must create the final proof file:
+
+   PETWASH_LUXURY_FINAL_PROOF.md
+
+Contents must list:
+   • All deleted legacy systems
+   • All deleted duplicate layouts
+   • All removed CSS files
+   • The only allowed component tree
+   • Confirmation preflight guard blocks future parallel systems
+   • Confirmation CI blocks future parallel systems
+   • Confirmation only luxury UI remains
+
+This file must be committed to GitHub to lock the final architecture.
+
+17. ONLY THEN DEPLOY
+
+Deploy from the exact code state that passed:
+   • clean preflight
+   • clean build
+   • clean proof
+
+DO NOT deploy from:
+   • cached builds
+   • old branches
+   • Replit rollback states
+   • mixed code layers
+   • any previous artifacts
+
+Deployment must use:
+   • current GitHub repo master/main branch
+   • the active luxury UI after purge
+
+18. POST DEPLOYMENT VERIFICATION (MANDATORY)
+
+After deployment:
+   • Load petwash.co.il
+   • Load www.petwash.co.il
+   • Load the replit live domain
+   • Load mobile, tablet, and desktop views
+   • Confirm:
+        - Pure white luxury background
+        - Metallic elements
+        - Correct spacing and padding
+        - Only the final luxury header
+        - Only the final luxury footer
+        - Correct modern social icons
+        - No old UI, no ghost components
+        - Zero duplication
+        - 7 star front end experience
+
+19. IF ANY ANOMALY APPEARS  
+You MUST run the purge again.  
+No outdated code remains allowed.  
+No hidden files allowed.  
+No second worlds allowed.
+
+20. FINAL RULE (MANDATORY AND PERMANENT)
+
+You must NEVER generate, introduce, or restore:
+   • a second layout system
+   • a test UI
+   • a parallel header/footer
+   • a “quick prototype”
+   • any alternative architecture
+
+PetWash™ uses ONE UI.  
+The luxury UI.  
+No exceptions.  
+Now and forever.
