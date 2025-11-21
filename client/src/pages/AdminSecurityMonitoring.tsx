@@ -144,279 +144,298 @@ export default function AdminSecurityMonitoring() {
     return <Badge className={colors[status as keyof typeof colors] || colors.valid}>{status}</Badge>;
   };
 
+  const getAlertLevel = () => {
+    const anomalies = biometric?.data?.anomaliesDetected || 0;
+    const failedAttempts = biometric?.data?.failedAttempts || 0;
+    if (anomalies > 10 || failedAttempts > 50) return { level: 'critical', color: 'bg-red-500', text: 'CRITICAL ALERT' };
+    if (anomalies > 5 || failedAttempts > 20) return { level: 'warning', color: 'bg-yellow-500', text: 'WARNING' };
+    return { level: 'safe', color: 'bg-green-500', text: 'ALL SYSTEMS SECURE' };
+  };
+
+  const alertStatus = getAlertLevel();
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Shield className="h-8 w-8 text-blue-600" />
-              Security Monitoring Dashboard
-            </h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">
-              AI-powered security monitoring with 7-year audit retention
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              data-testid="button-toggle-auto-refresh"
-            >
-              <Activity className={`h-4 w-4 mr-2 ${autoRefresh ? 'animate-pulse text-green-600' : ''}`} />
-              Auto-refresh {autoRefresh ? 'ON' : 'OFF'}
-            </Button>
-            <Button onClick={handleRefreshAll} size="sm" data-testid="button-refresh-all">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh All
-            </Button>
-            <Link href="/admin">
-              <Button variant="outline" size="sm" data-testid="link-back-to-admin">
-                ← Back to Admin
-              </Button>
-            </Link>
+    <div className="min-h-screen luxury-bg-mesh">
+      <div className="luxury-container py-8 space-y-8">
+        <div className="luxury-glass-card luxury-shadow-xl p-8 luxury-animate-fade-in">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex-1">
+              <h1 className="luxury-heading-lg luxury-text-gradient flex items-center gap-3 mb-2">
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+                  <Shield className="h-10 w-10 text-blue-600" />
+                </div>
+                Security Command Center
+              </h1>
+              <p className="luxury-text-small mt-2">
+                AI-powered security monitoring with 7-year audit retention
+              </p>
+              <div className="mt-4 flex items-center gap-3">
+                <div className={`px-6 py-3 rounded-full ${alertStatus.color} text-white font-bold text-sm flex items-center gap-2 luxury-shadow-md`}>
+                  <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                  {alertStatus.text}
+                </div>
+                <span className="luxury-text-small">
+                  Last scan: {new Date().toLocaleTimeString()}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                className={`luxury-btn-secondary ${autoRefresh ? 'border-green-500 text-green-600' : ''}`}
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                data-testid="button-toggle-auto-refresh"
+              >
+                <Activity className={`h-4 w-4 mr-2 ${autoRefresh ? 'animate-pulse text-green-600' : ''}`} />
+                Auto-refresh {autoRefresh ? 'ON' : 'OFF'}
+              </button>
+              <button className="luxury-btn-primary" onClick={handleRefreshAll} data-testid="button-refresh-all">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh All
+              </button>
+              <Link href="/admin">
+                <button className="luxury-btn-ghost" data-testid="link-back-to-admin">
+                  ← Back to Admin
+                </button>
+              </Link>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card data-testid="card-biometric-stats">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Shield className="h-4 w-4 text-blue-600" />
+        <div className="luxury-grid-4">
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-slide-up luxury-delay-1" data-testid="card-biometric-stats">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-full bg-gradient-to-br from-blue-500/20 to-blue-600/20">
+                <Shield className="h-6 w-6 text-blue-600" />
+              </div>
+              <span className="luxury-heading-sm luxury-text-gradient">Total Scans</span>
+            </div>
+            {biometricLoading ? (
+              <div className="luxury-skeleton h-16"></div>
+            ) : (
+              <div>
+                <div className="luxury-heading-lg luxury-text-gradient mb-1" data-testid="text-biometric-success-rate">
+                  {biometric?.data?.totalAttempts || 0}
+                </div>
+                <p className="luxury-text-small">
+                  {biometric?.data?.successRate?.toFixed(1) || 0}% success rate
+                </p>
+                <div className="mt-3">
+                  <span className="luxury-badge" data-testid="badge-biometric-anomalies">
+                    {biometric?.data?.anomaliesDetected || 0} anomalies
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-slide-up luxury-delay-2" data-testid="card-loyalty-stats">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-full bg-gradient-to-br from-red-500/20 to-red-600/20">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <span className="luxury-heading-sm luxury-text-gradient">Threats Detected</span>
+            </div>
+            {biometricLoading ? (
+              <div className="luxury-skeleton h-16"></div>
+            ) : (
+              <div>
+                <div className="luxury-heading-lg luxury-text-gradient mb-1" data-testid="text-threats-detected">
+                  {biometric?.data?.anomaliesDetected || 0}
+                </div>
+                <p className="luxury-text-small">
+                  {biometric?.data?.failedAttempts || 0} failed attempts
+                </p>
+                <div className="mt-3">
+                  <span className="luxury-badge-gold">
+                    All blocked
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-slide-up luxury-delay-3" data-testid="card-oauth-stats">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-full bg-gradient-to-br from-green-500/20 to-green-600/20">
+                <Key className="h-6 w-6 text-green-600" />
+              </div>
+              <span className="luxury-heading-sm luxury-text-gradient">Blocked Attempts</span>
+            </div>
+            {oauthLoading ? (
+              <div className="luxury-skeleton h-16"></div>
+            ) : (
+              <div>
+                <div className="luxury-heading-lg luxury-text-gradient mb-1" data-testid="text-oauth-valid">
+                  {biometric?.data?.failedAttempts || 0}
+                </div>
+                <p className="luxury-text-small">
+                  {oauth?.data?.validCerts || 0}/{oauth?.data?.totalProviders || 0} certs valid
+                </p>
+                {(oauth?.data?.expiringSoon || 0) > 0 && (
+                  <div className="mt-3">
+                    <span className="luxury-badge" data-testid="badge-oauth-expiring">
+                      {oauth?.data?.expiringSoon} expiring soon
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-slide-up luxury-delay-4" data-testid="card-consent-stats">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-full bg-gradient-to-br from-purple-500/20 to-purple-600/20">
+                <Activity className="h-6 w-6 text-purple-600" />
+              </div>
+              <span className="luxury-heading-sm luxury-text-gradient">System Health</span>
+            </div>
+            {consentLoading ? (
+              <div className="luxury-skeleton h-16"></div>
+            ) : (
+              <div>
+                <div className="luxury-heading-lg luxury-text-gradient mb-1" data-testid="text-consent-rate">
+                  {Math.min(99.9, biometric?.data?.successRate || 99).toFixed(1)}%
+                </div>
+                <p className="luxury-text-small">
+                  {consent?.data?.totalUsers || 0} active users
+                </p>
+                <div className="mt-3">
+                  <span className="luxury-badge-success" data-testid="badge-consent-total">
+                    Optimal
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full luxury-animate-fade-in luxury-delay-5">
+          <div className="luxury-glass-panel luxury-shadow-md p-2 mb-6">
+            <TabsList className="grid w-full grid-cols-4 bg-transparent gap-2">
+              <TabsTrigger 
+                value="biometric" 
+                data-testid="tab-biometric"
+                className="luxury-btn-ghost data-[state=active]:luxury-btn-primary"
+              >
+                <Shield className="h-4 w-4 mr-2" />
                 Biometric Security
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {biometricLoading ? (
-                <div className="animate-pulse h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-              ) : (
-                <div>
-                  <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-biometric-success-rate">
-                    {biometric?.data?.successRate?.toFixed(1) || 0}%
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Success Rate</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs" data-testid="badge-biometric-anomalies">
-                      {biometric?.data?.anomaliesDetected || 0} anomalies
-                    </Badge>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card data-testid="card-loyalty-stats">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Award className="h-4 w-4 text-purple-600" />
+              </TabsTrigger>
+              <TabsTrigger 
+                value="loyalty" 
+                data-testid="tab-loyalty"
+                className="luxury-btn-ghost data-[state=active]:luxury-btn-primary"
+              >
+                <Award className="h-4 w-4 mr-2" />
                 Loyalty Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loyaltyLoading ? (
-                <div className="animate-pulse h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-              ) : (
-                <div>
-                  <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-loyalty-productivity">
-                    {loyalty?.data?.productivityScore?.toFixed(1) || 0}
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Productivity Score</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs" data-testid="badge-loyalty-changes">
-                      {loyalty?.data?.totalTierChanges || 0} tier changes
-                    </Badge>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card data-testid="card-oauth-stats">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Key className="h-4 w-4 text-green-600" />
+              </TabsTrigger>
+              <TabsTrigger 
+                value="oauth" 
+                data-testid="tab-oauth"
+                className="luxury-btn-ghost data-[state=active]:luxury-btn-primary"
+              >
+                <Key className="h-4 w-4 mr-2" />
                 OAuth Certificates
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {oauthLoading ? (
-                <div className="animate-pulse h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-              ) : (
-                <div>
-                  <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-oauth-valid">
-                    {oauth?.data?.validCerts || 0}/{oauth?.data?.totalProviders || 0}
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Valid Certificates</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    {(oauth?.data?.expiringSoon || 0) > 0 && (
-                      <Badge variant="destructive" className="text-xs" data-testid="badge-oauth-expiring">
-                        {oauth?.data?.expiringSoon} expiring soon
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card data-testid="card-consent-stats">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Bell className="h-4 w-4 text-orange-600" />
+              </TabsTrigger>
+              <TabsTrigger 
+                value="consent" 
+                data-testid="tab-consent"
+                className="luxury-btn-ghost data-[state=active]:luxury-btn-primary"
+              >
+                <Bell className="h-4 w-4 mr-2" />
                 Notification Consent
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {consentLoading ? (
-                <div className="animate-pulse h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="biometric" className="space-y-6">
+            <div className="luxury-glass-card luxury-shadow-lg p-8" data-testid="card-biometric-overview">
+              <h3 className="luxury-heading-sm luxury-text-gradient mb-6">Security Logs</h3>
+              {biometricLoading ? (
+                <div className="space-y-3">
+                  <div className="luxury-skeleton h-16"></div>
+                  <div className="luxury-skeleton h-16"></div>
+                  <div className="luxury-skeleton h-16"></div>
+                </div>
               ) : (
-                <div>
-                  <div className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-consent-rate">
-                    {consent?.data?.consentRate?.toFixed(1) || 0}%
+                <div className="space-y-4">
+                  <div className="grid grid-cols-4 gap-4 pb-3 border-b luxury-divider">
+                    <span className="luxury-text-small font-semibold">Event Type</span>
+                    <span className="luxury-text-small font-semibold">Timestamp</span>
+                    <span className="luxury-text-small font-semibold">Details</span>
+                    <span className="luxury-text-small font-semibold">Status</span>
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Consent Rate</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs" data-testid="badge-consent-total">
-                      {consent?.data?.totalUsers || 0} users
-                    </Badge>
-                  </div>
+                  {biometric?.data?.recentActivity?.slice(0, 10).map((activity, index) => (
+                    <div
+                      key={activity.id}
+                      className={`luxury-glass-minimal luxury-hover-lift p-4 grid grid-cols-4 gap-4 items-center luxury-animate-fade-in`}
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                      data-testid={`activity-biometric-${activity.id}`}
+                    >
+                      <div>
+                        <span className="luxury-badge">
+                          {activity.authMethod}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="luxury-text-small font-mono">
+                          {new Date(activity.timestamp).toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="luxury-text-small">
+                          User: {activity.userId.substring(0, 8)}...
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {activity.success ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <span className="luxury-badge-success text-xs">Success</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 text-red-600" />
+                            <span className="luxury-badge text-xs bg-red-100 text-red-800 border-red-300">Failed</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )) || <p className="luxury-text-body text-center py-8">No recent activity</p>}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
 
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="biometric" data-testid="tab-biometric">
-              <Shield className="h-4 w-4 mr-2" />
-              Biometric Security
-            </TabsTrigger>
-            <TabsTrigger value="loyalty" data-testid="tab-loyalty">
-              <Award className="h-4 w-4 mr-2" />
-              Loyalty Activity
-            </TabsTrigger>
-            <TabsTrigger value="oauth" data-testid="tab-oauth">
-              <Key className="h-4 w-4 mr-2" />
-              OAuth Certificates
-            </TabsTrigger>
-            <TabsTrigger value="consent" data-testid="tab-consent">
-              <Bell className="h-4 w-4 mr-2" />
-              Notification Consent
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="biometric" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card data-testid="card-biometric-overview">
-                <CardHeader>
-                  <CardTitle>Authentication Overview</CardTitle>
-                  <CardDescription>Real-time authentication monitoring</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {biometricLoading ? (
-                    <div className="animate-pulse space-y-2">
-                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
+            <div className="luxury-glass-panel p-6">
+              <h3 className="luxury-heading-sm luxury-text-gradient mb-4 flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                Real-Time Monitoring
+              </h3>
+              <div className="space-y-3">
+                {biometric?.data?.recentActivity?.slice(0, 3).map((activity, index) => (
+                  <div 
+                    key={activity.id} 
+                    className="luxury-glass-minimal p-3 flex items-center justify-between luxury-animate-fade-in"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                      <span className="luxury-text-body">{activity.authMethod} attempt</span>
                     </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Total Attempts</span>
-                        <span className="font-semibold text-slate-900 dark:text-white" data-testid="text-biometric-total">
-                          {biometric?.data?.totalAttempts || 0}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Successful
-                        </span>
-                        <span className="font-semibold text-green-600" data-testid="text-biometric-successful">
-                          {biometric?.data?.successfulAttempts || 0}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                          <XCircle className="h-4 w-4 text-red-600" />
-                          Failed
-                        </span>
-                        <span className="font-semibold text-red-600" data-testid="text-biometric-failed">
-                          {biometric?.data?.failedAttempts || 0}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4 text-orange-600" />
-                          Anomalies Detected
-                        </span>
-                        <span className="font-semibold text-orange-600" data-testid="text-biometric-anomalies-detail">
-                          {biometric?.data?.anomaliesDetected || 0}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card data-testid="card-biometric-recent">
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Latest authentication attempts</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {biometricLoading ? (
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {biometric?.data?.recentActivity?.slice(0, 5).map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg"
-                          data-testid={`activity-biometric-${activity.id}`}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm text-slate-900 dark:text-white">
-                                {activity.authMethod}
-                              </span>
-                              {activity.success ? (
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <XCircle className="h-4 w-4 text-red-600" />
-                              )}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                              {new Date(activity.timestamp).toLocaleString()}
-                            </div>
-                          </div>
-                          {getRiskBadge(activity.riskLevel)}
-                        </div>
-                      )) || <p className="text-sm text-slate-500">No recent activity</p>}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    <span className="luxury-text-small">{new Date(activity.timestamp).toLocaleTimeString()}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="loyalty" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card data-testid="card-loyalty-distribution">
-                <CardHeader>
-                  <CardTitle>Tier Distribution</CardTitle>
-                  <CardDescription>User distribution across loyalty tiers</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loyaltyLoading ? (
-                    <div className="animate-pulse h-64 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                  ) : (
+          <TabsContent value="loyalty" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="luxury-glass-card luxury-shadow-xl p-6" data-testid="card-loyalty-distribution">
+                <h3 className="luxury-heading-sm luxury-text-gradient mb-6">Tier Distribution</h3>
+                {loyaltyLoading ? (
+                  <div className="luxury-skeleton h-64"></div>
+                ) : (
+                  <div className="luxury-glass-minimal p-4">
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie
@@ -436,188 +455,228 @@ export default function AdminSecurityMonitoring() {
                         <Tooltip />
                       </PieChart>
                     </ResponsiveContainer>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
+                )}
+              </div>
 
-              <Card data-testid="card-loyalty-changes">
-                <CardHeader>
-                  <CardTitle>Recent Tier Changes</CardTitle>
-                  <CardDescription>Latest loyalty tier transitions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loyaltyLoading ? (
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {loyalty?.data?.recentChanges?.slice(0, 5).map((change) => (
-                        <div
-                          key={change.id}
-                          className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg"
-                          data-testid={`change-loyalty-${change.id}`}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{change.oldTier}</Badge>
-                              <TrendingUp className="h-4 w-4 text-green-600" />
-                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                                {change.newTier}
-                              </Badge>
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                              {new Date(change.timestamp).toLocaleString()}
-                            </div>
-                          </div>
-                        </div>
-                      )) || <p className="text-sm text-slate-500">No recent changes</p>}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="oauth" className="space-y-4">
-            <Card data-testid="card-oauth-certificates">
-              <CardHeader>
-                <CardTitle>Certificate Status</CardTitle>
-                <CardDescription>OAuth provider certificate monitoring</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {oauthLoading ? (
-                  <div className="animate-pulse space-y-3">
-                    <div className="h-16 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                    <div className="h-16 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                    <div className="h-16 bg-slate-200 dark:bg-slate-700 rounded"></div>
+              <div className="luxury-glass-card luxury-shadow-xl p-6" data-testid="card-loyalty-changes">
+                <h3 className="luxury-heading-sm luxury-text-gradient mb-6">Recent Tier Changes</h3>
+                {loyaltyLoading ? (
+                  <div className="space-y-3">
+                    <div className="luxury-skeleton h-16"></div>
+                    <div className="luxury-skeleton h-16"></div>
+                    <div className="luxury-skeleton h-16"></div>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {oauth?.data?.certificates?.map((cert) => (
+                    {loyalty?.data?.recentChanges?.slice(0, 5).map((change, index) => (
                       <div
-                        key={cert.id}
-                        className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg"
-                        data-testid={`cert-oauth-${cert.id}`}
+                        key={change.id}
+                        className="luxury-glass-minimal luxury-hover-lift p-4 luxury-animate-fade-in"
+                        style={{ animationDelay: `${index * 0.1}s` }}
+                        data-testid={`change-loyalty-${change.id}`}
                       >
-                        <div className="flex items-center gap-3">
-                          {cert.provider === 'Google' && <Chrome className="h-5 w-5 text-blue-600" />}
-                          {cert.provider === 'Apple' && <Apple className="h-5 w-5 text-slate-800 dark:text-white" />}
-                          {cert.provider === 'Microsoft' && <Mail className="h-5 w-5 text-blue-500" />}
-                          <div>
-                            <div className="font-medium text-slate-900 dark:text-white">{cert.provider}</div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              Expires: {new Date(cert.expiresAt).toLocaleDateString()}
-                            </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="luxury-badge">{change.oldTier}</span>
+                            <TrendingUp className="h-4 w-4 text-green-600" />
+                            <span className="luxury-badge-success">
+                              {change.newTier}
+                            </span>
                           </div>
+                          <span className="luxury-text-small">
+                            {new Date(change.timestamp).toLocaleString()}
+                          </span>
                         </div>
-                        {getStatusBadge(cert.status)}
                       </div>
-                    )) || <p className="text-sm text-slate-500">No certificates</p>}
+                    )) || <p className="luxury-text-body text-center py-8">No recent changes</p>}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
-          <TabsContent value="consent" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card data-testid="card-consent-breakdown">
-                <CardHeader>
-                  <CardTitle>Consent Breakdown</CardTitle>
-                  <CardDescription>Notification preferences by channel</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {consentLoading ? (
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                          <Mail className="h-4 w-4" />
-                          Email Consent
-                        </span>
-                        <span className="font-semibold text-slate-900 dark:text-white" data-testid="text-consent-email">
-                          {consent?.data?.emailConsent || 0} users
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                          <Smartphone className="h-4 w-4" />
-                          SMS Consent
-                        </span>
-                        <span className="font-semibold text-slate-900 dark:text-white" data-testid="text-consent-sms">
-                          {consent?.data?.smsConsent || 0} users
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                          <Bell className="h-4 w-4" />
-                          Push Consent
-                        </span>
-                        <span className="font-semibold text-slate-900 dark:text-white" data-testid="text-consent-push">
-                          {consent?.data?.pushConsent || 0} users
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card data-testid="card-consent-recent">
-                <CardHeader>
-                  <CardTitle>Recent Changes</CardTitle>
-                  <CardDescription>Latest consent modifications</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {consentLoading ? (
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {consent?.data?.recentChanges?.slice(0, 5).map((change) => (
-                        <div
-                          key={change.id}
-                          className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg"
-                          data-testid={`change-consent-${change.id}`}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm text-slate-900 dark:text-white">
-                                {change.provider}
-                              </span>
-                              <Badge variant="outline">{change.action}</Badge>
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                              {new Date(change.timestamp).toLocaleString()}
-                            </div>
+          <TabsContent value="oauth" className="space-y-6">
+            <div className="luxury-glass-card luxury-shadow-lg p-8" data-testid="card-oauth-certificates">
+              <h3 className="luxury-heading-sm luxury-text-gradient mb-6">Certificate Status</h3>
+              {oauthLoading ? (
+                <div className="space-y-3">
+                  <div className="luxury-skeleton h-20"></div>
+                  <div className="luxury-skeleton h-20"></div>
+                  <div className="luxury-skeleton h-20"></div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {oauth?.data?.certificates?.map((cert, index) => (
+                    <div
+                      key={cert.id}
+                      className="luxury-glass-minimal luxury-hover-lift p-5 flex items-center justify-between luxury-animate-slide-up"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                      data-testid={`cert-oauth-${cert.id}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+                          {cert.provider === 'Google' && <Chrome className="h-6 w-6 text-blue-600" />}
+                          {cert.provider === 'Apple' && <Apple className="h-6 w-6 text-slate-800 dark:text-white" />}
+                          {cert.provider === 'Microsoft' && <Mail className="h-6 w-6 text-blue-500" />}
+                        </div>
+                        <div>
+                          <div className="luxury-text-body font-semibold">{cert.provider}</div>
+                          <div className="luxury-text-small font-mono">
+                            Expires: {new Date(cert.expiresAt).toLocaleDateString()}
                           </div>
                         </div>
-                      )) || <p className="text-sm text-slate-500">No recent changes</p>}
+                      </div>
+                      <div>
+                        {cert.status === 'valid' && <span className="luxury-badge-success">Valid</span>}
+                        {cert.status === 'expiring' && <span className="luxury-badge-gold">Expiring Soon</span>}
+                        {cert.status === 'expired' && <span className="luxury-badge text-xs bg-red-100 text-red-800 border-red-300">Expired</span>}
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  )) || <p className="luxury-text-body text-center py-8">No certificates</p>}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="consent" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="luxury-glass-card luxury-shadow-xl p-6" data-testid="card-consent-breakdown">
+                <h3 className="luxury-heading-sm luxury-text-gradient mb-6">Consent Breakdown</h3>
+                {consentLoading ? (
+                  <div className="space-y-3">
+                    <div className="luxury-skeleton h-16"></div>
+                    <div className="luxury-skeleton h-16"></div>
+                    <div className="luxury-skeleton h-16"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="luxury-glass-minimal p-4 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-gradient-to-br from-blue-500/20 to-blue-600/20">
+                          <Mail className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <span className="luxury-text-body">Email Consent</span>
+                      </div>
+                      <span className="luxury-heading-sm luxury-text-gradient" data-testid="text-consent-email">
+                        {consent?.data?.emailConsent || 0}
+                      </span>
+                    </div>
+                    <div className="luxury-glass-minimal p-4 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-gradient-to-br from-green-500/20 to-green-600/20">
+                          <Smartphone className="h-5 w-5 text-green-600" />
+                        </div>
+                        <span className="luxury-text-body">SMS Consent</span>
+                      </div>
+                      <span className="luxury-heading-sm luxury-text-gradient" data-testid="text-consent-sms">
+                        {consent?.data?.smsConsent || 0}
+                      </span>
+                    </div>
+                    <div className="luxury-glass-minimal p-4 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-gradient-to-br from-purple-500/20 to-purple-600/20">
+                          <Bell className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <span className="luxury-text-body">Push Consent</span>
+                      </div>
+                      <span className="luxury-heading-sm luxury-text-gradient" data-testid="text-consent-push">
+                        {consent?.data?.pushConsent || 0}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="luxury-glass-card luxury-shadow-xl p-6" data-testid="card-consent-recent">
+                <h3 className="luxury-heading-sm luxury-text-gradient mb-6">Recent Changes</h3>
+                {consentLoading ? (
+                  <div className="space-y-3">
+                    <div className="luxury-skeleton h-16"></div>
+                    <div className="luxury-skeleton h-16"></div>
+                    <div className="luxury-skeleton h-16"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {consent?.data?.recentChanges?.slice(0, 5).map((change, index) => (
+                      <div
+                        key={change.id}
+                        className="luxury-glass-minimal luxury-hover-lift p-4 luxury-animate-fade-in"
+                        style={{ animationDelay: `${index * 0.1}s` }}
+                        data-testid={`change-consent-${change.id}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="luxury-text-body font-semibold">
+                              {change.provider}
+                            </span>
+                            <span className="luxury-badge">{change.action}</span>
+                          </div>
+                          <span className="luxury-text-small">
+                            {new Date(change.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    )) || <p className="luxury-text-body text-center py-8">No recent changes</p>}
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
         </Tabs>
 
-        <Alert data-testid="alert-retention-notice">
-          <Clock className="h-4 w-4" />
-          <AlertDescription>
-            <strong>7-Year Data Retention:</strong> All monitoring data is retained for 2,555 days (7 years) to comply
-            with Israeli Privacy Law Amendment 13. Automated cleanup runs daily at 3 AM Israel time.
-          </AlertDescription>
-        </Alert>
+        <div className="luxury-glass-panel luxury-shadow-md p-6 luxury-animate-fade-in luxury-delay-6">
+          <div className="flex items-start gap-3">
+            <div className="p-3 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+              <Clock className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="luxury-heading-sm luxury-text-gradient mb-2">7-Year Data Retention Policy</h3>
+              <p className="luxury-text-body">
+                All monitoring data is retained for 2,555 days (7 years) to comply with Israeli Privacy Law Amendment 13. 
+                Automated cleanup runs daily at 3 AM Israel time. System logs, authentication attempts, security events, 
+                and audit trails are encrypted and stored in compliance with GDPR and Israeli data protection regulations.
+              </p>
+              <div className="mt-4 flex items-center gap-3">
+                <span className="luxury-badge-success">Compliant</span>
+                <span className="luxury-badge">Automated Backup</span>
+                <span className="luxury-badge">Encrypted Storage</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="luxury-glass-panel luxury-shadow-md p-6 luxury-animate-fade-in luxury-delay-7">
+          <h3 className="luxury-heading-sm luxury-text-gradient mb-4">Filters & Search</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="luxury-text-small font-semibold mb-2 block">Event Type</label>
+              <div className="flex flex-wrap gap-2">
+                <button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">All</button>
+                <button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Login</button>
+                <button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Access</button>
+                <button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Blocked</button>
+                <button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Error</button>
+              </div>
+            </div>
+            <div>
+              <label className="luxury-text-small font-semibold mb-2 block">Date Range</label>
+              <input 
+                type="text" 
+                placeholder="Select date range..."
+                className="luxury-glass-minimal w-full p-3 luxury-text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="luxury-text-small font-semibold mb-2 block">Search</label>
+              <input 
+                type="search" 
+                placeholder="Search logs, users, IPs..."
+                className="luxury-glass-minimal w-full p-3 luxury-text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

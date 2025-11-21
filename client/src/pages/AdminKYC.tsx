@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, CheckCircle, XCircle, Eye, FileText, Calendar, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, XCircle, Eye, FileText, Calendar, X, Shield, Users, Clock, Ban, Search, Filter } from 'lucide-react';
 import { queryClient } from '@/lib/queryClient';
 import { Loader2 } from 'lucide-react';
 import { trackKYCApproved, trackKYCRejected } from '@/lib/analytics';
@@ -40,6 +40,8 @@ export default function AdminKYC() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [expiryYears, setExpiryYears] = useState('5');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
 
   // Helper to get Firebase ID token
   const getAuthHeaders = async () => {
@@ -53,15 +55,15 @@ export default function AdminKYC() {
 
   const t = (key: string) => {
     const translations: Record<string, Record<string, string>> = {
-      title: { he: 'ניהול אימות KYC', en: 'KYC Verification Management' },
-      description: { he: 'בדיקה ואישור מסמכי אימות', en: 'Review and approve verification documents' },
-      pendingSubmissions: { he: 'בקשות ממתינות', en: 'Pending Submissions' },
+      title: { he: 'ניהול אימות KYC', en: 'KYC Compliance Control Center' },
+      description: { he: 'בדיקה ואישור מסמכי אימות', en: 'Premium verification and approval dashboard' },
+      pendingSubmissions: { he: 'בקשות ממתינות', en: 'Pending Verifications' },
       noSubmissions: { he: 'אין בקשות ממתינות', en: 'No pending submissions' },
       type: { he: 'סוג', en: 'Type' },
-      disability: { he: 'נכה', en: 'Disability' },
-      senior: { he: 'אזרח ותיק', en: 'Senior' },
+      disability: { he: 'נכה', en: 'Disability Verification' },
+      senior: { he: 'אזרח ותיק', en: 'Senior Citizen' },
       submitted: { he: 'הוגש', en: 'Submitted' },
-      viewDocuments: { he: 'צפה במסמכים', en: 'View Documents' },
+      viewDocuments: { he: 'צפה במסמכים', en: 'Review' },
       approve: { he: 'אשר', en: 'Approve' },
       reject: { he: 'דחה', en: 'Reject' },
       loading: { he: 'טוען...', en: 'Loading...' },
@@ -78,8 +80,16 @@ export default function AdminKYC() {
       approveSuccess: { he: 'KYC אושר בהצלחה', en: 'KYC approved successfully' },
       rejectSuccess: { he: 'KYC נדחה', en: 'KYC rejected' },
       error: { he: 'שגיאה', en: 'Error' },
-      documents: { he: 'מסמכים', en: 'Documents' },
-      closeDocuments: { he: 'סגור', en: 'Close' }
+      documents: { he: 'מסמכים', en: 'Verification Documents' },
+      closeDocuments: { he: 'סגור', en: 'Close' },
+      totalSubmissions: { he: 'סה״כ בקשות', en: 'Total Submissions' },
+      pendingReview: { he: 'ממתין לבדיקה', en: 'Pending Review' },
+      approved: { he: 'אושר', en: 'Approved' },
+      rejected: { he: 'נדחה', en: 'Rejected' },
+      searchPlaceholder: { he: 'חיפוש...', en: 'Search by name or email...' },
+      filterByStatus: { he: 'סנן לפי סטטוס', en: 'Filter by Status' },
+      all: { he: 'הכל', en: 'All' },
+      pending: { he: 'ממתין', en: 'Pending' }
     };
     return translations[key]?.[language] || key;
   };
@@ -176,230 +186,403 @@ export default function AdminKYC() {
     }
   });
 
+  // Calculate statistics
+  const stats = {
+    total: submissions?.submissions.length || 0,
+    pending: submissions?.submissions.filter(s => s.status === 'pending').length || 0,
+    approved: submissions?.submissions.filter(s => s.status === 'approved').length || 0,
+    rejected: submissions?.submissions.filter(s => s.status === 'rejected').length || 0
+  };
+
+  // Filter submissions
+  const filteredSubmissions = submissions?.submissions.filter(submission => {
+    const matchesSearch = searchQuery === '' || 
+      submission.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      submission.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      submission.email.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || submission.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  }) || [];
+
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-6">
-        <Card className="max-w-2xl mx-auto">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3 text-red-600">
-              <AlertCircle className="h-6 w-6" />
-              <p className="text-lg font-semibold">{t('accessDenied')}</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen luxury-bg-mesh p-6">
+        <div className="luxury-glass-card luxury-shadow-xl max-w-2xl mx-auto p-8">
+          <div className="flex items-center gap-3 text-red-600">
+            <AlertCircle className="h-6 w-6" />
+            <p className="luxury-heading-sm">{t('accessDenied')}</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-6">
-      <div className="max-w-7xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-6 w-6" />
-              {t('title')}
-            </CardTitle>
-            <CardDescription>{t('description')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <h3 className="text-lg font-semibold mb-4">{t('pendingSubmissions')}</h3>
-            
-            {isLoading && (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-              </div>
-            )}
-
-            {!isLoading && submissions?.submissions.length === 0 && (
-              <p className="text-gray-500 text-center py-8">{t('noSubmissions')}</p>
-            )}
-
-            <div className="space-y-4">
-              {submissions?.submissions.map((submission) => (
-                <Card key={submission.uid} className="border-l-4 border-l-yellow-500">
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="font-semibold">{submission.firstName} {submission.lastName}</p>
-                        <p className="text-sm text-gray-600">{submission.email}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <Badge variant={submission.type === 'disability' ? 'destructive' : 'secondary'}>
-                            {t(submission.type)}
-                          </Badge>
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(submission.submittedAt).toLocaleDateString('en-US')}
-                          </Badge>
-                        </div>
-                        {submission.nameOnDoc && (
-                          <p className="text-sm mt-2">
-                            <span className="font-medium">{t('nameOnDoc')}:</span> {submission.nameOnDoc}
-                          </p>
-                        )}
-                        {submission.dob && (
-                          <p className="text-sm">
-                            <span className="font-medium">{t('dob')}:</span> {submission.dob}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewDocuments(submission)}
-                          data-testid={`button-view-documents-${submission.uid}`}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          {t('viewDocuments')}
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedSubmission(submission);
-                            setShowApproveDialog(true);
-                          }}
-                          data-testid={`button-approve-${submission.uid}`}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          {t('approve')}
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedSubmission(submission);
-                            setShowRejectDialog(true);
-                          }}
-                          data-testid={`button-reject-${submission.uid}`}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          {t('reject')}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+    <div className="min-h-screen luxury-bg-mesh p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header Section */}
+        <div className="luxury-animate-fade-in">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <Shield className="h-6 w-6 text-white" />
             </div>
-          </CardContent>
-        </Card>
+            <div>
+              <h1 className="luxury-heading-lg luxury-text-gradient">{t('title')}</h1>
+              <p className="luxury-text-small">{t('description')}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="luxury-grid-4 luxury-animate-slide-up luxury-delay-1">
+          <div className="luxury-glass-card luxury-hover-lift p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="luxury-heading-lg luxury-text-gradient">{stats.total}</p>
+                <p className="luxury-text-small">{t('totalSubmissions')}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="luxury-glass-card luxury-hover-lift p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="luxury-heading-lg luxury-text-gradient">{stats.pending}</p>
+                <p className="luxury-text-small">{t('pendingReview')}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="luxury-glass-card luxury-hover-lift p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                <CheckCircle className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="luxury-heading-lg luxury-text-gradient">{stats.approved}</p>
+                <p className="luxury-text-small">{t('approved')}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="luxury-glass-card luxury-hover-lift p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center">
+                <Ban className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="luxury-heading-lg luxury-text-gradient">{stats.rejected}</p>
+                <p className="luxury-text-small">{t('rejected')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search & Filters */}
+        <div className="luxury-glass-panel luxury-shadow-md p-6 luxury-animate-slide-up luxury-delay-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder={t('searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="luxury-glass-minimal w-full pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                data-testid="input-search"
+              />
+            </div>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="luxury-glass-minimal w-full pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                data-testid="select-status-filter"
+              >
+                <option value="all">{t('all')}</option>
+                <option value="pending">{t('pending')}</option>
+                <option value="approved">{t('approved')}</option>
+                <option value="rejected">{t('rejected')}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Pending Verifications Grid */}
+        <div>
+          <h3 className="luxury-heading-sm mb-4 luxury-animate-fade-in luxury-delay-3">{t('pendingSubmissions')}</h3>
+          
+          {isLoading && (
+            <div className="flex justify-center py-12">
+              <div className="luxury-spinner"></div>
+            </div>
+          )}
+
+          {!isLoading && filteredSubmissions.length === 0 && (
+            <div className="luxury-glass-card p-12 text-center">
+              <p className="luxury-text-body text-gray-500">{t('noSubmissions')}</p>
+            </div>
+          )}
+
+          <div className="luxury-grid-3">
+            {filteredSubmissions.map((submission, index) => (
+              <div 
+                key={submission.uid} 
+                className="luxury-glass-card luxury-shadow-lg luxury-hover-lift p-6 luxury-animate-scale-in"
+                style={{ animationDelay: `${0.4 + index * 0.1}s` }}
+              >
+                {/* User Avatar */}
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-0.5">
+                    <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                      <span className="luxury-heading-md luxury-text-gradient">
+                        {submission.firstName[0]}{submission.lastName[0]}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="luxury-heading-sm">{submission.firstName} {submission.lastName}</p>
+                    <p className="luxury-text-small">{submission.email}</p>
+                  </div>
+                </div>
+
+                {/* Document Type & Status */}
+                <div className="flex items-center gap-2 mb-4">
+                  <span className={`luxury-badge ${submission.type === 'disability' ? 'luxury-badge-gold' : ''}`}>
+                    {t(submission.type)}
+                  </span>
+                  <span className={`luxury-badge ${
+                    submission.status === 'approved' ? 'luxury-badge-success' : ''
+                  }`}>
+                    {submission.status}
+                  </span>
+                </div>
+
+                {/* Submission Date */}
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <span className="luxury-text-small">
+                    {new Date(submission.submittedAt).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </span>
+                </div>
+
+                {/* Additional Info */}
+                {submission.nameOnDoc && (
+                  <p className="luxury-text-small mb-1">
+                    <span className="font-medium">{t('nameOnDoc')}:</span> {submission.nameOnDoc}
+                  </p>
+                )}
+                {submission.dob && (
+                  <p className="luxury-text-small mb-4">
+                    <span className="font-medium">{t('dob')}:</span> {submission.dob}
+                  </p>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-2 mt-4">
+                  <button
+                    onClick={() => handleViewDocuments(submission)}
+                    className="luxury-btn-secondary text-sm py-2"
+                    data-testid={`button-view-documents-${submission.uid}`}
+                  >
+                    <Eye className="h-4 w-4 mr-2 inline" />
+                    {t('viewDocuments')}
+                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedSubmission(submission);
+                        setShowApproveDialog(true);
+                      }}
+                      className="luxury-btn-primary flex-1 text-sm py-2"
+                      data-testid={`button-approve-${submission.uid}`}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1 inline" />
+                      {t('approve')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedSubmission(submission);
+                        setShowRejectDialog(true);
+                      }}
+                      className="luxury-btn-secondary flex-1 text-sm py-2 !bg-red-50 !text-red-600 !border-red-200 hover:!bg-red-100"
+                      data-testid={`button-reject-${submission.uid}`}
+                    >
+                      <XCircle className="h-4 w-4 mr-1 inline" />
+                      {t('reject')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Document Viewer Dialog */}
         <Dialog open={documentUrls.length > 0} onOpenChange={() => setDocumentUrls([])}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+          <DialogContent className="luxury-glass-card luxury-shadow-xl max-w-4xl max-h-[90vh] overflow-auto">
             <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>
             </DialogClose>
             <DialogHeader>
-              <DialogTitle>{t('documents')}</DialogTitle>
+              <DialogTitle className="luxury-heading-sm luxury-text-gradient flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                {t('documents')}
+              </DialogTitle>
+              {selectedSubmission && (
+                <DialogDescription className="luxury-text-small">
+                  {selectedSubmission.firstName} {selectedSubmission.lastName}
+                </DialogDescription>
+              )}
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
               {documentUrls.map((url, index) => (
-                <div key={index} className="border rounded-lg overflow-hidden">
-                  <img src={url} alt={`Document ${index + 1}`} className="w-full" data-testid={`img-document-${index}`} />
+                <div key={index} className="luxury-glass-minimal p-4 luxury-shadow-md overflow-hidden">
+                  <img 
+                    src={url} 
+                    alt={`Document ${index + 1}`} 
+                    className="w-full rounded-lg" 
+                    data-testid={`img-document-${index}`} 
+                  />
                 </div>
               ))}
             </div>
-            <DialogFooter>
-              <Button onClick={() => setDocumentUrls([])} data-testid="button-close-documents">
+            <DialogFooter className="mt-6">
+              <button
+                onClick={() => setDocumentUrls([])}
+                className="luxury-btn-secondary"
+                data-testid="button-close-documents"
+              >
                 {t('closeDocuments')}
-              </Button>
+              </button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Approve Dialog */}
         <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-          <DialogContent>
+          <DialogContent className="luxury-glass-card luxury-shadow-xl">
             <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>
             </DialogClose>
             <DialogHeader>
-              <DialogTitle>{t('approveKYC')}</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="luxury-heading-sm luxury-text-gradient flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                {t('approveKYC')}
+              </DialogTitle>
+              <DialogDescription className="luxury-text-small">
                 {selectedSubmission?.firstName} {selectedSubmission?.lastName}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
               <div>
-                <Label htmlFor="expiryYears">{t('expiryYears')}</Label>
-                <Input
+                <Label htmlFor="expiryYears" className="luxury-text-small font-medium mb-2 block">
+                  {t('expiryYears')}
+                </Label>
+                <input
                   id="expiryYears"
                   type="number"
                   value={expiryYears}
                   onChange={(e) => setExpiryYears(e.target.value)}
                   min="1"
                   max="10"
+                  className="luxury-glass-minimal w-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   data-testid="input-expiry-years"
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowApproveDialog(false)} data-testid="button-cancel-approve">
+            <DialogFooter className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowApproveDialog(false)}
+                className="luxury-btn-secondary"
+                data-testid="button-cancel-approve"
+              >
                 {t('cancel')}
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => {
                   if (selectedSubmission) {
                     approveMutation.mutate({ uid: selectedSubmission.uid, expiryYears });
                   }
                 }}
                 disabled={approveMutation.isPending}
+                className="luxury-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 data-testid="button-confirm-approve"
               >
-                {approveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {approveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin inline" />}
                 {t('confirmApprove')}
-              </Button>
+              </button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Reject Dialog */}
         <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-          <DialogContent>
+          <DialogContent className="luxury-glass-card luxury-shadow-xl">
             <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>
             </DialogClose>
             <DialogHeader>
-              <DialogTitle>{t('rejectKYC')}</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="luxury-heading-sm luxury-text-gradient flex items-center gap-2">
+                <XCircle className="h-5 w-5" />
+                {t('rejectKYC')}
+              </DialogTitle>
+              <DialogDescription className="luxury-text-small">
                 {selectedSubmission?.firstName} {selectedSubmission?.lastName}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
               <div>
-                <Label htmlFor="rejectionReason">{t('rejectionReason')}</Label>
-                <Textarea
+                <Label htmlFor="rejectionReason" className="luxury-text-small font-medium mb-2 block">
+                  {t('rejectionReason')}
+                </Label>
+                <textarea
                   id="rejectionReason"
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   rows={4}
+                  className="luxury-glass-minimal w-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                   data-testid="textarea-rejection-reason"
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowRejectDialog(false)} data-testid="button-cancel-reject">
+            <DialogFooter className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowRejectDialog(false)}
+                className="luxury-btn-secondary"
+                data-testid="button-cancel-reject"
+              >
                 {t('cancel')}
-              </Button>
-              <Button
-                variant="destructive"
+              </button>
+              <button
                 onClick={() => {
                   if (selectedSubmission && rejectionReason.trim()) {
                     rejectMutation.mutate({ uid: selectedSubmission.uid, reason: rejectionReason });
                   }
                 }}
                 disabled={!rejectionReason.trim() || rejectMutation.isPending}
+                className="luxury-btn-primary !bg-red-600 hover:!bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 data-testid="button-confirm-reject"
               >
-                {rejectMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {rejectMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin inline" />}
                 {t('confirmReject')}
-              </Button>
+              </button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
