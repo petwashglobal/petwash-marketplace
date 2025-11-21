@@ -1,82 +1,154 @@
 import { useLocation } from "wouter";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ShoppingBag, Sparkles, Leaf, Package } from "lucide-react";
+import { ShoppingBag, Sparkles, Leaf, Package, Search, ShoppingCart, Filter } from "lucide-react";
 
 export default function Shop() {
   const [, setLocation] = useLocation();
+  
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      <div className="container max-w-6xl mx-auto px-4 py-12">
-        <div className="text-center mb-16">
-          <div className="relative inline-block">
-            <ShoppingBag className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-            <div className="absolute -top-2 -right-2 bg-yellow-500 text-xs font-bold px-2 py-1 rounded-full text-black">
+    <div className="min-h-screen luxury-bg-mesh">
+      <div className="luxury-container py-12">
+        {/* Cart Icon - Gradient Circle with Badge */}
+        <div className="fixed top-24 right-6 z-50 luxury-animate-scale-in">
+          <div className="relative cursor-pointer luxury-hover-lift">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center luxury-shadow-lg">
+              <ShoppingCart className="w-6 h-6 text-white" />
+            </div>
+            <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center">
+              <span className="text-xs font-bold text-black">0</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Hero Section */}
+        <div className="text-center mb-16 luxury-animate-fade-in">
+          <div className="relative inline-block mb-6">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center luxury-shadow-xl luxury-hover-glow">
+              <ShoppingBag className="w-10 h-10 text-white" />
+            </div>
+            <div className="absolute -top-2 -right-2 luxury-badge luxury-badge-gold">
               SOON
             </div>
           </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+          <h1 className="luxury-heading-xl mb-6">
             Pet Wash Shop™
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          <p className="luxury-text-body max-w-2xl mx-auto">
             Organic care products and premium accessories - Coming Soon
           </p>
         </div>
 
-        {/* Preview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card className="p-6 text-center">
-            <Leaf className="w-12 h-12 text-green-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Organic Shampoos</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+        {/* Search & Filter Section */}
+        <div className="luxury-glass-panel luxury-shadow-md p-6 mb-12 luxury-animate-slide-up luxury-delay-1">
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            <div className="flex-1 w-full relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search products..."
+                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600"
+                data-testid="input-search-products"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap justify-center">
+              <button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-all">
+                <Filter className="w-4 h-4" />
+                All Products
+              </button>
+              <button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-shampoos">
+                Shampoos
+              </button>
+              <button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-accessories">
+                Accessories
+              </button>
+              <button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-bundles">
+                Bundles
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Product Grid - Preview Cards */}
+        <div className="luxury-grid-3 mb-12">
+          <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-2">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
+              <Leaf className="w-8 h-8 text-white" />
+            </div>
+            <h3 className="luxury-heading-sm mb-3">Organic Shampoos</h3>
+            <p className="luxury-text-small mb-6">
               Premium organic shampoos and conditioners for all breeds
             </p>
-          </Card>
+            <div className="luxury-heading-lg luxury-text-gradient mb-4">
+              $24.99
+            </div>
+            <button className="luxury-btn-primary w-full" data-testid="button-add-shampoo">
+              Add to Cart
+            </button>
+          </div>
 
-          <Card className="p-6 text-center">
-            <Sparkles className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Pet Accessories</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-3">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
+              <Sparkles className="w-8 h-8 text-white" />
+            </div>
+            <h3 className="luxury-heading-sm mb-3">Pet Accessories</h3>
+            <p className="luxury-text-small mb-6">
               Luxury collars, leashes, beds, and toys
             </p>
-          </Card>
+            <div className="luxury-heading-lg luxury-text-gradient mb-4">
+              $34.99
+            </div>
+            <button className="luxury-btn-primary w-full" data-testid="button-add-accessories">
+              Add to Cart
+            </button>
+          </div>
 
-          <Card className="p-6 text-center">
-            <Package className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Care Bundles</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
+              <Package className="w-8 h-8 text-white" />
+            </div>
+            <h3 className="luxury-heading-sm mb-3">Care Bundles</h3>
+            <p className="luxury-text-small mb-6">
               Curated packages for complete pet care
             </p>
-          </Card>
+            <div className="luxury-heading-lg luxury-text-gradient mb-4">
+              $89.99
+            </div>
+            <button className="luxury-btn-primary w-full" data-testid="button-add-bundle">
+              Add to Cart
+            </button>
+          </div>
         </div>
 
         {/* Coming Soon Banner */}
-        <Card className="p-12 text-center bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+        <div className="luxury-glass-card luxury-shadow-xl p-12 text-center luxury-animate-scale-in luxury-delay-5">
           <div className="max-w-2xl mx-auto">
-            <div className="inline-block px-4 py-2 bg-yellow-500 text-black font-bold rounded-full mb-6">
+            <div className="luxury-badge luxury-badge-gold mb-6">
               🚧 FROZEN - In Development
             </div>
-            <h2 className="text-3xl font-bold mb-4">
+            <h2 className="luxury-heading-lg mb-6">
               Pet Wash Shop™ is Coming Soon
             </h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-8">
+            <p className="luxury-text-body mb-8">
               We're curating a premium selection of organic products and accessories.
               Sign up to be notified when we launch.
             </p>
-            <div className="flex gap-4 justify-center">
-              <Button size="lg" data-testid="button-notify-launch">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button className="luxury-btn-primary" data-testid="button-notify-launch">
                 Notify Me at Launch
-              </Button>
-              <Button size="lg" variant="outline" data-testid="button-view-stations" onClick={() => setLocation("/stations")}>
+              </button>
+              <button 
+                className="luxury-btn-secondary" 
+                data-testid="button-view-stations" 
+                onClick={() => setLocation("/stations")}
+              >
                 Visit K9000 Stations
-              </Button>
+              </button>
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Info */}
-        <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>
+        <div className="mt-8 text-center luxury-animate-fade-in luxury-delay-6">
+          <p className="luxury-text-small">
             This platform is currently frozen. Active platforms: Stations, Sitter, Walker, Transport, Academy
           </p>
         </div>

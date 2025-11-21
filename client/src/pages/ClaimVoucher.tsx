@@ -93,15 +93,15 @@ export default function ClaimVoucher() {
 
   if (claimSuccess && claimedVoucher) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-purple-900 dark:to-gray-900 py-20 px-4">
-        <div className="max-w-2xl mx-auto">
-          <Card className="p-8 md:p-12 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-2 border-green-200 dark:border-green-800">
+      <div className="min-h-screen luxury-bg-mesh py-20 px-4">
+        <div className="max-w-2xl mx-auto luxury-animate-fade-in">
+          <Card className="luxury-glass-card luxury-shadow-xl p-8 md:p-12 border-2 border-green-200 dark:border-green-800">
             <div className="text-center space-y-6">
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 mb-4">
                 <CheckCircle2 className="w-12 h-12 text-white" />
               </div>
               
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+              <h1 className="luxury-heading-lg bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
                 {isRTL ? '✅ השובר נקלט בהצלחה!' : '✅ Voucher Claimed Successfully!'}
               </h1>
               
@@ -139,7 +139,7 @@ export default function ClaimVoucher() {
                 </div>
               </div>
 
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="luxury-text-body">
                 {isRTL 
                   ? 'השובר הוסף לארנק הדיגיטלי שלך ומוכן לשימוש'
                   : 'Your voucher has been added to your digital wallet and is ready to use'}
@@ -148,7 +148,7 @@ export default function ClaimVoucher() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <Button 
                   onClick={() => setLocation('/dashboard')}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  className="luxury-btn-primary luxury-shadow-xl"
                   data-testid="button-view-wallet"
                 >
                   <Gift className="w-4 h-4 mr-2" />
@@ -161,6 +161,7 @@ export default function ClaimVoucher() {
                     setClaimedVoucher(null);
                     setVoucherCode('');
                   }}
+                  className="luxury-btn-secondary"
                   data-testid="button-claim-another"
                 >
                   {isRTL ? 'מימוש שובר נוסף' : 'Claim Another Voucher'}
@@ -174,9 +175,9 @@ export default function ClaimVoucher() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-purple-900 dark:to-gray-900 py-20 px-4">
-      <div className="max-w-2xl mx-auto">
-        <Card className="p-8 md:p-12 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+    <div className="min-h-screen luxury-bg-mesh py-20 px-4">
+      <div className="max-w-2xl mx-auto luxury-animate-fade-in">
+        <Card className="luxury-glass-card luxury-shadow-xl p-8 md:p-12">
           <div className="space-y-8">
             {/* Header */}
             <div className="text-center space-y-4">
@@ -184,11 +185,11 @@ export default function ClaimVoucher() {
                 <Gift className="w-12 h-12 text-white" />
               </div>
               
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+              <h1 className="luxury-heading-lg luxury-text-gradient">
                 {isRTL ? '🎁 מימוש שובר מתנה' : '🎁 Claim Gift Voucher'}
               </h1>
               
-              <p className="text-gray-600 dark:text-gray-400 text-lg max-w-md mx-auto">
+              <p className="luxury-text-body max-w-md mx-auto">
                 {isRTL 
                   ? 'הזינו את קוד השובר שקיבלתם כדי להוסיף אותו לארנק הדיגיטלי שלכם'
                   : 'Enter your voucher code to add it to your digital wallet'}
@@ -246,7 +247,7 @@ export default function ClaimVoucher() {
             <Button
               onClick={handleClaim}
               disabled={claimMutation.isPending || !voucherCode.trim()}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg py-6"
+              className="w-full luxury-btn-primary luxury-shadow-xl text-lg py-6"
               data-testid="button-claim-voucher"
             >
               {claimMutation.isPending ? (

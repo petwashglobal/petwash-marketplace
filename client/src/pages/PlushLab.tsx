@@ -317,7 +317,7 @@ export default function PlushLab() {
   
   return (
     <Layout>
-      <div className="min-h-screen luxury-bg-purple-fade py-8">
+      <div className="min-h-screen luxury-bg-mesh py-8">
         <div className="luxury-container">
           {/* FREE PUBLIC FEATURE BANNER */}
           <div className="mb-8 luxury-animate-fade-in">
@@ -338,22 +338,28 @@ export default function PlushLab() {
           {/* Header - BRAND NAME: "The Plush Lab" - NEVER TRANSLATED */}
           <div className="text-center luxury-section-compact luxury-animate-slide-up luxury-delay-1">
             <div className="flex items-center justify-center luxury-gap-md mb-6">
-              <Sparkles className="w-10 h-10 text-purple-600 dark:text-purple-400" />
+              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl luxury-shadow-xl">
+                <Sparkles className="w-10 h-10 text-white" />
+              </div>
               <h1 className="luxury-heading-xl">
                 The Plush Lab™
               </h1>
-              <Wand2 className="w-10 h-10 text-pink-600 dark:text-pink-400" />
+              <div className="p-3 bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl luxury-shadow-xl">
+                <Wand2 className="w-10 h-10 text-white" />
+              </div>
             </div>
-            <p className="luxury-text-body">
+            <p className="luxury-text-body max-w-3xl mx-auto">
               {t('plushlab.headerDescription', language)}
             </p>
           </div>
           
           {/* Create New Avatar */}
-          <div className="luxury-glass-card luxury-shadow-xl mb-8 luxury-animate-scale-in luxury-delay-2">
+          <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl mb-8 luxury-animate-scale-in luxury-delay-2">
             <div className="p-8 luxury-bg-soft rounded-t-3xl">
               <h2 className="luxury-heading-md flex items-center luxury-gap-sm">
-                <Upload className="w-6 h-6" />
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl">
+                  <Upload className="w-6 h-6 text-white" />
+                </div>
                 {t('plushlab.createNew', language)}
               </h2>
               <p className="luxury-text-small mt-2">
@@ -383,7 +389,7 @@ export default function PlushLab() {
                       {t('plushlab.petPhoto', language)}
                     </Label>
                     <div 
-                      className="luxury-glass-panel luxury-hover-glow border-2 border-dashed border-purple-300 dark:border-purple-700 p-8 text-center cursor-pointer transition-all"
+                      className="luxury-glass-card luxury-shadow-xl border-2 border-dashed border-purple-300 dark:border-purple-700 p-8 text-center cursor-pointer transition-all hover:border-purple-400 dark:hover:border-purple-600"
                       onClick={() => document.getElementById('photo')?.click()}
                     >
                       {previewUrl ? (
@@ -401,7 +407,9 @@ export default function PlushLab() {
                         </div>
                       ) : (
                         <div className="luxury-gap-sm" style={{ display: 'flex', flexDirection: 'column' }}>
-                          <ImageIcon className="w-16 h-16 mx-auto text-purple-400" />
+                          <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl inline-block mx-auto">
+                            <ImageIcon className="w-16 h-16 text-purple-500" />
+                          </div>
                           <p className="luxury-text-body">
                             {t('plushlab.clickToUpload', language)}
                           </p>
@@ -479,12 +487,16 @@ export default function PlushLab() {
                 </div>
                 
                 {/* PREMIUM CUSTOMIZATION - Avatar Customizer Component (NEW) */}
-                <div className="luxury-glass-card luxury-shadow-lg p-6">
+                <div className="luxury-glass-card luxury-hover-glow luxury-shadow-lg p-6">
                   <div className="mb-6 text-center">
                     <h3 className="luxury-heading-md luxury-text-gradient flex items-center justify-center luxury-gap-sm">
-                      <Wand2 className="w-6 h-6 text-purple-600" />
+                      <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
+                        <Wand2 className="w-6 h-6 text-white" />
+                      </div>
                       {t('plushlab.premiumCustomization', language)}
-                      <Star className="w-6 h-6 text-yellow-500" />
+                      <div className="p-2 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl">
+                        <Star className="w-6 h-6 text-white" />
+                      </div>
                     </h3>
                     <p className="luxury-text-small mt-2">
                       {t('plushlab.addOutfitsAccessories', language)}

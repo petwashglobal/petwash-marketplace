@@ -119,16 +119,18 @@ export default function SuppliersDashboard() {
       title="Supplier Management"
       subtitle="Manage vendor registry, contracts, payment tracking, and quality scorecards"
     >
-      <div className="container mx-auto py-8">
-      <div className="flex justify-end items-center mb-6">
-        <Button onClick={() => setShowCreateDialog(true)} data-testid="button-add-supplier">
+      <div className="min-h-screen luxury-bg-mesh p-6">
+      <div className="container mx-auto">
+      <div className="flex justify-end items-center mb-6 animate-in fade-in duration-700">
+        <Button className="luxury-btn-primary" onClick={() => setShowCreateDialog(true)} data-testid="button-add-supplier">
           <Plus className="w-4 h-4 mr-2" />
           Add Supplier
         </Button>
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 animate-in slide-in-from-top duration-500">
         <Button
+          className={view === "active" ? "luxury-btn-primary" : "luxury-btn-secondary"}
           variant={view === "active" ? "default" : "outline"}
           onClick={() => setView("active")}
           data-testid="button-view-active"
@@ -136,6 +138,7 @@ export default function SuppliersDashboard() {
           Active Suppliers
         </Button>
         <Button
+          className={view === "all" ? "luxury-btn-primary" : "luxury-btn-secondary"}
           variant={view === "all" ? "default" : "outline"}
           onClick={() => setView("all")}
           data-testid="button-view-all"
@@ -145,27 +148,34 @@ export default function SuppliersDashboard() {
       </div>
 
       {suppliers?.length === 0 ? (
-        <Card data-testid="empty-state">
+        <Card className="luxury-glass-card luxury-shadow-lg" data-testid="empty-state">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Building2 className="w-12 h-12 text-muted-foreground mb-4" />
+            <Building2 className="w-12 h-12 text-purple-400 mb-4" />
             <p className="text-muted-foreground">No suppliers found. Add your first supplier to get started.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {suppliers?.map((supplier: any) => (
-            <Card key={supplier.id} data-testid={`supplier-card-${supplier.id}`}>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 animate-in slide-in-from-bottom duration-700 delay-100">
+          {suppliers?.map((supplier: any, index: number) => (
+            <Card 
+              key={supplier.id} 
+              className="luxury-glass-card luxury-shadow-lg luxury-hover-lift transition-all duration-300" 
+              data-testid={`supplier-card-${supplier.id}`}
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      <Building2 className="w-5 h-5" />
+                      <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                        <Building2 className="w-5 h-5 text-white" />
+                      </div>
                       {supplier.companyName}
                     </CardTitle>
                     <CardDescription>{supplier.supplierType}</CardDescription>
                   </div>
                   {supplier.isActive && (
-                    <Badge variant="default">
+                    <Badge className="luxury-badge bg-green-500 animate-pulse">
                       <CheckCircle className="w-3 h-3 mr-1" />
                       Active
                     </Badge>
@@ -194,14 +204,13 @@ export default function SuppliersDashboard() {
                   </div>
                 </div>
                 {!supplier.isApproved && (
-                  <Badge variant="secondary">
+                  <Badge className="luxury-badge bg-yellow-500">
                     <XCircle className="w-3 h-3 mr-1" />
                     Pending Approval
                   </Badge>
                 )}
                 <Button 
-                  variant="outline" 
-                  className="w-full mt-4"
+                  className="luxury-btn-primary w-full mt-4"
                   onClick={() => setSelectedSupplier(supplier)}
                   data-testid={`button-view-contracts-${supplier.id}`}
                 >

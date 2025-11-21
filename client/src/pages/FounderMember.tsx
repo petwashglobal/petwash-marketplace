@@ -10,18 +10,18 @@ export default function FounderMember() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="luxury-spinner luxury-animate-fade-in" />
       </div>
     );
   }
 
   if (!founderData?.success) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">Founder Member Not Found</h1>
-          <p className="text-gray-600">Please contact support for assistance.</p>
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="text-center luxury-animate-fade-in">
+          <h1 className="luxury-heading-md mb-4">Founder Member Not Found</h1>
+          <p className="luxury-text-body">Please contact support for assistance.</p>
         </div>
       </div>
     );
@@ -30,22 +30,22 @@ export default function FounderMember() {
   const founder = founderData.founder;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen luxury-bg-mesh p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 luxury-animate-fade-in luxury-delay-1">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Crown className="w-8 h-8 text-yellow-500" />
-            <h1 className="text-3xl font-bold text-gray-800">Pet Wash™ Founder Member</h1>
+            <Crown className="w-8 h-8 text-yellow-500 drop-shadow-lg" />
+            <h1 className="luxury-heading-lg luxury-text-gradient">Pet Wash™ Founder Member</h1>
           </div>
-          <p className="text-gray-600">Welcome to the exclusive founder's club</p>
+          <p className="luxury-text-body">Welcome to the exclusive founder's club</p>
         </div>
 
         {/* Main Card */}
-        <Card className="bg-white shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
+        <Card className="luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-animate-scale-in luxury-delay-2">
+          <CardHeader className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 text-white rounded-t-lg">
             <CardTitle className="text-2xl flex items-center gap-2">
-              <Crown className="w-6 h-6" />
+              <Crown className="w-6 h-6 drop-shadow-lg" />
               Founder Member Profile
             </CardTitle>
           </CardHeader>
@@ -163,9 +163,9 @@ export default function FounderMember() {
         </Card>
 
         {/* Footer */}
-        <div className="text-center mt-8 text-gray-600">
-          <p>Thank you for being the foundation of Pet Wash™</p>
-          <p className="text-sm mt-2">Your vision made this premium pet care platform possible</p>
+        <div className="text-center mt-8 luxury-animate-fade-in luxury-delay-3">
+          <p className="luxury-text-body">Thank you for being the foundation of Pet Wash™</p>
+          <p className="luxury-text-small mt-2">Your vision made this premium pet care platform possible</p>
         </div>
       </div>
     </div>

@@ -91,10 +91,10 @@ export default function FranchiseDashboard() {
 
   if (statsLoading || announcementsLoading) {
     return (
-      <div className="min-h-screen bg-white p-4 md:p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">
+      <div className="min-h-screen luxury-bg-mesh p-4 md:p-6 flex items-center justify-center">
+        <div className="text-center luxury-animate-fade-in">
+          <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="luxury-text-body">
             {t('franchise.loading', language)}
           </p>
         </div>
@@ -103,144 +103,152 @@ export default function FranchiseDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-4 md:p-6" dir={dir}>
+    <div className="min-h-screen luxury-bg-mesh p-4 md:p-6" dir={dir}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+        <div className="mb-8 luxury-animate-fade-in">
+          <h1 className="luxury-heading-xl mb-3">
             {t('franchise.welcome', language)} {stats?.locationName || 'Franchise Partner'}
           </h1>
-          <p className="text-gray-600">
+          <p className="luxury-text-body">
             {t('franchise.performanceOverview', language)}
           </p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="luxury-heading-sm">
                 {t('franchise.todaysWashes', language)}
               </CardTitle>
-              <Package className="h-4 w-4 text-emerald-600" />
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <Package className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalWashes || 0}</div>
-              <p className="text-xs text-gray-500 mt-1">
+              <div className="luxury-heading-lg luxury-text-gradient">{stats?.totalWashes || 0}</div>
+              <p className="luxury-text-small mt-1">
                 {t('franchise.washes', language)}
               </p>
             </CardContent>
-          </Card>
+          </div>
 
-          <Card>
+          <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-2">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="luxury-heading-sm">
                 {t('franchise.thisMonthRevenue', language)}
               </CardTitle>
-              <DollarSign className="h-4 w-4 text-emerald-600" />
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₪{stats?.revenue.thisMonth.toLocaleString() || '0'}</div>
-              <p className="text-xs text-gray-500 mt-1">
+              <div className="luxury-heading-lg luxury-text-gradient">₪{stats?.revenue.thisMonth.toLocaleString() || '0'}</div>
+              <p className="luxury-text-small mt-1">
                 {t('franchise.totalRevenue', language)}
               </p>
             </CardContent>
-          </Card>
+          </div>
 
-          <Card>
+          <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-3">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="luxury-heading-sm">
                 {t('franchise.loyaltyRedemption', language)}
               </CardTitle>
-              <Users className="h-4 w-4 text-emerald-600" />
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <Users className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.loyaltyRedemptionRate || 0}%</div>
-              <p className="text-xs text-gray-500 mt-1">
+              <div className="luxury-heading-lg luxury-text-gradient">{stats?.loyaltyRedemptionRate || 0}%</div>
+              <p className="luxury-text-small mt-1">
                 {t('franchise.redemptionRate', language)}
               </p>
             </CardContent>
-          </Card>
+          </div>
 
-          <Card>
+          <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-4">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="luxury-heading-sm">
                 {t('franchise.monthlyGrowth', language)}
               </CardTitle>
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="luxury-heading-lg luxury-text-gradient">
                 {stats?.revenue.thisMonth && stats?.revenue.lastMonth
                   ? `${Math.round(((stats.revenue.thisMonth - stats.revenue.lastMonth) / stats.revenue.lastMonth) * 100)}%`
                   : '0%'}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="luxury-text-small mt-1">
                 {t('franchise.vsLastMonth', language)}
               </p>
             </CardContent>
-          </Card>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Machine Status */}
-          <Card>
+          <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-5">
             <CardHeader>
-              <CardTitle>{t('franchise.machineStatus', language)}</CardTitle>
-              <CardDescription>
+              <CardTitle className="luxury-heading-md">{t('franchise.machineStatus', language)}</CardTitle>
+              <CardDescription className="luxury-text-small">
                 {t('franchise.realTimeStatus', language)}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {stats?.machineStatus && stats.machineStatus.length > 0 ? (
-                  stats.machineStatus.map((machine) => (
+                  stats.machineStatus.map((machine, index) => (
                     <div
                       key={machine.machineId}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      className="luxury-glass-minimal flex items-center justify-between p-4 transition-all duration-300 hover:scale-105 hover:shadow-md"
                     >
                       <div className="flex items-center gap-3">
                         {getMachineStatusIcon(machine.status)}
                         <div>
-                          <p className="font-medium text-sm">{machine.machineId}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="font-semibold text-sm">{machine.machineId}</p>
+                          <p className="luxury-text-small">
                             {t('franchise.lastWash', language)} {new Date(machine.lastWash).toLocaleTimeString()}
                           </p>
                         </div>
                       </div>
-                      <Badge variant={machine.status === 'online' ? 'default' : 'secondary'}>
+                      <Badge variant={machine.status === 'online' ? 'default' : 'secondary'} className="luxury-badge">
                         {getMachineStatusText(machine.status)}
                       </Badge>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-center py-4">
+                  <p className="luxury-text-body text-center py-4">
                     {t('franchise.noMachines', language)}
                   </p>
                 )}
               </div>
             </CardContent>
-          </Card>
+          </div>
 
           {/* Announcements */}
-          <Card>
+          <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-6">
             <CardHeader>
-              <CardTitle>{t('franchise.announcements', language)}</CardTitle>
-              <CardDescription>
+              <CardTitle className="luxury-heading-md">{t('franchise.announcements', language)}</CardTitle>
+              <CardDescription className="luxury-text-small">
                 {t('franchise.headquarters', language)}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {announcements.length > 0 ? (
-                  announcements.map((announcement) => (
+                  announcements.map((announcement, index) => (
                     <div
                       key={announcement.id}
-                      className="p-3 bg-emerald-50 border border-emerald-100 rounded-lg"
+                      className="luxury-glass-minimal p-4 border border-purple-100 transition-all duration-300 hover:scale-105 hover:shadow-md"
                     >
-                      <h4 className="font-semibold text-sm mb-1">{announcement.title}</h4>
+                      <h4 className="font-semibold text-sm mb-1 luxury-text-gradient">{announcement.title}</h4>
                       <div 
-                        className="text-xs text-gray-600 line-clamp-2" 
+                        className="luxury-text-small line-clamp-2" 
                         dangerouslySetInnerHTML={{ __html: sanitizeHtml(announcement.bodyHtml, {
                           allowedTags: ['p', 'br', 'strong', 'em', 'u', 'span'],
                           allowedAttributes: {}
@@ -252,13 +260,13 @@ export default function FranchiseDashboard() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-center py-4">
+                  <p className="luxury-text-body text-center py-4">
                     {t('franchise.noAnnouncements', language)}
                   </p>
                 )}
               </div>
             </CardContent>
-          </Card>
+          </div>
         </div>
       </div>
     </div>

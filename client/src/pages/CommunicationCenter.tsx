@@ -419,19 +419,19 @@ export default function CommunicationCenter() {
 
   if (statsLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">{t('common.loading')}</p>
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="text-center luxury-animate-fade-in">
+          <div className="luxury-spinner mx-auto mb-4" />
+          <p className="luxury-text-body">{t('common.loading')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen luxury-bg-mesh">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 shadow-sm">
+      <header className="luxury-glass-card rounded-none border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
@@ -476,52 +476,52 @@ export default function CommunicationCenter() {
           <TabsContent value="dashboard" className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card data-testid="card-total-communications">
+              <Card className="luxury-glass-card luxury-hover-lift luxury-animate-fade-in luxury-delay-1" data-testid="card-total-communications">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{t('communication.stats.total', 'Total Communications')}</CardTitle>
                   <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold" data-testid="text-total-communications">{stats?.totalCommunications || 0}</div>
+                  <div className="text-2xl font-bold luxury-text-gradient" data-testid="text-total-communications">{stats?.totalCommunications || 0}</div>
                   <p className="text-xs text-muted-foreground">
                     {stats?.emailsSent || 0} emails, {stats?.smsSent || 0} SMS
                   </p>
                 </CardContent>
               </Card>
 
-              <Card data-testid="card-email-engagement">
+              <Card className="luxury-glass-card luxury-hover-lift luxury-animate-fade-in luxury-delay-2" data-testid="card-email-engagement">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{t('communication.stats.emailEngagement', 'Email Engagement')}</CardTitle>
                   <Mail className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold" data-testid="text-email-opened">{stats?.emailsOpened || 0}</div>
+                  <div className="text-2xl font-bold luxury-text-gradient" data-testid="text-email-opened">{stats?.emailsOpened || 0}</div>
                   <p className="text-xs text-muted-foreground">
                     {Math.round(((stats?.emailsOpened || 0) / (stats?.emailsSent || 1)) * 100)}% open rate
                   </p>
                 </CardContent>
               </Card>
 
-              <Card data-testid="card-active-reminders">
+              <Card className="luxury-glass-card luxury-hover-lift luxury-animate-fade-in luxury-delay-3" data-testid="card-active-reminders">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{t('communication.stats.activeReminders', 'Active Reminders')}</CardTitle>
                   <Bell className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold" data-testid="text-active-reminders">{stats?.activeReminders || 0}</div>
+                  <div className="text-2xl font-bold luxury-text-gradient" data-testid="text-active-reminders">{stats?.activeReminders || 0}</div>
                   <p className="text-xs text-muted-foreground">
                     {stats?.completedReminders || 0} completed this month
                   </p>
                 </CardContent>
               </Card>
 
-              <Card data-testid="card-templates-used">
+              <Card className="luxury-glass-card luxury-hover-lift luxury-animate-fade-in luxury-delay-4" data-testid="card-templates-used">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{t('communication.stats.templatesUsed', 'Templates Used')}</CardTitle>
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold" data-testid="text-templates-used">{stats?.totalTemplatesUsed || 0}</div>
+                  <div className="text-2xl font-bold luxury-text-gradient" data-testid="text-templates-used">{stats?.totalTemplatesUsed || 0}</div>
                   <p className="text-xs text-muted-foreground">
                     Across all categories
                   </p>
@@ -531,7 +531,7 @@ export default function CommunicationCenter() {
 
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card data-testid="card-communication-trends">
+              <Card className="luxury-glass-card luxury-hover-lift luxury-animate-fade-in luxury-delay-5" data-testid="card-communication-trends">
                 <CardHeader>
                   <CardTitle>{t('communication.charts.trends', 'Communication Trends')}</CardTitle>
                   <CardDescription>Monthly email and SMS volumes</CardDescription>
@@ -544,14 +544,14 @@ export default function CommunicationCenter() {
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Line type="monotone" dataKey="emails" stroke="#3b82f6" strokeWidth={2} />
-                      <Line type="monotone" dataKey="sms" stroke="#10b981" strokeWidth={2} />
+                      <Line type="monotone" dataKey="emails" stroke="#667eea" strokeWidth={2} />
+                      <Line type="monotone" dataKey="sms" stroke="#764ba2" strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
 
-              <Card data-testid="card-email-engagement-chart">
+              <Card className="luxury-glass-card luxury-hover-lift luxury-animate-fade-in luxury-delay-6" data-testid="card-email-engagement-chart">
                 <CardHeader>
                   <CardTitle>{t('communication.charts.engagement', 'Email Engagement')}</CardTitle>
                   <CardDescription>Open and click rates</CardDescription>
@@ -573,39 +573,37 @@ export default function CommunicationCenter() {
             </div>
 
             {/* Quick Actions */}
-            <Card data-testid="card-quick-actions">
+            <Card className="luxury-glass-card luxury-hover-lift luxury-animate-fade-in luxury-delay-7" data-testid="card-quick-actions">
               <CardHeader>
                 <CardTitle>{t('communication.quickActions.title', 'Quick Actions')}</CardTitle>
                 <CardDescription>Common communication tasks</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Button 
+                  <button 
                     onClick={() => setIsBulkEmailDialogOpen(true)}
-                    className="h-16 flex flex-col items-center justify-center space-y-2"
+                    className="luxury-btn-primary h-16 flex flex-col items-center justify-center space-y-2"
                     data-testid="button-send-bulk-email"
                   >
                     <Send className="w-5 h-5" />
                     <span>{t('communication.quickActions.sendBulkEmail', 'Send Bulk Email')}</span>
-                  </Button>
-                  <Button 
+                  </button>
+                  <button 
                     onClick={() => setIsBulkSmsDialogOpen(true)}
-                    variant="outline"
-                    className="h-16 flex flex-col items-center justify-center space-y-2"
+                    className="luxury-btn-secondary h-16 flex flex-col items-center justify-center space-y-2"
                     data-testid="button-send-bulk-sms"
                   >
                     <MessageSquare className="w-5 h-5" />
                     <span>{t('communication.quickActions.sendBulkSms', 'Send Bulk SMS')}</span>
-                  </Button>
-                  <Button 
+                  </button>
+                  <button 
                     onClick={() => setIsCreateReminderDialogOpen(true)}
-                    variant="outline"
-                    className="h-16 flex flex-col items-center justify-center space-y-2"
+                    className="luxury-btn-secondary h-16 flex flex-col items-center justify-center space-y-2"
                     data-testid="button-create-reminder"
                   >
                     <Bell className="w-5 h-5" />
                     <span>{t('communication.quickActions.scheduleReminder', 'Schedule Reminder')}</span>
-                  </Button>
+                  </button>
                 </div>
               </CardContent>
             </Card>
@@ -613,19 +611,19 @@ export default function CommunicationCenter() {
 
           {/* Email Templates Tab */}
           <TabsContent value="email-templates" className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between luxury-animate-fade-in luxury-delay-1">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800">{t('communication.emailTemplates.title', 'Email Templates')}</h2>
-                <p className="text-slate-600">{t('communication.emailTemplates.subtitle', 'Manage email templates for different communication types')}</p>
+                <h2 className="luxury-heading-md">{t('communication.emailTemplates.title', 'Email Templates')}</h2>
+                <p className="luxury-text-body">{t('communication.emailTemplates.subtitle', 'Manage email templates for different communication types')}</p>
               </div>
-              <Button onClick={() => setIsCreateEmailDialogOpen(true)} data-testid="button-create-email-template">
-                <Plus className="w-4 h-4 mr-2" />
+              <button onClick={() => setIsCreateEmailDialogOpen(true)} className="luxury-btn-primary" data-testid="button-create-email-template">
+                <Plus className="w-4 h-4 mr-2 inline" />
                 {t('communication.emailTemplates.create', 'Create Template')}
-              </Button>
+              </button>
             </div>
 
             {/* Email Template Filters */}
-            <Card data-testid="card-email-filters">
+            <Card className="luxury-glass-card luxury-hover-lift luxury-animate-fade-in luxury-delay-2" data-testid="card-email-filters">
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -677,7 +675,7 @@ export default function CommunicationCenter() {
             </Card>
 
             {/* Email Templates Table */}
-            <Card data-testid="card-email-templates-table">
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-3" data-testid="card-email-templates-table">
               <CardContent>
                 <Table>
                   <TableHeader>
@@ -760,19 +758,19 @@ export default function CommunicationCenter() {
 
           {/* SMS Templates Tab */}
           <TabsContent value="sms-templates" className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between luxury-animate-fade-in luxury-delay-1">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800">{t('communication.smsTemplates.title', 'SMS Templates')}</h2>
-                <p className="text-slate-600">{t('communication.smsTemplates.subtitle', 'Manage SMS templates for different communication types')}</p>
+                <h2 className="luxury-heading-md">{t('communication.smsTemplates.title', 'SMS Templates')}</h2>
+                <p className="luxury-text-body">{t('communication.smsTemplates.subtitle', 'Manage SMS templates for different communication types')}</p>
               </div>
-              <Button onClick={() => setIsCreateSmsDialogOpen(true)} data-testid="button-create-sms-template">
-                <Plus className="w-4 h-4 mr-2" />
+              <button onClick={() => setIsCreateSmsDialogOpen(true)} className="luxury-btn-primary" data-testid="button-create-sms-template">
+                <Plus className="w-4 h-4 mr-2 inline" />
                 {t('communication.smsTemplates.create', 'Create Template')}
-              </Button>
+              </button>
             </div>
 
             {/* SMS Template Filters */}
-            <Card data-testid="card-sms-filters">
+            <Card className="luxury-glass-card luxury-hover-lift luxury-animate-fade-in luxury-delay-2" data-testid="card-sms-filters">
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -824,7 +822,7 @@ export default function CommunicationCenter() {
             </Card>
 
             {/* SMS Templates Table */}
-            <Card data-testid="card-sms-templates-table">
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-3" data-testid="card-sms-templates-table">
               <CardContent>
                 <Table>
                   <TableHeader>
@@ -918,19 +916,19 @@ export default function CommunicationCenter() {
 
           {/* Appointment Reminders Tab */}
           <TabsContent value="reminders" className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between luxury-animate-fade-in luxury-delay-1">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800">{t('communication.reminders.title', 'Appointment Reminders')}</h2>
-                <p className="text-slate-600">{t('communication.reminders.subtitle', 'Manage automated appointment reminders')}</p>
+                <h2 className="luxury-heading-md">{t('communication.reminders.title', 'Appointment Reminders')}</h2>
+                <p className="luxury-text-body">{t('communication.reminders.subtitle', 'Manage automated appointment reminders')}</p>
               </div>
-              <Button onClick={() => setIsCreateReminderDialogOpen(true)} data-testid="button-create-reminder">
-                <Plus className="w-4 h-4 mr-2" />
+              <button onClick={() => setIsCreateReminderDialogOpen(true)} className="luxury-btn-primary" data-testid="button-create-reminder">
+                <Plus className="w-4 h-4 mr-2 inline" />
                 {t('communication.reminders.create', 'Schedule Reminder')}
-              </Button>
+              </button>
             </div>
 
             {/* Reminder Filters */}
-            <Card data-testid="card-reminder-filters">
+            <Card className="luxury-glass-card luxury-hover-lift luxury-animate-fade-in luxury-delay-2" data-testid="card-reminder-filters">
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -984,7 +982,7 @@ export default function CommunicationCenter() {
             </Card>
 
             {/* Reminders Table */}
-            <Card data-testid="card-reminders-table">
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-3" data-testid="card-reminders-table">
               <CardContent>
                 <Table>
                   <TableHeader>
@@ -1087,12 +1085,12 @@ export default function CommunicationCenter() {
 
           {/* History Tab */}
           <TabsContent value="history" className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800">{t('communication.history.title', 'Communication History')}</h2>
-              <p className="text-slate-600">{t('communication.history.subtitle', 'View all communication interactions and logs')}</p>
+            <div className="luxury-animate-fade-in luxury-delay-1">
+              <h2 className="luxury-heading-md">{t('communication.history.title', 'Communication History')}</h2>
+              <p className="luxury-text-body">{t('communication.history.subtitle', 'View all communication interactions and logs')}</p>
             </div>
 
-            <Card data-testid="card-communication-history">
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-2" data-testid="card-communication-history">
               <CardContent className="pt-6">
                 <div className="text-center py-8">
                   <Activity className="w-12 h-12 text-slate-400 mx-auto mb-4" />

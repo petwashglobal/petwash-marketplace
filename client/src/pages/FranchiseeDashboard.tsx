@@ -85,22 +85,26 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
       title="Franchisee Dashboard"
       subtitle="Manage your Pet Wash™ station network"
     >
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Key Metrics */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => {
+      <div className="max-w-7xl mx-auto space-y-8 luxury-bg-mesh min-h-screen p-8">
+        {/* Key Metrics - Luxury Grid */}
+        <div className="luxury-grid-4">
+          {stats.map((stat, idx) => {
             const Icon = stat.icon;
+            const gradients = ['from-blue-400 to-cyan-500', 'from-red-400 to-pink-500', 'from-orange-400 to-amber-500', 'from-green-400 to-emerald-500'];
             return (
-              <Card key={stat.title} data-testid={`card-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground">{stat.subtitle}</p>
-                </CardContent>
-              </Card>
+              <div key={stat.title} className={`luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-${idx + 1}`} data-testid={`card-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradients[idx]}`}></div>
+                <div className="p-6">
+                  <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <h3 className="luxury-heading-sm">{stat.title}</h3>
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradients[idx]} p-2.5 shadow-lg`}>
+                      <Icon className="w-full h-full text-white" />
+                    </div>
+                  </div>
+                  <div className="luxury-heading-lg luxury-text-gradient mt-2">{stat.value}</div>
+                  <p className="luxury-text-small mt-1">{stat.subtitle}</p>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -132,19 +136,17 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
 
           {/* Stations Tab */}
           <TabsContent value="stations" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>My Stations</CardTitle>
-                <CardDescription>
+            <div className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up">
+              <div className="p-6">
+                <h2 className="luxury-heading-lg luxury-text-gradient mb-2">My Stations</h2>
+                <p className="luxury-text-body mb-6">
                   Overview of your {stations?.length || 0} Pet Wash™ locations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
                 <div className="space-y-3">
                   {stations?.map((station: any) => (
                     <div
                       key={station.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                      className="luxury-glass-panel luxury-hover-lift p-4 mb-3"
                       data-testid={`station-${station.id}`}
                     >
                       <div className="flex items-center gap-4">
@@ -170,9 +172,9 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
                             {station.totalWashesCompleted || 0} total washes
                           </p>
                         </div>
-                        <Button variant="outline" size="sm" data-testid={`button-view-station-${station.id}`}>
+                        <button className="luxury-btn-primary text-sm px-4 py-2" data-testid={`button-view-station-${station.id}`}>
                           View
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -183,18 +185,16 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Revenue Tab */}
           <TabsContent value="revenue" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue & Payments</CardTitle>
-                <CardDescription>Financial performance overview</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <div className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up">
+              <div className="p-6">
+                <h2 className="luxury-heading-lg luxury-text-gradient mb-2">Revenue & Payments</h2>
+                <p className="luxury-text-body mb-6">Financial performance overview</p>
                 <div className="text-center py-12">
                   <TrendingUp className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
                   <p className="text-lg font-semibold">Revenue Dashboard Coming Soon</p>
@@ -202,35 +202,33 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
                     Track earnings, royalties, and payment history
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Maintenance Tab */}
           <TabsContent value="maintenance" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Station Maintenance</CardTitle>
-                <CardDescription>Work orders and service requests</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <div className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up">
+              <div className="p-6">
+                <h2 className="luxury-heading-lg luxury-text-gradient mb-2">Station Maintenance</h2>
+                <p className="luxury-text-body mb-6">Work orders and service requests</p>
                 <div className="space-y-3">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="border rounded-lg p-4">
+                  <div className="luxury-grid-3">
+                    <div className="luxury-glass-panel luxury-hover-lift p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Clock className="h-4 w-4 text-yellow-600" />
                         <span className="font-semibold">Pending</span>
                       </div>
                       <p className="text-2xl font-bold">0</p>
                     </div>
-                    <div className="border rounded-lg p-4">
+                    <div className="luxury-glass-panel luxury-hover-lift p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Wrench className="h-4 w-4 text-blue-600" />
                         <span className="font-semibold">In Progress</span>
                       </div>
                       <p className="text-2xl font-bold">0</p>
                     </div>
-                    <div className="border rounded-lg p-4">
+                    <div className="luxury-glass-panel luxury-hover-lift p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle className="h-4 w-4 text-green-600" />
                         <span className="font-semibold">Completed</span>
@@ -239,18 +237,16 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Inventory Tab */}
           <TabsContent value="inventory" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Inventory & Spare Parts</CardTitle>
-                <CardDescription>Track supplies across your stations</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <div className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up">
+              <div className="p-6">
+                <h2 className="luxury-heading-lg luxury-text-gradient mb-2">Inventory & Spare Parts</h2>
+                <p className="luxury-text-body mb-6">Track supplies across your stations</p>
                 <div className="text-center py-12">
                   <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
                   <p className="text-lg font-semibold">Inventory System Coming Soon</p>
@@ -258,18 +254,16 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
                     Monitor stock levels and order supplies
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Customers Tab */}
           <TabsContent value="customers" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Subscription Customers</CardTitle>
-                <CardDescription>Recurring revenue members</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <div className="luxury-glass-card luxury-shadow-lg luxury-animate-slide-up">
+              <div className="p-6">
+                <h2 className="luxury-heading-lg luxury-text-gradient mb-2">Subscription Customers</h2>
+                <p className="luxury-text-body mb-6">Recurring revenue members</p>
                 <div className="text-center py-12">
                   <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
                   <p className="text-lg font-semibold">Customer Portal Coming Soon</p>
@@ -277,8 +271,8 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
                     View subscriber analytics and retention metrics
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

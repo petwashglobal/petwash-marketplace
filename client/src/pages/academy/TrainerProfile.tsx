@@ -67,10 +67,10 @@ export default function TrainerProfile() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 flex items-center justify-center">
+        <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">{t('Loading trainer profile...')}</p>
+            <p className="luxury-text-body">{t('Loading trainer profile...')}</p>
           </div>
         </div>
       </Layout>
@@ -80,19 +80,19 @@ export default function TrainerProfile() {
   if (!trainerData || !trainerData.trainer) {
     return (
       <Layout>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 flex items-center justify-center">
-          <GlassCard className="p-12 text-center max-w-md">
+        <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+          <div className="luxury-glass-card luxury-shadow-xl p-12 text-center max-w-md">
             <GraduationCap className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="luxury-heading-lg mb-2">
               {t('Trainer Not Found')}
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+            <p className="luxury-text-body mb-6">
               {t('This trainer profile could not be found.')}
             </p>
             <Link href="/academy">
-              <Button>{t('Browse All Trainers')}</Button>
+              <button className="luxury-btn-primary">{t('Browse All Trainers')}</button>
             </Link>
-          </GlassCard>
+          </div>
         </div>
       </Layout>
     );
@@ -111,7 +111,7 @@ export default function TrainerProfile() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+      <div className="min-h-screen luxury-bg-mesh">
         {/* Back Button */}
         <div className="container mx-auto px-4 pt-6">
           <Link href="/academy">
@@ -158,18 +158,22 @@ export default function TrainerProfile() {
             {/* Left Column - Trainer Info */}
             <div className="lg:col-span-2 space-y-6">
               {/* Profile Card */}
-              <GlassCard className="p-8">
+              <div className="luxury-glass-card luxury-hover-glow p-8 luxury-animate-fade-in luxury-delay-1">
                 <div className="flex items-start gap-6 mb-6">
-                  {/* Profile Photo */}
-                  <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
-                    {trainer.profilePhotoUrl ? (
-                      <AvatarImage src={trainer.profilePhotoUrl} alt={trainer.fullName} />
-                    ) : (
-                      <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-400 to-blue-400 text-white">
-                        {trainer.fullName.charAt(0)}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
+                  {/* Profile Photo - Circular with Gradient Border */}
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 rounded-full p-1">
+                      <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
+                        {trainer.profilePhotoUrl ? (
+                          <AvatarImage src={trainer.profilePhotoUrl} alt={trainer.fullName} />
+                        ) : (
+                          <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-400 to-blue-400 text-white">
+                            {trainer.fullName.charAt(0)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                    </div>
+                  </div>
 
                   <div className="flex-1">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
@@ -248,10 +252,10 @@ export default function TrainerProfile() {
                     </div>
                   </div>
                 </div>
-              </GlassCard>
+              </div>
 
               {/* Tabs - Specialties, Reviews, etc. */}
-              <GlassCard className="p-6">
+              <div className="luxury-glass-card luxury-hover-glow p-6 luxury-animate-fade-in luxury-delay-2">
                 <Tabs defaultValue="specialties">
                   <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="specialties">{t('Specialties')}</TabsTrigger>
@@ -363,14 +367,14 @@ export default function TrainerProfile() {
                     </div>
                   </TabsContent>
                 </Tabs>
-              </GlassCard>
+              </div>
             </div>
 
             {/* Right Column - Booking Card */}
             <div className="lg:col-span-1">
               <div className="sticky top-6 space-y-4">
                 {/* Pricing Card */}
-                <GlassCard className="p-6">
+                <div className="luxury-glass-card luxury-shadow-xl p-6 luxury-animate-fade-in luxury-delay-3">
                   <div className="text-center mb-6">
                     <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
                       ₪{parseFloat(trainer.hourlyRate).toFixed(0)}
@@ -382,15 +386,14 @@ export default function TrainerProfile() {
 
                   {trainer.isAcceptingBookings ? (
                     <>
-                      <Button
-                        className="w-full mb-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white gap-2"
-                        size="lg"
+                      <button
+                        className="luxury-btn-primary w-full mb-3 gap-2 py-3 text-lg"
                         onClick={() => setLocation(`/academy/book/${trainer.id}`)}
                         data-testid="button-book-trainer"
                       >
                         <CalendarIcon className="h-5 w-5" />
                         {t('Book Training Session')}
-                      </Button>
+                      </button>
 
                       <Button
                         variant="outline"
@@ -476,10 +479,10 @@ export default function TrainerProfile() {
                       </p>
                     </div>
                   )}
-                </GlassCard>
+                </div>
 
                 {/* Trust & Safety */}
-                <GlassCard className="p-6">
+                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-4">
                   <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
                     {t('Trust & Safety')}
                   </h4>
@@ -503,7 +506,7 @@ export default function TrainerProfile() {
                       </span>
                     </div>
                   </div>
-                </GlassCard>
+                </div>
               </div>
             </div>
           </div>

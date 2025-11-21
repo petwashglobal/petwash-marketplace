@@ -67,20 +67,20 @@ export default function MenuDesigns() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white py-20 px-4">
+      <div className="min-h-screen luxury-bg-mesh py-20 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h1 className="text-2xl font-bold text-black mb-4">
+          <div className="text-center mb-16 luxury-animate-fade-in">
+            <h1 className="luxury-heading-lg mb-4">
               Hamburger Menu Design Options
             </h1>
-            <p className="text-lg text-gray-700">
+            <p className="luxury-text-body">
               Choose the perfect menu style for Pet Wash™️
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {menuDesigns.map((design) => (
-              <Card key={design.id} className="border shadow-lg hover:shadow-xl transition-shadow">
+            {menuDesigns.map((design, index) => (
+              <Card key={design.id} className={`luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 6)}`}>
                 <CardContent className="p-8 text-center">
                   <div className="mb-6">
                     <Button 
@@ -91,10 +91,10 @@ export default function MenuDesigns() {
                       {design.icon}
                     </Button>
                   </div>
-                  <h3 className="text-xl font-bold text-black mb-2">
+                  <h3 className="luxury-heading-sm mb-2">
                     {design.name}
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="luxury-text-body text-sm">
                     {design.description}
                   </p>
                 </CardContent>
@@ -102,12 +102,12 @@ export default function MenuDesigns() {
             ))}
           </div>
 
-          <div className="mt-16 text-center">
-            <h2 className="text-2xl font-bold text-black mb-8">
+          <div className="mt-16 text-center luxury-animate-fade-in luxury-delay-7">
+            <h2 className="luxury-heading-lg mb-8">
               Current Layout Preview
             </h2>
-            <div className="bg-white p-8 rounded-lg max-w-4xl mx-auto">
-              <div className="bg-white border-b border-gray-200 p-4 rounded-t-lg">
+            <div className="luxury-glass-card luxury-shadow-xl p-8 rounded-lg max-w-4xl mx-auto">
+              <div className="bg-white/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 p-4 rounded-t-lg">
                 <div className="grid grid-cols-3 items-center gap-4">
                   {/* Left - Social Icons */}
                   <div className="flex items-center justify-start space-x-3">

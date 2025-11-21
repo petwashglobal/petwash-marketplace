@@ -67,33 +67,33 @@ export default function GroomersOverview() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white dark:bg-gray-950">
-        {/* Hero Section */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-pink-50 via-white to-rose-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 py-16 sm:py-24">
+      <div className="min-h-screen luxury-bg-mesh">
+        {/* Luxury Hero Section */}
+        <div className="relative overflow-hidden py-16 sm:py-24 luxury-animate-fade-in">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
+            <div className="text-center luxury-animate-slide-up">
               <div className="flex justify-center mb-6">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-pink-100 dark:bg-pink-900 rounded-full text-sm font-medium text-pink-700 dark:text-pink-300">
+                <div className="luxury-badge">
                   <Sparkles className="h-4 w-4" />
                   Professional Pet Grooming
                 </div>
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
+              <h1 className="luxury-heading-xl mb-4">
                 Groomers Marketplace
               </h1>
-              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-8">
+              <p className="luxury-text-body max-w-2xl mx-auto mb-8">
                 Expert grooming services for your pet.  
                 Haircuts, baths, nail trims, and spa treatments.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/groomers">
-                  <Button size="lg" className="bg-pink-600 hover:bg-pink-700 text-white px-8" data-testid="button-find-groomer">
+                  <Button size="lg" className="luxury-btn-primary px-8" data-testid="button-find-groomer">
                     <Scissors className="h-5 w-5 mr-2" />
                     Find a Groomer
                   </Button>
                 </Link>
                 <Link href="/groomers/book">
-                  <Button size="lg" variant="outline" className="px-8" data-testid="button-book-grooming">
+                  <Button size="lg" className="luxury-btn-secondary px-8" data-testid="button-book-grooming">
                     <Calendar className="h-5 w-5 mr-2" />
                     Book Now
                   </Button>
@@ -103,61 +103,63 @@ export default function GroomersOverview() {
           </div>
         </div>
 
-        {/* Features Grid */}
+        {/* Luxury Features Grid */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="luxury-grid-3">
             {features.map((feature, index) => (
               <Link key={index} href={feature.link}>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-gray-200 dark:border-gray-800">
+                <div className={`luxury-glass-card luxury-hover-glow cursor-pointer h-full luxury-animate-scale-in luxury-delay-${Math.min(index + 1, 10)}`}>
                   <CardHeader>
-                    <div className={`inline-flex p-3 rounded-lg ${feature.color} mb-4`}>
+                    <div className="inline-flex p-4 rounded-xl bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 luxury-shadow-md mb-4">
                       {feature.icon}
                     </div>
-                    <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white">
+                    <CardTitle className="luxury-heading-sm luxury-text-gradient">
                       {feature.title}
                     </CardTitle>
-                    <CardDescription className="text-gray-600 dark:text-gray-400">
+                    <CardDescription className="luxury-text-body">
                       {feature.description}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button variant="ghost" className="w-full justify-between text-pink-600 dark:text-pink-400" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <Button variant="ghost" className="w-full justify-between text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
                       Learn More
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </CardContent>
-                </Card>
+                </div>
               </Link>
             ))}
           </div>
         </div>
 
-        {/* Stats Section */}
-        <div className="bg-gray-50 dark:bg-gray-900 py-16">
+        {/* Luxury Stats Section */}
+        <div className="py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-pink-600 dark:text-pink-400 mb-2">
-                  Certified Groomers
+            <div className="luxury-glass-card luxury-shadow-xl p-12">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="text-center luxury-animate-slide-up luxury-delay-7">
+                  <div className="luxury-heading-lg luxury-text-gradient mb-2">
+                    Certified Groomers
+                  </div>
+                  <div className="luxury-text-body">
+                    Licensed professionals
+                  </div>
                 </div>
-                <div className="text-gray-600 dark:text-gray-400">
-                  Licensed professionals
+                <div className="text-center luxury-animate-slide-up luxury-delay-8">
+                  <div className="luxury-heading-lg luxury-text-gradient mb-2">
+                    Premium Products
+                  </div>
+                  <div className="luxury-text-body">
+                    High-quality care
+                  </div>
                 </div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                  Premium Products
-                </div>
-                <div className="text-gray-600 dark:text-gray-400">
-                  High-quality care
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-                  Spa Treatments
-                </div>
-                <div className="text-gray-600 dark:text-gray-400">
-                  Luxury services available
+                <div className="text-center luxury-animate-slide-up luxury-delay-9">
+                  <div className="luxury-heading-lg luxury-text-gradient mb-2">
+                    Spa Treatments
+                  </div>
+                  <div className="luxury-text-body">
+                    Luxury services available
+                  </div>
                 </div>
               </div>
             </div>

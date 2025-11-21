@@ -13,7 +13,9 @@ import {
   Clock,
   Star,
   FileText,
-  Shield
+  Shield,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -75,12 +77,14 @@ export default function ContractorDashboard() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
-        <Skeleton className="h-12 w-64" />
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
+      <div className="luxury-bg-mesh min-h-screen">
+        <div className="luxury-container py-8 space-y-6">
+          <div className="luxury-skeleton h-12 w-64" />
+          <div className="luxury-grid-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="luxury-skeleton h-32" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -88,15 +92,15 @@ export default function ContractorDashboard() {
 
   if (error || !dashboardData) {
     return (
-      <div className="container mx-auto p-6">
-        <Card>
-          <CardContent className="pt-6">
+      <div className="luxury-bg-mesh min-h-screen">
+        <div className="luxury-container py-8">
+          <div className="luxury-glass-card luxury-shadow-lg p-6">
             <div className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
               <p>Failed to load dashboard data</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -107,294 +111,341 @@ export default function ContractorDashboard() {
   const trustScorePercent = ((trustScores.publicScore - 4.0) / 1.0) * 100;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Contractor Dashboard</h1>
-          <p className="text-muted-foreground">Track your performance, earnings, and reputation</p>
+    <div className="luxury-bg-mesh min-h-screen">
+      <div className="luxury-container py-8 space-y-8">
+        {/* Header */}
+        <div className="luxury-animate-fade-in flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="luxury-heading-lg">Provider Dashboard</h1>
+            <p className="luxury-text-body mt-2">Track your performance, earnings, and reputation</p>
+          </div>
+          <div className={`luxury-badge ${trustScores.publicScore >= 4.7 ? 'luxury-badge-gold' : ''} text-lg`}>
+            <Star className="h-5 w-5 fill-current" />
+            {trustScores.publicScore.toFixed(2)} Trust Score
+          </div>
         </div>
-        <Badge variant={trustScores.publicScore >= 4.7 ? 'default' : 'secondary'} className="text-lg px-4 py-2">
-          <Star className="h-4 w-4 mr-1 fill-current" />
-          {trustScores.publicScore.toFixed(2)} Trust Score
-        </Badge>
-      </div>
 
-      {/* Key Metrics Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card data-testid="card-earnings-total">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₪{earnings.totalNet.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">All-time net earnings</p>
-          </CardContent>
-        </Card>
+        {/* Key Metrics Cards */}
+        <div className="luxury-grid-4">
+          <div 
+            className="luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-scale-in luxury-delay-1 p-6"
+            data-testid="card-earnings-total"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total Earnings</h3>
+              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-blue-500/10">
+                <DollarSign className="h-5 w-5 text-purple-600" />
+              </div>
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient">₪{earnings.totalNet.toFixed(2)}</div>
+            <p className="luxury-text-small mt-1">All-time net earnings</p>
+          </div>
 
-        <Card data-testid="card-escrow-pending">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Escrow</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₪{earnings.inEscrow.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Releases in 72h after completion</p>
-          </CardContent>
-        </Card>
+          <div 
+            className="luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-scale-in luxury-delay-2 p-6"
+            data-testid="card-escrow-pending"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">In Escrow</h3>
+              <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10">
+                <Clock className="h-5 w-5 text-amber-600" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold text-gray-900">₪{earnings.inEscrow.toFixed(2)}</div>
+            <p className="luxury-text-small mt-1">Releases in 72h after completion</p>
+          </div>
 
-        <Card data-testid="card-payout-ready">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ready for Payout</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₪{earnings.pendingPayout.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Available for withdrawal</p>
-          </CardContent>
-        </Card>
+          <div 
+            className="luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-scale-in luxury-delay-3 p-6"
+            data-testid="card-payout-ready"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Ready for Payout</h3>
+              <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold text-gray-900">₪{earnings.pendingPayout.toFixed(2)}</div>
+            <p className="luxury-text-small mt-1">Available for withdrawal</p>
+          </div>
 
-        <Card data-testid="card-violations">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Violations</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{violations.total}</div>
-            <p className="text-xs text-muted-foreground">
+          <div 
+            className="luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-scale-in luxury-delay-4 p-6"
+            data-testid="card-violations"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Violations</h3>
+              <div className="p-3 rounded-xl bg-gradient-to-br from-red-500/10 to-pink-500/10">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold text-gray-900">{violations.total}</div>
+            <p className="luxury-text-small mt-1">
               {violations.critical > 0 ? `${violations.critical} critical` : 'No critical issues'}
             </p>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
 
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
-          <TabsTrigger value="earnings" data-testid="tab-earnings">Earnings</TabsTrigger>
-          <TabsTrigger value="reviews" data-testid="tab-reviews">Reviews</TabsTrigger>
-          <TabsTrigger value="badges" data-testid="tab-badges">Badges</TabsTrigger>
-        </TabsList>
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="overview" className="luxury-animate-slide-up luxury-delay-5">
+          <TabsList className="luxury-glass-panel mb-6">
+            <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+            <TabsTrigger value="earnings" data-testid="tab-earnings">Earnings</TabsTrigger>
+            <TabsTrigger value="reviews" data-testid="tab-reviews">Reviews</TabsTrigger>
+            <TabsTrigger value="badges" data-testid="tab-badges">Badges</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          {/* Trust Score Breakdown */}
-          <Card data-testid="card-trust-score-breakdown">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Trust Score Breakdown
-              </CardTitle>
-              <CardDescription>
-                Your trust score is calculated from vetting, reviews, and violation history
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Overall Trust Score</span>
-                  <span className="text-sm text-muted-foreground">
-                    {trustScores.publicScore.toFixed(2)} / 5.0
-                  </span>
+          <TabsContent value="overview" className="space-y-6">
+            {/* Trust Score Breakdown */}
+            <div className="luxury-glass-card luxury-shadow-lg" data-testid="card-trust-score-breakdown">
+              <div className="p-6 border-b border-purple-100">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/10 to-blue-500/10">
+                    <Shield className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <h2 className="luxury-heading-md">Trust Score Breakdown</h2>
                 </div>
-                <Progress value={trustScorePercent} className="h-2" />
+                <p className="luxury-text-small">
+                  Your trust score is calculated from vetting, reviews, and violation history
+                </p>
               </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold">Vetting Status</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span>Criminal Check</span>
-                      <Badge variant={trustScores.breakdown.vetting.criminalCheck ? 'default' : 'secondary'}>
-                        {trustScores.breakdown.vetting.criminalCheck ? 'Passed' : 'Pending'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Biometric Verified</span>
-                      <Badge variant={trustScores.breakdown.vetting.biometricVerified ? 'default' : 'secondary'}>
-                        {trustScores.breakdown.vetting.biometricVerified ? 'Verified' : 'Pending'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Certifications Valid</span>
-                      <Badge variant={trustScores.breakdown.vetting.certificationsValid ? 'default' : 'secondary'}>
-                        {trustScores.breakdown.vetting.certificationsValid ? 'Valid' : 'Expired'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Insurance Active</span>
-                      <Badge variant={trustScores.breakdown.vetting.insuranceValid ? 'default' : 'secondary'}>
-                        {trustScores.breakdown.vetting.insuranceValid ? 'Active' : 'Expired'}
-                      </Badge>
-                    </div>
+              <div className="p-6 space-y-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-700">Overall Trust Score</span>
+                    <span className="luxury-text-gradient text-lg font-bold">
+                      {trustScores.publicScore.toFixed(2)} / 5.0
+                    </span>
+                  </div>
+                  <div className="luxury-glass-minimal p-2 rounded-full">
+                    <Progress value={trustScorePercent} className="h-3" />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold">Performance Metrics</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span>Average Rating</span>
-                      <span className="font-medium">
-                        {trustScores.breakdown.reviews.averageRating.toFixed(1)} ⭐
-                      </span>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="luxury-glass-minimal p-5 rounded-xl">
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      Vetting Status
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="luxury-text-small">Criminal Check</span>
+                        <span className={`luxury-badge ${trustScores.breakdown.vetting.criminalCheck ? 'luxury-badge-success' : ''}`}>
+                          {trustScores.breakdown.vetting.criminalCheck ? 'Passed' : 'Pending'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="luxury-text-small">Biometric Verified</span>
+                        <span className={`luxury-badge ${trustScores.breakdown.vetting.biometricVerified ? 'luxury-badge-success' : ''}`}>
+                          {trustScores.breakdown.vetting.biometricVerified ? 'Verified' : 'Pending'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="luxury-text-small">Certifications Valid</span>
+                        <span className={`luxury-badge ${trustScores.breakdown.vetting.certificationsValid ? 'luxury-badge-success' : ''}`}>
+                          {trustScores.breakdown.vetting.certificationsValid ? 'Valid' : 'Expired'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="luxury-text-small">Insurance Active</span>
+                        <span className={`luxury-badge ${trustScores.breakdown.vetting.insuranceValid ? 'luxury-badge-success' : ''}`}>
+                          {trustScores.breakdown.vetting.insuranceValid ? 'Active' : 'Expired'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span>Total Reviews</span>
-                      <span className="font-medium">{trustScores.breakdown.reviews.totalReviews}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Flagged Reviews</span>
-                      <span className="font-medium text-destructive">
-                        {trustScores.breakdown.reviews.flaggedReviews}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Total Violations</span>
-                      <span className="font-medium text-destructive">
-                        {trustScores.breakdown.violations.totalViolations}
-                      </span>
+                  </div>
+
+                  <div className="luxury-glass-minimal p-5 rounded-xl">
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                      Performance Metrics
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="luxury-text-small">Average Rating</span>
+                        <span className="font-semibold text-gray-900">
+                          {trustScores.breakdown.reviews.averageRating.toFixed(1)} ⭐
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="luxury-text-small">Total Reviews</span>
+                        <span className="font-semibold text-gray-900">{trustScores.breakdown.reviews.totalReviews}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="luxury-text-small">Flagged Reviews</span>
+                        <span className="font-semibold text-red-600">
+                          {trustScores.breakdown.reviews.flaggedReviews}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="luxury-text-small">Total Violations</span>
+                        <span className="font-semibold text-red-600">
+                          {trustScores.breakdown.violations.totalViolations}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Recent Earnings */}
-          <Card data-testid="card-recent-earnings">
-            <CardHeader>
-              <CardTitle>Recent Earnings</CardTitle>
-              <CardDescription>Your latest completed bookings</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {earnings.recentTransactions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No recent earnings</p>
-              ) : (
-                <div className="space-y-4">
-                  {earnings.recentTransactions.slice(0, 5).map((transaction: any) => (
-                    <div
-                      key={transaction.earningId}
-                      className="flex items-center justify-between border-b pb-4 last:border-0"
-                    >
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">{transaction.bookingType}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(transaction.createdAt), 'MMM d, yyyy')}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold">₪{parseFloat(transaction.netEarnings).toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground capitalize">
-                          {transaction.payoutStatus.replace('_', ' ')}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="earnings" className="space-y-6">
-          <Card data-testid="card-earnings-history">
-            <CardHeader>
-              <CardTitle>Earnings History</CardTitle>
-              <CardDescription>Complete transaction history and tax information</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                View detailed earnings breakdown, tax summaries, and payout history.
-              </p>
-              {/* TODO: Add detailed earnings table */}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="reviews" className="space-y-6">
-          <Card data-testid="card-reviews-received">
-            <CardHeader>
-              <CardTitle>Reviews Received</CardTitle>
-              <CardDescription>
-                {reviews.total} reviews · {reviews.averageRating.toFixed(1)} average rating
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {reviews.recent.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No reviews yet</p>
-              ) : (
-                reviews.recent.map((review: any) => (
-                  <div key={review.reviewId} className="border-b pb-4 last:border-0" data-testid={`review-${review.reviewId}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{review.reviewerName}</span>
-                        <div className="flex">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-3 w-3 ${
-                                i < review.overallRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-                              }`}
-                            />
-                          ))}
+            {/* Recent Earnings */}
+            <div className="luxury-glass-card luxury-shadow-lg" data-testid="card-recent-earnings">
+              <div className="p-6 border-b border-purple-100">
+                <h2 className="luxury-heading-md">Recent Earnings</h2>
+                <p className="luxury-text-small mt-1">Your latest completed bookings</p>
+              </div>
+              <div className="p-6">
+                {earnings.recentTransactions.length === 0 ? (
+                  <p className="luxury-text-small text-center py-8">No recent earnings</p>
+                ) : (
+                  <div className="space-y-1">
+                    {earnings.recentTransactions.slice(0, 5).map((transaction: any, index: number) => (
+                      <div
+                        key={transaction.earningId}
+                        className="luxury-glass-minimal luxury-hover-lift p-4 rounded-xl"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="font-semibold text-gray-900">{transaction.bookingType}</p>
+                            <p className="luxury-text-small">
+                              {format(new Date(transaction.createdAt), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="luxury-text-gradient text-xl font-bold">₪{parseFloat(transaction.netEarnings).toFixed(2)}</p>
+                            <p className="luxury-text-small capitalize">
+                              {transaction.payoutStatus.replace('_', ' ')}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(review.createdAt), 'MMM d, yyyy')}
-                      </span>
-                    </div>
-                    {review.reviewText && (
-                      <p className="text-sm text-muted-foreground">{review.reviewText}</p>
-                    )}
-                    {review.isFlagged && (
-                      <Badge variant="destructive" className="mt-2">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Flagged
-                      </Badge>
-                    )}
+                    ))}
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                )}
+              </div>
+            </div>
+          </TabsContent>
 
-        <TabsContent value="badges" className="space-y-6">
-          <Card data-testid="card-badges-earned">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Badges & Certifications ({badges.total})
-              </CardTitle>
-              <CardDescription>Your achievements and certifications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {badges.badges.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No badges earned yet</p>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {badges.badges.map((badge: any) => (
-                    <div
-                      key={badge.badgeId}
-                      className="flex items-center gap-3 p-4 border rounded-lg"
-                      data-testid={`badge-${badge.badgeType}`}
-                    >
-                      <Award className="h-8 w-8 text-yellow-500" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{badge.badgeName}</p>
-                        <p className="text-xs text-muted-foreground">{badge.badgeDescription}</p>
-                      </div>
-                    </div>
-                  ))}
+          <TabsContent value="earnings" className="space-y-6">
+            <div className="luxury-glass-card luxury-shadow-lg" data-testid="card-earnings-history">
+              <div className="p-6 border-b border-purple-100">
+                <h2 className="luxury-heading-md">Earnings History</h2>
+                <p className="luxury-text-small mt-1">Complete transaction history and tax information</p>
+              </div>
+              <div className="p-6">
+                <div className="luxury-glass-minimal p-8 rounded-xl text-center">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-purple-600" />
+                  <p className="luxury-text-body mb-4">
+                    View detailed earnings breakdown, tax summaries, and payout history.
+                  </p>
+                  <button className="luxury-btn-primary">
+                    Download Full Report
+                  </button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="reviews" className="space-y-6">
+            <div className="luxury-glass-card luxury-shadow-lg" data-testid="card-reviews-received">
+              <div className="p-6 border-b border-purple-100">
+                <h2 className="luxury-heading-md">Reviews Received</h2>
+                <p className="luxury-text-small mt-1">
+                  {reviews.total} reviews · {reviews.averageRating.toFixed(1)} average rating
+                </p>
+              </div>
+              <div className="p-6 space-y-4">
+                {reviews.recent.length === 0 ? (
+                  <div className="luxury-glass-minimal p-8 rounded-xl text-center">
+                    <Star className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p className="luxury-text-body">No reviews yet</p>
+                  </div>
+                ) : (
+                  reviews.recent.map((review: any) => (
+                    <div 
+                      key={review.reviewId} 
+                      className="luxury-glass-minimal luxury-hover-lift p-5 rounded-xl" 
+                      data-testid={`review-${review.reviewId}`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-gray-900">{review.reviewerName}</span>
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${
+                                  i < review.overallRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <span className="luxury-text-small">
+                          {format(new Date(review.createdAt), 'MMM d, yyyy')}
+                        </span>
+                      </div>
+                      {review.reviewText && (
+                        <p className="luxury-text-body">{review.reviewText}</p>
+                      )}
+                      {review.isFlagged && (
+                        <div className="luxury-badge mt-3" style={{ background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%)', color: '#dc2626', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+                          <AlertTriangle className="h-3 w-3" />
+                          Flagged
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="badges" className="space-y-6">
+            <div className="luxury-glass-card luxury-shadow-lg" data-testid="card-badges-earned">
+              <div className="p-6 border-b border-purple-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-yellow-500/10 to-amber-500/10">
+                    <Award className="h-6 w-6 text-yellow-600" />
+                  </div>
+                  <div>
+                    <h2 className="luxury-heading-md">Badges & Certifications ({badges.total})</h2>
+                    <p className="luxury-text-small mt-1">Your achievements and certifications</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                {badges.badges.length === 0 ? (
+                  <div className="luxury-glass-minimal p-8 rounded-xl text-center">
+                    <Award className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p className="luxury-text-body">No badges earned yet</p>
+                  </div>
+                ) : (
+                  <div className="luxury-grid-3">
+                    {badges.badges.map((badge: any) => (
+                      <div
+                        key={badge.badgeId}
+                        className="luxury-glass-minimal luxury-hover-lift p-5 rounded-xl flex items-center gap-4"
+                        data-testid={`badge-${badge.badgeType}`}
+                      >
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-500/10 to-amber-500/10">
+                          <Award className="h-8 w-8 text-yellow-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900">{badge.badgeName}</p>
+                          <p className="luxury-text-small">{badge.badgeDescription}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

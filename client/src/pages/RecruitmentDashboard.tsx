@@ -93,7 +93,7 @@ export default function RecruitmentDashboard() {
     >
       <div className="p-6 space-y-6">
       <div className="flex justify-end items-center">
-        <Button onClick={() => setShowCreateJobDialog(true)} data-testid="button-create-job">
+        <Button className="luxury-btn-primary" onClick={() => setShowCreateJobDialog(true)} data-testid="button-create-job">
           <Plus className="w-4 h-4 mr-2" />
           Post Job
         </Button>
@@ -133,9 +133,9 @@ export default function RecruitmentDashboard() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {jobs?.map((job: any) => (
-                <Card key={job.id} data-testid={`job-card-${job.id}`}>
+            <div className="luxury-grid-3">
+              {jobs?.map((job: any, idx: number) => (
+                <Card key={job.id} className={`luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`job-card-${job.id}`}>
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -194,8 +194,8 @@ export default function RecruitmentDashboard() {
             </Card>
           ) : (
             <div className="grid gap-4">
-              {applications?.map((app: any) => (
-                <Card key={app.id} data-testid={`application-card-${app.id}`}>
+              {applications?.map((app: any, idx: number) => (
+                <Card key={app.id} className={`luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`application-card-${app.id}`}>
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>

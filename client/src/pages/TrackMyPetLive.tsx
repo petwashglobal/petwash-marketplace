@@ -10,9 +10,11 @@ interface TrackMyPetLiveProps {
 export default function TrackMyPetLive({ language, onLanguageChange }: TrackMyPetLiveProps) {
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-pink-950/20">
-        <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <TrackMyPet />
+      <div className="min-h-screen luxury-bg-mesh">
+        <div className="luxury-container py-12">
+          <div className="luxury-glass-card luxury-shadow-xl p-8 luxury-animate-scale-in">
+            <TrackMyPet />
+          </div>
         </div>
       </div>
     </Layout>

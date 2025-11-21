@@ -205,43 +205,43 @@ export default function LogisticsDashboard() {
       <div className="p-6 space-y-6">
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+      <div className="luxury-grid-4">
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Warehouses</CardTitle>
             <Warehouse className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="metric-total-warehouses">
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-total-warehouses">
               {warehouses?.length || 0}
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600" data-testid="metric-low-stock">{lowStockItems?.length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-low-stock">{lowStockItems?.length || 0}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
             <AlertCircle className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600" data-testid="metric-expiring">{expiringItems?.length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-expiring">{expiringItems?.length || 0}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
             <Truck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="metric-pending-orders">{pendingOrders?.length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-pending-orders">{pendingOrders?.length || 0}</div>
           </CardContent>
         </Card>
       </div>
@@ -264,7 +264,7 @@ export default function LogisticsDashboard() {
 
         <TabsContent value="warehouses" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setShowWarehouseDialog(true)} data-testid="button-create-warehouse">
+            <Button className="luxury-btn-primary" onClick={() => setShowWarehouseDialog(true)} data-testid="button-create-warehouse">
               <Plus className="w-4 h-4 mr-2" />
               New Warehouse
             </Button>
@@ -290,9 +290,9 @@ export default function LogisticsDashboard() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {warehouses?.map((wh: any) => (
-                <Card key={wh.id} data-testid={`warehouse-card-${wh.id}`}>
+            <div className="luxury-grid-2">
+              {warehouses?.map((wh: any, idx: number) => (
+                <Card key={wh.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`warehouse-card-${wh.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -319,7 +319,7 @@ export default function LogisticsDashboard() {
 
         <TabsContent value="inventory" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setShowInventoryDialog(true)} data-testid="button-create-inventory">
+            <Button className="luxury-btn-primary" onClick={() => setShowInventoryDialog(true)} data-testid="button-create-inventory">
               <Plus className="w-4 h-4 mr-2" />
               New Inventory Item
             </Button>
@@ -346,8 +346,8 @@ export default function LogisticsDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {inventory?.map((item: any) => (
-                <Card key={item.id} data-testid={`inventory-card-${item.id}`}>
+              {inventory?.map((item: any, idx: number) => (
+                <Card key={item.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`inventory-card-${item.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -378,7 +378,7 @@ export default function LogisticsDashboard() {
 
         <TabsContent value="fulfillment" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setShowFulfillmentDialog(true)} data-testid="button-create-fulfillment">
+            <Button className="luxury-btn-primary" onClick={() => setShowFulfillmentDialog(true)} data-testid="button-create-fulfillment">
               <Plus className="w-4 h-4 mr-2" />
               New Order
             </Button>
@@ -405,8 +405,8 @@ export default function LogisticsDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {fulfillmentOrders?.map((order: any) => (
-                <Card key={order.id} data-testid={`fulfillment-card-${order.id}`}>
+              {fulfillmentOrders?.map((order: any, idx: number) => (
+                <Card key={order.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`fulfillment-card-${order.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">

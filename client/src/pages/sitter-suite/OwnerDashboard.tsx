@@ -122,87 +122,74 @@ export default function OwnerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900/20">
-      {/* Hero Header - Like Airbnb */}
-      <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-700 text-white py-12">
+    <div className="min-h-screen luxury-bg-mesh">
+      {/* Hero Header */}
+      <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-purple-800 text-white py-12">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 luxury-animate-fade-in">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-2" style={{ 
-                background: 'linear-gradient(135deg, #FFD700, #FFA500, #FFD700)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 30px rgba(255,215,0,0.5)'
-              }}>
+              <h1 className="luxury-heading-xl text-white mb-2">
                 ✨ My Pet Stays
               </h1>
-              <p className="text-lg text-purple-100">Manage bookings, pets, and payments</p>
+              <p className="luxury-services-subtitle text-purple-100">Manage bookings, pets, and payments</p>
             </div>
             <Link href="/sitter-suite/browse">
-              <Button className="bg-white text-purple-600 hover:bg-gray-100 text-lg px-8 py-6 shadow-2xl" data-testid="button-book-new-stay">
+              <button className="luxury-btn-primary text-lg px-8 py-4 shadow-2xl" data-testid="button-book-new-stay">
                 <Plus className="w-5 h-5 mr-2" />
                 Book New Stay
-              </Button>
+              </button>
             </Link>
           </div>
 
-          {/* Quick Stats - Like Booking.com */}
+          {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 p-3 rounded-full">
-                    <Calendar className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-white">{upcomingBookings.length}</p>
-                    <p className="text-sm text-purple-100">Upcoming</p>
-                  </div>
+            <div className="luxury-glass-panel luxury-shadow-md p-4 border-white/20 luxury-animate-fade-in luxury-delay-1">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="luxury-heading-lg text-white">{upcomingBookings.length}</p>
+                  <p className="luxury-text-small text-purple-100">Upcoming</p>
+                </div>
+              </div>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 p-3 rounded-full">
-                    <PawPrint className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-white">{pets.length}</p>
-                    <p className="text-sm text-purple-100">My Pets</p>
-                  </div>
+            <div className="luxury-glass-panel luxury-shadow-md p-4 border-white/20 luxury-animate-fade-in luxury-delay-2">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+                  <PawPrint className="w-6 h-6 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="luxury-heading-lg text-white">{pets.length}</p>
+                  <p className="luxury-text-small text-purple-100">My Pets</p>
+                </div>
+              </div>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 p-3 rounded-full">
-                    <DollarSign className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-white">₪{totalSpent.toFixed(0)}</p>
-                    <p className="text-sm text-purple-100">Total Spent</p>
-                  </div>
+            <div className="luxury-glass-panel luxury-shadow-md p-4 border-white/20 luxury-animate-fade-in luxury-delay-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="luxury-heading-lg text-white">₪{totalSpent.toFixed(0)}</p>
+                  <p className="luxury-text-small text-purple-100">Total Spent</p>
+                </div>
+              </div>
+            </div>
 
-            <Card className="bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 p-3 rounded-full">
-                    <CheckCircle2 className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-white">{pastBookings.length}</p>
-                    <p className="text-sm text-purple-100">Completed</p>
-                  </div>
+            <div className="luxury-glass-panel luxury-shadow-md p-4 border-white/20 luxury-animate-fade-in luxury-delay-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="luxury-heading-lg text-white">{pastBookings.length}</p>
+                  <p className="luxury-text-small text-purple-100">Completed</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -210,7 +197,7 @@ export default function OwnerDashboard() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid bg-white dark:bg-gray-800 shadow-lg">
+          <TabsList className="luxury-glass-card grid w-full grid-cols-5 lg:w-auto lg:inline-grid shadow-lg">
             <TabsTrigger value="overview" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
               <TrendingUp className="w-4 h-4 mr-2" />
               Overview
@@ -236,7 +223,7 @@ export default function OwnerDashboard() {
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             {pendingBookings.length > 0 && (
-              <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10">
+              <div className="luxury-glass-card border-yellow-200 bg-yellow-50/10 dark:bg-yellow-900/10 luxury-shadow-md">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-400">
                     <Clock className="w-5 h-5" />
@@ -271,84 +258,88 @@ export default function OwnerDashboard() {
             )}
 
             {/* Upcoming Bookings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-purple-600" />
+            <div className="luxury-glass-card luxury-shadow-xl">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="luxury-heading-md flex items-center gap-2">
+                  <Calendar className="w-6 h-6" style={{ color: '#667eea' }} />
                   Upcoming Stays ({upcomingBookings.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </h2>
+              </div>
+              <div className="p-6 space-y-4">
                 {upcomingBookings.length === 0 ? (
                   <div className="text-center py-12">
-                    <PawPrint className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-4">No upcoming bookings</p>
+                    <PawPrint className="w-16 h-16 mx-auto mb-4" style={{ color: '#667eea' }} />
+                    <p className="luxury-text-body mb-4">No upcoming bookings</p>
                     <Link href="/sitter-suite/browse">
-                      <Button className="bg-purple-600 hover:bg-purple-700">
+                      <button className="luxury-btn-primary">
                         Find a Sitter
-                      </Button>
+                      </button>
                     </Link>
                   </div>
                 ) : (
                   upcomingBookings.map((booking) => (
-                    <Card key={booking.id} className="border-purple-200 hover:shadow-lg transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="flex flex-col md:flex-row gap-6">
-                          <Avatar className="w-20 h-20">
-                            <AvatarImage src={booking.sitterPhoto || undefined} />
-                            <AvatarFallback className="bg-gradient-to-br from-purple-600 to-pink-600 text-white text-2xl">
-                              {booking.sitterName.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          
-                          <div className="flex-1 space-y-3">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <h3 className="text-xl font-bold">{booking.sitterName}</h3>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                                  <span className="font-semibold">{booking.sitterRating.toFixed(1)}</span>
-                                  <Separator orientation="vertical" className="h-4" />
-                                  <span className="text-sm text-gray-500">{booking.serviceType}</span>
-                                </div>
-                              </div>
-                              {getStatusBadge(booking.status)}
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                              <div className="flex items-center gap-2">
-                                <PawPrint className="w-4 h-4 text-purple-600" />
-                                <span>{booking.petName}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-purple-600" />
-                                <span>
-                                  {format(new Date(booking.startDate), 'MMM d')} - {format(new Date(booking.endDate), 'MMM d')}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-purple-600" />
-                                <span className="font-bold">{booking.currency} {booking.totalPrice.toFixed(2)}</span>
-                              </div>
-                            </div>
-
-                            <div className="flex gap-2 pt-2">
-                              <Button variant="outline" size="sm" className="flex-1" data-testid={`button-message-${booking.id}`}>
-                                <MessageCircle className="w-4 h-4 mr-2" />
-                                Message Sitter
-                              </Button>
-                              <Button variant="outline" size="sm" className="flex-1" data-testid={`button-view-${booking.id}`}>
-                                View Details
-                              </Button>
-                            </div>
+                    <div key={booking.id} className="luxury-glass-panel luxury-shadow-md p-6 hover:shadow-lg transition-shadow">
+                      <div className="flex flex-col md:flex-row gap-6">
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center p-0.5">
+                          <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                            {booking.sitterPhoto ? (
+                              <img src={booking.sitterPhoto} alt={booking.sitterName} className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                              <span className="text-2xl font-bold" style={{ color: '#667eea' }}>
+                                {booking.sitterName.charAt(0)}
+                              </span>
+                            )}
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                        
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="luxury-heading-sm">{booking.sitterName}</h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="luxury-badge-gold inline-flex items-center gap-1">
+                                  <Star className="w-3 h-3 fill-current" />
+                                  {booking.sitterRating.toFixed(1)}
+                                </span>
+                                <span className="luxury-text-small">{booking.serviceType}</span>
+                              </div>
+                            </div>
+                            {getStatusBadge(booking.status)}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 luxury-text-small">
+                            <div className="flex items-center gap-2">
+                              <PawPrint className="w-4 h-4" style={{ color: '#667eea' }} />
+                              <span>{booking.petName}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4" style={{ color: '#667eea' }} />
+                              <span>
+                                {format(new Date(booking.startDate), 'MMM d')} - {format(new Date(booking.endDate), 'MMM d')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="w-4 h-4" style={{ color: '#667eea' }} />
+                              <span className="luxury-text-gradient font-bold">{booking.currency} {booking.totalPrice.toFixed(2)}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-2">
+                            <button className="luxury-btn-secondary flex-1 text-sm py-2" data-testid={`button-message-${booking.id}`}>
+                              <MessageCircle className="w-4 h-4 mr-2" />
+                              Message Sitter
+                            </button>
+                            <button className="luxury-btn-secondary flex-1 text-sm py-2" data-testid={`button-view-${booking.id}`}>
+                              View Details
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ))
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Messages Tab */}

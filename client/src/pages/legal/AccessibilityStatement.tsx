@@ -3,17 +3,19 @@ import { Accessibility } from "lucide-react";
 
 export default function AccessibilityStatementPage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
+    <div className="min-h-screen luxury-bg-mesh">
       <div className="container max-w-4xl mx-auto px-4 py-12">
         <div className="text-center mb-12">
-          <Accessibility className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-          <h1 className="text-4xl font-bold mb-4">Accessibility Statement</h1>
-          <p className="text-gray-600 dark:text-gray-300">
+          <div className="inline-block p-4 luxury-glass-minimal rounded-2xl mb-4">
+            <Accessibility className="w-16 h-16 luxury-text-gradient" />
+          </div>
+          <h1 className="luxury-heading-xl luxury-text-gradient mb-4">Accessibility Statement</h1>
+          <p className="text-gray-600">
             Last updated: {new Date().toLocaleDateString()}
           </p>
         </div>
 
-        <Card className="p-8">
+        <Card className="luxury-glass-card luxury-shadow-xl p-8">
           <div className="prose dark:prose-invert max-w-none">
             <h2>1. Our Commitment</h2>
             <p>

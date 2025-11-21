@@ -168,8 +168,8 @@ export default function CEODashboard() {
     >
 
         {/* Issue Free Voucher Card */}
-        <div className="max-w-2xl mx-auto">
-          <Card className="bg-white/5 backdrop-blur-xl border-white/20 shadow-2xl">
+        <div className="max-w-2xl mx-auto luxury-delay-1">
+          <Card className="luxury-glass-card luxury-shadow-lg">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-500 to-purple-600">
@@ -243,7 +243,7 @@ export default function CEODashboard() {
                 <Button
                   onClick={handleRequestCode}
                   disabled={isRequestingCode}
-                  className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-yellow-500 via-purple-600 to-pink-600 hover:opacity-90 transition-opacity"
+                  className="luxury-btn-primary w-full h-12 text-lg font-semibold"
                   data-testid="button-request-code"
                 >
                   {isRequestingCode ? (
@@ -291,7 +291,7 @@ export default function CEODashboard() {
                   <Button
                     onClick={handleVerifyAndIssue}
                     disabled={isVerifying || verificationCode.length !== 6}
-                    className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-green-500 via-emerald-600 to-teal-600 hover:opacity-90 transition-opacity"
+                    className="luxury-btn-primary w-full h-12 text-lg font-semibold"
                     data-testid="button-verify-issue"
                   >
                     {isVerifying ? (

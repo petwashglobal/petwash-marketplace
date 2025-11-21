@@ -94,20 +94,20 @@ export default function NotificationPreferences() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-slate-900 dark:to-slate-800">
+    <div className="min-h-screen luxury-bg-mesh">
       <div className="container mx-auto p-6 max-w-4xl space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Bell className="h-8 w-8 text-blue-600" />
+            <h1 className="luxury-heading-lg flex items-center gap-2">
+              <Bell className="h-8 w-8 luxury-text-gradient" />
               Notification Preferences
             </h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">
+            <p className="luxury-text-body mt-1">
               Manage how you receive updates from Pet Wash™
             </p>
           </div>
           <Link href="/settings">
-            <Button variant="outline" size="sm" data-testid="link-back-to-settings">
+            <Button className="luxury-btn-secondary" size="sm" data-testid="link-back-to-settings">
               ← Back to Settings
             </Button>
           </Link>
@@ -126,10 +126,10 @@ export default function NotificationPreferences() {
           </TabsList>
 
           <TabsContent value="preferences" className="space-y-4">
-            <Card data-testid="card-channel-preferences">
+            <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-channel-preferences">
               <CardHeader>
-                <CardTitle>Communication Channels</CardTitle>
-                <CardDescription>Choose how you want to receive notifications</CardDescription>
+                <CardTitle className="luxury-heading-md">Communication Channels</CardTitle>
+                <CardDescription className="luxury-text-body">Choose how you want to receive notifications</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {isLoading ? (
@@ -207,10 +207,10 @@ export default function NotificationPreferences() {
               </CardContent>
             </Card>
 
-            <Card data-testid="card-notification-types">
+            <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-notification-types">
               <CardHeader>
-                <CardTitle>Notification Types</CardTitle>
-                <CardDescription>Fine-tune what notifications you receive</CardDescription>
+                <CardTitle className="luxury-heading-md">Notification Types</CardTitle>
+                <CardDescription className="luxury-text-body">Fine-tune what notifications you receive</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {isLoading ? (
@@ -325,10 +325,10 @@ export default function NotificationPreferences() {
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
-            <Card data-testid="card-consent-history">
+            <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-consent-history">
               <CardHeader>
-                <CardTitle>Consent History</CardTitle>
-                <CardDescription>Complete audit trail of your notification preferences</CardDescription>
+                <CardTitle className="luxury-heading-md">Consent History</CardTitle>
+                <CardDescription className="luxury-text-body">Complete audit trail of your notification preferences</CardDescription>
               </CardHeader>
               <CardContent>
                 {historyLoading ? (
@@ -342,7 +342,7 @@ export default function NotificationPreferences() {
                     {history?.data?.map((entry) => (
                       <div
                         key={entry.id}
-                        className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-lg"
+                        className="luxury-glass-minimal luxury-hover-lift p-4 rounded-lg"
                         data-testid={`history-entry-${entry.id}`}
                       >
                         <div className="flex items-center gap-3">
@@ -356,10 +356,10 @@ export default function NotificationPreferences() {
                             </div>
                           )}
                           <div>
-                            <div className="font-medium text-slate-900 dark:text-white">
+                            <div className="luxury-heading-sm">
                               {entry.provider} - {entry.action}
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                            <div className="luxury-text-small flex items-center gap-2">
                               <Clock className="h-3 w-3" />
                               {new Date(entry.timestamp).toLocaleString()}
                             </div>

@@ -66,36 +66,36 @@ export default function K9000Overview() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white dark:bg-gray-950">
+      <div className="min-h-screen luxury-bg-mesh">
         {/* Hero Section */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 py-16 sm:py-24">
+        <div className="relative overflow-hidden py-20 sm:py-28">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-              <div className="flex justify-center mb-6">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900 rounded-full text-sm font-medium text-blue-700 dark:text-blue-300">
-                  <Sparkles className="h-4 w-4" />
+            <div className="text-center luxury-fade-in">
+              <div className="flex justify-center mb-8">
+                <div className="luxury-badge-primary">
+                  <Sparkles className="h-5 w-5" />
                   Premium Organic Pet Care
                 </div>
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
+              <h1 className="luxury-heading-xl mb-6">
                 Pet Wash K9000™
               </h1>
-              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-8">
+              <p className="luxury-subtitle-lg max-w-2xl mx-auto mb-10">
                 Self-service organic wash stations with IoT technology.  
                 Premium care for your pets, anywhere, anytime.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="flex flex-col sm:flex-row gap-5 justify-center">
                 <Link href="/k9000/booking">
-                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8" data-testid="button-book-wash">
+                  <button className="luxury-btn-primary luxury-shadow-xl px-10" data-testid="button-book-wash">
                     <Waves className="h-5 w-5 mr-2" />
                     Book a Wash Now
-                  </Button>
+                  </button>
                 </Link>
                 <Link href="/k9000/stations">
-                  <Button size="lg" variant="outline" className="px-8" data-testid="button-find-station">
+                  <button className="luxury-btn-outline px-10" data-testid="button-find-station">
                     <MapPin className="h-5 w-5 mr-2" />
                     Find Stations
-                  </Button>
+                  </button>
                 </Link>
               </div>
             </div>
@@ -104,58 +104,56 @@ export default function K9000Overview() {
 
         {/* Features Grid */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="luxury-grid-3 luxury-stagger-fade-in">
             {features.map((feature, index) => (
               <Link key={index} href={feature.link}>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-gray-200 dark:border-gray-800">
-                  <CardHeader>
-                    <div className={`inline-flex p-3 rounded-lg ${feature.color} mb-4`}>
+                <div className="luxury-glass-card luxury-hover-glow h-full cursor-pointer" style={{ animationDelay: `${index * 0.1}s` }}>
+                  <div className="p-8">
+                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center mb-6 luxury-pulse-glow">
                       {feature.icon}
                     </div>
-                    <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white">
+                    <h3 className="text-2xl font-bold luxury-gradient-text mb-3">
                       {feature.title}
-                    </CardTitle>
-                    <CardDescription className="text-gray-600 dark:text-gray-400">
+                    </h3>
+                    <p className="luxury-text-body mb-6">
                       {feature.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button variant="ghost" className="w-full justify-between text-blue-600 dark:text-blue-400" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                    </p>
+                    <button className="luxury-btn-outline w-full" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
                       Learn More
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </button>
+                  </div>
+                </div>
               </Link>
             ))}
           </div>
         </div>
 
         {/* Stats Section */}
-        <div className="bg-gray-50 dark:bg-gray-900 py-16">
+        <div className="py-20 luxury-glass-minimal">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 luxury-stagger-fade-in">
+              <div className="text-center" style={{ animationDelay: '0.1s' }}>
+                <div className="text-5xl font-black luxury-gradient-text mb-3">
                   100% Organic
                 </div>
-                <div className="text-gray-600 dark:text-gray-400">
+                <div className="luxury-text-body text-lg">
                   Premium organic shampoos
                 </div>
               </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-2">
+              <div className="text-center" style={{ animationDelay: '0.2s' }}>
+                <div className="text-5xl font-black luxury-gradient-text mb-3">
                   IoT Enabled
                 </div>
-                <div className="text-gray-600 dark:text-gray-400">
+                <div className="luxury-text-body text-lg">
                   Smart wash technology
                 </div>
               </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+              <div className="text-center" style={{ animationDelay: '0.3s' }}>
+                <div className="text-5xl font-black luxury-gradient-text mb-3">
                   Self-Service
                 </div>
-                <div className="text-gray-600 dark:text-gray-400">
+                <div className="luxury-text-body text-lg">
                   Wash on your schedule
                 </div>
               </div>

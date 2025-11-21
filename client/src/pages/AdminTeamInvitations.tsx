@@ -229,10 +229,10 @@ export default function AdminTeamInvitations({ language, onLanguageChange }: Adm
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-purple-50">
+      <div className="min-h-screen flex flex-col luxury-bg-mesh">
         <main className="flex-grow container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-4xl font-bold luxury-text-gradient mb-2">
             {t('admin.teamInvitations.title', language)}
           </h1>
           <p className="text-lg text-gray-600">
@@ -245,7 +245,7 @@ export default function AdminTeamInvitations({ language, onLanguageChange }: Adm
             const Icon = info.icon;
             const count = departmentCounts[key] || 0;
             return (
-              <Card key={key} className="hover:shadow-lg transition-shadow">
+              <Card key={key} className="luxury-glass-card hover:shadow-xl transition-all hover:scale-105">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className={`p-2 rounded-lg ${info.bgColor}`}>
@@ -267,7 +267,7 @@ export default function AdminTeamInvitations({ language, onLanguageChange }: Adm
           })}
         </div>
 
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-xl">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
@@ -280,7 +280,7 @@ export default function AdminTeamInvitations({ language, onLanguageChange }: Adm
               </div>
               <Button 
                 onClick={() => setIsInviteDialogOpen(true)}
-                className="gap-2"
+                className="gap-2 luxury-btn-primary"
                 data-testid="button-invite-member"
               >
                 <UserPlus className="w-4 h-4" />

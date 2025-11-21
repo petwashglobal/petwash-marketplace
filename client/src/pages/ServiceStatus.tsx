@@ -243,19 +243,19 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
   const completionRate = Math.round((productionCount / totalCount) * 100);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4">
+    <div className="min-h-screen luxury-bg-mesh py-12 px-4">
       <div className="container mx-auto max-w-7xl">
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-5xl font-bold mb-4 luxury-text-gradient">
             {isHebrew ? 'סטטוס שירותים' : 'Service Status'}
           </h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-6">
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-6">
             {isHebrew 
               ? 'סטטוס מפורט של כל השירותים והתכונות בפלטפורמה'
               : 'Detailed status of all services and features on the platform'}
           </p>
 
-          <Card className="max-w-md mx-auto mb-8">
+          <Card className="max-w-md mx-auto mb-8 luxury-glass-card luxury-shadow-lg">
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="text-6xl font-bold text-green-600 mb-2">
@@ -273,7 +273,7 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
 
         <div className="grid gap-4">
           {services.map((service, index) => (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
+            <Card key={index} className="luxury-glass-card hover:shadow-xl transition-all hover:scale-[1.02]">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

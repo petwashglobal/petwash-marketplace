@@ -199,8 +199,8 @@ export default function GeminiWatchdogDashboard() {
         </div>
 
         {/* Overall Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
+        <div className="luxury-grid-4 mb-8">
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {isHebrew ? "סטטוס מערכת" : "System Status"}
@@ -208,7 +208,7 @@ export default function GeminiWatchdogDashboard() {
               <Activity className={`h-4 w-4 ${status?.isRunning ? "text-green-600" : "text-red-600"}`} />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${status?.isRunning ? "text-green-600" : "text-red-600"}`}>
+              <div className={`luxury-heading-lg luxury-text-gradient`}>
                 {status?.isRunning ? (isHebrew ? "פעיל" : "ACTIVE") : (isHebrew ? "לא פעיל" : "OFFLINE")}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -218,7 +218,7 @@ export default function GeminiWatchdogDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-2">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {isHebrew ? "בעיות פתוחות" : "Open Issues"}
@@ -226,7 +226,7 @@ export default function GeminiWatchdogDashboard() {
               <AlertTriangle className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="luxury-heading-lg luxury-text-gradient">
                 {status?.openIssues || 0}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -237,7 +237,7 @@ export default function GeminiWatchdogDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-3">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {isHebrew ? "תיקונים אוטומטיים" : "Auto-Fixes"}
@@ -245,7 +245,7 @@ export default function GeminiWatchdogDashboard() {
               <Zap className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="luxury-heading-lg luxury-text-gradient">
                 {status?.autoFixesApplied || 0}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -254,7 +254,7 @@ export default function GeminiWatchdogDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-4">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 {isHebrew ? "משתמשים במצוקה" : "User Struggles"}
@@ -262,7 +262,7 @@ export default function GeminiWatchdogDashboard() {
               <Users className="h-4 w-4 text-yellow-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
+              <div className="luxury-heading-lg luxury-text-gradient">
                 {status?.userStruggles || 0}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -326,10 +326,10 @@ export default function GeminiWatchdogDashboard() {
                         <span>{isHebrew ? "מרענן..." : "Refreshing..."}</span>
                       </div>
                     )}
-                    {issues.map((issue) => (
+                    {issues.map((issue, idx) => (
                       <div
                         key={issue.id}
-                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)} p-4`}
                         data-testid={`issue-${issue.id}`}
                       >
                         <div className="flex items-start justify-between mb-2">
@@ -412,10 +412,10 @@ export default function GeminiWatchdogDashboard() {
                         <span>{isHebrew ? "מרענן..." : "Refreshing..."}</span>
                       </div>
                     )}
-                    {struggles.map((struggle) => (
+                    {struggles.map((struggle, idx) => (
                       <div
                         key={struggle.id}
-                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)} p-4`}
                         data-testid={`struggle-${struggle.id}`}
                       >
                         <div className="flex items-start justify-between mb-2">
@@ -508,10 +508,10 @@ export default function GeminiWatchdogDashboard() {
                         <span>{isHebrew ? "מרענן..." : "Refreshing..."}</span>
                       </div>
                     )}
-                    {autoFixes.map((fix) => (
+                    {autoFixes.map((fix, idx) => (
                       <div
                         key={fix.id}
-                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)} p-4`}
                         data-testid={`autofix-${fix.id}`}
                       >
                         <div className="flex items-start justify-between mb-2">

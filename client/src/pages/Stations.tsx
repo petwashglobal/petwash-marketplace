@@ -289,7 +289,7 @@ export default function Stations() {
             {filteredStations.map((station, index) => (
               <div
                 key={station.id}
-                className="luxury-glass-card luxury-hover-lift luxury-shadow-lg overflow-hidden cursor-pointer luxury-animate-fade-in"
+                className="luxury-glass-card luxury-hover-glow luxury-shadow-xl overflow-hidden cursor-pointer luxury-animate-fade-in"
                 style={{ animationDelay: `${0.1 * (index + 1)}s` }}
                 onClick={() => setSelectedStation(station)}
                 data-testid={`station-card-${station.id}`}

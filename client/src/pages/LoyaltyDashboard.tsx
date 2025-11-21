@@ -115,9 +115,9 @@ const MainLoyaltyWidget = ({
           color={status.toLowerCase() === 'royal' ? '#8b5cf6' : status.toLowerCase() === 'emerald' ? '#10b981' : status.toLowerCase() === 'diamond' ? '#3b82f6' : status.toLowerCase() === 'platinum' ? '#d1d5db' : status.toLowerCase() === 'gold' ? '#eab308' : status.toLowerCase() === 'silver' ? '#9ca3af' : '#94a3b8'}
         >
           <div className="text-center">
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">{tierVisual.emoji}</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{points.toLocaleString()}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">pts</div>
+            <div className="text-3xl font-bold">{tierVisual.emoji}</div>
+            <div className="luxury-heading-lg luxury-text-gradient mt-1">{points.toLocaleString()}</div>
+            <div className="luxury-text-small">pts</div>
           </div>
         </ProgressCircle>
 
@@ -134,7 +134,7 @@ const MainLoyaltyWidget = ({
               </div>
             </div>
           </div>
-          <Badge className={`${tierVisual.badge} text-white border-0 px-4 py-1.5`}>
+          <Badge className="luxury-badge-gold text-white border-0 px-4 py-1.5">
             {nextTierConfig 
               ? `${points.toLocaleString()} / ${maxPoints.toLocaleString()} ${isHebrew ? 'נקודות' : 'Points'}` 
               : `${tierVisual.emoji} ${isHebrew ? 'דרגה מקסימלית!' : 'Max Tier Achieved!'}`
@@ -195,16 +195,16 @@ export default function LoyaltyDashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 px-4">
-        <div className="max-w-6xl mx-auto">
+      <div className="min-h-screen luxury-bg-mesh dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 px-4">
+        <div className="luxury-container">
           
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8 luxury-animate-fade-in">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+              <h1 className="luxury-heading-xl mb-2">
                 {isHebrew ? '🏆 תוכנית הנאמנות Pet Wash™' : '🏆 Pet Wash™ Loyalty Program'}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="luxury-text-body">
                 {isHebrew ? 'צבור נקודות וקבל פרסים מדהימים' : 'Earn points and get amazing rewards'}
               </p>
             </div>
@@ -216,8 +216,8 @@ export default function LoyaltyDashboard() {
           </div>
 
           {/* Main Loyalty Widget Card */}
-          <Card className="shadow-2xl mb-8 overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+          <Card className="luxury-glass-card luxury-shadow-lg mb-8 overflow-hidden luxury-animate-slide-up luxury-delay-1">
+            <CardHeader className="luxury-bg-primary text-white">
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <Sparkles className="w-6 h-6" />
                 {isHebrew ? 'סטטוס הנאמנות שלך' : 'Your Loyalty Status'}
@@ -233,13 +233,15 @@ export default function LoyaltyDashboard() {
           </Card>
 
           {/* Tier System Grid - 7 STAR LUXURY */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-              <Trophy className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="mb-8 luxury-animate-slide-up luxury-delay-2">
+            <h2 className="luxury-heading-md mb-6 flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+                <Trophy className="w-6 h-6 luxury-text-gradient" />
+              </div>
               {isHebrew ? 'מערכת דירוג 7 כוכבים' : '7-Star Tier System'}
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {TIER_CONFIGS.map((tierConfig) => {
+            <div className="luxury-grid-4">
+              {TIER_CONFIGS.map((tierConfig, index) => {
                 const visualConfig = TIER_VISUAL_CONFIG[tierConfig.id];
                 const Icon = visualConfig.icon;
                 const isCurrent = tierConfig.id === currentTier.toLowerCase();
@@ -247,10 +249,10 @@ export default function LoyaltyDashboard() {
                 return (
                   <Card 
                     key={tierConfig.id}
-                    className={`relative overflow-hidden transition-all duration-300 ${
+                    className={`luxury-glass-card luxury-shadow-lg relative overflow-hidden luxury-hover-lift luxury-animate-scale-in luxury-delay-${index + 3} ${
                       isCurrent 
-                        ? 'ring-4 ring-blue-500 shadow-2xl scale-105' 
-                        : 'shadow-lg hover:shadow-xl hover:scale-102'
+                        ? 'ring-4 ring-blue-500 scale-105' 
+                        : ''
                     }`}
                   >
                     <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${visualConfig.color} opacity-10 rounded-full -mr-16 -mt-16`}></div>
@@ -267,7 +269,7 @@ export default function LoyaltyDashboard() {
                           </div>
                         </div>
                         {isCurrent && (
-                          <Badge className="bg-blue-600 text-white text-xs">
+                          <Badge className="luxury-badge-gold text-xs">
                             {isHebrew ? 'נוכחי' : 'Current'}
                           </Badge>
                         )}
@@ -314,26 +316,26 @@ export default function LoyaltyDashboard() {
         </div>
 
           {/* LUXURY Rewards Catalog with Glassmorphism */}
-          <div className="rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 p-8 shadow-2xl">
+          <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-slide-up luxury-delay-10">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20">
                 <Gift className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h3 className="luxury-heading-md">
                 {isHebrew ? 'קטלוג הפרסים' : 'Rewards Catalog'}
               </h3>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="luxury-grid-2">
               {mockRewards.map((reward, index) => (
-                <GlassCard
+                <div
                   key={reward.id}
-                  className={`p-5 transition-all duration-300 ${
+                  className={`luxury-glass-card luxury-hover-glow p-5 luxury-animate-scale-in ${
                     reward.available
-                      ? 'border-green-400/50 hover:border-green-400 hover:shadow-green-500/20'
+                      ? 'border-green-400/50'
                       : 'opacity-60'
                   }`}
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  style={{ animationDelay: `${(index + 11) * 100}ms` }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
@@ -347,33 +349,32 @@ export default function LoyaltyDashboard() {
                         </span>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
+                    <button
                       disabled={!reward.available}
                       className={reward.available 
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg' 
-                        : ''}
+                        ? 'luxury-btn-primary text-sm px-4 py-2' 
+                        : 'luxury-btn-secondary text-sm px-4 py-2 opacity-50 cursor-not-allowed'}
                     >
                       {isHebrew ? 'פדה' : 'Redeem'}
-                    </Button>
+                    </button>
                   </div>
-                </GlassCard>
+                </div>
               ))}
             </div>
           </div>
 
-          {/* LUXURY Points Activity Chart */}
-          <div className="rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 p-8 shadow-2xl mt-8">
+          {/* LUXURY Points Activity Chart (Transaction History) */}
+          <div className="luxury-glass-minimal luxury-hover-lift p-8 mt-8 luxury-animate-slide-up">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
                 <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h3 className="luxury-heading-md">
                 {isHebrew ? 'היסטוריית נקודות' : 'Points History'}
               </h3>
             </div>
             
-            <div className="bg-white/5 dark:bg-black/20 rounded-xl p-6 border border-white/10">
+            <div className="luxury-glass-minimal p-6">
               <SparklineChart data={mockPointsHistory} color="#3B82F6" height={120} />
             </div>
             

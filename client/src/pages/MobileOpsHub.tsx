@@ -21,7 +21,6 @@ import {
   Bell,
   Activity
 } from 'lucide-react';
-import { designTokens } from '@/lib/designTokens';
 
 interface QuickAction {
   id: string;
@@ -36,7 +35,6 @@ interface QuickAction {
 export default function MobileOpsHub() {
   const [, setLocation] = useLocation();
 
-  // Fetch real-time stats for badges
   const { data: stats } = useQuery<any>({
     queryKey: ['/api/admin/dashboard/stats'],
     refetchInterval: 30000,
@@ -48,7 +46,7 @@ export default function MobileOpsHub() {
       title: 'Stations',
       icon: MapPin,
       path: '/mobile/stations',
-      color: designTokens.colors.accent.info,
+      color: '#667eea',
       badge: stats?.lowStockItems,
       description: 'Manage stations & inventory'
     },
@@ -57,7 +55,7 @@ export default function MobileOpsHub() {
       title: 'Customers',
       icon: Users,
       path: '/admin/customers',
-      color: designTokens.colors.accent.success,
+      color: '#10b981',
       badge: stats?.totalUsers,
       description: 'View & manage customers'
     },
@@ -66,7 +64,7 @@ export default function MobileOpsHub() {
       title: 'CRM',
       icon: MessageSquare,
       path: '/admin/crm',
-      color: designTokens.colors.accent.info,
+      color: '#667eea',
       description: 'Customer communications'
     },
     {
@@ -74,7 +72,7 @@ export default function MobileOpsHub() {
       title: 'Inbox',
       icon: Mail,
       path: '/admin/inbox',
-      color: designTokens.colors.accent.warning,
+      color: '#f59e0b',
       description: 'Send broadcasts'
     },
     {
@@ -82,7 +80,7 @@ export default function MobileOpsHub() {
       title: 'Payments',
       icon: CreditCard,
       path: '/admin/nayax',
-      color: designTokens.colors.accent.success,
+      color: '#10b981',
       description: 'Nayax monitoring'
     },
     {
@@ -98,7 +96,7 @@ export default function MobileOpsHub() {
       title: 'Analytics',
       icon: BarChart3,
       path: '/admin/analytics',
-      color: designTokens.colors.accent.info,
+      color: '#667eea',
       description: 'View reports & stats'
     },
     {
@@ -115,7 +113,7 @@ export default function MobileOpsHub() {
       icon: Shield,
       path: '/admin/kyc',
       badge: stats?.pendingDocuments,
-      color: designTokens.colors.accent.error,
+      color: '#ef4444',
       description: 'Verify documents'
     },
     {
@@ -123,7 +121,7 @@ export default function MobileOpsHub() {
       title: 'Ops Today',
       icon: Calendar,
       path: '/ops/today',
-      color: designTokens.colors.accent.info,
+      color: '#667eea',
       description: 'Daily operations view'
     },
     {
@@ -131,7 +129,7 @@ export default function MobileOpsHub() {
       title: 'Ops Dashboard',
       icon: Zap,
       path: '/ops/dashboard',
-      color: designTokens.colors.accent.warning,
+      color: '#f59e0b',
       description: 'Full operations panel'
     },
     {
@@ -139,52 +137,28 @@ export default function MobileOpsHub() {
       title: 'Monitoring',
       icon: Activity,
       path: '/admin/monitoring',
-      color: designTokens.colors.accent.success,
+      color: '#10b981',
       description: 'System health'
     }
   ];
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{ 
-        background: designTokens.colors.background.primary,
-        paddingBottom: '80px' // Space for bottom nav
-      }}
-    >
+    <div className="min-h-screen luxury-bg-mesh pb-24">
       {/* Header */}
-      <div 
-        className="sticky top-0 z-40"
-        style={{
-          background: designTokens.colors.background.secondary,
-          borderBottom: `1px solid ${designTokens.colors.border.default}`
-        }}
-      >
-        <div className="px-4 py-4">
+      <div className="luxury-glass-card luxury-shadow-lg sticky top-0 z-40 rounded-none md:rounded-t-2xl">
+        <div className="px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
-              <h1 
-                className="text-xl font-bold"
-                style={{ color: designTokens.colors.text.primary }}
-              >
-                🐾 Operations Hub
-              </h1>
-              <p 
-                className="text-sm"
-                style={{ color: designTokens.colors.text.secondary }}
-              >
+              <h1 className="luxury-heading-lg">🐾 Operations Hub</h1>
+              <p className="luxury-text-small mt-1">
                 Quick access to all backend tools
               </p>
             </div>
             <button
               onClick={() => setLocation('/admin')}
-              className="p-2 rounded-lg"
-              style={{ 
-                background: designTokens.colors.background.secondary,
-                color: designTokens.colors.text.secondary
-              }}
+              className="p-3 rounded-xl luxury-glass-minimal luxury-hover-lift transition-all"
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-5 h-5 text-purple-600" />
             </button>
           </div>
         </div>
@@ -192,89 +166,65 @@ export default function MobileOpsHub() {
 
       {/* Quick Stats Bar */}
       {stats && (
-        <div className="px-4 py-3" style={{ background: designTokens.colors.background.secondary }}>
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div>
-              <div className="text-xs" style={{ color: designTokens.colors.text.secondary }}>Users</div>
-              <div className="text-lg font-bold" style={{ color: designTokens.colors.text.primary }}>
-                {stats.totalUsers}
-              </div>
+        <div className="luxury-glass-panel mx-4 mt-4 p-4 luxury-animate-fade-in luxury-delay-1">
+          <div className="luxury-grid-4">
+            <div className="text-center">
+              <div className="luxury-text-small mb-1">Users</div>
+              <div className="text-2xl font-bold luxury-text-gradient">{stats.totalUsers}</div>
             </div>
-            <div>
-              <div className="text-xs" style={{ color: designTokens.colors.text.secondary }}>Revenue</div>
-              <div className="text-lg font-bold" style={{ color: designTokens.colors.accent.success }}>
-                ₪{(stats.monthlyRevenue / 1000).toFixed(0)}k
-              </div>
+            <div className="text-center">
+              <div className="luxury-text-small mb-1">Revenue</div>
+              <div className="text-2xl font-bold text-green-600">₪{(stats.monthlyRevenue / 1000).toFixed(0)}k</div>
             </div>
-            <div>
-              <div className="text-xs" style={{ color: designTokens.colors.text.secondary }}>Low Stock</div>
-              <div className="text-lg font-bold" style={{ color: designTokens.colors.accent.warning }}>
-                {stats.lowStockItems || 0}
-              </div>
+            <div className="text-center">
+              <div className="luxury-text-small mb-1">Low Stock</div>
+              <div className="text-2xl font-bold text-yellow-600">{stats.lowStockItems || 0}</div>
             </div>
-            <div>
-              <div className="text-xs" style={{ color: designTokens.colors.text.secondary }}>Pending</div>
-              <div className="text-lg font-bold" style={{ color: designTokens.colors.accent.error }}>
-                {stats.pendingDocuments || 0}
-              </div>
+            <div className="text-center">
+              <div className="luxury-text-small mb-1">Pending</div>
+              <div className="text-2xl font-bold text-red-600">{stats.pendingDocuments || 0}</div>
             </div>
           </div>
         </div>
       )}
 
       {/* Action Grid */}
-      <div className="p-4">
-        <div className="grid grid-cols-2 gap-3">
-          {quickActions.map((action) => {
+      <div className="px-4 mt-4">
+        <div className="grid grid-cols-2 gap-4">
+          {quickActions.map((action, index) => {
             const Icon = action.icon;
             return (
               <button
                 key={action.id}
                 onClick={() => setLocation(action.path)}
-                className="relative rounded-xl p-4 text-left transition-all active:scale-95"
-                style={{
-                  background: designTokens.colors.background.secondary,
-                  border: `1px solid ${designTokens.colors.border.default}`,
-                  boxShadow: designTokens.shadows.sm
-                }}
+                className="relative luxury-glass-card luxury-shadow-lg luxury-hover-lift p-5 rounded-2xl text-left transition-all duration-300 luxury-animate-slide-up"
                 data-testid={`mobile-ops-${action.id}`}
+                style={{ animationDelay: `${(index + 2) * 0.05}s` }}
               >
                 {/* Badge */}
                 {action.badge !== undefined && action.badge > 0 && (
-                  <div 
-                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{
-                      background: designTokens.colors.accent.error,
-                      color: '#FFFFFF'
-                    }}
-                  >
+                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-br from-red-500 to-pink-600 text-white shadow-lg">
                     {action.badge > 99 ? '99+' : action.badge}
                   </div>
                 )}
 
                 {/* Icon */}
                 <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-3"
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 shadow-md"
                   style={{
-                    background: `${action.color}15`
+                    background: `linear-gradient(135deg, ${action.color}15 0%, ${action.color}30 100%)`
                   }}
                 >
-                  <Icon className="w-6 h-6" style={{ color: action.color }} />
+                  <Icon className="w-7 h-7" style={{ color: action.color }} />
                 </div>
 
                 {/* Title */}
-                <h3 
-                  className="font-semibold text-sm mb-1"
-                  style={{ color: designTokens.colors.text.primary }}
-                >
+                <h3 className="font-bold text-sm mb-1 luxury-text-gradient">
                   {action.title}
                 </h3>
 
                 {/* Description */}
-                <p 
-                  className="text-xs line-clamp-2"
-                  style={{ color: designTokens.colors.text.secondary }}
-                >
+                <p className="luxury-text-small line-clamp-2">
                   {action.description}
                 </p>
               </button>
@@ -284,29 +234,17 @@ export default function MobileOpsHub() {
       </div>
 
       {/* Emergency Actions */}
-      <div className="px-4 pb-4">
-        <div 
-          className="rounded-xl p-4"
-          style={{
-            background: `${designTokens.colors.accent.error}10`,
-            border: `1px solid ${designTokens.colors.accent.error}30`
-          }}
-        >
+      <div className="px-4 mt-6 mb-6 luxury-animate-fade-in luxury-delay-10">
+        <div className="luxury-glass-card luxury-shadow-lg p-5 rounded-2xl border-2 border-red-200">
           <div className="flex items-start gap-3">
-            <AlertTriangle 
-              className="w-5 h-5 flex-shrink-0 mt-0.5" 
-              style={{ color: designTokens.colors.accent.error }} 
-            />
+            <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 
-                className="font-semibold text-sm mb-1"
-                style={{ color: designTokens.colors.text.primary }}
-              >
+              <h3 className="font-bold text-sm mb-2 text-gray-900">
                 Emergency Contacts
               </h3>
-              <div className="space-y-1 text-xs" style={{ color: designTokens.colors.text.secondary }}>
-                <div>Support: <a href="tel:+972123456789" className="font-mono underline">+972-12-345-6789</a></div>
-                <div>Tech: <a href="tel:+972987654321" className="font-mono underline">+972-98-765-4321</a></div>
+              <div className="space-y-1 text-xs luxury-text-small">
+                <div>Support: <a href="tel:+972123456789" className="font-mono underline luxury-text-gradient">+972-12-345-6789</a></div>
+                <div>Tech: <a href="tel:+972987654321" className="font-mono underline luxury-text-gradient">+972-98-765-4321</a></div>
               </div>
             </div>
           </div>
@@ -314,43 +252,35 @@ export default function MobileOpsHub() {
       </div>
 
       {/* Bottom Navigation */}
-      <div 
-        className="fixed bottom-0 left-0 right-0 z-50"
-        style={{
-          background: designTokens.colors.background.secondary,
-          borderTop: `1px solid ${designTokens.colors.border.default}`,
-          boxShadow: designTokens.shadows.base
-        }}
-      >
-        <div className="grid grid-cols-4 gap-1 px-2 py-2">
+      <div className="fixed bottom-0 left-0 right-0 z-50 luxury-glass-card luxury-shadow-xl rounded-none md:rounded-t-2xl">
+        <div className="grid grid-cols-4 gap-1 px-2 py-3">
           <button
             onClick={() => setLocation('/mobile/ops')}
-            className="flex flex-col items-center gap-1 p-2 rounded-lg"
-            style={{ background: designTokens.colors.background.tertiary }}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl luxury-glass-panel"
           >
-            <Zap className="w-5 h-5" style={{ color: designTokens.colors.accent.info }} />
-            <span className="text-xs font-medium" style={{ color: designTokens.colors.accent.info }}>Ops</span>
+            <Zap className="w-5 h-5 text-purple-600" />
+            <span className="text-xs font-semibold luxury-text-gradient">Ops</span>
           </button>
           <button
             onClick={() => setLocation('/mobile/stations')}
-            className="flex flex-col items-center gap-1 p-2 rounded-lg"
+            className="flex flex-col items-center gap-1 p-2 rounded-xl"
           >
-            <MapPin className="w-5 h-5" style={{ color: designTokens.colors.text.secondary }} />
-            <span className="text-xs" style={{ color: designTokens.colors.text.secondary }}>Stations</span>
+            <MapPin className="w-5 h-5 text-gray-500" />
+            <span className="text-xs text-gray-600">Stations</span>
           </button>
           <button
             onClick={() => setLocation('/admin/analytics')}
-            className="flex flex-col items-center gap-1 p-2 rounded-lg"
+            className="flex flex-col items-center gap-1 p-2 rounded-xl"
           >
-            <TrendingUp className="w-5 h-5" style={{ color: designTokens.colors.text.secondary }} />
-            <span className="text-xs" style={{ color: designTokens.colors.text.secondary }}>Analytics</span>
+            <TrendingUp className="w-5 h-5 text-gray-500" />
+            <span className="text-xs text-gray-600">Analytics</span>
           </button>
           <button
             onClick={() => setLocation('/admin')}
-            className="flex flex-col items-center gap-1 p-2 rounded-lg"
+            className="flex flex-col items-center gap-1 p-2 rounded-xl"
           >
-            <Settings className="w-5 h-5" style={{ color: designTokens.colors.text.secondary }} />
-            <span className="text-xs" style={{ color: designTokens.colors.text.secondary }}>More</span>
+            <Settings className="w-5 h-5 text-gray-500" />
+            <span className="text-xs text-gray-600">More</span>
           </button>
         </div>
       </div>

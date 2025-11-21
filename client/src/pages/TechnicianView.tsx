@@ -94,103 +94,105 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading work orders...</p>
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="text-center luxury-animate-scale-in">
+          <div className="luxury-spinner"></div>
+          <p className="luxury-text-small mt-4">Loading work orders...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen luxury-bg-mesh p-4">
       <div className="max-w-2xl mx-auto space-y-4">
         {/* Mobile-Optimized Header */}
-        <div className="bg-primary text-primary-foreground rounded-lg p-4">
-          <h1 className="text-2xl font-bold">Technician Dashboard</h1>
-          <p className="text-sm opacity-90">Field Service Portal</p>
+        <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl luxury-animate-fade-in">
+          <h1 className="luxury-heading-lg">🔧 Technician Dashboard</h1>
+          <p className="luxury-text-small mt-1">Field Service Portal</p>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="border-yellow-200 bg-yellow-50">
-            <CardContent className="p-4 text-center">
-              <Clock className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
-              <p className="text-2xl font-bold text-yellow-900">{pendingOrders?.length || 0}</p>
-              <p className="text-xs text-yellow-700">Pending</p>
-            </CardContent>
-          </Card>
+        <div className="luxury-grid-3 gap-3 luxury-animate-fade-in luxury-delay-1">
+          <div className="luxury-glass-card luxury-shadow-lg p-4 rounded-2xl text-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center mx-auto mb-3">
+              <Clock className="h-6 w-6 text-white" />
+            </div>
+            <p className="text-3xl font-bold text-yellow-600">{pendingOrders?.length || 0}</p>
+            <p className="luxury-text-small">Pending</p>
+          </div>
           
-          <Card className="border-blue-200 bg-blue-50">
-            <CardContent className="p-4 text-center">
-              <Wrench className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-              <p className="text-2xl font-bold text-blue-900">{inProgressOrders?.length || 0}</p>
-              <p className="text-xs text-blue-700">Active</p>
-            </CardContent>
-          </Card>
+          <div className="luxury-glass-card luxury-shadow-lg p-4 rounded-2xl text-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center mx-auto mb-3">
+              <Wrench className="h-6 w-6 text-white" />
+            </div>
+            <p className="text-3xl font-bold luxury-text-gradient">{inProgressOrders?.length || 0}</p>
+            <p className="luxury-text-small">Active</p>
+          </div>
           
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="p-4 text-center">
-              <CheckCircle className="h-6 w-6 mx-auto mb-2 text-green-600" />
-              <p className="text-2xl font-bold text-green-900">{completedToday?.length || 0}</p>
-              <p className="text-xs text-green-700">Today</p>
-            </CardContent>
-          </Card>
+          <div className="luxury-glass-card luxury-shadow-lg p-4 rounded-2xl text-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-3">
+              <CheckCircle className="h-6 w-6 text-white" />
+            </div>
+            <p className="text-3xl font-bold text-green-600">{completedToday?.length || 0}</p>
+            <p className="luxury-text-small">Today</p>
+          </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <Button className="h-20 flex-col gap-2" variant="outline" data-testid="button-scan-qr">
-            <QrCode className="h-6 w-6" />
-            <span className="text-sm">Scan QR</span>
-          </Button>
-          <Button className="h-20 flex-col gap-2" variant="outline" data-testid="button-upload-photo">
-            <Camera className="h-6 w-6" />
-            <span className="text-sm">Photo</span>
-          </Button>
+        <div className="grid grid-cols-2 gap-3 luxury-animate-fade-in luxury-delay-2">
+          <button className="luxury-glass-card luxury-shadow-lg luxury-hover-lift h-20 flex flex-col items-center justify-center gap-2 rounded-2xl transition-all duration-300" data-testid="button-scan-qr">
+            <QrCode className="h-6 w-6 text-purple-600" />
+            <span className="text-sm font-semibold luxury-text-gradient">Scan QR</span>
+          </button>
+          <button className="luxury-glass-card luxury-shadow-lg luxury-hover-lift h-20 flex flex-col items-center justify-center gap-2 rounded-2xl transition-all duration-300" data-testid="button-upload-photo">
+            <Camera className="h-6 w-6 text-purple-600" />
+            <span className="text-sm font-semibold luxury-text-gradient">Photo</span>
+          </button>
         </div>
 
         {/* Active Work Orders */}
         {inProgressOrders && inProgressOrders.length > 0 && (
-          <Card className="border-blue-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Wrench className="h-4 w-4" />
+          <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden border-2 border-blue-200 luxury-animate-slide-up luxury-delay-3">
+            <div className="luxury-glass-panel px-6 py-4">
+              <h2 className="font-bold flex items-center gap-2 luxury-text-gradient">
+                <Wrench className="h-5 w-5" />
                 Active Jobs
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {inProgressOrders.map((order: any) => (
+              </h2>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              {inProgressOrders.map((order: any, index: number) => (
                 <div
                   key={order.id}
-                  className="p-3 border rounded-lg bg-blue-50 border-blue-200"
+                  className="luxury-glass-minimal luxury-hover-lift p-4 rounded-xl border-2 border-blue-200 transition-all duration-300"
                   data-testid={`work-order-active-${order.id}`}
+                  style={{ animationDelay: `${(index + 4) * 0.05}s` }}
                 >
-                  <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <p className="font-semibold text-sm">{order.title}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="font-semibold">{order.title}</p>
+                      <p className="luxury-text-small">
                         WO-{order.workOrderNumber}
                       </p>
                     </div>
-                    <Badge variant={priorityColor(order.priority)}>
+                    <span className={`luxury-badge ${
+                      order.priority === 'critical' ? 'bg-red-100 text-red-700' :
+                      order.priority === 'high' ? 'luxury-badge-gold' :
+                      'luxury-badge'
+                    }`}>
                       {order.priority}
-                    </Badge>
+                    </span>
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="flex-1"
+                    <button 
+                      className="luxury-btn-secondary flex-1 text-sm"
                       onClick={() => setSelectedWorkOrder(order.id)}
                       data-testid={`button-update-${order.id}`}
                     >
                       Update
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    </button>
+                    <button 
+                      className="luxury-btn-primary flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-sm"
                       onClick={() => updateWorkOrderMutation.mutate({ 
                         id: order.id, 
                         status: 'completed',
@@ -200,49 +202,54 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Complete
-                    </Button>
+                    </button>
                   </div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {/* Pending Work Orders */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="h-4 w-4" />
+        <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden luxury-animate-slide-up luxury-delay-4">
+          <div className="luxury-glass-panel px-6 py-4">
+            <h2 className="font-bold flex items-center gap-2 luxury-text-gradient">
+              <Clock className="h-5 w-5" />
               Scheduled Jobs ({pendingOrders?.length || 0})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {pendingOrders?.map((order: any) => (
+            </h2>
+          </div>
+          <div className="px-6 py-4 space-y-3">
+            {pendingOrders?.map((order: any, index: number) => (
               <div
                 key={order.id}
-                className="p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                className="luxury-glass-minimal luxury-hover-lift p-4 rounded-xl cursor-pointer transition-all duration-300"
                 onClick={() => setSelectedWorkOrder(order.id)}
                 data-testid={`work-order-pending-${order.id}`}
+                style={{ animationDelay: `${(index + 5) * 0.05}s` }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       {statusIcon(order.status)}
-                      <p className="font-semibold text-sm">{order.title}</p>
+                      <p className="font-semibold">{order.title}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-1">
+                    <p className="luxury-text-small mb-1">
                       {order.description}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="luxury-text-small">
                       WO-{order.workOrderNumber}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <Badge variant={priorityColor(order.priority)}>
+                    <span className={`luxury-badge ${
+                      order.priority === 'critical' ? 'bg-red-100 text-red-700' :
+                      order.priority === 'high' ? 'luxury-badge-gold' :
+                      'luxury-badge'
+                    }`}>
                       {order.priority}
-                    </Badge>
-                    <Button 
-                      size="sm"
+                    </span>
+                    <button 
+                      className="luxury-btn-primary text-sm px-4"
                       onClick={(e) => {
                         e.stopPropagation();
                         updateWorkOrderMutation.mutate({ 
@@ -253,44 +260,44 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
                       data-testid={`button-start-${order.id}`}
                     >
                       Start
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
             ))}
             {(!pendingOrders || pendingOrders.length === 0) && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Wrench className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">No pending work orders</p>
+              <div className="text-center py-12">
+                <Wrench className="h-16 w-16 mx-auto mb-4 text-purple-200" />
+                <p className="luxury-text-small">No pending work orders</p>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Completed Today */}
         {completedToday && completedToday.length > 0 && (
-          <Card className="border-green-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
+          <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden border-2 border-green-200 luxury-animate-slide-up luxury-delay-5">
+            <div className="luxury-glass-panel px-6 py-4">
+              <h2 className="font-bold flex items-center gap-2 text-green-700">
+                <CheckCircle className="h-5 w-5" />
                 Completed Today ({completedToday.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+              </h2>
+            </div>
+            <div className="px-6 py-4 space-y-2">
               {completedToday.map((order: any) => (
                 <div
                   key={order.id}
-                  className="p-3 border rounded-lg bg-green-50 border-green-200"
+                  className="luxury-glass-minimal p-4 rounded-xl bg-green-50 border border-green-200"
                   data-testid={`work-order-completed-${order.id}`}
                 >
-                  <p className="font-semibold text-sm text-green-900">{order.title}</p>
+                  <p className="font-semibold text-green-900">{order.title}</p>
                   <p className="text-xs text-green-700">
                     WO-{order.workOrderNumber}
                   </p>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
     </div>

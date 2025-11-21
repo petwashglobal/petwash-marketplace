@@ -140,36 +140,36 @@ export default function ApproveExpenses() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black p-6">
+    <div className="min-h-screen luxury-bg-mesh p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-black to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-2">
+        <div className="mb-8 luxury-animate-fade-in">
+          <h1 className="luxury-heading-xl mb-2">
             אישור הוצאות עובדים
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="luxury-text-body">
             Approve Employee Expenses • Manager Dashboard
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="p-6 border-2 border-black dark:border-white text-center">
-            <Clock className="w-8 h-8 mx-auto mb-2 text-black dark:text-white" />
-            <div className="text-3xl font-bold text-black dark:text-white">{expensesList.length}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">הוצאות ממתינות / Pending</div>
+        <div className="luxury-grid-3 luxury-gap-md mb-8">
+          <Card className="p-6 luxury-glass-card luxury-hover-lift text-center luxury-animate-slide-up luxury-delay-1">
+            <Clock className="w-8 h-8 mx-auto mb-2 text-violet-600" />
+            <div className="luxury-heading-lg">{expensesList.length}</div>
+            <div className="luxury-text-small">הוצאות ממתינות / Pending</div>
           </Card>
-          <Card className="p-6 border-2 border-black dark:border-white text-center">
-            <DollarSign className="w-8 h-8 mx-auto mb-2 text-black dark:text-white" />
-            <div className="text-3xl font-bold text-black dark:text-white">
+          <Card className="p-6 luxury-glass-card luxury-hover-lift text-center luxury-animate-slide-up luxury-delay-2">
+            <DollarSign className="w-8 h-8 mx-auto mb-2 text-violet-600" />
+            <div className="luxury-heading-lg luxury-text-gradient">
               ₪{totalPendingAmount.toFixed(2)}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">סה"כ סכום / Total Amount</div>
+            <div className="luxury-text-small">סה"כ סכום / Total Amount</div>
           </Card>
-          <Card className="p-6 border-2 border-black dark:border-white text-center">
-            <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-black dark:text-white" />
-            <div className="text-3xl font-bold text-black dark:text-white">
+          <Card className="p-6 luxury-glass-card luxury-hover-lift text-center luxury-animate-slide-up luxury-delay-3">
+            <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-amber-600" />
+            <div className="luxury-heading-lg">
               {expensesList.filter(e => e.policyStatus === 'violation').length}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">הפרות מדיניות / Violations</div>
+            <div className="luxury-text-small">הפרות מדיניות / Violations</div>
           </Card>
         </div>
 
@@ -182,29 +182,29 @@ export default function ApproveExpenses() {
             ))}
           </div>
         ) : expensesList.length === 0 ? (
-          <Card className="p-12 text-center border-2 border-black dark:border-white">
+          <Card className="p-12 text-center luxury-glass-card luxury-shadow-xl luxury-animate-fade-in">
             <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-600" />
-            <h3 className="text-xl font-bold mb-2 text-black dark:text-white">
+            <h3 className="luxury-heading-lg mb-2">
               אין הוצאות ממתינות
             </h3>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="luxury-text-body">
               כל ההוצאות אושרו או נדחו
             </p>
           </Card>
         ) : (
           <div className="space-y-4">
-            {expensesList.map((expense) => (
-              <Card key={expense.id} className="p-6 border-2 border-black dark:border-white hover:shadow-xl transition-shadow">
+            {expensesList.map((expense, idx) => (
+              <Card key={expense.id} className={`p-6 luxury-glass-minimal luxury-hover-lift luxury-animate-slide-up luxury-delay-${Math.min(idx % 10, 10)}`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full bg-black dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-lg">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg border-4 border-white/20 shadow-lg">
                       {expense.employeeName?.charAt(0) || 'U'}
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-black dark:text-white mb-1">
+                      <h3 className="luxury-heading-md mb-1">
                         {expense.employeeName || 'Unknown Employee'}
                       </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{expense.employeeEmail}</p>
+                      <p className="luxury-text-small">{expense.employeeEmail}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <Badge className="bg-gray-200 dark:bg-gray-800 text-black dark:text-white">
                           {categoryLabels[expense.category] || expense.category}
@@ -219,36 +219,36 @@ export default function ApproveExpenses() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-4xl font-bold text-black dark:text-white">
+                    <div className="luxury-heading-lg luxury-text-gradient">
                       ₪{parseFloat(expense.totalAmountILS).toFixed(2)}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <div className="luxury-text-small mt-1">
                       VAT: ₪{parseFloat(expense.vatAmountILS).toFixed(2)} ({(parseFloat(expense.vatRateApplied) * 100).toFixed(0)}%)
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                    <div className="luxury-text-small">
                       Net: ₪{parseFloat(expense.netAmountILS).toFixed(2)}
                     </div>
                   </div>
                 </div>
 
                 <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2 mb-2 luxury-text-small">
                     <Calendar className="w-4 h-4" />
                     {new Date(expense.expenseDate).toLocaleDateString('he-IL')}
                   </div>
-                  <p className="text-gray-700 dark:text-gray-300">
+                  <p className="luxury-text-body">
                     {expense.description}
                   </p>
                 </div>
 
                 {expense.policyViolations && expense.policyViolations.length > 0 && (
-                  <Alert className="mb-4 bg-gray-100 dark:bg-gray-900 border-2 border-black dark:border-white">
-                    <AlertTriangle className="w-4 h-4 text-black dark:text-white" />
+                  <Alert className="mb-4 luxury-glass-card border-2 border-amber-500/50">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
                     <AlertDescription>
-                      <div className="font-bold mb-2 text-sm text-black dark:text-white">Policy Violations:</div>
+                      <div className="luxury-heading-sm mb-2">Policy Violations:</div>
                       <ul className="text-sm space-y-1">
                         {expense.policyViolations.map((v: any, idx: number) => (
-                          <li key={idx} className="text-gray-700 dark:text-gray-300">
+                          <li key={idx} className="luxury-text-body">
                             • {v.messageHE || v.messageEN}
                           </li>
                         ))}
@@ -257,17 +257,16 @@ export default function ApproveExpenses() {
                   </Alert>
                 )}
 
-                <Separator className="my-4 bg-gray-300 dark:bg-gray-700" />
+                <Separator className="my-4" />
 
                 <div className="flex justify-between items-center">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                  <div className="luxury-text-small">
                     Submitted: {expense.submittedAt ? new Date(expense.submittedAt).toLocaleDateString('he-IL') : 'Unknown'}
                   </div>
                   <div className="flex gap-3">
                     <Button
                       onClick={() => openDialog(expense, 'reject')}
-                      variant="outline"
-                      className="border-2 border-black dark:border-white text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-900"
+                      className="luxury-btn-danger"
                       data-testid={`button-reject-${expense.id}`}
                     >
                       <XCircle className="mr-2 w-4 h-4" />
@@ -275,7 +274,7 @@ export default function ApproveExpenses() {
                     </Button>
                     <Button
                       onClick={() => openDialog(expense, 'approve')}
-                      className="bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black border-2 border-black dark:border-white"
+                      className="luxury-btn-primary"
                       data-testid={`button-approve-${expense.id}`}
                     >
                       <CheckCircle2 className="mr-2 w-4 h-4" />
@@ -289,12 +288,12 @@ export default function ApproveExpenses() {
         )}
 
         <Dialog open={!!selectedExpense && !!actionType} onOpenChange={(open) => !open && closeDialog()}>
-          <DialogContent className="border-2 border-black dark:border-white bg-white dark:bg-black">
+          <DialogContent className="luxury-glass-card luxury-shadow-xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl text-black dark:text-white">
+              <DialogTitle className="luxury-heading-lg">
                 {actionType === 'approve' ? '✅ אישור הוצאה' : '❌ דחיית הוצאה'}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="luxury-text-body">
                 {actionType === 'approve'
                   ? 'Approve Expense - This will process the expense for payment'
                   : 'Reject Expense - Provide a reason for rejection'}
@@ -303,27 +302,27 @@ export default function ApproveExpenses() {
 
             {selectedExpense && (
               <div className="space-y-4">
-                <Card className="p-4 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700">
+                <Card className="p-4 luxury-glass-minimal">
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Employee:</span>
-                      <p className="font-bold text-black dark:text-white">{selectedExpense.employeeName}</p>
+                      <span className="luxury-text-small">Employee:</span>
+                      <p className="luxury-heading-sm">{selectedExpense.employeeName}</p>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Amount:</span>
-                      <p className="font-bold text-black dark:text-white text-lg">
+                      <span className="luxury-text-small">Amount:</span>
+                      <p className="luxury-heading-md luxury-text-gradient">
                         ₪{parseFloat(selectedExpense.totalAmountILS).toFixed(2)}
                       </p>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Category:</span>
-                      <p className="font-bold text-black dark:text-white">
+                      <span className="luxury-text-small">Category:</span>
+                      <p className="luxury-heading-sm">
                         {categoryLabels[selectedExpense.category]}
                       </p>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Date:</span>
-                      <p className="font-bold text-black dark:text-white">
+                      <span className="luxury-text-small">Date:</span>
+                      <p className="luxury-heading-sm">
                         {new Date(selectedExpense.expenseDate).toLocaleDateString('he-IL')}
                       </p>
                     </div>
@@ -332,7 +331,7 @@ export default function ApproveExpenses() {
 
                 {actionType === 'reject' && (
                   <div>
-                    <label className="text-sm font-bold mb-2 block text-black dark:text-white">
+                    <label className="luxury-heading-sm mb-2 block">
                       סיבת דחייה / Rejection Reason:
                     </label>
                     <Textarea
@@ -340,7 +339,7 @@ export default function ApproveExpenses() {
                       onChange={(e) => setRejectionReason(e.target.value)}
                       placeholder="לדוגמה: חסרה קבלה, סכום גבוה מדי..."
                       rows={4}
-                      className="border-2 border-black dark:border-white text-black dark:text-white resize-none"
+                      className="luxury-glass-minimal resize-none"
                       data-testid="input-rejection-reason"
                     />
                   </div>
@@ -349,8 +348,7 @@ export default function ApproveExpenses() {
                 <div className="flex gap-3 justify-end">
                   <Button
                     onClick={closeDialog}
-                    variant="outline"
-                    className="border-2 border-gray-400 dark:border-gray-600"
+                    className="luxury-btn-secondary"
                   >
                     ביטול / Cancel
                   </Button>
@@ -358,7 +356,7 @@ export default function ApproveExpenses() {
                     <Button
                       onClick={handleApprove}
                       disabled={approveMutation.isPending}
-                      className="bg-black text-white dark:bg-white dark:text-black border-2 border-black dark:border-white"
+                      className="luxury-btn-primary"
                       data-testid="button-confirm-approve"
                     >
                       {approveMutation.isPending ? 'מאשר...' : '✅ אשר הוצאה'}
@@ -367,7 +365,7 @@ export default function ApproveExpenses() {
                     <Button
                       onClick={handleReject}
                       disabled={rejectMutation.isPending || !rejectionReason.trim()}
-                      className="bg-black text-white dark:bg-white dark:text-black border-2 border-black dark:border-white"
+                      className="luxury-btn-danger"
                       data-testid="button-confirm-reject"
                     >
                       {rejectMutation.isPending ? 'דוחה...' : '❌ דחה הוצאה'}

@@ -29,10 +29,10 @@ export function SmartReceiptViewer() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading receipt...</p>
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="text-center luxury-animate-scale-in">
+          <div className="luxury-spinner"></div>
+          <p className="luxury-text-small mt-4">Loading receipt...</p>
         </div>
       </div>
     );
@@ -40,11 +40,11 @@ export function SmartReceiptViewer() {
 
   if (error || !receipt) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Receipt className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Receipt Not Found</h2>
-          <p className="text-gray-600">The receipt you're looking for doesn't exist or has been removed.</p>
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="text-center luxury-glass-card luxury-shadow-lg p-12 rounded-2xl luxury-animate-slide-up">
+          <Receipt className="h-16 w-16 text-purple-300 mx-auto mb-4" />
+          <h2 className="luxury-heading-md mb-2">Receipt Not Found</h2>
+          <p className="luxury-text-small">The receipt you're looking for doesn't exist or has been removed.</p>
         </div>
       </div>
     );
@@ -89,40 +89,42 @@ export function SmartReceiptViewer() {
     : 100;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen luxury-bg-mesh py-8">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border">
+        <div className="text-center mb-8 luxury-animate-fade-in">
+          <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
             <div className="flex items-center justify-center mb-4">
-              <Receipt className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">Pet Wash™ Receipt</h1>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mr-3">
+                <Receipt className="h-6 w-6 text-white" />
+              </div>
+              <h1 className="luxury-heading-lg">Pet Wash™ Receipt</h1>
             </div>
-            <p className="text-lg font-mono text-gray-600">#{receipt.transactionId}</p>
+            <p className="text-lg font-mono luxury-text-gradient">#{receipt.transactionId}</p>
           </div>
         </div>
 
         {/* Receipt Details */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden mb-6 luxury-animate-slide-up luxury-delay-1">
+          <div className="luxury-glass-panel px-6 py-4">
+            <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
               <Receipt className="h-5 w-5" />
               Transaction Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </h2>
+          </div>
+          <div className="px-6 py-4 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-600">Date & Time</p>
-                <p className="font-semibold flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
+                <p className="luxury-text-small">Date & Time</p>
+                <p className="font-semibold flex items-center gap-2 text-gray-900">
+                  <Calendar className="h-4 w-4 text-purple-500" />
                   {format(new Date(receipt.washDateTime), 'MMM dd, yyyy HH:mm')}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Location</p>
-                <p className="font-semibold flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
+                <p className="luxury-text-small">Location</p>
+                <p className="font-semibold flex items-center gap-2 text-gray-900">
+                  <MapPin className="h-4 w-4 text-purple-500" />
                   {receipt.locationName}
                 </p>
               </div>
@@ -130,13 +132,13 @@ export function SmartReceiptViewer() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-600">Wash Type</p>
-                <p className="font-semibold">{receipt.washType}</p>
+                <p className="luxury-text-small">Wash Type</p>
+                <p className="font-semibold text-gray-900">{receipt.washType}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Duration</p>
-                <p className="font-semibold flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
+                <p className="luxury-text-small">Duration</p>
+                <p className="font-semibold flex items-center gap-2 text-gray-900">
+                  <Clock className="h-4 w-4 text-purple-500" />
                   {receipt.washDuration} minutes
                 </p>
               </div>
@@ -144,32 +146,32 @@ export function SmartReceiptViewer() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-600">Customer ID</p>
-                <p className="font-semibold">{receipt.customerIdMasked}</p>
+                <p className="luxury-text-small">Customer ID</p>
+                <p className="font-semibold text-gray-900">{receipt.customerIdMasked}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Payment Method</p>
-                <p className="font-semibold flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
+                <p className="luxury-text-small">Payment Method</p>
+                <p className="font-semibold flex items-center gap-2 text-gray-900">
+                  <CreditCard className="h-4 w-4 text-purple-500" />
                   {receipt.paymentMethod}
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Payment Summary */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden mb-6 luxury-animate-slide-up luxury-delay-2">
+          <div className="luxury-glass-panel px-6 py-4">
+            <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
               Payment Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </h2>
+          </div>
+          <div className="px-6 py-4 space-y-4">
             <div className="flex justify-between">
-              <span className="text-gray-600">Original Amount:</span>
-              <span className="font-semibold">{formatCurrency(receipt.originalAmount)}</span>
+              <span className="luxury-text-small">Original Amount:</span>
+              <span className="font-semibold text-gray-900">{formatCurrency(receipt.originalAmount)}</span>
             </div>
             
             {parseFloat(receipt.discountApplied) > 0 && (
@@ -179,121 +181,119 @@ export function SmartReceiptViewer() {
               </div>
             )}
             
-            <div className="border-t pt-4">
+            <div className="border-t border-purple-100 pt-4">
               <div className="flex justify-between text-lg font-bold">
-                <span>Final Total:</span>
-                <span className="text-blue-600">{formatCurrency(receipt.finalTotal)}</span>
+                <span className="text-gray-900">Final Total:</span>
+                <span className="luxury-text-gradient">{formatCurrency(receipt.finalTotal)}</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Loyalty Program */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden mb-6 luxury-animate-slide-up luxury-delay-3">
+          <div className="luxury-glass-panel px-6 py-4">
+            <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
               <Star className="h-5 w-5" />
               Loyalty Program
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </h2>
+          </div>
+          <div className="px-6 py-4 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Points Earned:</span>
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
+              <span className="luxury-text-small">Points Earned:</span>
+              <span className="luxury-badge bg-green-100 text-green-700">
                 +{receipt.loyaltyPointsEarned} points
-              </Badge>
+              </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Current Tier:</span>
-              <Badge className={getTierColor(receipt.currentTier)}>
+              <span className="luxury-text-small">Current Tier:</span>
+              <span className={`luxury-badge ${getTierColor(receipt.currentTier)}`}>
                 {getTierIcon(receipt.currentTier)}
                 <span className="ml-1">{receipt.currentTier}</span>
-              </Badge>
+              </span>
             </div>
 
             {receipt.currentTier !== receipt.nextTier && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Progress to {receipt.nextTier}:</span>
-                  <span className="font-semibold">
+                  <span className="luxury-text-small">Progress to {receipt.nextTier}:</span>
+                  <span className="font-semibold text-gray-900">
                     {receipt.currentTierPoints} / {receipt.nextTierPoints} pts
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full luxury-glass-minimal rounded-full h-2 overflow-hidden">
                   <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${progressPercentage}%` }}
                   ></div>
                 </div>
-                <p className="text-xs text-gray-500 text-center">
+                <p className="luxury-text-small text-center">
                   {receipt.nextTierPoints - receipt.currentTierPoints} points to {receipt.nextTier}
                 </p>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* QR Code */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden mb-6 luxury-animate-slide-up luxury-delay-4">
+          <div className="luxury-glass-panel px-6 py-4">
+            <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
               <QrCode className="h-5 w-5" />
               Receipt QR Code
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <div className="bg-white p-4 rounded-lg inline-block">
+            </h2>
+          </div>
+          <div className="px-6 py-6 text-center">
+            <div className="luxury-glass-minimal p-4 rounded-xl inline-block">
               <img 
                 src={receipt.receiptQrCode} 
                 alt="Receipt QR Code" 
                 className="w-32 h-32 mx-auto"
               />
             </div>
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="luxury-text-small mt-2">
               Scan to view this receipt or share with friends
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Action Buttons */}
-        <div className="space-y-4">
-          <Button 
-            className="w-full bg-blue-600 hover:bg-blue-700"
+        <div className="space-y-3 luxury-animate-slide-up luxury-delay-5">
+          <button 
+            className="luxury-btn-primary w-full"
             onClick={() => window.open(`/rate/${receipt.transactionId}`, '_blank')}
           >
             <Star className="h-4 w-4 mr-2" />
             Rate Your Experience
-          </Button>
+          </button>
 
-          <Button 
-            variant="outline" 
-            className="w-full"
+          <button 
+            className="luxury-btn-secondary w-full"
             onClick={() => window.open(`/?package=${receipt.packageId}`, '_blank')}
           >
             <Gift className="h-4 w-4 mr-2" />
             Book Next Wash
-          </Button>
+          </button>
 
           {receipt.userId && (
-            <Button 
-              variant="outline" 
-              className="w-full"
+            <button 
+              className="luxury-btn-secondary w-full"
               onClick={() => window.open(`/?ref=${receipt.userId}`, '_blank')}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
               Share & Earn Rewards
-            </Button>
+            </button>
           )}
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-8 text-gray-500">
-          <p className="text-sm">
+        <div className="text-center mt-8 luxury-text-small luxury-animate-fade-in luxury-delay-6">
+          <p>
             Thank you for choosing Pet Wash™ Premium Services
           </p>
-          <p className="text-xs mt-2">
-            Questions? Contact us at Support@PetWash.co.il
+          <p className="mt-2">
+            Questions? Contact us at <a href="mailto:Support@PetWash.co.il" className="luxury-text-gradient font-semibold">Support@PetWash.co.il</a>
           </p>
         </div>
       </div>

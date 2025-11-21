@@ -414,16 +414,16 @@ export default function TeamInbox() {
   const myUnreadCount = selectedConversation?.unreadCount?.[firebaseUser?.uid || ''] || 0;
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col" dir={dir}>
-      <div className="bg-white border-b px-4 py-3">
-        <h1 className="text-2xl font-bold text-gray-900">
+    <div className="h-screen luxury-bg-mesh flex flex-col" dir={dir}>
+      <div className="luxury-glass-card border-b px-4 py-3 animate-in fade-in duration-500">
+        <h1 className="text-2xl font-bold luxury-text-gradient">
           {t('teaminbox.title', language)}
         </h1>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Conversations List */}
-        <div className="w-80 bg-white border-r flex flex-col">
+        <div className="w-80 luxury-glass-card border-r flex flex-col">
           <div className="p-3 border-b">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -459,8 +459,8 @@ export default function TeamInbox() {
                       key={conv.id}
                       data-testid={`conversation-item-${conv.id}`}
                       onClick={() => setSelectedConversationId(conv.id)}
-                      className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
-                        isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      className={`luxury-glass-minimal luxury-hover-lift p-4 border-b cursor-pointer transition-all duration-300 ${
+                        isSelected ? 'bg-purple-50 border-l-4 border-l-purple-500' : ''
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -476,7 +476,7 @@ export default function TeamInbox() {
                                 {conv.title || `${t('teaminbox.conversation', language)} ${conv.id.substring(0, 8)}`}
                               </p>
                               {unread > 0 && (
-                                <Badge variant="destructive" className="text-xs">
+                                <Badge className="luxury-badge bg-red-500 animate-pulse text-xs">
                                   {unread}
                                 </Badge>
                               )}
@@ -498,11 +498,11 @@ export default function TeamInbox() {
         </div>
 
         {/* Messages View */}
-        <div className="flex-1 flex flex-col bg-gray-50">
+        <div className="flex-1 flex flex-col">
           {selectedConversationId ? (
             <>
               {/* Messages Header */}
-              <div className="bg-white border-b px-6 py-4">
+              <div className="luxury-glass-card border-b px-6 py-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h2 className="font-semibold text-lg">
@@ -513,6 +513,7 @@ export default function TeamInbox() {
                     </p>
                   </div>
                   <Button
+                    className="luxury-btn-secondary"
                     variant="outline"
                     size="sm"
                     onClick={() => setShowSearchFilters(!showSearchFilters)}

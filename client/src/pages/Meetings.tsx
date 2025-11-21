@@ -10,7 +10,7 @@ interface MeetingsProps {
 export default function Meetings({ language, onLanguageChange }: MeetingsProps) {
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12">
+      <div className="min-h-screen luxury-bg-mesh py-12">
         <MeetingScheduler language={language} />
       </div>
     </Layout>

@@ -119,34 +119,36 @@ export default function ProviderListings() {
   const ServiceIcon = serviceTypeIcons[serviceType];
   
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-2">{t.title}</h1>
-        <p className="text-muted-foreground">{t.subtitle}</p>
-      </div>
+    <div className="min-h-screen luxury-bg-mesh py-12 px-4">
+      <div className="container mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8 luxury-animate-fade-in">
+          <h1 className="luxury-heading-xl mb-2">{t.title}</h1>
+          <p className="luxury-text-body">{t.subtitle}</p>
+        </div>
       
-      {/* Service Type Tabs */}
-      <Tabs value={serviceType} onValueChange={(value) => setServiceType(value as any)} className="mb-6">
-        <TabsList className="grid w-full max-w-md mx-auto grid-cols-3">
-          <TabsTrigger value="walker" data-testid="tab-walkers">
-            <Dog className="h-4 w-4 mr-2" />
-            {t.walker}
-          </TabsTrigger>
-          <TabsTrigger value="sitter" data-testid="tab-sitters">
-            <Home className="h-4 w-4 mr-2" />
-            {t.sitter}
-          </TabsTrigger>
-          <TabsTrigger value="driver" data-testid="tab-drivers">
-            <Car className="h-4 w-4 mr-2" />
-            {t.driver}
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+        {/* Service Type Tabs */}
+        <div className="luxury-animate-slide-up luxury-delay-1">
+          <Tabs value={serviceType} onValueChange={(value) => setServiceType(value as any)} className="mb-6">
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 luxury-glass-card luxury-shadow-md p-1">
+              <TabsTrigger value="walker" data-testid="tab-walkers" className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+                <Dog className="h-4 w-4 mr-2" />
+                {t.walker}
+              </TabsTrigger>
+              <TabsTrigger value="sitter" data-testid="tab-sitters" className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+                <Home className="h-4 w-4 mr-2" />
+                {t.sitter}
+              </TabsTrigger>
+              <TabsTrigger value="driver" data-testid="tab-drivers" className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+                <Car className="h-4 w-4 mr-2" />
+                {t.driver}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
+        {/* Filters */}
+        <div className="luxury-glass-card luxury-shadow-xl p-6 mb-6 luxury-animate-fade-in luxury-delay-2">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -154,7 +156,7 @@ export default function ProviderListings() {
                 placeholder={t.search}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 luxury-glass-minimal"
                 data-testid="input-search-providers"
               />
             </div>
@@ -194,91 +196,87 @@ export default function ProviderListings() {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
       
-      {/* Provider Grid */}
-      {isLoading ? (
-        <div className="text-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">{t.loading}</p>
-        </div>
-      ) : filteredProviders.length === 0 ? (
-        <div className="text-center py-12">
-          <ServiceIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">{t.noProviders}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProviders.map((provider) => (
-            <Card
-              key={provider.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => setLocation(`/providers/${provider.id}`)}
-              data-testid={`provider-card-${provider.id}`}
-            >
-              <CardHeader>
-                <div className="flex items-start gap-4">
-                  <Avatar className="h-16 w-16">
+        {/* Provider Grid */}
+        {isLoading ? (
+          <div className="text-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-purple-600" />
+            <p className="luxury-text-body">{t.loading}</p>
+          </div>
+        ) : filteredProviders.length === 0 ? (
+          <div className="text-center py-12">
+            <ServiceIcon className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+            <p className="luxury-text-body">{t.noProviders}</p>
+          </div>
+        ) : (
+          <div className="luxury-grid-3">
+            {filteredProviders.map((provider, idx) => (
+              <div
+                key={provider.id}
+                className={`luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 cursor-pointer luxury-animate-fade-in luxury-delay-${Math.min(idx + 3, 10)}`}
+                onClick={() => setLocation(`/providers/${provider.id}`)}
+                data-testid={`provider-card-${provider.id}`}
+              >
+                <div className="flex items-start gap-4 mb-4">
+                  <Avatar className="h-16 w-16 ring-2 ring-purple-400/30">
                     <AvatarImage src={provider.profilePhoto} />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                       {provider.firstName[0]}{provider.lastName[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <CardTitle className="text-lg">
+                    <h3 className="luxury-heading-sm">
                       {provider.firstName} {provider.lastName}
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-1 mt-1">
+                    </h3>
+                    <p className="flex items-center gap-1 mt-1 text-sm text-gray-600">
                       <MapPin className="h-3 w-3" />
                       {provider.city}, {provider.country}
-                    </CardDescription>
+                    </p>
                     <div className="flex items-center gap-2 mt-2">
                       <div className="flex items-center gap-1">
                         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                         <span className="font-semibold">{provider.rating.toFixed(1)}</span>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-sm text-gray-600">
                           ({provider.totalReviews} {t.reviews})
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
-              </CardHeader>
-              
-              <CardContent>
+                
                 <div className="space-y-3">
                   {/* Badges */}
                   <div className="flex flex-wrap gap-2">
                     {provider.verificationStatus === 'verified' && (
-                      <Badge variant="secondary">
+                      <span className="luxury-badge luxury-badge-success">
                         <Shield className="h-3 w-3 mr-1" />
                         {t.verified}
-                      </Badge>
+                      </span>
                     )}
                     {provider.hasInsurance && (
-                      <Badge variant="secondary">
+                      <span className="luxury-badge">
                         <Shield className="h-3 w-3 mr-1" />
                         {t.insured}
-                      </Badge>
+                      </span>
                     )}
                     {provider.badges.map((badge, idx) => (
-                      <Badge key={idx} variant="outline">
+                      <span key={idx} className="luxury-badge luxury-badge-gold">
                         <Award className="h-3 w-3 mr-1" />
                         {badge}
-                      </Badge>
+                      </span>
                     ))}
                   </div>
                   
                   {/* Stats */}
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2 text-sm luxury-text-body">
                     <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <Clock className="h-4 w-4 text-purple-600" />
                       <span>{provider.completedBookings} {t.bookings}</span>
                     </div>
                     {provider.yearsOfExperience && (
                       <div className="flex items-center gap-1">
-                        <Award className="h-4 w-4 text-muted-foreground" />
+                        <Award className="h-4 w-4 text-purple-600" />
                         <span>{provider.yearsOfExperience} {t.years}</span>
                       </div>
                     )}
@@ -286,37 +284,37 @@ export default function ProviderListings() {
                   
                   {/* Bio */}
                   {provider.bio && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
+                    <p className="text-sm luxury-text-small line-clamp-2">
                       {provider.bio}
                     </p>
                   )}
                   
                   {/* Price & Action */}
-                  <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="flex items-center justify-between pt-3 mt-3 luxury-divider">
                     <div>
                       {provider.hourlyRate && (
-                        <div className="flex items-center gap-1 font-semibold">
+                        <div className="flex items-center gap-1 font-semibold text-purple-900">
                           <DollarSign className="h-4 w-4" />
                           {provider.hourlyRate}{t.hourly}
                         </div>
                       )}
                       {provider.dailyRate && !provider.hourlyRate && (
-                        <div className="flex items-center gap-1 font-semibold">
+                        <div className="flex items-center gap-1 font-semibold text-purple-900">
                           <DollarSign className="h-4 w-4" />
                           {provider.dailyRate}{t.daily}
                         </div>
                       )}
                     </div>
-                    <Button size="sm" data-testid={`button-book-${provider.id}`}>
+                    <button className="luxury-btn-primary luxury-shadow-md px-4 py-2 text-sm" data-testid={`button-book-${provider.id}`}>
                       {t.book}
-                    </Button>
+                    </button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

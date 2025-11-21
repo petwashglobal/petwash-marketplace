@@ -141,14 +141,14 @@ export default function DocumentSigning() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white dark:bg-black p-4 md:p-8">
+      <div className="min-h-screen luxury-bg-mesh p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-6xl font-light text-black dark:text-white mb-4 tracking-tight">
+            <h1 className="luxury-heading-xl mb-4">
               PetWash™ E-Signature
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm uppercase tracking-widest">
+            <p className="luxury-text-small uppercase tracking-widest">
               Enterprise Digital Signature System
             </p>
           </div>
@@ -156,10 +156,10 @@ export default function DocumentSigning() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Signature Status */}
             <div className="lg:col-span-1">
-              <Card className="border border-gray-200 dark:border-gray-800 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(255,255,255,0.05)] backdrop-blur-xl bg-white/95 dark:bg-black/95">
-                <CardHeader className="border-b border-gray-100 dark:border-gray-900">
-                  <CardTitle className="text-xl font-light tracking-wide flex items-center gap-2">
-                    <Shield className="w-5 h-5" />
+              <Card className="luxury-glass-card luxury-shadow-lg">
+                <CardHeader>
+                  <CardTitle className="luxury-heading-md flex items-center gap-2">
+                    <Shield className="w-5 h-5 luxury-text-gradient" />
                     Your Signature
                   </CardTitle>
                 </CardHeader>
@@ -218,13 +218,13 @@ export default function DocumentSigning() {
 
             {/* Document Signing Form */}
             <div className="lg:col-span-2">
-              <Card className="border border-gray-200 dark:border-gray-800 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(255,255,255,0.05)] backdrop-blur-xl bg-white/95 dark:bg-black/95">
-                <CardHeader className="border-b border-gray-100 dark:border-gray-900">
-                  <CardTitle className="text-xl font-light tracking-wide flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
+              <Card className="luxury-glass-card luxury-shadow-xl">
+                <CardHeader>
+                  <CardTitle className="luxury-heading-md flex items-center gap-2">
+                    <FileText className="w-5 h-5 luxury-text-gradient" />
                     Sign New Document
                   </CardTitle>
-                  <CardDescription className="text-gray-500 dark:text-gray-400 mt-2">
+                  <CardDescription className="luxury-text-body mt-2">
                     Apply your digital signature to legal documents with cryptographic audit trail
                   </CardDescription>
                 </CardHeader>
@@ -326,11 +326,11 @@ export default function DocumentSigning() {
                       />
                     </div>
 
-                    <div className="pt-6 border-t border-gray-200 dark:border-gray-800">
+                    <div className="pt-6">
                       <Button
                         type="submit"
                         disabled={!activeSignature || signDocumentMutation.isPending}
-                        className="w-full h-16 text-base font-medium tracking-wide uppercase bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 shadow-[0_4px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.1)] transition-all duration-200 rounded-lg"
+                        className="luxury-btn-primary w-full h-16 text-base"
                         data-testid="button-sign-document"
                       >
                         {signDocumentMutation.isPending ? (
@@ -354,10 +354,10 @@ export default function DocumentSigning() {
 
           {/* Recent Documents */}
           {documentsData?.documents && documentsData.documents.length > 0 && (
-            <Card className="mt-8 border border-gray-200 dark:border-gray-800 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(255,255,255,0.05)] backdrop-blur-xl bg-white/95 dark:bg-black/95">
-              <CardHeader className="border-b border-gray-100 dark:border-gray-900">
-                <CardTitle className="text-xl font-light tracking-wide flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
+            <Card className="mt-8 luxury-glass-card luxury-shadow-lg">
+              <CardHeader>
+                <CardTitle className="luxury-heading-md flex items-center gap-2">
+                  <Clock className="w-5 h-5 luxury-text-gradient" />
                   Recent Signed Documents
                 </CardTitle>
               </CardHeader>
@@ -366,11 +366,11 @@ export default function DocumentSigning() {
                   {documentsData.documents.slice(0, 10).map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                      className="luxury-glass-minimal luxury-hover-lift p-4 rounded-lg"
                     >
                       <div className="flex-1">
-                        <p className="font-medium text-black dark:text-white">{doc.documentTitle}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p className="luxury-heading-sm">{doc.documentTitle}</p>
+                        <p className="luxury-text-small">
                           Signed by {doc.signedBy} on {new Date(doc.signedDate).toLocaleDateString()}
                         </p>
                       </div>

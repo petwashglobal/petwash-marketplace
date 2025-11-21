@@ -93,7 +93,7 @@ export default function PerformanceReviewsDashboard() {
     >
       <div className="p-6 space-y-6">
       <div className="flex justify-end items-center">
-        <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-review">
+        <Button className="luxury-btn-primary" onClick={() => setShowCreateDialog(true)} data-testid="button-create-review">
           <Plus className="w-4 h-4 mr-2" />
           New Review
         </Button>
@@ -120,9 +120,9 @@ export default function PerformanceReviewsDashboard() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {reviews?.map((review: any) => (
-            <Card key={review.id} data-testid={`review-card-${review.id}`}>
+        <div className="luxury-grid-3">
+          {reviews?.map((review: any, idx: number) => (
+            <Card key={review.id} className={`luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`review-card-${review.id}`}>
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>

@@ -139,10 +139,10 @@ export default function Subscriptions() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="text-center luxury-animate-fade-in">
           <Heart className="w-16 h-16 text-pink-500 animate-pulse mx-auto mb-4" />
-          <p className="text-lg text-gray-600 dark:text-gray-300">Loading subscription options...</p>
+          <p className="text-lg luxury-text-body">Loading subscription options...</p>
         </div>
       </div>
     );
@@ -152,29 +152,29 @@ export default function Subscriptions() {
 
   if (showForm && selectedTier) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4">
-        <div className="max-w-2xl mx-auto">
+      <div className="min-h-screen luxury-bg-mesh py-12 px-4">
+        <div className="max-w-2xl mx-auto luxury-animate-fade-in">
           <Button
             variant="ghost"
             onClick={() => setShowForm(false)}
-            className="mb-6"
+            className="mb-6 luxury-btn-ghost"
             data-testid="button-back-to-tiers"
           >
             ← Back to Tiers
           </Button>
 
-          <Card className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 shadow-2xl">
+          <Card className="luxury-glass-card luxury-shadow-xl">
             <CardHeader>
-              <CardTitle className="text-3xl">Complete Your Subscription</CardTitle>
-              <CardDescription className="text-lg">
+              <CardTitle className="luxury-heading-md">Complete Your Subscription</CardTitle>
+              <CardDescription className="luxury-text-body">
                 Tell us about your pet to get personalized product recommendations
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mb-6 p-4 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-lg">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Selected Plan</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedTier.name}</p>
-                <p className="text-lg text-gray-600 dark:text-gray-400">₪{selectedTier.monthlyPrice}/month</p>
+              <div className="mb-6 p-4 luxury-glass-panel">
+                <p className="text-sm font-medium luxury-text-small">Selected Plan</p>
+                <p className="luxury-heading-sm">{selectedTier.name}</p>
+                <p className="text-lg luxury-text-gradient font-bold">₪{selectedTier.monthlyPrice}/month</p>
               </div>
 
               <Form {...form}>
@@ -391,7 +391,7 @@ export default function Subscriptions() {
                   <Button
                     type="submit"
                     size="lg"
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    className="w-full luxury-btn-primary luxury-shadow-xl"
                     disabled={createSubscriptionMutation.isPending}
                     data-testid="button-create-subscription"
                   >
@@ -407,23 +407,23 @@ export default function Subscriptions() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4">
+    <div className="min-h-screen luxury-bg-mesh py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <div className="text-center mb-12 luxury-animate-fade-in">
+          <h1 className="luxury-heading-xl mb-4">
             Pet Subscription Boxes
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          <p className="luxury-text-body max-w-2xl mx-auto">
             Curated monthly boxes filled with premium treats, toys, and supplies for your furry friend
           </p>
-          <Badge className="mt-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white" data-testid="badge-ai-powered">
+          <Badge className="mt-4 luxury-badge-gold luxury-shadow-md" data-testid="badge-ai-powered">
             <Sparkles className="w-4 h-4 mr-1" />
             AI-Powered Product Selection
           </Badge>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {boxTypes.map((tier) => {
+          {boxTypes.map((tier, index) => {
             const Icon = getTierIcon(tier.name);
             const colorClass = getTierColor(tier.name);
             const isPopular = tier.name.toLowerCase().includes("premium");
@@ -431,14 +431,14 @@ export default function Subscriptions() {
             return (
               <Card 
                 key={tier.id} 
-                className={`relative backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 ${
+                className={`relative luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-${index + 1} ${
                   isPopular ? "border-2 border-purple-500" : ""
                 }`}
                 data-testid={`card-tier-${tier.name.toLowerCase()}`}
               >
                 {isPopular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1">
+                    <Badge className="luxury-badge-gold px-4 py-1">
                       Most Popular
                     </Badge>
                   </div>
@@ -448,13 +448,13 @@ export default function Subscriptions() {
                   <div className={`mx-auto mb-4 ${colorClass}`}>
                     <Icon className="w-16 h-16" />
                   </div>
-                  <CardTitle className="text-3xl">{tier.name}</CardTitle>
-                  <CardDescription className="text-base">{tier.description}</CardDescription>
+                  <CardTitle className="luxury-heading-md">{tier.name}</CardTitle>
+                  <CardDescription className="luxury-text-body">{tier.description}</CardDescription>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold text-gray-900 dark:text-white">₪{tier.monthlyPrice}</span>
-                    <span className="text-gray-600 dark:text-gray-400">/month</span>
+                    <span className="luxury-heading-lg luxury-text-gradient">₪{tier.monthlyPrice}</span>
+                    <span className="luxury-text-small">/month</span>
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  <p className="luxury-text-small mt-2">
                     Value: ₪{tier.estimatedValue}
                   </p>
                 </CardHeader>
@@ -477,11 +477,7 @@ export default function Subscriptions() {
                 <CardFooter>
                   <Button
                     onClick={() => handleSelectTier(tier)}
-                    className={`w-full ${
-                      isPopular
-                        ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                        : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                    }`}
+                    className="w-full luxury-btn-primary luxury-shadow-xl"
                     size="lg"
                     data-testid={`button-select-${tier.name.toLowerCase()}`}
                   >
@@ -493,8 +489,8 @@ export default function Subscriptions() {
           })}
         </div>
 
-        <div className="mt-16 text-center">
-          <h2 className="text-3xl font-bold mb-6">How It Works</h2>
+        <div className="mt-16 text-center luxury-animate-fade-in luxury-delay-4">
+          <h2 className="luxury-heading-lg mb-6">How It Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
             {[
               { step: 1, title: "Choose Your Tier", desc: "Select the perfect box for your pet" },
@@ -503,11 +499,11 @@ export default function Subscriptions() {
               { step: 4, title: "Delivered Monthly", desc: "Fresh surprises at your doorstep" },
             ].map((item) => (
               <div key={item.step} className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-3">
+                <div className="w-16 h-16 luxury-btn-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-3 luxury-shadow-md">
                   {item.step}
                 </div>
-                <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">{item.desc}</p>
+                <h3 className="luxury-heading-sm mb-2">{item.title}</h3>
+                <p className="luxury-text-small">{item.desc}</p>
               </div>
             ))}
           </div>

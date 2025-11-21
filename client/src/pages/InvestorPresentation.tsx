@@ -18,38 +18,36 @@ export default function InvestorPresentation() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
+    <div className="min-h-screen luxury-bg-mesh-dark text-white">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-600/20"></div>
-        <div className="container mx-auto px-4 py-20 relative">
-          <div className="text-center max-w-4xl mx-auto">
-            <div className="text-8xl mb-6 animate-bounce">🐾</div>
-            <h1 className="text-7xl font-black mb-6 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+        <div className="container mx-auto px-4 py-24 relative">
+          <div className="text-center max-w-4xl mx-auto luxury-fade-in">
+            <div className="text-9xl mb-8 animate-bounce">🐾</div>
+            <h1 className="luxury-heading-xl mb-8">
               PET WASH™
             </h1>
-            <p className="text-3xl font-bold mb-4 text-purple-200">
+            <p className="text-4xl font-bold mb-6 luxury-gradient-text">
               The World's Most Advanced Pet Care Platform
             </p>
-            <p className="text-xl text-gray-300 mb-8">
+            <p className="text-2xl text-white/80 mb-10">
               Enterprise SaaS + IoT Hardware + AI = Revolutionary Pet Care Ecosystem
             </p>
-            <div className="flex gap-4 justify-center mb-8">
-              <div className="bg-white/10 backdrop-blur px-6 py-3 rounded-full border border-purple-400">
-                <span className="text-purple-300">Company #517145033</span>
+            <div className="flex gap-5 justify-center mb-10 flex-wrap">
+              <div className="luxury-glass-card luxury-shadow-lg px-8 py-4 rounded-full">
+                <span className="text-white font-bold">Company #517145033</span>
               </div>
-              <div className="bg-white/10 backdrop-blur px-6 py-3 rounded-full border border-blue-400">
-                <span className="text-blue-300">Israel 🇮🇱 | Global 🌍</span>
+              <div className="luxury-glass-card luxury-shadow-lg px-8 py-4 rounded-full">
+                <span className="text-white font-bold">Israel 🇮🇱 | Global 🌍</span>
               </div>
             </div>
-            <Button 
-              size="lg" 
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-xl px-12 py-6"
+            <button 
+              className="luxury-btn-primary luxury-shadow-xl text-xl px-16 py-6"
               onClick={downloadPDF}
             >
               <Download className="mr-2 w-6 h-6" />
               Download Presentation
-            </Button>
+            </button>
           </div>
         </div>
       </div>

@@ -115,91 +115,106 @@ export default function FranchiseManagementDashboard() {
       title="Franchise Management"
       subtitle="Global franchise network oversight and royalty tracking"
     >
-      <div className="min-h-screen bg-white p-6" data-testid="franchise-management-dashboard">
+      <div className="min-h-screen luxury-bg-mesh p-8" data-testid="franchise-management-dashboard">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-end">
           <div className="flex gap-2">
-            <Button variant="outline" className="border-metallic-gold text-metallic-gold hover:bg-metallic-gold/10" data-testid="button-export">
-              <Download className="w-4 h-4 mr-2" />
+            <button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-export">
+              <Download className="w-4 h-4" />
               Export
-            </Button>
-            <Button className="bg-metallic-gold hover:bg-metallic-gold/90 text-white" data-testid="button-create-franchisee">
-              <Plus className="w-4 h-4 mr-2" />
+            </button>
+            <button className="luxury-btn-primary flex items-center gap-2" data-testid="button-create-franchisee">
+              <Plus className="w-4 h-4" />
               New Franchisee
-            </Button>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <Card className="diamond-card border-metallic-gold hover-glow-gold" data-testid="card-total-franchisees">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Franchisees</CardTitle>
-            <Building2 className="w-4 h-4 text-metallic-gold icon-glow-gold" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-metallic-gold" data-testid="text-total-franchisees">
+      {/* KPI Cards - Luxury Grid */}
+      <div className="luxury-grid-4 mb-8">
+        <div className="luxury-glass-card luxury-shadow-lg luxury-hover-glow luxury-animate-fade-in luxury-delay-1" data-testid="card-total-franchisees">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-cyan-500"></div>
+          <div className="p-6">
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <h3 className="luxury-heading-sm">Franchisees</h3>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 p-2.5 shadow-lg">
+                <Building2 className="w-full h-full text-white" />
+              </div>
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient mt-2" data-testid="text-total-franchisees">
               {Array.isArray(allFranchisees) ? allFranchisees.length : 0}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="luxury-text-small mt-1">
               {activeFranchisees} active
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="diamond-card border-metallic-platinum hover-glow-blue" data-testid="card-total-stations">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Stations</CardTitle>
-            <MapPin className="w-4 h-4 text-metallic-platinum icon-glow-blue" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-metallic-platinum" data-testid="text-total-stations">
+        <div className="luxury-glass-card luxury-shadow-lg luxury-hover-glow luxury-animate-fade-in luxury-delay-2" data-testid="card-total-stations">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-pink-500"></div>
+          <div className="p-6">
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <h3 className="luxury-heading-sm">Total Stations</h3>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 p-2.5 shadow-lg">
+                <MapPin className="w-full h-full text-white" />
+              </div>
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient mt-2" data-testid="text-total-stations">
               {totalStations}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Across all locations</p>
-          </CardContent>
-        </Card>
+            <p className="luxury-text-small mt-1">Across all locations</p>
+          </div>
+        </div>
 
-        <Card className="diamond-card border-green-500 hover-glow-green" data-testid="card-monthly-revenue">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Revenue</CardTitle>
-            <TrendingUp className="w-4 h-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600" data-testid="text-monthly-revenue">
+        <div className="luxury-glass-card luxury-shadow-lg luxury-hover-glow luxury-animate-fade-in luxury-delay-3" data-testid="card-monthly-revenue">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500"></div>
+          <div className="p-6">
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <h3 className="luxury-heading-sm">Monthly Revenue</h3>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 p-2.5 shadow-lg">
+                <TrendingUp className="w-full h-full text-white" />
+              </div>
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient mt-2" data-testid="text-monthly-revenue">
               ₪{totalMonthlyRevenue.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Combined network</p>
-          </CardContent>
-        </Card>
+            <p className="luxury-text-small mt-1">Combined network</p>
+          </div>
+        </div>
 
-        <Card className="diamond-card border-amber-500 hover-glow-amber" data-testid="card-pending-payments">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Payments</CardTitle>
-            <Clock className="w-4 h-4 text-amber-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600" data-testid="text-pending-payments">
+        <div className="luxury-glass-card luxury-shadow-lg luxury-hover-glow luxury-animate-fade-in luxury-delay-4" data-testid="card-pending-payments">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-yellow-500"></div>
+          <div className="p-6">
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <h3 className="luxury-heading-sm">Pending Payments</h3>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 p-2.5 shadow-lg">
+                <Clock className="w-full h-full text-white" />
+              </div>
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient mt-2" data-testid="text-pending-payments">
               {pendingPayments}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Awaiting settlement</p>
-          </CardContent>
-        </Card>
+            <p className="luxury-text-small mt-1">Awaiting settlement</p>
+          </div>
+        </div>
 
-        <Card className="diamond-card border-red-500 hover-glow-red" data-testid="card-overdue">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Overdue</CardTitle>
-            <AlertTriangle className="w-4 h-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600" data-testid="text-overdue-count">
+        <div className="luxury-glass-card luxury-shadow-lg luxury-hover-glow luxury-animate-fade-in luxury-delay-5" data-testid="card-overdue">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-400 to-rose-500"></div>
+          <div className="p-6">
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <h3 className="luxury-heading-sm">Overdue</h3>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-rose-500 p-2.5 shadow-lg">
+                <AlertTriangle className="w-full h-full text-white" />
+              </div>
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient mt-2" data-testid="text-overdue-count">
               {overdueCount}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Requires action</p>
-          </CardContent>
-        </Card>
+            <p className="luxury-text-small mt-1">Requires action</p>
+          </div>
+        </div>
       </div>
 
       {/* Search & Filter */}
@@ -210,24 +225,24 @@ export default function FranchiseManagementDashboard() {
             placeholder="Search franchisees by name, ID, or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 luxury-input"
+            className="pl-10 luxury-glass-minimal border-none"
             data-testid="input-search-franchisees"
           />
         </div>
-        <Button variant="outline" className="border-metallic-silver" data-testid="button-advanced-filter">
-          <Filter className="w-4 h-4 mr-2" />
+        <button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-advanced-filter">
+          <Filter className="w-4 h-4" />
           Filters
-        </Button>
+        </button>
       </div>
 
       {/* Main Content */}
       <Tabs defaultValue="franchisees" className="space-y-6">
-        <TabsList className="bg-gradient-to-r from-gray-100 to-gray-50 p-1">
-          <TabsTrigger value="franchisees" className="data-[state=active]:bg-metallic-gold/20 data-[state=active]:text-metallic-gold" data-testid="tab-franchisees">
+        <TabsList className="luxury-glass-panel">
+          <TabsTrigger value="franchisees" data-testid="tab-franchisees">
             <Building2 className="w-4 h-4 mr-2" />
             Franchisees
           </TabsTrigger>
-          <TabsTrigger value="royalty" className="data-[state=active]:bg-metallic-platinum/20 data-[state=active]:text-metallic-platinum" data-testid="tab-royalty">
+          <TabsTrigger value="royalty" data-testid="tab-royalty">
             <DollarSign className="w-4 h-4 mr-2" />
             Royalty Payments
           </TabsTrigger>
@@ -246,31 +261,27 @@ export default function FranchiseManagementDashboard() {
 
           {/* Country Filter */}
           <div className="flex gap-2 mb-6 flex-wrap">
-            <Button
-              variant={selectedCountry === 'all' ? 'default' : 'outline'}
-              size="sm"
+            <button
+              className={selectedCountry === 'all' ? 'luxury-btn-primary text-sm px-4 py-2' : 'luxury-btn-secondary text-sm px-4 py-2'}
               onClick={() => setSelectedCountry('all')}
-              className={selectedCountry === 'all' ? 'bg-metallic-gold text-white' : ''}
               data-testid="filter-country-all"
             >
               All ({Array.isArray(allFranchisees) ? allFranchisees.length : 0})
-            </Button>
+            </button>
             {Object.entries(countries).map(([country, count]) => (
-              <Button
+              <button
                 key={country}
-                variant={selectedCountry === country ? 'default' : 'outline'}
-                size="sm"
+                className={selectedCountry === country ? 'luxury-btn-primary text-sm px-4 py-2' : 'luxury-btn-secondary text-sm px-4 py-2'}
                 onClick={() => setSelectedCountry(country)}
-                className={selectedCountry === country ? 'bg-metallic-gold text-white' : ''}
                 data-testid={`filter-country-${country.toLowerCase()}`}
               >
                 {country} ({count})
-              </Button>
+              </button>
             ))}
           </div>
 
           {/* Franchisees Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="luxury-grid-3">
             {franchiseesLoading ? (
               <p className="text-muted-foreground col-span-full text-center py-8">Loading franchisees...</p>
             ) : filteredFranchisees.length === 0 ? (
@@ -278,29 +289,29 @@ export default function FranchiseManagementDashboard() {
                 No franchisees found
               </p>
             ) : (
-              filteredFranchisees.map((franchisee) => (
-                <Card key={franchisee.id} className="glass-card border-metallic-gold hover-glow-gold transition-all" data-testid={`card-franchisee-${franchisee.id}`}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
+              filteredFranchisees.map((franchisee, idx) => (
+                <div key={franchisee.id} className={`luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-slide-up luxury-delay-${(idx % 3) + 1}`} data-testid={`card-franchisee-${franchisee.id}`}>
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <Badge variant="outline" className="text-xs">{franchisee.franchiseeId}</Badge>
                           {franchisee.status === 'active' ? (
-                            <Badge className="bg-green-50 text-green-700 border-green-200">Active</Badge>
+                            <span className="luxury-badge-success text-xs px-2 py-1 rounded-full">Active</span>
                           ) : (
                             <Badge variant="outline">{franchisee.status}</Badge>
                           )}
                         </div>
-                        <CardTitle className="text-lg text-metallic-gold">{franchisee.companyName}</CardTitle>
-                        <CardDescription className="mt-1">
+                        <h3 className="luxury-heading-md luxury-text-gradient">{franchisee.companyName}</h3>
+                        <p className="luxury-text-small mt-1">
                           <MapPin className="w-3 h-3 inline mr-1" />
                           {franchisee.country || 'Unknown'}
-                        </CardDescription>
+                        </p>
                       </div>
-                      <Building2 className="w-5 h-5 text-metallic-gold" />
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-lg">
+                        <Building2 className="w-5 h-5 text-white" />
+                      </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Contact:</span>
@@ -312,7 +323,7 @@ export default function FranchiseManagementDashboard() {
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Monthly Rev:</span>
-                        <span className="font-medium text-green-600">
+                        <span className="luxury-heading-sm luxury-text-gradient">
                           ₪{parseFloat(franchisee.monthlyRevenue || '0').toLocaleString()}
                         </span>
                       </div>
@@ -321,16 +332,15 @@ export default function FranchiseManagementDashboard() {
                         <span className="font-medium">{franchisee.royaltyPercent || '0'}%</span>
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <Button size="sm" variant="outline" className="flex-1" data-testid={`button-view-franchisee-${franchisee.id}`}>
+                        <button className="luxury-btn-primary flex-1 text-sm px-4 py-2" data-testid={`button-view-franchisee-${franchisee.id}`}>
                           View
-                        </Button>
-                        <Button size="sm" variant="outline" data-testid={`button-edit-franchisee-${franchisee.id}`}>
+                        </button>
+                        <button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-edit-franchisee-${franchisee.id}`}>
                           Edit
-                        </Button>
+                        </button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
               ))
             )}
           </div>
@@ -366,15 +376,17 @@ export default function FranchiseManagementDashboard() {
                 No royalty payments found
               </p>
             ) : (
-              royaltyPayments.map((payment) => (
-                <Card key={payment.id} className="glass-card hover-glow-blue" data-testid={`card-payment-${payment.id}`}>
-                  <CardContent className="pt-6">
+              royaltyPayments.map((payment, idx) => (
+                <div key={payment.id} className={`luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-animate-fade-in luxury-delay-${(idx % 3) + 1}`} data-testid={`card-payment-${payment.id}`}>
+                  <div className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
-                          <DollarSign className="w-5 h-5 text-metallic-gold" />
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg">
+                            <DollarSign className="w-5 h-5 text-white" />
+                          </div>
                           <div>
-                            <h3 className="font-semibold text-lg text-metallic-gold">
+                            <h3 className="luxury-heading-lg luxury-text-gradient">
                               {payment.currency || 'ILS'} {parseFloat(payment.royaltyAmount).toLocaleString()}
                             </h3>
                             <p className="text-sm text-muted-foreground">
@@ -413,18 +425,17 @@ export default function FranchiseManagementDashboard() {
                       </div>
                       <div className="flex gap-2">
                         {payment.paymentStatus === 'pending' && (
-                          <Button size="sm" className="bg-metallic-gold hover:bg-metallic-gold/90" data-testid={`button-record-payment-${payment.id}`}>
-                            <CreditCard className="w-4 h-4 mr-2" />
+                          <button className="luxury-btn-primary flex items-center gap-2 text-sm px-4 py-2" data-testid={`button-record-payment-${payment.id}`}>
+                            <CreditCard className="w-4 h-4" />
                             Record Payment
-                          </Button>
+                          </button>
                         )}
-                        <Button size="sm" variant="outline" data-testid={`button-view-payment-${payment.id}`}>
+                        <button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-view-payment-${payment.id}`}>
                           View
-                        </Button>
+                        </button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
               ))
             )}
           </div>

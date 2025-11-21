@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { designTokens } from '@/lib/designTokens';
 
 interface LowStockItem {
   stationId: string;
@@ -123,230 +122,196 @@ export default function OpsTodayPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: designTokens.colors.background.primary }}>
+    <div className="min-h-screen luxury-bg-mesh">
       {/* Header */}
-      <div className="sticky top-0 z-50 border-b" style={{ 
-        backgroundColor: designTokens.colors.background.primary, 
-        borderColor: designTokens.colors.border.default 
-      }}>
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <div className="luxury-glass-card luxury-shadow-lg sticky top-0 z-50 rounded-none md:rounded-t-2xl">
+        <div className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setLocation('/m')}
-              className="p-2 rounded hover:bg-[#1F1F1F] transition-colors duration-100"
+              className="p-2 rounded-xl luxury-hover-lift transition-all duration-300"
               data-testid="button-back"
               aria-label="Go back"
             >
-              <ArrowLeft className="w-4 h-4" style={{ color: designTokens.colors.text.primary }} />
+              <ArrowLeft className="w-5 h-5 text-purple-600" />
             </button>
-            <h1 className="text-[15px] font-medium" style={{ color: designTokens.colors.text.primary }}>
-              Low Stock Monitor
-            </h1>
-            {filteredItems.length > 0 && (
-              <div className="px-2 py-1 rounded text-[12px] font-medium" style={{
-                backgroundColor: `${designTokens.colors.accent.warning}15`,
-                color: designTokens.colors.accent.warning
-              }}>
-                {filteredItems.length} items
-              </div>
-            )}
+            <div>
+              <h1 className="luxury-heading-md">Low Stock Monitor</h1>
+              {filteredItems.length > 0 && (
+                <span className="luxury-badge luxury-badge-gold">
+                  <AlertTriangle className="w-3 h-3" />
+                  {filteredItems.length} items
+                </span>
+              )}
+            </div>
           </div>
           <button
             onClick={handleExportCSV}
-            className="px-3 py-1.5 rounded text-[13px] font-medium border transition-colors duration-100"
-            style={{
-              backgroundColor: designTokens.colors.background.secondary,
-              borderColor: designTokens.colors.border.default,
-              color: designTokens.colors.text.primary
-            }}
+            className="luxury-btn-secondary"
             disabled={filteredItems.length === 0}
             data-testid="button-export-csv"
           >
-            <Download className="w-3.5 h-3.5 inline mr-1" />
+            <Download className="w-4 h-4 inline mr-2" />
             Export CSV
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="border-b px-4 py-3 flex gap-2" style={{ borderColor: designTokens.colors.border.default }}>
-        <select
-          value={stationFilter}
-          onChange={(e) => setStationFilter(e.target.value)}
-          className="px-3 py-1.5 rounded text-[13px] border"
-          style={{
-            backgroundColor: designTokens.colors.background.secondary,
-            borderColor: designTokens.colors.border.default,
-            color: designTokens.colors.text.primary
-          }}
-          data-testid="select-station-filter"
-        >
-          <option value="all">All Stations ({uniqueStations.length})</option>
-          {uniqueStations.map(station => (
-            <option key={station.id} value={station.id}>{station.name}</option>
-          ))}
-        </select>
-
-        <select
-          value={severityFilter}
-          onChange={(e) => setSeverityFilter(e.target.value as 'all' | 'empty' | 'low')}
-          className="px-3 py-1.5 rounded text-[13px] border"
-          style={{
-            backgroundColor: designTokens.colors.background.secondary,
-            borderColor: designTokens.colors.border.default,
-            color: designTokens.colors.text.primary
-          }}
-          data-testid="select-severity-filter"
-        >
-          <option value="all">All Severities</option>
-          <option value="empty">Empty Only</option>
-          <option value="low">Low Stock Only</option>
-        </select>
-
-        {selectedItems.size > 0 && (
-          <button
-            onClick={handleBulkAdd}
-            disabled={bulkAddMutation.isPending}
-            className="ml-auto px-3 py-1.5 rounded text-[13px] font-medium transition-colors duration-100"
-            style={{
-              backgroundColor: designTokens.colors.accent.success,
-              color: '#0B0B0B'
-            }}
-            data-testid="button-bulk-add"
+      <div className="luxury-glass-panel mx-4 mt-4 p-4 luxury-animate-fade-in luxury-delay-1">
+        <div className="flex gap-3 flex-wrap">
+          <select
+            value={stationFilter}
+            onChange={(e) => setStationFilter(e.target.value)}
+            className="luxury-glass-minimal px-4 py-2.5 rounded-xl text-sm font-medium"
+            data-testid="select-station-filter"
           >
-            <Check className="w-3.5 h-3.5 inline mr-1" />
-            Add +5 to {selectedItems.size} items
-          </button>
-        )}
+            <option value="all">All Stations ({uniqueStations.length})</option>
+            {uniqueStations.map(station => (
+              <option key={station.id} value={station.id}>{station.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={severityFilter}
+            onChange={(e) => setSeverityFilter(e.target.value as 'all' | 'empty' | 'low')}
+            className="luxury-glass-minimal px-4 py-2.5 rounded-xl text-sm font-medium"
+            data-testid="select-severity-filter"
+          >
+            <option value="all">All Severities</option>
+            <option value="empty">Empty Only</option>
+            <option value="low">Low Stock Only</option>
+          </select>
+
+          {selectedItems.size > 0 && (
+            <button
+              onClick={handleBulkAdd}
+              disabled={bulkAddMutation.isPending}
+              className="luxury-btn-primary ml-auto"
+              data-testid="button-bulk-add"
+            >
+              <Check className="w-4 h-4 inline mr-2" />
+              Add +5 to {selectedItems.size} items
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-16">
-          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mb-3" style={{
-            borderColor: designTokens.colors.border.default,
-            borderTopColor: 'transparent'
-          }}></div>
-          <p className="text-[13px]" style={{ color: designTokens.colors.text.secondary }}>Loading...</p>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="luxury-spinner luxury-animate-scale-in"></div>
+          <p className="luxury-text-small mt-4">Loading...</p>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{
-            backgroundColor: `${designTokens.colors.accent.success}15`
-          }}>
-            <Check className="w-6 h-6" style={{ color: designTokens.colors.accent.success }} />
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <div className="luxury-glass-card luxury-shadow-lg p-8 text-center luxury-animate-slide-up">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center mb-4 mx-auto">
+              <Check className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="luxury-heading-sm mb-2">
+              {lowStockItems.length === 0 ? 'All Stocked' : 'No matches'}
+            </h2>
+            <p className="luxury-text-small">
+              {lowStockItems.length === 0 ? 'No low-stock items across all stations' : 'Try adjusting filters'}
+            </p>
           </div>
-          <h2 className="text-[15px] font-semibold mb-1" style={{ color: designTokens.colors.text.primary }}>
-            {lowStockItems.length === 0 ? 'All Stocked' : 'No matches'}
-          </h2>
-          <p className="text-[13px]" style={{ color: designTokens.colors.text.secondary }}>
-            {lowStockItems.length === 0 ? 'No low-stock items across all stations' : 'Try adjusting filters'}
-          </p>
         </div>
       ) : (
-        <div className="divide-y" style={{ borderColor: designTokens.colors.border.default }}>
+        <div className="mx-4 mt-4 mb-8">
           {/* Table Header */}
-          <div className="px-4 py-2 flex items-center text-[12px] font-medium sticky top-[57px] z-40" style={{
-            backgroundColor: designTokens.colors.background.secondary,
-            color: designTokens.colors.text.secondary
-          }}>
-            <div className="w-8">
-              <input
-                type="checkbox"
-                checked={selectedItems.size === filteredItems.length}
-                onChange={handleSelectAll}
-                className="w-4 h-4 rounded accent-green-500"
-                data-testid="checkbox-select-all"
-                aria-label="Select all items"
-              />
-            </div>
-            <div className="flex-1 min-w-[120px]">Station</div>
-            <div className="flex-1 min-w-[100px]">Item</div>
-            <div className="w-20 text-right">Current</div>
-            <div className="w-20 text-right">Min</div>
-            <div className="w-16 text-center">Status</div>
-            <div className="w-20 text-right">Action</div>
-          </div>
-
-          {/* Table Rows */}
-          {filteredItems.map((item) => {
-            const key = `${item.stationId}-${item.sku}`;
-            const isSelected = selectedItems.has(key);
-            const isEmpty = item.qty === 0;
-
-            return (
-              <div
-                key={key}
-                className="px-4 py-2 flex items-center text-[13px] hover:bg-[#151515] transition-colors duration-100"
-                style={{ backgroundColor: isSelected ? '#1A1A1A' : 'transparent' }}
-              >
-                <div className="w-8">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelection(item.stationId, item.sku)}
-                    className="w-4 h-4 rounded accent-green-500"
-                    data-testid={`checkbox-${item.stationId}-${item.sku}`}
-                    aria-label={`Select ${item.itemName}`}
-                  />
-                </div>
-                <div className="flex-1 min-w-[120px] truncate">
-                  <button
-                    onClick={() => setLocation(`/s/${item.stationId}`)}
-                    className="text-left hover:underline"
-                    style={{ color: designTokens.colors.text.primary }}
-                    data-testid={`link-station-${item.stationId}`}
-                  >
-                    {item.stationName}
-                  </button>
-                </div>
-                <div className="flex-1 min-w-[100px] truncate flex items-center gap-1" style={{ color: designTokens.colors.text.primary }}>
-                  <Package className="w-3 h-3 flex-shrink-0" style={{ color: designTokens.colors.text.secondary }} />
-                  {item.itemName}
-                </div>
-                <div className="w-20 text-right font-medium tabular-nums" style={{
-                  color: isEmpty ? designTokens.colors.accent.error : designTokens.colors.text.primary
-                }}>
-                  {item.qty}
-                </div>
-                <div className="w-20 text-right tabular-nums" style={{ color: designTokens.colors.text.secondary }}>
-                  {item.reorderLevel}
-                </div>
-                <div className="w-16 flex justify-center">
-                  {isEmpty ? (
-                    <div className="px-1.5 py-0.5 rounded text-[11px] font-medium" style={{
-                      backgroundColor: `${designTokens.colors.accent.error}15`,
-                      color: designTokens.colors.accent.error
-                    }}>
-                      EMPTY
-                    </div>
-                  ) : (
-                    <div className="px-1.5 py-0.5 rounded text-[11px] font-medium" style={{
-                      backgroundColor: `${designTokens.colors.accent.warning}15`,
-                      color: designTokens.colors.accent.warning
-                    }}>
-                      LOW
-                    </div>
-                  )}
-                </div>
-                <div className="w-20 flex justify-end">
-                  <button
-                    onClick={() => quickAddMutation.mutate({ stationId: item.stationId, sku: item.sku })}
-                    disabled={quickAddMutation.isPending}
-                    className="px-2 py-1 rounded text-[12px] font-medium border transition-colors duration-100 hover:bg-[#252525]"
-                    style={{
-                      backgroundColor: designTokens.colors.background.secondary,
-                      borderColor: designTokens.colors.border.default,
-                      color: designTokens.colors.text.primary
-                    }}
-                    data-testid={`button-add5-${item.stationId}-${item.sku}`}
-                  >
-                    +5
-                  </button>
-                </div>
+          <div className="luxury-glass-card luxury-shadow-lg overflow-hidden rounded-2xl luxury-animate-slide-up luxury-delay-2">
+            <div className="luxury-glass-panel px-6 py-3 flex items-center text-xs font-semibold text-purple-900 uppercase tracking-wider">
+              <div className="w-10">
+                <input
+                  type="checkbox"
+                  checked={selectedItems.size === filteredItems.length}
+                  onChange={handleSelectAll}
+                  className="w-4 h-4 rounded accent-purple-600"
+                  data-testid="checkbox-select-all"
+                  aria-label="Select all items"
+                />
               </div>
-            );
-          })}
+              <div className="flex-1 min-w-[120px]">Station</div>
+              <div className="flex-1 min-w-[100px]">Item</div>
+              <div className="w-24 text-right">Current</div>
+              <div className="w-24 text-right">Min</div>
+              <div className="w-20 text-center">Status</div>
+              <div className="w-24 text-right">Action</div>
+            </div>
+
+            {/* Table Rows */}
+            <div className="divide-y divide-purple-100">
+              {filteredItems.map((item, index) => {
+                const key = `${item.stationId}-${item.sku}`;
+                const isSelected = selectedItems.has(key);
+                const isEmpty = item.qty === 0;
+
+                return (
+                  <div
+                    key={key}
+                    className={`luxury-glass-minimal luxury-hover-lift px-6 py-4 flex items-center text-sm transition-all duration-300 ${
+                      isSelected ? 'bg-purple-50 bg-opacity-50' : ''
+                    }`}
+                    style={{ animationDelay: `${(index + 3) * 0.05}s` }}
+                  >
+                    <div className="w-10">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelection(item.stationId, item.sku)}
+                        className="w-4 h-4 rounded accent-purple-600"
+                        data-testid={`checkbox-${item.stationId}-${item.sku}`}
+                        aria-label={`Select ${item.itemName}`}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-[120px] truncate">
+                      <button
+                        onClick={() => setLocation(`/s/${item.stationId}`)}
+                        className="luxury-text-gradient font-semibold hover:underline"
+                        data-testid={`link-station-${item.stationId}`}
+                      >
+                        {item.stationName}
+                      </button>
+                    </div>
+                    <div className="flex-1 min-w-[100px] truncate flex items-center gap-2">
+                      <Package className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                      <span className="font-medium">{item.itemName}</span>
+                    </div>
+                    <div className={`w-24 text-right font-bold tabular-nums ${
+                      isEmpty ? 'text-red-600' : 'text-gray-900'
+                    }`}>
+                      {item.qty}
+                    </div>
+                    <div className="w-24 text-right tabular-nums text-gray-500">
+                      {item.reorderLevel}
+                    </div>
+                    <div className="w-20 flex justify-center">
+                      {isEmpty ? (
+                        <span className="luxury-badge bg-red-100 text-red-700 border-red-300">
+                          EMPTY
+                        </span>
+                      ) : (
+                        <span className="luxury-badge-gold">
+                          LOW
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-24 flex justify-end">
+                      <button
+                        onClick={() => quickAddMutation.mutate({ stationId: item.stationId, sku: item.sku })}
+                        disabled={quickAddMutation.isPending}
+                        className="luxury-btn-secondary text-xs px-3 py-1.5"
+                        data-testid={`button-add5-${item.stationId}-${item.sku}`}
+                      >
+                        +5
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -133,20 +133,22 @@ export default function AuthAction() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="text-6xl mb-4">🐾</div>
-          <CardTitle className="text-2xl font-bold">Pet Wash™</CardTitle>
-          <CardDescription>
+    <div className="min-h-screen luxury-bg-mesh flex items-center justify-center p-4">
+      <div className="w-full max-w-md luxury-glass-card luxury-shadow-xl p-8 space-y-6">
+        <div className="text-center space-y-4">
+          <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto flex items-center justify-center luxury-shadow-xl">
+            <div className="text-4xl">🐾</div>
+          </div>
+          <h1 className="luxury-heading-xl">Pet Wash™</h1>
+          <p className="text-gray-600">
             {mode === 'resetPassword' && 'Reset Your Password'}
             {mode === 'verifyEmail' && 'Email Verification'}
             {mode === 'recoverEmail' && 'Email Recovery'}
             {!mode && 'Account Action'}
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
         
-        <CardContent className="space-y-4">
+        <div className="space-y-4">
           {loading && (
             <div className="flex flex-col items-center justify-center py-8">
               <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
@@ -179,7 +181,7 @@ export default function AuthAction() {
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="new-password">New Password</Label>
+                <Label htmlFor="new-password" className="text-gray-700 font-medium">New Password</Label>
                 <Input
                   id="new-password"
                   type="password"
@@ -188,12 +190,13 @@ export default function AuthAction() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   minLength={6}
+                  className="luxury-glass-minimal"
                   data-testid="input-new-password"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Label htmlFor="confirm-password" className="text-gray-700 font-medium">Confirm Password</Label>
                 <Input
                   id="confirm-password"
                   type="password"
@@ -202,13 +205,14 @@ export default function AuthAction() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={6}
+                  className="luxury-glass-minimal"
                   data-testid="input-confirm-password"
                 />
               </div>
 
               <Button
                 type="submit"
-                className="w-full"
+                className="luxury-btn-primary luxury-shadow-xl w-full h-14 font-medium"
                 disabled={loading}
                 data-testid="button-reset-password"
               >
@@ -248,8 +252,8 @@ export default function AuthAction() {
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

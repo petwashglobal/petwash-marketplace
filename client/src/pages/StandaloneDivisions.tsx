@@ -157,157 +157,173 @@ export default function StandaloneDivisions() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-purple-900/20 py-12">
-        <div className="container mx-auto px-4 max-w-7xl">
+      <div className="min-h-screen luxury-bg-mesh py-12">
+        <div className="luxury-container">
           
           {/* Hero Section */}
-          <div className="text-center mb-12">
-            <Badge className="mb-4 px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+          <div className="text-center mb-16 luxury-animate-fade-in">
+            <span className="luxury-badge luxury-badge-gold mb-6 inline-flex">
+              <Building2 className="w-4 h-4" />
               {t('standaloneDivisions.businessArchitecture', language)}
-            </Badge>
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            </span>
+            <h1 className="luxury-heading-xl mb-6">
               {t('standaloneDivisions.multiBrandEcosystem', language)}
             </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            <p className="luxury-text-body max-w-3xl mx-auto">
               {t('standaloneDivisions.heroSubtitle', language)}
             </p>
           </div>
 
           {/* US Companies Comparison */}
-          <Card className="mb-12 border-2 border-blue-200 dark:border-blue-800">
-            <CardHeader className="bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30">
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Globe className="w-6 h-6" />
-                {t('standaloneDivisions.leadingUSModel', language)}
-              </CardTitle>
-              <CardDescription>
+          <div className="luxury-glass-card luxury-shadow-xl mb-16 overflow-hidden luxury-animate-slide-up luxury-delay-1">
+            <div className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 p-8">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center">
+                  <Globe className="w-6 h-6 text-purple-600" />
+                </div>
+                <h2 className="luxury-heading-lg">{t('standaloneDivisions.leadingUSModel', language)}</h2>
+              </div>
+              <p className="luxury-text-body">
                 {t('standaloneDivisions.learnedFromBest', language)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid md:grid-cols-2 gap-6">
+              </p>
+            </div>
+            <div className="p-8">
+              <div className="luxury-grid-2">
                 {usCompanies.map((company, idx) => (
-                  <div key={idx} className="p-5 bg-gradient-to-br from-white to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <h3 className="font-bold text-lg mb-3 text-blue-600 dark:text-blue-400">{company.company}</h3>
+                  <div key={idx} className="luxury-glass-minimal p-6 rounded-xl luxury-hover-lift">
+                    <h3 className="luxury-heading-md mb-4 luxury-text-gradient">{company.company}</h3>
                     <div className="space-y-2 mb-4">
                       {company.divisions.map((div, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{div}</span>
+                          <span className="luxury-text-small">{div}</span>
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 italic border-t border-gray-200 dark:border-gray-700 pt-3">
-                      {getLocalizedField(company, 'model')}
-                    </p>
+                    <div className="luxury-glass-minimal p-3 rounded-lg mt-4">
+                      <p className="luxury-text-small italic">
+                        {getLocalizedField(company, 'model')}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Our 7 Standalone Divisions */}
-          <div className="mb-12">
-            <h2 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">
+          <div className="mb-16">
+            <h2 className="luxury-heading-lg text-center mb-12 luxury-animate-fade-in luxury-delay-2">
               {t('standaloneDivisions.sevenDivisions', language)}
             </h2>
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="luxury-grid-2">
               {divisions.map((division, idx) => {
                 const Icon = division.icon;
                 return (
-                  <Card key={idx} className="border-2 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-                    <CardHeader className={`bg-gradient-to-r ${division.color} text-white`}>
-                      <CardTitle className="flex items-center gap-3 text-2xl">
-                        <Icon className="w-8 h-8" />
-                        {getLocalizedField(division, 'name')}
-                      </CardTitle>
+                  <div key={idx} className="luxury-glass-card luxury-hover-lift luxury-shadow-xl overflow-hidden luxury-animate-fade-in" style={{ animationDelay: `${0.1 * (idx + 1)}s` }}>
+                    <div className={`bg-gradient-to-r ${division.color} text-white p-8`}>
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                          <Icon className="w-8 h-8" />
+                        </div>
+                        <h3 className="luxury-heading-lg text-white">{getLocalizedField(division, 'name')}</h3>
+                      </div>
                       {division.standalone && (
-                        <Badge className="w-fit bg-white/20 text-white border-white/30">
+                        <span className="luxury-badge bg-white/20 text-white border-white/30">
                           {t('standaloneDivisions.fullStandaloneBusiness', language)}
-                        </Badge>
+                        </span>
                       )}
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <p className="text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
+                    </div>
+                    <div className="p-8">
+                      <p className="luxury-text-body mb-6 leading-relaxed">
                         {getLocalizedField(division, 'description')}
                       </p>
                       
-                      <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                      <div className="luxury-glass-minimal p-4 rounded-xl mb-6">
+                        <p className="luxury-text-small font-semibold text-purple-600">
                           {getLocalizedField(division, 'usComparison')}
                         </p>
                       </div>
 
-                      <div className="mb-4">
-                        <h4 className="font-semibold text-sm mb-2 text-gray-700 dark:text-gray-300">
+                      <div className="mb-6">
+                        <h4 className="luxury-heading-sm mb-3">
                           {t('standaloneDivisions.keyFeatures', language)}
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {getLocalizedField(division, 'features').map((feature: string, i: number) => (
-                            <Badge key={i} variant="secondary" className="text-xs">
+                            <span key={i} className="luxury-badge">
+                              <Sparkles className="w-3 h-3" />
                               {feature}
-                            </Badge>
+                            </span>
                           ))}
                         </div>
                       </div>
 
-                      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                        <h4 className="font-semibold text-sm mb-1 text-green-800 dark:text-green-300">
+                      <div className="luxury-glass-minimal p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+                        <h4 className="luxury-heading-sm mb-2 text-green-800 dark:text-green-300">
                           {t('standaloneDivisions.revenueModel', language)}
                         </h4>
-                        <p className="text-xs text-gray-700 dark:text-gray-300">
+                        <p className="luxury-text-small">
                           {getLocalizedField(division, 'revenue')}
                         </p>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 );
               })}
             </div>
           </div>
 
           {/* Why This Structure Works */}
-          <Card className="border-2 border-purple-200 dark:border-purple-800">
-            <CardHeader className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30">
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <TrendingUp className="w-6 h-6" />
-                {t('standaloneDivisions.whyThisWorks', language)}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-lg">
-                  <Users className="w-12 h-12 mx-auto mb-4 text-blue-600" />
-                  <h3 className="font-bold mb-2 text-gray-800 dark:text-white">
+          <div className="luxury-glass-card luxury-shadow-xl overflow-hidden luxury-animate-scale-in luxury-delay-3">
+            <div className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 p-8">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                </div>
+                <h2 className="luxury-heading-lg">{t('standaloneDivisions.whyThisWorks', language)}</h2>
+              </div>
+            </div>
+            <div className="p-8">
+              <div className="luxury-grid-3">
+                <div className="luxury-glass-minimal p-8 rounded-xl text-center luxury-hover-lift">
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
+                    <Users className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <h3 className="luxury-heading-sm mb-3">
                     {t('standaloneDivisions.specializedTeams', language)}
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                  <p className="luxury-text-small">
                     {t('standaloneDivisions.specializedTeamsDesc', language)}
                   </p>
                 </div>
 
-                <div className="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
-                  <TrendingUp className="w-12 h-12 mx-auto mb-4 text-green-600" />
-                  <h3 className="font-bold mb-2 text-gray-800 dark:text-white">
+                <div className="luxury-glass-minimal p-8 rounded-xl text-center luxury-hover-lift">
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 flex items-center justify-center">
+                    <TrendingUp className="w-8 h-8 text-green-600" />
+                  </div>
+                  <h3 className="luxury-heading-sm mb-3">
                     {t('standaloneDivisions.diversifiedRevenue', language)}
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                  <p className="luxury-text-small">
                     {t('standaloneDivisions.diversifiedRevenueDesc', language)}
                   </p>
                 </div>
 
-                <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg">
-                  <Sparkles className="w-12 h-12 mx-auto mb-4 text-purple-600" />
-                  <h3 className="font-bold mb-2 text-gray-800 dark:text-white">
+                <div className="luxury-glass-minimal p-8 rounded-xl text-center luxury-hover-lift">
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-purple-600" />
+                  </div>
+                  <h3 className="luxury-heading-sm mb-3">
                     {t('standaloneDivisions.crossSellingOpportunities', language)}
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                  <p className="luxury-text-small">
                     {t('standaloneDivisions.crossSellingDesc', language)}
                   </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* DISABLED: CTA for PlushLab (frozen for now, keep for future use) */}
           {/* <div className="mt-12 text-center">

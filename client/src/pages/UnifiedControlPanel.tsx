@@ -38,12 +38,12 @@ export default function UnifiedControlPanel() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 dark:from-slate-950 dark:via-blue-950 dark:to-slate-950 p-6">
+    <div className="min-h-screen luxury-bg-mesh p-6">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 animate-in fade-in duration-700">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold luxury-text-gradient">
               Unified Control Panel
             </h1>
             <p className="text-muted-foreground mt-2">
@@ -51,11 +51,11 @@ export default function UnifiedControlPanel() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <Badge variant="outline" className="gap-2">
-              <Activity className="w-4 h-4 text-green-500 animate-pulse" />
+            <Badge className="luxury-badge gap-2 bg-green-50 border-green-200 text-green-700">
+              <Activity className="w-4 h-4 animate-pulse" />
               All Systems Operational
             </Badge>
-            <Button variant="outline" size="icon" data-testid="button-notifications">
+            <Button className="luxury-btn-secondary" variant="outline" size="icon" data-testid="button-notifications">
               <Bell className="w-4 h-4" />
             </Button>
           </div>
@@ -63,40 +63,46 @@ export default function UnifiedControlPanel() {
       </div>
 
       {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="border-blue-200 dark:border-blue-900" data-testid="card-platforms">
+      <div className="luxury-grid-4 gap-6 mb-8 animate-in slide-in-from-bottom duration-700">
+        <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-platforms">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Active Platforms</CardTitle>
-            <Building2 className="w-4 h-4 text-blue-600" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500">
+              <Building2 className="w-4 h-4 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.platforms?.active || 10}</div>
+            <div className="text-2xl font-bold luxury-text-gradient">{metrics?.platforms?.active || 10}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {metrics?.platforms?.total || 10} total platforms
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-green-200 dark:border-green-900" data-testid="card-departments">
+        <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-departments">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Departments</CardTitle>
-            <Users className="w-4 h-4 text-green-600" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500">
+              <Users className="w-4 h-4 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.departments?.count || 16}</div>
+            <div className="text-2xl font-bold luxury-text-gradient">{metrics?.departments?.count || 16}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {metrics?.users?.active || 247} active users
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-purple-200 dark:border-purple-900" data-testid="card-events">
+        <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-events">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Events Today</CardTitle>
-            <Activity className="w-4 h-4 text-purple-600" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+              <Activity className="w-4 h-4 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold luxury-text-gradient">
               {metrics?.events?.today || "1,247"}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -106,13 +112,15 @@ export default function UnifiedControlPanel() {
           </CardContent>
         </Card>
 
-        <Card className="border-orange-200 dark:border-orange-900" data-testid="card-alerts">
+        <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-alerts">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
-            <AlertTriangle className="w-4 h-4 text-orange-600" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-red-500">
+              <AlertTriangle className="w-4 h-4 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.alerts?.active || 3}</div>
+            <div className="text-2xl font-bold luxury-text-gradient">{metrics?.alerts?.active || 3}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {metrics?.alerts?.critical || 0} critical
             </p>
@@ -165,7 +173,7 @@ export default function UnifiedControlPanel() {
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Platform Status */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
                 <CardTitle>Platform Status</CardTitle>
                 <CardDescription>Real-time health of all platforms</CardDescription>
@@ -179,17 +187,18 @@ export default function UnifiedControlPanel() {
                     { name: "PetTrek™", status: "operational", uptime: "99.9%" },
                     { name: "The Plush Lab™", status: "maintenance", uptime: "98.5%" },
                     { name: "Franchise Portal", status: "operational", uptime: "100%" },
-                  ].map((platform) => (
+                  ].map((platform, index) => (
                     <div
                       key={platform.name}
-                      className="flex items-center justify-between p-3 rounded-lg border"
+                      className="luxury-glass-minimal luxury-hover-lift flex items-center justify-between p-3 rounded-lg transition-all duration-300"
+                      style={{ animationDelay: `${index * 50}ms` }}
                     >
                       <div className="flex items-center gap-3">
                         <div
                           className={`w-2 h-2 rounded-full ${
                             platform.status === "operational"
-                              ? "bg-green-500"
-                              : "bg-orange-500"
+                              ? "bg-green-500 animate-pulse"
+                              : "bg-orange-500 animate-pulse"
                           }`}
                         />
                         <span className="font-medium">{platform.name}</span>
@@ -204,7 +213,7 @@ export default function UnifiedControlPanel() {
             </Card>
 
             {/* Recent Events Feed */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
                 <CardTitle>Recent Events</CardTitle>
                 <CardDescription>Live system events from all platforms</CardDescription>
@@ -212,11 +221,11 @@ export default function UnifiedControlPanel() {
               <CardContent>
                 <div className="space-y-3 max-h-[400px] overflow-y-auto">
                   {recentEvents?.events?.slice(0, 10).map((event: any, i: number) => (
-                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg border">
+                    <div key={i} className="luxury-glass-minimal p-3 rounded-lg flex items-start gap-3">
                       <Clock className="w-4 h-4 mt-0.5 text-muted-foreground" />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
+                          <Badge className="luxury-badge text-xs">
                             {event.type || "SYSTEM_EVENT"}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
@@ -240,7 +249,7 @@ export default function UnifiedControlPanel() {
           </div>
 
           {/* Department Overview */}
-          <Card>
+          <Card className="luxury-glass-card luxury-shadow-lg">
             <CardHeader>
               <CardTitle>Department Overview</CardTitle>
               <CardDescription>Activity across all 16 departments</CardDescription>
@@ -256,11 +265,15 @@ export default function UnifiedControlPanel() {
                   { name: "Sales", count: 23, icon: TrendingUp },
                   { name: "Technology", count: 12, icon: Activity },
                   { name: "Marketing", count: 31, icon: BarChart3 },
-                ].map((dept) => (
-                  <Card key={dept.name} className="text-center">
+                ].map((dept, index) => (
+                  <Card 
+                    key={dept.name} 
+                    className="luxury-glass-minimal luxury-hover-lift text-center transition-all duration-300"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
                     <CardContent className="pt-6">
-                      <dept.icon className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
-                      <div className="text-2xl font-bold">{dept.count}</div>
+                      <dept.icon className="w-6 h-6 mx-auto mb-2 text-purple-500" />
+                      <div className="text-2xl font-bold luxury-text-gradient">{dept.count}</div>
                       <p className="text-xs text-muted-foreground">{dept.name}</p>
                     </CardContent>
                   </Card>

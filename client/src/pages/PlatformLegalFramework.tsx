@@ -7,34 +7,34 @@ export default function PlatformLegalFramework() {
   const isHebrew = language === 'he';
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
       <div className="max-w-5xl mx-auto px-4 py-12">
         <Link href="/">
-          <button className="mb-6 flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400" data-testid="button-back-home">
+          <button className="mb-6 luxury-btn-ghost flex items-center gap-2" data-testid="button-back-home">
             <ArrowLeft className="h-4 w-4" />
             {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
           </button>
         </Link>
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 md:p-12">
+        <div className="luxury-glass-card luxury-shadow-xl p-8 md:p-12">
           {/* Header */}
           <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mb-4">
-              <Scale className="h-10 w-10 text-white" />
+            <div className="inline-flex items-center justify-center w-20 h-20 luxury-glass-panel rounded-full mb-4">
+              <Scale className="h-10 w-10 luxury-text-gradient" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="luxury-heading-xl mb-4">
               {isHebrew ? 'מסגרת משפטית של הפלטפורמה' : 'Platform Legal Framework'}
             </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-400 mb-2">
+            <p className="luxury-heading-md mb-2">
               {isHebrew ? 'Pet Wash™ - פלטפורמת מקשרת בלבד (כמו Uber)' : 'Pet Wash™ - Connector Platform Only (Like Uber)'}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500">
+            <p className="luxury-text-small">
               {isHebrew ? 'עודכן לאחרונה: 29 באוקטובר 2025' : 'Last Updated: October 29, 2025'}
             </p>
           </div>
 
           {/* CRITICAL DISCLAIMER */}
-          <div className="bg-red-50 dark:bg-red-900/20 border-4 border-red-500 rounded-xl p-8 mb-12">
+          <div className="luxury-glass-panel border-4 border-red-500 rounded-xl p-8 mb-12">
             <div className="flex items-start gap-4">
               <AlertTriangle className="h-12 w-12 text-red-600 flex-shrink-0 mt-1" />
               <div>
@@ -77,7 +77,7 @@ export default function PlatformLegalFramework() {
             
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               {/* K9000 Wash Stations */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-700">
+              <div className="luxury-glass-panel rounded-xl p-6">
                 <h3 className="text-xl font-bold mb-3 text-blue-900 dark:text-blue-200">
                   {isHebrew ? 'תחנות רחצה K9000' : 'K9000 Wash Stations'}
                 </h3>
@@ -101,7 +101,7 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* Walk My Pet */}
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-6 border-2 border-purple-200 dark:border-purple-700">
+              <div className="luxury-glass-panel rounded-xl p-6">
                 <h3 className="text-xl font-bold mb-3 text-purple-900 dark:text-purple-200">
                   Walk My Pet™
                 </h3>
@@ -125,7 +125,7 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* The Sitter Suite */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-6 border-2 border-green-200 dark:border-green-700">
+              <div className="luxury-glass-panel rounded-xl p-6">
                 <h3 className="text-xl font-bold mb-3 text-green-900 dark:text-green-200">
                   The Sitter Suite™
                 </h3>
@@ -159,7 +159,7 @@ export default function PlatformLegalFramework() {
             
             <div className="space-y-6">
               {/* Independent Contractor Status */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+              <div className="luxury-glass-panel rounded-xl p-6">
                 <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
                   {isHebrew ? '1. סטטוס קבלן עצמאי' : '1. Independent Contractor Status'}
                 </h3>
@@ -180,7 +180,7 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* Platform Role */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+              <div className="luxury-glass-panel rounded-xl p-6">
                 <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
                   {isHebrew ? '2. תפקיד הפלטפורמה - מקשרת טכנולוגית בלבד' : '2. Platform Role - Technology Connector Only'}
                 </h3>
@@ -200,7 +200,7 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* Customer Acknowledgment */}
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-500 rounded-xl p-6">
+              <div className="luxury-glass-panel border-2 border-yellow-500 rounded-xl p-6">
                 <h3 className="text-xl font-bold mb-3 text-yellow-900 dark:text-yellow-200">
                   {isHebrew ? '3. הכרת לקוח' : '3. Customer Acknowledgment'}
                 </h3>

@@ -309,26 +309,26 @@ export default function ProviderOnboarding() {
 
   if (applicationSubmitted) {
     return (
-      <div className={`min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
-        <div className="max-w-2xl mx-auto">
-          <Card className="border-2 border-green-500">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
+      <div className={`min-h-screen luxury-bg-mesh py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
+        <div className="max-w-2xl mx-auto luxury-animate-fade-in">
+          <div className="luxury-glass-card luxury-shadow-xl border-2 border-green-500/30 p-8">
+            <div className="text-center mb-6">
+              <div className="mx-auto w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mb-4 luxury-animate-scale-in">
+                <CheckCircle2 className="h-12 w-12 text-white" />
               </div>
-              <CardTitle className="text-3xl font-bold text-green-900 dark:text-green-100">
+              <h2 className="luxury-heading-lg text-green-900 dark:text-green-100 mb-2">
                 {t.applicationSuccess}
-              </CardTitle>
-              <CardDescription className="text-lg mt-2">
+              </h2>
+              <p className="luxury-text-body mt-2">
                 {t.successMessage}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+              </p>
+            </div>
+            <div className="space-y-6 luxury-animate-fade-in luxury-delay-2">
               {biometricScore !== null && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-700">
+                <div className="luxury-glass-card luxury-shadow-md p-6 border-2 border-blue-400/30">
                   <div className="flex items-center gap-3 mb-3">
                     <Shield className="h-6 w-6 text-blue-600" />
-                    <h3 className="text-lg font-bold text-blue-900 dark:text-blue-200">
+                    <h3 className="luxury-heading-sm text-blue-900 dark:text-blue-200">
                       {t.biometricMatch}
                     </h3>
                   </div>
@@ -347,8 +347,8 @@ export default function ProviderOnboarding() {
                 </div>
               )}
 
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-6">
-                <h3 className="font-bold mb-3 text-gray-900 dark:text-white">
+              <div className="luxury-glass-panel p-6">
+                <h3 className="luxury-heading-sm mb-3">
                   {isHebrew ? 'מה הלאה?' : 'What\'s Next?'}
                 </h3>
                 <ul className="space-y-2 text-gray-700 dark:text-gray-300">
@@ -368,67 +368,66 @@ export default function ProviderOnboarding() {
               </div>
 
               <Link href="/">
-                <Button className="w-full" size="lg">
+                <button className="luxury-btn-primary luxury-shadow-xl w-full py-4" data-testid="button-back-home">
                   {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
-                </Button>
+                </button>
               </Link>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen luxury-bg-mesh py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <div className="text-center mb-8 luxury-animate-fade-in">
+          <h1 className="luxury-heading-xl mb-4">
             {t.title}
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400">
+          <p className="luxury-text-body">
             {t.subtitle}
           </p>
         </div>
 
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center gap-2 md:gap-4 mb-8 px-4">
+        {/* Progress Steps - Luxury Gradient Circles */}
+        <div className="flex items-center justify-center gap-2 md:gap-4 mb-8 px-4 luxury-animate-slide-up luxury-delay-1">
           <div className={`flex items-center gap-2 ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'} text-sm`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
               1
             </div>
-            <span className="hidden lg:inline text-sm">{isHebrew ? 'קוד' : 'Code'}</span>
+            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'קוד' : 'Code'}</span>
           </div>
-          <ArrowRight className="h-4 w-4 text-gray-400" />
+          <div className={`h-0.5 w-8 ${step >= 2 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300'}`}></div>
           <div className={`flex items-center gap-2 ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'} text-sm`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
               2
             </div>
-            <span className="hidden lg:inline text-sm">{isHebrew ? 'פרטים' : 'Info'}</span>
+            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'פרטים' : 'Info'}</span>
           </div>
-          <ArrowRight className="h-4 w-4 text-gray-400" />
+          <div className={`h-0.5 w-8 ${step >= 3 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300'}`}></div>
           <div className={`flex items-center gap-2 ${step >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'} text-sm`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 3 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
               3
             </div>
-            <span className="hidden lg:inline text-sm">{isHebrew ? 'מסמכים' : 'Docs'}</span>
+            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'מסמכים' : 'Docs'}</span>
           </div>
-          <ArrowRight className="h-4 w-4 text-gray-400" />
+          <div className={`h-0.5 w-8 ${step >= 4 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300'}`}></div>
           <div className={`flex items-center gap-2 ${step >= 4 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 4 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'} text-sm`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 4 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
               4
             </div>
-            <span className="hidden lg:inline text-sm">{isHebrew ? 'רקע' : 'Check'}</span>
+            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'רקע' : 'Check'}</span>
           </div>
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
+        <div className="luxury-glass-card luxury-shadow-xl p-8 luxury-animate-fade-in luxury-delay-2">
             {/* Step 1: Invite Code */}
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <Label htmlFor="inviteCode" className="text-lg font-semibold">
+                  <Label htmlFor="inviteCode" className="luxury-heading-sm">
                     {t.inviteCodeTitle}
                   </Label>
                   <Input
@@ -436,7 +435,7 @@ export default function ProviderOnboarding() {
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                     placeholder={t.inviteCodePlaceholder}
-                    className="mt-2"
+                    className="mt-2 luxury-glass-minimal"
                     data-testid="input-invite-code"
                   />
                   <p className="text-sm text-gray-500 mt-2">
@@ -447,31 +446,30 @@ export default function ProviderOnboarding() {
                   </p>
                 </div>
 
-                <Button 
+                <button 
                   onClick={validateInviteCode} 
-                  className="w-full" 
-                  size="lg"
+                  className="luxury-btn-primary luxury-shadow-xl w-full py-4"
                   disabled={validatingCode || !inviteCode}
                   data-testid="button-validate-code"
                 >
                   {validatingCode ? (
                     <>
-                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      <Loader2 className="h-5 w-5 animate-spin mr-2 inline" />
                       {t.validating}
                     </>
                   ) : (
                     t.validateCode
                   )}
-                </Button>
+                </button>
 
                 {/* Benefits Section */}
                 <div className="grid md:grid-cols-2 gap-6 mt-8">
-                  <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-6">
-                    <h3 className="font-bold mb-3 text-green-900 dark:text-green-200 flex items-center gap-2">
+                  <div className="luxury-glass-card luxury-shadow-md p-6 border-2 border-green-400/20">
+                    <h3 className="luxury-heading-sm mb-3 text-green-900 dark:text-green-200 flex items-center gap-2">
                       <Star className="h-5 w-5" />
                       {t.benefits}
                     </h3>
-                    <ul className="space-y-2 text-sm text-green-800 dark:text-green-300">
+                    <ul className="space-y-2 text-sm luxury-text-body text-green-800 dark:text-green-300">
                       {t.benefitsList.map((benefit, idx) => (
                         <li key={idx} className="flex items-start gap-2">
                           <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -481,12 +479,12 @@ export default function ProviderOnboarding() {
                     </ul>
                   </div>
 
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6">
-                    <h3 className="font-bold mb-3 text-blue-900 dark:text-blue-200 flex items-center gap-2">
+                  <div className="luxury-glass-card luxury-shadow-md p-6 border-2 border-blue-400/20">
+                    <h3 className="luxury-heading-sm mb-3 text-blue-900 dark:text-blue-200 flex items-center gap-2">
                       <Shield className="h-5 w-5" />
                       {t.requirements}
                     </h3>
-                    <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-300">
+                    <ul className="space-y-2 text-sm luxury-text-body text-blue-800 dark:text-blue-300">
                       {t.requirementsList.map((req, idx) => (
                         <li key={idx} className="flex items-start gap-2">
                           <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -509,6 +507,7 @@ export default function ProviderOnboarding() {
                       id="firstName"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
+                      className="luxury-glass-minimal"
                       data-testid="input-first-name"
                     />
                   </div>
@@ -518,6 +517,7 @@ export default function ProviderOnboarding() {
                       id="lastName"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
+                      className="luxury-glass-minimal"
                       data-testid="input-last-name"
                     />
                   </div>
@@ -530,6 +530,7 @@ export default function ProviderOnboarding() {
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="+972-XX-XXXXXXX"
+                    className="luxury-glass-minimal"
                     data-testid="input-phone"
                   />
                 </div>
@@ -541,6 +542,7 @@ export default function ProviderOnboarding() {
                       id="city"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
+                      className="luxury-glass-minimal"
                       data-testid="input-city"
                     />
                   </div>
@@ -550,7 +552,7 @@ export default function ProviderOnboarding() {
                       id="country"
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md"
+                      className="w-full px-3 py-2 border rounded-md luxury-glass-minimal"
                       data-testid="select-country"
                     >
                       <option value="IL">Israel (ישראל)</option>
@@ -563,18 +565,18 @@ export default function ProviderOnboarding() {
                 </div>
 
                 <div className="flex gap-4">
-                  <Button onClick={() => setStep(1)} variant="outline" data-testid="button-back-step1">
+                  <button onClick={() => setStep(1)} className="luxury-btn-secondary" data-testid="button-back-step1">
                     {t.back}
-                  </Button>
-                  <Button 
+                  </button>
+                  <button 
                     onClick={() => setStep(3)} 
-                    className="flex-1"
+                    className="luxury-btn-primary luxury-shadow-xl flex-1"
                     disabled={!firstName || !lastName || !phoneNumber || !city}
                     data-testid="button-next-step3"
                   >
                     {t.next}
-                    <ArrowRight className="h-5 w-5 ml-2" />
-                  </Button>
+                    <ArrowRight className="h-5 w-5 ml-2 inline" />
+                  </button>
                 </div>
               </div>
             )}
@@ -604,7 +606,7 @@ export default function ProviderOnboarding() {
                       accept="image/*"
                       capture="user"
                       onChange={(e) => setSelfiePhoto(e.target.files?.[0] || null)}
-                      className="mt-2"
+                      className="mt-2 luxury-glass-minimal"
                       data-testid="input-selfie"
                     />
                     {selfiePhoto && (
@@ -627,6 +629,7 @@ export default function ProviderOnboarding() {
                       type="file"
                       accept="image/*,application/pdf"
                       onChange={(e) => setGovernmentId(e.target.files?.[0] || null)}
+                      className="luxury-glass-minimal"
                       data-testid="input-government-id"
                     />
                     {governmentId && (
@@ -640,7 +643,7 @@ export default function ProviderOnboarding() {
                   {/* Insurance Certificate + Policy Details (Walkers/Sitters) */}
                   {(providerType === 'walker' || providerType === 'sitter') && (
                     <>
-                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 space-y-3">
+                      <div className="luxury-glass-card luxury-shadow-md p-4 space-y-3 border-2 border-blue-400/20">
                         <Label htmlFor="insurance" className="text-lg font-semibold">
                           {t.insurancePolicy}
                         </Label>
@@ -654,6 +657,7 @@ export default function ProviderOnboarding() {
                               value={insurancePolicyNumber}
                               onChange={(e) => setInsurancePolicyNumber(e.target.value)}
                               placeholder={isHebrew ? 'לדוגמה: POL-123456' : 'e.g. POL-123456'}
+                              className="luxury-glass-minimal"
                               data-testid="input-insurance-policy-number"
                             />
                           </div>
@@ -664,6 +668,7 @@ export default function ProviderOnboarding() {
                               value={insuranceProvider}
                               onChange={(e) => setInsuranceProvider(e.target.value)}
                               placeholder={isHebrew ? 'לדוגמה: כלל ביטוח' : 'e.g. Clal Insurance'}
+                              className="luxury-glass-minimal"
                               data-testid="input-insurance-provider"
                             />
                           </div>
@@ -676,6 +681,7 @@ export default function ProviderOnboarding() {
                             type="date"
                             value={insuranceExpiry}
                             onChange={(e) => setInsuranceExpiry(e.target.value)}
+                            className="luxury-glass-minimal"
                             data-testid="input-insurance-expiry"
                           />
                         </div>
@@ -687,6 +693,7 @@ export default function ProviderOnboarding() {
                             type="file"
                             accept="image/*,application/pdf"
                             onChange={(e) => setInsuranceCert(e.target.files?.[0] || null)}
+                            className="luxury-glass-minimal"
                             data-testid="input-insurance"
                           />
                           {insuranceCert && (
@@ -699,7 +706,7 @@ export default function ProviderOnboarding() {
                       </div>
                       
                       {/* Pet First Aid Certification (2026 Spec) */}
-                      <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 space-y-3">
+                      <div className="luxury-glass-card luxury-shadow-md p-4 space-y-3 border-2 border-green-400/20">
                         <Label htmlFor="petFirstAid" className="text-lg font-semibold">
                           {t.petFirstAidCert}
                         </Label>
@@ -713,6 +720,7 @@ export default function ProviderOnboarding() {
                               value={petFirstAidNumber}
                               onChange={(e) => setPetFirstAidNumber(e.target.value)}
                               placeholder={isHebrew ? 'לדוגמה: PFA-2024-12345' : 'e.g. PFA-2024-12345'}
+                              className="luxury-glass-minimal"
                               data-testid="input-pet-first-aid-number"
                             />
                           </div>
@@ -723,6 +731,7 @@ export default function ProviderOnboarding() {
                               type="date"
                               value={petFirstAidExpiry}
                               onChange={(e) => setPetFirstAidExpiry(e.target.value)}
+                              className="luxury-glass-minimal"
                               data-testid="input-pet-first-aid-expiry"
                             />
                           </div>
@@ -735,6 +744,7 @@ export default function ProviderOnboarding() {
                             type="file"
                             accept="image/*,application/pdf"
                             onChange={(e) => setPetFirstAidCert(e.target.files?.[0] || null)}
+                            className="luxury-glass-minimal"
                             data-testid="input-pet-first-aid-cert"
                           />
                           {petFirstAidCert && (
@@ -760,6 +770,7 @@ export default function ProviderOnboarding() {
                         type="file"
                         accept="image/*,application/pdf"
                         onChange={(e) => setBusinessLicense(e.target.files?.[0] || null)}
+                        className="luxury-glass-minimal"
                         data-testid="input-business-license"
                       />
                       {businessLicense && (
@@ -773,18 +784,18 @@ export default function ProviderOnboarding() {
                 </div>
 
                 <div className="flex gap-4">
-                  <Button onClick={() => setStep(2)} variant="outline" data-testid="button-back-step2">
+                  <button onClick={() => setStep(2)} className="luxury-btn-secondary" data-testid="button-back-step2">
                     {t.back}
-                  </Button>
-                  <Button 
+                  </button>
+                  <button 
                     onClick={() => setStep(4)} 
-                    className="flex-1"
+                    className="luxury-btn-primary luxury-shadow-xl flex-1"
                     disabled={!selfiePhoto || !governmentId}
                     data-testid="button-next-step4"
                   >
                     {t.next}
-                    <ArrowRight className="h-5 w-5 ml-2" />
-                  </Button>
+                    <ArrowRight className="h-5 w-5 ml-2 inline" />
+                  </button>
                 </div>
               </div>
             )}
@@ -820,25 +831,24 @@ export default function ProviderOnboarding() {
                             ? `כתובת ${index + 1}: לדוגמה - תל אביב, ישראל (2018-2023)`
                             : `Address ${index + 1}: e.g. Tel Aviv, Israel (2018-2023)`
                           }
+                          className="luxury-glass-minimal"
                           data-testid={`input-address-${index}`}
                         />
                       </div>
                     ))}
                     
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    <button
                       onClick={() => setResidentialHistory([...residentialHistory, ''])}
-                      className="mt-2"
+                      className="luxury-btn-secondary text-sm px-4 py-2 mt-2"
                       data-testid="button-add-address"
                     >
                       {t.addAddress}
-                    </Button>
+                    </button>
                   </div>
 
                   {/* Consent Checkbox */}
-                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-700 rounded-xl p-6">
-                    <h3 className="font-bold text-yellow-900 dark:text-yellow-200 mb-3">
+                  <div className="luxury-glass-card luxury-shadow-md border-2 border-yellow-400/30 p-6">
+                    <h3 className="luxury-heading-sm text-yellow-900 dark:text-yellow-200 mb-3">
                       {t.consentTitle}
                     </h3>
                     <label className="flex items-start gap-3 cursor-pointer">
@@ -857,12 +867,12 @@ export default function ProviderOnboarding() {
                 </div>
 
                 <div className="flex gap-4">
-                  <Button onClick={() => setStep(3)} variant="outline" data-testid="button-back-step3">
+                  <button onClick={() => setStep(3)} className="luxury-btn-secondary" data-testid="button-back-step3">
                     {t.back}
-                  </Button>
-                  <Button 
+                  </button>
+                  <button 
                     onClick={handleSubmit} 
-                    className="flex-1"
+                    className="luxury-btn-primary luxury-shadow-xl flex-1"
                     disabled={
                       loading || 
                       !backgroundCheckConsent || 
@@ -872,18 +882,18 @@ export default function ProviderOnboarding() {
                   >
                     {loading ? (
                       <>
-                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        <Loader2 className="h-5 w-5 animate-spin mr-2 inline" />
                         {t.submitting}
                       </>
                     ) : (
                       t.submit
                     )}
-                  </Button>
+                  </button>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

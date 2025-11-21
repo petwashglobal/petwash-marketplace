@@ -207,39 +207,39 @@ export default function PersonalInbox() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white dark:bg-black p-4 md:p-8">
+      <div className="min-h-screen luxury-bg-mesh p-4 md:p-8">
         <div className="max-w-[1800px] mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8 luxury-animate-fade-in">
             <div>
-              <h1 className="text-5xl md:text-6xl font-light text-black dark:text-white mb-2 tracking-tight">
+              <h1 className="luxury-heading-xl mb-2">
                 Personal Inbox
               </h1>
-              <p className="text-gray-500 dark:text-gray-400 text-sm uppercase tracking-widest flex items-center gap-2">
+              <p className="luxury-text-small flex items-center gap-2">
                 <Shield className="w-4 h-4" />
                 Secure Internal Messaging • Cryptographic Audit Trail • GCS Backup
               </p>
             </div>
             <div className="flex items-center gap-4">
               {unreadData && unreadData.count > 0 && (
-                <Badge variant="outline" className="text-lg px-4 py-2">
+                <Badge variant="outline" className="luxury-badge luxury-badge-info">
                   {unreadData.count} Unread
                 </Badge>
               )}
               <Dialog open={isComposing} onOpenChange={setIsComposing}>
                 <DialogTrigger asChild>
                   <Button 
-                    className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 h-12 px-6"
+                    className="luxury-btn-primary h-12 px-6"
                     data-testid="button-compose-message"
                   >
                     <Plus className="w-5 h-5 mr-2" />
                     Compose Message
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl luxury-glass-card luxury-shadow-xl">
                   <DialogHeader>
-                    <DialogTitle className="text-2xl font-light">New Secure Message</DialogTitle>
-                    <DialogDescription className="text-gray-500 dark:text-gray-400">
+                    <DialogTitle className="luxury-heading-lg">New Secure Message</DialogTitle>
+                    <DialogDescription className="luxury-text-body">
                       Send encrypted messages with cryptographic audit trail
                     </DialogDescription>
                   </DialogHeader>
@@ -312,7 +312,7 @@ export default function PersonalInbox() {
                     <div className="flex justify-end gap-3 pt-4">
                       <Button
                         type="button"
-                        variant="outline"
+                        className="luxury-btn-secondary"
                         onClick={() => setIsComposing(false)}
                       >
                         Cancel
@@ -320,7 +320,7 @@ export default function PersonalInbox() {
                       <Button
                         type="submit"
                         disabled={sendMessageMutation.isPending}
-                        className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
+                        className="luxury-btn-primary"
                       >
                         {sendMessageMutation.isPending ? (
                           <>
@@ -342,34 +342,31 @@ export default function PersonalInbox() {
           </div>
 
           {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 luxury-animate-fade-in luxury-delay-2">
             {/* Message List */}
             <div className="lg:col-span-1">
-              <Card className="border border-gray-200 dark:border-gray-800 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(255,255,255,0.05)] backdrop-blur-xl">
+              <Card className="luxury-glass-card luxury-shadow-xl">
                 <CardHeader className="border-b border-gray-100 dark:border-gray-900">
-                  <CardTitle className="text-lg font-light tracking-wide">Messages</CardTitle>
+                  <CardTitle className="luxury-heading-md">Messages</CardTitle>
                   <div className="flex gap-2 mt-4">
                     <Button
-                      variant={filter === 'all' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setFilter('all')}
-                      className={filter === 'all' ? 'bg-black dark:bg-white text-white dark:text-black' : ''}
+                      className={filter === 'all' ? 'luxury-btn-primary' : 'luxury-btn-secondary'}
                     >
                       All
                     </Button>
                     <Button
-                      variant={filter === 'unread' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setFilter('unread')}
-                      className={filter === 'unread' ? 'bg-black dark:bg-white text-white dark:text-black' : ''}
+                      className={filter === 'unread' ? 'luxury-btn-primary' : 'luxury-btn-secondary'}
                     >
                       Unread
                     </Button>
                     <Button
-                      variant={filter === 'starred' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setFilter('starred')}
-                      className={filter === 'starred' ? 'bg-black dark:bg-white text-white dark:text-black' : ''}
+                      className={filter === 'starred' ? 'luxury-btn-primary' : 'luxury-btn-secondary'}
                     >
                       <Star className="w-3 h-3" />
                     </Button>
@@ -387,14 +384,14 @@ export default function PersonalInbox() {
                     </div>
                   ) : (
                     <div className="p-4 space-y-2">
-                      {filteredMessages.map((msg) => (
+                      {filteredMessages.map((msg, idx) => (
                         <button
                           key={msg.id}
                           onClick={() => setSelectedMessage(msg)}
-                          className={`w-full text-left p-4 rounded-lg border transition-all ${
+                          className={`w-full text-left p-4 rounded-lg luxury-glass-minimal luxury-hover-lift transition-all luxury-animate-slide-up luxury-delay-${Math.min(idx % 10, 10)} ${
                             selectedMessage?.id === msg.id
-                              ? 'border-black dark:border-white bg-gray-50 dark:bg-gray-900'
-                              : 'border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900'
+                              ? 'border-2 border-violet-600'
+                              : ''
                           }`}
                           data-testid={`message-item-${msg.id}`}
                         >

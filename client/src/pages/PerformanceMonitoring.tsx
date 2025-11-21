@@ -46,7 +46,7 @@ export default function PerformanceMonitoring() {
   const isHealthy = api.errorRate < 0.05 && database.avgQueryTime < 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-6">
+    <div className="luxury-bg-mesh min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -75,7 +75,7 @@ export default function PerformanceMonitoring() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Database Performance */}
-          <Card className="col-span-full lg:col-span-2">
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-1 col-span-full lg:col-span-2">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -108,7 +108,7 @@ export default function PerformanceMonitoring() {
               {/* Query Performance */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="luxury-heading-lg luxury-text-gradient">
                     {database.avgQueryTime}ms
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">Avg Query Time</div>
@@ -117,14 +117,14 @@ export default function PerformanceMonitoring() {
                   </div>
                 </div>
                 <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                  <div className="text-2xl font-bold text-orange-600">
+                  <div className="luxury-heading-lg luxury-text-gradient">
                     {database.slowQueries}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">Slow Queries</div>
                   <div className="text-xs text-gray-500 mt-1">&gt;500ms</div>
                 </div>
                 <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="luxury-heading-lg luxury-text-gradient">
                     {database.cacheHitRate}%
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">Cache Hit Rate</div>
@@ -135,7 +135,7 @@ export default function PerformanceMonitoring() {
           </Card>
 
           {/* System Resources */}
-          <Card>
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5 text-purple-600" />
@@ -168,7 +168,7 @@ export default function PerformanceMonitoring() {
           </Card>
 
           {/* API Performance */}
-          <Card className="col-span-full">
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-3 col-span-full">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -186,7 +186,7 @@ export default function PerformanceMonitoring() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                  <div className="text-2xl font-bold text-purple-600">
+                  <div className="luxury-heading-lg luxury-text-gradient">
                     {api.requestsPerSecond}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">Requests/sec</div>
@@ -196,21 +196,21 @@ export default function PerformanceMonitoring() {
                   </div>
                 </div>
                 <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="luxury-heading-lg luxury-text-gradient">
                     {api.avgResponseTime}ms
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">Avg Response</div>
                   <div className="text-xs text-green-600 mt-1">Target: &lt;500ms</div>
                 </div>
                 <div className="text-center p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-                  <div className="text-2xl font-bold text-indigo-600">
+                  <div className="luxury-heading-lg luxury-text-gradient">
                     {api.p95ResponseTime}ms
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">P95 Response</div>
                   <div className="text-xs text-gray-500 mt-1">95th percentile</div>
                 </div>
                 <div className="text-center p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
-                  <div className="text-2xl font-bold text-cyan-600">
+                  <div className="luxury-heading-lg luxury-text-gradient">
                     {api.p99ResponseTime}ms
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">P99 Response</div>
@@ -229,7 +229,7 @@ export default function PerformanceMonitoring() {
         </div>
 
         {/* Performance Targets */}
-        <Card className="mt-6">
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-4 mt-6">
           <CardHeader>
             <CardTitle>Performance Targets (Load Testing Goals)</CardTitle>
             <CardDescription>Phase 1: 500 concurrent users</CardDescription>

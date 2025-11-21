@@ -14,20 +14,18 @@ export default function AccessibilityStatement() {
   if (language === 'he') {
     return (
       <Layout language={language} onLanguageChange={setLanguage}>
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+        <div className="min-h-screen luxury-bg-mesh">
         
         <div className="max-w-4xl mx-auto px-4 py-12" dir="rtl">
-          <h1 className="text-4xl font-bold mb-8 text-center">הצהרת נגישות</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-8">
+          <h1 className="luxury-heading-xl mb-8 text-center">הצהרת נגישות</h1>
+          <p className="luxury-text-body text-center mb-8">
             עודכן לאחרונה: 17 באוקטובר 2025 | תואם לתקן ישראלי 5568
           </p>
           
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>מחויבות לנגישות</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-1">
+              <h2 className="luxury-heading-md mb-4">מחויבות לנגישות</h2>
+              <div className="space-y-4 luxury-text-body">
                 <p>
                   Pet Wash™ מחויבת להנגשת אתר האינטרנט והאפליקציה שלה לאנשים עם מוגבלות,
                   בהתאם לחוק שוויון זכויות לאנשים עם מוגבלות ולתקן ישראלי 5568 (המבוסס על WCAG 2.0 Level AA).
@@ -41,14 +39,12 @@ export default function AccessibilityStatement() {
                   <li>מוגבלות מוטורית</li>
                   <li>מוגבלות קוגניטיבית</li>
                 </ul>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>התאמות נגישות באתר</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-2">
+              <h2 className="luxury-heading-md mb-4">התאמות נגישות באתר</h2>
+              <div className="space-y-4 luxury-text-body">
                 <p>האתר והאפליקציה שלנו כוללים את ההתאמות הבאות:</p>
                 
                 <div className="space-y-4">
@@ -85,14 +81,12 @@ export default function AccessibilityStatement() {
                     <p>כתוביות וטקסט חלופי לתוכן וידאו ואודיו</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>רכיבי נגישות ייעודיים</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-3">
+              <h2 className="luxury-heading-md mb-4">רכיבי נגישות ייעודיים</h2>
+              <div className="space-y-4 luxury-text-body">
                 <ul className="list-disc mr-6 space-y-2">
                   <li>תפריט דילוג לתוכן ראשי (Skip to main content)</li>
                   <li>התראות נגישות (ARIA live regions)</li>
@@ -101,14 +95,12 @@ export default function AccessibilityStatement() {
                   <li>Focus visible - סימון ברור של אלמנט פעיל</li>
                   <li>תמיכה בזום עד 200%</li>
                 </ul>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>טכנולוגיות מסייעות נתמכות</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-4">
+              <h2 className="luxury-heading-md mb-4">טכנולוגיות מסייעות נתמכות</h2>
+              <div className="space-y-4 luxury-text-body">
                 <p>האתר תואם ל:</p>
                 <ul className="list-disc mr-6 space-y-2">
                   <li><strong>Windows:</strong> NVDA, JAWS + Chrome/Firefox/Edge</li>
@@ -118,14 +110,12 @@ export default function AccessibilityStatement() {
                   <li><strong>ניווט קולי:</strong> Dragon NaturallySpeaking</li>
                   <li><strong>זום:</strong> ZoomText, MAGic</li>
                 </ul>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>תקנים ושיטות עבודה</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-5">
+              <h2 className="luxury-heading-md mb-4">תקנים ושיטות עבודה</h2>
+              <div className="space-y-4 luxury-text-body">
                 <p>האתר עומד בתקנים הבאים:</p>
                 <ul className="list-disc mr-6 space-y-2">
                   <li><strong>תקן ישראלי 5568:</strong> נגישות תכנים באינטרנט</li>
@@ -133,14 +123,12 @@ export default function AccessibilityStatement() {
                   <li><strong>ARIA 1.2:</strong> Accessible Rich Internet Applications</li>
                   <li><strong>Section 508:</strong> US Federal accessibility standard</li>
                 </ul>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>מגבלות נגישות ידועות</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-6">
+              <h2 className="luxury-heading-md mb-4">מגבלות נגישות ידועות</h2>
+              <div className="space-y-4 luxury-text-body">
                 <p>למרות מאמצינו, ייתכנו חלקים באתר שעדיין לא נגישים במלואם:</p>
                 <ul className="list-disc mr-6 space-y-2">
                   <li>תוכן PDF ישן שהועלה לפני 2024 (בתהליך המרה לגרסאות נגישות)</li>
@@ -149,14 +137,12 @@ export default function AccessibilityStatement() {
                 <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
                   אנו פועלים באופן מתמיד לשיפור נגישות החלקים הללו.
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card className="bg-blue-50 dark:bg-blue-900/20">
-              <CardHeader>
-                <CardTitle>רכז נגישות</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-7 border-l-4 border-purple-500">
+              <h2 className="luxury-heading-md mb-4">רכז נגישות</h2>
+              <div className="space-y-4 luxury-text-body">
                 <p className="font-semibold">צוות הנגישות של Pet Wash™ לשירותכם</p>
                 
                 <div className="mt-4 space-y-3">
@@ -185,14 +171,12 @@ export default function AccessibilityStatement() {
                 <p className="mt-6 text-sm text-gray-600 dark:text-gray-400">
                   נענה לפניות בתוך 48 שעות. במקרים דחופים, צרו קשר טלפוני.
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>דיווח על בעיות נגישות</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-8">
+              <h2 className="luxury-heading-md mb-4">דיווח על בעיות נגישות</h2>
+              <div className="space-y-4 luxury-text-body">
                 <p>אם נתקלתם בבעיית נגישות באתר, אנא דווחו לנו:</p>
                 
                 <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2">
@@ -208,14 +192,12 @@ export default function AccessibilityStatement() {
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   המשוב שלכם חשוב לנו ועוזר לנו לשפר את הנגישות לכולם.
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>אכיפה ופיקוח</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-9">
+              <h2 className="luxury-heading-md mb-4">אכיפה ופיקוח</h2>
+              <div className="space-y-4 luxury-text-body">
                 <p>אם לא קיבלתם מענה מספק מרכז הנגישות, ניתן לפנות ל:</p>
                 
                 <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -224,14 +206,12 @@ export default function AccessibilityStatement() {
                   <p>פקס: 02-6496118</p>
                   <p>אימייל: sar@justice.gov.il</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>מחויבות מתמשכת</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-10">
+              <h2 className="luxury-heading-md mb-4">מחויבות מתמשכת</h2>
+              <div className="space-y-4 luxury-text-body">
                 <p>Pet Wash™ רואה בנגישות ערך מרכזי ופועלת באופן מתמיד:</p>
                 <ul className="list-disc mr-6 space-y-2">
                   <li>ביקורת נגישות שנתית על ידי מומחים חיצוניים</li>
@@ -240,19 +220,19 @@ export default function AccessibilityStatement() {
                   <li>בדיקות משתמש עם אנשים עם מוגבלות</li>
                   <li>עדכון שוטף בהתאם לתקנים מתפתחים</li>
                 </ul>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card className="bg-green-50 dark:bg-green-900/20">
-              <CardContent className="pt-6">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-11 border-l-4 border-green-500">
+              <div className="luxury-text-body">
                 <p className="text-center font-semibold text-lg">
                   נגישות היא זכות, לא פריבילגיה
                 </p>
                 <p className="text-center mt-2 text-gray-600 dark:text-gray-400">
                   אנו מחויבים לספק חוויה שווה ונגישה לכל המשתמשים
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -263,21 +243,19 @@ export default function AccessibilityStatement() {
   
   // English version
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <Header language={language} onLanguageChange={setLanguage} />
+    <Layout language={language} onLanguageChange={setLanguage}>
+      <div className="min-h-screen luxury-bg-mesh">
       
       <div className="max-w-4xl mx-auto px-4 py-12">
-        <h1 className="text-4xl font-bold mb-8 text-center">Accessibility Statement</h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-8">
+        <h1 className="luxury-heading-xl mb-8 text-center">Accessibility Statement</h1>
+        <p className="luxury-text-body text-center mb-8">
           Last Updated: October 17, 2025 | Compliant with IS 5568
         </p>
         
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Commitment to Accessibility</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-1">
+            <h2 className="luxury-heading-md mb-4">Commitment to Accessibility</h2>
+            <div className="space-y-4 luxury-text-body">
               <p>
                 Pet Wash™ is committed to making our website and app accessible to people with disabilities,
                 in accordance with the Equal Rights for Persons with Disabilities Law and Israeli Standard 5568 (based on WCAG 2.0 Level AA).
@@ -291,14 +269,12 @@ export default function AccessibilityStatement() {
                 <li>Motor disabilities</li>
                 <li>Cognitive disabilities</li>
               </ul>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Accessibility Features</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-2">
+            <h2 className="luxury-heading-md mb-4">Accessibility Features</h2>
+            <div className="space-y-4 luxury-text-body">
               <p>Our website and app include the following accessibility features:</p>
               
               <div className="space-y-4">
@@ -335,14 +311,12 @@ export default function AccessibilityStatement() {
                   <p>Captions and alt text for video and audio content</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Dedicated Accessibility Components</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-3">
+            <h2 className="luxury-heading-md mb-4">Dedicated Accessibility Components</h2>
+            <div className="space-y-4 luxury-text-body">
               <ul className="list-disc ml-6 space-y-2">
                 <li>Skip to main content link</li>
                 <li>Accessible notifications (ARIA live regions)</li>
@@ -351,14 +325,12 @@ export default function AccessibilityStatement() {
                 <li>Focus visible - clear indication of active element</li>
                 <li>Zoom support up to 200%</li>
               </ul>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Supported Assistive Technologies</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-4">
+            <h2 className="luxury-heading-md mb-4">Supported Assistive Technologies</h2>
+            <div className="space-y-4 luxury-text-body">
               <p>Our website is compatible with:</p>
               <ul className="list-disc ml-6 space-y-2">
                 <li><strong>Windows:</strong> NVDA, JAWS + Chrome/Firefox/Edge</li>
@@ -368,14 +340,12 @@ export default function AccessibilityStatement() {
                 <li><strong>Voice Navigation:</strong> Dragon NaturallySpeaking</li>
                 <li><strong>Screen Magnification:</strong> ZoomText, MAGic</li>
               </ul>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="bg-blue-50 dark:bg-blue-900/20">
-            <CardHeader>
-              <CardTitle>Accessibility Coordinator</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-5 border-l-4 border-purple-500">
+            <h2 className="luxury-heading-md mb-4">Accessibility Coordinator</h2>
+            <div className="space-y-4 luxury-text-body">
               <p className="font-semibold">Pet Wash™ Accessibility Team at your service</p>
               
               <div className="mt-4 space-y-3">
@@ -404,14 +374,12 @@ export default function AccessibilityStatement() {
               <p className="mt-6 text-sm text-gray-600 dark:text-gray-400">
                 We respond to inquiries within 48 hours. For urgent issues, please call.
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Reporting Accessibility Issues</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-6">
+            <h2 className="luxury-heading-md mb-4">Reporting Accessibility Issues</h2>
+            <div className="space-y-4 luxury-text-body">
               <p>If you encounter an accessibility issue, please report it to us:</p>
               
               <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2">
@@ -427,22 +395,22 @@ export default function AccessibilityStatement() {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Your feedback is important and helps us improve accessibility for everyone.
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="bg-green-50 dark:bg-green-900/20">
-            <CardContent className="pt-6">
+          <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-7 border-l-4 border-green-500">
+            <div className="luxury-text-body pt-2">
               <p className="text-center font-semibold text-lg">
                 Accessibility is a right, not a privilege
               </p>
               <p className="text-center mt-2 text-gray-600 dark:text-gray-400">
                 We're committed to providing an equal and accessible experience for all users
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-      </Layout>
+      </div>
+    </Layout>
   );
 }

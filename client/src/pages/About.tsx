@@ -89,7 +89,7 @@ export default function About({ language }: AboutProps) {
       {/* K9000 Partnership - Luxury Glass Panel */}
       <div className="luxury-section">
         <div className="luxury-container">
-          <div className="luxury-glass-card luxury-shadow-lg p-16 luxury-animate-slide-up">
+          <div className="luxury-glass-card luxury-shadow-lg p-16 luxury-animate-slide-up luxury-delay-1">
             <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center gap-2 mb-8">
               <Award className="h-6 w-6 text-black" />
@@ -118,7 +118,7 @@ export default function About({ language }: AboutProps) {
           <div className="grid lg:grid-cols-2 gap-8">
             
             {/* Sustainability */}
-            <div className="luxury-glass-minimal p-8 luxury-animate-fade-in luxury-delay-1">
+            <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-fade-in luxury-delay-2">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
                   <Leaf className="h-7 w-7 text-green-600" />
@@ -136,7 +136,7 @@ export default function About({ language }: AboutProps) {
             </div>
 
             {/* Technology */}
-            <div className="luxury-glass-minimal p-8 luxury-animate-fade-in luxury-delay-2">
+            <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-fade-in luxury-delay-3">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center">
                   <Zap className="h-7 w-7 text-purple-600" />
@@ -154,7 +154,7 @@ export default function About({ language }: AboutProps) {
             </div>
 
             {/* Safety */}
-            <div className="luxury-glass-minimal p-8 luxury-animate-fade-in luxury-delay-3">
+            <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-fade-in luxury-delay-4">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
                   <Shield className="h-7 w-7 text-blue-600" />
@@ -172,7 +172,7 @@ export default function About({ language }: AboutProps) {
             </div>
 
             {/* Experience */}
-            <div className="luxury-glass-minimal p-8 luxury-animate-fade-in luxury-delay-4">
+            <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-fade-in luxury-delay-5">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center">
                   <Star className="h-7 w-7 text-yellow-600" />
@@ -242,7 +242,7 @@ export default function About({ language }: AboutProps) {
       {/* Accessibility - Luxury Section */}
       <div className="luxury-section">
         <div className="luxury-container">
-          <div className="luxury-glass-card p-16 text-center max-w-4xl mx-auto luxury-animate-scale-in">
+          <div className="luxury-glass-card luxury-shadow-lg p-16 text-center max-w-4xl mx-auto luxury-animate-scale-in luxury-delay-6">
             <div className="luxury-badge luxury-badge-success mb-8 inline-flex">
               <Users2 className="h-5 w-5" />
               <span>

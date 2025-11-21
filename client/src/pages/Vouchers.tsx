@@ -56,28 +56,30 @@ export default function Vouchers() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Authentication Required</CardTitle>
-            <CardDescription>Please sign in to view your vouchers</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => setLocation('/signin')} className="w-full">
-              Sign In
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="luxury-glass-card luxury-shadow-xl max-w-md p-8 text-center luxury-animate-scale-in">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
+            <Wallet className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="luxury-heading-md mb-3">Authentication Required</h2>
+          <p className="luxury-text-body mb-8">Please sign in to view your vouchers</p>
+          <button 
+            onClick={() => setLocation('/signin')} 
+            className="luxury-btn-primary w-full"
+          >
+            Sign In
+          </button>
+        </div>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
         <div className="text-center">
-          <Sparkles className="w-12 h-12 animate-spin mx-auto mb-4 text-purple-600" />
-          <p className="text-gray-600">Loading your luxury vouchers...</p>
+          <div className="luxury-spinner mx-auto mb-6" />
+          <p className="luxury-text-body">Loading your luxury vouchers...</p>
         </div>
       </div>
     );
@@ -125,102 +127,110 @@ export default function Vouchers() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50">
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
+    <div className="min-h-screen luxury-bg-mesh">
+      <div className="luxury-container py-8 sm:py-12">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-12 gap-4 luxury-animate-fade-in">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+            <div className="luxury-badge-gold mb-4">
+              <Sparkles className="w-4 h-4" />
+              Active Vouchers Gallery
+            </div>
+            <h1 className="luxury-heading-xl mb-3">
               My 7-Star Vouchers
             </h1>
-            <p className="text-gray-600">
+            <p className="luxury-text-body">
               Premium luxury vouchers with enhanced security
             </p>
           </div>
-          <Button
+          <button
             onClick={() => setLocation('/egift')}
-            size="lg"
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90"
+            className="luxury-btn-primary"
             data-testid="button-create-voucher"
           >
             <Plus className="w-5 h-5 mr-2" />
             Create New Voucher
-          </Button>
+          </button>
         </div>
 
         {/* Stats Cards */}
         {stats?.stats && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Wallet className="w-8 h-8 text-purple-600" />
-                  <div>
-                    <p className="text-sm text-gray-600">Active Vouchers</p>
-                    <p className="text-2xl font-bold">{stats.stats.active_vouchers}</p>
-                  </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 luxury-gap-md mb-12">
+            <div className="luxury-glass-card luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-1">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center luxury-shadow-md">
+                  <Wallet className="w-7 h-7 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="luxury-text-small mb-1">Active Vouchers</p>
+                  <p className="luxury-heading-lg luxury-text-gradient">{stats.stats.active_vouchers}</p>
+                </div>
+              </div>
+            </div>
             
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="w-8 h-8 text-emerald-600" />
-                  <div>
-                    <p className="text-sm text-gray-600">Total Value</p>
-                    <p className="text-2xl font-bold">₪{stats.stats.total_value_remaining.toFixed(2)}</p>
-                  </div>
+            <div className="luxury-glass-card luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-2">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center luxury-shadow-md">
+                  <TrendingUp className="w-7 h-7 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="luxury-text-small mb-1">Total Value</p>
+                  <p className="luxury-heading-lg luxury-text-gradient">₪{stats.stats.total_value_remaining.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
             
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Sparkles className="w-8 h-8 text-pink-600" />
-                  <div>
-                    <p className="text-sm text-gray-600">Washes Remaining</p>
-                    <p className="text-2xl font-bold">{stats.stats.total_washes_remaining}</p>
-                  </div>
+            <div className="luxury-glass-card luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-3">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center luxury-shadow-md">
+                  <Sparkles className="w-7 h-7 text-white" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="luxury-text-small mb-1">Washes Remaining</p>
+                  <p className="luxury-heading-lg luxury-text-gradient">{stats.stats.total_washes_remaining}</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Vouchers Grid */}
         {vouchers.length === 0 ? (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Sparkles className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Vouchers Yet</h3>
-              <p className="text-gray-600 mb-6">
-                Create your first luxury voucher to get started
-              </p>
-              <Button
-                onClick={() => setLocation('/egift')}
-                className="bg-gradient-to-r from-purple-600 to-pink-600"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Voucher
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="luxury-glass-card text-center py-16 px-8 luxury-animate-fade-in luxury-delay-4">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center mx-auto mb-6">
+              <Sparkles className="w-10 h-10 text-purple-600" />
+            </div>
+            <h3 className="luxury-heading-md mb-3">No Vouchers Yet</h3>
+            <p className="luxury-text-body mb-8 max-w-md mx-auto">
+              Create your first luxury voucher to get started
+            </p>
+            <button
+              onClick={() => setLocation('/egift')}
+              className="luxury-btn-primary"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Create Voucher
+            </button>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {vouchers.map((dbVoucher) => {
+          <div className="luxury-grid-3">
+            {vouchers.map((dbVoucher, index) => {
               const voucher = convertToVoucherFormat(dbVoucher);
+              const delayClass = `luxury-delay-${Math.min(index + 4, 10)}`;
               return (
-                <VoucherCard2025
+                <div 
                   key={voucher.voucher_id}
-                  voucher={voucher}
-                  onUse={() => {
-                    // TODO: Implement redemption flow
-                    console.log('Redeem voucher:', voucher.public_code);
-                  }}
-                  showActions={true}
-                />
+                  className={`luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in ${delayClass}`}
+                >
+                  <VoucherCard2025
+                    voucher={voucher}
+                    onUse={() => {
+                      // TODO: Implement redemption flow
+                      console.log('Redeem voucher:', voucher.public_code);
+                    }}
+                    showActions={true}
+                  />
+                </div>
               );
             })}
           </div>

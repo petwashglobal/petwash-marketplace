@@ -79,18 +79,18 @@ export default function StationRegistryDashboard() {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: any; icon: any }> = {
-      active: { variant: "default", icon: <CheckCircle className="w-3 h-3" /> },
-      inactive: { variant: "secondary", icon: <XCircle className="w-3 h-3" /> },
-      maintenance: { variant: "destructive", icon: <AlertCircle className="w-3 h-3" /> },
-      closed: { variant: "outline", icon: <XCircle className="w-3 h-3" /> },
+    const variants: Record<string, { className: string; icon: any }> = {
+      active: { className: "luxury-badge luxury-badge-success", icon: <CheckCircle className="w-3 h-3" /> },
+      inactive: { className: "luxury-badge", icon: <XCircle className="w-3 h-3" /> },
+      maintenance: { className: "luxury-badge luxury-badge-gold", icon: <AlertCircle className="w-3 h-3" /> },
+      closed: { className: "luxury-badge", icon: <XCircle className="w-3 h-3" /> },
     };
     const config = variants[status] || variants.active;
     return (
-      <Badge variant={config.variant} className="flex items-center gap-1">
+      <span className={config.className}>
         {config.icon}
         {status}
-      </Badge>
+      </span>
     );
   };
 
@@ -101,28 +101,28 @@ export default function StationRegistryDashboard() {
       subtitle="Pet Wash Hub™ Canonical ID Management"
     >
       <div className="p-6 space-y-6">
-      <div className="flex justify-end items-center">
-        <Button onClick={() => setShowCreateDialog(true)} data-testid="button-create-station">
+      <div className="flex justify-end items-center luxury-animate-fade-in">
+        <button onClick={() => setShowCreateDialog(true)} className="luxury-btn-primary" data-testid="button-create-station">
           <Plus className="w-4 h-4 mr-2" />
           Register New Station
-        </Button>
+        </button>
       </div>
 
-      <div className="flex gap-2">
-        <Button
-          variant={view === "all" ? "default" : "outline"}
+      <div className="flex gap-2 luxury-animate-slide-up luxury-delay-1">
+        <button
+          className={view === "all" ? "luxury-btn-primary" : "luxury-btn-secondary"}
           onClick={() => setView("all")}
           data-testid="button-view-all"
         >
           All Stations ({stations?.length || 0})
-        </Button>
-        <Button
-          variant={view === "active" ? "default" : "outline"}
+        </button>
+        <button
+          className={view === "active" ? "luxury-btn-primary" : "luxury-btn-secondary"}
           onClick={() => setView("active")}
           data-testid="button-view-active"
         >
           Active Only
-        </Button>
+        </button>
       </div>
 
       {isLoading ? (
@@ -132,60 +132,57 @@ export default function StationRegistryDashboard() {
           ))}
         </div>
       ) : stations?.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-12">
-              <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No stations registered</h3>
-              <p className="text-muted-foreground mb-4">Get started by registering your first Pet Wash Hub™</p>
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Register Station
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="luxury-glass-card luxury-shadow-xl p-12 text-center luxury-animate-scale-in luxury-delay-2">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center">
+            <MapPin className="w-10 h-10 text-purple-600" />
+          </div>
+          <h3 className="luxury-heading-md mb-3">No stations registered</h3>
+          <p className="luxury-text-body mb-6">Get started by registering your first Pet Wash Hub™</p>
+          <button onClick={() => setShowCreateDialog(true)} className="luxury-btn-primary">
+            <Plus className="w-4 h-4 mr-2" />
+            Register Station
+          </button>
+        </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {stations?.map((station: any) => (
-            <Card 
+        <div className="luxury-grid-3">
+          {stations?.map((station: any, index: number) => (
+            <div 
               key={station.id} 
-              className="cursor-pointer hover:shadow-lg transition-shadow"
+              className="luxury-glass-card luxury-hover-glow luxury-shadow-xl cursor-pointer luxury-animate-fade-in"
+              style={{ animationDelay: `${0.1 * (index + 1)}s` }}
               onClick={() => setSelectedStation(station)}
               data-testid={`station-card-${station.id}`}
             >
-              <CardHeader>
-                <div className="flex justify-between items-start">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
                   <div className="space-y-1 flex-1">
-                    <CardTitle className="text-lg">{station.stationName}</CardTitle>
+                    <h3 className="luxury-heading-sm">{station.stationName}</h3>
                     {station.stationNameHe && (
-                      <p className="text-sm text-muted-foreground" dir="rtl">{station.stationNameHe}</p>
+                      <p className="luxury-text-small opacity-75" dir="rtl">{station.stationNameHe}</p>
                     )}
-                    <p className="text-xs font-mono text-primary">{station.stationId}</p>
+                    <p className="text-xs font-mono text-purple-600">{station.stationId}</p>
                   </div>
                   {getStatusBadge(station.operatingStatus)}
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-3">
                   <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                    <span className="text-muted-foreground">{station.city}, {station.country}</span>
+                    <MapPin className="w-4 h-4 mt-0.5 text-purple-600 flex-shrink-0" />
+                    <span className="luxury-text-small">{station.city}, {station.country}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">
+                    <Activity className="w-4 h-4 text-purple-600" />
+                    <span className="luxury-text-small">
                       {station.totalWashes || 0} washes • {station.ownershipType}
                     </span>
                   </div>
                   {station.nayaxTerminalId && (
-                    <div className="text-xs text-muted-foreground">
-                      Terminal: {station.nayaxTerminalId}
+                    <div className="luxury-glass-minimal p-2 rounded-lg">
+                      <span className="text-xs font-mono">Terminal: {station.nayaxTerminalId}</span>
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}

@@ -77,33 +77,33 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      <div className="min-h-screen luxury-bg-mesh flex flex-col">
         <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <Link href="/admin/users">
-                <Button variant="ghost" className="gap-2">
+                <Button className="gap-2 luxury-btn-ghost">
                   <ArrowLeft className="w-4 h-4" />
                   {t('admin.guide.backToAdmin')}
                 </Button>
               </Link>
-              <Button onClick={downloadGuide} variant="outline" className="gap-2">
+              <Button onClick={downloadGuide} className="gap-2 luxury-btn-secondary">
                 <Download className="w-4 h-4" />
                 {t('admin.guide.downloadGuide')}
               </Button>
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg flex items-center justify-center shadow-lg">
                 <Book className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-3xl font-bold luxury-text-gradient">
                   {t('admin.guide.quickStartTitle')}
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-600">
                   {t('admin.guide.subtitle')}
                 </p>
               </div>
@@ -111,7 +111,7 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
           </div>
 
           {/* Guide Content */}
-          <Card className="shadow-lg">
+          <Card className="luxury-glass-card luxury-shadow-lg">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-b">
               <CardTitle className="flex items-center gap-2">
                 <Book className="w-5 h-5" />

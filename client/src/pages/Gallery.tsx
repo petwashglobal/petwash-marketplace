@@ -88,31 +88,31 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen bg-white py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-16">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent">
+      <div className="min-h-screen luxury-bg-mesh py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto luxury-animate-fade-in">
+          {/* Luxury Header */}
+          <div className="text-center mb-16 luxury-animate-slide-up">
+            <h1 className="luxury-heading-xl mb-6">
               {t('gallery.title', language)}
             </h1>
-            <p className="text-lg text-gray-700 max-w-3xl mx-auto">
+            <p className="luxury-text-body max-w-3xl mx-auto">
               {t('gallery.subtitle', language)}
             </p>
           </div>
 
           {/* Featured YouTube Video Section */}
-          <div className="mb-16">
+          <div className="mb-16 luxury-animate-slide-up luxury-delay-1">
             <div className="max-w-5xl mx-auto">
               <div className="text-center mb-8">
-                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-red-600 via-pink-600 to-red-600 bg-clip-text text-transparent">
+                <h2 className="luxury-heading-lg mb-4">
                   {language === 'he' ? 'צפו בסרטון שלנו' : language === 'ar' ? 'شاهد الفيديو الخاص بنا' : language === 'ru' ? 'Посмотрите наше видео' : language === 'fr' ? 'Regardez notre vidéo' : language === 'es' ? 'Mira nuestro video' : 'Watch Our Video'}
                 </h2>
-                <p className="text-lg text-gray-700">
+                <p className="luxury-text-body">
                   {language === 'he' ? 'גלה את חווית הכביסה האורגנית הפרימיום שלנו לחיות מחמד' : language === 'ar' ? 'اكتشف تجربة الغسيل العضوية الفاخرة لحيواناتك الأليفة' : language === 'ru' ? 'Откройте для себя наш премиум органический опыт мытья домашних животных' : language === 'fr' ? 'Découvrez notre expérience de lavage bio premium pour animaux' : language === 'es' ? 'Descubre nuestra experiencia premium de lavado orgánico para mascotas' : 'Discover our premium organic pet wash experience'}
                 </p>
               </div>
               
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-900 to-gray-800 p-1">
+              <div className="luxury-glass-card luxury-shadow-xl p-1">
                 <div className="relative rounded-3xl overflow-hidden bg-black" style={{ paddingBottom: '56.25%' }}>
                   <iframe
                     className="absolute inset-0 w-full h-full"
@@ -125,9 +125,9 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
                 </div>
                 
                 {/* Video Stats Bar */}
-                <div className="bg-gradient-to-r from-red-600/10 via-pink-600/10 to-red-600/10 backdrop-blur-sm p-4 text-center">
-                  <div className="flex items-center justify-center gap-3 text-gray-700">
-                    <Play className="w-5 h-5 text-red-600" />
+                <div className="bg-gradient-to-r from-purple-600/10 via-blue-600/10 to-purple-600/10 backdrop-blur-sm p-4 text-center">
+                  <div className="flex items-center justify-center gap-3 luxury-text-body">
+                    <Play className="w-5 h-5 text-purple-600" />
                     <span className="text-sm font-medium">
                       {language === 'he' ? 'לחץ להפעלה' : language === 'ar' ? 'انقر للتشغيل' : language === 'ru' ? 'Нажмите для воспроизведения' : language === 'fr' ? 'Cliquez pour jouer' : language === 'es' ? 'Haz clic para reproducir' : 'Click to Play'}
                     </span>
@@ -137,60 +137,48 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
             </div>
           </div>
 
-          {/* Filter Buttons */}
-          <div className="flex justify-center gap-4 mb-12 flex-wrap">
+          {/* Luxury Filter Buttons */}
+          <div className="flex justify-center gap-4 mb-12 flex-wrap luxury-animate-slide-up luxury-delay-2">
             <button
               onClick={() => setFilter('all')}
-              className={`px-6 py-3 rounded-full font-medium transition-all duration-300 ${
-                filter === 'all'
-                  ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 text-white shadow-lg hover:shadow-2xl hover:scale-105'
-                  : 'bg-white/50 backdrop-blur-sm text-gray-700 border border-gray-300 hover:border-blue-300 hover:shadow-xl hover:scale-105'
-              }`}
+              className={filter === 'all' ? 'luxury-btn-primary' : 'luxury-btn-secondary'}
               data-testid="filter-all"
             >
               {t('gallery.all', language)}
             </button>
             <button
               onClick={() => setFilter('branding')}
-              className={`px-6 py-3 rounded-full font-medium transition-all duration-300 ${
-                filter === 'branding'
-                  ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 text-white shadow-lg hover:shadow-2xl hover:scale-105'
-                  : 'bg-white/50 backdrop-blur-sm text-gray-700 border border-gray-300 hover:border-blue-300 hover:shadow-xl hover:scale-105'
-              }`}
+              className={filter === 'branding' ? 'luxury-btn-primary' : 'luxury-btn-secondary'}
               data-testid="filter-branding"
             >
               {t('gallery.branding', language)}
             </button>
             <button
               onClick={() => setFilter('station')}
-              className={`px-6 py-3 rounded-full font-medium transition-all duration-300 ${
-                filter === 'station'
-                  ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 text-white shadow-lg hover:shadow-2xl hover:scale-105'
-                  : 'bg-white/50 backdrop-blur-sm text-gray-700 border border-gray-300 hover:border-blue-300 hover:shadow-xl hover:scale-105'
-              }`}
+              className={filter === 'station' ? 'luxury-btn-primary' : 'luxury-btn-secondary'}
               data-testid="filter-stations"
             >
               {t('gallery.stations', language)}
             </button>
           </div>
 
-          {/* Masonry Grid - Fashion Brand Style */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Luxury Masonry Grid */}
+          <div className="luxury-grid-3">
             {filteredImages.map((image, index) => (
               <div
                 key={index}
-                className={`group relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer ${
+                className={`luxury-glass-minimal luxury-hover-lift luxury-delay-${Math.min(index + 3, 10)} group relative overflow-hidden cursor-pointer ${
                   image.featured ? 'md:col-span-2 lg:row-span-2' : ''
                 }`}
                 onClick={() => setSelectedImage(index)}
                 data-testid={`gallery-image-${index}`}
               >
                 {/* Image */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                <div className="relative overflow-hidden">
                   <img
                     src={image.src}
                     alt={image.alt}
-                    className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:rotate-1"
+                    className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                     style={{
                       minHeight: image.featured ? '500px' : '300px',
                       maxHeight: image.featured ? '700px' : '400px'
@@ -198,18 +186,18 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
                     loading="lazy"
                   />
                   
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  {/* Luxury Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   
                   {/* Hover Info */}
                   <div className="absolute bottom-0 left-0 right-0 p-6 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-500">
-                    <p className="text-sm font-medium opacity-90">{image.alt}</p>
+                    <p className="luxury-text-small font-medium opacity-90">{image.alt}</p>
                   </div>
 
                   {/* Featured Badge */}
                   {image.featured && (
                     <div className="absolute top-4 right-4">
-                      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-2 rounded-full text-xs font-semibold shadow-lg backdrop-blur-sm">
+                      <div className="luxury-badge-success">
                         {t('gallery.featured', language)}
                       </div>
                     </div>

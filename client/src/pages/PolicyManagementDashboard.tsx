@@ -110,98 +110,99 @@ export default function PolicyManagementDashboard() {
       title="Policy Management & Compliance"
       subtitle="Document versioning, acknowledgments, and compliance tracking"
     >
-      <div className="min-h-screen bg-white p-6" data-testid="policy-management-dashboard">
+      <div className="min-h-screen p-6" data-testid="policy-management-dashboard">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 luxury-animate-fade-in">
         <div className="flex items-center justify-end">
           <div className="flex gap-2">
-            <Button variant="outline" className="border-metallic-gold text-metallic-gold hover:bg-metallic-gold/10" data-testid="button-export">
-              <Download className="w-4 h-4 mr-2" />
+            <button className="luxury-btn-secondary px-4 py-2" data-testid="button-export">
+              <Download className="w-4 h-4 mr-2 inline" />
               Export
-            </Button>
-            <Button className="bg-metallic-gold hover:bg-metallic-gold/90 text-white" data-testid="button-create-policy">
-              <Plus className="w-4 h-4 mr-2" />
+            </button>
+            <button className="luxury-btn-primary luxury-shadow-xl px-4 py-2" data-testid="button-create-policy">
+              <Plus className="w-4 h-4 mr-2 inline" />
               New Policy
-            </Button>
+            </button>
           </div>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card className="diamond-card border-metallic-gold hover-glow-gold" data-testid="card-total-policies">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Policies</CardTitle>
-            <FileText className="w-4 h-4 text-metallic-gold icon-glow-gold" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-metallic-gold" data-testid="text-total-policies">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 luxury-animate-slide-up luxury-delay-1">
+        <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-2" data-testid="card-total-policies">
+          <div className="flex flex-row items-center justify-between pb-2">
+            <h3 className="luxury-text-small opacity-70">Total Policies</h3>
+            <FileText className="w-4 h-4 text-blue-600" />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-blue-600" data-testid="text-total-policies">
               {Array.isArray(allPolicies) ? allPolicies.length : 0}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="luxury-text-small opacity-70 mt-1">
               {activePolicies} active
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="diamond-card border-metallic-rose hover-glow-rose" data-testid="card-pending-acks">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Acknowledgments</CardTitle>
-            <AlertTriangle className="w-4 h-4 text-metallic-rose icon-glow-rose" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-metallic-rose" data-testid="text-pending-acks">
+        <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-3" data-testid="card-pending-acks">
+          <div className="flex flex-row items-center justify-between pb-2">
+            <h3 className="luxury-text-small opacity-70">Pending Acknowledgments</h3>
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-amber-600" data-testid="text-pending-acks">
               {pendingAcknowledgments}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Require employee sign-off</p>
-          </CardContent>
-        </Card>
+            <p className="luxury-text-small opacity-70 mt-1">Require employee sign-off</p>
+          </div>
+        </div>
 
-        <Card className="diamond-card border-metallic-platinum hover-glow-blue" data-testid="card-certifications">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Certifications</CardTitle>
-            <Award className="w-4 h-4 text-metallic-platinum icon-glow-blue" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-metallic-platinum" data-testid="text-total-certifications">
+        <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-4" data-testid="card-certifications">
+          <div className="flex flex-row items-center justify-between pb-2">
+            <h3 className="luxury-text-small opacity-70">Certifications</h3>
+            <Award className="w-4 h-4 text-purple-600" />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-purple-600" data-testid="text-total-certifications">
               {Array.isArray(certifications) ? certifications.length : 0}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="luxury-text-small opacity-70 mt-1">
               {Array.isArray(certifications) ? certifications.filter(c => c.status === 'active').length : 0} active
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="diamond-card border-red-500 hover-glow-red" data-testid="card-expiring">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Expiring Soon</CardTitle>
-            <Clock className="w-4 h-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
+        <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-5" data-testid="card-expiring">
+          <div className="flex flex-row items-center justify-between pb-2">
+            <h3 className="luxury-text-small opacity-70">Expiring Soon</h3>
+            <Clock className="w-4 h-4 text-red-600" />
+          </div>
+          <div>
             <div className="text-2xl font-bold text-red-600" data-testid="text-expiring-count">
               {expiringCount}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Next 30 days</p>
-          </CardContent>
-        </Card>
+            <p className="luxury-text-small opacity-70 mt-1">Next 30 days</p>
+          </div>
+        </div>
       </div>
 
       {/* Search & Filter */}
-      <div className="mb-6 flex gap-4">
+      <div className="mb-6 flex gap-4 luxury-animate-fade-in luxury-delay-6">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
             placeholder="Search policies by title or ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 luxury-input"
+            className="luxury-glass-minimal pl-10 w-full"
             data-testid="input-search-policies"
           />
         </div>
-        <Button variant="outline" className="border-metallic-silver" data-testid="button-advanced-filter">
-          <Filter className="w-4 h-4 mr-2" />
+        <button className="luxury-btn-secondary px-4 py-2" data-testid="button-advanced-filter">
+          <Filter className="w-4 h-4 mr-2 inline" />
           Filters
-        </Button>
+        </button>
       </div>
 
       {/* Main Content */}
@@ -230,92 +231,84 @@ export default function PolicyManagementDashboard() {
 
           {/* Category Filter */}
           <div className="flex gap-2 mb-6 flex-wrap">
-            <Button
-              variant={selectedCategory === 'all' ? 'default' : 'outline'}
-              size="sm"
+            <button
               onClick={() => setSelectedCategory('all')}
-              className={selectedCategory === 'all' ? 'bg-metallic-gold text-white' : ''}
+              className={selectedCategory === 'all' ? 'luxury-badge-primary px-4 py-2' : 'luxury-badge-secondary px-4 py-2'}
               data-testid="filter-category-all"
             >
               All ({Array.isArray(allPolicies) ? allPolicies.length : 0})
-            </Button>
+            </button>
             {Object.entries(categories).map(([category, count]) => (
-              <Button
+              <button
                 key={category}
-                variant={selectedCategory === category ? 'default' : 'outline'}
-                size="sm"
                 onClick={() => setSelectedCategory(category)}
-                className={selectedCategory === category ? 'bg-metallic-gold text-white' : ''}
+                className={selectedCategory === category ? 'luxury-badge-primary px-4 py-2' : 'luxury-badge-secondary px-4 py-2'}
                 data-testid={`filter-category-${category.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 {category} ({count})
-              </Button>
+              </button>
             ))}
           </div>
 
           {/* Policies Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="luxury-grid-3">
             {policiesLoading ? (
-              <p className="text-muted-foreground col-span-full text-center py-8">Loading policies...</p>
+              <p className="luxury-text-body opacity-70 col-span-full text-center py-8">Loading policies...</p>
             ) : filteredPolicies.length === 0 ? (
-              <p className="text-muted-foreground col-span-full text-center py-8" data-testid="text-no-policies">
+              <p className="luxury-text-body opacity-70 col-span-full text-center py-8" data-testid="text-no-policies">
                 No policies found
               </p>
             ) : (
-              filteredPolicies.map((policy) => (
-                <Card key={policy.id} className="glass-card border-metallic-gold hover-glow-gold transition-all" data-testid={`card-policy-${policy.id}`}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="text-xs">{policy.policyId}</Badge>
-                          {policy.isActive ? (
-                            <Badge className="bg-green-50 text-green-700 border-green-200">Active</Badge>
-                          ) : (
-                            <Badge variant="outline">Inactive</Badge>
-                          )}
-                        </div>
-                        <CardTitle className="text-lg text-metallic-gold">{policy.title}</CardTitle>
-                        <CardDescription className="mt-1">{policy.category}</CardDescription>
+              filteredPolicies.map((policy, idx) => (
+                <div key={policy.id} className={`luxury-glass-card luxury-hover-glow luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-${idx % 6 + 7}`} data-testid={`card-policy-${policy.id}`}>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="luxury-badge-secondary px-2 py-1 text-xs">{policy.policyId}</span>
+                        {policy.isActive ? (
+                          <span className="luxury-badge-verified px-2 py-1 text-xs">Active</span>
+                        ) : (
+                          <span className="luxury-badge-secondary px-2 py-1 text-xs">Inactive</span>
+                        )}
                       </div>
-                      <Shield className="w-5 h-5 text-metallic-gold" />
+                      <h3 className="luxury-heading-sm text-blue-600 mb-1">{policy.title}</h3>
+                      <p className="luxury-text-small opacity-70">{policy.category}</p>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Version:</span>
-                        <span className="font-medium">{policy.version}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Effective:</span>
-                        <span className="font-medium">
-                          {new Date(policy.effectiveDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Audience:</span>
-                        <Badge variant="secondary" className="text-xs">{policy.targetAudience}</Badge>
-                      </div>
-                      {policy.requiresAcknowledgment && (
-                        <div className="pt-2 border-t">
-                          <div className="flex items-center gap-2 text-xs text-amber-600">
-                            <AlertTriangle className="w-3 h-3" />
-                            Requires acknowledgment
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex gap-2 pt-2">
-                        <Button size="sm" variant="outline" className="flex-1" data-testid={`button-view-policy-${policy.id}`}>
-                          View
-                        </Button>
-                        <Button size="sm" variant="outline" data-testid={`button-edit-policy-${policy.id}`}>
-                          Edit
-                        </Button>
-                      </div>
+                    <Shield className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between luxury-text-small">
+                      <span className="opacity-70">Version:</span>
+                      <span className="font-medium">{policy.version}</span>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="flex items-center justify-between luxury-text-small">
+                      <span className="opacity-70">Effective:</span>
+                      <span className="font-medium">
+                        {new Date(policy.effectiveDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between luxury-text-small">
+                      <span className="opacity-70">Audience:</span>
+                      <span className="luxury-badge-secondary px-2 py-1 text-xs">{policy.targetAudience}</span>
+                    </div>
+                    {policy.requiresAcknowledgment && (
+                      <div className="pt-2 border-t border-gray-200">
+                        <div className="flex items-center gap-2 luxury-text-small text-amber-600">
+                          <AlertTriangle className="w-3 h-3" />
+                          Requires acknowledgment
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-2">
+                      <button className="luxury-btn-secondary flex-1 py-2" data-testid={`button-view-policy-${policy.id}`}>
+                        View
+                      </button>
+                      <button className="luxury-btn-secondary py-2 px-4" data-testid={`button-edit-policy-${policy.id}`}>
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))
             )}
           </div>

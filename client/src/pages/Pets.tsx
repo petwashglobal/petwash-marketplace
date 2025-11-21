@@ -301,27 +301,30 @@ export default function Pets() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-6" dir={dir}>
-      <div className="max-w-7xl mx-auto">
-        <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 shadow-xl border-0 mb-6">
-          <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <PawPrint className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                <CardTitle className="text-2xl">
-                  {t('pets.title', language)}
-                </CardTitle>
-              </div>
-              <Button 
-                onClick={handleAddPet}
-                data-testid="button-add-pet"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {t('pets.addPet', language)}
-              </Button>
-            </div>
-          </CardHeader>
+    <div className="min-h-screen luxury-bg-mesh p-4 md:p-6" dir={dir}>
+      <div className="max-w-7xl mx-auto luxury-animate-fade-in">
+        {/* Hero Section */}
+        <div className="text-center mb-8 luxury-animate-slide-up">
+          <h1 className="luxury-heading-xl mb-4">
+            {t('pets.title', language)}
+          </h1>
+          <p className="luxury-text-body max-w-2xl mx-auto mb-6">
+            {language === 'he' 
+              ? 'נהל את כל פרטי חיות המחמד שלך במקום אחד. מעקב אחר חיסונים, בריאות ותזכורות טיפול.'
+              : 'Manage all your pet details in one place. Track vaccinations, health, and care reminders.'}
+          </p>
+          <Button 
+            onClick={handleAddPet}
+            data-testid="button-add-pet"
+            className="luxury-btn-primary"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t('pets.addPet', language)}
+          </Button>
+        </div>
+
+        <div className="luxury-glass-card luxury-shadow-xl mb-6">
+          <CardHeader className="border-b border-gray-200/50 dark:border-gray-700/50">
           <CardContent className="p-6">
             {isLoading ? (
               <div className="flex items-center justify-center h-64">
@@ -338,18 +341,18 @@ export default function Pets() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {pets.map((pet) => (
-                  <Card key={pet.id} className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`card-pet-${pet.id}`}>
-                    <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 pb-4">
+              <div className="luxury-grid-3 luxury-gap-lg">
+                {pets.map((pet, index) => (
+                  <div key={pet.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(index + 1, 10)}`} data-testid={`card-pet-${pet.id}`}>
+                    <CardHeader className="bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-900/10 dark:to-blue-900/10 pb-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="h-12 w-12 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm">
-                            <PawPrint className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                          <div className="h-14 w-14 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 flex items-center justify-center shadow-lg">
+                            <PawPrint className="h-7 w-7 text-purple-600 dark:text-purple-400" />
                           </div>
                           <div>
-                            <h3 className="font-bold text-lg">{pet.name}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <h3 className="luxury-heading-sm luxury-text-gradient">{pet.name}</h3>
+                            <p className="luxury-text-small">
                               {getSpeciesLabel(pet.species)}
                               {pet.breed && ` • ${pet.breed}`}
                             </p>
@@ -411,12 +414,12 @@ export default function Pets() {
                         </div>
                       )}
                     </CardContent>
-                  </Card>
+                  </div>
                 ))}
               </div>
             )}
           </CardContent>
-        </Card>
+        </div>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

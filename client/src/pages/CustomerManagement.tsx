@@ -298,12 +298,12 @@ export default function CustomerManagement() {
 
   if (customersLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="text-center luxury-animate-fade-in">
+          <div className="luxury-spinner mx-auto mb-6"></div>
           <div className="space-y-2">
-            <h3 className="text-xl font-semibold text-gray-800">Loading Customer Data</h3>
-            <p className="text-gray-600">Fetching your customer database...</p>
+            <h3 className="luxury-heading-sm">Loading Customer Data</h3>
+            <p className="luxury-text-body">Fetching your customer database...</p>
           </div>
         </div>
       </div>
@@ -311,9 +311,9 @@ export default function CustomerManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen luxury-bg-mesh">
       {/* Luxury Header */}
-      <header className="bg-white border-b border-slate-200 shadow-lg">
+      <header className="luxury-glass-card rounded-none border-b luxury-shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center space-x-4">
@@ -339,14 +339,13 @@ export default function CustomerManagement() {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
               </Button>
-              <Button 
-                size="sm" 
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              <button 
+                className="luxury-btn-primary text-sm px-4 py-2"
                 data-testid="add-customer"
               >
-                <UserPlus className="w-4 h-4 mr-2" />
+                <UserPlus className="w-4 h-4 mr-2 inline" />
                 Add Customer
-              </Button>
+              </button>
               <div className="flex items-center space-x-2 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-2 rounded-lg border border-green-200">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium text-green-800">Live Data</span>
@@ -359,7 +358,7 @@ export default function CustomerManagement() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Filters */}
-        <Card className="mb-6 shadow-lg border-0 bg-white">
+        <Card className="mb-6 luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-1">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -497,7 +496,7 @@ export default function CustomerManagement() {
         </Card>
 
         {/* Customer List */}
-        <Card className="shadow-lg border-0 bg-white">
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-2">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-semibold text-slate-800">Customers</CardTitle>

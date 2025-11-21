@@ -91,99 +91,94 @@ export default function JvPartnersDashboard() {
       subtitle="Manage strategic JV partnerships and revenue sharing agreements"
     >
       <div className="container mx-auto" data-testid="jv-partners-dashboard">
-      <div className="flex justify-end items-center mb-8">
-        <Button onClick={() => setShowCreateDialog(true)} data-testid="button-add-partner">
-          <Plus className="w-4 h-4 mr-2" />
+      <div className="flex justify-end items-center mb-8 luxury-animate-fade-in">
+        <button className="luxury-btn-primary luxury-shadow-xl px-6 py-3" onClick={() => setShowCreateDialog(true)} data-testid="button-add-partner">
+          <Plus className="w-4 h-4 mr-2 inline" />
           Add Partner
-        </Button>
+        </button>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        <Button
-          variant={view === "active" ? "default" : "outline"}
+      <div className="flex gap-2 mb-6 luxury-animate-fade-in luxury-delay-1">
+        <button
+          className={view === "active" ? "luxury-btn-primary px-6 py-2" : "luxury-btn-secondary px-6 py-2"}
           onClick={() => setView("active")}
           data-testid="button-view-active"
         >
           Active Partners
-        </Button>
-        <Button
-          variant={view === "all" ? "default" : "outline"}
+        </button>
+        <button
+          className={view === "all" ? "luxury-btn-primary px-6 py-2" : "luxury-btn-secondary px-6 py-2"}
           onClick={() => setView("all")}
           data-testid="button-view-all"
         >
           All Partners
-        </Button>
+        </button>
       </div>
 
       {partners?.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Building2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No JV partners yet</h3>
-            <p className="text-muted-foreground">
-              Start by adding your first joint venture partner
-            </p>
-          </CardContent>
-        </Card>
+        <div className="luxury-glass-card luxury-shadow-lg p-12 text-center luxury-animate-fade-in luxury-delay-2">
+          <Building2 className="w-12 h-12 mx-auto text-purple-600 mb-4" />
+          <h3 className="luxury-heading-md mb-2">No JV partners yet</h3>
+          <p className="luxury-text-body">
+            Start by adding your first joint venture partner
+          </p>
+        </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {partners?.map((partner: any) => (
-            <Card key={partner.id} data-testid={`card-partner-${partner.id}`}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-xl" data-testid={`text-partner-name-${partner.id}`}>
+        <div className="luxury-grid-3 luxury-animate-slide-up luxury-delay-2">
+          {partners?.map((partner: any, idx: number) => (
+            <div key={partner.id} className={`luxury-glass-card luxury-hover-glow luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-${idx + 3}`} data-testid={`card-partner-${partner.id}`}>
+              <div className="mb-4">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="luxury-heading-sm" data-testid={`text-partner-name-${partner.id}`}>
                     {partner.partnerName}
-                  </CardTitle>
+                  </h3>
                   {partner.isActive ? (
-                    <Badge variant="default" data-testid={`badge-status-${partner.id}`}>
-                      <CheckCircle className="w-3 h-3 mr-1" />
+                    <span className="luxury-badge-premium px-3 py-1" data-testid={`badge-status-${partner.id}`}>
+                      <CheckCircle className="w-3 h-3 mr-1 inline" />
                       Active
-                    </Badge>
+                    </span>
                   ) : (
-                    <Badge variant="secondary" data-testid={`badge-status-${partner.id}`}>
-                      <XCircle className="w-3 h-3 mr-1" />
+                    <span className="luxury-badge-secondary px-3 py-1" data-testid={`badge-status-${partner.id}`}>
+                      <XCircle className="w-3 h-3 mr-1 inline" />
                       Inactive
-                    </Badge>
+                    </span>
                   )}
                 </div>
-                <CardDescription data-testid={`text-partner-type-${partner.id}`}>
+                <p className="luxury-text-small text-purple-600" data-testid={`text-partner-type-${partner.id}`}>
                   {partner.partnerType}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Country:</span>
-                    <span className="font-medium" data-testid={`text-country-${partner.id}`}>
-                      {partner.country || "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Contact:</span>
-                    <span className="font-medium" data-testid={`text-contact-${partner.id}`}>
-                      {partner.contactName || "N/A"}
-                    </span>
-                  </div>
-                  {partner.contactEmail && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Email:</span>
-                      <span className="font-medium text-xs" data-testid={`text-email-${partner.id}`}>
-                        {partner.contactEmail}
-                      </span>
-                    </div>
-                  )}
+                </p>
+              </div>
+              <div className="space-y-2 text-sm mb-4">
+                <div className="flex justify-between">
+                  <span className="luxury-text-small opacity-70">Country:</span>
+                  <span className="luxury-text-small font-medium" data-testid={`text-country-${partner.id}`}>
+                    {partner.country || "N/A"}
+                  </span>
                 </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-4"
-                  onClick={() => setSelectedPartner(partner)}
-                  data-testid={`button-view-contracts-${partner.id}`}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  View Contracts ({partner.contractCount || 0})
-                </Button>
-              </CardContent>
-            </Card>
+                <div className="flex justify-between">
+                  <span className="luxury-text-small opacity-70">Contact:</span>
+                  <span className="luxury-text-small font-medium" data-testid={`text-contact-${partner.id}`}>
+                    {partner.contactName || "N/A"}
+                  </span>
+                </div>
+                {partner.contactEmail && (
+                  <div className="flex justify-between">
+                    <span className="luxury-text-small opacity-70">Email:</span>
+                    <span className="luxury-text-small font-medium" data-testid={`text-email-${partner.id}`}>
+                      {partner.contactEmail}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <button 
+                className="luxury-btn-secondary w-full py-2"
+                onClick={() => setSelectedPartner(partner)}
+                data-testid={`button-view-contracts-${partner.id}`}
+              >
+                <FileText className="w-4 h-4 mr-2 inline" />
+                View Contracts ({partner.contractCount || 0})
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -196,13 +191,13 @@ export default function JvPartnersDashboard() {
           </DialogHeader>
           <form onSubmit={handleCreatePartner} className="space-y-4">
             <div>
-              <Label htmlFor="partnerName">Partner Name *</Label>
-              <Input id="partnerName" name="partnerName" required data-testid="input-partner-name" />
+              <Label htmlFor="partnerName" className="luxury-text-small font-medium mb-1 block">Partner Name *</Label>
+              <Input id="partnerName" name="partnerName" required className="luxury-glass-minimal" data-testid="input-partner-name" />
             </div>
             <div>
-              <Label htmlFor="partnerType">Partner Type</Label>
+              <Label htmlFor="partnerType" className="luxury-text-small font-medium mb-1 block">Partner Type</Label>
               <Select value={partnerType} onValueChange={setPartnerType}>
-                <SelectTrigger data-testid="select-partner-type">
+                <SelectTrigger className="luxury-glass-minimal" data-testid="select-partner-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -214,24 +209,24 @@ export default function JvPartnersDashboard() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="contactName">Contact Name</Label>
-              <Input id="contactName" name="contactName" data-testid="input-contact-name" />
+              <Label htmlFor="contactName" className="luxury-text-small font-medium mb-1 block">Contact Name</Label>
+              <Input id="contactName" name="contactName" className="luxury-glass-minimal" data-testid="input-contact-name" />
             </div>
             <div>
-              <Label htmlFor="contactEmail">Contact Email</Label>
-              <Input id="contactEmail" name="contactEmail" type="email" data-testid="input-contact-email" />
+              <Label htmlFor="contactEmail" className="luxury-text-small font-medium mb-1 block">Contact Email</Label>
+              <Input id="contactEmail" name="contactEmail" type="email" className="luxury-glass-minimal" data-testid="input-contact-email" />
             </div>
             <div>
-              <Label htmlFor="country">Country</Label>
-              <Input id="country" name="country" data-testid="input-country" />
+              <Label htmlFor="country" className="luxury-text-small font-medium mb-1 block">Country</Label>
+              <Input id="country" name="country" className="luxury-glass-minimal" data-testid="input-country" />
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)} data-testid="button-cancel">
+              <button type="button" className="luxury-btn-secondary px-6 py-2" onClick={() => setShowCreateDialog(false)} data-testid="button-cancel">
                 Cancel
-              </Button>
-              <Button type="submit" disabled={createPartnerMutation.isPending} data-testid="button-submit-partner">
+              </button>
+              <button type="submit" className="luxury-btn-primary luxury-shadow-lg px-6 py-2" disabled={createPartnerMutation.isPending} data-testid="button-submit-partner">
                 {createPartnerMutation.isPending ? "Creating..." : "Create Partner"}
-              </Button>
+              </button>
             </div>
           </form>
         </DialogContent>

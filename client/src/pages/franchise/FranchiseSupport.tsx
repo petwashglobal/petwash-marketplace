@@ -58,46 +58,48 @@ export default function FranchiseSupport() {
   });
 
   return (
-    <div className="min-h-screen bg-white p-4 md:p-6" dir={dir}>
+    <div className="min-h-screen luxury-bg-mesh p-4 md:p-6" dir={dir}>
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 luxury-animate-fade-in">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="luxury-heading-xl mb-3">
               {t('support.title', language)}
             </h1>
-            <p className="text-gray-600">
+            <p className="luxury-text-body">
               {t('support.manageTickets', language)}
             </p>
           </div>
-          <Button
+          <button
             onClick={() => setIsCreating(!isCreating)}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            className="luxury-btn-primary flex items-center gap-2"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4" />
             {t('support.newTicket', language)}
-          </Button>
+          </button>
         </div>
 
         {isCreating && (
-          <Card className="mb-6">
+          <div className="luxury-glass-card shadow-lg mb-6 luxury-animate-scale-in">
             <CardHeader>
-              <CardTitle>{t('support.newTicket', language)}</CardTitle>
+              <CardTitle className="luxury-heading-md">{t('support.newTicket', language)}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <Input
                 placeholder={t('support.subject', language)}
                 value={newTicket.subject}
                 onChange={(e) => setNewTicket({ ...newTicket, subject: e.target.value })}
+                className="luxury-glass-minimal"
               />
               <Textarea
                 placeholder={t('support.description', language)}
                 value={newTicket.description}
                 onChange={(e) => setNewTicket({ ...newTicket, description: e.target.value })}
                 rows={4}
+                className="luxury-glass-minimal"
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select value={newTicket.category} onValueChange={(v) => setNewTicket({ ...newTicket, category: v })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="luxury-glass-minimal">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -108,7 +110,7 @@ export default function FranchiseSupport() {
                   </SelectContent>
                 </Select>
                 <Select value={newTicket.priority} onValueChange={(v) => setNewTicket({ ...newTicket, priority: v })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="luxury-glass-minimal">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -119,30 +121,30 @@ export default function FranchiseSupport() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button
+              <button
                 onClick={() => createTicketMutation.mutate(newTicket)}
                 disabled={!newTicket.subject || createTicketMutation.isPending}
-                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                className="w-full luxury-btn-primary"
               >
                 {t('support.submitTicket', language)}
-              </Button>
+              </button>
             </CardContent>
-          </Card>
+          </div>
         )}
 
         <div className="grid grid-cols-1 gap-4">
-          {tickets.map((ticket) => (
-            <Card key={ticket.id}>
+          {tickets.map((ticket, index) => (
+            <div key={ticket.id} className={`luxury-glass-card shadow-lg transition-all duration-300 hover:scale-102 hover:shadow-xl luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}>
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{ticket.subject}</CardTitle>
-                    <p className="text-sm text-gray-500 mt-1">{ticket.description}</p>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <CardTitle className="luxury-heading-md mb-2">{ticket.subject}</CardTitle>
+                    <p className="luxury-text-body">{ticket.description}</p>
                   </div>
-                  <Badge>{ticket.status}</Badge>
+                  <Badge className="luxury-badge">{ticket.status}</Badge>
                 </div>
               </CardHeader>
-            </Card>
+            </div>
           ))}
         </div>
       </div>

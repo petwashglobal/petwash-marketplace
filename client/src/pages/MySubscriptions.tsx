@@ -117,13 +117,13 @@ export default function MySubscriptions() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      active: { color: "bg-green-500", text: "Active" },
-      paused: { color: "bg-yellow-500", text: "Paused" },
-      cancelled: { color: "bg-red-500", text: "Cancelled" },
-      expired: { color: "bg-gray-500", text: "Expired" },
+      active: { className: "luxury-badge-gold", text: "Active" },
+      paused: { className: "bg-yellow-500 text-white", text: "Paused" },
+      cancelled: { className: "bg-red-500 text-white", text: "Cancelled" },
+      expired: { className: "bg-gray-500 text-white", text: "Expired" },
     };
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
-    return <Badge className={`${config.color} text-white`}>{config.text}</Badge>;
+    return <Badge className={config.className}>{config.text}</Badge>;
   };
 
   const getFrequencyText = (frequency: string) => {
@@ -137,10 +137,10 @@ export default function MySubscriptions() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="text-center luxury-animate-fade-in">
           <Package className="w-16 h-16 text-purple-500 animate-pulse mx-auto mb-4" />
-          <p className="text-lg text-gray-600 dark:text-gray-300">Loading your subscriptions...</p>
+          <p className="luxury-text-body">Loading your subscriptions...</p>
         </div>
       </div>
     );
@@ -150,17 +150,17 @@ export default function MySubscriptions() {
 
   if (subscriptions.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4">
-        <div className="max-w-4xl mx-auto text-center">
+      <div className="min-h-screen luxury-bg-mesh py-12 px-4">
+        <div className="max-w-4xl mx-auto text-center luxury-animate-fade-in">
           <Package className="w-24 h-24 text-gray-400 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold mb-4">No Subscriptions Yet</h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+          <h1 className="luxury-heading-lg mb-4">No Subscriptions Yet</h1>
+          <p className="luxury-text-body mb-8">
             Start receiving curated monthly boxes for your furry friend!
           </p>
           <Button
             size="lg"
             onClick={() => navigate("/subscriptions")}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            className="luxury-btn-primary luxury-shadow-xl"
             data-testid="button-browse-subscriptions"
           >
             <Gift className="w-5 h-5 mr-2" />
@@ -172,15 +172,16 @@ export default function MySubscriptions() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4">
+    <div className="min-h-screen luxury-bg-mesh py-12 px-4">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <div className="flex justify-between items-center mb-8 luxury-animate-fade-in">
+          <h1 className="luxury-heading-xl">
             My Subscriptions
           </h1>
           <Button
             onClick={() => navigate("/subscriptions")}
             variant="outline"
+            className="luxury-btn-secondary"
             data-testid="button-add-subscription"
           >
             <Package className="w-4 h-4 mr-2" />
@@ -189,27 +190,27 @@ export default function MySubscriptions() {
         </div>
 
         <div className="space-y-6">
-          {subscriptions.map(({ subscription, boxType }) => (
-            <Card key={subscription.id} className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 shadow-xl" data-testid={`card-subscription-${subscription.id}`}>
+          {subscriptions.map(({ subscription, boxType }, index) => (
+            <Card key={subscription.id} className={`luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-${index + 1}`} data-testid={`card-subscription-${subscription.id}`}>
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-2xl flex items-center gap-3">
+                    <CardTitle className="luxury-heading-md flex items-center gap-3">
                       {boxType.name} Box
                       {getStatusBadge(subscription.status)}
                     </CardTitle>
-                    <CardDescription className="text-lg mt-2">{boxType.description}</CardDescription>
+                    <CardDescription className="luxury-text-body mt-2">{boxType.description}</CardDescription>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">₪{boxType.monthlyPrice}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{getFrequencyText(subscription.frequency)}</p>
+                    <p className="luxury-heading-lg luxury-text-gradient">₪{boxType.monthlyPrice}</p>
+                    <p className="luxury-text-small">{getFrequencyText(subscription.frequency)}</p>
                   </div>
                 </div>
               </CardHeader>
 
               <CardContent className="space-y-6">
                 {/* Pet Profile */}
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-4 rounded-lg">
+                <div className="luxury-glass-panel p-4">
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
                     <Sparkles className="w-4 h-4" />
                     Pet Profile
@@ -365,7 +366,7 @@ export default function MySubscriptions() {
                   <Button
                     onClick={() => handleResume(subscription.id)}
                     disabled={updateSubscriptionMutation.isPending}
-                    className="bg-gradient-to-r from-green-600 to-green-700"
+                    className="luxury-btn-primary luxury-shadow-md"
                     data-testid={`button-resume-${subscription.id}`}
                   >
                     <Play className="w-4 h-4 mr-2" />
@@ -376,7 +377,7 @@ export default function MySubscriptions() {
                 <Button
                   variant="outline"
                   onClick={() => navigate(`/subscriptions/${subscription.id}/ai-recommendations`)}
-                  className="border-purple-500 text-purple-700 hover:bg-purple-50"
+                  className="luxury-btn-secondary luxury-shadow-md"
                   data-testid={`button-ai-recommendations-${subscription.id}`}
                 >
                   <Sparkles className="w-4 h-4 mr-2" />

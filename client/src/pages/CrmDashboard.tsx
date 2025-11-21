@@ -231,7 +231,7 @@ export default function CrmDashboard() {
       <div className="p-6 space-y-6">
       <div className="flex justify-end items-center">
         <div className="flex gap-2">
-          <Button onClick={() => setShowCommunicationDialog(true)} data-testid="button-create-communication">
+          <Button className="luxury-btn-primary" onClick={() => setShowCommunicationDialog(true)} data-testid="button-create-communication">
             <MessageSquare className="w-4 h-4 mr-2" />
             Log Communication
           </Button>
@@ -243,43 +243,43 @@ export default function CrmDashboard() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+      <div className="luxury-grid-4">
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Communications</CardTitle>
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="metric-total-communications">{communications?.length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-total-communications">{communications?.length || 0}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
             <CheckSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="metric-active-tasks">
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-active-tasks">
               {tasks?.filter((t: any) => t.status !== "completed" && t.status !== "cancelled").length || 0}
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
             <AlertCircle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600" data-testid="metric-overdue-tasks">{overdueTasks?.length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-overdue-tasks">{overdueTasks?.length || 0}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Recent Activities</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="metric-recent-activities">{activities?.slice(0, 10).length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-recent-activities">{activities?.slice(0, 10).length || 0}</div>
           </CardContent>
         </Card>
       </div>
@@ -327,8 +327,8 @@ export default function CrmDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {communications?.map((comm: any) => (
-                <Card key={comm.id} data-testid={`communication-card-${comm.id}`}>
+              {communications?.map((comm: any, idx: number) => (
+                <Card key={comm.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`communication-card-${comm.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex items-start gap-4">
                       <div className="mt-1">{getCommunicationTypeIcon(comm.communicationType)}</div>
@@ -378,8 +378,8 @@ export default function CrmDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {tasks?.map((task: any) => (
-                <Card key={task.id} data-testid={`task-card-${task.id}`}>
+              {tasks?.map((task: any, idx: number) => (
+                <Card key={task.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`task-card-${task.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -500,9 +500,9 @@ export default function CrmDashboard() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-3">
-              {dealStages?.map((stage: any) => (
-                <Card key={stage.id} data-testid={`deal-stage-card-${stage.id}`}>
+            <div className="luxury-grid-3">
+              {dealStages?.map((stage: any, idx: number) => (
+                <Card key={stage.id} className={`luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`deal-stage-card-${stage.id}`}>
                   <CardHeader>
                     <CardTitle className="text-lg">{stage.name}</CardTitle>
                   </CardHeader>

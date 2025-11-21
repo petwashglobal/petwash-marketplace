@@ -128,67 +128,76 @@ export default function StaffOnboarding() {
   };
 
   return (
-    <div className="container mx-auto py-8" data-testid="staff-onboarding-admin">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold" data-testid="page-title">Staff Onboarding Management</h1>
-        <p className="text-muted-foreground mt-2" data-testid="page-description">
-          Review applications, monitor expenses, prevent fraud
-        </p>
-      </div>
+    <div className="min-h-screen luxury-bg-mesh">
+      <div className="container mx-auto py-8" data-testid="staff-onboarding-admin">
+        <div className="mb-8">
+          <h1 className="luxury-heading-xl luxury-text-gradient" data-testid="page-title">Staff Onboarding Management</h1>
+          <p className="text-gray-600 mt-2" data-testid="page-description">
+            Review applications, monitor expenses, prevent fraud
+          </p>
+        </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Applications</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-pending-applications">
-              {applications?.applications?.filter((a: any) => a.status === 'pending').length || 0}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Statistics Cards */}
+        <div className="luxury-grid-4 gap-6 mb-8">
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Pending Applications</CardTitle>
+              <div className="p-2 luxury-glass-minimal rounded-xl bg-blue-50">
+                <Users className="h-4 w-4 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="luxury-heading-lg luxury-text-gradient" data-testid="stat-pending-applications">
+                {applications?.applications?.filter((a: any) => a.status === 'pending').length || 0}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Suspicious Expenses</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive" data-testid="stat-suspicious-expenses">
-              {suspiciousExpenses?.expenses?.length || 0}
-            </div>
-          </CardContent>
-        </Card>
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Suspicious Expenses</CardTitle>
+              <div className="p-2 luxury-glass-minimal rounded-xl bg-red-50">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600" data-testid="stat-suspicious-expenses">
+                {suspiciousExpenses?.expenses?.length || 0}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Expenses</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-pending-expenses">
-              {pendingExpenses?.expenses?.length || 0}
-            </div>
-          </CardContent>
-        </Card>
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Pending Expenses</CardTitle>
+              <div className="p-2 luxury-glass-minimal rounded-xl bg-amber-50">
+                <DollarSign className="h-4 w-4 text-amber-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="luxury-heading-lg luxury-text-gradient" data-testid="stat-pending-expenses">
+                {pendingExpenses?.expenses?.length || 0}
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unpaid Orders</CardTitle>
-            <Clock className="h-4 w-4 text-warning" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-unpaid-orders">
-              {unpaidOrders?.orders?.length || 0}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Unpaid Orders</CardTitle>
+              <div className="p-2 luxury-glass-minimal rounded-xl bg-yellow-50">
+                <Clock className="h-4 w-4 text-yellow-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="luxury-heading-lg luxury-text-gradient" data-testid="stat-unpaid-orders">
+                {unpaidOrders?.orders?.length || 0}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Main Tabs */}
-      <Tabs defaultValue="applications" className="space-y-4">
+        {/* Main Tabs */}
+        <Tabs defaultValue="applications" className="space-y-6">
         <TabsList data-testid="main-tabs">
           <TabsTrigger value="applications" data-testid="tab-applications">
             Applications ({applications?.applications?.filter((a: any) => a.status === 'pending').length || 0})
@@ -206,7 +215,7 @@ export default function StaffOnboarding() {
 
         {/* Applications Tab */}
         <TabsContent value="applications" data-testid="applications-tab">
-          <Card>
+          <Card className="luxury-glass-card luxury-shadow-xl">
             <CardHeader>
               <CardTitle>Pending Staff Applications</CardTitle>
               <CardDescription>Review and approve new contractor applications</CardDescription>
@@ -223,7 +232,7 @@ export default function StaffOnboarding() {
                   {applications.applications
                     .filter((app: any) => ['pending', 'under_review', 'documents_required'].includes(app.status))
                     .map((app: any) => (
-                    <Card key={app.id} data-testid={`application-${app.id}`}>
+                    <Card key={app.id} className="luxury-glass-minimal luxury-hover-lift" data-testid={`application-${app.id}`}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <div>
@@ -263,7 +272,7 @@ export default function StaffOnboarding() {
                           <Button
                             onClick={() => approveApplication.mutate(app.id)}
                             disabled={approveApplication.isPending}
-                            className="flex-1"
+                            className="luxury-btn-primary flex-1"
                             data-testid={`approve-button-${app.id}`}
                           >
                             <CheckCircle className="mr-2 h-4 w-4" />
@@ -334,7 +343,7 @@ export default function StaffOnboarding() {
 
         {/* Fraud Alerts Tab */}
         <TabsContent value="fraud-alerts" data-testid="fraud-alerts-tab">
-          <Card>
+          <Card className="luxury-glass-card luxury-shadow-xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -427,7 +436,7 @@ export default function StaffOnboarding() {
 
         {/* Expenses Tab */}
         <TabsContent value="expenses" data-testid="expenses-tab">
-          <Card>
+          <Card className="luxury-glass-card luxury-shadow-xl">
             <CardHeader>
               <CardTitle>Pending Expense Approvals</CardTitle>
               <CardDescription>Review and approve staff expense claims</CardDescription>
@@ -487,7 +496,7 @@ export default function StaffOnboarding() {
 
         {/* Franchise Orders Tab */}
         <TabsContent value="orders" data-testid="orders-tab">
-          <Card>
+          <Card className="luxury-glass-card luxury-shadow-xl">
             <CardHeader>
               <CardTitle>Franchise Prepayment Required</CardTitle>
               <CardDescription>Orders pending payment confirmation</CardDescription>
@@ -525,7 +534,8 @@ export default function StaffOnboarding() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      </div>
     </div>
   );
 }

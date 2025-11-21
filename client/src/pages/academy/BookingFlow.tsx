@@ -158,34 +158,50 @@ export default function AcademyBookingFlow() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen luxury-bg-mesh">
       {/* Header */}
-      <div className="bg-white border-b border-slate-100">
+      <div className="luxury-glass-panel border-b border-white/10">
         <div className="max-w-3xl mx-auto px-4 py-6">
-          <Button
-            variant="ghost"
-            className="mb-4 text-slate-600 font-light"
+          <button
+            className="luxury-btn-ghost mb-4"
             onClick={() => setLocation("/academy")}
             data-testid="button-back"
           >
             <ChevronLeft className="h-4 w-4 mr-2" />
             חזרה למאמנים
-          </Button>
+          </button>
 
-          <h1 className="text-2xl font-light text-slate-900" data-testid="page-title">
+          <h1 className="luxury-heading-md luxury-text-gradient" data-testid="page-title">
             הזמנת {trainer.fullName}
           </h1>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Progress Stepper */}
       <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-center gap-2 mb-8 luxury-fade-in">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'details' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : step === 'summary' || step === 'confirmation' ? 'luxury-gradient-border bg-white text-purple-600' : 'bg-slate-200 text-slate-500'}`}>
+            1
+          </div>
+          <div className={`h-1 w-16 rounded-full ${step === 'summary' || step === 'confirmation' ? 'luxury-bg-primary' : 'bg-slate-200'}`}></div>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'summary' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : step === 'confirmation' ? 'luxury-gradient-border bg-white text-purple-600' : 'bg-slate-200 text-slate-500'}`}>
+            2
+          </div>
+          <div className={`h-1 w-16 rounded-full ${step === 'confirmation' ? 'luxury-bg-primary' : 'bg-slate-200'}`}></div>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'confirmation' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-slate-200 text-slate-500'}`}>
+            3
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-3xl mx-auto px-4 pb-12">
         
         {/* Step 1: Details */}
         {step === "details" && (
           <>
             {/* Trainer Info Card */}
-            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
               <div className="flex items-center gap-3">
                 {trainer.profilePhotoUrl ? (
                   <img
@@ -199,7 +215,7 @@ export default function AcademyBookingFlow() {
                   </div>
                 )}
                 <div className="flex-1">
-                  <div className="font-semibold text-slate-900">{trainer.fullName}</div>
+                  <div className="luxury-heading-sm">{trainer.fullName}</div>
                   <div className="text-sm text-slate-600">
                     {trainer.city} · ⭐ {parseFloat(trainer.averageRating).toFixed(1)} ({trainer.totalSessions} שיעורים)
                   </div>
@@ -211,8 +227,8 @@ export default function AcademyBookingFlow() {
             </section>
 
             {/* Session Type */}
-            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
-              <div className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
+              <div className="mb-4 luxury-heading-sm flex items-center gap-2">
                 <GraduationCap className="h-4 w-4 text-purple-500" />
                 סוג שיעור
               </div>
@@ -240,8 +256,8 @@ export default function AcademyBookingFlow() {
             </section>
 
             {/* Date & Time */}
-            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
-              <div className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
+              <div className="mb-4 luxury-heading-sm flex items-center gap-2">
                 <Clock className="h-4 w-4 text-purple-500" />
                 תאריך ושעה
               </div>
@@ -268,7 +284,7 @@ export default function AcademyBookingFlow() {
             </section>
 
             {/* Notes */}
-            <section className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
               <div className="mb-2 text-sm font-semibold text-slate-700">
                 הערות (אופציונלי)
               </div>
@@ -276,33 +292,33 @@ export default function AcademyBookingFlow() {
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
-                className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                className="luxury-glass-minimal w-full resize-none px-4 py-3 text-sm"
                 placeholder="בעיות התנהגות, מטרות אימון, רגישויות, וכו׳"
                 data-testid="textarea-notes"
               />
             </section>
 
             {/* Pricing Summary */}
-            <div className="mb-6 rounded-2xl border border-purple-100 bg-purple-50/30 p-4">
-              <div className="mb-2 flex items-center justify-between text-sm text-slate-700">
+            <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-stagger-item p-6">
+              <div className="mb-3 flex items-center justify-between luxury-text-body">
                 <span>סכום בסיס</span>
                 <span>₪{pricing.baseAmount.toFixed(2)}</span>
               </div>
-              <div className="mb-2 flex items-center justify-between text-sm text-slate-700">
+              <div className="mb-3 flex items-center justify-between luxury-text-body">
                 <span>עמלת פלטפורמה (15%)</span>
                 <span>₪{pricing.commission.toFixed(2)}</span>
               </div>
-              <div className="mb-3 flex items-center justify-between text-sm text-slate-700">
+              <div className="mb-4 flex items-center justify-between luxury-text-body">
                 <span>מע״מ על עמלה (18%)</span>
                 <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
               </div>
-              <div className="pt-3 border-t border-purple-200 flex items-center justify-between">
-                <span className="font-semibold text-slate-900">סה״כ לחיוב</span>
-                <span className="text-2xl font-bold text-purple-600">
+              <div className="pt-4 border-t border-purple-100 flex items-center justify-between">
+                <span className="luxury-heading-sm">סה״כ לחיוב</span>
+                <span className="luxury-heading-lg luxury-text-gradient">
                   ₪{pricing.totalCharged.toFixed(2)}
                 </span>
               </div>
-              <div className="mt-3 text-[11px] text-slate-600 leading-relaxed">
+              <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
                 <Shield className="h-3 w-3 inline mr-1 text-purple-500" />
                 החיוב מתבצע אך ורק דרך Nayax Israel. הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר למאמן/ת לאחר סיום השיעור.
               </div>
@@ -310,7 +326,7 @@ export default function AcademyBookingFlow() {
 
             {/* Continue Button */}
             <Button
-              className="w-full h-12 rounded-2xl bg-purple-500 text-white text-base font-semibold shadow-lg hover:bg-purple-600"
+              className="luxury-btn-primary luxury-shadow-xl w-full h-14 luxury-stagger-item"
               disabled={!canContinueDetails}
               onClick={handleNextFromDetails}
               data-testid="button-continue"
@@ -323,51 +339,51 @@ export default function AcademyBookingFlow() {
         {/* Step 2: Summary */}
         {step === "summary" && (
           <>
-            <h2 className="text-xl font-semibold mb-6 text-slate-900">סיכום הזמנה</h2>
+            <h2 className="luxury-heading-md mb-8 luxury-fade-in">סיכום הזמנה</h2>
             
-            <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 text-sm space-y-2">
-              <div className="font-semibold text-slate-900">{trainer.fullName}</div>
-              <div className="text-slate-600">
+            <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6 space-y-3">
+              <div className="luxury-heading-sm">{trainer.fullName}</div>
+              <div className="luxury-text-body">
                 תאריך: {selectedDate ? selectedDate.toLocaleString("he-IL") : "-"}
               </div>
-              <div className="text-slate-600">
+              <div className="luxury-text-body">
                 סוג: {sessionTypes.find(t => t.id === sessionType)?.name}
               </div>
-              <div className="text-slate-600">
+              <div className="luxury-text-body">
                 משך: {sessionDuration} דקות
               </div>
             </div>
 
-            <div className="mb-6 rounded-2xl border border-purple-100 bg-purple-50/30 p-4">
-              <div className="mb-1 text-xs font-semibold text-slate-700">פירוט מחיר</div>
-              <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
+            <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-stagger-item p-6">
+              <div className="mb-4 luxury-heading-sm">פירוט מחיר</div>
+              <div className="mb-2 flex items-center justify-between luxury-text-small">
                 <span>סכום בסיס</span>
                 <span>₪{pricing.baseAmount.toFixed(2)}</span>
               </div>
-              <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
+              <div className="mb-2 flex items-center justify-between luxury-text-small">
                 <span>עמלה + מע״מ</span>
                 <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
               </div>
-              <div className="mt-2 pt-2 border-t border-purple-200 flex items-center justify-between">
-                <span className="font-semibold text-slate-900">סה״כ</span>
-                <span className="text-xl font-bold text-purple-600">₪{pricing.totalCharged.toFixed(2)}</span>
+              <div className="pt-4 border-t border-purple-100 flex items-center justify-between">
+                <span className="luxury-heading-sm">סה״כ</span>
+                <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.totalCharged.toFixed(2)}</span>
               </div>
-              <div className="mt-3 text-[10px] text-slate-600">
+              <div className="mt-4 luxury-text-small opacity-80">
                 החיוב רק דרך Nayax Israel. אין גובים באמצעים אחרים.
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-4 luxury-stagger-item">
               <Button
                 variant="outline"
-                className="flex-1 h-12 rounded-2xl text-sm"
+                className="luxury-btn-secondary flex-1 h-14"
                 onClick={() => setStep("details")}
                 data-testid="button-back-summary"
               >
                 חזרה
               </Button>
               <Button
-                className="flex-1 h-12 rounded-2xl bg-purple-500 text-white text-sm font-semibold shadow-lg hover:bg-purple-600"
+                className="luxury-btn-primary luxury-shadow-xl flex-1 h-14"
                 onClick={handleConfirmBooking}
                 disabled={isSubmitting}
                 data-testid="button-confirm"
@@ -380,19 +396,19 @@ export default function AcademyBookingFlow() {
 
         {/* Step 3: Confirmation */}
         {step === "confirmation" && (
-          <div className="text-center py-12">
-            <div className="w-20 h-20 rounded-full bg-purple-100 mx-auto flex items-center justify-center mb-4">
-              <Check className="h-10 w-10 text-purple-600" />
+          <div className="text-center py-12 luxury-fade-in">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
+              <Check className="h-12 w-12 text-white" />
             </div>
-            <h2 className="text-2xl font-semibold mb-3 text-slate-900">ההזמנה נקלטה בהצלחה!</h2>
-            <p className="text-slate-600 max-w-sm mx-auto mb-2">
+            <h2 className="luxury-heading-lg mb-4">ההזמנה נקלטה בהצלחה!</h2>
+            <p className="luxury-text-body max-w-md mx-auto mb-3">
               המאמן/ת יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
             </p>
-            <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
+            <p className="luxury-text-small max-w-md mx-auto mb-8">
               פרטי חיוב Nayax ישלחו בהודעה נפרדת.
             </p>
             <Button
-              className="rounded-2xl px-8 bg-purple-500 text-white shadow-lg hover:bg-purple-600"
+              className="luxury-btn-primary luxury-shadow-xl px-12"
               onClick={() => setLocation("/dashboard")}
               data-testid="button-dashboard"
             >

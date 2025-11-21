@@ -602,11 +602,11 @@ export default function LeadManagement() {
 
   if (isAdminLoading || leadsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('leads.title')}</h2>
-          <p className="text-gray-600 dark:text-gray-300">{t('common.loading')}</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600 mx-auto"></div>
+          <h2 className="luxury-heading-lg">{t('leads.title')}</h2>
+          <p className="luxury-text-body">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -616,15 +616,15 @@ export default function LeadManagement() {
   const analytics: LeadAnalytics = analyticsData || {};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800" data-testid="lead-management-page">
+    <div className="min-h-screen luxury-bg-mesh" data-testid="lead-management-page">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2" data-testid="page-title">
+            <h1 className="luxury-heading-xl mb-2" data-testid="page-title">
               {t('leads.title')}
             </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
+            <p className="luxury-text-body">
               {t('leads.subtitle')}
             </p>
           </div>
@@ -635,14 +635,14 @@ export default function LeadManagement() {
                 setEditMode(false);
                 setLeadFormOpen(true);
               }}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="luxury-btn-primary"
               data-testid="add-lead-button"
             >
               <Plus className="w-4 h-4 mr-2" />
               {t('actions.addLead')}
             </Button>
             <Button 
-              variant="outline" 
+              className="luxury-btn-secondary" 
               onClick={() => refetchLeads()}
               data-testid="refresh-button"
             >
@@ -677,10 +677,10 @@ export default function LeadManagement() {
           <TabsContent value="dashboard" className="space-y-6">
             {/* Overview Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{t('metrics.totalLeads')}</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="luxury-heading-sm">{t('metrics.totalLeads')}</CardTitle>
+                  <Users className="h-4 w-4 luxury-text-gradient" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold" data-testid="total-leads-metric">
@@ -692,10 +692,10 @@ export default function LeadManagement() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{t('metrics.conversionRate')}</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="luxury-heading-sm">{t('metrics.conversionRate')}</CardTitle>
+                  <TrendingUp className="h-4 w-4 luxury-text-gradient" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600" data-testid="conversion-rate-metric">
@@ -707,10 +707,10 @@ export default function LeadManagement() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{t('metrics.averageDealSize')}</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="luxury-heading-sm">{t('metrics.averageDealSize')}</CardTitle>
+                  <DollarSign className="h-4 w-4 luxury-text-gradient" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold" data-testid="avg-deal-size-metric">
@@ -722,10 +722,10 @@ export default function LeadManagement() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{t('metrics.pipelineValue')}</CardTitle>
-                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="luxury-heading-sm">{t('metrics.pipelineValue')}</CardTitle>
+                  <Target className="h-4 w-4 luxury-text-gradient" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold" data-testid="pipeline-value-metric">
@@ -741,10 +741,10 @@ export default function LeadManagement() {
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Lead Source Distribution */}
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg">
                 <CardHeader>
-                  <CardTitle>{t('analytics.sourcePerformance')}</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="luxury-heading-md">{t('analytics.sourcePerformance')}</CardTitle>
+                  <CardDescription className="luxury-text-body">
                     {t('leads.list.allSources')}
                   </CardDescription>
                 </CardHeader>
@@ -777,10 +777,10 @@ export default function LeadManagement() {
               </Card>
 
               {/* Lead Status Distribution */}
-              <Card>
+              <Card className="luxury-glass-card luxury-shadow-lg">
                 <CardHeader>
-                  <CardTitle>{t('analytics.conversionFunnel')}</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="luxury-heading-md">{t('analytics.conversionFunnel')}</CardTitle>
+                  <CardDescription className="luxury-text-body">
                     {t('leads.list.allStatuses')}
                   </CardDescription>
                 </CardHeader>
@@ -808,17 +808,17 @@ export default function LeadManagement() {
             </div>
 
             {/* Recent Activity */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle>{t('leads.details.activities')}</CardTitle>
-                <CardDescription>
+                <CardTitle className="luxury-heading-md">{t('leads.details.activities')}</CardTitle>
+                <CardDescription className="luxury-text-body">
                   Recent lead activities and updates
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {leads.slice(0, 5).map((lead) => (
-                    <div key={lead.id} className="flex items-center space-x-4 p-4 rounded-lg border">
+                    <div key={lead.id} className="luxury-glass-minimal luxury-hover-lift flex items-center space-x-4 p-4 rounded-lg">
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">
@@ -841,9 +841,9 @@ export default function LeadManagement() {
           {/* Leads List Tab */}
           <TabsContent value="leads" className="space-y-6">
             {/* Filters and Search */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle>{t('leads.list.filterBy')}</CardTitle>
+                <CardTitle className="luxury-heading-md">{t('leads.list.filterBy')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -935,10 +935,10 @@ export default function LeadManagement() {
             </Card>
 
             {/* Leads Table */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle>{t('leads.list.title')}</CardTitle>
-                <CardDescription>
+                <CardTitle className="luxury-heading-md">{t('leads.list.title')}</CardTitle>
+                <CardDescription className="luxury-text-body">
                   {t('leads.management')}
                 </CardDescription>
               </CardHeader>

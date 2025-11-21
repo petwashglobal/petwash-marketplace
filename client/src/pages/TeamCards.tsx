@@ -123,17 +123,17 @@ export default function TeamCards() {
   const isAndroid = /Android/.test(navigator.userAgent);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900 p-6">
+    <div className="min-h-screen luxury-bg-mesh p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-12 luxury-animate-fade-in">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Users className="w-12 h-12 text-indigo-600" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="luxury-heading-xl mb-4">
             {isHebrew ? 'כרטיסי הביקור הדיגיטליים שלנו' : 'Our Digital Business Cards'}
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          <p className="luxury-text-body max-w-2xl mx-auto">
             {isHebrew 
               ? 'הוסף את כרטיסי הביקור שלנו ל-Apple Wallet או Google Wallet. שתף בקלות דרך QR, AirDrop, NFC או NameDrop!'
               : 'Add our business cards to Apple Wallet or Google Wallet. Share easily via QR, AirDrop, NFC, or NameDrop!'}
@@ -141,20 +141,20 @@ export default function TeamCards() {
           
           {/* Features */}
           <div className="flex flex-wrap justify-center gap-4 mt-6">
-            <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-full shadow-sm">
-              <Smartphone className="w-5 h-5 text-green-600" />
+            <div className="luxury-badge luxury-badge-success luxury-animate-scale-in luxury-delay-1">
+              <Smartphone className="w-5 h-5" />
               <span className="text-sm font-medium">
                 {isHebrew ? 'שיתוף מהיר' : 'Quick Share'}
               </span>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-full shadow-sm">
-              <Share2 className="w-5 h-5 text-blue-600" />
+            <div className="luxury-badge luxury-animate-scale-in luxury-delay-2">
+              <Share2 className="w-5 h-5" />
               <span className="text-sm font-medium">
                 {isHebrew ? 'AirDrop & NFC' : 'AirDrop & NFC'}
               </span>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-full shadow-sm">
-              <Download className="w-5 h-5 text-purple-600" />
+            <div className="luxury-badge luxury-badge-gold luxury-animate-scale-in luxury-delay-3">
+              <Download className="w-5 h-5" />
               <span className="text-sm font-medium">
                 {isHebrew ? 'תמיד זמין' : 'Always Available'}
               </span>
@@ -163,12 +163,15 @@ export default function TeamCards() {
         </div>
 
         {/* Team Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="luxury-grid-3 luxury-gap-lg">
           {teamMembers.map((member, index) => (
-            <Card key={index} className="hover:shadow-xl transition-shadow">
-              <CardHeader className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white">
-                <CardTitle className="text-2xl">{member.name}</CardTitle>
-                <CardDescription className="text-indigo-100">
+            <Card key={index} className={`luxury-glass-card luxury-hover-lift luxury-animate-slide-up luxury-delay-${index + 1}`}>
+              <CardHeader className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-t-3xl">
+                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-white/10 backdrop-blur-sm border-4 border-white/20 flex items-center justify-center">
+                  <span className="text-4xl font-bold text-white">{member.name.charAt(0)}</span>
+                </div>
+                <CardTitle className="text-2xl text-center">{member.name}</CardTitle>
+                <CardDescription className="text-indigo-100 text-center">
                   {member.title}
                 </CardDescription>
               </CardHeader>
@@ -205,7 +208,7 @@ export default function TeamCards() {
                   {isIOS && (
                     <Button 
                       onClick={() => handleAppleWallet(member)}
-                      className="w-full bg-black hover:bg-gray-800 text-white"
+                      className="w-full luxury-btn-primary"
                       data-testid={`button-apple-wallet-${member.name.replace(/\s+/g, '-').toLowerCase()}`}
                     >
                       <Download className="w-4 h-4 mr-2" />
@@ -216,7 +219,7 @@ export default function TeamCards() {
                   {isAndroid && (
                     <Button 
                       onClick={() => handleGoogleWallet(member)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      className="w-full luxury-btn-primary"
                       data-testid={`button-google-wallet-${member.name.replace(/\s+/g, '-').toLowerCase()}`}
                     >
                       <Download className="w-4 h-4 mr-2" />
@@ -228,14 +231,14 @@ export default function TeamCards() {
                     <>
                       <Button 
                         onClick={() => handleAppleWallet(member)}
-                        className="w-full bg-black hover:bg-gray-800 text-white"
+                        className="w-full luxury-btn-primary"
                       >
                         <Download className="w-4 h-4 mr-2" />
                         {isHebrew ? 'Apple Wallet' : 'Apple Wallet'}
                       </Button>
                       <Button 
                         onClick={() => handleGoogleWallet(member)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full luxury-btn-secondary"
                       >
                         <Download className="w-4 h-4 mr-2" />
                         {isHebrew ? 'Google Wallet' : 'Google Wallet'}
@@ -256,13 +259,13 @@ export default function TeamCards() {
         </div>
 
         {/* Info Section */}
-        <div className="mt-12 bg-white dark:bg-gray-800 rounded-xl p-8 shadow-lg">
-          <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+        <div className="mt-12 luxury-glass-card luxury-shadow-lg p-8 luxury-animate-fade-in luxury-delay-5">
+          <h2 className="luxury-heading-lg mb-4">
             {isHebrew ? 'איך להשתמש בכרטיסי ביקור דיגיטליים' : 'How to Use Digital Business Cards'}
           </h2>
-          <div className="grid md:grid-cols-2 gap-6 text-gray-700 dark:text-gray-300">
+          <div className="luxury-grid-2 luxury-gap-lg luxury-text-body">
             <div>
-              <h3 className="font-semibold mb-2 text-indigo-600">
+              <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">
                 {isHebrew ? '📱 Apple Wallet (iPhone/iPad)' : '📱 Apple Wallet (iPhone/iPad)'}
               </h3>
               <ul className="space-y-1 text-sm">
@@ -273,7 +276,7 @@ export default function TeamCards() {
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-2 text-blue-600">
+              <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">
                 {isHebrew ? '🤖 Google Wallet (Android)' : '🤖 Google Wallet (Android)'}
               </h3>
               <ul className="space-y-1 text-sm">

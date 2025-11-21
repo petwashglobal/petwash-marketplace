@@ -94,22 +94,22 @@ export default function AdminHelpGuide({ language, onLanguageChange }: AdminHelp
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:bg-gray-900 flex flex-col">
+      <div className="min-h-screen luxury-bg-mesh flex flex-col">
         <main className="flex-1 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           {/* Header Card */}
-          <Card className="mb-6 border-2 border-emerald-500 shadow-lg bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900 dark:to-green-900">
+          <Card className="mb-6 luxury-glass-card luxury-shadow-xl border-none">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-emerald-600 rounded-lg">
+                  <div className="p-3 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg shadow-lg">
                     <Shield className="w-8 h-8 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-3xl font-bold text-gray-900 dark:text-white">
+                    <CardTitle className="text-3xl font-bold luxury-text-gradient">
                       {t('admin.help.maintenanceTitle', language)}
                     </CardTitle>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    <p className="text-sm text-gray-600 mt-1">
                       {language === 'he' 
                         ? 'Firebase, Authentication, CAPTCHA, WebAuthn ותצורות מתקדמות'
                         : 'Firebase, Authentication, CAPTCHA, WebAuthn & Advanced Configuration'

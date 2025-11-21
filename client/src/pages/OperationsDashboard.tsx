@@ -161,7 +161,7 @@ export default function OperationsDashboard() {
       <div className="p-6 space-y-6">
       <div className="flex justify-end items-center">
         <div className="flex gap-2">
-          <Button onClick={() => setShowTaskDialog(true)} data-testid="button-create-task">
+          <Button className="luxury-btn-primary" onClick={() => setShowTaskDialog(true)} data-testid="button-create-task">
             <Plus className="w-4 h-4 mr-2" />
             New Task
           </Button>
@@ -173,45 +173,45 @@ export default function OperationsDashboard() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+      <div className="luxury-grid-4">
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="metric-active-tasks">
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-active-tasks">
               {tasks?.filter((t: any) => t.status !== "completed" && t.status !== "cancelled").length || 0}
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
             <Clock className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600" data-testid="metric-overdue-tasks">{overdueTasks?.length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-overdue-tasks">{overdueTasks?.length || 0}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Open Incidents</CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="metric-open-incidents">
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-open-incidents">
               {incidents?.filter((i: any) => i.status === "open" || i.status === "investigating").length || 0}
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">SLA Breach Rate</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="metric-sla-breach-rate">
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-sla-breach-rate">
               {slaMetrics?.breachRate?.toFixed(1) || 0}%
             </div>
           </CardContent>
@@ -257,8 +257,8 @@ export default function OperationsDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {tasks?.map((task: any) => (
-                <Card key={task.id} data-testid={`task-card-${task.id}`}>
+              {tasks?.map((task: any, idx: number) => (
+                <Card key={task.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`task-card-${task.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -321,8 +321,8 @@ export default function OperationsDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {incidents?.map((incident: any) => (
-                <Card key={incident.id} data-testid={`incident-card-${incident.id}`}>
+              {incidents?.map((incident: any, idx: number) => (
+                <Card key={incident.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`incident-card-${incident.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">

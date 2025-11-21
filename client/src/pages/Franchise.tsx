@@ -92,13 +92,8 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
     <Layout language={language} onLanguageChange={handleLanguageChange}>
       <NavigationButton type="back" onClick={() => setLocation('/')} />
       
-      {/* Premium Background with Metallic Gradient */}
-      <div className="min-h-screen relative overflow-hidden">
-        {/* Animated Metallic Background */}
-        <div className="fixed inset-0 bg-gradient-to-br from-slate-50 via-gray-100 to-stone-50 dark:from-slate-900 dark:via-gray-900 dark:to-zinc-900">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-100/20 via-transparent to-transparent"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-blue-100/10 via-transparent to-transparent"></div>
-        </div>
+      {/* Luxury Mesh Background */}
+      <div className="min-h-screen relative overflow-hidden luxury-bg-mesh">
 
         <div className="relative z-10">
           {/* Hero Section - Premium Metallic */}

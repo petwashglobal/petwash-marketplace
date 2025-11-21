@@ -154,14 +154,14 @@ export default function MobileStationSheet() {
 
   if (!data || !data.station) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="p-6 text-center">
-          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <p className="font-semibold mb-2">Station Not Found</p>
-          <Button onClick={() => setLocation('/m')} variant="outline">
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center p-4">
+        <div className="luxury-glass-card luxury-shadow-xl p-8 text-center max-w-md">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="luxury-heading-sm mb-4">Station Not Found</p>
+          <Button onClick={() => setLocation('/m')} className="luxury-btn-primary">
             Back to Hub
           </Button>
-        </Card>
+        </div>
       </div>
     );
   }

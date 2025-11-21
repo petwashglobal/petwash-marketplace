@@ -40,22 +40,22 @@ export default function UnifiedEntityManagement() {
   const { data: accountsReceivable } = useQuery({ queryKey: ['/api/enterprise/finance/accounts-receivable'] });
 
   return (
-    <div className="min-h-screen bg-white p-6" data-testid="unified-entity-management">
+    <div className="min-h-screen luxury-bg-mesh p-6" data-testid="unified-entity-management">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 animate-in fade-in duration-700">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-metallic-gold via-metallic-rose to-metallic-platinum bg-clip-text text-transparent mb-2" data-testid="text-page-title">
+            <h1 className="text-4xl font-bold luxury-text-gradient mb-2" data-testid="text-page-title">
               Unified Entity Management
             </h1>
             <p className="text-muted-foreground">Comprehensive CRUD interface for all enterprise entities</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="border-metallic-gold text-metallic-gold hover:bg-metallic-gold/10" data-testid="button-export">
+            <Button className="luxury-btn-secondary" variant="outline" data-testid="button-export">
               <Download className="w-4 h-4 mr-2" />
               Export All
             </Button>
-            <Button variant="outline" className="border-metallic-rose text-metallic-rose hover:bg-metallic-rose/10" data-testid="button-import">
+            <Button className="luxury-btn-primary" data-testid="button-import">
               <Upload className="w-4 h-4 mr-2" />
               Import Data
             </Button>
@@ -111,17 +111,17 @@ export default function UnifiedEntityManagement() {
         </TabsList>
 
         {/* Corporate Tab */}
-        <TabsContent value="corporate" className="space-y-6" data-testid="content-corporate">
+        <TabsContent value="corporate" className="space-y-6 animate-in slide-in-from-bottom duration-700" data-testid="content-corporate">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Board Members */}
-            <Card className="diamond-card border-metallic-gold" data-testid="card-board-members">
+            <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-board-members">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-metallic-gold">Board Members</CardTitle>
+                  <CardTitle className="luxury-text-gradient">Board Members</CardTitle>
                   <CardDescription>{Array.isArray(boardMembers) ? boardMembers.length : 0} total</CardDescription>
                 </div>
                 <Link href="/enterprise/hq">
-                  <Button size="sm" className="bg-metallic-gold hover:bg-metallic-gold/90 text-white" data-testid="button-manage-board">
+                  <Button size="sm" className="luxury-btn-primary" data-testid="button-manage-board">
                     <Plus className="w-4 h-4 mr-2" />
                     Manage
                   </Button>
@@ -129,13 +129,18 @@ export default function UnifiedEntityManagement() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {Array.isArray(boardMembers) && boardMembers.slice(0, 3).map((member: any) => (
-                    <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors" data-testid={`item-board-member-${member.id}`}>
+                  {Array.isArray(boardMembers) && boardMembers.slice(0, 3).map((member: any, index: number) => (
+                    <div 
+                      key={member.id} 
+                      className="luxury-glass-minimal luxury-hover-lift flex items-center justify-between p-3 rounded-lg transition-all duration-300" 
+                      data-testid={`item-board-member-${member.id}`}
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
                       <div>
                         <p className="font-medium text-sm">{member.name}</p>
                         <p className="text-xs text-muted-foreground">{member.position}</p>
                       </div>
-                      <Badge variant="outline">{member.status}</Badge>
+                      <Badge className="luxury-badge">{member.status}</Badge>
                     </div>
                   ))}
                   {(!boardMembers || boardMembers.length === 0) && (

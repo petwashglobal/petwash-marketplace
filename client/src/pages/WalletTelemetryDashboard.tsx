@@ -152,174 +152,164 @@ export default function WalletTelemetryDashboard() {
       subtitle={t.description}
       icon={<Wallet className="w-8 h-8 text-blue-600" />}
     >
-      <div className="container mx-auto p-6 space-y-6" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="luxury-container p-6 space-y-8" dir={isHebrew ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="flex items-center justify-end">
-        
-        <div className="flex items-center gap-3">
-          <Button onClick={() => refetch()} variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            {t.refresh}
-          </Button>
-          <Button onClick={handleCleanup} variant="outline" size="sm">
-            {t.cleanup}
-          </Button>
-        </div>
+      <div className="flex items-center justify-end gap-3 luxury-animate-fade-in">
+        <button onClick={() => refetch()} className="luxury-btn-secondary">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          {t.refresh}
+        </button>
+        <button onClick={handleCleanup} className="luxury-btn-secondary">
+          {t.cleanup}
+        </button>
       </div>
 
       {/* Time Range Selector */}
-      <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as typeof timeRange)}>
-        <TabsList>
-          <TabsTrigger value="today">{t.today}</TabsTrigger>
-          <TabsTrigger value="week">{t.week}</TabsTrigger>
-          <TabsTrigger value="month">{t.month}</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="luxury-glass-card luxury-shadow-xl p-6 luxury-animate-slide-up luxury-delay-1">
+        <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as typeof timeRange)}>
+          <TabsList className="bg-transparent">
+            <TabsTrigger value="today" className="luxury-btn-secondary data-[state=active]:luxury-btn-primary">{t.today}</TabsTrigger>
+            <TabsTrigger value="week" className="luxury-btn-secondary data-[state=active]:luxury-btn-primary">{t.week}</TabsTrigger>
+            <TabsTrigger value="month" className="luxury-btn-secondary data-[state=active]:luxury-btn-primary">{t.month}</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       {!telemetry || telemetry.total === 0 ? (
-        <Card>
-          <CardContent className="flex items-center justify-center h-64">
-            <div className="text-center text-muted-foreground">
-              <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>{t.noData}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="luxury-glass-card luxury-shadow-xl p-16 text-center luxury-animate-scale-in luxury-delay-2">
+          <Clock className="w-16 h-16 mx-auto mb-6 text-purple-600 opacity-50" />
+          <p className="luxury-text-body">{t.noData}</p>
+        </div>
       ) : (
         <>
           {/* Overview Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription>{t.totalAttempts}</CardDescription>
-                <CardTitle className="text-3xl">{telemetry.total}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 text-sm">
-                  <Wallet className="w-4 h-4" />
-                  {t.successRate}: {successRate}%
-                </div>
-              </CardContent>
-            </Card>
+          <div className="luxury-grid-4 luxury-animate-slide-up luxury-delay-2">
+            <div className="luxury-glass-card luxury-hover-lift luxury-shadow-xl p-6">
+              <div className="w-12 h-12 mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center">
+                <Wallet className="w-6 h-6 text-purple-600" />
+              </div>
+              <p className="luxury-text-small mb-2">{t.totalAttempts}</p>
+              <h3 className="luxury-heading-lg luxury-text-gradient mb-3">{telemetry.total}</h3>
+              <div className="flex items-center gap-2 luxury-text-small">
+                <Wallet className="w-4 h-4 text-purple-600" />
+                {t.successRate}: {successRate}%
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription>{t.confirmedSuccess}</CardDescription>
-                <CardTitle className="text-3xl flex items-center gap-2">
-                  {telemetry.confirmedSuccess}
-                  <CheckCircle2 className="w-6 h-6 text-green-600" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Badge className="bg-green-600">
-                  {((telemetry.confirmedSuccess / telemetry.total) * 100).toFixed(1)}%
-                </Badge>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-card luxury-hover-lift luxury-shadow-xl p-6">
+              <div className="w-12 h-12 mb-4 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              </div>
+              <p className="luxury-text-small mb-2">{t.confirmedSuccess}</p>
+              <h3 className="luxury-heading-lg luxury-text-gradient mb-3">{telemetry.confirmedSuccess}</h3>
+              <span className="luxury-badge luxury-badge-success">
+                {((telemetry.confirmedSuccess / telemetry.total) * 100).toFixed(1)}%
+              </span>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription>{t.likelySuccess}</CardDescription>
-                <CardTitle className="text-3xl flex items-center gap-2">
-                  {telemetry.likelySuccess}
-                  <TrendingUp className="w-6 h-6 text-blue-600" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Badge className="bg-blue-600">
-                  {((telemetry.likelySuccess / telemetry.total) * 100).toFixed(1)}%
-                </Badge>
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-card luxury-hover-lift luxury-shadow-xl p-6">
+              <div className="w-12 h-12 mb-4 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-blue-600" />
+              </div>
+              <p className="luxury-text-small mb-2">{t.likelySuccess}</p>
+              <h3 className="luxury-heading-lg luxury-text-gradient mb-3">{telemetry.likelySuccess}</h3>
+              <span className="luxury-badge luxury-badge-gold">
+                {((telemetry.likelySuccess / telemetry.total) * 100).toFixed(1)}%
+              </span>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription>{t.avgConfidence}</CardDescription>
-                <CardTitle className="text-3xl">{telemetry.avgConfidence.toFixed(0)}%</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {telemetry.avgConfidence >= 80 && <Badge className="bg-green-600">High</Badge>}
-                {telemetry.avgConfidence >= 50 && telemetry.avgConfidence < 80 && <Badge className="bg-blue-600">Medium</Badge>}
-                {telemetry.avgConfidence < 50 && <Badge className="bg-amber-600">Low</Badge>}
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-card luxury-hover-lift luxury-shadow-xl p-6">
+              <div className="w-12 h-12 mb-4 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-amber-600" />
+              </div>
+              <p className="luxury-text-small mb-2">{t.avgConfidence}</p>
+              <h3 className="luxury-heading-lg luxury-text-gradient mb-3">{telemetry.avgConfidence.toFixed(0)}%</h3>
+              {telemetry.avgConfidence >= 80 && <span className="luxury-badge luxury-badge-success">High</span>}
+              {telemetry.avgConfidence >= 50 && telemetry.avgConfidence < 80 && <span className="luxury-badge luxury-badge-gold">Medium</span>}
+              {telemetry.avgConfidence < 50 && <span className="luxury-badge">Low</span>}
+            </div>
           </div>
 
           {/* Status Breakdown */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="border-l-4 border-l-red-500">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <XCircle className="w-5 h-5 text-red-600" />
-                  {t.failed}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{telemetry.failed}</div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {((telemetry.failed / telemetry.total) * 100).toFixed(1)}% of total
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-gray-500">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-gray-600" />
-                  {t.abandoned}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{telemetry.abandoned}</div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {((telemetry.abandoned / telemetry.total) * 100).toFixed(1)}% of total
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-blue-500">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Smartphone className="w-5 h-5 text-blue-600" />
-                  {t.platforms}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span>{t.appleWallet}:</span>
-                  <Badge>{telemetry.platforms.apple}</Badge>
+          <div className="luxury-grid-3 luxury-animate-slide-up luxury-delay-3">
+            <div className="luxury-glass-card luxury-hover-lift luxury-shadow-xl p-6 border-l-4 border-l-red-500">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-100 to-pink-100 dark:from-red-900/30 dark:to-pink-900/30 flex items-center justify-center">
+                  <XCircle className="w-6 h-6 text-red-600" />
                 </div>
-                <div className="flex justify-between">
-                  <span>{t.googleWallet}:</span>
-                  <Badge>{telemetry.platforms.google}</Badge>
+                <h3 className="luxury-heading-sm">{t.failed}</h3>
+              </div>
+              <div className="luxury-heading-lg luxury-text-gradient mb-2">{telemetry.failed}</div>
+              <p className="luxury-text-small">
+                {((telemetry.failed / telemetry.total) * 100).toFixed(1)}% of total
+              </p>
+            </div>
+
+            <div className="luxury-glass-card luxury-hover-lift luxury-shadow-xl p-6 border-l-4 border-l-gray-500">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-100 to-slate-100 dark:from-gray-900/30 dark:to-slate-900/30 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-gray-600" />
                 </div>
-              </CardContent>
-            </Card>
+                <h3 className="luxury-heading-sm">{t.abandoned}</h3>
+              </div>
+              <div className="luxury-heading-lg luxury-text-gradient mb-2">{telemetry.abandoned}</div>
+              <p className="luxury-text-small">
+                {((telemetry.abandoned / telemetry.total) * 100).toFixed(1)}% of total
+              </p>
+            </div>
+
+            <div className="luxury-glass-card luxury-hover-lift luxury-shadow-xl p-6 border-l-4 border-l-blue-500">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
+                  <Smartphone className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="luxury-heading-sm">{t.platforms}</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="luxury-text-small">{t.appleWallet}:</span>
+                  <span className="luxury-badge luxury-badge-gold">{telemetry.platforms.apple}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="luxury-text-small">{t.googleWallet}:</span>
+                  <span className="luxury-badge luxury-badge-success">{telemetry.platforms.google}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Pass Types */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.passTypes}</CardTitle>
-              <CardDescription>Breakdown by pass type</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{telemetry.passTypes.vip}</div>
-                  <div className="text-sm text-muted-foreground">{t.vipCards}</div>
+          <div className="luxury-glass-card luxury-shadow-xl overflow-hidden luxury-animate-scale-in luxury-delay-4">
+            <div className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 p-6">
+              <h2 className="luxury-heading-lg">{t.passTypes}</h2>
+              <p className="luxury-text-small">Breakdown by pass type</p>
+            </div>
+            <div className="p-8">
+              <div className="luxury-grid-3">
+                <div className="luxury-glass-minimal p-8 rounded-xl text-center luxury-hover-lift">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
+                    <Wallet className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <div className="luxury-heading-lg luxury-text-gradient mb-2">{telemetry.passTypes.vip}</div>
+                  <div className="luxury-text-small">{t.vipCards}</div>
                 </div>
-                <div className="text-center p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                  <div className="text-2xl font-bold text-purple-600">{telemetry.passTypes.business}</div>
-                  <div className="text-sm text-muted-foreground">{t.businessCards}</div>
+                <div className="luxury-glass-minimal p-8 rounded-xl text-center luxury-hover-lift">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
+                    <Wallet className="w-8 h-8 text-purple-600" />
+                  </div>
+                  <div className="luxury-heading-lg luxury-text-gradient mb-2">{telemetry.passTypes.business}</div>
+                  <div className="luxury-text-small">{t.businessCards}</div>
                 </div>
-                <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">{telemetry.passTypes.voucher}</div>
-                  <div className="text-sm text-muted-foreground">{t.vouchers}</div>
+                <div className="luxury-glass-minimal p-8 rounded-xl text-center luxury-hover-lift">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 flex items-center justify-center">
+                    <Wallet className="w-8 h-8 text-green-600" />
+                  </div>
+                  <div className="luxury-heading-lg luxury-text-gradient mb-2">{telemetry.passTypes.voucher}</div>
+                  <div className="luxury-text-small">{t.vouchers}</div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </>
       )}
     </div>

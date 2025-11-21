@@ -4,68 +4,80 @@ import { Building2, Globe, DollarSign, Users, TrendingUp, Award } from "lucide-r
 
 export default function FranchisePartners() {
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
+    <div className="min-h-screen luxury-bg-mesh">
       <div className="container max-w-6xl mx-auto px-4 py-12">
-        <div className="text-center mb-16">
-          <Building2 className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+        <div className="text-center mb-16 luxury-animate-fade-in">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4">
+            <Building2 className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="luxury-heading-xl mb-4">
             Franchise & City Partners
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          <p className="luxury-text-body max-w-2xl mx-auto">
             Join the Pet Wash™ global franchise network. Proven business model, enterprise support, luxury brand.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          <Card className="p-6">
-            <Globe className="w-12 h-12 text-purple-600 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Global Expansion</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="luxury-glass-card shadow-lg p-6 luxury-animate-fade-in luxury-delay-1">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
+              <Globe className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">Global Expansion</h3>
+            <p className="luxury-text-body">
               Operating in multiple countries with aggressive growth plans
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6">
-            <DollarSign className="w-12 h-12 text-purple-600 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Revenue Potential</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="luxury-glass-card shadow-lg p-6 luxury-animate-fade-in luxury-delay-2">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
+              <DollarSign className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">Revenue Potential</h3>
+            <p className="luxury-text-body">
               Multiple revenue streams across 8 business platforms
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6">
-            <Users className="w-12 h-12 text-purple-600 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Enterprise Support</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="luxury-glass-card shadow-lg p-6 luxury-animate-fade-in luxury-delay-3">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
+              <Users className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">Enterprise Support</h3>
+            <p className="luxury-text-body">
               Full training, technology, marketing, and operational support
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6">
-            <TrendingUp className="w-12 h-12 text-purple-600 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Proven Model</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="luxury-glass-card shadow-lg p-6 luxury-animate-fade-in luxury-delay-4">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
+              <TrendingUp className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">Proven Model</h3>
+            <p className="luxury-text-body">
               Tested systems, established brand, growing market demand
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6">
-            <Award className="w-12 h-12 text-purple-600 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Premium Brand</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="luxury-glass-card shadow-lg p-6 luxury-animate-fade-in luxury-delay-5">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
+              <Award className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">Premium Brand</h3>
+            <p className="luxury-text-body">
               Luxury positioning with 7-star service standards
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-            <h3 className="text-lg font-semibold mb-2">Ready to Start?</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+          <div className="luxury-glass-card shadow-lg p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 luxury-animate-fade-in luxury-delay-6">
+            <h3 className="luxury-heading-sm mb-2 luxury-text-gradient">Ready to Start?</h3>
+            <p className="luxury-text-body mb-4">
               Request franchise information package
             </p>
-            <Button className="w-full" data-testid="button-request-info">
+            <button className="w-full luxury-btn-primary" data-testid="button-request-info">
               Request Information
-            </Button>
-          </Card>
+            </button>
+          </div>
         </div>
       </div>
     </div>

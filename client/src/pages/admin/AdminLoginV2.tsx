@@ -21,7 +21,7 @@ import { Fingerprint, Shield, Mail, Lock, Sparkles, CheckCircle2, XCircle } from
 import { SiGoogle } from "react-icons/si";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import LuxuryEmoji from "@/components/luxury/LuxuryEmoji"; // 👑 Crown Jewel 7-Star Emoji
+import LuxuryEmoji from "@/components/luxury/LuxuryEmoji";
 
 export default function AdminLoginV2() {
   const [, setLocation] = useLocation();
@@ -32,10 +32,8 @@ export default function AdminLoginV2() {
   const [isLoading, setIsLoading] = useState(false);
   const [supportsWebAuthn, setSupportsWebAuthn] = useState(false);
   
-  // 🐙 OCTOPUS PROTOCOL: Biometric Status States
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
 
-  // Check WebAuthn support
   useEffect(() => {
     const checkWebAuthn = async () => {
       if (window.PublicKeyCredential) {
@@ -46,10 +44,9 @@ export default function AdminLoginV2() {
     checkWebAuthn();
   }, []);
 
-  // Haptic feedback for mobile
   const triggerHaptic = () => {
     if (window.navigator && 'vibrate' in window.navigator) {
-      window.navigator.vibrate(10); // Short vibration
+      window.navigator.vibrate(10);
     }
   };
 
@@ -69,7 +66,6 @@ export default function AdminLoginV2() {
         description: "Successfully logged in",
       });
 
-      // Store tokens
       localStorage.setItem("access_token", response.tokens.accessToken);
       localStorage.setItem("refresh_token", response.tokens.refreshToken);
 
@@ -85,9 +81,7 @@ export default function AdminLoginV2() {
     }
   };
 
-  // Helper: Convert base64url to base64 (for decoding)
   const base64urlToBase64 = (base64url: string): string => {
-    // Add padding if needed
     let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
     const padding = base64.length % 4;
     if (padding) {
@@ -96,14 +90,12 @@ export default function AdminLoginV2() {
     return base64;
   };
 
-  // Helper: Convert ArrayBuffer to base64url (for encoding)
   const arrayBufferToBase64url = (buffer: ArrayBuffer): string => {
     const bytes = new Uint8Array(buffer);
     let binary = '';
     for (let i = 0; i < bytes.length; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
-    // Convert to base64url (not regular base64)
     return btoa(binary)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
@@ -112,7 +104,7 @@ export default function AdminLoginV2() {
 
   const handleBiometricLogin = async () => {
     triggerHaptic();
-    setBiometricStatus("scanning"); // 🐙 Start scanning
+    setBiometricStatus("scanning");
     
     try {
       if (!email) {
@@ -126,13 +118,11 @@ export default function AdminLoginV2() {
         return;
       }
 
-      // Get authentication options from server
       const options = await apiRequest("/webauthn/authenticate/options", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
 
-      // Start WebAuthn authentication - convert base64url to base64 before decoding
       const credential = await navigator.credentials.get({
         publicKey: {
           ...options,
@@ -148,7 +138,6 @@ export default function AdminLoginV2() {
         throw new Error("Authentication cancelled");
       }
 
-      // Serialize credential for JSON transport (using base64url encoding)
       const response = credential.response as AuthenticatorAssertionResponse;
       const serializedCredential = {
         id: credential.id,
@@ -162,7 +151,6 @@ export default function AdminLoginV2() {
         },
       };
 
-      // Verify with server
       const verifyResponse = await apiRequest("/webauthn/authenticate/verify", {
         method: "POST",
         body: JSON.stringify({
@@ -171,28 +159,25 @@ export default function AdminLoginV2() {
         }),
       });
 
-      // Store custom token and redirect
       if (verifyResponse.customToken) {
-        setBiometricStatus("success"); // 🐙 Success state
+        setBiometricStatus("success");
         toast({
           title: "Biometric Authentication Successful! 🎉",
           description: "Welcome back",
         });
         
-        // Brief delay to show success animation
         setTimeout(() => {
           setLocation("/admin/dashboard");
         }, 800);
       }
     } catch (error: any) {
-      setBiometricStatus("error"); // 🐙 Error state
+      setBiometricStatus("error");
       toast({
         title: "Biometric Authentication Failed",
         description: error.message || error.error || "Please try again or use email/password",
         variant: "destructive",
       });
       
-      // Reset to idle after 2 seconds
       setTimeout(() => setBiometricStatus("idle"), 2000);
     }
   };
@@ -201,17 +186,14 @@ export default function AdminLoginV2() {
     triggerHaptic();
     
     try {
-      // Import Firebase auth functions
       const { signInWithPopup, GoogleAuthProvider } = await import("firebase/auth");
       const { auth } = await import("@/lib/firebase");
 
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       
-      // Get ID token
       const idToken = await result.user.getIdToken();
 
-      // Send to backend
       const response = await apiRequest("/auth/login/google", {
         method: "POST",
         body: JSON.stringify({ 
@@ -228,14 +210,12 @@ export default function AdminLoginV2() {
         description: "Successfully logged in with Google",
       });
 
-      // Store tokens
       localStorage.setItem("access_token", response.tokens.accessToken);
       localStorage.setItem("refresh_token", response.tokens.refreshToken);
 
       setLocation("/admin/dashboard");
     } catch (error: any) {
       if (error.code === "auth/popup-closed-by-user") {
-        // User closed the popup, don't show error
         return;
       }
       toast({
@@ -247,12 +227,9 @@ export default function AdminLoginV2() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center p-4">
-      {/* Background Gradient */}
-      <div className="fixed inset-0 bg-gradient-to-br from-white via-gray-50 to-white opacity-50 -z-10" />
-
+    <div className="min-h-screen luxury-bg-mesh flex items-center justify-center p-4">
       {/* Main Login Card */}
-      <Card className="w-full max-w-md p-8 bg-white shadow-[8px_8px_16px_rgba(163,177,198,0.2),-8px_-8px_16px_rgba(255,255,255,0.9)] border-0">
+      <Card className="w-full max-w-md luxury-glass-card luxury-shadow-xl p-8">
         {/* Header - Pet Wash Logo */}
         <div className="text-center mb-8">
           <div className="mb-4 flex justify-center">
@@ -262,7 +239,7 @@ export default function AdminLoginV2() {
               className="h-16 w-auto object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold mb-2 text-black">
+          <h1 className="luxury-heading-lg luxury-text-gradient mb-2">
             Pet Wash Admin Platform
           </h1>
           <p className="text-gray-600">
@@ -274,7 +251,7 @@ export default function AdminLoginV2() {
         <div className="space-y-3 mb-6">
           {supportsWebAuthn && (
             <motion.div
-              whileTap={{ scale: 0.97 }} // 🐙 Tactile feedback
+              whileTap={{ scale: 0.97 }}
               className="w-full"
             >
               <Button
@@ -285,7 +262,7 @@ export default function AdminLoginV2() {
                   ${biometricStatus === 'error' ? 'bg-red-500 hover:bg-red-600' : 
                     biometricStatus === 'success' ? 'bg-green-500 hover:bg-green-600' :
                     biometricStatus === 'scanning' ? 'bg-purple-400 animate-pulse' :
-                    'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'}
+                    'luxury-btn-primary'}
                 `}
                 data-testid="button-biometric-login"
               >
@@ -330,12 +307,12 @@ export default function AdminLoginV2() {
           )}
 
           <motion.div
-            whileTap={{ scale: 0.97 }} // 🐙 Tactile feedback
+            whileTap={{ scale: 0.97 }}
             className="w-full"
           >
             <Button
               onClick={handleGoogleLogin}
-              className="w-full h-12 bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300 shadow-md hover:shadow-lg transition-all"
+              className="w-full h-12 bg-white text-gray-700 border-2 border-gray-200 hover:border-purple-300 shadow-md hover:shadow-lg transition-all"
               data-testid="button-google-login"
             >
               <SiGoogle className="h-5 w-5 mr-2 text-blue-500" />
@@ -347,7 +324,7 @@ export default function AdminLoginV2() {
         {/* Divider */}
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200"></div>
+            <div className="w-full border-t border-purple-100"></div>
           </div>
           <div className="relative flex justify-center text-xs">
             <span className="px-2 bg-white text-gray-500">or use email</span>
@@ -366,7 +343,7 @@ export default function AdminLoginV2() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@petwash.co.il"
-                className="pl-10 h-11 bg-white shadow-[inset_2px_2px_4px_rgba(163,177,198,0.1)] border-gray-200"
+                className="luxury-glass-minimal pl-10 h-11 border-purple-200 focus:border-purple-400"
                 required
                 data-testid="input-email"
               />
@@ -383,7 +360,7 @@ export default function AdminLoginV2() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="pl-10 h-11 bg-white shadow-[inset_2px_2px_4px_rgba(163,177,198,0.1)] border-gray-200"
+                className="luxury-glass-minimal pl-10 h-11 border-purple-200 focus:border-purple-400"
                 required
                 data-testid="input-password"
               />
@@ -393,7 +370,7 @@ export default function AdminLoginV2() {
           <Button
             type="submit"
             disabled={isLoading || !email || !password}
-            className="w-full h-11 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white shadow-lg hover:shadow-xl transition-all"
+            className="luxury-btn-primary w-full h-11"
             data-testid="button-login"
           >
             {isLoading ? (
@@ -409,19 +386,19 @@ export default function AdminLoginV2() {
 
         {/* Footer */}
         <div className="mt-6 text-center">
-          <button className="text-sm text-gray-600 hover:text-amber-600 transition-colors">
+          <button className="text-sm text-gray-600 hover:text-purple-600 transition-colors">
             Forgot password?
           </button>
         </div>
 
-        {/* Security Badge - Crown Jewel Edition */}
+        {/* Security Badge */}
         <div className="mt-8 flex flex-col items-center gap-3">
           <div className="flex items-center gap-2">
             <LuxuryEmoji emoji="🛡️" material="platinum" size="sm" animate={false} />
             <LuxuryEmoji emoji="🔒" material="gold" size="sm" animate={false} />
             <LuxuryEmoji emoji="👑" material="diamond" size="sm" animate={false} />
           </div>
-          <p className="text-xs text-gray-500" style={{ fontFamily: 'var(--font-body)' }}>
+          <p className="text-xs text-gray-500">
             OAuth 2.1 Secured • Crown Jewel Protocol v2025
           </p>
         </div>

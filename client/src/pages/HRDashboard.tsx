@@ -108,7 +108,7 @@ export default function HRDashboard() {
     >
       <div className="p-6 space-y-6">
       <div className="flex justify-end items-center">
-        <Button onClick={() => setShowCreateEmployeeDialog(true)} data-testid="button-create-employee">
+        <Button className="luxury-btn-primary" onClick={() => setShowCreateEmployeeDialog(true)} data-testid="button-create-employee">
           <Plus className="w-4 h-4 mr-2" />
           Add Employee
         </Button>
@@ -152,11 +152,11 @@ export default function HRDashboard() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {employees?.map((employee: any) => (
+            <div className="luxury-grid-3">
+              {employees?.map((employee: any, idx: number) => (
                 <Card 
                   key={employee.id} 
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  className={`luxury-glass-card luxury-shadow-lg luxury-hover-lift cursor-pointer luxury-delay-${Math.min(idx + 1, 6)}`}
                   onClick={() => setSelectedEmployee(employee)}
                   data-testid={`employee-card-${employee.id}`}
                 >
@@ -202,8 +202,8 @@ export default function HRDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {payroll?.map((record: any) => (
-                <Card key={record.id} data-testid={`payroll-${record.id}`}>
+              {payroll?.map((record: any, idx: number) => (
+                <Card key={record.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`payroll-${record.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex justify-between items-start">
                       <div className="space-y-1">

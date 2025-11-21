@@ -147,23 +147,23 @@ export default function NewExpense() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black p-6">
+    <div className="min-h-screen luxury-bg-mesh p-6">
       <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-black to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-2">
+        <div className="text-center mb-8 luxury-animate-fade-in">
+          <h1 className="luxury-heading-xl mb-2">
             הגשת הוצאה חדשה
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="luxury-text-body">
             Israeli Employee Expense Management • 2025 FinTech Architecture
           </p>
         </div>
 
-        <Card className="p-8 bg-white dark:bg-black border-2 border-black dark:border-white">
+        <Card className="p-8 luxury-glass-card luxury-shadow-xl luxury-animate-slide-up luxury-delay-1">
           {/* Camera-First Receipt Upload - 2025 Mandate */}
-          <div className="mb-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-2 border-blue-300 dark:border-blue-700 rounded-xl">
-            <h3 className="text-xl font-bold mb-4 text-black dark:text-white flex items-center gap-2">
+          <div className="mb-8 p-6 luxury-glass-card luxury-shadow-xl rounded-xl">
+            <h3 className="luxury-heading-md mb-4 flex items-center gap-2">
               📸 העלאת קבלה / Receipt Upload
-              <Badge variant="default" className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+              <Badge variant="default" className="bg-gradient-to-r from-violet-600 to-purple-600 text-white">
                 Camera-First
               </Badge>
             </h3>
@@ -189,7 +189,7 @@ export default function NewExpense() {
                 name="expenseDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-black dark:text-white text-lg font-bold">
+                    <FormLabel className="luxury-heading-sm flex items-center gap-2">
                       <Calendar className="w-5 h-5" />
                       תאריך ההוצאה / Expense Date
                     </FormLabel>
@@ -197,7 +197,7 @@ export default function NewExpense() {
                       <Input
                         type="date"
                         {...field}
-                        className="border-2 border-black dark:border-white text-black dark:text-white text-lg"
+                        className="luxury-glass-minimal text-lg"
                         data-testid="input-expense-date"
                       />
                     </FormControl>
@@ -211,7 +211,7 @@ export default function NewExpense() {
                 name="totalAmountILS"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-black dark:text-white text-lg font-bold">
+                    <FormLabel className="luxury-heading-sm flex items-center gap-2">
                       <DollarSign className="w-5 h-5" />
                       סכום כולל (₪) / Total Amount (ILS)
                     </FormLabel>
@@ -221,7 +221,7 @@ export default function NewExpense() {
                         step="0.01"
                         placeholder="0.00"
                         {...field}
-                        className="border-2 border-black dark:border-white text-black dark:text-white text-2xl font-bold"
+                        className="luxury-glass-minimal luxury-heading-lg luxury-text-gradient"
                         data-testid="input-total-amount"
                       />
                     </FormControl>

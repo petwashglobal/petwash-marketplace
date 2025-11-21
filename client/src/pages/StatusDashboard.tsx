@@ -76,22 +76,22 @@ export default function StatusDashboard() {
   const getHealthBadge = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <Badge className="bg-green-500"><CheckCircle2 className="w-3 h-3 mr-1" /> Healthy</Badge>;
+        return <Badge className="luxury-badge bg-green-500 animate-pulse"><CheckCircle2 className="w-3 h-3 mr-1" /> Healthy</Badge>;
       case 'warning':
-        return <Badge className="bg-yellow-500"><AlertCircle className="w-3 h-3 mr-1" /> Warning</Badge>;
+        return <Badge className="luxury-badge bg-yellow-500 animate-pulse"><AlertCircle className="w-3 h-3 mr-1" /> Warning</Badge>;
       case 'critical':
-        return <Badge className="bg-red-500"><XCircle className="w-3 h-3 mr-1" /> Critical</Badge>;
+        return <Badge className="luxury-badge bg-red-500 animate-pulse"><XCircle className="w-3 h-3 mr-1" /> Critical</Badge>;
       case 'offline':
-        return <Badge className="bg-gray-500"><XCircle className="w-3 h-3 mr-1" /> Offline</Badge>;
+        return <Badge className="luxury-badge bg-gray-500"><XCircle className="w-3 h-3 mr-1" /> Offline</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge className="luxury-badge" variant="outline">{status}</Badge>;
     }
   };
 
   if (uptimeLoading || stationsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
       </div>
     );
   }
@@ -101,10 +101,10 @@ export default function StatusDashboard() {
       variant="dashboard"
       title="Pet Wash™ System Status"
       subtitle="Real-time platform health monitoring"
-      icon={<Activity className="w-8 h-8 text-blue-600" />}
+      icon={<Activity className="w-8 h-8 text-purple-600" />}
     >
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="min-h-screen luxury-bg-mesh p-6">
+      <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
         {/* Header */}
         <div className="text-center space-y-2">
           {uptimeData && (
@@ -116,13 +116,17 @@ export default function StatusDashboard() {
 
         {/* Overall Status Card */}
         {uptimeData && (
-          <Card className="border-2 border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900">
+          <Card className="luxury-glass-card luxury-shadow-lg animate-in slide-in-from-top duration-500">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 {uptimeData.ok ? (
-                  <CheckCircle2 className="w-6 h-6 text-green-500" />
+                  <div className="p-2 rounded-full bg-green-100">
+                    <CheckCircle2 className="w-6 h-6 text-green-600 animate-pulse" />
+                  </div>
                 ) : (
-                  <XCircle className="w-6 h-6 text-red-500" />
+                  <div className="p-2 rounded-full bg-red-100">
+                    <XCircle className="w-6 h-6 text-red-600 animate-pulse" />
+                  </div>
                 )}
                 {uptimeData.service}
               </CardTitle>
@@ -131,45 +135,51 @@ export default function StatusDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="luxury-grid-3 gap-4">
                 {/* Database Health */}
-                <div className="p-4 bg-blue-50 dark:bg-gray-800 rounded-lg">
+                <div className="luxury-glass-minimal p-4 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <Database className="w-5 h-5 text-blue-600" />
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500">
+                      <Database className="w-5 h-5 text-white" />
+                    </div>
                     <h3 className="font-semibold">Database</h3>
                   </div>
                   <p className="text-2xl font-bold text-green-600">
                     {uptimeData.health.database}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-gray-600">
                     Latency: {uptimeData.health.dbLatencyMs}ms
                   </p>
                 </div>
 
                 {/* Station Health */}
-                <div className="p-4 bg-green-50 dark:bg-gray-800 rounded-lg">
+                <div className="luxury-glass-minimal p-4 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <Activity className="w-5 h-5 text-green-600" />
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500">
+                      <Activity className="w-5 h-5 text-white" />
+                    </div>
                     <h3 className="font-semibold">Station Health</h3>
                   </div>
                   <p className="text-2xl font-bold text-green-600">
                     {uptimeData.stations.healthPercentage}%
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-gray-600">
                     {uptimeData.stations.health.healthy}/{uptimeData.stations.total} healthy
                   </p>
                 </div>
 
                 {/* Critical Alerts */}
-                <div className="p-4 bg-orange-50 dark:bg-gray-800 rounded-lg">
+                <div className="luxury-glass-minimal p-4 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <AlertCircle className="w-5 h-5 text-orange-600" />
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-red-500">
+                      <AlertCircle className="w-5 h-5 text-white" />
+                    </div>
                     <h3 className="font-semibold">Critical Alerts</h3>
                   </div>
                   <p className="text-2xl font-bold text-orange-600">
                     {uptimeData.alerts.criticalUnacknowledged}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-gray-600">
                     Unacknowledged (24h)
                   </p>
                 </div>
@@ -180,17 +190,17 @@ export default function StatusDashboard() {
 
         {/* Station Status Breakdown */}
         {stationsData && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
+          <div className="luxury-grid-4 gap-4 animate-in slide-in-from-bottom duration-700 delay-100">
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">Total Stations</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{stationsData.summary.total}</div>
+                <div className="text-3xl font-bold luxury-text-gradient">{stationsData.summary.total}</div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">Online</CardTitle>
               </CardHeader>
@@ -201,7 +211,7 @@ export default function StatusDashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">Offline</CardTitle>
               </CardHeader>
@@ -212,7 +222,7 @@ export default function StatusDashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">Maintenance Due</CardTitle>
               </CardHeader>
@@ -227,10 +237,12 @@ export default function StatusDashboard() {
 
         {/* Individual Station Status */}
         {stationsData && (
-          <Card>
+          <Card className="luxury-glass-card luxury-shadow-lg animate-in slide-in-from-bottom duration-700 delay-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
+                <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                  <MapPin className="w-5 h-5 text-white" />
+                </div>
                 Station Details
               </CardTitle>
               <CardDescription>
@@ -239,17 +251,18 @@ export default function StatusDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {stationsData.stations.map((station) => (
+                {stationsData.stations.map((station, index) => (
                   <div
                     key={station.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors"
+                    className="luxury-glass-minimal luxury-hover-lift p-4 rounded-lg transition-all duration-300"
+                    style={{ animationDelay: `${index * 50}ms` }}
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold">{station.stationName}</h4>
                         {getHealthBadge(station.healthStatus)}
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-sm text-gray-600">
                         {station.stationCode} • {station.city}
                       </p>
                       <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
@@ -259,13 +272,13 @@ export default function StatusDashboard() {
                             Last heartbeat: {station.minutesSinceHeartbeat}m ago
                           </span>
                         ) : (
-                          <span className="text-red-600 font-semibold">OFFLINE</span>
+                          <Badge className="luxury-badge bg-red-500 animate-pulse">OFFLINE</Badge>
                         )}
                         <span>{station.totalWashesCompleted} total washes</span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge variant={station.isOnline ? "default" : "destructive"}>
+                    <div className="text-right mt-2">
+                      <Badge className="luxury-badge" variant={station.isOnline ? "default" : "destructive"}>
                         {station.operationalStatus}
                       </Badge>
                     </div>

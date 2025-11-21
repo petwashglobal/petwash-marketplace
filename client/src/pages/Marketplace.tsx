@@ -104,14 +104,14 @@ export default function Marketplace() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen luxury-bg-mesh">
       {/* Header */}
-      <div className="border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+      <div className="border-b border-purple-100/20">
+        <div className="max-w-7xl mx-auto px-4 py-12 text-center luxury-fade-in">
+          <h1 className="luxury-heading-xl mb-4">
             Pet Services Marketplace
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="luxury-subtitle-lg">
             Find trusted professionals for all your pet care needs
           </p>
         </div>
@@ -146,14 +146,14 @@ export default function Marketplace() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-4">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <div className="luxury-glass-card luxury-shadow-lg sticky top-4">
+              <div className="p-6 border-b border-purple-100/20">
+                <h3 className="text-lg font-bold flex items-center gap-2 luxury-gradient-text">
                   <SlidersHorizontal className="w-5 h-5" />
                   Filters
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
+                </h3>
+              </div>
+              <div className="p-6 space-y-6">
                 {/* City Filter */}
                 <div>
                   <Label htmlFor="city" className="mb-2 block">
@@ -237,9 +237,8 @@ export default function Marketplace() {
                 )}
 
                 {/* Reset Filters */}
-                <Button
-                  variant="outline"
-                  className="w-full"
+                <button
+                  className="luxury-btn-outline w-full"
                   onClick={() =>
                     setFilters({
                       platform: selectedPlatform,
@@ -250,9 +249,9 @@ export default function Marketplace() {
                   data-testid="button-reset-filters"
                 >
                   Reset Filters
-                </Button>
-              </CardContent>
-            </Card>
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Results */}
@@ -274,52 +273,46 @@ export default function Marketplace() {
             {isLoading && (
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-6">
-                      <div className="flex gap-4">
-                        <Skeleton className="w-20 h-20 rounded-full" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-6 w-1/3" />
-                          <Skeleton className="h-4 w-1/4" />
-                          <Skeleton className="h-4 w-full" />
-                          <div className="flex gap-2">
-                            <Skeleton className="h-6 w-20" />
-                            <Skeleton className="h-6 w-24" />
-                          </div>
+                  <div key={i} className="luxury-glass-card luxury-shadow-lg p-6">
+                    <div className="flex gap-4">
+                      <Skeleton className="w-20 h-20 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-6 w-1/3" />
+                        <Skeleton className="h-4 w-1/4" />
+                        <Skeleton className="h-4 w-full" />
+                        <div className="flex gap-2">
+                          <Skeleton className="h-6 w-20" />
+                          <Skeleton className="h-6 w-24" />
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
 
             {/* Error State */}
             {error && (
-              <Card className="border-red-200 dark:border-red-800">
-                <CardContent className="p-6">
-                  <p className="text-red-600 dark:text-red-400">
-                    Failed to load providers. Please try again.
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="luxury-glass-card luxury-shadow-lg border-red-200 p-6">
+                <p className="text-red-600 dark:text-red-400">
+                  Failed to load providers. Please try again.
+                </p>
+              </div>
             )}
 
             {/* Results List */}
             {!isLoading && !error && data?.providers && (
-              <div className="space-y-4">
+              <div className="space-y-4 luxury-stagger-fade-in">
                 {data.providers.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-12 text-center">
-                      <Search className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                        No providers found
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Try adjusting your filters or search in a different city
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <div className="luxury-glass-card luxury-shadow-lg p-12 text-center">
+                    <Search className="w-12 h-12 mx-auto mb-4 luxury-gradient-icon" />
+                    <h3 className="text-lg font-bold mb-2 luxury-gradient-text">
+                      No providers found
+                    </h3>
+                    <p className="luxury-text-body">
+                      Try adjusting your filters or search in a different city
+                    </p>
+                  </div>
                 ) : (
                   data.providers.map((provider) => (
                     <ProviderCard key={provider.id} provider={provider} />
@@ -330,23 +323,23 @@ export default function Marketplace() {
 
             {/* Pagination */}
             {!isLoading && data && data.providers.length > 0 && data.total > filters.limit! && (
-              <div className="mt-8 flex justify-center gap-2">
-                <Button
-                  variant="outline"
+              <div className="mt-8 flex justify-center gap-4">
+                <button
+                  className="luxury-btn-outline"
                   disabled={filters.offset === 0}
                   onClick={() => updateFilter('offset', Math.max(0, (filters.offset || 0) - filters.limit!))}
                   data-testid="button-prev-page"
                 >
                   Previous
-                </Button>
-                <Button
-                  variant="outline"
+                </button>
+                <button
+                  className="luxury-btn-outline"
                   disabled={(filters.offset || 0) + filters.limit! >= data.total}
                   onClick={() => updateFilter('offset', (filters.offset || 0) + filters.limit!)}
                   data-testid="button-next-page"
                 >
                   Next
-                </Button>
+                </button>
               </div>
             )}
           </div>

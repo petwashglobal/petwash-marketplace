@@ -182,12 +182,16 @@ export default function StaffApplication() {
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl" data-testid="application-form">
+    <div className="min-h-screen luxury-bg-mesh">
+      <div className="container mx-auto py-8 max-w-4xl" data-testid="application-form">
       <div className="mb-8 text-center">
-        <h1 className="text-4xl font-bold mb-2" data-testid="page-title">
+        <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto mb-6 flex items-center justify-center luxury-shadow-xl">
+          <Briefcase className="w-10 h-10 text-white" />
+        </div>
+        <h1 className="luxury-heading-xl mb-4" data-testid="page-title">
           Join Pet Wash™ Team
         </h1>
-        <p className="text-muted-foreground text-lg" data-testid="page-subtitle">
+        <p className="text-gray-600 text-lg" data-testid="page-subtitle">
           Apply to become a contractor for premium pet care services
         </p>
       </div>
@@ -218,14 +222,14 @@ export default function StaffApplication() {
       </div>
 
       {/* Application Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Application Form</CardTitle>
-          <CardDescription>
+      <div className="luxury-glass-card luxury-shadow-xl p-8">
+        <div className="mb-6">
+          <h2 className="luxury-heading-md mb-2">Application Form</h2>
+          <p className="text-gray-600">
             All fields are required unless marked as optional. We review all applications carefully.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="staff-application-form">
               {/* Position Type (Hidden - Selected Above) */}
@@ -429,8 +433,7 @@ export default function StaffApplication() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                size="lg"
-                className="w-full"
+                className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-lg font-medium"
                 disabled={submitApplication.isPending}
                 data-testid="submit-application-button"
               >
@@ -450,8 +453,9 @@ export default function StaffApplication() {
               </p>
             </form>
           </Form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+      </div>
     </div>
   );
 }

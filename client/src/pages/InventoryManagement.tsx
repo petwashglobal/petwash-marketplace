@@ -176,19 +176,19 @@ export default function InventoryManagement() {
   const cities = Array.from(new Set(items.map(item => item.city)));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8">
+    <div className="min-h-screen luxury-bg-mesh p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-lg">
+        <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl mb-8 luxury-animate-fade-in">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
               <Package className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white" data-testid="text-inventory-title">
+              <h1 className="luxury-heading-lg" data-testid="text-inventory-title">
                 {isHebrew ? 'ניהול מלאי' : 'Inventory Management'}
               </h1>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="luxury-text-small mt-1">
                 {isHebrew ? 'מעקב אחר מלאי בזמן אמת בכל התחנות' : 'Real-time stock tracking across all stations'}
               </p>
             </div>
@@ -197,91 +197,90 @@ export default function InventoryManagement() {
 
         {/* Summary Stats */}
         {summaryData && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950 dark:to-gray-900">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isHebrew ? 'סה"כ פריטים' : 'Total Items'}
-                    </p>
-                    <p className="text-3xl font-bold text-blue-600" data-testid="text-total-items">
-                      {summaryData.totalItems || 0}
-                    </p>
-                  </div>
-                  <Package className="w-12 h-12 text-blue-400" />
+          <div className="luxury-grid-4 gap-4 mb-6 luxury-animate-fade-in luxury-delay-1">
+            <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="luxury-text-small">
+                    {isHebrew ? 'סה"כ פריטים' : 'Total Items'}
+                  </p>
+                  <p className="text-3xl font-bold luxury-text-gradient" data-testid="text-total-items">
+                    {summaryData.totalItems || 0}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                  <Package className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
 
-            <Card className="border-green-200 bg-gradient-to-br from-green-50 to-white dark:from-green-950 dark:to-gray-900">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isHebrew ? 'מלאי תקין' : 'OK Stock'}
-                    </p>
-                    <p className="text-3xl font-bold text-green-600" data-testid="text-ok-stock">
-                      {summaryData.okCount || 0}
-                    </p>
-                  </div>
-                  <CheckCircle2 className="w-12 h-12 text-green-400" />
+            <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="luxury-text-small">
+                    {isHebrew ? 'מלאי תקין' : 'OK Stock'}
+                  </p>
+                  <p className="text-3xl font-bold text-green-600" data-testid="text-ok-stock">
+                    {summaryData.okCount || 0}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
 
-            <Card className="border-yellow-200 bg-gradient-to-br from-yellow-50 to-white dark:from-yellow-950 dark:to-gray-900">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isHebrew ? 'מלאי נמוך' : 'Low Stock'}
-                    </p>
-                    <p className="text-3xl font-bold text-yellow-600" data-testid="text-low-stock">
-                      {summaryData.lowCount || 0}
-                    </p>
-                  </div>
-                  <AlertTriangle className="w-12 h-12 text-yellow-400" />
+            <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="luxury-text-small">
+                    {isHebrew ? 'מלאי נמוך' : 'Low Stock'}
+                  </p>
+                  <p className="text-3xl font-bold text-yellow-600" data-testid="text-low-stock">
+                    {summaryData.lowCount || 0}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
 
-            <Card className="border-red-200 bg-gradient-to-br from-red-50 to-white dark:from-red-950 dark:to-gray-900">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isHebrew ? 'דחוף' : 'Critical'}
-                    </p>
-                    <p className="text-3xl font-bold text-red-600" data-testid="text-critical-stock">
-                      {(summaryData.criticalCount || 0) + (summaryData.emptyCount || 0)}
-                    </p>
-                  </div>
-                  <TrendingDown className="w-12 h-12 text-red-400" />
+            <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="luxury-text-small">
+                    {isHebrew ? 'דחוף' : 'Critical'}
+                  </p>
+                  <p className="text-3xl font-bold text-red-600" data-testid="text-critical-stock">
+                    {(summaryData.criticalCount || 0) + (summaryData.emptyCount || 0)}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center">
+                  <TrendingDown className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Filters */}
-        <Card className="mb-6 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="w-5 h-5" />
-              {isHebrew ? 'סינון' : 'Filters'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl mb-6 luxury-animate-fade-in luxury-delay-2">
+          <h2 className="font-bold mb-4 luxury-text-gradient flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            {isHebrew ? 'סינון' : 'Filters'}
+          </h2>
+          <div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
                 placeholder={isHebrew ? 'חפש תחנה...' : 'Search station...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                className="luxury-glass-minimal"
                 data-testid="input-search-inventory"
               />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger data-testid="select-status-filter">
+                <SelectTrigger className="luxury-glass-minimal" data-testid="select-status-filter">
                   <SelectValue placeholder={isHebrew ? 'כל הסטטוסים' : 'All Statuses'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -293,7 +292,7 @@ export default function InventoryManagement() {
                 </SelectContent>
               </Select>
               <Select value={cityFilter} onValueChange={setCityFilter}>
-                <SelectTrigger data-testid="select-city-filter">
+                <SelectTrigger className="luxury-glass-minimal" data-testid="select-city-filter">
                   <SelectValue placeholder={isHebrew ? 'כל הערים' : 'All Cities'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -306,38 +305,39 @@ export default function InventoryManagement() {
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Inventory Table */}
-        <Card className="shadow-xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden luxury-animate-slide-up luxury-delay-3">
+          <div className="luxury-glass-panel px-6 py-4">
+            <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5" />
               {isHebrew ? 'פריטי מלאי' : 'Inventory Items'}
-            </CardTitle>
-            <CardDescription>
+            </h2>
+            <p className="luxury-text-small mt-1">
               {isHebrew ? 'עדכון אוטומטי כל דקה' : 'Auto-refreshes every minute'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="px-6 py-4">
             {isLoading ? (
-              <div className="text-center py-8">
-                <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-                <p className="text-gray-600">{isHebrew ? 'טוען מלאי...' : 'Loading inventory...'}</p>
+              <div className="text-center py-12">
+                <div className="luxury-spinner luxury-animate-scale-in"></div>
+                <p className="luxury-text-small mt-4">{isHebrew ? 'טוען מלאי...' : 'Loading inventory...'}</p>
               </div>
             ) : items.length === 0 ? (
               <div className="text-center py-12">
-                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600">{isHebrew ? 'לא נמצאו פריטים' : 'No items found'}</p>
+                <Package className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                <p className="luxury-text-small">{isHebrew ? 'לא נמצאו פריטים' : 'No items found'}</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {items.map((item) => (
+                {items.map((item, index) => (
                   <div
                     key={item.id}
-                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    className="luxury-glass-minimal luxury-hover-lift rounded-xl p-4 transition-all duration-300 luxury-animate-slide-up"
                     data-testid={`inventory-item-${item.id}`}
+                    style={{ animationDelay: `${(index + 4) * 0.05}s` }}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
@@ -384,23 +384,22 @@ export default function InventoryManagement() {
 
                     {/* Action Button */}
                     {(item.status === 'low' || item.status === 'critical' || item.status === 'empty') && (
-                      <Button
-                        size="sm"
-                        className="w-full"
+                      <button
+                        className="luxury-btn-primary w-full text-sm"
                         onClick={() => handleRequestRestock(item)}
                         disabled={requestRestockMutation.isPending}
                         data-testid={`button-restock-${item.id}`}
                       >
                         <Bell className="w-4 h-4 mr-2" />
                         {isHebrew ? 'בקש מילוי' : 'Request Restock'}
-                      </Button>
+                      </button>
                     )}
                   </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

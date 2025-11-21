@@ -10,66 +10,83 @@ export default function StationMap() {
   const [, setLocation] = useLocation();
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      <div className="container max-w-7xl mx-auto px-4 py-12">
+    <div className="min-h-screen luxury-bg-mesh">
+      <div className="luxury-container py-12">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4">Find a K9000™ Station</h1>
-          <p className="text-gray-600 dark:text-gray-300">
+        <div className="text-center mb-12 luxury-animate-fade-in">
+          <div className="inline-flex items-center gap-3 mb-6">
+            <MapPin className="w-10 h-10 text-purple-600" />
+            <h1 className="luxury-heading-xl">Find a K9000™ Station</h1>
+          </div>
+          <p className="luxury-text-body max-w-2xl mx-auto">
             Locate self-service pet wash stations near you
           </p>
         </div>
 
         {/* Search Bar */}
-        <Card className="p-6 mb-8">
-          <div className="flex gap-4">
+        <div className="luxury-glass-card luxury-shadow-xl p-6 mb-12 luxury-animate-slide-up luxury-delay-1">
+          <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <Input
-                className="pl-10"
+                className="pl-12 py-6 text-lg border-0 bg-transparent focus-visible:ring-0"
                 placeholder="Search by city, address, or postal code..."
                 data-testid="input-search-location"
               />
             </div>
-            <Button data-testid="button-current-location">
+            <button className="luxury-btn-primary" data-testid="button-current-location">
               <Navigation className="w-5 h-5 mr-2" />
               Use My Location
-            </Button>
-            <Button variant="outline" data-testid="button-filters">
+            </button>
+            <button className="luxury-btn-secondary" data-testid="button-filters">
               <Filter className="w-5 h-5 mr-2" />
               Filters
-            </Button>
+            </button>
           </div>
-        </Card>
+        </div>
 
         {/* Map Placeholder */}
-        <Card className="h-[600px] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-          <div className="text-center">
-            <MapPin className="w-24 h-24 text-purple-600 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold mb-2">Interactive Map Coming Soon</h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
+        <div className="luxury-glass-card luxury-shadow-xl h-[600px] flex items-center justify-center mb-12 overflow-hidden luxury-animate-scale-in luxury-delay-2">
+          <div className="text-center p-8">
+            <MapPin className="w-24 h-24 text-purple-600 mx-auto mb-6 luxury-pulse" />
+            <h3 className="luxury-heading-lg mb-4">Interactive Map Coming Soon</h3>
+            <p className="luxury-text-body mb-8 max-w-md mx-auto">
               We're building a beautiful map experience with Google Maps integration
             </p>
-            <Button size="lg" data-testid="button-view-list" onClick={() => setLocation("/locations")}>
+            <button
+              className="luxury-btn-primary luxury-shadow-xl"
+              data-testid="button-view-list"
+              onClick={() => setLocation("/locations")}
+            >
+              <MapPin className="w-5 h-5 mr-2" />
               View Station List
-            </Button>
+            </button>
           </div>
-        </Card>
+        </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <Card className="p-6 text-center">
-            <div className="text-3xl font-bold text-purple-600 mb-2">50+</div>
-            <div className="text-gray-600 dark:text-gray-400">Active Stations</div>
-          </Card>
-          <Card className="p-6 text-center">
-            <div className="text-3xl font-bold text-purple-600 mb-2">24/7</div>
-            <div className="text-gray-600 dark:text-gray-400">Availability</div>
-          </Card>
-          <Card className="p-6 text-center">
-            <div className="text-3xl font-bold text-purple-600 mb-2">15min</div>
-            <div className="text-gray-600 dark:text-gray-400">Average Distance</div>
-          </Card>
+        <div className="luxury-grid-3 luxury-animate-slide-up luxury-delay-3">
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center">
+              <MapPin className="w-8 h-8 text-purple-600" />
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient mb-2">50+</div>
+            <div className="luxury-text-small">Active Stations</div>
+          </div>
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center">
+              <Navigation className="w-8 h-8 text-purple-600" />
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient mb-2">24/7</div>
+            <div className="luxury-text-small">Availability</div>
+          </div>
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center">
+              <MapPin className="w-8 h-8 text-purple-600" />
+            </div>
+            <div className="luxury-heading-lg luxury-text-gradient mb-2">15min</div>
+            <div className="luxury-text-small">Average Distance</div>
+          </div>
         </div>
       </div>
     </div>

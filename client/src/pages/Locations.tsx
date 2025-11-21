@@ -88,116 +88,119 @@ export default function Locations() {
     : stations;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen luxury-bg-mesh">
       <div className="container mx-auto px-4 py-16">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="text-6xl mb-4">📍</div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+        <div className="text-center mb-12 luxury-fade-in">
+          <div className="text-7xl mb-6">📍</div>
+          <h1 className="luxury-heading-xl mb-6">
             Find a Station Near You
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="luxury-subtitle-lg max-w-2xl mx-auto">
             Premium organic pet washing stations across Israel
           </p>
         </div>
 
         {/* User Location Status */}
         {userLocation && (
-          <div className="max-w-4xl mx-auto mb-8 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
-            <p className="text-green-800 flex items-center justify-center gap-2">
-              <Navigation className="w-5 h-5" />
+          <div className="max-w-4xl mx-auto mb-8 luxury-glass-card luxury-bg-success p-6 text-center luxury-scale-in">
+            <p className="text-white flex items-center justify-center gap-3 text-lg font-semibold">
+              <Navigation className="w-6 h-6" />
               Showing stations sorted by distance from your location
             </p>
           </div>
         )}
 
         {/* Stations List */}
-        <div className="max-w-4xl mx-auto space-y-6">
-          {sortedStations.map((station) => {
+        <div className="max-w-4xl mx-auto space-y-6 luxury-stagger-fade-in">
+          {sortedStations.map((station, index) => {
             const distance = userLocation 
               ? calculateDistance(userLocation.lat, userLocation.lng, station.coordinates.lat, station.coordinates.lng)
               : null;
 
             return (
-              <Card key={station.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
+              <div key={station.id} className="luxury-glass-card luxury-hover-lift luxury-shadow-lg" style={{ animationDelay: `${index * 0.1}s` }}>
+                <div className="p-8">
+                  <div className="flex items-start justify-between mb-6">
                     <div>
-                      <CardTitle className="text-2xl">{station.name}</CardTitle>
-                      <CardDescription className="text-lg mt-2">
+                      <h2 className="text-3xl font-bold luxury-gradient-text mb-3">{station.name}</h2>
+                      <p className="text-xl luxury-text-body">
                         {station.address}, {station.city}
-                      </CardDescription>
+                      </p>
                     </div>
                     {distance && (
-                      <div className="bg-blue-50 px-4 py-2 rounded-lg text-center">
-                        <div className="text-2xl font-bold text-blue-600">{distance.toFixed(1)}</div>
-                        <div className="text-xs text-blue-600">km away</div>
+                      <div className="luxury-glass-minimal px-6 py-4 rounded-xl text-center luxury-pulse-glow">
+                        <div className="text-3xl font-black luxury-gradient-text">{distance.toFixed(1)}</div>
+                        <div className="text-sm luxury-text-muted mt-1">km away</div>
                       </div>
                     )}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-2 gap-4 mb-6">
-                    <div className="flex items-start gap-3">
-                      <Clock className="w-5 h-5 text-purple-600 mt-1" />
+
+                  <div className="grid md:grid-cols-2 gap-6 mb-8">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 luxury-pulse-glow">
+                        <Clock className="w-6 h-6 text-white" />
+                      </div>
                       <div>
-                        <div className="font-semibold text-sm text-gray-700">שעות פעילות</div>
-                        <div className="text-gray-600">{station.hours}</div>
+                        <div className="font-bold text-sm luxury-text-muted mb-1">שעות פעילות</div>
+                        <div className="luxury-text-body text-lg">{station.hours}</div>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <Phone className="w-5 h-5 text-green-600 mt-1" />
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0 luxury-pulse-glow">
+                        <Phone className="w-6 h-6 text-white" />
+                      </div>
                       <div>
-                        <div className="font-semibold text-sm text-gray-700">טלפון</div>
-                        <a href={`tel:${station.phone}`} className="text-blue-600 hover:underline">
+                        <div className="font-bold text-sm luxury-text-muted mb-1">טלפון</div>
+                        <a href={`tel:${station.phone}`} className="luxury-link text-lg">
                           {station.phone}
                         </a>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
-                    <Button
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  <div className="flex flex-wrap gap-4">
+                    <button
+                      className="luxury-btn-primary luxury-shadow-xl"
                       onClick={() => setRouterLocation(`/k9000/booking/${station.id}`)}
                       data-testid={`button-book-${station.id}`}
                     >
-                      <Calendar className="w-4 h-4 mr-2" />
+                      <Calendar className="w-5 h-5 mr-2" />
                       Book Wash Now
-                    </Button>
-                    <Button
-                      variant="outline"
+                    </button>
+                    <button
+                      className="luxury-btn-outline"
                       onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${station.coordinates.lat},${station.coordinates.lng}`, '_blank')}
                     >
-                      <MapPin className="w-4 h-4 mr-2" />
+                      <MapPin className="w-5 h-5 mr-2" />
                       Navigate with Google Maps
-                    </Button>
-                    <Button
-                      variant="outline"
+                    </button>
+                    <button
+                      className="luxury-btn-outline"
                       onClick={() => window.open(`https://waze.com/ul?ll=${station.coordinates.lat},${station.coordinates.lng}&navigate=yes`, '_blank')}
                     >
-                      <Navigation className="w-4 h-4 mr-2" />
+                      <Navigation className="w-5 h-5 mr-2" />
                       Navigate with Waze
-                    </Button>
+                    </button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>
 
         {/* Coming Soon Section */}
-        <div className="max-w-4xl mx-auto mt-12 p-8 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 text-center">
-          <h2 className="text-2xl font-bold mb-3">More Locations Coming Soon!</h2>
-          <p className="text-gray-600 mb-6">
+        <div className="max-w-4xl mx-auto mt-16 luxury-glass-card luxury-shadow-xl p-10 text-center luxury-slide-up">
+          <h2 className="text-3xl font-bold luxury-gradient-text mb-4">More Locations Coming Soon!</h2>
+          <p className="luxury-text-body text-lg mb-8">
             We're expanding across Israel in 2025. Want a Pet Wash™ station in your neighborhood?
           </p>
-          <Button 
-            variant="outline"
+          <button 
+            className="luxury-btn-outline luxury-shadow-lg"
             onClick={() => window.location.href = 'mailto:Support@PetWash.co.il?subject=New Location Request'}
           >
             📧 Request a New Location
-          </Button>
+          </button>
         </div>
       </div>
     </div>

@@ -177,13 +177,13 @@ export default function GroupStatusMonitor() {
   const avgUptime = platforms.reduce((sum, p) => sum + p.uptime, 0) / platforms.length;
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen luxury-bg-mesh">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="luxury-glass-minimal border-b border-purple-100 mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent">
+              <h1 className="luxury-heading-xl luxury-text-gradient mb-2">
                 Group Status Monitor
               </h1>
               <p className="text-gray-600">Real-time health monitoring for all 7 platforms</p>
@@ -193,8 +193,7 @@ export default function GroupStatusMonitor() {
                 refetch();
                 setLastRefresh(new Date());
               }}
-              variant="outline"
-              className="gap-2"
+              className="luxury-btn-primary gap-2"
               data-testid="button-refresh"
             >
               <RefreshCw className="h-4 w-4" />
@@ -203,114 +202,116 @@ export default function GroupStatusMonitor() {
           </div>
 
           {/* Global Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-            <Card className="p-4 bg-white shadow-[4px_4px_8px_rgba(163,177,198,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] border-0">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-full bg-green-100">
-                  <Activity className="h-5 w-5 text-green-600" />
+          <div className="luxury-grid-4 gap-6 mt-8">
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
+              <div className="p-6 flex items-center gap-4">
+                <div className="p-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-500">
+                  <Activity className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Avg. Uptime</p>
-                  <p className="text-2xl font-bold text-green-600">{avgUptime.toFixed(2)}%</p>
+                  <p className="luxury-heading-md text-green-600">{avgUptime.toFixed(2)}%</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 bg-white shadow-[4px_4px_8px_rgba(163,177,198,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] border-0">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-full bg-blue-100">
-                  <Users className="h-5 w-5 text-blue-600" />
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
+              <div className="p-6 flex items-center gap-4">
+                <div className="p-3 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500">
+                  <Users className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Active Users</p>
-                  <p className="text-2xl font-bold text-blue-600">{totalUsers.toLocaleString()}</p>
+                  <p className="luxury-heading-md text-blue-600">{totalUsers.toLocaleString()}</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 bg-white shadow-[4px_4px_8px_rgba(163,177,198,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] border-0">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-full bg-amber-100">
-                  <DollarSign className="h-5 w-5 text-amber-600" />
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
+              <div className="p-6 flex items-center gap-4">
+                <div className="p-3 rounded-full bg-gradient-to-br from-amber-500 to-yellow-500">
+                  <DollarSign className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Today's Revenue</p>
-                  <p className="text-2xl font-bold text-amber-600">₪{totalRevenue.toLocaleString()}</p>
+                  <p className="luxury-heading-md text-amber-600">₪{totalRevenue.toLocaleString()}</p>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 bg-white shadow-[4px_4px_8px_rgba(163,177,198,0.15),-4px_-4px_8px_rgba(255,255,255,0.7)] border-0">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-full bg-purple-100">
-                  <TrendingUp className="h-5 w-5 text-purple-600" />
+            <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
+              <div className="p-6 flex items-center gap-4">
+                <div className="p-3 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500">
+                  <TrendingUp className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Platforms Online</p>
-                  <p className="text-2xl font-bold text-purple-600">{platforms.filter(p => p.status === "operational").length}/7</p>
+                  <p className="luxury-heading-md luxury-text-gradient">{platforms.filter(p => p.status === "operational").length}/7</p>
                 </div>
               </div>
             </Card>
           </div>
 
-          <div className="mt-4 text-sm text-gray-500">
+          <div className="mt-6 text-sm text-gray-500">
             Last refreshed: {lastRefresh.toLocaleTimeString()}
           </div>
         </div>
       </div>
 
       {/* Platform Status Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {platforms.map((platform) => {
             const Icon = platform.icon;
             return (
               <Card
                 key={platform.platform}
-                className="p-6 bg-white shadow-[8px_8px_16px_rgba(163,177,198,0.15),-8px_-8px_16px_rgba(255,255,255,0.7)] border-0 hover:shadow-xl transition-shadow"
+                className="luxury-glass-card luxury-shadow-lg luxury-hover-lift"
                 data-testid={`platform-card-${platform.platform}`}
               >
-                {/* Icon & Name */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`p-3 rounded-full bg-gradient-to-br ${platform.color}`}>
-                    <Icon className="h-6 w-6 text-white" />
+                <div className="p-6">
+                  {/* Icon & Name */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={`p-3 rounded-full bg-gradient-to-br ${platform.color}`}>
+                      <Icon className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{platform.displayName}</h3>
+                      {getStatusBadge(platform.status)}
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{platform.displayName}</h3>
-                    {getStatusBadge(platform.status)}
-                  </div>
-                </div>
 
-                {/* Metrics */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Uptime</span>
-                    <span className="font-semibold text-green-600">{platform.uptime}%</span>
+                  {/* Metrics */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Uptime</span>
+                      <span className="font-semibold text-green-600">{platform.uptime}%</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Active Users</span>
+                      <span className="font-semibold">{platform.activeUsers}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Today Revenue</span>
+                      <span className="font-semibold text-amber-600">₪{platform.todayRevenue.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Avg Response</span>
+                      <span className="font-semibold">{platform.avgResponseTime}ms</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Active Users</span>
-                    <span className="font-semibold">{platform.activeUsers}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Today Revenue</span>
-                    <span className="font-semibold text-amber-600">₪{platform.todayRevenue.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Avg Response</span>
-                    <span className="font-semibold">{platform.avgResponseTime}ms</span>
-                  </div>
-                </div>
 
-                {/* Actions */}
-                <div className="mt-4 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    data-testid={`button-view-${platform.platform}`}
-                  >
-                    View Details
-                  </Button>
+                  {/* Actions */}
+                  <div className="mt-6 pt-4 border-t border-gray-100">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full hover:bg-purple-50"
+                      data-testid={`button-view-${platform.platform}`}
+                    >
+                      View Details
+                    </Button>
+                  </div>
                 </div>
               </Card>
             );

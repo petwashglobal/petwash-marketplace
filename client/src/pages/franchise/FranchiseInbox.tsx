@@ -65,10 +65,10 @@ export default function FranchiseInbox() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white p-4 md:p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">
+      <div className="min-h-screen luxury-bg-mesh p-4 md:p-6 flex items-center justify-center">
+        <div className="text-center luxury-animate-fade-in">
+          <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="luxury-text-body">
             {t('inbox.loading', language)}
           </p>
         </div>
@@ -77,53 +77,55 @@ export default function FranchiseInbox() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-4 md:p-6" dir={dir}>
+    <div className="min-h-screen luxury-bg-mesh p-4 md:p-6" dir={dir}>
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="mb-8 luxury-animate-fade-in">
+          <h1 className="luxury-heading-xl mb-3">
             {t('inbox.title', language)}
           </h1>
-          <p className="text-gray-600">
+          <p className="luxury-text-body">
             {t('inbox.description', language)}
           </p>
         </div>
 
         <Tabs value={category} onValueChange={setCategory} className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="all">
-              {t('inbox.tabAll', language)}
-            </TabsTrigger>
-            <TabsTrigger value="ops">
-              {t('inbox.tabOperations', language)}
-            </TabsTrigger>
-            <TabsTrigger value="marketing">
-              {t('inbox.tabMarketing', language)}
-            </TabsTrigger>
-            <TabsTrigger value="finance">
-              {t('inbox.tabFinance', language)}
-            </TabsTrigger>
-            <TabsTrigger value="announcement">
-              {t('inbox.tabAnnouncements', language)}
-            </TabsTrigger>
-          </TabsList>
+          <div className="luxury-glass-card shadow-lg mb-6 p-2 luxury-animate-fade-in luxury-delay-1">
+            <TabsList className="bg-transparent w-full">
+              <TabsTrigger value="all" className="data-[state=active]:luxury-text-gradient">
+                {t('inbox.tabAll', language)}
+              </TabsTrigger>
+              <TabsTrigger value="ops" className="data-[state=active]:luxury-text-gradient">
+                {t('inbox.tabOperations', language)}
+              </TabsTrigger>
+              <TabsTrigger value="marketing" className="data-[state=active]:luxury-text-gradient">
+                {t('inbox.tabMarketing', language)}
+              </TabsTrigger>
+              <TabsTrigger value="finance" className="data-[state=active]:luxury-text-gradient">
+                {t('inbox.tabFinance', language)}
+              </TabsTrigger>
+              <TabsTrigger value="announcement" className="data-[state=active]:luxury-text-gradient">
+                {t('inbox.tabAnnouncements', language)}
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value={category} className="mt-0">
             <div className="grid grid-cols-1 gap-4">
               {messages.length > 0 ? (
-                messages.map((message) => (
-                  <Card key={message.id} className="hover:shadow-md transition-shadow">
+                messages.map((message, index) => (
+                  <div key={message.id} className={`luxury-glass-card shadow-lg transition-all duration-300 hover:scale-102 hover:shadow-xl luxury-animate-fade-in luxury-delay-${Math.min(index + 2, 10)}`}>
                     <CardHeader>
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <CardTitle className="text-lg">{message.title}</CardTitle>
-                            <Badge variant="outline">{getCategoryLabel(message.category)}</Badge>
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <CardTitle className="luxury-heading-md">{message.title}</CardTitle>
+                            <Badge variant="outline" className="luxury-badge">{getCategoryLabel(message.category)}</Badge>
                             {message.requiresAck && !message.ackAt && (
                               <Badge variant="destructive">{t('inbox.requiresAck', language)}</Badge>
                             )}
                           </div>
                           <div 
-                            className="text-sm text-gray-600 line-clamp-2"
+                            className="luxury-text-body line-clamp-2"
                             dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.bodyHtml, {
                               allowedTags: ['p', 'br', 'strong', 'em', 'u', 'span'],
                               allowedAttributes: {}
@@ -131,28 +133,27 @@ export default function FranchiseInbox() {
                           />
                         </div>
                         {message.requiresAck && !message.ackAt && (
-                          <Button
-                            size="sm"
+                          <button
                             onClick={() => acknowledgeMutation.mutate(message.id)}
                             disabled={acknowledgeMutation.isPending}
-                            className="bg-emerald-600 hover:bg-emerald-700"
+                            className="luxury-btn-primary flex items-center gap-2 whitespace-nowrap"
                           >
-                            <CheckCircle className="h-4 w-4 mr-2" />
+                            <CheckCircle className="h-4 w-4" />
                             {t('inbox.acknowledge', language)}
-                          </Button>
+                          </button>
                         )}
                       </div>
                     </CardHeader>
-                  </Card>
+                  </div>
                 ))
               ) : (
-                <Card>
+                <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-2">
                   <CardContent className="py-12">
-                    <p className="text-center text-gray-500">
+                    <p className="text-center luxury-text-body">
                       {t('inbox.noMessages', language)}
                     </p>
                   </CardContent>
-                </Card>
+                </div>
               )}
             </div>
           </TabsContent>

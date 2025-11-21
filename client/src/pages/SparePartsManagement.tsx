@@ -196,19 +196,19 @@ export default function SparePartsManagement() {
   const categories = Array.from(new Set(parts.map(part => part.category)));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8">
+    <div className="min-h-screen luxury-bg-mesh p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg">
+        <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl mb-8 luxury-animate-fade-in">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg">
               <Wrench className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white" data-testid="text-spare-parts-title">
+              <h1 className="luxury-heading-lg" data-testid="text-spare-parts-title">
                 {isHebrew ? 'ניהול חלקי חילוף' : 'Spare Parts Management'}
               </h1>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="luxury-text-small mt-1">
                 {isHebrew ? 'קטלוג חלקי חילוף K9000 ומעקב הזמנות' : 'K9000 spare parts catalog and order tracking'}
               </p>
             </div>
@@ -217,117 +217,120 @@ export default function SparePartsManagement() {
 
         {/* Summary Stats */}
         {summaryData && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950 dark:to-gray-900">
-              <CardContent className="pt-6">
+          <div className="luxury-grid-4 gap-4 mb-6 luxury-animate-fade-in luxury-delay-1">
+            <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="luxury-text-small">
                       {isHebrew ? 'סה"כ חלקים' : 'Total Parts'}
                     </p>
-                    <p className="text-3xl font-bold text-blue-600" data-testid="text-total-parts">
+                    <p className="text-3xl font-bold luxury-text-gradient" data-testid="text-total-parts">
                       {summaryData.totalParts || 0}
                     </p>
                   </div>
-                  <Box className="w-12 h-12 text-blue-400" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-green-200 bg-gradient-to-br from-green-50 to-white dark:from-green-950 dark:to-gray-900">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isHebrew ? 'במלאי' : 'In Stock'}
-                    </p>
-                    <p className="text-3xl font-bold text-green-600" data-testid="text-in-stock">
-                      {summaryData.inStockCount || 0}
-                    </p>
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                    <Box className="w-6 h-6 text-white" />
                   </div>
-                  <CheckCircle2 className="w-12 h-12 text-green-400" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            <Card className="border-yellow-200 bg-gradient-to-br from-yellow-50 to-white dark:from-yellow-950 dark:to-gray-900">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isHebrew ? 'מלאי נמוך' : 'Low Stock'}
-                    </p>
-                    <p className="text-3xl font-bold text-yellow-600" data-testid="text-low-stock-parts">
-                      {summaryData.lowStockCount || 0}
-                    </p>
-                  </div>
-                  <AlertCircle className="w-12 h-12 text-yellow-400" />
+            <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="luxury-text-small">
+                    {isHebrew ? 'במלאי' : 'In Stock'}
+                  </p>
+                  <p className="text-3xl font-bold text-green-600" data-testid="text-in-stock">
+                    {summaryData.inStockCount || 0}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
 
-            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950 dark:to-gray-900">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isHebrew ? 'הזמנות פתוחות' : 'Open Orders'}
-                    </p>
-                    <p className="text-3xl font-bold text-purple-600" data-testid="text-open-orders">
-                      {summaryData.openOrders || 0}
-                    </p>
-                  </div>
-                  <ShoppingCart className="w-12 h-12 text-purple-400" />
+            <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="luxury-text-small">
+                    {isHebrew ? 'מלאי נמוך' : 'Low Stock'}
+                  </p>
+                  <p className="text-3xl font-bold text-yellow-600" data-testid="text-low-stock-parts">
+                    {summaryData.lowStockCount || 0}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
+
+            <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="luxury-text-small">
+                    {isHebrew ? 'הזמנות פתוחות' : 'Open Orders'}
+                  </p>
+                  <p className="text-3xl font-bold luxury-text-gradient" data-testid="text-open-orders">
+                    {summaryData.openOrders || 0}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
+                  <ShoppingCart className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant={selectedTab === 'catalog' ? 'default' : 'outline'}
+        <div className="flex gap-3 mb-6 luxury-animate-fade-in luxury-delay-2">
+          <button
+            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 luxury-hover-lift flex items-center gap-2 ${
+              selectedTab === 'catalog' ? 'luxury-btn-primary' : 'luxury-glass-minimal'
+            }`}
             onClick={() => setSelectedTab('catalog')}
             data-testid="button-tab-catalog"
           >
-            <Package className="w-4 h-4 mr-2" />
+            <Package className="w-4 h-4" />
             {isHebrew ? 'קטלוג חלקים' : 'Parts Catalog'}
-          </Button>
-          <Button
-            variant={selectedTab === 'orders' ? 'default' : 'outline'}
+          </button>
+          <button
+            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 luxury-hover-lift flex items-center gap-2 ${
+              selectedTab === 'orders' ? 'luxury-btn-primary' : 'luxury-glass-minimal'
+            }`}
             onClick={() => setSelectedTab('orders')}
             data-testid="button-tab-orders"
           >
-            <ShoppingCart className="w-4 h-4 mr-2" />
+            <ShoppingCart className="w-4 h-4" />
             {isHebrew ? 'הזמנות' : 'Orders'}
             {summaryData?.openOrders > 0 && (
-              <Badge className="ml-2 bg-red-500">{summaryData.openOrders}</Badge>
+              <span className="ml-1 px-2 py-0.5 rounded-lg bg-red-500 text-white text-xs font-bold">{summaryData.openOrders}</span>
             )}
-          </Button>
+          </button>
         </div>
 
         {/* Catalog Tab */}
         {selectedTab === 'catalog' && (
           <>
             {/* Filters */}
-            <Card className="mb-6 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Filter className="w-5 h-5" />
-                  {isHebrew ? 'סינון' : 'Filters'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl mb-6 luxury-animate-slide-up luxury-delay-3">
+              <h2 className="font-bold mb-4 luxury-text-gradient flex items-center gap-2">
+                <Filter className="w-5 h-5" />
+                {isHebrew ? 'סינון' : 'Filters'}
+              </h2>
+              <div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
                     placeholder={isHebrew ? 'חפש חלק...' : 'Search part...'}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    className="luxury-glass-minimal"
                     data-testid="input-search-parts"
                   />
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger data-testid="select-status-filter">
+                    <SelectTrigger className="luxury-glass-minimal" data-testid="select-status-filter">
                       <SelectValue placeholder={isHebrew ? 'כל הסטטוסים' : 'All Statuses'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -338,7 +341,7 @@ export default function SparePartsManagement() {
                     </SelectContent>
                   </Select>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger data-testid="select-category-filter">
+                    <SelectTrigger className="luxury-glass-minimal" data-testid="select-category-filter">
                       <SelectValue placeholder={isHebrew ? 'כל הקטגוריות' : 'All Categories'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -351,38 +354,39 @@ export default function SparePartsManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Parts List */}
-            <Card className="shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden luxury-animate-slide-up luxury-delay-4">
+              <div className="luxury-glass-panel px-6 py-4">
+                <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
                   <FileSpreadsheet className="w-5 h-5" />
                   {isHebrew ? 'קטלוג חלקי חילוף' : 'Spare Parts Catalog'}
-                </CardTitle>
-                <CardDescription>
+                </h2>
+                <p className="luxury-text-small mt-1">
                   {isHebrew ? 'כל חלקי החילוף התואמים למכונות K9000' : 'All compatible K9000 machine spare parts'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div className="px-6 py-4">
                 {partsLoading ? (
-                  <div className="text-center py-8">
-                    <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-                    <p className="text-gray-600">{isHebrew ? 'טוען חלקים...' : 'Loading parts...'}</p>
+                  <div className="text-center py-12">
+                    <div className="luxury-spinner luxury-animate-scale-in"></div>
+                    <p className="luxury-text-small mt-4">{isHebrew ? 'טוען חלקים...' : 'Loading parts...'}</p>
                   </div>
                 ) : parts.length === 0 ? (
                   <div className="text-center py-12">
-                    <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600">{isHebrew ? 'לא נמצאו חלקים' : 'No parts found'}</p>
+                    <Package className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                    <p className="luxury-text-small">{isHebrew ? 'לא נמצאו חלקים' : 'No parts found'}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {parts.map((part) => (
+                    {parts.map((part, index) => (
                       <div
                         key={part.id}
-                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                        className="luxury-glass-minimal luxury-hover-lift rounded-xl p-4 transition-all duration-300 luxury-animate-slide-up"
                         data-testid={`spare-part-${part.id}`}
+                        style={{ animationDelay: `${(index + 5) * 0.05}s` }}
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-3 flex-1">
@@ -421,56 +425,56 @@ export default function SparePartsManagement() {
 
                         {/* Action Button */}
                         {(part.status === 'low_stock' || part.status === 'out_of_stock') && (
-                          <Button
-                            size="sm"
-                            className="w-full"
+                          <button
+                            className="luxury-btn-primary w-full text-sm"
                             onClick={() => handleOrderPart(part)}
                             disabled={orderPartMutation.isPending}
                             data-testid={`button-order-${part.id}`}
                           >
                             <ShoppingCart className="w-4 h-4 mr-2" />
                             {isHebrew ? 'הזמן חלק' : 'Order Part'}
-                          </Button>
+                          </button>
                         )}
                       </div>
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </>
         )}
 
         {/* Orders Tab */}
         {selectedTab === 'orders' && (
-          <Card className="shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden luxury-animate-slide-up luxury-delay-3">
+            <div className="luxury-glass-panel px-6 py-4">
+              <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5" />
                 {isHebrew ? 'הזמנות חלקי חילוף' : 'Spare Parts Orders'}
-              </CardTitle>
-              <CardDescription>
+              </h2>
+              <p className="luxury-text-small mt-1">
                 {isHebrew ? 'מעקב אחר כל ההזמנות' : 'Track all spare parts orders'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="px-6 py-4">
               {ordersLoading ? (
-                <div className="text-center py-8">
-                  <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-                  <p className="text-gray-600">{isHebrew ? 'טוען הזמנות...' : 'Loading orders...'}</p>
+                <div className="text-center py-12">
+                  <div className="luxury-spinner luxury-animate-scale-in"></div>
+                  <p className="luxury-text-small mt-4">{isHebrew ? 'טוען הזמנות...' : 'Loading orders...'}</p>
                 </div>
               ) : orders.length === 0 ? (
                 <div className="text-center py-12">
-                  <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-600">{isHebrew ? 'אין הזמנות' : 'No orders found'}</p>
+                  <ShoppingCart className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                  <p className="luxury-text-small">{isHebrew ? 'אין הזמנות' : 'No orders found'}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {orders.map((order) => (
+                  {orders.map((order, index) => (
                     <div
                       key={order.id}
-                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      className="luxury-glass-minimal luxury-hover-lift rounded-xl p-4 transition-all duration-300 luxury-animate-slide-up"
                       data-testid={`order-${order.id}`}
+                      style={{ animationDelay: `${(index + 4) * 0.05}s` }}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div>
@@ -506,8 +510,8 @@ export default function SparePartsManagement() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
     </div>

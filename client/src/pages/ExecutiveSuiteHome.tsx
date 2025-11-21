@@ -79,7 +79,7 @@ export default function ExecutiveSuiteHome() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-white dark:from-gray-900 dark:via-black dark:to-gray-900">
+    <div className="min-h-screen luxury-bg-mesh">
       <div className="container max-w-7xl mx-auto px-4 py-8 space-y-8">
         
         {/* Header */}
@@ -100,11 +100,11 @@ export default function ExecutiveSuiteHome() {
         </div>
 
         {/* Dashboards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {accessibleDashboards.map((dashboard) => (
+        <div className="luxury-grid-3">
+          {accessibleDashboards.map((dashboard, idx) => (
             <Card 
               key={dashboard.path}
-              className="group hover:shadow-lg transition-all duration-300 hover:scale-[1.02] relative overflow-hidden"
+              className={`luxury-glass-card luxury-shadow-lg group relative overflow-hidden luxury-delay-${idx + 1}`}
             >
               {dashboard.badge && (
                 <div className="absolute top-3 right-3 px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
@@ -129,8 +129,7 @@ export default function ExecutiveSuiteHome() {
               <CardContent>
                 <Link href={dashboard.path}>
                   <Button 
-                    className="w-full group/btn" 
-                    variant="default"
+                    className="luxury-btn-primary w-full group/btn" 
                     data-testid={`link-${dashboard.path.split('/').pop()}`}
                   >
                     <span>Open Dashboard</span>
@@ -144,7 +143,7 @@ export default function ExecutiveSuiteHome() {
 
         {/* Access Notice for Limited Roles */}
         {accessibleDashboards.length < EXECUTIVE_DASHBOARDS.length && (
-          <Card className="border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20">
+          <Card className="luxury-glass-card border-amber-200 dark:border-amber-900">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
                 <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />

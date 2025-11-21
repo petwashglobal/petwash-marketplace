@@ -8455,6 +8455,38 @@ export const ratings = pgTable("ratings", {
   index("idx_ratings_contractor").on(table.contractorId),
 ]);
 
+// ===========================================================
+// ISRAELI SUBCONTRACTOR AGREEMENT 2025 - Digital Signatures
+// Legal-compliant digital signature storage for Israeli contractors
+// CRITICAL: This table stores legally-binding digital signatures
+// that meet Israeli digital signature and evidence requirements for 2025/2026
+// ===========================================================
+export const subcontractorSignatures = pgTable("subcontractor_signatures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`), // UUID for signature ID
+  subcontractorId: varchar("subcontractor_id").notNull(), // Contractor ID from contractors table or users table
+  fullName: text("full_name").notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  agreementVersion: varchar("agreement_version", { length: 50 }).notNull(), // e.g., "2025.01", "2025.02", "2026.01"
+  signedAt: timestamp("signed_at").notNull(), // Timestamp when signature was created
+  ipAddress: varchar("ip_address", { length: 100 }), // REQUIRED for Israeli digital signature law 2025
+  userAgent: text("user_agent"), // REQUIRED for Israeli digital signature law 2025
+  deviceInfo: text("device_info"), // REQUIRED for Israeli digital signature law 2025
+  signatureMethod: varchar("signature_method", { length: 50 }).notNull(), // typed_name, drawn_signature, otp_code, external_provider
+  signaturePayload: text("signature_payload").notNull(), // SHA-256 hash of signature data
+  agreementSnapshotJson: jsonb("agreement_snapshot_json").notNull(), // Full agreement JSON at time of signing - REQUIRED for evidence
+  agreedToPrivacy: boolean("agreed_to_privacy").notNull().default(true),
+  agreedToTerms: boolean("agreed_to_terms").notNull().default(true),
+  auditTrailId: varchar("audit_trail_id", { length: 255 }), // Audit trail reference - REQUIRED for Israeli compliance 2025
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_subcontractor_signatures_subcontractor").on(table.subcontractorId),
+  index("idx_subcontractor_signatures_email").on(table.email),
+  index("idx_subcontractor_signatures_version").on(table.agreementVersion),
+  index("idx_subcontractor_signatures_signed_at").on(table.signedAt),
+]);
+
 // Type exports for new tables
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = typeof devices.$inferInsert;
@@ -8490,6 +8522,8 @@ export type Driver = typeof drivers.$inferSelect;
 export type InsertDriver = typeof drivers.$inferInsert;
 export type Rating = typeof ratings.$inferSelect;
 export type InsertRating = typeof ratings.$inferInsert;
+export type SubcontractorSignature = typeof subcontractorSignatures.$inferSelect;
+export type InsertSubcontractorSignature = typeof subcontractorSignatures.$inferInsert;
 
 // Framework 2025 Zod validation schemas
 export const insertContractorSchema = createInsertSchema(contractors, {
@@ -8529,3 +8563,22 @@ export const insertRatingSchema = createInsertSchema(ratings, {
 export const evaluateComplianceSchema = z.object({
   contractorId: z.string().uuid("Invalid contractor ID"),
 });
+
+// Israeli Subcontractor Agreement 2025 - Zod validation schema
+export const insertSubcontractorSignatureSchema = createInsertSchema(subcontractorSignatures, {
+  subcontractorId: z.string().min(1, "Subcontractor ID is required"),
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  agreementVersion: z.string().min(1, "Agreement version is required"),
+  signedAt: z.date(),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
+  deviceInfo: z.string().optional(),
+  signatureMethod: z.enum(["typed_name", "drawn_signature", "otp_code", "external_provider"]),
+  signaturePayload: z.string().min(1, "Signature payload is required"),
+  agreementSnapshotJson: z.any(), // JSONB object - full agreement snapshot
+  agreedToPrivacy: z.boolean().default(true),
+  agreedToTerms: z.boolean().default(true),
+  auditTrailId: z.string().optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true });

@@ -207,45 +207,44 @@ export default function PlatformShowcase() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="min-h-screen luxury-bg-mesh">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-blue-600/10 to-pink-600/10" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <div className="text-center space-y-6">
-            <Badge className="text-lg px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0">
-              <Award className="h-5 w-5 mr-2 inline" />
+          <div className="text-center space-y-8 luxury-fade-in">
+            <div className="luxury-badge-primary text-lg px-8 py-3">
+              <Award className="h-6 w-6 mr-2 inline" />
               World-Class Technology Platform
-            </Badge>
+            </div>
             
-            <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="luxury-heading-xl">
               Pet Wash™ Platform
             </h1>
             
-            <p className="text-2xl md:text-3xl text-slate-600 dark:text-slate-300 max-w-4xl mx-auto">
+            <p className="luxury-subtitle-lg max-w-4xl mx-auto">
               The Most Advanced Multi-Division Pet Care Ecosystem in the World
             </p>
             
-            <p className="text-lg text-slate-500 dark:text-slate-400 max-w-3xl mx-auto">
+            <p className="luxury-text-body text-xl max-w-3xl mx-auto">
               7-Star luxury platform combining AI, blockchain, real-time IoT, enterprise security, 
               and innovative features that don't exist anywhere else in the pet care industry.
             </p>
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-16">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mt-20 luxury-stagger-fade-in">
             {stats.map((stat, index) => (
-              <Card key={index} className="p-6 text-center bg-white/80 dark:bg-slate-800/80 backdrop-blur border-slate-200 dark:border-slate-700">
-                <div className="flex justify-center mb-3 text-purple-600 dark:text-purple-400">
+              <div key={index} className="luxury-glass-card luxury-hover-lift p-8 text-center" style={{ animationDelay: `${index * 0.1}s` }}>
+                <div className="flex justify-center mb-4 luxury-gradient-icon">
                   {stat.icon}
                 </div>
-                <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
+                <div className="text-4xl font-black luxury-gradient-text mb-2">
                   {stat.value}
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-400">
+                <div className="luxury-text-muted text-sm font-semibold">
                   {stat.label}
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
@@ -253,31 +252,29 @@ export default function PlatformShowcase() {
 
       {/* Features Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 luxury-stagger-fade-in">
           {features.map((feature, index) => (
-            <Card key={index} className="relative overflow-hidden group hover:shadow-2xl transition-all duration-300 border-slate-200 dark:border-slate-700">
-              <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-5 group-hover:opacity-10 transition-opacity`} />
-              
-              <div className="relative p-6 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${feature.color} text-white`}>
+            <div key={index} className="luxury-glass-card luxury-hover-glow luxury-shadow-lg relative overflow-hidden" style={{ animationDelay: `${index * 0.05}s` }}>
+              <div className="p-8 space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className={`p-4 rounded-xl bg-gradient-to-br ${feature.color} text-white luxury-pulse-glow`}>
                     {feature.icon}
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-2xl font-bold luxury-gradient-text">
                     {feature.category}
                   </h3>
                 </div>
                 
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {feature.items.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
-                      <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                    <li key={i} className="flex items-start gap-3 luxury-text-body">
+                      <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                       <span>{item}</span>
                     </li>
                   ))}
                 </ul>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       </div>

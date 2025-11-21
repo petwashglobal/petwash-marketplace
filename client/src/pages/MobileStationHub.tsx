@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Search, MapPin, AlertTriangle, Package, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { designTokens } from '@/lib/designTokens';
 
 interface Station {
   id: string;
@@ -28,7 +27,6 @@ export default function MobileStationHub() {
     queryKey: ['/api/admin/stations', statusFilter !== 'all' ? statusFilter : null],
   });
 
-  // Pull to refresh
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.touches[0].clientY);
   };
@@ -47,7 +45,6 @@ export default function MobileStationHub() {
 
   const stations = data?.stations || [];
   
-  // Client-side filtering
   const filteredStations = stations.filter(station => {
     const matchesSearch = search === '' || 
       station.serialNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -61,11 +58,11 @@ export default function MobileStationHub() {
 
   const getStatusColor = (status: string): string => {
     switch (status) {
-      case 'active': return designTokens.colors.accent.success;
-      case 'installing': return designTokens.colors.accent.info;
-      case 'maintenance': return designTokens.colors.accent.warning;
-      case 'offline': return designTokens.colors.accent.error;
-      default: return designTokens.colors.status.neutral;
+      case 'active': return 'bg-green-500';
+      case 'installing': return 'bg-blue-500';
+      case 'maintenance': return 'bg-yellow-500';
+      case 'offline': return 'bg-red-500';
+      default: return 'bg-gray-500';
     }
   };
 
@@ -75,29 +72,18 @@ export default function MobileStationHub() {
 
   return (
     <div 
-      className="min-h-screen pb-20"
-      style={{ backgroundColor: designTokens.colors.background.primary }}
+      className="min-h-screen luxury-bg-mesh pb-24"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
     >
       {/* Fixed Header */}
-      <div className="sticky top-0 z-50 border-b" style={{
-        backgroundColor: designTokens.colors.background.primary,
-        borderColor: designTokens.colors.border.default
-      }}>
+      <div className="luxury-glass-card luxury-shadow-lg sticky top-0 z-50 rounded-none md:rounded-t-2xl">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-[15px] font-medium" style={{ color: designTokens.colors.text.primary }}>
-              Station Hub
-            </h1>
+            <h1 className="luxury-heading-md">Station Hub</h1>
             <button
               onClick={() => setLocation('/ops/today')}
-              className="px-3 py-1.5 rounded border text-[13px] font-medium transition-colors duration-100"
-              style={{
-                backgroundColor: designTokens.colors.background.secondary,
-                borderColor: designTokens.colors.border.default,
-                color: designTokens.colors.text.primary
-              }}
+              className="luxury-btn-secondary text-sm"
               data-testid="button-today"
             >
               Low Stock
@@ -106,54 +92,36 @@ export default function MobileStationHub() {
           
           {/* Pull to refresh indicator */}
           {isPullRefreshing && (
-            <div className="absolute top-16 left-1/2 -translate-x-1/2 px-4 py-2 rounded flex items-center gap-2 text-[13px]" style={{
-              backgroundColor: designTokens.colors.accent.info,
-              color: designTokens.colors.background.primary
-            }}>
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              Refreshing...
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 luxury-glass-card px-4 py-2 rounded-xl flex items-center gap-2 text-sm luxury-animate-scale-in">
+              <RefreshCw className="w-4 h-4 animate-spin text-purple-600" />
+              <span className="luxury-text-gradient font-semibold">Refreshing...</span>
             </div>
           )}
           
           {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ 
-              color: designTokens.colors.text.secondary 
-            }} />
+          <div className="relative luxury-animate-fade-in luxury-delay-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
             <input
               type="search"
               placeholder="Search serial, city, or name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-3 py-2.5 rounded border text-[13px] transition-colors duration-100"
-              style={{
-                backgroundColor: designTokens.colors.background.secondary,
-                borderColor: designTokens.colors.border.default,
-                color: designTokens.colors.text.primary
-              }}
+              className="luxury-glass-minimal w-full pl-11 pr-4 py-3 rounded-xl text-sm"
               data-testid="input-search-stations"
             />
           </div>
 
           {/* Status Filter Pills */}
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-2 hide-scrollbar">
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-2 hide-scrollbar luxury-animate-fade-in luxury-delay-2">
             {['all', 'active', 'installing', 'maintenance', 'offline'].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className="px-3 py-1.5 rounded whitespace-nowrap text-[12px] font-medium transition-colors duration-100"
-                style={{
-                  backgroundColor: statusFilter === status 
-                    ? designTokens.colors.accent.success 
-                    : designTokens.colors.background.secondary,
-                  color: statusFilter === status 
-                    ? designTokens.colors.background.primary 
-                    : designTokens.colors.text.secondary,
-                  borderWidth: '1px',
-                  borderColor: statusFilter === status 
-                    ? designTokens.colors.accent.success 
-                    : designTokens.colors.border.default
-                }}
+                className={`px-4 py-2 rounded-xl whitespace-nowrap text-xs font-semibold transition-all duration-300 luxury-hover-lift ${
+                  statusFilter === status 
+                    ? 'luxury-btn-primary' 
+                    : 'luxury-glass-minimal'
+                }`}
                 data-testid={`button-filter-${status}`}
               >
                 {status === 'all' ? 'All' : getStatusText(status)}
@@ -164,70 +132,58 @@ export default function MobileStationHub() {
       </div>
 
       {/* Station List */}
-      <div className="divide-y" style={{ borderColor: designTokens.colors.border.default }}>
+      <div className="px-4 mt-4 space-y-3">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mb-3" style={{
-              borderColor: designTokens.colors.border.default,
-              borderTopColor: 'transparent'
-            }}></div>
-            <p className="text-[13px]" style={{ color: designTokens.colors.text.secondary }}>Loading stations...</p>
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="luxury-spinner luxury-animate-scale-in"></div>
+            <p className="luxury-text-small mt-4">Loading stations...</p>
           </div>
         ) : filteredStations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4">
-            <Package className="w-12 h-12 mb-3" style={{ color: designTokens.colors.text.tertiary }} />
-            <p className="text-[14px] mb-1" style={{ color: designTokens.colors.text.secondary }}>No stations found</p>
-            <p className="text-[13px]" style={{ color: designTokens.colors.text.tertiary }}>
+          <div className="luxury-glass-card luxury-shadow-lg p-8 text-center luxury-animate-slide-up">
+            <Package className="w-16 h-16 mx-auto mb-4 text-purple-300" />
+            <p className="luxury-heading-sm mb-2">No stations found</p>
+            <p className="luxury-text-small">
               {search ? 'Try a different search' : 'Add your first station'}
             </p>
           </div>
         ) : (
-          filteredStations.map((station) => (
+          filteredStations.map((station, index) => (
             <div
               key={station.id}
-              className="px-4 py-3 cursor-pointer hover:bg-[#151515] transition-colors duration-100"
+              className="luxury-glass-card luxury-shadow-lg luxury-hover-lift p-4 rounded-2xl cursor-pointer transition-all duration-300 luxury-animate-slide-up"
               onClick={() => setLocation(`/s/${station.id}`)}
               data-testid={`card-station-${station.id}`}
+              style={{ animationDelay: `${(index + 3) * 0.05}s` }}
             >
-              <div className="flex items-start justify-between mb-2">
+              <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-2">
                     <div 
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: getStatusColor(station.status) }}
+                      className={`w-2.5 h-2.5 rounded-full ${getStatusColor(station.status)} flex-shrink-0 shadow-lg`}
                       data-testid={`badge-status-${station.id}`}
                       aria-label={getStatusText(station.status)}
                     />
-                    <h3 className="text-[14px] font-medium" style={{ color: designTokens.colors.text.primary }}>
-                      {station.serialNumber}
-                    </h3>
-                    <span className="text-[12px]" style={{ color: designTokens.colors.text.tertiary }}>
+                    <h3 className="luxury-heading-sm">{station.serialNumber}</h3>
+                    <span className="luxury-badge text-xs">
                       {getStatusText(station.status)}
                     </span>
                   </div>
                   {station.name && (
-                    <p className="text-[13px]" style={{ color: designTokens.colors.text.secondary }}>{station.name}</p>
+                    <p className="luxury-text-small ml-3.5">{station.name}</p>
                   )}
                 </div>
                 
                 {/* Low Stock Badge */}
                 {station.lowStockItems && station.lowStockItems.length > 0 && (
-                  <div 
-                    className="ml-2 px-1.5 py-0.5 rounded flex items-center gap-1 text-[11px] font-medium"
-                    style={{
-                      backgroundColor: `${designTokens.colors.accent.warning}15`,
-                      color: designTokens.colors.accent.warning
-                    }}
-                    data-testid={`badge-low-stock-${station.id}`}
-                  >
+                  <span className="luxury-badge-gold flex items-center gap-1 text-xs ml-2">
                     <AlertTriangle className="w-3 h-3" />
                     Low
-                  </div>
+                  </span>
                 )}
               </div>
 
-              <div className="flex items-start gap-2 text-[13px]" style={{ color: designTokens.colors.text.secondary }}>
-                <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              <div className="flex items-start gap-2 luxury-text-small ml-3.5">
+                <MapPin className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <p>{station.address.line1}</p>
                   <p>{station.address.city}, {station.address.postcode}</p>
@@ -236,8 +192,8 @@ export default function MobileStationHub() {
 
               {/* Quick Info */}
               {station.lowStockItems && station.lowStockItems.length > 0 && (
-                <div className="mt-2 pt-2 border-t" style={{ borderColor: designTokens.colors.border.default }}>
-                  <p className="text-[12px]" style={{ color: designTokens.colors.accent.warning }}>
+                <div className="mt-3 pt-3 border-t border-purple-100">
+                  <p className="text-xs font-medium text-yellow-700">
                     {station.lowStockItems.join(', ')} running low
                   </p>
                 </div>
@@ -248,21 +204,17 @@ export default function MobileStationHub() {
       </div>
 
       {/* Bottom Info Bar */}
-      <div className="fixed bottom-0 left-0 right-0 border-t px-4 py-3" style={{
-        backgroundColor: designTokens.colors.background.primary,
-        borderColor: designTokens.colors.border.default
-      }}>
-        <div className="flex items-center justify-between text-[13px]">
-          <span style={{ color: designTokens.colors.text.secondary }}>
+      <div className="fixed bottom-0 left-0 right-0 luxury-glass-card luxury-shadow-lg px-4 py-3 rounded-none md:rounded-b-2xl">
+        <div className="flex items-center justify-between text-sm">
+          <span className="luxury-text-small font-medium">
             {filteredStations.length} station{filteredStations.length !== 1 ? 's' : ''}
           </span>
           <button
             onClick={() => refetch()}
-            className="px-2 py-1 transition-colors duration-100 flex items-center gap-1"
-            style={{ color: designTokens.colors.accent.info }}
+            className="luxury-btn-ghost flex items-center gap-2 text-xs"
             data-testid="button-refresh"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="w-4 h-4" />
             Refresh
           </button>
         </div>

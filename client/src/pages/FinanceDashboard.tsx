@@ -262,47 +262,47 @@ export default function FinanceDashboard() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+      <div className="luxury-grid-4">
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Payables</CardTitle>
             <DollarSign className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600" data-testid="metric-total-payables">
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-total-payables">
               ₪{totalPayablesAmount.toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">{accountsPayable?.length || 0} invoices</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Receivables</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600" data-testid="metric-total-receivables">
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-total-receivables">
               ₪{totalReceivablesAmount.toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">{accountsReceivable?.length || 0} invoices</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overdue Payables</CardTitle>
             <AlertTriangle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600" data-testid="metric-overdue-payables">{overduePayables?.length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-overdue-payables">{overduePayables?.length || 0}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overdue Receivables</CardTitle>
             <AlertTriangle className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600" data-testid="metric-overdue-receivables">{overdueReceivables?.length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-overdue-receivables">{overdueReceivables?.length || 0}</div>
           </CardContent>
         </Card>
       </div>
@@ -333,7 +333,7 @@ export default function FinanceDashboard() {
 
         <TabsContent value="payables" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setShowPayableDialog(true)} data-testid="button-create-payable">
+            <Button className="luxury-btn-primary" onClick={() => setShowPayableDialog(true)} data-testid="button-create-payable">
               <Plus className="w-4 h-4 mr-2" />
               New Payable
             </Button>
@@ -360,8 +360,8 @@ export default function FinanceDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {accountsPayable?.map((payable: any) => (
-                <Card key={payable.id} data-testid={`payable-card-${payable.id}`}>
+              {accountsPayable?.map((payable: any, idx: number) => (
+                <Card key={payable.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`payable-card-${payable.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -405,7 +405,7 @@ export default function FinanceDashboard() {
 
         <TabsContent value="receivables" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setShowReceivableDialog(true)} data-testid="button-create-receivable">
+            <Button className="luxury-btn-primary" onClick={() => setShowReceivableDialog(true)} data-testid="button-create-receivable">
               <Plus className="w-4 h-4 mr-2" />
               New Receivable
             </Button>
@@ -432,8 +432,8 @@ export default function FinanceDashboard() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {accountsReceivable?.map((receivable: any) => (
-                <Card key={receivable.id} data-testid={`receivable-card-${receivable.id}`}>
+              {accountsReceivable?.map((receivable: any, idx: number) => (
+                <Card key={receivable.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`receivable-card-${receivable.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -481,7 +481,7 @@ export default function FinanceDashboard() {
 
         <TabsContent value="ledger" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setShowLedgerDialog(true)} data-testid="button-create-ledger">
+            <Button className="luxury-btn-primary" onClick={() => setShowLedgerDialog(true)} data-testid="button-create-ledger">
               <Plus className="w-4 h-4 mr-2" />
               New Entry
             </Button>

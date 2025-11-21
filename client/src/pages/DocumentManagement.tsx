@@ -162,30 +162,30 @@ export default function DocumentManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
+    <div className="min-h-screen luxury-bg-mesh p-4">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-none shadow-xl">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <FileText className="w-8 h-8" />
-              <div>
-                <CardTitle className="text-2xl">
-                  {isHebrew ? 'מסמכים מאובטחים' : 'Document Management'}
-                </CardTitle>
-                <CardDescription className="text-blue-100">
-                  {isHebrew 
-                    ? 'גלה, צפה והורד מסמכים ארגוניים'
-                    : 'Browse, view, and download organizational documents'}
-                </CardDescription>
-              </div>
+        <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl luxury-animate-fade-in">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+              <FileText className="w-8 h-8 text-white" />
             </div>
-          </CardHeader>
-        </Card>
+            <div>
+              <h1 className="luxury-heading-lg">
+                {isHebrew ? 'מסמכים מאובטחים' : 'Document Management'}
+              </h1>
+              <p className="luxury-text-small mt-1">
+                {isHebrew 
+                  ? 'גלה, צפה והורד מסמכים ארגוניים'
+                  : 'Browse, view, and download organizational documents'}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Search and Filters */}
-        <Card>
-          <CardContent className="pt-6 space-y-4">
+        <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl luxury-animate-fade-in luxury-delay-1">
+          <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Search */}
               <div className="relative">
@@ -194,14 +194,14 @@ export default function DocumentManagement() {
                   placeholder={isHebrew ? 'חפש מסמכים...' : 'Search documents...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 luxury-glass-minimal"
                   data-testid="input-search-documents"
                 />
               </div>
 
               {/* Category Filter */}
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger data-testid="select-category-filter">
+                <SelectTrigger className="luxury-glass-minimal" data-testid="select-category-filter">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder={isHebrew ? 'כל הקטגוריות' : 'All Categories'} />
                 </SelectTrigger>
@@ -217,7 +217,7 @@ export default function DocumentManagement() {
 
               {/* Type Filter */}
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger data-testid="select-type-filter">
+                <SelectTrigger className="luxury-glass-minimal" data-testid="select-type-filter">
                   <FileCode className="w-4 h-4 mr-2" />
                   <SelectValue placeholder={isHebrew ? 'כל הסוגים' : 'All Types'} />
                 </SelectTrigger>
@@ -235,46 +235,44 @@ export default function DocumentManagement() {
             </div>
 
             {/* Results Count */}
-            <div className="text-sm text-muted-foreground">
+            <div className="luxury-text-small">
               {isHebrew 
                 ? `${filteredDocuments.length} מסמכים מתוך ${documents.length}` 
                 : `Showing ${filteredDocuments.length} of ${documents.length} documents`}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Documents Grid */}
         {documentsLoading ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">{isHebrew ? 'טוען...' : 'Loading...'}</p>
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="luxury-spinner luxury-animate-scale-in"></div>
+            <p className="luxury-text-small mt-4">{isHebrew ? 'טוען...' : 'Loading...'}</p>
+          </div>
         ) : filteredDocuments.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                {isHebrew ? 'לא נמצאו מסמכים' : 'No documents found'}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="luxury-glass-card luxury-shadow-lg p-12 text-center rounded-2xl luxury-animate-slide-up luxury-delay-2">
+            <FileText className="w-16 h-16 mx-auto text-purple-300 mb-4" />
+            <p className="luxury-text-small">
+              {isHebrew ? 'לא נמצאו מסמכים' : 'No documents found'}
+            </p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDocuments.map(({ document: doc, category }) => (
-              <Card 
+            {filteredDocuments.map(({ document: doc, category }, index) => (
+              <div 
                 key={doc.id} 
-                className="hover:shadow-lg transition-shadow cursor-pointer"
+                className="luxury-glass-card luxury-shadow-lg luxury-hover-lift rounded-2xl cursor-pointer transition-all duration-300 luxury-animate-slide-up"
                 onClick={() => setSelectedDocument(doc)}
                 data-testid={`card-document-${doc.id}`}
+                style={{ animationDelay: `${(index + 2) * 0.05}s` }}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
+                <div className="p-6">
+                  <div className="flex items-start justify-between gap-2 mb-4">
                     <div className="flex-1">
-                      <CardTitle className="text-base line-clamp-2">
+                      <h3 className="font-bold line-clamp-2 luxury-text-gradient">
                         {isHebrew && doc.titleHe ? doc.titleHe : doc.title}
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      </h3>
+                      <p className="luxury-text-small mt-1">
                         {doc.documentNumber}
                       </p>
                     </div>
@@ -282,18 +280,20 @@ export default function DocumentManagement() {
                       <Shield className="w-4 h-4 text-red-500 flex-shrink-0" />
                     )}
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
+                  <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
-                    <Badge className={getDocumentTypeColor(doc.documentType)}>
+                    <span className={`luxury-badge ${doc.documentType === 'invoice' ? 'bg-green-100 text-green-700' :
+                      doc.documentType === 'contract' ? 'bg-blue-100 text-blue-700' :
+                      doc.documentType === 'legal' ? 'bg-red-100 text-red-700' :
+                      'luxury-badge'}`}>
                       {doc.documentType}
-                    </Badge>
-                    <Badge variant="outline">
+                    </span>
+                    <span className="luxury-badge">
                       {formatFileSize(doc.fileSize)}
-                    </Badge>
+                    </span>
                   </div>
                   
-                  <div className="space-y-2 text-xs text-muted-foreground">
+                  <div className="space-y-2 luxury-text-small">
                     <div className="flex items-center gap-2">
                       <Building2 className="w-3 h-3" />
                       <span>{isHebrew && category.categoryNameHe ? category.categoryNameHe : category.categoryName}</span>
@@ -309,9 +309,8 @@ export default function DocumentManagement() {
                   </div>
                   
                   <div className="flex gap-2 pt-2">
-                    <Button 
-                      size="sm" 
-                      className="flex-1"
+                    <button 
+                      className="luxury-btn-primary flex-1 text-xs py-2"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedDocument(doc);
@@ -320,10 +319,9 @@ export default function DocumentManagement() {
                     >
                       <Eye className="w-3 h-3 mr-1" />
                       {isHebrew ? 'צפה' : 'View'}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
+                    </button>
+                    <button 
+                      className="luxury-btn-secondary text-xs py-2"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDownload(doc);
@@ -332,10 +330,10 @@ export default function DocumentManagement() {
                     >
                       <Download className="w-3 h-3 mr-1" />
                       {isHebrew ? 'הורד' : 'Download'}
-                    </Button>
+                    </button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}

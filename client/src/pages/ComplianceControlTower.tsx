@@ -73,12 +73,12 @@ export default function ComplianceControlTower() {
 
   if (isLoading) {
     return (
-      <div className={`min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${isHebrew ? "rtl" : "ltr"}`}>
+      <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? "rtl" : "ltr"}`}>
         <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center">
+            <div className="text-center luxury-animate-fade-in">
               <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-lg text-gray-600 dark:text-gray-400">
+              <p className="luxury-text-body">
                 {isHebrew ? "טוען..." : "Loading..."}
               </p>
             </div>
@@ -89,26 +89,26 @@ export default function ComplianceControlTower() {
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${isHebrew ? "rtl" : "ltr"}`}>
+    <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? "rtl" : "ltr"}`}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 luxury-animate-fade-in">
           <Link href="/admin">
-            <button className="mb-4 flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400" data-testid="button-back-admin">
-              <ArrowLeft className="h-4 w-4" />
+            <button className="luxury-btn-secondary mb-4 px-4 py-2" data-testid="button-back-admin">
+              <ArrowLeft className="h-4 w-4 mr-2 inline" />
               {isHebrew ? "חזרה לניהול" : "Back to Admin"}
             </button>
           </Link>
 
           <div className="flex items-center gap-4 mb-2">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full luxury-shadow-lg luxury-animate-scale-in">
               <Shield className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="luxury-heading-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 {isHebrew ? "מגדל בקרת ציות" : "Compliance Control Tower"}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="luxury-text-body">
                 {isHebrew
                   ? "מערכת ניטור ואכיפה מונעת AI לציות משפטי"
                   : "AI-driven legal compliance monitoring and enforcement"}
@@ -118,79 +118,79 @@ export default function ComplianceControlTower() {
         </div>
 
         {/* Overall Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 luxury-animate-slide-up luxury-delay-1">
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-2">
+            <div className="flex flex-row items-center justify-between pb-2">
+              <h3 className="luxury-text-small opacity-70">
                 {isHebrew ? "רמת סיכון כוללת" : "Overall Risk"}
-              </CardTitle>
+              </h3>
               <Shield className={`h-4 w-4 ${getRiskColor(complianceStatus?.overallRisk || "low")}`} />
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               <div className={`text-2xl font-bold ${getRiskColor(complianceStatus?.overallRisk || "low")}`}>
                 {complianceStatus?.overallRisk?.toUpperCase() || "LOW"}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="luxury-text-small opacity-70 mt-1">
                 {isHebrew
                   ? `נבדק לאחרונה: ${new Date().toLocaleDateString("he-IL")}`
                   : `Last checked: ${new Date().toLocaleDateString("en-US")}`}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-3">
+            <div className="flex flex-row items-center justify-between pb-2">
+              <h3 className="luxury-text-small opacity-70">
                 {isHebrew ? "מסמכים פגי תוקף" : "Expired Documents"}
-              </CardTitle>
+              </h3>
               <AlertTriangle className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               <div className="text-2xl font-bold text-red-600">
                 {complianceStatus?.expiredDocuments || 0}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="luxury-text-small opacity-70 mt-1">
                 {isHebrew ? "נדרש טיפול מיידי" : "Requires immediate action"}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-4">
+            <div className="flex flex-row items-center justify-between pb-2">
+              <h3 className="luxury-text-small opacity-70">
                 {isHebrew ? "משימות ציות" : "Compliance Tasks"}
-              </CardTitle>
+              </h3>
               <Clock className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-blue-600">
                 {complianceStatus?.pendingTasks || 0}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="luxury-text-small opacity-70 mt-1">
                 <span className="text-red-600 font-semibold">
                   {complianceStatus?.criticalTasks || 0}
                 </span>{" "}
                 {isHebrew ? "קריטיות" : "critical"}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-5">
+            <div className="flex flex-row items-center justify-between pb-2">
+              <h3 className="luxury-text-small opacity-70">
                 {isHebrew ? "ספקים מושעים" : "Suspended Providers"}
-              </CardTitle>
+              </h3>
               <Users className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div>
               <div className="text-2xl font-bold text-orange-600">
                 {complianceStatus?.suspendedProviders || 0}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="luxury-text-small opacity-70 mt-1">
                 {isHebrew ? "עקב רישיונות פגי תוקף" : "Due to expired licenses"}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Main Content Tabs */}
@@ -215,50 +215,50 @@ export default function ComplianceControlTower() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <div className="luxury-glass-card luxury-shadow-lg p-6">
+              <div className="mb-4">
+                <h2 className="flex items-center gap-2 luxury-heading-md">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
                   {isHebrew ? "בעיות קריטיות" : "Critical Issues"}
-                </CardTitle>
-                <CardDescription>
+                </h2>
+                <p className="luxury-text-body opacity-70 mt-1">
                   {isHebrew
                     ? "בעיות ציות הדורשות טיפול מיידי"
                     : "Compliance issues requiring immediate attention"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div>
                 {complianceStatus?.issues && complianceStatus.issues.length > 0 ? (
                   <div className="space-y-4">
                     {complianceStatus.issues.slice(0, 10).map((issue: any, index: number) => (
                       <div
                         key={index}
-                        className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                        className="luxury-glass-panel p-4 luxury-hover-lift"
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <Badge variant={getRiskBadgeVariant(issue.severity)}>
+                              <span className={`luxury-badge-${issue.severity === 'critical' || issue.severity === 'high' ? 'elite' : issue.severity === 'medium' ? 'premium' : 'secondary'} px-3 py-1`}>
                                 {issue.severity}
-                              </Badge>
-                              <span className="text-sm text-gray-500">
+                              </span>
+                              <span className="luxury-text-small opacity-70">
                                 {issue.type.replace(/_/g, " ")}
                               </span>
                             </div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            <h4 className="luxury-heading-sm mb-1">
                               {isHebrew ? issue.titleHe : issue.title}
                             </h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            <p className="luxury-text-small opacity-70 mb-2">
                               {isHebrew ? issue.descriptionHe : issue.description}
                             </p>
-                            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                            <p className="luxury-text-small text-blue-600 font-medium">
                               {isHebrew ? "פעולה נדרשת: " : "Action required: "}
                               {issue.actionRequired}
                             </p>
                           </div>
                           {issue.dueDate && (
-                            <div className="text-right text-sm">
-                              <div className="text-gray-500 dark:text-gray-400">
+                            <div className="text-right luxury-text-small">
+                              <div className="opacity-70">
                                 {isHebrew ? "תאריך יעד" : "Due"}
                               </div>
                               <div className="font-semibold">
@@ -273,18 +273,18 @@ export default function ComplianceControlTower() {
                 ) : (
                   <div className="text-center py-12">
                     <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    <h3 className="luxury-heading-lg mb-2">
                       {isHebrew ? "אין בעיות קריטיות" : "No Critical Issues"}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400">
+                    <p className="luxury-text-body">
                       {isHebrew
                         ? "כל מערכות הציות פועלות כראוי"
                         : "All compliance systems are operating properly"}
                     </p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Authority Documents Tab */}

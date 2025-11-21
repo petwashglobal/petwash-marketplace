@@ -268,34 +268,37 @@ export function Academy() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+      <div className="min-h-screen luxury-bg-mesh">
         {/* Hero Section */}
-        <section className="relative py-20 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-blue-600/10 to-pink-600/10" />
+        <section className="relative py-20 overflow-hidden luxury-animate-fade-in">
           
-          <div className="container mx-auto px-4 relative z-10">
+          <div className="luxury-container relative z-10">
             <div className="text-center max-w-4xl mx-auto mb-12">
-              <div className="inline-flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 px-4 py-2 rounded-full mb-6">
-                <GraduationCap className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                <span className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+              <div className="inline-flex items-center gap-2 luxury-badge luxury-shadow-lg mb-6 luxury-animate-slide-up luxury-delay-1">
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg">
+                  <GraduationCap className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-sm font-semibold">
                   {t('Pet Wash Academy™')}
                 </span>
               </div>
               
-              <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 bg-clip-text text-transparent">
+              <h1 className="luxury-heading-xl mb-6 luxury-animate-slide-up luxury-delay-2">
                 {t('Professional Pet Trainers')}
               </h1>
               
-              <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+              <p className="luxury-text-body mb-8 max-w-3xl mx-auto luxury-animate-slide-up luxury-delay-3">
                 {t('Book certified trainers for obedience, agility, behavioral training, and more. All trainers verified and background-checked.')}
               </p>
 
               {/* Search Bar */}
-              <div className="relative max-w-2xl mx-auto">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <div className="relative max-w-2xl mx-auto luxury-animate-scale-in luxury-delay-4">
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg">
+                  <Search className="h-5 w-5 text-white" />
+                </div>
                 <Input
                   placeholder={t('Search trainers by name or specialty...')}
-                  className="pl-12 pr-4 py-6 text-lg rounded-2xl shadow-lg border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 dark:focus:border-purple-400"
+                  className="pl-16 pr-4 py-6 text-lg luxury-glass-card luxury-shadow-xl"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   data-testid="input-search-trainers"
@@ -304,84 +307,91 @@ export function Academy() {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-              <GlassCard className="p-4 text-center">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto mt-12">
+              <div className="luxury-glass-card luxury-shadow-lg p-4 text-center luxury-animate-fade-in luxury-delay-5">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <Crown className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+                    <Crown className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="luxury-heading-lg">
                     {filteredTrainers.length}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="luxury-text-small">
                   {t('Certified Trainers')}
                 </p>
-              </GlassCard>
+              </div>
 
-              <GlassCard className="p-4 text-center">
+              <div className="luxury-glass-card luxury-shadow-lg p-4 text-center luxury-animate-fade-in luxury-delay-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <Award className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
+                    <Award className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="luxury-heading-lg">
                     {trainers.reduce((sum, t) => sum + t.totalSessions, 0).toLocaleString()}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="luxury-text-small">
                   {t('Sessions Completed')}
                 </p>
-              </GlassCard>
+              </div>
 
-              <GlassCard className="p-4 text-center">
+              <div className="luxury-glass-card luxury-shadow-lg p-4 text-center luxury-animate-fade-in luxury-delay-7">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <div className="p-2 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg">
+                    <Star className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="luxury-heading-lg">
                     {(trainers.reduce((sum, t) => sum + parseFloat(t.averageRating), 0) / trainers.length).toFixed(2)}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="luxury-text-small">
                   {t('Average Rating')}
                 </p>
-              </GlassCard>
+              </div>
 
-              <GlassCard className="p-4 text-center">
+              <div className="luxury-glass-card luxury-shadow-lg p-4 text-center luxury-animate-fade-in luxury-delay-8">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <Target className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg">
+                    <Target className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="luxury-heading-lg">
                     100%
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="luxury-text-small">
                   {t('Certified & Verified')}
                 </p>
-              </GlassCard>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Filters & Results */}
-        <section className="container mx-auto px-4 py-12">
-          <div className="flex items-center justify-between mb-8">
+        <section className="luxury-container py-12">
+          <div className="flex items-center justify-between mb-8 luxury-animate-fade-in luxury-delay-1">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="luxury-heading-md mb-2">
                 {t('Available Trainers')} ({filteredTrainers.length})
               </h2>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="luxury-text-small">
                 {t('All trainers background-checked and certified')}
               </p>
             </div>
 
-            <Button
-              variant="outline"
+            <button
               onClick={() => setShowFilters(!showFilters)}
-              className="gap-2"
+              className="luxury-btn-secondary gap-2"
               data-testid="button-toggle-filters"
             >
               <Filter className="h-4 w-4" />
               {t('Filters')}
-            </Button>
+            </button>
           </div>
 
           {/* Filter Panel */}
           {showFilters && (
-            <GlassCard className="p-6 mb-8">
+            <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl p-6 mb-8 luxury-animate-scale-in">
               <div className="grid md:grid-cols-3 gap-6">
                 {/* City Filter */}
                 <div>
@@ -484,26 +494,27 @@ export function Academy() {
 
           {/* Trainer Cards Grid */}
           {isLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="luxury-grid-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <GlassCard key={i} className="p-6 animate-pulse">
-                  <div className="h-48 bg-gray-300 dark:bg-gray-700 rounded-lg mb-4" />
-                  <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded mb-2" />
-                  <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded" />
-                </GlassCard>
+                <div key={i} className="luxury-glass-card luxury-shadow-lg p-6 animate-pulse">
+                  <div className="h-48 bg-gradient-to-br from-purple-200/30 to-blue-200/30 rounded-lg mb-4" />
+                  <div className="h-6 luxury-skeleton rounded mb-2" />
+                  <div className="h-4 luxury-skeleton rounded" />
+                </div>
               ))}
             </div>
           ) : filteredTrainers.length === 0 ? (
-            <GlassCard className="p-12 text-center">
-              <Search className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <div className="luxury-glass-card luxury-shadow-xl p-12 text-center">
+              <div className="p-4 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 rounded-2xl inline-block mb-4">
+                <Search className="h-16 w-16 text-gray-500 dark:text-gray-400" />
+              </div>
+              <h3 className="luxury-heading-md mb-2">
                 {t('No trainers found')}
               </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <p className="luxury-text-body mb-4">
                 {t('Try adjusting your filters or search criteria')}
               </p>
-              <Button
-                variant="outline"
+              <button
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCity('');
@@ -511,13 +522,14 @@ export function Academy() {
                   setPriceRange([0, 500]);
                   setMinRating(0);
                 }}
+                className="luxury-btn-secondary"
                 data-testid="button-reset-search"
               >
                 {t('Reset filters')}
-              </Button>
-            </GlassCard>
+              </button>
+            </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="luxury-grid-3">
               {filteredTrainers.map((trainer) => (
                 <TrainerCard key={trainer.id} trainer={trainer} />
               ))}
@@ -535,20 +547,22 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
   const [isFavorite, setIsFavorite] = useState(false);
 
   return (
-    <GlassCard className="group hover:shadow-2xl transition-all duration-300 overflow-hidden">
+    <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl overflow-hidden luxury-animate-scale-in">
       {/* Cover Photo / Gradient */}
       <div className="relative h-32 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500">
         {trainer.verified && (
           <div className="absolute top-3 left-3">
-            <Badge className="bg-white/90 text-purple-900 border-0 shadow-lg">
-              <Shield className="h-3 w-3 mr-1" />
+            <span className="luxury-badge-success luxury-shadow-lg">
+              <div className="inline-block p-1 bg-white/20 rounded mr-1">
+                <Shield className="h-3 w-3" />
+              </div>
               {t('Verified')}
-            </Badge>
+            </span>
           </div>
         )}
         <button
           onClick={() => setIsFavorite(!isFavorite)}
-          className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white transition-colors"
+          className="absolute top-3 right-3 p-2 rounded-full bg-white/90 hover:bg-white transition-colors luxury-shadow-lg"
           data-testid={`button-favorite-${trainer.id}`}
         >
           <Heart
@@ -561,7 +575,7 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
 
       {/* Profile Photo */}
       <div className="relative px-6 -mt-12">
-        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 flex items-center justify-center text-white text-3xl font-bold border-4 border-white dark:border-gray-800 shadow-xl">
+        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-3xl font-bold border-4 border-white dark:border-gray-800 luxury-shadow-xl">
           {trainer.fullName.charAt(0)}
         </div>
       </div>
@@ -603,18 +617,17 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
         {/* Specialties */}
         <div className="flex flex-wrap gap-1 mb-4">
           {trainer.specialties?.slice(0, 3).map((specialty) => (
-            <Badge
+            <span
               key={specialty}
-              variant="secondary"
-              className="text-xs bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100"
+              className="luxury-badge text-xs"
             >
               {t(specialty)}
-            </Badge>
+            </span>
           ))}
           {trainer.specialties && trainer.specialties.length > 3 && (
-            <Badge variant="secondary" className="text-xs">
+            <span className="luxury-badge text-xs">
               +{trainer.specialties.length - 3}
-            </Badge>
+            </span>
           )}
         </div>
 
@@ -637,22 +650,22 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
         {/* Price & CTA */}
         <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
           <div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="luxury-heading-lg luxury-text-gradient">
               ₪{parseFloat(trainer.hourlyRate).toFixed(0)}
             </div>
-            <div className="text-xs text-gray-600 dark:text-gray-400">
+            <div className="luxury-text-small">
               {t('per hour')}
             </div>
           </div>
 
           <Link href={`/academy/trainer/${trainer.id}`}>
-            <Button
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+            <button
+              className="luxury-btn-primary flex items-center gap-2"
               data-testid={`button-view-trainer-${trainer.id}`}
             >
-              <Calendar className="h-4 w-4 mr-2" />
+              <Calendar className="h-4 w-4" />
               {t('View Profile')}
-            </Button>
+            </button>
           </Link>
         </div>
       </CardContent>

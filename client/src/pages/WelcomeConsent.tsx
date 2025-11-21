@@ -71,20 +71,18 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-blue-950">
+      <div className="min-h-screen luxury-bg-mesh">
         <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
         {/* Hero Section */}
-        <div className="text-center mb-8 animate-in fade-in duration-1000">
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-blue-600 to-purple-600 shadow-2xl shadow-blue-600/30">
-              <Sparkles className="w-12 h-12 text-white" />
-            </div>
-            <h1 className="text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              {t('welcomeConsent.title', language)}
-            </h1>
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto mb-6 flex items-center justify-center luxury-shadow-xl">
+            <Sparkles className="w-10 h-10 text-white" />
           </div>
+          <h1 className="luxury-heading-xl mb-4">
+            {t('welcomeConsent.title', language)}
+          </h1>
           
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             {t('welcomeConsent.hero.subtitle', language)}
           </p>
 
@@ -123,24 +121,24 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left Column: Gmail Integration */}
-          <Card className="relative overflow-hidden border-2 shadow-xl">
+          <div className="luxury-glass-card luxury-shadow-xl p-8 relative overflow-hidden">
             <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-lg blur-2xl opacity-10" />
-            <CardHeader className="relative">
+            <div className="relative mb-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg">
                   <FaGoogle className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl">
+                  <h2 className="luxury-heading-md">
                     {t('welcomeConsent.buttons.connectGmail', language)}
-                  </CardTitle>
-                  <CardDescription>
+                  </h2>
+                  <p className="text-gray-600 mt-1">
                     {t('welcomeConsent.gmail.secureIntegration', language)}
-                  </CardDescription>
+                  </p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="relative space-y-6">
+            </div>
+            <div className="relative space-y-6">
               <GmailOAuthButton
                 language={language}
                 onSuccess={handleGmailSuccess}
@@ -181,27 +179,27 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                   ))}
                 </ul>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Right Column: Consent & Guidelines */}
-          <Card className="border-2 shadow-xl">
-            <CardHeader>
+          <div className="luxury-glass-card luxury-shadow-xl p-8">
+            <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-700 shadow-lg">
                   <Building2 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl">
+                  <h2 className="luxury-heading-md">
                     {t('welcomeConsent.section.consent', language)}
-                  </CardTitle>
-                  <CardDescription>
+                  </h2>
+                  <p className="text-gray-600 mt-1">
                     {t('welcomeConsent.consent.confirmFollowing', language)}
-                  </CardDescription>
+                  </p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
+            </div>
+            <div className="space-y-6">
               {/* Terms of Service */}
               <div className="flex items-start gap-3 p-4 rounded-xl bg-muted/50">
                 <Checkbox
@@ -305,7 +303,7 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
               <Button
                 onClick={handleContinue}
                 disabled={!allRequiredConsentsGiven}
-                className="w-full h-12 text-lg"
+                className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-lg font-medium"
                 data-testid="button-continue"
               >
                 {allRequiredConsentsGiven ? (
@@ -325,23 +323,23 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                   * {t('welcomeConsent.requiredFields', language)}
                 </p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Corporate Guidelines Expandable Section */}
         {showCorporateGuidelines && (
-          <Card className="mt-8 border-2 shadow-xl animate-in slide-in-from-top duration-500">
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-3">
-                <Globe className="w-6 h-6 text-blue-600" />
+          <div className="mt-8 luxury-glass-card luxury-shadow-xl p-8">
+            <div className="mb-6">
+              <h2 className="luxury-heading-md flex items-center gap-3 mb-2">
+                <Globe className="w-6 h-6 text-purple-600" />
                 {t('welcomeConsent.guidelines.title', language)}
-              </CardTitle>
-              <CardDescription>
+              </h2>
+              <p className="text-gray-600">
                 {t('welcomeConsent.guidelines.description', language)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="prose prose-sm dark:prose-invert max-w-none space-y-6">
+              </p>
+            </div>
+            <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
               {/* Quick link to full documentation */}
               <div className="not-prose p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-700">
                 <p className="text-sm mb-2">
@@ -380,8 +378,8 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                   <li>{t('welcomeConsent.principles.biometric', language)}</li>
                 </ul>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </main>
       </div>

@@ -326,20 +326,20 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-start justify-center bg-[#0c0f14] px-4 pt-8 md:pt-16">
+    <div className="min-h-screen flex items-start justify-center luxury-bg-mesh px-4 pt-8 md:pt-16">
       <div className="w-full max-w-xl">
         <LuxuryConsentCard />
         
-        <Card className="w-full max-w-md mx-auto shadow-xl border bg-white">
+        <Card className="w-full max-w-md mx-auto luxury-glass-card luxury-shadow-xl border-none">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center shadow-lg">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
             <Shield className="w-8 h-8 text-white" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-slate-800">
+            <CardTitle className="text-2xl font-bold luxury-text-gradient">
               Pet Wash™ Admin
             </CardTitle>
-            <CardDescription className="text-slate-600 mt-2">
+            <CardDescription className="text-gray-600 mt-2">
               Secure access to management portal
             </CardDescription>
           </div>
@@ -355,7 +355,7 @@ export default function AdminLogin() {
                     type="button"
                     onClick={handlePasskeySignIn}
                     disabled={passkeyLoading || isLoading}
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium h-11"
+                    className="w-full luxury-btn-primary h-11"
                   >
                     {passkeyLoading ? (
                       <>

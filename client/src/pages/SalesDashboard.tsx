@@ -140,7 +140,7 @@ export default function SalesDashboard() {
       <div className="p-6 space-y-6">
       <div className="flex justify-end items-center">
         <div className="flex gap-2">
-          <Button onClick={() => setShowCreateLeadDialog(true)} data-testid="button-create-lead">
+          <Button className="luxury-btn-primary" onClick={() => setShowCreateLeadDialog(true)} data-testid="button-create-lead">
             <Plus className="w-4 h-4 mr-2" />
             New Lead
           </Button>
@@ -152,43 +152,43 @@ export default function SalesDashboard() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+      <div className="luxury-grid-4">
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{leads?.length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient">{leads?.length || 0}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Opportunities</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{opportunities?.filter((o: any) => o.status === "open").length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient">{opportunities?.filter((o: any) => o.status === "open").length || 0}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pipeline Value</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="luxury-heading-lg luxury-text-gradient">
               {formatCurrency(opportunities?.reduce((sum: number, o: any) => sum + parseFloat(o.estimatedValue || 0), 0) || 0)}
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Won Deals</CardTitle>
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{opportunities?.filter((o: any) => o.status === "won").length || 0}</div>
+            <div className="luxury-heading-lg luxury-text-gradient">{opportunities?.filter((o: any) => o.status === "won").length || 0}</div>
           </CardContent>
         </Card>
       </div>
@@ -228,8 +228,8 @@ export default function SalesDashboard() {
             </Card>
           ) : (
             <div className="grid gap-4">
-              {leads?.map((lead: any) => (
-                <Card key={lead.id} data-testid={`lead-card-${lead.id}`}>
+              {leads?.map((lead: any, idx: number) => (
+                <Card key={lead.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`lead-card-${lead.id}`}>
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>
@@ -306,9 +306,9 @@ export default function SalesDashboard() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {opportunities?.map((opp: any) => (
-                <Card key={opp.id} data-testid={`opportunity-card-${opp.id}`}>
+            <div className="luxury-grid-3">
+              {opportunities?.map((opp: any, idx: number) => (
+                <Card key={opp.id} className={`luxury-glass-card luxury-shadow-lg luxury-hover-lift luxury-delay-${Math.min(idx + 1, 6)}`} data-testid={`opportunity-card-${opp.id}`}>
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div className="flex-1">

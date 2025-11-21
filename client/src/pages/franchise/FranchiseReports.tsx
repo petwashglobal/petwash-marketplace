@@ -17,63 +17,71 @@ export default function FranchiseReports() {
   };
 
   return (
-    <div className="min-h-screen bg-white p-4 md:p-6" dir={dir}>
+    <div className="min-h-screen luxury-bg-mesh p-4 md:p-6" dir={dir}>
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="mb-8 luxury-animate-fade-in">
+          <h1 className="luxury-heading-xl mb-3">
             {t('reports.title', language)}
           </h1>
-          <p className="text-gray-600">
+          <p className="luxury-text-body">
             {t('reports.description', language)}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
+          <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-1">
             <CardHeader>
-              <CardTitle>{t('reports.monthlyReport', language)}</CardTitle>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                  <FileSpreadsheet className="h-5 w-5 text-white" />
+                </div>
+                <CardTitle className="luxury-heading-md">{t('reports.monthlyReport', language)}</CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button
+              <button
                 onClick={() => handleDownload('excel', new Date().toISOString().slice(0, 7))}
-                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                className="w-full luxury-btn-primary flex items-center justify-center gap-2"
               >
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                <FileSpreadsheet className="h-4 w-4" />
                 {t('reports.downloadExcel', language)}
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => handleDownload('pdf', new Date().toISOString().slice(0, 7))}
-                variant="outline"
-                className="w-full"
+                className="w-full luxury-btn-secondary flex items-center justify-center gap-2"
               >
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4" />
                 {t('reports.downloadPDF', language)}
-              </Button>
+              </button>
             </CardContent>
-          </Card>
+          </div>
 
-          <Card>
+          <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-2">
             <CardHeader>
-              <CardTitle>{t('reports.dailyReport', language)}</CardTitle>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-white" />
+                </div>
+                <CardTitle className="luxury-heading-md">{t('reports.dailyReport', language)}</CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button
+              <button
                 onClick={() => handleDownload('excel', new Date().toISOString().slice(0, 10))}
-                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                className="w-full luxury-btn-primary flex items-center justify-center gap-2"
               >
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                <FileSpreadsheet className="h-4 w-4" />
                 {t('reports.downloadExcel', language)}
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => handleDownload('pdf', new Date().toISOString().slice(0, 10))}
-                variant="outline"
-                className="w-full"
+                className="w-full luxury-btn-secondary flex items-center justify-center gap-2"
               >
-                <FileText className="h-4 w-4 mr-2" />
+                <FileText className="h-4 w-4" />
                 {t('reports.downloadPDF', language)}
-              </Button>
+              </button>
             </CardContent>
-          </Card>
+          </div>
         </div>
       </div>
     </div>

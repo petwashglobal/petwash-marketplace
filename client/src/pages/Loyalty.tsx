@@ -4,6 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   ProgressCircle,
   SparklineChart,
@@ -322,19 +323,20 @@ export default function Loyalty() {
           </motion.div>
 
           {/* Exclusive Benefits Section */}
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
+          <div className="luxury-grid-2 mb-12">
             {/* Your Perks */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.6, duration: 0.6 }}
+              className="luxury-animate-fade-in luxury-delay-3"
             >
-              <div className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 p-8 h-full">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30">
-                    <Star className="h-6 w-6 text-purple-300" />
+              <div className="luxury-glass-minimal luxury-hover-lift luxury-shadow-md p-8 h-full">
+                <div className="flex items-center luxury-gap-md mb-6">
+                  <div className="p-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 luxury-shadow-sm">
+                    <Star className="h-6 w-6 text-purple-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white">{t('loyalty.yourPerks', language)}</h3>
+                  <h3 className="luxury-heading-md">{t('loyalty.yourPerks', language)}</h3>
                 </div>
                 <ul className="space-y-4">
                   {currentTierConfig.perks.map((perk, index) => (
@@ -346,9 +348,9 @@ export default function Loyalty() {
                       transition={{ delay: 0.8 + (index * 0.1), duration: 0.3 }}
                     >
                       <div className="mt-1">
-                        <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 group-hover:scale-150 transition-transform duration-300" />
+                        <div className="h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 group-hover:scale-150 transition-transform duration-300 luxury-shadow-sm" />
                       </div>
-                      <span className="text-purple-100/90 group-hover:text-white transition-colors duration-300">
+                      <span className="luxury-text-body text-gray-700 group-hover:text-purple-600 transition-colors duration-300">
                         {getPerkTranslation(perk)}
                       </span>
                     </motion.li>
@@ -362,55 +364,62 @@ export default function Loyalty() {
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.7, duration: 0.6 }}
+              className="luxury-animate-fade-in luxury-delay-4"
             >
-              <div className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 p-8 h-full">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-400/30">
-                    <Shield className="h-6 w-6 text-blue-300" />
+              <div className="luxury-glass-minimal luxury-hover-lift luxury-shadow-md p-8 h-full">
+                <div className="flex items-center luxury-gap-md mb-6">
+                  <div className="p-4 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 luxury-shadow-sm">
+                    <Shield className="h-6 w-6 text-blue-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white">{t('loyalty.premiumServices', language)}</h3>
+                  <h3 className="luxury-heading-md">{t('loyalty.premiumServices', language)}</h3>
                 </div>
                 <div className="space-y-4">
                   <motion.div
-                    className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-transparent border border-purple-400/20 hover:border-purple-400/40 transition-all duration-300"
+                    className="luxury-glass-minimal luxury-hover-lift p-4 rounded-xl flex items-center luxury-gap-md"
                     whileHover={{ scale: 1.02, x: 5 }}
                   >
-                    <Zap className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+                    <div className="p-3 rounded-full bg-gradient-to-br from-yellow-100 to-orange-100 luxury-shadow-sm flex-shrink-0">
+                      <Zap className="h-5 w-5 text-yellow-600" />
+                    </div>
                     <div>
-                      <div className="text-white font-semibold">{t('loyalty.prioritySupport', language)}</div>
-                      <div className="text-purple-200/60 text-sm">{t('loyalty.support247', language)}</div>
+                      <div className="luxury-heading-sm">{t('loyalty.prioritySupport', language)}</div>
+                      <div className="luxury-text-small text-gray-500">{t('loyalty.support247', language)}</div>
                     </div>
                   </motion.div>
 
                   <motion.div
-                    className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-pink-500/10 to-transparent border border-pink-400/20 hover:border-pink-400/40 transition-all duration-300"
+                    className="luxury-glass-minimal luxury-hover-lift p-4 rounded-xl flex items-center luxury-gap-md"
                     whileHover={{ scale: 1.02, x: 5 }}
                   >
-                    <Heart className="h-5 w-5 text-pink-400 flex-shrink-0" />
+                    <div className="p-3 rounded-full bg-gradient-to-br from-pink-100 to-rose-100 luxury-shadow-sm flex-shrink-0">
+                      <Heart className="h-5 w-5 text-pink-600" />
+                    </div>
                     <div>
-                      <div className="text-white font-semibold">{t('loyalty.exclusiveAccess', language)}</div>
-                      <div className="text-purple-200/60 text-sm">{t('loyalty.earlyAccessProducts', language)}</div>
+                      <div className="luxury-heading-sm">{t('loyalty.exclusiveAccess', language)}</div>
+                      <div className="luxury-text-small text-gray-500">{t('loyalty.earlyAccessProducts', language)}</div>
                     </div>
                   </motion.div>
 
                   {tierProgress.currentTier === 'platinum' && (
                     <motion.div
-                      className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-transparent border border-blue-400/20 hover:border-blue-400/40 transition-all duration-300"
+                      className="luxury-glass-minimal luxury-hover-lift p-4 rounded-xl flex items-center luxury-gap-md"
                       whileHover={{ scale: 1.02, x: 5 }}
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       transition={{ delay: 1, duration: 0.5 }}
                     >
-                      <Crown className="h-5 w-5 text-purple-300 flex-shrink-0" />
+                      <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 luxury-shadow-sm flex-shrink-0">
+                        <Crown className="h-5 w-5 text-purple-600" />
+                      </div>
                       <div>
-                        <div className="text-white font-semibold">{t('loyalty.conciergeService', language)}</div>
-                        <div className="text-purple-200/60 text-sm">{t('loyalty.personalAccountManager', language)}</div>
+                        <div className="luxury-heading-sm">{t('loyalty.conciergeService', language)}</div>
+                        <div className="luxury-text-small text-gray-500">{t('loyalty.personalAccountManager', language)}</div>
                       </div>
                     </motion.div>
                   )}
 
-                  <Button
-                    className="w-full mt-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-6 rounded-xl shadow-lg shadow-purple-500/30 transition-all duration-300"
+                  <button
+                    className="luxury-btn-primary luxury-shadow-xl w-full mt-6"
                     onClick={() => {
                       trackEvent({
                         action: 'view_vip_rewards_click',
@@ -423,9 +432,11 @@ export default function Loyalty() {
                     }}
                     data-testid="button-view-rewards"
                   >
-                    <Gift className="h-5 w-5 mr-2" />
-                    {t('loyalty.viewRewards', language)}
-                  </Button>
+                    <div className="flex items-center justify-center luxury-gap-sm">
+                      <Gift className="h-5 w-5" />
+                      {t('loyalty.viewRewards', language)}
+                    </div>
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -436,10 +447,11 @@ export default function Loyalty() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.6 }}
+            className="luxury-animate-fade-in luxury-delay-5"
           >
-            <div className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 p-8">
-              <h3 className="text-3xl font-bold text-white mb-8 text-center">{t('loyalty.allTiers', language)}</h3>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="luxury-glass-minimal luxury-shadow-lg p-8 rounded-3xl">
+              <h3 className="luxury-heading-lg text-center mb-12">{t('loyalty.allTiers', language)}</h3>
+              <div className="luxury-grid-4">
                 {(['new', 'silver', 'gold', 'platinum'] as LoyaltyTier[]).map((tier, index) => {
                   const config = getTierConfig(tier);
                   const isCurrent = tier === tierProgress.currentTier;
@@ -451,41 +463,37 @@ export default function Loyalty() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 1 + (index * 0.1), duration: 0.4 }}
-                      whileHover={{ scale: 1.05, y: -10 }}
                       data-testid={`tier-card-${tier}`}
                     >
-                      <div className={`relative rounded-2xl p-6 h-full transition-all duration-300 ${
-                        isCurrent
-                          ? `bg-gradient-to-br ${getLuxuryGradient(tier)} shadow-2xl shadow-${tier === 'platinum' ? 'purple' : tier === 'gold' ? 'yellow' : tier === 'silver' ? 'gray' : 'slate'}-500/50`
-                          : 'bg-white/5 border border-white/10 hover:border-white/30'
+                      <div className={`luxury-glass-card luxury-hover-glow luxury-shadow-xl p-6 h-full ${
+                        isCurrent ? 'border-2 border-purple-400' : ''
                       }`}>
                         <div className="text-center">
                           <motion.div
-                            className="mb-4"
+                            className={`mb-4 inline-block p-4 rounded-full bg-gradient-to-br ${getLuxuryGradient(tier)} luxury-shadow-md`}
                             animate={isCurrent ? { rotate: [0, 5, -5, 0] } : {}}
                             transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
                           >
-                            {getTierIcon(tier)}
+                            <div className="text-white">
+                              {getTierIcon(tier)}
+                            </div>
                           </motion.div>
-                          <h4 className={`font-bold text-xl mb-2 ${isCurrent ? 'text-white' : 'text-purple-200'}`}>
+                          <h4 className="luxury-heading-sm mb-2">
                             {getTierDisplay(tier, language).toUpperCase()}
                           </h4>
-                          <p className={`text-sm mb-4 ${isCurrent ? 'text-white/80' : 'text-purple-300/60'}`}>
+                          <p className="luxury-text-small text-gray-500 mb-4">
                             {config.minWashes}+ {t('loyalty.washes', language)}
                           </p>
                           {isCurrent && (
-                            <Badge className="mb-4 bg-white/20 text-white border-white/30 backdrop-blur-sm">
+                            <div className={`mb-4 ${tier === 'gold' ? 'luxury-badge-gold' : tier === 'platinum' ? 'luxury-badge' : tier === 'silver' ? 'luxury-badge' : 'luxury-badge'}`}>
                               {t('loyalty.currentlyHere', language)}
-                            </Badge>
+                            </div>
                           )}
-                          <div className={`text-3xl font-bold mb-2 ${isCurrent ? 'text-white' : 'text-purple-200'}`}>
+                          <div className="luxury-heading-lg luxury-text-gradient mb-2">
                             {config.discount}%
                           </div>
-                          <p className={`text-xs ${isCurrent ? 'text-white/60' : 'text-purple-300/50'}`}>{t('loyalty.discount', language)}</p>
+                          <p className="luxury-text-small text-gray-500">{t('loyalty.discount', language)}</p>
                         </div>
-                        
-                        {/* Glow effect on hover */}
-                        <div className={`absolute -inset-1 bg-gradient-to-br ${getLuxuryGradient(tier)} rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-300 -z-10`}></div>
                       </div>
                     </motion.div>
                   );

@@ -158,126 +158,126 @@ export default function PawFinder({ language }: PawFinderProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4">
-      <div className="container mx-auto max-w-6xl">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Search className="w-12 h-12 text-blue-600" />
-            <Heart className="w-10 h-10 text-red-500 animate-pulse" />
+    <div className="min-h-screen luxury-bg-mesh py-12 px-4">
+      <div className="container mx-auto max-w-6xl luxury-animate-fade-in">
+        {/* Luxury Hero */}
+        <div className="text-center mb-12 luxury-animate-slide-up">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <Search className="w-14 h-14 text-purple-600" />
+            <Heart className="w-12 h-12 text-red-500 animate-pulse" />
           </div>
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="luxury-heading-xl mb-6">
             {content.title}
           </h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-6">
+          <p className="luxury-text-body max-w-3xl mx-auto mb-8">
             {content.subtitle}
           </p>
           
-          <div className="flex gap-4 justify-center flex-wrap">
-            <Badge variant="secondary" className="text-lg py-2 px-4">
+          <div className="flex gap-4 justify-center flex-wrap luxury-gap-md">
+            <div className="luxury-badge-success">
               <Gift className="w-4 h-4 mr-2" />
               {content.free}
-            </Badge>
-            <Badge variant="secondary" className="text-lg py-2 px-4">
+            </div>
+            <div className="luxury-badge-success">
               <CheckCircle2 className="w-4 h-4 mr-2" />
               {content.noFees}
-            </Badge>
-            <Badge variant="secondary" className="text-lg py-2 px-4">
+            </div>
+            <div className="luxury-badge">
               <Heart className="w-4 h-4 mr-2" />
               {content.community}
-            </Badge>
+            </div>
           </div>
         </div>
 
         {/* Ask Kenzo AI Assistant */}
-        <Card className="mb-8 border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
+        <div className="luxury-glass-card luxury-shadow-xl mb-8 luxury-animate-slide-up luxury-delay-1">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="w-6 h-6 text-blue-600" />
+            <CardTitle className="flex items-center gap-2 luxury-heading-md luxury-text-gradient">
+              <Bot className="w-6 h-6" />
               <Sparkles className="w-5 h-5 text-yellow-500" />
               {content.askKenzo}
             </CardTitle>
-            <CardDescription>{content.kenzoHelp}</CardDescription>
+            <CardDescription className="luxury-text-body">{content.kenzoHelp}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button 
               onClick={handleAskKenzo}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              className="w-full luxury-btn-primary"
               size="lg"
             >
               <Bot className="w-5 h-5 mr-2" />
               {isHebrew ? "פתח צ'אט עם קנזו 🐾" : "Open Chat with Kenzo 🐾"}
             </Button>
           </CardContent>
-        </Card>
+        </div>
 
         {/* How It Works */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <Card>
+        <div className="luxury-grid-3 mb-12">
+          <div className="luxury-glass-card luxury-hover-lift luxury-animate-scale-in luxury-delay-2">
             <CardHeader>
-              <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mb-4">
-                <AlertCircle className="w-6 h-6 text-blue-600" />
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 flex items-center justify-center mb-4 luxury-shadow-md">
+                <AlertCircle className="w-7 h-7 text-purple-600" />
               </div>
-              <CardTitle>1. {content.step1Title}</CardTitle>
-              <CardDescription>{content.step1Desc}</CardDescription>
+              <CardTitle className="luxury-heading-sm luxury-text-gradient">1. {content.step1Title}</CardTitle>
+              <CardDescription className="luxury-text-body">{content.step1Desc}</CardDescription>
             </CardHeader>
-          </Card>
+          </div>
 
-          <Card>
+          <div className="luxury-glass-card luxury-hover-lift luxury-animate-scale-in luxury-delay-3">
             <CardHeader>
-              <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center mb-4">
-                <MapPin className="w-6 h-6 text-purple-600" />
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 flex items-center justify-center mb-4 luxury-shadow-md">
+                <MapPin className="w-7 h-7 text-purple-600" />
               </div>
-              <CardTitle>2. {content.step2Title}</CardTitle>
-              <CardDescription>{content.step2Desc}</CardDescription>
+              <CardTitle className="luxury-heading-sm luxury-text-gradient">2. {content.step2Title}</CardTitle>
+              <CardDescription className="luxury-text-body">{content.step2Desc}</CardDescription>
             </CardHeader>
-          </Card>
+          </div>
 
-          <Card>
+          <div className="luxury-glass-card luxury-hover-lift luxury-animate-scale-in luxury-delay-4">
             <CardHeader>
-              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-4">
-                <Heart className="w-6 h-6 text-green-600" />
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 flex items-center justify-center mb-4 luxury-shadow-md">
+                <Heart className="w-7 h-7 text-green-600" />
               </div>
-              <CardTitle>3. {content.step3Title}</CardTitle>
-              <CardDescription>{content.step3Desc}</CardDescription>
+              <CardTitle className="luxury-heading-sm luxury-text-gradient">3. {content.step3Title}</CardTitle>
+              <CardDescription className="luxury-text-body">{content.step3Desc}</CardDescription>
             </CardHeader>
-          </Card>
+          </div>
         </div>
 
         {/* Report Selection */}
         {!reportType ? (
           <div className="grid md:grid-cols-2 gap-6 mb-12">
-            <Card 
-              className="cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 transition-all hover:shadow-xl"
+            <div 
+              className="luxury-glass-card luxury-hover-lift luxury-animate-scale-in luxury-delay-5 cursor-pointer"
               onClick={() => setReportType('lost')}
             >
               <CardHeader className="text-center">
-                <Search className="w-16 h-16 mx-auto mb-4 text-red-500" />
-                <CardTitle className="text-2xl">{content.reportLost}</CardTitle>
-                <CardDescription>
+                <Search className="w-20 h-20 mx-auto mb-6 text-red-500" />
+                <CardTitle className="luxury-heading-md luxury-text-gradient mb-3">{content.reportLost}</CardTitle>
+                <CardDescription className="luxury-text-body">
                   {isHebrew ? "חיית המחמד שלי אבדה" : "I've lost my pet"}
                 </CardDescription>
               </CardHeader>
-            </Card>
+            </div>
 
-            <Card 
-              className="cursor-pointer hover:border-green-500 dark:hover:border-green-400 transition-all hover:shadow-xl"
+            <div 
+              className="luxury-glass-card luxury-hover-lift luxury-animate-scale-in luxury-delay-6 cursor-pointer"
               onClick={() => setReportType('found')}
             >
               <CardHeader className="text-center">
-                <Heart className="w-16 h-16 mx-auto mb-4 text-green-500" />
-                <CardTitle className="text-2xl">{content.reportFound}</CardTitle>
-                <CardDescription>
+                <Heart className="w-20 h-20 mx-auto mb-6 text-green-500" />
+                <CardTitle className="luxury-heading-md luxury-text-gradient mb-3">{content.reportFound}</CardTitle>
+                <CardDescription className="luxury-text-body">
                   {isHebrew ? "מצאתי חיית מחמד" : "I've found a pet"}
                 </CardDescription>
               </CardHeader>
-            </Card>
+            </div>
           </div>
         ) : (
           /* Report Form */
-          <Card className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto luxury-glass-card luxury-shadow-xl luxury-animate-slide-up">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 luxury-heading-md luxury-text-gradient">
                 {reportType === 'lost' ? (
                   <>
                     <Search className="w-6 h-6 text-red-500" />
@@ -290,7 +290,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   </>
                 )}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="luxury-text-body">
                 {isHebrew 
                   ? "מלא את כל הפרטים לעזור לנו למצוא את חיית המחמד"
                   : "Fill in all details to help us find the pet"}
@@ -439,7 +439,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                 <div className="flex gap-4">
                   <Button 
                     type="submit" 
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    className="flex-1 luxury-btn-primary"
                     size="lg"
                   >
                     <CheckCircle2 className="w-5 h-5 mr-2" />
@@ -447,7 +447,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   </Button>
                   <Button 
                     type="button"
-                    variant="outline"
+                    className="luxury-btn-secondary"
                     onClick={() => setReportType(null)}
                     size="lg"
                   >
@@ -456,19 +456,19 @@ export default function PawFinder({ language }: PawFinderProps) {
                 </div>
               </form>
             </CardContent>
-          </Card>
+          </div>
         )}
 
         {/* Important Note */}
-        <Card className="max-w-3xl mx-auto mt-8 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950">
+        <div className="max-w-3xl mx-auto mt-8 luxury-glass-card luxury-shadow-lg bg-gradient-to-br from-yellow-50/80 to-orange-50/80 dark:from-yellow-950/50 dark:to-orange-950/50 luxury-animate-fade-in luxury-delay-7">
           <CardContent className="pt-6">
             <div className="flex gap-4">
               <Heart className="w-6 h-6 text-yellow-600 flex-shrink-0" />
               <div>
-                <p className="font-semibold mb-2">
+                <p className="luxury-heading-sm luxury-text-gradient mb-2">
                   {isHebrew ? "שירות קהילתי חינמי 100%" : "100% Free Community Service"}
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="luxury-text-body">
                   {isHebrew 
                     ? "Pet Wash™ מחברת בין בעלים למוצאים בחינם. אין עמלות פלטפורמה. בעלים משלמים למוצאים ישירות אם רוצים. אנחנו כאן כדי לעזור לקהילה! 🐾"
                     : "Pet Wash™ connects owners and finders for free. No platform fees. Owners pay finders directly if they wish. We're here to help the community! 🐾"}
@@ -476,7 +476,7 @@ export default function PawFinder({ language }: PawFinderProps) {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </div>
       </div>
 
       {/* Kenzo AI Assistant */}

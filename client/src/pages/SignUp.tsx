@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, AlertCircle, MapPin, Fingerprint, Shield } from "lucide-react";
+import { Loader2, AlertCircle, MapPin, Fingerprint, Shield, Sparkles } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { trackSignUp } from "@/lib/analytics";
@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { registerPasskey, isPasskeySupported, getBiometricMethodName } from "@/auth/passkey";
+import { motion } from "framer-motion";
 
 interface SignUpProps {
   language: Language;
@@ -441,33 +442,51 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
-      <div className="auth-page">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 auth-card">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">
-              {t('register.createAccount', language)}
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              {t('register.subtitle', language)}
-            </p>
-          </div>
+      <div className="min-h-screen luxury-bg-mesh">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+          <div className="luxury-glass-card luxury-shadow-xl p-8 space-y-8">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className="text-center space-y-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", duration: 0.6, delay: 0.2 }}
+              className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto flex items-center justify-center luxury-shadow-xl"
+            >
+              <Sparkles className="w-10 h-10 text-white" />
+            </motion.div>
+            <div className="space-y-2">
+              <h1 className="luxury-heading-xl">
+                {t('register.createAccount', language)}
+              </h1>
+              <p className="text-gray-600 text-base">
+                {t('register.subtitle', language)}
+              </p>
+            </div>
+          </motion.div>
           
-          <form 
+          <motion.form 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
             id="signupForm"
             onSubmit={handleSubmit} 
-            className="signupCard bg-white p-8 rounded-lg space-y-4"
+            className="space-y-4"
             dir={language === 'he' ? 'rtl' : 'ltr'}
-            style={{
-              background: '#fff',
-              border: 'none',
-              boxShadow: '0 10px 30px rgba(0,0,0,.06)',
-              overflow: 'hidden',
-              transform: 'translateZ(0)'
-            }}
           >
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="firstName">{t('register.firstName', language)}</Label>
+                <Label htmlFor="firstName" className="text-gray-700 font-medium">{t('register.firstName', language)}</Label>
                 <Input
                   id="firstName"
                   name="firstName"
@@ -475,11 +494,12 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                   required
                   value={formData.firstName}
                   onChange={handleChange}
+                  className="luxury-glass-minimal"
                   data-testid="input-firstName"
                 />
               </div>
               <div>
-                <Label htmlFor="lastName">{t('register.lastName', language)}</Label>
+                <Label htmlFor="lastName" className="text-gray-700 font-medium">{t('register.lastName', language)}</Label>
                 <Input
                   id="lastName"
                   name="lastName"
@@ -487,13 +507,14 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                   required
                   value={formData.lastName}
                   onChange={handleChange}
+                  className="luxury-glass-minimal"
                   data-testid="input-lastName"
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="email">{t('register.email', language)}</Label>
+              <Label htmlFor="email" className="text-gray-700 font-medium">{t('register.email', language)}</Label>
               <Input
                 id="email"
                 name="email"
@@ -501,12 +522,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 required
                 value={formData.email}
                 onChange={handleChange}
+                className="luxury-glass-minimal"
                 data-testid="input-email"
               />
             </div>
 
             <div>
-              <Label htmlFor="phone">{t('register.phone', language)}</Label>
+              <Label htmlFor="phone" className="text-gray-700 font-medium">{t('register.phone', language)}</Label>
               <Input
                 id="phone"
                 name="phone"
@@ -517,12 +539,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 placeholder="+972-50-123-4567"
                 pattern="^\+?[1-9]\d{1,14}$"
                 title={t('signUp.enterPhoneFormat', language)}
+                className="luxury-glass-minimal"
                 data-testid="input-phone"
               />
             </div>
 
             <div>
-              <Label htmlFor="password">{t('register.password', language)}</Label>
+              <Label htmlFor="password" className="text-gray-700 font-medium">{t('register.password', language)}</Label>
               <Input
                 id="password"
                 name="password"
@@ -531,12 +554,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 minLength={6}
                 value={formData.password}
                 onChange={handleChange}
+                className="luxury-glass-minimal"
                 data-testid="input-password"
               />
             </div>
 
             <div>
-              <Label htmlFor="dob">{t('register.dateOfBirth', language)}</Label>
+              <Label htmlFor="dob" className="text-gray-700 font-medium">{t('register.dateOfBirth', language)}</Label>
               <DatePicker
                 value={formData.dob}
                 onChange={(date) => setFormData(prev => ({ ...prev, dob: date }))}
@@ -549,10 +573,10 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
             </div>
 
             <div>
-              <Label htmlFor="country" className="flex items-center gap-2">
+              <Label htmlFor="country" className="flex items-center gap-2 text-gray-700 font-medium">
                 {t('register.country', language)}
                 {geoDetected && (
-                  <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                  <span className="text-xs text-green-600 flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
                     {t('signUp.autoDetected', language)}
                   </span>
@@ -567,11 +591,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                   value={formData.country}
                   onChange={handleChange}
                   disabled={geoLoading}
-                  className={geoDetected ? "border-green-500 dark:border-green-600" : ""}
+                  className={`luxury-glass-minimal ${geoDetected ? "border-green-500" : ""}`}
                   data-testid="input-country"
                 />
                 {geoLoading && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-purple-600" />
                 )}
               </div>
             </div>
@@ -644,104 +668,67 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               </div>
             </div>
 
-            <button
+            <Button
               id="createBtn"
               type="submit" 
-              className="w-full relative z-[2] px-8 py-4 font-bold text-lg rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group"
+              className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-base font-medium"
               disabled={loading || !formData.acceptedTerms}
-              aria-disabled={loading || !formData.acceptedTerms}
               data-testid="button-createAccount"
-              style={{
-                background: loading || !formData.acceptedTerms 
-                  ? 'linear-gradient(135deg, #999 0%, #666 100%)'
-                  : 'linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #daa520 100%)',
-                color: '#fff',
-                textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                boxShadow: loading || !formData.acceptedTerms
-                  ? '0 4px 15px rgba(0,0,0,0.2)'
-                  : '0 8px 25px rgba(212,175,55,0.5), inset 0 1px 0 rgba(255,255,255,0.3)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                transform: 'translateZ(0)',
-              }}
             >
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                {loading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    {t('signUp.creatingPremiumAccount', language)}
-                  </>
-                ) : (
-                  <>
-                    <span className="font-extrabold tracking-wide" style={{
-                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                    }}>
-                      {t('register.createPremium', language)}
-                    </span>
-                    <span className="text-xl">✨</span>
-                  </>
-                )}
-              </span>
-              {!loading && !(!formData.acceptedTerms) && (
-                <span 
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-30 transition-opacity duration-500"
-                  style={{
-                    transform: 'translateX(-100%)',
-                    animation: 'shimmer 3s infinite'
-                  }}
-                />
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  {t('signUp.creatingPremiumAccount', language)}
+                </>
+              ) : (
+                <>
+                  {t('register.createPremium', language)}
+                  <Sparkles className="h-5 w-5 ml-2" />
+                </>
               )}
-              <style>{`
-                @keyframes shimmer {
-                  0% { transform: translateX(-100%); }
-                  50% { transform: translateX(100%); }
-                  100% { transform: translateX(100%); }
-                }
-              `}</style>
-            </button>
+            </Button>
 
             <div className="text-center text-sm pt-4 space-y-2">
               <p>
-                <Link href="/terms" className="text-blue-600 hover:underline" data-testid="link-terms">
+                <Link href="/terms" className="text-purple-600 hover:text-purple-700 font-medium transition-colors" data-testid="link-terms">
                   {t('signUp.termsOfUse', language)}
                 </Link>
                 {' • '}
-                <Link href="/privacy" className="text-blue-600 hover:underline" data-testid="link-privacy">
+                <Link href="/privacy" className="text-purple-600 hover:text-purple-700 font-medium transition-colors" data-testid="link-privacy">
                   {t('signUp.privacyPolicy', language)}
                 </Link>
               </p>
               <p className="text-gray-600">
                 {t('signUp.alreadyHaveAccount', language)}{' '}
-                <Link href="/signin" className="text-blue-600 hover:underline" data-testid="link-signin">
+                <Link href="/signin" className="text-purple-600 hover:text-purple-700 font-medium transition-colors" data-testid="link-signin">
                   {t('signUp.signInLink', language)}
                 </Link>
               </p>
             </div>
-          </form>
+          </motion.form>
+          </div>
+          </motion.div>
         </div>
 
       {/* Passkey Creation Prompt Dialog */}
       <Dialog open={showPasskeyPrompt} onOpenChange={setShowPasskeyPrompt}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md luxury-glass-card">
           <DialogHeader>
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#d4af37] to-[#f4d03f]">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 luxury-shadow-xl">
               <Shield className="h-6 w-6 text-white" />
             </div>
-            <DialogTitle className="text-center text-xl font-semibold" style={{
-              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            }}>
+            <DialogTitle className="text-center luxury-heading-md">
               {t('signUp.addPasskeyTitle', language)}
             </DialogTitle>
-            <DialogDescription className="text-center text-base" style={{
-              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            }}>
+            <DialogDescription className="text-center text-base text-gray-600">
               {`${getBiometricMethodName()} ${t('signUp.useBiometricQuick', language)}`}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <Fingerprint className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-              <div className="flex-1 text-sm text-blue-800 dark:text-blue-300">
+            <div className="flex items-start gap-3 p-3 luxury-glass-minimal rounded-lg border-purple-200">
+              <Fingerprint className="h-5 w-5 text-purple-600 mt-0.5" />
+              <div className="flex-1 text-sm text-purple-800">
                 {t('signUp.recommendedPasskey', language)}
               </div>
             </div>
@@ -751,21 +738,17 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
             <Button
               onClick={handleCreatePasskey}
               disabled={passkeyLoading}
-              className="w-full text-white hover:opacity-90 transition-opacity py-6 text-base font-light tracking-wide rounded-xl flex items-center justify-center gap-2"
-              style={{
-                background: 'linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-              }}
+              className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-base font-medium"
               data-testid="button-create-passkey-after-signup"
             >
               {passkeyLoading ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
                   {t('signUp.creating', language)}
                 </>
               ) : (
                 <>
-                  <Fingerprint className="h-5 w-5" />
+                  <Fingerprint className="h-5 w-5 mr-2" />
                   {t('signUp.createPasskey', language)}
                 </>
               )}
@@ -775,10 +758,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               variant="ghost"
               onClick={handleSkipPasskey}
               disabled={passkeyLoading}
-              className="w-full py-6 text-base font-light tracking-wide rounded-xl"
-              style={{
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-              }}
+              className="luxury-btn-ghost w-full h-12 text-base"
               data-testid="button-skip-passkey"
             >
               {t('signUp.skipForNow', language)}

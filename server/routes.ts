@@ -92,6 +92,7 @@ import controlPanelRoutes from "./routes/control-panel";
 import contractorDocumentsRoutes from "./routes/contractor-documents";
 import contractorOnboardingRoutes from "./routes/contractor-onboarding";
 import contractorInvoicesRoutes from "./routes/contractor-invoices";
+import subcontractorAgreementsRoutes from "./routes/subcontractor-agreements";
 import accountingRoutes from "./routes/accounting";
 import adminRoutes from "./routes/admin";
 import aiInsightsRoutes from "./routes/ai-insights";
@@ -7893,6 +7894,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/contractor-documents', apiLimiter, contractorDocumentsRoutes);
   app.use('/api/contractor-onboarding', apiLimiter, contractorOnboardingRoutes);
   app.use('/api/contractor-invoices', apiLimiter, contractorInvoicesRoutes);
+  // Israeli Subcontractor Agreement 2025 - FREE internal e-signature system (NO paid providers)
+  app.use(apiLimiter, subcontractorAgreementsRoutes);
   
   // Employee Management routes
   const employeeRoutes = await import('./routes/employees');

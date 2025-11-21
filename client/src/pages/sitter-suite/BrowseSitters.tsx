@@ -1,11 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Star, MapPin, Calendar, Shield } from "lucide-react";
+import { Star, MapPin, Calendar, Shield, Home } from "lucide-react";
 import { useLocation } from "wouter";
-import { GlassmorphismCard, LuxuryButton } from "@/components/luxury/GlassmorphismCard";
 
 interface Sitter {
   id: number;
@@ -41,25 +38,33 @@ export default function BrowseSitters() {
   const sitters = data || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-amber-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 bg-clip-text text-transparent mb-3 animate-gradient">
+    <div className="min-h-screen luxury-bg-mesh">
+      <div className="luxury-services-hero">
+        <div className="luxury-services-hero-content">
+          <div className="luxury-services-badge luxury-animate-fade-in">
+            <Home className="h-4 w-4" />
+            Premium Pet Sitting
+          </div>
+          <h1 className="luxury-heading-xl luxury-animate-fade-in luxury-delay-1">
             The Sitter Suite™
           </h1>
-          <p className="text-gray-700 text-lg">Premium pet sitting • Trusted professionals • Luxury care</p>
+          <p className="luxury-services-subtitle luxury-animate-fade-in luxury-delay-2">
+            Premium pet sitting • Trusted professionals • Luxury care
+          </p>
         </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Filters */}
-        <GlassmorphismCard className="p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="luxury-glass-panel luxury-shadow-md p-6 mb-8 luxury-animate-fade-in luxury-delay-3">
+          <div className="luxury-grid-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">📍 Location</label>
+              <label className="luxury-text-small font-semibold mb-2 block" style={{ color: '#667eea' }}>📍 Location</label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-5 w-5 text-purple-500" />
+                <MapPin className="absolute left-3 top-3 h-5 w-5" style={{ color: '#667eea' }} />
                 <Input
                   placeholder="Enter city or zip code"
-                  className="pl-10 bg-white/50 border-purple-200 focus:border-purple-500"
+                  className="pl-10 bg-white/50 dark:bg-gray-900/50"
                   value={filters.location}
                   onChange={(e) => setFilters({ ...filters, location: e.target.value })}
                   data-testid="input-location"
@@ -67,9 +72,9 @@ export default function BrowseSitters() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">⭐ Min Rating</label>
+              <label className="luxury-text-small font-semibold mb-2 block" style={{ color: '#667eea' }}>⭐ Min Rating</label>
               <select
-                className="w-full p-2.5 border border-pink-200 rounded-lg bg-white/50 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all"
+                className="w-full p-2.5 border rounded-lg bg-white/50 dark:bg-gray-900/50 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
                 value={filters.minRating}
                 onChange={(e) => setFilters({ ...filters, minRating: Number(e.target.value) })}
                 data-testid="select-rating"
@@ -81,42 +86,43 @@ export default function BrowseSitters() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">💰 Max Price (₪/day)</label>
+              <label className="luxury-text-small font-semibold mb-2 block" style={{ color: '#667eea' }}>💰 Max Price (₪/day)</label>
               <Input
                 type="number"
-                className="bg-white/50 border-amber-200 focus:border-amber-500"
+                className="bg-white/50 dark:bg-gray-900/50"
                 value={filters.maxPrice}
                 onChange={(e) => setFilters({ ...filters, maxPrice: Number(e.target.value) })}
                 data-testid="input-max-price"
               />
             </div>
           </div>
-        </GlassmorphismCard>
+        </div>
 
         {/* Results */}
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Finding amazing sitters...</p>
+            <div className="luxury-spinner mx-auto"></div>
+            <p className="mt-4 luxury-text-body">Finding amazing sitters...</p>
           </div>
         ) : sitters.length === 0 ? (
-          <Card className="p-12 text-center">
-            <p className="text-gray-600 text-lg">No sitters found. Try adjusting your filters.</p>
-          </Card>
+          <div className="luxury-glass-card luxury-shadow-xl p-12 text-center">
+            <Home className="h-16 w-16 mx-auto mb-6" style={{ color: '#667eea' }} />
+            <p className="luxury-heading-md">No sitters found. Try adjusting your filters.</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {sitters.map((sitter) => {
+          <div className="luxury-grid-3">
+            {sitters.map((sitter, index) => {
               const ratingNum = parseFloat(sitter.rating);
               const priceInShekels = sitter.pricePerDayCents / 100;
               
               return (
-                <GlassmorphismCard
+                <div
                   key={sitter.id}
                   onClick={() => setLocation(`/sitter-suite/sitters/${sitter.id}`)}
-                  className="cursor-pointer transform hover:scale-105 transition-all duration-300"
+                  className={`luxury-glass-card luxury-hover-glow luxury-shadow-xl cursor-pointer overflow-hidden luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}
                   data-testid={`card-sitter-${sitter.id}`}
                 >
-                  <div className="aspect-[4/3] bg-gradient-to-br from-purple-200 via-pink-200 to-amber-200 relative rounded-t-2xl overflow-hidden">
+                  <div className="aspect-[4/3] bg-gradient-to-br from-purple-200 via-pink-200 to-purple-300 relative overflow-hidden">
                     {sitter.profilePictureUrl ? (
                       <img
                         src={sitter.profilePictureUrl}
@@ -129,45 +135,46 @@ export default function BrowseSitters() {
                       </div>
                     )}
                     {sitter.isVerified && (
-                      <div className="absolute top-3 right-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1 shadow-lg backdrop-blur-sm">
+                      <div className="absolute top-3 right-3 luxury-badge-success flex items-center gap-1 shadow-lg backdrop-blur-sm">
                         <Shield className="h-4 w-4" />
                         Verified
                       </div>
                     )}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-4">
-                      <div className="flex items-center gap-2">
-                        <Star className="h-5 w-5 fill-amber-300 text-amber-300" />
-                        <span className="text-white font-bold text-lg">{ratingNum.toFixed(1)}</span>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                      <div className="luxury-badge-gold inline-flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-current" />
+                        <span className="text-white font-bold">{ratingNum.toFixed(1)}</span>
                         <span className="text-white/90 text-sm">({sitter.totalBookings} stays)</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="p-6">
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2" data-testid={`text-name-${sitter.id}`}>
+                    <h3 className="luxury-heading-sm mb-2" data-testid={`text-name-${sitter.id}`}>
                       {sitter.firstName} {sitter.lastName}
                     </h3>
 
-                    <div className="flex items-center gap-2 text-gray-600 mb-3">
-                      <MapPin className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm font-medium">{sitter.city}</span>
+                    <div className="flex items-center gap-2 luxury-text-small mb-3">
+                      <MapPin className="h-4 w-4" style={{ color: '#667eea' }} />
+                      <span>{sitter.city}</span>
                     </div>
 
-                    <div className="flex items-center gap-2 text-gray-600 mb-4">
-                      <Calendar className="h-4 w-4 text-pink-600" />
-                      <span className="text-sm">{sitter.yearsOfExperience} years experience</span>
+                    <div className="flex items-center gap-2 luxury-text-small mb-4">
+                      <Calendar className="h-4 w-4" style={{ color: '#667eea' }} />
+                      <span>{sitter.yearsOfExperience} years experience</span>
                     </div>
 
-                    <p className="text-gray-700 text-sm mb-6 line-clamp-3 leading-relaxed">{sitter.bio}</p>
+                    <p className="luxury-text-small mb-6 line-clamp-3">{sitter.bio}</p>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
                       <div>
-                        <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 bg-clip-text text-transparent">
+                        <div className="luxury-heading-lg luxury-text-gradient">
                           ₪{priceInShekels}
                         </div>
-                        <div className="text-gray-500 text-xs">per day</div>
+                        <div className="luxury-text-small">per day</div>
                       </div>
-                      <LuxuryButton
+                      <button
+                        className="luxury-btn-primary"
                         onClick={(e) => {
                           e.stopPropagation();
                           setLocation(`/sitter-suite/sitters/${sitter.id}`);
@@ -175,10 +182,10 @@ export default function BrowseSitters() {
                         data-testid={`button-book-${sitter.id}`}
                       >
                         View Profile
-                      </LuxuryButton>
+                      </button>
                     </div>
                   </div>
-                </GlassmorphismCard>
+                </div>
               );
             })}
           </div>

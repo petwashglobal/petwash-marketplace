@@ -316,29 +316,26 @@ export default function Verify() {
 
   return (
     <Layout language={language} onLanguageChange={setLanguage}>
-      {/* Premium Background */}
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-10 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-          <div className="absolute top-40 right-10 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-          <div className="absolute bottom-20 left-1/2 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
-        </div>
-
-        <div className="relative z-10 container max-w-6xl mx-auto px-4 py-12">
-          {/* Premium Header */}
+      <div className="min-h-screen luxury-bg-mesh">
+        <div className="container max-w-6xl mx-auto px-4 py-12">
+          {/* Header */}
           <motion.div 
             className="text-center mb-12"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="inline-flex items-center gap-3 mb-4">
-              <Shield className="w-12 h-12 text-cyan-400" />
-              <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-cyan-200 via-blue-200 to-purple-200 bg-clip-text text-transparent">
-                {t.title}
-              </h1>
-            </div>
-            <p className="text-xl text-purple-200/80 font-light">{t.subtitle}</p>
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", duration: 0.6, delay: 0.1 }}
+              className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto mb-6 flex items-center justify-center luxury-shadow-xl"
+            >
+              <Shield className="w-10 h-10 text-white" />
+            </motion.div>
+            <h1 className="luxury-heading-xl mb-4">
+              {t.title}
+            </h1>
+            <p className="text-xl text-gray-600 font-light">{t.subtitle}</p>
           </motion.div>
 
           {/* Status Display */}
@@ -375,12 +372,12 @@ export default function Verify() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <div className="rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 p-8 shadow-2xl">
+              <div className="luxury-glass-card luxury-shadow-xl p-8">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-400/30">
-                    <Upload className="w-6 h-6 text-cyan-300" />
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-600/20 to-indigo-600/20 border border-purple-400/30">
+                    <Upload className="w-6 h-6 text-purple-600" />
                   </div>
-                  <h2 className="text-3xl font-bold text-white">{t.uploadDoc}</h2>
+                  <h2 className="luxury-heading-md">{t.uploadDoc}</h2>
                 </div>
 
                 <div className="space-y-6">
@@ -531,31 +528,31 @@ export default function Verify() {
                   {/* Additional Fields */}
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-white">{t.nameOnDoc}</Label>
+                      <Label className="text-gray-700 font-medium">{t.nameOnDoc}</Label>
                       <Input
                         value={nameOnDoc}
                         onChange={(e) => setNameOnDoc(e.target.value)}
-                        className="bg-white/10 border-white/20 text-white"
+                        className="luxury-glass-minimal"
                         placeholder={isHebrew ? 'שם מלא' : 'Full name'}
                       />
                     </div>
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-white">{t.dob}</Label>
+                        <Label className="text-gray-700 font-medium">{t.dob}</Label>
                         <DatePicker
                           value={dob}
                           onChange={setDob}
                           placeholder={t.dob}
-                          className="bg-white/10 border-white/20 text-white"
+                          className="luxury-glass-minimal"
                           testId="input-dob-verify"
                         />
                       </div>
                       <div>
-                        <Label className="text-white">{t.idNumber}</Label>
+                        <Label className="text-gray-700 font-medium">{t.idNumber}</Label>
                         <Input
                           value={idNumber}
                           onChange={(e) => setIdNumber(e.target.value)}
-                          className="bg-white/10 border-white/20 text-white"
+                          className="luxury-glass-minimal"
                           placeholder={isHebrew ? 'אופציונלי' : 'Optional'}
                         />
                       </div>
@@ -605,7 +602,7 @@ export default function Verify() {
                   <Button
                     onClick={handleSubmit}
                     disabled={!file || !selectedDocType || uploading}
-                    className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 py-6 text-lg disabled:opacity-50"
+                    className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-lg font-medium"
                   >
                     {uploading ? (
                       <>

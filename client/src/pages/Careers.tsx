@@ -1,69 +1,77 @@
 import { useLocation } from "wouter";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Briefcase, Users, Heart, TrendingUp } from "lucide-react";
 
 export default function Careers() {
   const [, setLocation] = useLocation();
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
-      <div className="container max-w-6xl mx-auto px-4 py-12">
-        <div className="text-center mb-16">
-          <Briefcase className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-          <h1 className="text-5xl font-bold mb-4">Careers at Pet Wash™</h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300">
+    <div className="min-h-screen luxury-bg-mesh">
+      <div className="container max-w-6xl mx-auto px-4 py-16">
+        <div className="text-center mb-20 luxury-fade-in">
+          <div className="inline-block p-4 rounded-full luxury-glass-minimal mb-6 luxury-scale-in">
+            <Briefcase className="w-16 h-16 luxury-gradient-icon" />
+          </div>
+          <h1 className="luxury-heading-xl mb-6">Careers at Pet Wash™</h1>
+          <p className="luxury-subtitle-lg">
             Join a team that's revolutionizing pet care globally
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          <Card className="p-6">
-            <Heart className="w-12 h-12 text-red-500 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Mission-Driven Work</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 luxury-stagger-fade-in">
+          <div className="luxury-glass-card luxury-hover-glow p-8" style={{ animationDelay: '0.1s' }}>
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-400 to-pink-500 flex items-center justify-center mb-6 luxury-pulse-glow">
+              <Heart className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="text-xl font-bold mb-3 luxury-gradient-text">Mission-Driven Work</h3>
+            <p className="luxury-text-body text-lg">
               Make a real difference in the lives of pets and their families every single day
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6">
-            <TrendingUp className="w-12 h-12 text-green-500 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Growth Opportunities</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="luxury-glass-card luxury-hover-glow p-8" style={{ animationDelay: '0.2s' }}>
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mb-6 luxury-pulse-glow">
+              <TrendingUp className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="text-xl font-bold mb-3 luxury-gradient-text">Growth Opportunities</h3>
+            <p className="luxury-text-body text-lg">
               Expand your skills across 8 platforms in a rapidly growing global company
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6">
-            <Users className="w-12 h-12 text-blue-500 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Amazing Team</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="luxury-glass-card luxury-hover-glow p-8" style={{ animationDelay: '0.3s' }}>
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center mb-6 luxury-pulse-glow">
+              <Users className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="text-xl font-bold mb-3 luxury-gradient-text">Amazing Team</h3>
+            <p className="luxury-text-body text-lg">
               Work with passionate, talented people who love pets as much as you do
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6">
-            <Briefcase className="w-12 h-12 text-purple-500 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Competitive Benefits</h3>
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="luxury-glass-card luxury-hover-glow p-8" style={{ animationDelay: '0.4s' }}>
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center mb-6 luxury-pulse-glow">
+              <Briefcase className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="text-xl font-bold mb-3 luxury-gradient-text">Competitive Benefits</h3>
+            <p className="luxury-text-body text-lg">
               Comprehensive benefits, competitive salary, and employee perks
             </p>
-          </Card>
+          </div>
         </div>
 
-        <Card className="p-8 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 text-center">
-          <h2 className="text-2xl font-bold mb-4">Open Positions</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
+        <div className="luxury-glass-card luxury-shadow-xl p-12 text-center luxury-bg-primary luxury-slide-up">
+          <h2 className="text-3xl font-bold mb-4 text-white">Open Positions</h2>
+          <p className="text-white/90 text-lg mb-8">
             Explore opportunities across technology, operations, franchise support, and more
           </p>
-          <div className="flex gap-4 justify-center">
-            <Button size="lg" data-testid="button-view-jobs">
+          <div className="flex gap-4 justify-center flex-wrap">
+            <button className="luxury-btn-white luxury-shadow-xl" data-testid="button-view-jobs">
               View Open Positions
-            </Button>
-            <Button size="lg" variant="outline" data-testid="button-staff-application" onClick={() => setLocation("/staff/application")}>
+            </button>
+            <button className="luxury-btn-white luxury-shadow-xl" data-testid="button-staff-application" onClick={() => setLocation("/staff/application")}>
               Staff Application
-            </Button>
+            </button>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

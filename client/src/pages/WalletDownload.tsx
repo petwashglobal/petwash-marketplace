@@ -14,22 +14,20 @@ export default function WalletDownload() {
   const isAndroid = /Android/.test(navigator.userAgent);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900">
+    <div className="min-h-screen luxury-bg-mesh">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20"></div>
-        
         <div className="relative max-w-7xl mx-auto px-6 py-16 md:py-24">
-          <div className="text-center mb-16">
+          <div className="text-center mb-16 luxury-animate-fade-in">
             <div className="flex items-center justify-center gap-4 mb-6">
               <Smartphone className="w-16 h-16 text-blue-600 dark:text-blue-400" />
             </div>
             
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="luxury-heading-xl mb-6">
               {isHebrew ? 'כרטיס ה-VIP שלך ב-Wallet' : 'Your VIP Card in Wallet'}
             </h1>
             
-            <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 max-w-3xl mx-auto mb-8">
+            <p className="luxury-text-body max-w-3xl mx-auto mb-8">
               {isHebrew 
                 ? 'הורד את כרטיס ה-VIP והביקור הדיגיטלי שלך ישירות ל-Apple Wallet או Google Wallet. תמיד זמין, תמיד מאובטח.'
                 : 'Download your VIP loyalty and digital business cards directly to Apple Wallet or Google Wallet. Always available, always secure.'}
@@ -52,15 +50,15 @@ export default function WalletDownload() {
           </div>
 
           {/* Main CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16 luxury-animate-fade-in luxury-delay-1">
             {/* Apple Wallet Button */}
             <a 
               href="/loyalty/dashboard" 
-              className="group relative"
+              className="group relative luxury-hover-glow"
               data-testid="link-apple-wallet-download"
             >
               <div className="absolute -inset-1 bg-gradient-to-r from-black via-gray-800 to-black rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-200"></div>
-              <div className="relative flex items-center gap-4 px-8 py-6 bg-black rounded-2xl hover:bg-gray-900 transition-all duration-200 shadow-2xl">
+              <div className="relative flex items-center gap-4 px-8 py-6 bg-black rounded-2xl hover:bg-gray-900 transition-all duration-200 luxury-shadow-xl">
                 <Apple className="w-12 h-12 text-white" />
                 <div className="text-left">
                   <div className="text-sm text-gray-300">{isHebrew ? 'הורד ב-' : 'Download on the'}</div>
@@ -72,11 +70,11 @@ export default function WalletDownload() {
             {/* Google Wallet Button */}
             <a 
               href="/loyalty/dashboard" 
-              className="group relative"
+              className="group relative luxury-hover-glow"
               data-testid="link-google-wallet-download"
             >
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-200"></div>
-              <div className="relative flex items-center gap-4 px-8 py-6 bg-blue-600 rounded-2xl hover:bg-blue-700 transition-all duration-200 shadow-2xl">
+              <div className="relative flex items-center gap-4 px-8 py-6 bg-blue-600 rounded-2xl hover:bg-blue-700 transition-all duration-200 luxury-shadow-xl">
                 <SiAndroid className="w-12 h-12 text-white" />
                 <div className="text-left">
                   <div className="text-sm text-blue-100">{isHebrew ? 'הורד ב-' : 'Download on'}</div>
@@ -88,7 +86,7 @@ export default function WalletDownload() {
 
           {/* Features Grid */}
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="border-2 border-blue-200 dark:border-blue-800 hover:shadow-xl transition-shadow">
+            <Card className="luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-2">
               <CardHeader>
                 <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center mb-4">
                   <CreditCard className="w-8 h-8 text-blue-600 dark:text-blue-400" />
@@ -120,7 +118,7 @@ export default function WalletDownload() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-purple-200 dark:border-purple-800 hover:shadow-xl transition-shadow">
+            <Card className="luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-3">
               <CardHeader>
                 <div className="w-14 h-14 bg-purple-100 dark:bg-purple-900 rounded-2xl flex items-center justify-center mb-4">
                   <QrCode className="w-8 h-8 text-purple-600 dark:text-purple-400" />
@@ -152,7 +150,7 @@ export default function WalletDownload() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-pink-200 dark:border-pink-800 hover:shadow-xl transition-shadow">
+            <Card className="luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-4">
               <CardHeader>
                 <div className="w-14 h-14 bg-pink-100 dark:bg-pink-900 rounded-2xl flex items-center justify-center mb-4">
                   <Shield className="w-8 h-8 text-pink-600 dark:text-pink-400" />
@@ -186,20 +184,20 @@ export default function WalletDownload() {
           </div>
 
           {/* How It Works */}
-          <div className="mt-20 max-w-4xl mx-auto">
-            <h2 className="text-4xl font-bold text-center mb-12 text-gray-900 dark:text-white">
+          <div className="mt-20 max-w-4xl mx-auto luxury-animate-fade-in luxury-delay-5">
+            <h2 className="luxury-heading-lg text-center mb-12">
               {isHebrew ? 'איך זה עובד?' : 'How It Works?'}
             </h2>
             
             <div className="grid md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                <div className="w-16 h-16 luxury-btn-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 luxury-shadow-md">
                   1
                 </div>
-                <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+                <h3 className="luxury-heading-sm mb-2">
                   {isHebrew ? 'לחץ להורדה' : 'Click Download'}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="luxury-text-body">
                   {isHebrew 
                     ? 'בחר Apple Wallet או Google Wallet לפי המכשיר שלך'
                     : 'Choose Apple Wallet or Google Wallet for your device'}
@@ -207,13 +205,13 @@ export default function WalletDownload() {
               </div>
 
               <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                <div className="w-16 h-16 luxury-btn-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 luxury-shadow-md">
                   2
                 </div>
-                <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+                <h3 className="luxury-heading-sm mb-2">
                   {isHebrew ? 'התחבר לחשבון' : 'Sign In'}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="luxury-text-body">
                   {isHebrew 
                     ? 'התחבר כדי לקבל את כרטיס ה-VIP האישי שלך'
                     : 'Sign in to get your personalized VIP card'}
@@ -221,13 +219,13 @@ export default function WalletDownload() {
               </div>
 
               <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                <div className="w-16 h-16 luxury-btn-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 luxury-shadow-md">
                   3
                 </div>
-                <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
+                <h3 className="luxury-heading-sm mb-2">
                   {isHebrew ? 'השתמש בתחנות' : 'Use at Stations'}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="luxury-text-body">
                   {isHebrew 
                     ? 'סרוק את ה-QR מהכרטיס שלך בתחנות Pet Wash'
                     : 'Scan the QR from your card at Pet Wash stations'}
@@ -237,12 +235,12 @@ export default function WalletDownload() {
           </div>
 
           {/* Bottom CTA */}
-          <div className="mt-20 text-center">
-            <div className="inline-block p-8 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl">
-              <h3 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
+          <div className="mt-20 text-center luxury-animate-fade-in luxury-delay-6">
+            <div className="inline-block p-8 luxury-glass-card luxury-shadow-xl rounded-3xl">
+              <h3 className="luxury-heading-lg mb-4">
                 {isHebrew ? 'מוכן להתחיל?' : 'Ready to Start?'}
               </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
+              <p className="luxury-text-body mb-6">
                 {isHebrew 
                   ? 'הצטרף לאלפי לקוחות VIP שכבר נהנים מחוויית Wallet דיגיטלית'
                   : 'Join thousands of VIP customers already enjoying the digital Wallet experience'}
@@ -250,7 +248,7 @@ export default function WalletDownload() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button 
                   size="lg" 
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-lg px-8 py-6"
+                  className="luxury-btn-primary luxury-shadow-xl text-lg px-8 py-6"
                   onClick={() => setLocation('/loyalty/dashboard')}
                   data-testid="button-get-started"
                 >
@@ -261,7 +259,7 @@ export default function WalletDownload() {
                 <Button 
                   size="lg" 
                   variant="outline"
-                  className="text-lg px-8 py-6"
+                  className="luxury-btn-secondary text-lg px-8 py-6"
                   onClick={() => setLocation('/team-cards')}
                   data-testid="button-team-cards"
                 >

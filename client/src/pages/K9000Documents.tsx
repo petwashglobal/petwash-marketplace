@@ -168,19 +168,19 @@ export default function K9000Documents() {
   const categories = categoriesData?.categories || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen luxury-bg-mesh p-4 md:p-8">
+      <div className="luxury-container">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 luxury-animate-fade-in">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl luxury-shadow-xl">
               <Shield className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white" data-testid="text-documents-title">
+              <h1 className="luxury-heading-xl luxury-animate-slide-up luxury-delay-1" data-testid="text-documents-title">
                 {isHebrew ? 'מסמכי K9000' : 'K9000 Documents'}
               </h1>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="luxury-text-body luxury-animate-slide-up luxury-delay-2">
                 {isHebrew ? 'גישה מאובטחת למסמכים רגישים' : 'Secure access to sensitive documents'}
               </p>
             </div>
@@ -190,65 +190,67 @@ export default function K9000Documents() {
         {/* Access Summary */}
         {accessData && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950 dark:to-gray-900">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isHebrew ? 'מסמכים זמינים' : 'Available Documents'}
-                    </p>
-                    <p className="text-3xl font-bold text-blue-600" data-testid="text-available-docs">
-                      {accessData.totalAccessible || 0}
-                    </p>
-                  </div>
-                  <FolderOpen className="w-12 h-12 text-blue-400" />
+            <div className="luxury-glass-card luxury-shadow-lg pt-6 luxury-animate-scale-in luxury-delay-3">
+              <div className="flex items-center justify-between px-6 pb-6">
+                <div>
+                  <p className="luxury-text-small">
+                    {isHebrew ? 'מסמכים זמינים' : 'Available Documents'}
+                  </p>
+                  <p className="luxury-heading-lg luxury-text-gradient" data-testid="text-available-docs">
+                    {accessData.totalAccessible || 0}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl">
+                  <FolderOpen className="w-12 h-12 text-white" />
+                </div>
+              </div>
+            </div>
 
-            <Card className="border-green-200 bg-gradient-to-br from-green-50 to-white dark:from-green-950 dark:to-gray-900">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isHebrew ? 'רמת גישה' : 'Access Level'}
-                    </p>
-                    <p className="text-3xl font-bold text-green-600" data-testid="text-access-level">
-                      L{accessData.userAccessLevel || 0}
-                    </p>
-                  </div>
-                  <Shield className="w-12 h-12 text-green-400" />
+            <div className="luxury-glass-card luxury-shadow-lg pt-6 luxury-animate-scale-in luxury-delay-4">
+              <div className="flex items-center justify-between px-6 pb-6">
+                <div>
+                  <p className="luxury-text-small">
+                    {isHebrew ? 'רמת גישה' : 'Access Level'}
+                  </p>
+                  <p className="luxury-heading-lg luxury-text-gradient" data-testid="text-access-level">
+                    L{accessData.userAccessLevel || 0}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl">
+                  <Shield className="w-12 h-12 text-white" />
+                </div>
+              </div>
+            </div>
 
-            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950 dark:to-gray-900">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {isHebrew ? 'קטגוריות' : 'Categories'}
-                    </p>
-                    <p className="text-3xl font-bold text-purple-600" data-testid="text-categories">
-                      {categories.length}
-                    </p>
-                  </div>
-                  <Filter className="w-12 h-12 text-purple-400" />
+            <div className="luxury-glass-card luxury-shadow-lg pt-6 luxury-animate-scale-in luxury-delay-5">
+              <div className="flex items-center justify-between px-6 pb-6">
+                <div>
+                  <p className="luxury-text-small">
+                    {isHebrew ? 'קטגוריות' : 'Categories'}
+                  </p>
+                  <p className="luxury-heading-lg luxury-text-gradient" data-testid="text-categories">
+                    {categories.length}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
+                  <Filter className="w-12 h-12 text-white" />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Filters */}
-        <Card className="mb-6 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Search className="w-5 h-5" />
+        <div className="mb-6 luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-6">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="luxury-heading-md flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg">
+                <Search className="w-5 h-5 text-white" />
+              </div>
               {isHebrew ? 'חיפוש וסינון' : 'Search & Filter'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Input
@@ -256,12 +258,12 @@ export default function K9000Documents() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   data-testid="input-search-documents"
-                  className="w-full"
+                  className="w-full luxury-glass-minimal"
                 />
               </div>
               <div>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger data-testid="select-category-filter">
+                  <SelectTrigger data-testid="select-category-filter" className="luxury-glass-minimal">
                     <SelectValue placeholder={isHebrew ? 'כל הקטגוריות' : 'All Categories'} />
                   </SelectTrigger>
                   <SelectContent>
@@ -275,116 +277,129 @@ export default function K9000Documents() {
                 </Select>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Documents List */}
-        <Card className="shadow-xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
+        <div className="luxury-glass-card luxury-shadow-xl luxury-animate-fade-in luxury-delay-7">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="luxury-heading-md flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
               {isHebrew ? 'רשימת מסמכים' : 'Document List'}
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="luxury-text-small mt-2">
               {isHebrew
                 ? 'כל המסמכים מוצפנים ומוגנים עם יומני גישה מפורטים'
                 : 'All documents are encrypted and protected with detailed access logs'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="p-6">
             {isLoading ? (
               <div className="text-center py-8">
-                <div className="inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="mt-4 text-gray-600">{isHebrew ? 'טוען מסמכים...' : 'Loading documents...'}</p>
+                <div className="luxury-spinner w-12 h-12 mx-auto"></div>
+                <p className="mt-4 luxury-text-body">{isHebrew ? 'טוען מסמכים...' : 'Loading documents...'}</p>
               </div>
             ) : documents.length === 0 ? (
               <div className="text-center py-12">
-                <FolderOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600">{isHebrew ? 'לא נמצאו מסמכים' : 'No documents found'}</p>
+                <div className="p-4 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 rounded-2xl inline-block mb-4">
+                  <FolderOpen className="w-16 h-16 text-gray-500 dark:text-gray-400" />
+                </div>
+                <p className="luxury-text-body">{isHebrew ? 'לא נמצאו מסמכים' : 'No documents found'}</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {documents.map((doc) => (
+              <div className="luxury-grid-3">
+                {documents.map((doc, index) => (
                   <div
                     key={doc.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-scale-in"
+                    style={{ animationDelay: `${(index % 9) * 50}ms` }}
                     data-testid={`document-item-${doc.id}`}
                   >
-                    <div className="flex items-center gap-4 flex-1">
-                      {getCategoryIcon(doc.category)}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-900 dark:text-white">{doc.fileName}</h3>
-                          <Badge className={getCategoryColor(doc.category)} variant="outline">
-                            {doc.category}
-                          </Badge>
-                          {doc.accessLevel >= 8 && (
-                            <Badge variant="destructive" className="flex items-center gap-1">
-                              <Lock className="w-3 h-3" />
-                              {isHebrew ? 'סודי' : 'Confidential'}
-                            </Badge>
-                          )}
-                        </div>
-                        {doc.description && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{doc.description}</p>
-                        )}
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            {doc.uploadedBy}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {formatDate(doc.uploadedAt)}
-                          </span>
-                          <span>{formatFileSize(doc.fileSize)}</span>
-                        </div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl">
+                        {getCategoryIcon(doc.category)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="luxury-heading-sm line-clamp-1">{doc.fileName}</h3>
+                        <span className="luxury-badge text-xs mt-1 inline-block">
+                          {doc.category}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
+
+                    {doc.accessLevel >= 8 && (
+                      <div className="luxury-badge-error flex items-center gap-1 mb-3 w-fit">
+                        <Lock className="w-3 h-3" />
+                        {isHebrew ? 'סודי' : 'Confidential'}
+                      </div>
+                    )}
+
+                    {doc.description && (
+                      <p className="luxury-text-small mb-4 line-clamp-2">{doc.description}</p>
+                    )}
+
+                    <div className="flex flex-col gap-2 luxury-text-small mb-4">
+                      <span className="flex items-center gap-2">
+                        <User className="w-3 h-3" />
+                        {doc.uploadedBy}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <Calendar className="w-3 h-3" />
+                        {formatDate(doc.uploadedAt)}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <FileText className="w-3 h-3" />
+                        {formatFileSize(doc.fileSize)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <button
                         onClick={() => handleView(doc)}
+                        className="luxury-btn-secondary flex-1 text-sm py-2"
                         data-testid={`button-view-${doc.id}`}
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         {isHebrew ? 'צפה' : 'View'}
-                      </Button>
-                      <Button
-                        size="sm"
+                      </button>
+                      <button
                         onClick={() => handleDownload(doc)}
+                        className="luxury-btn-primary flex-1 text-sm py-2"
                         data-testid={`button-download-${doc.id}`}
                       >
                         <Download className="w-4 h-4 mr-1" />
                         {isHebrew ? 'הורד' : 'Download'}
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Security Notice */}
-        <Card className="mt-6 border-amber-200 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950 dark:to-gray-900">
-          <CardContent className="pt-6">
+        <div className="mt-6 luxury-glass-card luxury-shadow-lg bg-gradient-to-br from-amber-50/50 to-white/50 dark:from-amber-950/30 dark:to-gray-900/30 luxury-animate-fade-in luxury-delay-8">
+          <div className="p-6">
             <div className="flex items-start gap-3">
-              <Shield className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="p-2 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex-shrink-0">
+                <Shield className="w-5 h-5 text-white" />
+              </div>
               <div>
-                <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                <h4 className="luxury-heading-sm mb-1">
                   {isHebrew ? 'הודעת אבטחה' : 'Security Notice'}
                 </h4>
-                <p className="text-sm text-amber-800 dark:text-amber-200">
+                <p className="luxury-text-small">
                   {isHebrew
                     ? 'כל הפעולות עם מסמכים רשומות ונשמרות ביומני גישה מפורטים. אנא הורד ושמור רק מסמכים הדרושים לך לעבודה.'
                     : 'All document actions are logged and recorded in detailed access logs. Please only download and save documents necessary for your work.'}
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
