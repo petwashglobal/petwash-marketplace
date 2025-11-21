@@ -111,6 +111,7 @@ export default function About({ language }: AboutProps) {
           </div>
         </div>
       </div>
+      </div>
 
       {/* Core Values - Luxury Glass Grid */}
       <div className="luxury-section">

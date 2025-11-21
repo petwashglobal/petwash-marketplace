@@ -236,7 +236,6 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                         </div>
                       </div>
                     </div>
-                  </div>
                 ))}
               </div>
             </div>
@@ -268,7 +267,6 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                         </div>
                       </div>
                     </div>
-                  </div>
                 ))}
               </div>
             </div>

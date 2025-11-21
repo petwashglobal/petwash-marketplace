@@ -504,7 +504,7 @@ export default function Loyalty() {
 
           {/* Bottom Spacing */}
           <div className="h-12"></div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Custom animations */}
