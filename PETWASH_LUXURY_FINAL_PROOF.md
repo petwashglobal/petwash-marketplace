@@ -58,10 +58,10 @@
 | Category | Files Deleted | Total Size | Date |
 |----------|---------------|------------|------|
 | Parallel Layouts | 1 (EnterpriseLayout) | 103 lines | Nov 21 |
-| Old Headers | 2 (Header.old, BrandHeader) | 29KB | Nov 21 |
+| Old Headers | 3 (Header.old, BrandHeader, Header.tsx) | 29KB+ | Nov 21 |
 | Old Navigation | 3 (Global, MultiLayer, PetWashHeaderNav) | 36KB | Nov 21 |
 | Dead CSS | 1 (index-clean.css) | 8KB | Nov 21 |
-| **GRAND TOTAL** | **7 files** | **~73KB** | **Nov 21, 2025** |
+| **GRAND TOTAL** | **8 files** | **~73KB** | **Nov 21, 2025** |
 
 ---
 
@@ -70,8 +70,7 @@
 ### Approved Components (ONLY):
 
 **Headers:**
-- ✅ `PetWashHeader.tsx` - Main luxury glassmorphism header
-- ✅ `Header.tsx` - Compatibility shim (temporary, safe)
+- ✅ `PetWashHeader.tsx` - Main luxury glassmorphism header (controlled component pattern)
 
 **Layouts:**
 - ✅ `Layout.tsx` - SINGLE luxury layout wrapper
@@ -114,6 +113,10 @@
 *File Name Patterns:*
 - ❌ Any file matching: `*.old.*`, `*legacy*`, `*-v1.*`, `*backup*`, `*.temp.*`, `*.copy.*`, `*test-ui*`
 
+*Forbidden Exact File Names:*
+- ❌ `Header.tsx` - Only PetWashHeader and Layout allowed
+- ❌ `HeaderLegacy.tsx`
+
 *Forbidden Content Identifiers (scanned in ALL files):*
 - ❌ `EnterpriseLayout`
 - ❌ `BrandHeader`
@@ -122,6 +125,7 @@
 - ❌ `OldLayout`
 - ❌ `LegacyLayout`
 - ❌ `ApplePackage`
+- ❌ `HeaderLegacy`
 
 *Layout Restrictions:*
 - ❌ Multiple layout files (only `Layout.tsx` allowed)
@@ -370,3 +374,143 @@ The architecture is locked, protected, and production-ready.
 *Status: READY FOR PRODUCTION*  
 
 **🏆 MISSION ACCOMPLISHED**
+
+---
+
+## 🚀 FINAL PURGE - November 21, 2025 (Latest Update)
+
+### Header.tsx Compatibility Shim DELETED + 21 Pages Migrated
+
+**Mission: Complete Header.tsx deletion + migrate all remaining pages to unified Layout**
+
+### Files Modified:
+
+**Deleted:**
+- ❌ `client/src/components/Header.tsx` - Compatibility shim removed
+
+**Pages Migrated (21 total):**
+
+*Batch 1 (9 pages):*
+1. PrivacyPolicy.tsx
+2. AccessibilityStatement.tsx
+3. AdminFinancial.tsx
+4. SecuritySettings.tsx
+5. DeviceManagement.tsx
+6. SignUp.tsx
+7. MyDevices.tsx
+8. AdminHelpGuide.tsx
+9. AdminTeamInvitations.tsx
+
+*Batch 2 (12 pages):*
+10. About.tsx
+11. AdminGuide.tsx
+12. BuyGiftCard.tsx
+13. ConnectedDevices.tsx
+14. Contact.tsx
+15. Franchise.tsx
+16. OpsDashboard.tsx
+17. Privacy.tsx
+18. Settings.tsx
+19. SignIn.tsx
+20. Terms.tsx
+21. WelcomeConsent.tsx
+
+**Migration Pattern:**
+```tsx
+// OLD (DELETED):
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+
+return (
+  <div>
+    <Header language={language} onLanguageChange={onLanguageChange} />
+    {/* content */}
+    <Footer language={language} />
+  </div>
+);
+
+// NEW (UNIFIED):
+import { Layout } from "@/components/Layout";
+
+return (
+  <Layout language={language} onLanguageChange={onLanguageChange}>
+    <div>
+      {/* content */}
+    </div>
+  </Layout>
+);
+```
+
+### Critical Language Wiring Fix:
+
+**Regression Found:**
+- Layout accepted `onLanguageChange` prop but never forwarded it to PetWashHeader
+- PetWashHeader had independent language state with no parent coordination
+- Result: Language switching UI broken across all 21 migrated pages
+
+**Fix Implemented:**
+
+**PetWashHeader.tsx - Controlled Component Pattern:**
+```typescript
+interface PetWashHeaderProps {
+  language?: string;
+  onLanguageChange?: (language: string) => void;
+}
+
+export const PetWashHeader: React.FC<PetWashHeaderProps> = ({ 
+  language: controlledLanguage, 
+  onLanguageChange: controlledOnLanguageChange 
+}) => {
+  // Internal state for uncontrolled mode (backwards compatibility)
+  const [internalLanguage, setInternalLanguage] = useState<string>(detectInitialLanguage);
+  
+  // Use controlled value if provided, otherwise use internal state
+  const currentLanguage = controlledLanguage !== undefined ? controlledLanguage : internalLanguage;
+  
+  const handleLanguageChange = (code: string) => {
+    if (controlledOnLanguageChange) {
+      controlledOnLanguageChange(code);
+    } else {
+      setInternalLanguage(code);
+      localStorage.setItem("pw_lang", code);
+    }
+  };
+}
+```
+
+**Layout.tsx - Prop Forwarding:**
+```typescript
+<PetWashHeader language={language} onLanguageChange={onLanguageChange} />
+```
+
+### Guardian Enhancements:
+
+**Preflight Guardian v2 Updates:**
+```typescript
+// Added exact file blocking
+const FORBIDDEN_EXACT_FILES = [
+  'Header.tsx', // Only PetWashHeader and Layout allowed
+  'HeaderLegacy.tsx',
+];
+
+// Added content identifier
+const FORBIDDEN_CONTENT_IDENTIFIERS = [
+  ...existing,
+  'HeaderLegacy',
+];
+```
+
+### Verification:
+
+✅ Preflight PASSED - 100% luxury UI integrity
+✅ ZERO Header imports found (verified with grep)
+✅ All pages using Layout or PetWashHeader exclusively
+✅ Workflow RUNNING successfully - no errors
+✅ Browser console logs clean - no React errors
+✅ Language switching restored with controlled component pattern
+✅ Architect approved - "language toggle wiring is now intact"
+
+### Result:
+
+**100% LUXURY UI COVERAGE - ZERO PARALLEL SYSTEMS**
+
