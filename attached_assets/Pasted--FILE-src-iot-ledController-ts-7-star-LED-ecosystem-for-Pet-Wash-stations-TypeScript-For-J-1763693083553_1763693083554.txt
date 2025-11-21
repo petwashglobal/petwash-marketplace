@@ -1,0 +1,603 @@
+// FILE: src/iot/ledController.ts
+// 7 star LED ecosystem for Pet Wash stations
+// TypeScript. For JavaScript just remove types and the "enum" keyword etc.
+
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
+import EventEmitter from 'events';
+
+/**
+ * -------------------------------------------------------------------
+ * 1. Types and core LED model
+ * -------------------------------------------------------------------
+ */
+
+// Core LED states for 7 star UX
+export enum LedState {
+  OFF = 'OFF',
+  AVAILABLE = 'AVAILABLE',
+  DRIVER_ON_ROUTE = 'DRIVER_ON_ROUTE',
+  IN_USE = 'IN_USE',
+  MAINTENANCE = 'MAINTENANCE',
+  ERROR = 'ERROR',
+  PAUSED = 'PAUSED'
+}
+
+// How the LED should behave physically
+export type LedPattern =
+  | 'SOLID'
+  | 'PULSE_SLOW'
+  | 'PULSE_MEDIUM'
+  | 'PULSE_FAST'
+  | 'FLASH_SLOW'
+  | 'FLASH_FAST'
+  | 'BREATH'
+  | 'RAINBOW';
+
+// Simple luxury color model (could be RGB later)
+export type LedColor =
+  | 'GREEN'
+  | 'BLUE'
+  | 'YELLOW'
+  | 'RED'
+  | 'WHITE'
+  | 'PURPLE'
+  | 'CYAN'
+  | 'OFF';
+
+export interface LedStatus {
+  stationId: string;
+  state: LedState;
+  color: LedColor;
+  pattern: LedPattern;
+  lastUpdatedAt: string;
+  source: 'AUTOMATION' | 'MANUAL' | 'SYSTEM';
+  manualOverride: boolean;
+  manualExpiresAt?: string | null;
+  reason?: string;
+}
+
+// Minimal view of your station model
+// Dev must replace these methods with real database calls
+export interface StationRecord {
+  id: string;
+  name: string;
+  locationLabel?: string;
+  isOnline: boolean;
+  isInMaintenance: boolean;
+  hasCriticalError: boolean;
+  currentSessionId?: string | null;
+  lastDriverEtaMinutes?: number | null;
+}
+
+// How backend sees a wash session event
+export interface WashSessionEvent {
+  stationId: string;
+  sessionId: string;
+  status:
+    | 'CREATED'
+    | 'WAITING_FOR_CUSTOMER'
+    | 'IN_PROGRESS'
+    | 'COMPLETED'
+    | 'CANCELLED'
+    | 'ERROR';
+}
+
+// Driver event (from dispatch or driver app)
+export interface DriverEvent {
+  stationId: string;
+  driverId: string;
+  status: 'ASSIGNED' | 'ON_ROUTE' | 'ARRIVED' | 'CANCELLED';
+  etaMinutes?: number | null;
+}
+
+// Simple interfaces for DI
+export interface StationRepo {
+  findById(stationId: string): Promise<StationRecord | null>;
+  saveLedStatus(stationId: string, status: LedStatus): Promise<void>;
+  getLedStatus(stationId: string): Promise<LedStatus | null>;
+}
+
+export interface HardwareBridge {
+  sendLedCommand(stationId: string, status: LedStatus): Promise<void>;
+}
+
+export interface AuthMiddlewareSet {
+  requireAuth: (req: Request, res: Response, next: NextFunction) => void;
+  requireAdmin: (req: Request, res: Response, next: NextFunction) => void;
+}
+
+export interface EventBus extends EventEmitter {}
+
+/**
+ * -------------------------------------------------------------------
+ * 2. In memory LED store as safety net
+ *    (DB is still source of truth when implemented)
+ * -------------------------------------------------------------------
+ */
+
+const inMemoryLedStore: Map<string, LedStatus> = new Map();
+
+function getNowIso(): string {
+  return new Date().toISOString();
+}
+
+function getDefaultLedStatus(stationId: string): LedStatus {
+  return {
+    stationId,
+    state: LedState.OFF,
+    color: 'OFF',
+    pattern: 'SOLID',
+    lastUpdatedAt: getNowIso(),
+    source: 'SYSTEM',
+    manualOverride: false,
+    manualExpiresAt: null,
+    reason: 'Default boot state'
+  };
+}
+
+/**
+ * -------------------------------------------------------------------
+ * 3. Mapping logic: from state to color and pattern
+ * -------------------------------------------------------------------
+ */
+
+function mapStateToVisual(state: LedState): { color: LedColor; pattern: LedPattern } {
+  switch (state) {
+    case LedState.AVAILABLE:
+      return { color: 'GREEN', pattern: 'SOLID' };
+    case LedState.DRIVER_ON_ROUTE:
+      return { color: 'BLUE', pattern: 'PULSE_SLOW' };
+    case LedState.IN_USE:
+      return { color: 'YELLOW', pattern: 'FLASH_SLOW' };
+    case LedState.MAINTENANCE:
+      return { color: 'PURPLE', pattern: 'PULSE_MEDIUM' };
+    case LedState.ERROR:
+      return { color: 'RED', pattern: 'FLASH_FAST' };
+    case LedState.PAUSED:
+      return { color: 'CYAN', pattern: 'BREATH' };
+    case LedState.OFF:
+    default:
+      return { color: 'OFF', pattern: 'SOLID' };
+  }
+}
+
+/**
+ * -------------------------------------------------------------------
+ * 4. Core automation brain for LED
+ * -------------------------------------------------------------------
+ * This is where 7 star logic lives.
+ */
+
+interface AutomationContext {
+  station: StationRecord;
+  lastLed: LedStatus | null;
+  lastWashEvent?: WashSessionEvent | null;
+  lastDriverEvent?: DriverEvent | null;
+}
+
+// Decide final LED state from full context
+function decideLedState(context: AutomationContext): LedState {
+  const { station, lastWashEvent, lastDriverEvent } = context;
+
+  // 1. Hard stop: station offline or critical error
+  if (!station.isOnline || station.hasCriticalError) {
+    return LedState.ERROR;
+  }
+
+  // 2. Maintenance
+  if (station.isInMaintenance) {
+    return LedState.MAINTENANCE;
+  }
+
+  // 3. Driver in motion
+  if (lastDriverEvent && ['ASSIGNED', 'ON_ROUTE'].includes(lastDriverEvent.status)) {
+    return LedState.DRIVER_ON_ROUTE;
+  }
+
+  // 4. Driver arrived
+  if (lastDriverEvent && lastDriverEvent.status === 'ARRIVED') {
+    // If wash is already running, LED will be IN_USE, otherwise AVAILABLE
+    if (lastWashEvent && lastWashEvent.status === 'IN_PROGRESS') {
+      return LedState.IN_USE;
+    }
+    return LedState.AVAILABLE;
+  }
+
+  // 5. Wash session life cycle
+  if (lastWashEvent) {
+    if (lastWashEvent.status === 'IN_PROGRESS') {
+      return LedState.IN_USE;
+    }
+    if (lastWashEvent.status === 'WAITING_FOR_CUSTOMER') {
+      return LedState.AVAILABLE;
+    }
+    if (lastWashEvent.status === 'ERROR') {
+      return LedState.ERROR;
+    }
+  }
+
+  // 6. Fallback: station is online and healthy
+  return LedState.AVAILABLE;
+}
+
+// Merge visual and metadata into LedStatus object
+function buildLedStatus(
+  stationId: string,
+  state: LedState,
+  source: LedStatus['source'],
+  prev?: LedStatus | null,
+  reason?: string
+): LedStatus {
+  const { color, pattern } = mapStateToVisual(state);
+  return {
+    stationId,
+    state,
+    color,
+    pattern,
+    lastUpdatedAt: getNowIso(),
+    source,
+    manualOverride: prev?.manualOverride ?? false,
+    manualExpiresAt: prev?.manualExpiresAt ?? null,
+    reason: reason ?? prev?.reason
+  };
+}
+
+/**
+ * -------------------------------------------------------------------
+ * 5. LED service: read, write, manual override, automation
+ * -------------------------------------------------------------------
+ */
+
+export class LedService {
+  private stationRepo: StationRepo;
+  private hardwareBridge: HardwareBridge;
+
+  constructor(stationRepo: StationRepo, hardwareBridge: HardwareBridge) {
+    this.stationRepo = stationRepo;
+    this.hardwareBridge = hardwareBridge;
+  }
+
+  async getStatus(stationId: string): Promise<LedStatus> {
+    // Try DB first
+    const fromDb = await this.stationRepo.getLedStatus(stationId);
+    if (fromDb) {
+      inMemoryLedStore.set(stationId, fromDb);
+      return fromDb;
+    }
+    // Then in memory
+    const fromMemory = inMemoryLedStore.get(stationId);
+    if (fromMemory) {
+      return fromMemory;
+    }
+    // Fallback default
+    const def = getDefaultLedStatus(stationId);
+    inMemoryLedStore.set(stationId, def);
+    return def;
+  }
+
+  async setManual(
+    stationId: string,
+    requestedState: LedState,
+    overrideMinutes: number | null,
+    actorEmail: string
+  ): Promise<LedStatus> {
+    const station = await this.stationRepo.findById(stationId);
+    if (!station) {
+      throw new Error('Station not found');
+    }
+
+    const current = await this.getStatus(stationId);
+
+    // Manual override logic
+    const expiresAt =
+      overrideMinutes && overrideMinutes > 0
+        ? new Date(Date.now() + overrideMinutes * 60_000).toISOString()
+        : null;
+
+    const status = {
+      ...buildLedStatus(
+        stationId,
+        requestedState,
+        'MANUAL',
+        current,
+        `Manual override by ${actorEmail}`
+      ),
+      manualOverride: true,
+      manualExpiresAt: expiresAt
+    };
+
+    inMemoryLedStore.set(stationId, status);
+    await this.stationRepo.saveLedStatus(stationId, status);
+    await this.hardwareBridge.sendLedCommand(stationId, status);
+
+    return status;
+  }
+
+  async clearManual(stationId: string): Promise<LedStatus> {
+    const current = await this.getStatus(stationId);
+    const cleared: LedStatus = {
+      ...current,
+      manualOverride: false,
+      manualExpiresAt: null,
+      source: 'SYSTEM',
+      lastUpdatedAt: getNowIso(),
+      reason: 'Manual override cleared'
+    };
+    inMemoryLedStore.set(stationId, cleared);
+    await this.stationRepo.saveLedStatus(stationId, cleared);
+    await this.hardwareBridge.sendLedCommand(stationId, cleared);
+    return cleared;
+  }
+
+  private manualExpired(status: LedStatus): boolean {
+    if (!status.manualOverride || !status.manualExpiresAt) return false;
+    return new Date(status.manualExpiresAt).getTime() < Date.now();
+  }
+
+  async applyAutomation(
+    stationId: string,
+    ctx: Omit<AutomationContext, 'lastLed'>
+  ): Promise<LedStatus> {
+    const current = await this.getStatus(stationId);
+
+    // Respect manual override unless expired
+    if (current.manualOverride && !this.manualExpired(current)) {
+      return current;
+    }
+
+    if (this.manualExpired(current)) {
+      current.manualOverride = false;
+      current.manualExpiresAt = null;
+    }
+
+    const fullCtx: AutomationContext = {
+      ...ctx,
+      lastLed: current
+    };
+
+    const nextState = decideLedState(fullCtx);
+    const status = buildLedStatus(
+      stationId,
+      nextState,
+      'AUTOMATION',
+      current,
+      'Automation update'
+    );
+
+    inMemoryLedStore.set(stationId, status);
+    await this.stationRepo.saveLedStatus(stationId, status);
+    await this.hardwareBridge.sendLedCommand(stationId, status);
+
+    return status;
+  }
+
+  // Simple helpers for direct calls from your code
+  async markError(stationId: string, reason: string): Promise<LedStatus> {
+    const current = await this.getStatus(stationId);
+    const status = buildLedStatus(stationId, LedState.ERROR, 'SYSTEM', current, reason);
+    inMemoryLedStore.set(stationId, status);
+    await this.stationRepo.saveLedStatus(stationId, status);
+    await this.hardwareBridge.sendLedCommand(stationId, status);
+    return status;
+  }
+
+  async markOffline(stationId: string, reason = 'Station offline'): Promise<LedStatus> {
+    const current = await this.getStatus(stationId);
+    const status = buildLedStatus(stationId, LedState.OFF, 'SYSTEM', current, reason);
+    inMemoryLedStore.set(stationId, status);
+    await this.stationRepo.saveLedStatus(stationId, status);
+    await this.hardwareBridge.sendLedCommand(stationId, status);
+    return status;
+  }
+}
+
+/**
+ * -------------------------------------------------------------------
+ * 6. Express routes for LED control and status
+ * -------------------------------------------------------------------
+ */
+
+interface LedRouterDeps {
+  requireAuth: AuthMiddlewareSet['requireAuth'];
+  requireAdmin: AuthMiddlewareSet['requireAdmin'];
+  stationRepo: StationRepo;
+  hardwareBridge: HardwareBridge;
+  eventBus: EventBus;
+}
+
+export function createLedRouter(deps: LedRouterDeps): Router {
+  const { requireAuth, requireAdmin, stationRepo, hardwareBridge } = deps;
+  const router = Router();
+  const ledService = new LedService(stationRepo, hardwareBridge);
+
+  // Legacy route you already have: /api/led
+  // Here we keep it auth protected and useful
+  router.get('/led', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const stationId = String(req.query.stationId || '');
+      if (!stationId) {
+        return res.status(400).json({ error: 'stationId query param is required' });
+      }
+      const status = await ledService.getStatus(stationId);
+      res.json(status);
+    } catch (err: any) {
+      console.error('GET /api/led error', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Get LED status for a specific station
+  router.get(
+    '/stations/:stationId/led',
+    requireAuth,
+    async (req: Request, res: Response) => {
+      try {
+        const { stationId } = req.params;
+        const status = await ledService.getStatus(stationId);
+        res.json(status);
+      } catch (err: any) {
+        console.error('GET /stations/:stationId/led error', err);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+  );
+
+  // Admin manual override
+  router.post(
+    '/stations/:stationId/led/manual',
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { stationId } = req.params;
+        const { state, overrideMinutes } = req.body;
+
+        if (!state || !(Object.values(LedState) as string[]).includes(state)) {
+          return res.status(400).json({ error: 'Invalid or missing LED state' });
+        }
+
+        const actorEmail = (req as any).user?.email || 'unknown@petwash.co.il';
+
+        const status = await ledService.setManual(
+          stationId,
+          state as LedState,
+          typeof overrideMinutes === 'number' ? overrideMinutes : null,
+          actorEmail
+        );
+
+        res.json(status);
+      } catch (err: any) {
+        console.error('POST /stations/:stationId/led/manual error', err);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+  );
+
+  // Clear manual override and go back to automation
+  router.post(
+    '/stations/:stationId/led/manual/clear',
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { stationId } = req.params;
+        const status = await ledService.clearManual(stationId);
+        res.json(status);
+      } catch (err: any) {
+        console.error('POST /stations/:stationId/led/manual/clear error', err);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+  );
+
+  // Explicit automation trigger endpoint
+  router.post(
+    '/stations/:stationId/led/automation/apply',
+    requireAdmin,
+    async (req: Request, res: Response) => {
+      try {
+        const { stationId } = req.params;
+        const station = await stationRepo.findById(stationId);
+        if (!station) {
+          return res.status(404).json({ error: 'Station not found' });
+        }
+
+        const { lastWashEvent, lastDriverEvent } = req.body as {
+          lastWashEvent?: WashSessionEvent;
+          lastDriverEvent?: DriverEvent;
+        };
+
+        const status = await ledService.applyAutomation(stationId, {
+          station,
+          lastWashEvent: lastWashEvent || null,
+          lastDriverEvent: lastDriverEvent || null
+        });
+
+        res.json(status);
+      } catch (err: any) {
+        console.error('POST /stations/:stationId/led/automation/apply error', err);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+  );
+
+  return router;
+}
+
+/**
+ * -------------------------------------------------------------------
+ * 7. Event wiring for full automation (A + C)
+ * -------------------------------------------------------------------
+ * Dev must call wireLedAutomation(...) once when booting the app.
+ */
+
+interface AutomationDeps {
+  eventBus: EventBus;
+  stationRepo: StationRepo;
+  hardwareBridge: HardwareBridge;
+}
+
+export function wireLedAutomation(deps: AutomationDeps): void {
+  const { eventBus, stationRepo, hardwareBridge } = deps;
+  const ledService = new LedService(stationRepo, hardwareBridge);
+
+  // Wash session events
+  eventBus.on(
+    'washSession.updated',
+    async (evt: WashSessionEvent) => {
+      try {
+        const station = await stationRepo.findById(evt.stationId);
+        if (!station) return;
+        await ledService.applyAutomation(evt.stationId, {
+          station,
+          lastWashEvent: evt,
+          lastDriverEvent: null
+        });
+      } catch (err) {
+        console.error('LED automation on washSession.updated failed', err);
+      }
+    }
+  );
+
+  // Driver events
+  eventBus.on(
+    'driver.updated',
+    async (evt: DriverEvent) => {
+      try {
+        const station = await stationRepo.findById(evt.stationId);
+        if (!station) return;
+        await ledService.applyAutomation(evt.stationId, {
+          station,
+          lastWashEvent: null,
+          lastDriverEvent: evt
+        });
+      } catch (err) {
+        console.error('LED automation on driver.updated failed', err);
+      }
+    }
+  );
+
+  // Station health events
+  eventBus.on(
+    'station.offline',
+    async (stationId: string) => {
+      try {
+        await ledService.markOffline(stationId, 'Station reported offline');
+      } catch (err) {
+        console.error('LED offline mark failed', err);
+      }
+    }
+  );
+
+  eventBus.on(
+    'station.error',
+    async (stationId: string, reason: string) => {
+      try {
+        await ledService.markError(stationId, reason || 'Station error');
+      } catch (err) {
+        console.error('LED error mark failed', err);
+      }
+    }
+  );
+
+  console.log('[LED] Automation wiring ready: washSession.updated, driver.updated, station.*');
+}

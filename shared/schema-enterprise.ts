@@ -244,6 +244,71 @@ export const stationBills = pgTable("station_bills", {
   index("idx_station_bills_status").on(table.status),
 ]);
 
+// =================== K9000 LED STATUS SYSTEM (7-Star Luxury UX) ===================
+
+// K9000 LED Status - Real-time station visual indicators
+export const k9000LedStatus = pgTable("k9000_led_status", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").references(() => petWashStations.id).notNull().unique(),
+  
+  // Current LED state
+  state: varchar("state").notNull().default("OFF"), // OFF, AVAILABLE, DRIVER_ON_ROUTE, IN_USE, MAINTENANCE, ERROR, PAUSED
+  color: varchar("color").notNull().default("OFF"), // GREEN, BLUE, YELLOW, RED, WHITE, PURPLE, CYAN, OFF
+  pattern: varchar("pattern").notNull().default("SOLID"), // SOLID, PULSE_SLOW, PULSE_MEDIUM, PULSE_FAST, FLASH_SLOW, FLASH_FAST, BREATH, RAINBOW
+  
+  // Control metadata
+  source: varchar("source").notNull().default("SYSTEM"), // AUTOMATION, MANUAL, SYSTEM
+  manualOverride: boolean("manual_override").default(false),
+  manualExpiresAt: timestamp("manual_expires_at"),
+  manualSetBy: varchar("manual_set_by"), // Email of admin who set manual override
+  
+  // Context
+  reason: text("reason"), // Why this state was set
+  lastWashSessionId: varchar("last_wash_session_id"), // Link to wash session
+  lastDriverId: varchar("last_driver_id"), // Link to driver event
+  
+  // Timestamps
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_k9000_led_station").on(table.stationId),
+  index("idx_k9000_led_state").on(table.state),
+  index("idx_k9000_led_manual_override").on(table.manualOverride),
+]);
+
+// K9000 LED Command History - Audit trail for all LED commands
+export const k9000LedCommandHistory = pgTable("k9000_led_command_history", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").references(() => petWashStations.id).notNull(),
+  
+  // Command details
+  commandType: varchar("command_type").notNull(), // SET_STATE, CLEAR_MANUAL, AUTOMATION_UPDATE, ERROR_SIGNAL
+  previousState: varchar("previous_state"),
+  newState: varchar("new_state").notNull(),
+  previousColor: varchar("previous_color"),
+  newColor: varchar("new_color").notNull(),
+  previousPattern: varchar("previous_pattern"),
+  newPattern: varchar("new_pattern").notNull(),
+  
+  // Who/What triggered this
+  triggeredBy: varchar("triggered_by").notNull(), // automation, admin_email, system_health_monitor
+  reason: text("reason"),
+  
+  // Success status
+  success: boolean("success").default(true),
+  errorMessage: text("error_message"),
+  
+  // Hardware response time
+  responseTimeMs: integer("response_time_ms"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_k9000_led_history_station").on(table.stationId),
+  index("idx_k9000_led_history_created").on(table.createdAt),
+  index("idx_k9000_led_history_triggered_by").on(table.triggeredBy),
+]);
+
 // =================== STATION ASSETS & INVENTORY ===================
 
 // Station Assets (Equipment, Hardware)
