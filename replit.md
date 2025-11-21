@@ -53,14 +53,21 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 
 ## System Architecture
 
-### Production Deployment (Updated Nov 20, 2025)
-- **Production Hosting**: Replit Deployments (Cloud Run on Google Cloud Platform)
+### Production Deployment (Updated Nov 21, 2025 - 2025 Architecture)
+**🚨 CRITICAL: Replit = DEVELOPMENT ONLY. Production = GitHub → Google Cloud ONLY.**
+
+- **Development Environment**: Replit workspace with Vite HMR (DEV ONLY - NO production deployments)
+- **Production Pipeline**: GitHub → Google Cloud (Firebase Hosting / Cloud Run)
 - **Production Domain**: petwash.co.il
-- **Development Environment**: Replit workspace with Vite HMR
 - **Source Control**: GitHub repository `petwashglobal/petwash-marketplace`
-- **Firebase Project**: nifty-quanta-475212-v3 (Auth/Firestore/Storage ONLY - NOT for hosting)
-- **Deployment Guide**: See PRODUCTION_DEPLOYMENT_GUIDE.md for complete instructions
-- **Legacy UI Scanner**: Automated deployment protection (`scripts/petwash-preflight.ts`) blocks any old 2024 template code from reaching production. Runs automatically before every build via `prebuild` hook and on GitHub via `.github/workflows/petwash-ci.yml`. Scans for forbidden patterns: `apple-package-*`, `apple-old-ui`, `legacy-ui`, `OldGiftCards`. All deployments (Replit, Cloud Run, GitHub Actions) must pass `npm run scan:ui` before building.
+- **Firebase Project**: nifty-quanta-475212-v3 (Auth/Firestore/Storage/Hosting)
+- **Deployment Blocker**: `scripts/block-replit-deploy.ts` prevents ANY Replit production deployments
+- **CI/CD Pipeline**: `.github/workflows/petwash-ci.yml` - Automated GitHub Actions deployment
+- **Preflight Guardian**: `scripts/petwash-preflight.ts` enforces luxury 2025 standards before EVERY build
+- **Legacy UI Scanner**: Automated deployment protection blocks any old 2024 template code from reaching production. Runs automatically before every build via `prebuild` hook and on GitHub via CI/CD. Scans for forbidden patterns: `apple-package-*`, `apple-old-ui`, `legacy-ui`, `OldGiftCards`.
+- **Deployment Flow**: Code in Replit → Push to GitHub → GitHub Actions (preflight + tests + build) → Deploy to Google Cloud
+- **Backup Service**: `petwash-backups-93383` bucket with service account `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
+- **Architecture Documentation**: See `DEPLOYMENT_ARCHITECTURE_2025.md` for complete deployment rules and standards
 
 ### Core Features & Design Decisions
 - **Global Architecture Module**: `shared/petwashGlobal.ts` for core platform catalog, KYC, wallet, payments, booking, and mobile contracts.
