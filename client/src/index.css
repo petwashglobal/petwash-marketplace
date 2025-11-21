@@ -15,6 +15,9 @@
 /* 2025 Override - Pure White + Large Display Fixes */
 @import './styles/override-2025.css';
 
+/* 7-Star Luxury Design System 2025 - Apple/Tesla/Chanel Level */
+@import './styles/luxury-system-2025.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
