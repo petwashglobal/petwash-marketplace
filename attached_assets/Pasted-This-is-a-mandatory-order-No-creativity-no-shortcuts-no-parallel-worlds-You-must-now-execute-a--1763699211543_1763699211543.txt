@@ -1,0 +1,124 @@
+This is a mandatory order. No creativity, no shortcuts, no parallel worlds.
+
+You must now execute a TOTAL SYSTEM PURGE and enforce ONE SINGLE PetWash 7 Star Luxury UI for all time.
+
+Follow these steps exactly, in this order:
+
+1. GLOBAL SCAN FOR PARALLEL SYSTEMS AND OLD UI
+   - Scan the entire repo for anything that looks like an alternative layout or old design:
+     • "EnterpriseLayout"
+     • "BrandHeader"
+     • "OldLayout"
+     • "old-ui"
+     • "legacy-ui"
+     • "apple-package"
+     • "header-old" "footer-old"
+     • any file or folder with: old, legacy, v1, backup, temp, copy, test-ui
+   - List them all in a temporary log file: MATRIX_LEGACY_LOG.md
+
+2. DELETE EVERY PARALLEL UI SYSTEM
+   You must remove the possibility of ANY second interface existing now or in the future.
+
+   - Physically delete these files if they exist:
+     • client/src/components/EnterpriseLayout.tsx
+     • client/src/components/BrandHeader.tsx
+     • any *Layout.tsx that is not the official luxury layout
+     • any component with "Old", "Legacy", "V1", "Backup", "ApplePackage" in its path or name
+   - Delete any duplicated header or footer:
+     • keep ONLY the official luxury header and footer components
+       - PetWashHeaderNav.tsx
+       - Footer.tsx
+     • everything else that behaves like a header or footer must be removed.
+
+3. ENFORCE THE SINGLE OFFICIAL LUXURY UI TREE
+   The only allowed top level UI architecture is:
+
+     App.tsx
+       → LuxuryThemeWrapper.tsx
+       → PetWashHeaderNav.tsx
+       → LuxuryPlatformShowcase.tsx
+       → GiftCards.tsx
+       → PetWashDivisions.tsx
+       → Footer.tsx
+
+   - Update App.tsx so that it imports ONLY these components for the main marketing site.
+   - Remove any alternative routing that renders a different layout for the homepage or main sections.
+   - Confirm that every page route passes through LuxuryThemeWrapper and the official header and footer.
+
+4. PURGE NON LUXURY CSS AND STYLES
+   - In client/src/styles and anywhere else in the repo:
+     • Delete every CSS or SCSS file that does not belong to the 2025 luxury system.
+   - Only keep the minimal official luxury styles, for example:
+     • luxury-core.css
+     • metallic-ui.css
+     • theme-white.css
+   - Remove any global.css, app.css, index.css, old tailwind files or anything that came from previous experiments.
+   - No old gradients, no flat blue buttons, no generic cards. Only 7 star luxury metallic plus pure white sections.
+
+5. CLEAN PUBLIC ASSETS AND ICONS
+   - In public/ and public/assets/:
+     • Delete all old logos, icons, and images that do not match the final PetWash brand.
+     • Remove any test animals, clipart style images, or low resolution files.
+   - Only keep the final official assets:
+     • petwash main logo (SVG or high quality PNG)
+     • the final hero image set we use for the 7 star front page
+     • platform and loyalty icons that match the luxury identity
+   - For social icons:
+     • Use only one clean set that matches the luxury design
+       facebook, instagram, tiktok, whatsapp
+     • Remove any alternate icon sets or duplicated folders.
+
+6. UPDATE THE PREFLIGHT GUARDIAN TO BE STRICT
+   - Open scripts/petwash-preflight.ts
+   - Add HARD FAIL rules, not warnings, for these:
+     • If any file name or path contains: old, legacy, v1, backup, enterprise, apple-package, header-old, footer-old
+       → preflight must return failure and block the build.
+     • If any component name matches: EnterpriseLayout, BrandHeader, OldLayout, LegacyLayout
+       → preflight must fail.
+     • If any CSS file exists outside the approved luxury styles list
+       → preflight must fail.
+   - Keep brand protection and all other safety checks.
+
+7. ADD A PERMANENT GUARD AGAINST NEW PARALLEL WORLDS
+   - In scripts/guards or similar, create or update a guard script that:
+     • On every preflight run, scans for any new layout component containing "Layout" in its name.
+     • If it is not the official luxury layout, return a hard error with a clear message:
+       "Parallel UI systems are forbidden in PetWash production. Use the existing luxury layout only."
+   - Make sure package.json prebuild script runs this guard automatically.
+   - Update .github/workflows/petwash-ci.yml so that GitHub CI fails if this guard fails.
+
+8. VERIFY ONLY THE LUXURY UI RENDERS
+   - Run the app locally.
+   - Check the homepage, login, gift card page, loyalty page.
+   - Confirm:
+     • Single clean luxury header
+     • Single clean luxury footer
+     • Metallic buttons and pure white background sections
+     • No old style hero images, no mixed icons, no second bar or strange duplicates.
+
+9. RUN FULL PREFLIGHT AND BUILD
+   - Run:
+       npm run preflight
+     → This must end with zero hard errors.
+   - Then run:
+       npm run build
+     → If preflight fails, do not bypass it. Fix the issues instead.
+
+10. DEPLOY ONLY AFTER TOTAL PURGE IS CONFIRMED
+   - When preflight passes and build succeeds, deploy from this exact code state.
+   - Do not use any old build output, do not switch branches, do not reuse previous artifacts.
+   - In the deployment logs include a short summary:
+       "Legacy UI removed. EnterpriseLayout and all parallel systems deleted. Only 2025 PetWash luxury UI is active."
+
+11. FINAL PROOF REPORT
+   - Create a file in the repo root:
+       PETWASH_LUXURY_FINAL_PROOF.md
+   - In this file list:
+     • All deleted legacy files and layouts.
+     • The final component tree for the homepage.
+     • The list of allowed CSS files.
+     • A note that parallel UI systems are permanently blocked by preflight and CI.
+
+This directive is mandatory.  
+You must not introduce any new parallel front end system, layout, or design tree now or in the future.  
+All code and all deployments must use ONE unified PetWash 7 Star Luxury interface only.

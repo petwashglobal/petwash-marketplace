@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Layout } from "@/components/Layout";
 import { Link, useLocation } from "wouter";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { type Language } from "@/lib/i18n";
 import {
   Globe,
   Building2,
@@ -27,7 +28,12 @@ import {
   LogOut
 } from "lucide-react";
 
-export default function EnterpriseHQ() {
+interface EnterpriseHQProps {
+  language: Language;
+  onLanguageChange: (language: Language) => void;
+}
+
+export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseHQProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [location] = useLocation();
@@ -61,7 +67,7 @@ export default function EnterpriseHQ() {
 
   if (analyticsLoading) {
     return (
-      <Layout>
+      <Layout language={language} onLanguageChange={onLanguageChange}>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
@@ -121,7 +127,7 @@ export default function EnterpriseHQ() {
   };
 
   return (
-    <Layout>
+    <Layout language={language} onLanguageChange={onLanguageChange}>
       <div className="min-h-screen bg-white dark:bg-black">
         {/* Enterprise Admin Bar */}
         <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-6">

@@ -1428,7 +1428,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <ExecutiveSuiteGuard requiredRoles={['enterprise']}>
               <Suspense fallback={<PageLoader />}>
-                <EnterpriseHQ />
+                <EnterpriseHQ language={language} onLanguageChange={handleLanguageChange} />
               </Suspense>
             </ExecutiveSuiteGuard>
           )}
