@@ -16,11 +16,11 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
-import type { EventEmitter } from 'events';
 import { db } from '../db';
 import { k9000LedStatus, k9000LedCommandHistory, petWashStations } from '../../shared/schema-enterprise';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import type { EventBus } from '../services/EventBus';
 
 /**
  * LED State Machine - 7-Star UX States
@@ -566,12 +566,12 @@ export function createLedRouter(deps: LedRouterDeps): Router {
  * Wire LED automation to Pet Wash™ EventBus for smart triggers
  */
 
-export function wireLedAutomation(eventBus: EventEmitter): void {
+export function wireLedAutomation(eventBus: EventBus): void {
   const hardwareBridge = new K9000HardwareBridge();
   const ledService = new LedService(hardwareBridge);
 
   // Wash session events
-  eventBus.on('wash.started', async (event: any) => {
+  eventBus.subscribe('wash.started', async (event: any) => {
     try {
       const stationId = event.data?.stationId;
       if (!stationId) return;
@@ -592,7 +592,7 @@ export function wireLedAutomation(eventBus: EventEmitter): void {
     }
   });
 
-  eventBus.on('wash.completed', async (event: any) => {
+  eventBus.subscribe('wash.completed', async (event: any) => {
     try {
       const stationId = event.data?.stationId;
       if (!stationId) return;
@@ -614,7 +614,7 @@ export function wireLedAutomation(eventBus: EventEmitter): void {
   });
 
   // Driver dispatch events
-  eventBus.on('transport.assigned', async (event: any) => {
+  eventBus.subscribe('transport.assigned', async (event: any) => {
     try {
       const stationId = event.data?.stationId;
       if (!stationId) return;
@@ -636,7 +636,7 @@ export function wireLedAutomation(eventBus: EventEmitter): void {
     }
   });
 
-  eventBus.on('transport.pickup', async (event: any) => {
+  eventBus.subscribe('transport.pickup', async (event: any) => {
     try {
       const stationId = event.data?.stationId;
       if (!stationId) return;
@@ -658,19 +658,24 @@ export function wireLedAutomation(eventBus: EventEmitter): void {
   });
 
   // Station health events
-  eventBus.on('station.offline', async (stationId: number) => {
+  eventBus.subscribe('station.offline', async (event: any) => {
     try {
+      const stationId = event.data?.stationId;
+      if (!stationId) return;
       await ledService.markOffline(stationId, 'Station reported offline');
     } catch (err) {
-      logger.error('[LED Automation] station.offline failed', { error: err, stationId });
+      logger.error('[LED Automation] station.offline failed', { error: err, event });
     }
   });
 
-  eventBus.on('station.error', async (data: { stationId: number; reason: string }) => {
+  eventBus.subscribe('station.error', async (event: any) => {
     try {
-      await ledService.markError(data.stationId, data.reason || 'Station error detected');
+      const stationId = event.data?.stationId;
+      const reason = event.data?.reason;
+      if (!stationId) return;
+      await ledService.markError(stationId, reason || 'Station error detected');
     } catch (err) {
-      logger.error('[LED Automation] station.error failed', { error: err, data });
+      logger.error('[LED Automation] station.error failed', { error: err, event });
     }
   });
 
