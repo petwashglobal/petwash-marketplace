@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Header } from './Header';
+import { PetWashHeader } from './PetWashHeader';
 import { Footer } from './Footer';
 import { type Language } from '@/lib/i18n';
 
@@ -36,7 +36,7 @@ export function Layout({ children, language, onLanguageChange }: LayoutProps) {
         Skip to content
       </a>
       
-      <Header language={language} onLanguageChange={onLanguageChange} />
+      <PetWashHeader />
       
       <main id="main-content" role="main" className="bg-white">
         {children}
