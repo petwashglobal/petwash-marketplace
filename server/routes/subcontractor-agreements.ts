@@ -22,8 +22,11 @@ import { eq, desc } from 'drizzle-orm';
 import { 
   createSubcontractorSignature,
   SUBCONTRACTOR_AGREEMENT_2025,
-  type DigitalSignatureMethod 
-} from '../../src/contracts/subcontractorAgreement2025';
+  SUBCONTRACTOR_AGREEMENT_IL_2025,
+  type DigitalSignatureMethod,
+  type ClientDeviceInfo,
+  ISRAEL_SUBCONTRACTOR_COMPLIANCE_2025
+} from '../../src/petwash_subcontractor_legal_esign_2025';
 import { z } from 'zod';
 import { fromZodError } from 'zod-validation-error';
 
