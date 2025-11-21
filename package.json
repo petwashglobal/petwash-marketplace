@@ -9,8 +9,9 @@
     "start": "NODE_ENV=production tsx server/index.ts",
     "check": "tsc",
     "db:push": "drizzle-kit push",
-    "scan:ui": "node scripts/scan-legacy-ui.cjs",
-    "prebuild": "npm run scan:ui"
+    "scan:ui": "tsx scripts/petwash-preflight.ts",
+    "prebuild": "npm run preflight",
+    "preflight": "tsx scripts/petwash-preflight.ts"
   },
   "dependencies": {
     "@docuseal/api": "^1.0.20",

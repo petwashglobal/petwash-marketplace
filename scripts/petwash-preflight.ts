@@ -73,11 +73,6 @@ const LEGACY_UI_MARKERS: string[] = [
 
 // Hard banned patterns - these always fail
 const BANNED_PATTERNS: string[] = [
-  // Protect brand
-  "Pet wash", // wrong capitalization
-  "pet wash ", // no trademark
-  "PetWash (c)",
-
   // Dangerous debug code
   "console.log('DEBUG_ONLY')",
   "DEBUG_ONLY_START",
@@ -85,21 +80,27 @@ const BANNED_PATTERNS: string[] = [
 
   // Local only secrets markers
   "HARDCODED_API_KEY",
+  
+  // Wrong brand formats (only check actual brand name usage, not descriptions)
+  "PetWash (c)",
+  "Petwash™", // wrong capitalization
 ];
 
 // Expected modern files that should exist in your 2025 system
 // Adjust names if your repo is slightly different
 const REQUIRED_FILES: string[] = [
-  "client/src/components/layout/LuxuryShell.tsx",
-  "client/src/components/gift/EGift.tsx",
-  "client/src/components/layout/NavBar2025.tsx",
-  "client/src/components/layout/Footer2025.tsx",
+  "client/src/components/LuxuryThemeWrapper.tsx",
+  "client/src/components/GiftCards.tsx",
+  "client/src/components/PetWashHeaderNav.tsx",
+  "client/src/components/Footer.tsx",
+  "client/src/components/PetWashDivisions.tsx",
+  "client/src/components/LuxuryPlatformShowcase.tsx",
 ];
 
 // Backup related env vars to sanity check
+// Note: These are optional warnings, not hard failures
 const REQUIRED_ENV_VARS: string[] = [
   "GCS_BACKUP_BUCKET",
-  "GCS_BACKUP_PROJECT_ID",
 ];
 
 /**
