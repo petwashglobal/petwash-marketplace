@@ -1,9 +1,21 @@
 # Israeli Subcontractor Agreement System 2025 📜🇮🇱
 
+**🚨 SYSTEM UPGRADED: November 21, 2025**  
+**New File:** `src/petwash_subcontractor_legal_esign_2025.ts` (enhanced multi-platform support)  
+**Old File:** `src/contracts/subcontractorAgreement2025.ts` (**DELETED** - no longer in use)
+
 **PRODUCTION-READY DIGITAL SIGNATURE SYSTEM**
 
 ## Overview
 Complete Israeli-compliant digital signature system for subcontractor agreements. This is the **ONLY** official subcontractor signing flow for PetWash™ - uses FREE internal e-signature component (NO paid providers like DocuSeal, Adobe Sign, or DocuSign).
+
+### ✨ **ENHANCED FEATURES IN 2025 VERSION:**
+✅ **ClientDeviceInfo** - Detailed device tracking (OS, browser, app version, device model)  
+✅ **DataRetentionPolicy** - Legal compliance configuration (SHORT_LOGS, STANDARD, EXTENDED, UNTIL_DELETED)  
+✅ **IsraelComplianceConfig2025** - Structured compliance rules with lawyer notes  
+✅ **Enhanced Zod Validation** - Modern 2025 patterns for multi-platform requests  
+✅ **Multi-Platform Support** - Ready for Web, iOS native, Android native  
+✅ **Future-Proof for 2026** - Easy regulatory updates
 
 ---
 
@@ -32,12 +44,15 @@ Complete Israeli-compliant digital signature system for subcontractor agreements
 ## 📂 File Structure
 
 ```
-src/contracts/
-  └── subcontractorAgreement2025.ts        # SINGLE SOURCE OF TRUTH
-      ├── SUBCONTRACTOR_AGREEMENT_2025     # Hebrew legal text (requires lawyer review)
-      ├── DigitalSignatureMethod           # typed_name | drawn_signature | otp_code
-      ├── SubcontractorSignature interface # TypeScript data model
-      └── createSubcontractorSignature()   # Signature generator with SHA-256 hashing
+src/
+  └── petwash_subcontractor_legal_esign_2025.ts   # ⭐ ENHANCED SINGLE SOURCE OF TRUTH
+      ├── SUBCONTRACTOR_AGREEMENT_IL_2025         # Hebrew legal text (lawyer review required)
+      ├── ISRAEL_SUBCONTRACTOR_COMPLIANCE_2025    # Compliance rules for 2025/2026
+      ├── ClientDeviceInfo interface               # Device tracking (iOS, Android, Web)
+      ├── DataRetentionPolicy type                 # Legal retention configuration
+      ├── DigitalSignatureMethod type              # typed_name | drawn_signature | otp_code
+      ├── signSubcontractorAgreementRequestSchema  # Zod validation (multi-platform)
+      └── createSubcontractorSignatureRecord()     # Signature generator with SHA-256 hashing
 
 shared/
   └── schema.ts                             # Drizzle schema + Zod validation
