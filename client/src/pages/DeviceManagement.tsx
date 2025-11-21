@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { Layout } from "@/components/Layout";
 import { useLanguage } from "@/lib/languageStore";
 import { t, isRTL } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -274,10 +273,9 @@ export default function DeviceManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50" dir={rtl ? 'rtl' : 'ltr'}>
-      <Header language={language} onLanguageChange={setLanguage} />
-      
-      <div className="pt-20 pb-16">
+    <Layout language={language} onLanguageChange={setLanguage}>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50" dir={rtl ? 'rtl' : 'ltr'}>
+        <div className="pt-20 pb-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header Section */}
           <motion.div
@@ -538,8 +536,7 @@ export default function DeviceManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

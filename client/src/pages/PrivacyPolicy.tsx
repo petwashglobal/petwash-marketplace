@@ -4,8 +4,7 @@
  */
 
 import { useLanguage } from "@/lib/languageStore";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function PrivacyPolicy() {
@@ -13,8 +12,8 @@ export default function PrivacyPolicy() {
   
   if (language === 'he') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-        <Header language={language} onLanguageChange={setLanguage} />
+      <Layout language={language} onLanguageChange={setLanguage}>
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
         
         <div className="max-w-4xl mx-auto px-4 py-12" dir="rtl">
           <h1 className="text-4xl font-bold mb-8 text-center">מדיניות פרטיות</h1>
@@ -439,8 +438,7 @@ export default function PrivacyPolicy() {
           </Card>
         </div>
       </div>
-      
-      <Footer language={language} />
     </div>
+      </Layout>
   );
 }

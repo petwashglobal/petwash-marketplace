@@ -11,8 +11,7 @@ import {
   Target, TrendingDown, MessageCircle, Lightbulb, Trophy
 } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
+import { Layout } from '@/components/Layout';
 import { NavigationButton } from '@/components/LuxuryWidgets';
 import { FranchiseROICalculator } from '@/components/FranchiseROICalculator';
 
@@ -90,8 +89,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
   ];
   
   return (
-    <>
-      <Header language={language} onLanguageChange={handleLanguageChange} />
+    <Layout language={language} onLanguageChange={handleLanguageChange}>
       <NavigationButton type="back" onClick={() => setLocation('/')} />
       
       {/* Premium Background with Metallic Gradient */}
@@ -939,8 +937,6 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
           </div>
         </div>
       </div>
-
-      <Footer language={language} />
       
       {/* Shimmer Animation for Gold Text */}
       <style>{`
@@ -950,6 +946,6 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
           }
         }
       `}</style>
-    </>
+    </Layout>
   );
 }

@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Smartphone, Trash2, Loader2, ShieldCheck, Info } from "lucide-react";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { apiRequest } from "@/lib/queryClient";
@@ -101,10 +100,9 @@ export default function MyDevices({ language, onLanguageChange }: MyDevicesProps
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50" dir={language === 'he' ? 'rtl' : 'ltr'}>
-      <Header language={language} onLanguageChange={onLanguageChange} />
-
-      <main className="flex-grow container mx-auto px-4 py-8 max-w-4xl">
+    <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
+      <div className="min-h-screen flex flex-col bg-gray-50" dir={language === 'he' ? 'rtl' : 'ltr'}>
+        <main className="flex-grow container mx-auto px-4 py-8 max-w-4xl">
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl font-bold">
@@ -198,8 +196,7 @@ export default function MyDevices({ language, onLanguageChange }: MyDevicesProps
           </CardContent>
         </Card>
       </main>
-
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

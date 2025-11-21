@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
+import { Layout } from "@/components/Layout";
 import { type Language } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,8 +63,8 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <Header language={language} />
+    <Layout language={language} onLanguageChange={() => {}}>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -372,5 +372,6 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
         </Tabs>
       </div>
     </div>
+    </Layout>
   );
 }

@@ -1,5 +1,4 @@
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
+import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -29,9 +28,9 @@ export default function Terms() {
   const lastUpdatedHe = "19 באוקטובר 2025";
 
   return (
-    <div className={`min-h-screen bg-white ${language === 'he' ? 'rtl' : 'ltr'}`}>
-      <Header language={language} onLanguageChange={handleLanguageChange} />
-      <div className="pt-20 pb-16">
+    <Layout language={language} onLanguageChange={handleLanguageChange}>
+      <div className={`min-h-screen bg-white ${language === 'he' ? 'rtl' : 'ltr'}`}>
+        <div className="pt-20 pb-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-6">
             <Link href="/">
@@ -716,7 +715,7 @@ export default function Terms() {
           </Card>
         </div>
       </div>
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

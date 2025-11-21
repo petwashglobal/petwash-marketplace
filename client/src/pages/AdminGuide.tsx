@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { Layout } from "@/components/Layout";
 import { type Language } from "@/lib/i18n";
 import { useLanguage } from '@/lib/languageStore';
 import { t as ti18n } from '@/lib/i18n';
@@ -77,10 +76,9 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      <Header language={language} onLanguageChange={onLanguageChange} />
-      
-      <main className="flex-1 container mx-auto px-4 py-8">
+    <Layout language={language} onLanguageChange={onLanguageChange}>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+        <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="mb-8">
@@ -202,8 +200,7 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
           </Card>
         </div>
       </main>
-
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

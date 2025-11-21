@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,10 +93,9 @@ export default function AdminHelpGuide({ language, onLanguageChange }: AdminHelp
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:bg-gray-900 flex flex-col">
-      <Header language={language} onLanguageChange={onLanguageChange} />
-      
-      <main className="flex-1 py-8 px-4 sm:px-6 lg:px-8">
+    <Layout language={language} onLanguageChange={onLanguageChange}>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:bg-gray-900 flex flex-col">
+        <main className="flex-1 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           {/* Header Card */}
           <Card className="mb-6 border-2 border-emerald-500 shadow-lg bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900 dark:to-green-900">
@@ -192,8 +190,7 @@ export default function AdminHelpGuide({ language, onLanguageChange }: AdminHelp
           </div>
         </div>
       </main>
-      
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

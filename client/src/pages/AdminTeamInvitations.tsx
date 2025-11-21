@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -229,13 +228,9 @@ export default function AdminTeamInvitations({ language, onLanguageChange }: Adm
   }, {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-purple-50">
-      <Header 
-        language={language} 
-        onLanguageChange={onLanguageChange}
-      />
-
-      <main className="flex-grow container mx-auto px-4 py-8 max-w-7xl">
+    <Layout language={language} onLanguageChange={onLanguageChange}>
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-purple-50">
+        <main className="flex-grow container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             {t('admin.teamInvitations.title', language)}
@@ -508,8 +503,7 @@ export default function AdminTeamInvitations({ language, onLanguageChange }: Adm
           </form>
         </DialogContent>
       </Dialog>
-
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

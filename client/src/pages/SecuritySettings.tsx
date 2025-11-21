@@ -10,8 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PasskeyEnforcementBanner } from '@/components/security/PasskeyEnforcementBanner';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
+import { Layout } from '@/components/Layout';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,7 +51,7 @@ interface Passkey {
 }
 
 export default function SecuritySettings() {
-  const { language, t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
@@ -191,11 +190,12 @@ export default function SecuritySettings() {
     );
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <Header language={language} onLanguageChange={() => {}} />
+  const { language, setLanguage } = useLanguage();
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+  return (
+    <Layout language={language} onLanguageChange={setLanguage}>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <main className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2" data-testid="page-title">
             <Shield className="inline-block mr-2 h-8 w-8" />
@@ -379,8 +379,7 @@ export default function SecuritySettings() {
           </AlertDialogContent>
         </AlertDialog>
       </main>
-
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

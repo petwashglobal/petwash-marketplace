@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { Layout } from "@/components/Layout";
 import { useLanguage } from "@/lib/languageStore";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -298,10 +297,9 @@ export default function Settings() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <Header language={language} onLanguageChange={setLanguage} />
-      
-      <div className="pt-20 pb-16">
+    <Layout language={language} onLanguageChange={setLanguage}>
+      <div className="min-h-screen bg-white">
+        <div className="pt-20 pb-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
             <div className="flex items-center gap-6 mb-6">
@@ -806,8 +804,8 @@ export default function Settings() {
           )}
         </AlertDialogContent>
       </AlertDialog>
-
-      <Footer language={language} />
-    </div>
+      </div>
+      </div>
+    </Layout>
   );
 }

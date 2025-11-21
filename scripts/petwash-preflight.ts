@@ -51,6 +51,13 @@ const FORBIDDEN_CONTENT_IDENTIFIERS = [
   'OldLayout',
   'LegacyLayout',
   'ApplePackage',
+  'HeaderLegacy',
+];
+
+// Forbidden exact file names (not patterns - exact matches)
+const FORBIDDEN_EXACT_FILES = [
+  'Header.tsx', // Only PetWashHeader and Layout allowed
+  'HeaderLegacy.tsx',
 ];
 
 const APPROVED_LUXURY_CSS = [
@@ -101,6 +108,12 @@ async function checkForbiddenFileNames(): Promise<GuardResult> {
     const fileName = file.split('/').pop() || '';
     const relativePath = file.replace('./client/src/', '');
     
+    // Check exact file name matches
+    if (FORBIDDEN_EXACT_FILES.includes(fileName)) {
+      errors.push(`❌ FORBIDDEN FILE (EXACT): ${relativePath} - "${fileName}" is not allowed`);
+    }
+    
+    // Check pattern matches
     for (const pattern of FORBIDDEN_FILE_PATTERNS) {
       if (pattern.test(fileName) || pattern.test(relativePath)) {
         errors.push(`❌ FORBIDDEN FILE NAME: ${relativePath} (matches pattern: ${pattern})`);

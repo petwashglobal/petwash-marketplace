@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { syncUser } from "@/lib/hubspot";
 import { Button } from "@/components/ui/button";
@@ -441,10 +440,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   };
 
   return (
-    <div className="auth-page">
-      <Header language={language} onLanguageChange={onLanguageChange || (() => {})} />
-      
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 auth-card">
+    <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
+      <div className="auth-page">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 auth-card">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-gray-900">
               {t('register.createAccount', language)}
@@ -788,8 +786,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

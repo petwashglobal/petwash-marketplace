@@ -14,8 +14,7 @@ import { Smartphone, Monitor, Laptop, Tablet, MapPin, Clock, Shield, AlertTriang
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
+import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 
 interface Device {
@@ -44,7 +43,7 @@ export default function ConnectedDevices() {
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [editingDevice, setEditingDevice] = useState<string | null>(null);
   const [newDeviceLabel, setNewDeviceLabel] = useState('');
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -169,10 +168,9 @@ export default function ConnectedDevices() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-      <Header language={language} />
-      
-      <div className="container mx-auto px-4 py-8">
+    <Layout language={language} onLanguageChange={setLanguage}>
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+        <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-8">
@@ -389,8 +387,7 @@ export default function ConnectedDevices() {
           </Dialog>
         </div>
       </div>
-      
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

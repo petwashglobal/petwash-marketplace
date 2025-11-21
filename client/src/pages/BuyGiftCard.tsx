@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,10 +107,9 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-pink-50 via-white to-purple-50" dir={language === "he" || language === "ar" ? "rtl" : "ltr"}>
-      <Header language={language} onLanguageChange={onLanguageChange} />
-      
-      <main className="flex-1 container mx-auto px-4 py-8">
+    <Layout language={language} onLanguageChange={onLanguageChange}>
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-pink-50 via-white to-purple-50" dir={language === "he" || language === "ar" ? "rtl" : "ltr"}>
+        <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
@@ -378,8 +376,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
           </div>
         </div>
       </main>
-
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

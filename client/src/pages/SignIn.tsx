@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "../lib/firebase";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -584,10 +583,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <Header language={language} onLanguageChange={onLanguageChange} />
-      
-      <div className="flex items-center justify-center px-4 sm:px-6 md:px-8 py-16">
+    <Layout language={language} onLanguageChange={onLanguageChange}>
+      <div className="min-h-screen bg-white">
+        <div className="flex items-center justify-center px-4 sm:px-6 md:px-8 py-16">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -840,9 +838,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           )}
         </motion.div>
       </div>
-
-      <Footer language={language} />
       <ReCaptcha language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

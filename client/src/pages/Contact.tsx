@@ -1,5 +1,4 @@
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
+import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -158,9 +157,9 @@ export default function Contact({ language }: ContactProps) {
   };
 
   return (
-    <div className={`min-h-screen bg-white ${currentLanguage === 'he' ? 'rtl' : 'ltr'}`}>
-      <Header language={currentLanguage} onLanguageChange={handleLanguageChange} />
-      <div className="luxury-content-section pt-20 pb-16">
+    <Layout language={currentLanguage} onLanguageChange={handleLanguageChange}>
+      <div className={`min-h-screen bg-white ${currentLanguage === 'he' ? 'rtl' : 'ltr'}`}>
+        <div className="luxury-content-section pt-20 pb-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-6">
             <Link href="/">
@@ -316,7 +315,7 @@ export default function Contact({ language }: ContactProps) {
           </Card>
         </div>
       </div>
-      <Footer language={currentLanguage} />
-    </div>
+      </div>
+    </Layout>
   );
 }

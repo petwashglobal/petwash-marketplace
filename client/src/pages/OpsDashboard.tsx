@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
+import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -76,10 +75,9 @@ export default function OpsDashboard({ language, onLanguageChange }: OpsDashboar
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-950">
-      <Header language={language} onLanguageChange={onLanguageChange || (() => {})} />
-
-      <main className="container mx-auto px-4 py-8">
+    <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-950">
+        <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">Operations Dashboard</h1>
           <p className="text-zinc-400">Real-time monitoring and health checks for Pet Wash™</p>
@@ -497,8 +495,7 @@ export default function OpsDashboard({ language, onLanguageChange }: OpsDashboar
           </TabsContent>
         </Tabs>
       </main>
-
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }

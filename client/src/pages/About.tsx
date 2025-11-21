@@ -1,5 +1,4 @@
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
+import { Layout } from '@/components/Layout';
 import { useState, useEffect } from 'react';
 import { type Language } from '@/lib/i18n';
 import { 
@@ -35,10 +34,9 @@ export default function About({ language }: AboutProps) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white">
-      <Header language={currentLanguage} onLanguageChange={handleLanguageChange} />
-      
-      {/* Luxury Hero Section */}
+    <Layout language={currentLanguage} onLanguageChange={handleLanguageChange}>
+      <div className="min-h-screen bg-white">
+        {/* Luxury Hero Section */}
       <div className="luxury-services-hero">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="luxury-services-hero-content">
@@ -303,8 +301,7 @@ export default function About({ language }: AboutProps) {
           </div>
         </div>
       </div>
-      
-      <Footer language={currentLanguage} />
-    </div>
+      </div>
+    </Layout>
   );
 }

@@ -7,8 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
+import { Layout } from '@/components/Layout';
 import { type Language, t } from '@/lib/i18n';
 import { GmailOAuthButton } from '@/components/GmailOAuthButton';
 import { Button } from '@/components/ui/button';
@@ -71,14 +70,9 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-blue-950">
-      <Header 
-        language={language} 
-        onLanguageChange={onLanguageChange}
-        showDarkModeToggle={false}
-      />
-      
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
+    <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-blue-950">
+        <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
         {/* Hero Section */}
         <div className="text-center mb-8 animate-in fade-in duration-1000">
           <div className="flex items-center justify-center gap-4 mb-6">
@@ -390,8 +384,7 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
           </Card>
         )}
       </main>
-
-      <Footer language={language} />
-    </div>
+      </div>
+    </Layout>
   );
 }
