@@ -26,7 +26,9 @@ type ScanIssue = {
     | "BANNED_PATTERN"
     | "MISSING_REQUIRED_FILE"
     | "CONFIG_WARNING"
-    | "CONFIG_ERROR";
+    | "CONFIG_ERROR"
+    | "PORT_ERROR"
+    | "BUILD_DIR_ERROR";
   file?: string;
   line?: number;
   snippet?: string;
@@ -102,6 +104,11 @@ const REQUIRED_FILES: string[] = [
 const REQUIRED_ENV_VARS: string[] = [
   "GCS_BACKUP_BUCKET",
 ];
+
+// Deployment port lock - MANDATORY for production
+const REPLIT_FILE = path.join(projectRoot, ".replit");
+const ALLOWED_BUILD_DIRS = ["dist/public"]; // Only this directory for production builds
+const FORBIDDEN_BUILD_DIRS = ["public/", "build/", "out/"]; // Never deploy from these
 
 /**
  * Utility - simple directory walk with no external deps
@@ -230,6 +237,91 @@ function checkEnvConfig(): ScanIssue[] {
 }
 
 /**
+ * CRITICAL: Validate .replit port configuration
+ * Autoscale deployments only support ONE external port
+ * Multiple ports will cause deployment to hang/fail
+ */
+function checkReplitPortConfig(): ScanIssue[] {
+  const issues: ScanIssue[] = [];
+
+  if (!fs.existsSync(REPLIT_FILE)) {
+    issues.push({
+      type: "CONFIG_WARNING",
+      file: ".replit",
+      detail: "No .replit file found. Deployment configuration may be missing.",
+    });
+    return issues;
+  }
+
+  try {
+    const content = fs.readFileSync(REPLIT_FILE, "utf8");
+    const portBlocks = content.match(/\[\[ports\]\]/g);
+    const portCount = portBlocks ? portBlocks.length : 0;
+
+    if (portCount > 1) {
+      issues.push({
+        type: "PORT_ERROR",
+        file: ".replit",
+        detail: `🚨 DEPLOYMENT BLOCKER: Found ${portCount} [[ports]] blocks in .replit file. Autoscale deployments ONLY support 1 external port. Your deployment will FAIL or HANG. Fix: Keep only [[ports]] with localPort=5000, externalPort=80. Remove all other port blocks.`,
+      });
+    } else if (portCount === 0) {
+      issues.push({
+        type: "CONFIG_WARNING",
+        file: ".replit",
+        detail: "No [[ports]] configuration found in .replit. Deployment may not expose your app correctly.",
+      });
+    }
+  } catch (err) {
+    issues.push({
+      type: "CONFIG_WARNING",
+      file: ".replit",
+      detail: `Could not parse .replit file: ${err}`,
+    });
+  }
+
+  return issues;
+}
+
+/**
+ * CRITICAL: Validate build directory structure
+ * Production deploys must use dist/public ONLY
+ * Never deploy from public/, build/, or out/
+ */
+function checkBuildDirectories(): ScanIssue[] {
+  const issues: ScanIssue[] = [];
+
+  // Check for forbidden build directories that indicate wrong config
+  for (const forbiddenDir of FORBIDDEN_BUILD_DIRS) {
+    const fullPath = path.join(projectRoot, forbiddenDir);
+    if (fs.existsSync(fullPath)) {
+      const hasIndexHtml = fs.existsSync(path.join(fullPath, "index.html"));
+      if (hasIndexHtml) {
+        issues.push({
+          type: "BUILD_DIR_ERROR",
+          file: forbiddenDir,
+          detail: `🚨 DEPLOYMENT BLOCKER: Found built files in ${forbiddenDir}. This indicates wrong build configuration. Production MUST use dist/public only. Delete ${forbiddenDir} and ensure vite.config.ts outputs to ../dist/public.`,
+        });
+      }
+    }
+  }
+
+  // Verify correct build directory exists (during build phase)
+  const correctBuildDir = path.join(projectRoot, "dist", "public");
+  if (fs.existsSync(correctBuildDir)) {
+    const hasIndexHtml = fs.existsSync(path.join(correctBuildDir, "index.html"));
+    if (!hasIndexHtml) {
+      issues.push({
+        type: "CONFIG_WARNING",
+        file: "dist/public",
+        detail: "dist/public exists but has no index.html. Build may be incomplete.",
+      });
+    }
+  }
+
+  return issues;
+}
+
+/**
  * Main runner
  */
 async function main() {
@@ -241,12 +333,20 @@ async function main() {
   console.log("1) Checking backup and Google Cloud env config...");
   issues.push(...checkEnvConfig());
 
-  // 2. Required files
-  console.log("2) Checking for core 2025 luxury UI files...");
+  // 2. CRITICAL: Port configuration validation
+  console.log("2) Validating .replit port configuration (deployment blocker check)...");
+  issues.push(...checkReplitPortConfig());
+
+  // 3. CRITICAL: Build directory validation
+  console.log("3) Validating build directory structure (dist/public enforcement)...");
+  issues.push(...checkBuildDirectories());
+
+  // 4. Required files
+  console.log("4) Checking for core 2025 luxury UI files...");
   issues.push(...checkRequiredFiles());
 
-  // 3. Scan code for legacy or banned patterns
-  console.log("3) Scanning source tree for legacy UI or banned patterns...");
+  // 5. Scan code for legacy or banned patterns
+  console.log("5) Scanning source tree for legacy UI or banned patterns...");
   for (const dir of SCAN_DIRS) {
     if (!fs.existsSync(dir)) continue;
     const files = walkDir(dir);
@@ -256,7 +356,7 @@ async function main() {
     }
   }
 
-  // 4. Git sanity
+  // 6. Git sanity
   const gitDir = path.join(projectRoot, ".git");
   if (!fs.existsSync(gitDir)) {
     issues.push({
@@ -282,6 +382,8 @@ async function main() {
   }
 
   const order: ScanIssue["type"][] = [
+    "PORT_ERROR",
+    "BUILD_DIR_ERROR",
     "CONFIG_ERROR",
     "LEGACY_UI",
     "BANNED_PATTERN",
@@ -307,7 +409,13 @@ async function main() {
     }
     console.log("");
 
-    if (type === "CONFIG_ERROR" || type === "LEGACY_UI" || type === "BANNED_PATTERN") {
+    if (
+      type === "PORT_ERROR" ||
+      type === "BUILD_DIR_ERROR" ||
+      type === "CONFIG_ERROR" ||
+      type === "LEGACY_UI" ||
+      type === "BANNED_PATTERN"
+    ) {
       hasHardFail = true;
     }
   }
