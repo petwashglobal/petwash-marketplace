@@ -1,22 +1,24 @@
 #!/usr/bin/env tsx
 /**
- * PetWash™ Preflight Guardian
+ * PetWash™ Preflight Guardian - ENHANCED CONTENT SCANNER
  * MANDATORY PRE-BUILD VERIFICATION
  * 
  * Enforces 100% Luxury UI - ZERO tolerance for parallel systems
  * 
  * HARD FAIL CONDITIONS:
- * - Any file with: old, legacy, v1, backup, temp, copy, test-ui
- * - Any component: EnterpriseLayout, BrandHeader, OldLayout, LegacyLayout
- * - Any CSS file outside approved luxury styles
- * - Any parallel header/footer/layout systems
+ * - Any file with forbidden names: old, legacy, v1, backup, temp, copy
+ * - Any file CONTAINING forbidden identifiers: EnterpriseLayout, BrandHeader, GlobalNavigation
+ * - Any unapproved CSS file
+ * - Multiple layout files (only Layout.tsx allowed)
+ * 
+ * ENHANCED: Now scans FILE CONTENTS for forbidden identifiers!
  * 
  * Usage:
  *   npm run preflight
  *   This MUST pass before build/deploy
  */
 
-import { readdir, stat } from 'fs/promises';
+import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import { exit } from 'process';
 
@@ -26,7 +28,8 @@ interface GuardResult {
   warnings: string[];
 }
 
-const FORBIDDEN_PATTERNS = [
+// Forbidden file name patterns
+const FORBIDDEN_FILE_PATTERNS = [
   /\.old\./i,
   /legacy/i,
   /-v1\./i,
@@ -34,15 +37,20 @@ const FORBIDDEN_PATTERNS = [
   /\.temp\./i,
   /\.copy\./i,
   /-test-ui/i,
-  /EnterpriseLayout/,
-  /BrandHeader/,
-  /OldLayout/,
-  /LegacyLayout/,
   /apple-package/i,
   /header-old/i,
   /footer-old/i,
-  /GlobalNavigation/,
-  /MultiLayerNavigation/,
+];
+
+// Forbidden identifiers in file CONTENT (component names, exports, imports)
+const FORBIDDEN_CONTENT_IDENTIFIERS = [
+  'EnterpriseLayout',
+  'BrandHeader',
+  'GlobalNavigation',
+  'MultiLayerNavigation',
+  'OldLayout',
+  'LegacyLayout',
+  'ApplePackage',
 ];
 
 const APPROVED_LUXURY_CSS = [
@@ -52,17 +60,16 @@ const APPROVED_LUXURY_CSS = [
   'responsive-tokens.css',
   'floating-stack.css',
   'ai-chat.css',
-  'NewHumanAvatar.css', // Component-specific CSS, actively used
+  'NewHumanAvatar.css',
 ];
 
 async function scanDirectory(dir: string, results: string[] = [], depth = 0): Promise<string[]> {
-  if (depth > 10) return results; // Prevent infinite recursion
+  if (depth > 10) return results;
   
   try {
     const entries = await readdir(dir, { withFileTypes: true });
     
     for (const entry of entries) {
-      // Skip node_modules and dist
       if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '.git') {
         continue;
       }
@@ -82,24 +89,69 @@ async function scanDirectory(dir: string, results: string[] = [], depth = 0): Pr
   return results;
 }
 
-async function checkForbiddenPatterns(): Promise<GuardResult> {
+async function checkForbiddenFileNames(): Promise<GuardResult> {
   const errors: string[] = [];
   const warnings: string[] = [];
   
-  console.log('🔍 Scanning for forbidden patterns...\n');
+  console.log('🔍 Scanning for forbidden file names...\n');
   
-  // Scan client/src for forbidden files
   const files = await scanDirectory('./client/src');
   
   for (const file of files) {
     const fileName = file.split('/').pop() || '';
     const relativePath = file.replace('./client/src/', '');
     
-    // Check forbidden file name patterns
-    for (const pattern of FORBIDDEN_PATTERNS) {
+    for (const pattern of FORBIDDEN_FILE_PATTERNS) {
       if (pattern.test(fileName) || pattern.test(relativePath)) {
-        errors.push(`❌ FORBIDDEN FILE: ${relativePath} (matches pattern: ${pattern})`);
+        errors.push(`❌ FORBIDDEN FILE NAME: ${relativePath} (matches pattern: ${pattern})`);
       }
+    }
+  }
+  
+  return {
+    passed: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
+async function checkForbiddenContent(): Promise<GuardResult> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  console.log('📖 Scanning file CONTENTS for forbidden identifiers (comprehensive)...\n');
+  
+  const files = await scanDirectory('./client/src');
+  const codeFiles = files.filter(f => f.endsWith('.tsx') || f.endsWith('.ts'));
+  
+  for (const file of codeFiles) {
+    try {
+      const content = await readFile(file, 'utf-8');
+      const relativePath = file.replace('./client/src/', '');
+      
+      for (const identifier of FORBIDDEN_CONTENT_IDENTIFIERS) {
+        // Use word boundary to catch ALL occurrences: declarations, exports, imports, JSX, etc.
+        // This catches: function X, const X, class X, export X, import X, <X>, { X }, etc.
+        const wordBoundaryPattern = new RegExp(`\\b${identifier}\\b`, 'g');
+        
+        if (wordBoundaryPattern.test(content)) {
+          // Find line number for better error reporting
+          const lines = content.split('\n');
+          const lineNumbers: number[] = [];
+          lines.forEach((line, idx) => {
+            if (new RegExp(`\\b${identifier}\\b`).test(line)) {
+              lineNumbers.push(idx + 1);
+            }
+          });
+          
+          errors.push(
+            `❌ FORBIDDEN IDENTIFIER: ${relativePath} contains "${identifier}" (lines: ${lineNumbers.slice(0, 3).join(', ')}${lineNumbers.length > 3 ? '...' : ''})`
+          );
+          break; // Only report once per file
+        }
+      }
+    } catch (error) {
+      // Skip files that can't be read
     }
   }
   
@@ -114,7 +166,7 @@ async function checkCSSFiles(): Promise<GuardResult> {
   const errors: string[] = [];
   const warnings: string[] = [];
   
-  console.log('🎨 Verifying CSS files...\n');
+  console.log('🎨 Verifying CSS files (HARD FAIL)...\n');
   
   const cssFiles = await scanDirectory('./client/src');
   const foundCSS = cssFiles.filter(f => f.endsWith('.css'));
@@ -123,12 +175,12 @@ async function checkCSSFiles(): Promise<GuardResult> {
     const fileName = cssFile.split('/').pop() || '';
     
     if (!APPROVED_LUXURY_CSS.includes(fileName)) {
-      warnings.push(`⚠️  UNAPPROVED CSS: ${cssFile.replace('./client/src/', '')} (not in approved luxury CSS list)`);
+      errors.push(`❌ UNAPPROVED CSS FILE: ${cssFile.replace('./client/src/', '')} (not in approved luxury CSS list)`);
     }
   }
   
   return {
-    passed: true, // Warnings only for CSS
+    passed: errors.length === 0,
     errors,
     warnings,
   };
@@ -147,7 +199,7 @@ async function checkParallelLayouts(): Promise<GuardResult> {
     !f.includes('node_modules')
   );
   
-  const APPROVED_LAYOUTS = ['Layout.tsx']; // Only ONE approved layout
+  const APPROVED_LAYOUTS = ['Layout.tsx'];
   
   for (const layout of layouts) {
     const fileName = layout.split('/').pop() || '';
@@ -165,17 +217,17 @@ async function checkParallelLayouts(): Promise<GuardResult> {
 }
 
 async function runAllGuards(): Promise<void> {
-  console.log('🛡️  PETWASH™ PREFLIGHT GUARDIAN\n');
+  console.log('🛡️  PETWASH™ PREFLIGHT GUARDIAN v2 - CONTENT SCANNER\n');
   console.log('================================\n');
   
   const results: GuardResult[] = [];
   
   // Run all guards
-  results.push(await checkForbiddenPatterns());
+  results.push(await checkForbiddenFileNames());
+  results.push(await checkForbiddenContent());
   results.push(await checkCSSFiles());
   results.push(await checkParallelLayouts());
   
-  // Collect all errors and warnings
   const allErrors = results.flatMap(r => r.errors);
   const allWarnings = results.flatMap(r => r.warnings);
   
@@ -193,6 +245,7 @@ async function runAllGuards(): Promise<void> {
     allErrors.forEach(e => console.log(e));
     console.log('');
     console.log('🚫 PREFLIGHT FAILED - FIX ERRORS BEFORE BUILD\n');
+    console.log('💡 TIP: Parallel UI systems are FORBIDDEN in PetWash production\n');
     exit(1);
   }
   
