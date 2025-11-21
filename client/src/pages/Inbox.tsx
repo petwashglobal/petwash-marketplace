@@ -297,8 +297,7 @@ export default function Inbox() {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-6" dir={dir} style={{
-      background: 'linear-gradient(135deg, #ffffff 0%, #f8f8f8 50%, #fff9f0 100%)',
+    <div className="min-h-screen luxury-bg-mesh p-4 md:p-6" dir={dir} style={{
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     }}>
       <div className="max-w-7xl mx-auto space-y-6">
@@ -307,10 +306,7 @@ export default function Inbox() {
         {pets.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {pets.map((pet) => (
-              <Card key={pet.id} className="bg-white/80 backdrop-blur-sm shadow-lg" style={{
-                border: '1px solid rgba(212, 175, 55, 0.2)',
-                boxShadow: '0 10px 40px rgba(212, 175, 55, 0.1)',
-              }}>
+              <Card key={pet.id} className="luxury-glass-minimal luxury-hover-lift"
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-16 w-16 border-2" style={{
@@ -444,9 +440,7 @@ export default function Inbox() {
         )}
         
         {!selectedMessage ? (
-          <Card className="backdrop-blur-sm bg-white/80 shadow-xl" style={{
-            border: '1px solid rgba(212, 175, 55, 0.2)',
-          }}>
+          <Card className="luxury-glass-card luxury-shadow-lg"
             <CardHeader className="border-b" style={{
               borderColor: 'rgba(212, 175, 55, 0.2)',
               background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 249, 240, 0.95) 100%)',
@@ -543,8 +537,8 @@ export default function Inbox() {
                             key={message.id}
                             onClick={() => handleMessageClick(message)}
                             data-testid={`message-item-${message.id}`}
-                            className={`w-full px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-${dir === 'rtl' ? 'right' : 'left'} ${
-                              !message.isRead ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''
+                            className={`luxury-glass-minimal luxury-hover-lift w-full px-6 py-4 mb-2 rounded-lg transition-all text-${dir === 'rtl' ? 'right' : 'left'} ${
+                              !message.isRead ? 'bg-purple-50/30' : ''
                             }`}
                             style={{
                               fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
@@ -598,8 +592,7 @@ export default function Inbox() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="backdrop-blur-sm bg-white/80 shadow-xl" style={{
-            border: '1px solid rgba(212, 175, 55, 0.2)',
+          <Card className="luxury-glass-card luxury-shadow-lg" style={{
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
           }}>
             <CardHeader className="border-b" style={{

@@ -17,13 +17,15 @@
 
 import { Router, type Request, type Response } from 'express';
 import { db } from '../db';
-import { subcontractorSignatures } from '@shared/schema';
+import { subcontractorSignatures, insertSubcontractorSignatureSchema } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
 import { 
   createSubcontractorSignature,
   SUBCONTRACTOR_AGREEMENT_2025,
   type DigitalSignatureMethod 
 } from '../../src/contracts/subcontractorAgreement2025';
+import { z } from 'zod';
+import { fromZodError } from 'zod-validation-error';
 
 const router = Router();
 
@@ -48,44 +50,55 @@ const router = Router();
  */
 router.post('/api/subcontractors/agreements/2025/sign', async (req: Request, res: Response) => {
   try {
-    const {
-      subcontractorId,
-      fullName,
-      email,
-      phone,
-      signatureMethod,
-      rawSignatureData
-    } = req.body || {};
+    const { rawSignatureData, ...bodyData } = req.body || {};
 
-    // Validation
-    if (!subcontractorId || !fullName || !email || !signatureMethod || !rawSignatureData) {
+    // Validate raw signature data exists (separate from main schema)
+    if (!rawSignatureData) {
       return res.status(400).json({
         ok: false,
-        error: 'Missing required fields: subcontractorId, fullName, email, signatureMethod, rawSignatureData'
+        error: 'Missing required field: rawSignatureData'
       });
     }
 
-    // Validate signature method
-    const validMethods: DigitalSignatureMethod[] = ['typed_name', 'drawn_signature', 'otp_code', 'external_provider'];
-    if (!validMethods.includes(signatureMethod)) {
-      return res.status(400).json({
-        ok: false,
-        error: `Invalid signatureMethod. Must be one of: ${validMethods.join(', ')}`
-      });
-    }
-
-    // Create signature record using contract module
+    // Create signature record using contract module (this generates all the required fields)
     const signatureData = createSubcontractorSignature({
-      subcontractorId,
-      fullName,
-      email,
-      phone,
-      signatureMethod,
+      subcontractorId: bodyData.subcontractorId,
+      fullName: bodyData.fullName,
+      email: bodyData.email,
+      phone: bodyData.phone,
+      signatureMethod: bodyData.signatureMethod,
       rawSignatureData,
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
       deviceInfo: req.headers['x-device-info'] as string | undefined
     });
+
+    // Validate using Drizzle/Zod schema (architect-mandated validation)
+    const validationResult = insertSubcontractorSignatureSchema.safeParse({
+      subcontractorId: signatureData.subcontractorId,
+      fullName: signatureData.fullName,
+      email: signatureData.email,
+      phone: signatureData.phone,
+      agreementVersion: signatureData.agreementVersion,
+      signedAt: new Date(signatureData.signedAt),
+      ipAddress: signatureData.ipAddress,
+      userAgent: signatureData.userAgent,
+      deviceInfo: signatureData.deviceInfo,
+      signatureMethod: signatureData.signatureMethod,
+      signaturePayload: signatureData.signaturePayload,
+      agreementSnapshotJson: JSON.parse(signatureData.agreementSnapshotJson),
+      agreedToPrivacy: signatureData.agreedToPrivacy,
+      agreedToTerms: signatureData.agreedToTerms,
+      auditTrailId: signatureData.auditTrailId,
+    });
+
+    if (!validationResult.success) {
+      const validationError = fromZodError(validationResult.error);
+      return res.status(400).json({
+        ok: false,
+        error: `Validation failed: ${validationError.message}`
+      });
+    }
 
     // Insert into production Postgres database
     const [savedSignature] = await db.insert(subcontractorSignatures).values({

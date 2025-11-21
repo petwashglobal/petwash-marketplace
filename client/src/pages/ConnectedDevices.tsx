@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
+import { motion } from 'framer-motion';
 
 interface Device {
   id: string;
@@ -169,21 +170,26 @@ export default function ConnectedDevices() {
 
   return (
     <Layout language={language} onLanguageChange={setLanguage}>
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      <div className="min-h-screen luxury-bg-mesh">
         <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-              <Shield className="h-8 w-8 text-primary" />
+          <motion.div 
+            className="mb-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h1 className="luxury-heading-lg mb-2 flex items-center gap-3">
+              <Shield className="h-8 w-8" />
               {isHebrew ? 'מכשירים מחוברים' : 'Connected Devices'}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="luxury-text-body">
               {isHebrew 
                 ? 'נהל מכשירים שניגשו לחשבון Pet Wash™ שלך. הסר כל מכשיר שאינך מזהה.'
                 : "Manage devices that have accessed your Pet Wash™ account. Remove any devices you don't recognize."}
             </p>
-          </div>
+          </motion.div>
 
           {/* Security Status */}
           {devices && devices.some(d => d.fraudFlags.length > 0) && (
@@ -218,11 +224,16 @@ export default function ConnectedDevices() {
           {/* Device List */}
           {!isLoading && (
             <div className="space-y-4">
-              {devices?.map((device) => (
-                <Card 
+              {devices?.map((device, index) => (
+                <motion.div
                   key={device.id}
-                  className={`transition-all hover:shadow-lg ${
-                    device.isCurrentDevice ? 'ring-2 ring-primary' : ''
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                >
+                  <Card 
+                    className={`luxury-glass-card luxury-hover-lift ${
+                      device.isCurrentDevice ? 'ring-2 ring-purple-400' : ''
                   } ${
                     device.fraudFlags.length > 0 ? 'border-yellow-500' : ''
                   }`}
@@ -325,13 +336,15 @@ export default function ConnectedDevices() {
                           onClick={() => handleRemoveClick(device)}
                           disabled={device.isCurrentDevice}
                           data-testid={`button-remove-${device.id}`}
+                          className="luxury-btn-secondary"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
-                </Card>
+                  </Card>
+                </motion.div>
               ))}
 
               {devices?.length === 0 && (
@@ -377,6 +390,7 @@ export default function ConnectedDevices() {
                   onClick={() => selectedDevice && removeMutation.mutate(selectedDevice.id)}
                   disabled={removeMutation.isPending}
                   data-testid="button-confirm-remove"
+                  className="luxury-btn-secondary"
                 >
                   {removeMutation.isPending 
                     ? (isHebrew ? 'מסיר...' : 'Removing...') 

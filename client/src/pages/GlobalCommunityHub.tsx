@@ -135,7 +135,7 @@ export default function GlobalCommunityHub() {
 
   return (
     <Layout>
-      <div className={`min-h-screen ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className={`min-h-screen luxury-bg-mesh ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
         
         {/* Hero Section - Lime/Green Social Good Theme */}
         <section className="relative min-h-[600px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-lime-50 via-green-50 to-emerald-100 dark:from-gray-900 dark:via-green-900/20 dark:to-gray-900 py-20 px-4">
@@ -204,7 +204,7 @@ export default function GlobalCommunityHub() {
         </section>
 
         {/* Community Programs Grid */}
-        <section className="py-20 px-4 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+        <section className="py-20 px-4 luxury-bg-mesh">
           <div className="max-w-7xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -228,10 +228,11 @@ export default function GlobalCommunityHub() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.6, delay: index * 0.1 }}
+                    className={`luxury-animate-fade-in luxury-delay-${index + 1}`}
                   >
                     <GlassmorphismCard
                       gradient={program.gradient as any}
-                      className="h-full p-8 group"
+                      className="h-full p-8 group luxury-glass-card"
                       hover
                     >
                       <div className="flex items-start gap-6">
@@ -271,7 +272,7 @@ export default function GlobalCommunityHub() {
         </section>
 
         {/* Special Events & VIP Section */}
-        <section className="py-20 px-4 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 dark:from-gray-800 dark:via-purple-900/20 dark:to-gray-800">
+        <section className="py-20 px-4 luxury-bg-mesh">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               
@@ -405,9 +406,9 @@ export default function GlobalCommunityHub() {
         </section>
 
         {/* Get Involved CTA */}
-        <section className="py-20 px-4 bg-white dark:bg-gray-900">
+        <section className="py-20 px-4 luxury-bg-mesh">
           <div className="max-w-4xl mx-auto">
-            <GlassmorphismCard gradient="purple" className="p-12 text-center">
+            <GlassmorphismCard gradient="purple" className="p-12 text-center luxury-glass-card luxury-shadow-xl">
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
                 {t('communityHub.contactTitle')}
               </h2>

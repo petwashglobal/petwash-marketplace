@@ -99,7 +99,7 @@ export default function ProviderCompliance() {
     const Icon = config.icon;
     
     return (
-      <Badge variant={config.variant} className="gap-1">
+      <Badge variant={config.variant} className="gap-1 luxury-badge">
         <Icon className="h-3 w-3" />
         {status}
       </Badge>
@@ -114,14 +114,14 @@ export default function ProviderCompliance() {
     };
     
     return (
-      <Badge variant={variants[riskLevel] || 'secondary'}>
+      <Badge variant={variants[riskLevel] || 'secondary'} className="luxury-badge">
         {riskLevel} risk
       </Badge>
     );
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-8 px-4 luxury-bg-mesh min-h-screen">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">
           🇮🇱 Israeli Contractor Compliance
@@ -132,7 +132,7 @@ export default function ProviderCompliance() {
       </div>
 
       {/* Provider Selection */}
-      <Card className="mb-6">
+      <Card className="mb-6 luxury-glass-panel luxury-shadow-xl">
         <CardHeader>
           <CardTitle>Provider Information</CardTitle>
           <CardDescription>Select a provider to view compliance status</CardDescription>
@@ -169,6 +169,7 @@ export default function ProviderCompliance() {
             <Button 
               onClick={handleTestTaxSubmission}
               disabled={submitTaxMutation.isPending}
+              className="luxury-btn-primary luxury-shadow-xl"
               data-testid="button-test-tax"
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
@@ -178,6 +179,7 @@ export default function ProviderCompliance() {
               onClick={handleTestIndependenceScore}
               disabled={calculateIndependenceMutation.isPending}
               variant="outline"
+              className="luxury-btn-secondary"
               data-testid="button-test-independence"
             >
               <TrendingUp className="h-4 w-4 mr-2" />
@@ -204,7 +206,7 @@ export default function ProviderCompliance() {
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
+              <Card className="luxury-glass-panel luxury-shadow-xl">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium">Tax Status</CardTitle>
                 </CardHeader>
@@ -222,7 +224,7 @@ export default function ProviderCompliance() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="luxury-glass-panel luxury-shadow-xl">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium">Independence Risk</CardTitle>
                 </CardHeader>
@@ -240,7 +242,7 @@ export default function ProviderCompliance() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="luxury-glass-panel luxury-shadow-xl">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
                 </CardHeader>
@@ -260,7 +262,7 @@ export default function ProviderCompliance() {
 
           {/* Tax Compliance Tab */}
           <TabsContent value="tax">
-            <Card>
+            <Card className="luxury-glass-panel luxury-shadow-xl">
               <CardHeader>
                 <CardTitle>Tax Registration Details</CardTitle>
                 <CardDescription>Israeli tax authority compliance</CardDescription>
@@ -312,7 +314,7 @@ export default function ProviderCompliance() {
 
           {/* Independence Score Tab */}
           <TabsContent value="independence">
-            <Card>
+            <Card className="luxury-glass-panel luxury-shadow-xl">
               <CardHeader>
                 <CardTitle>Contractor Independence Score</CardTitle>
                 <CardDescription>
@@ -380,7 +382,7 @@ export default function ProviderCompliance() {
 
           {/* Commissions Tab */}
           <TabsContent value="commissions">
-            <Card>
+            <Card className="luxury-glass-panel luxury-shadow-xl">
               <CardHeader>
                 <CardTitle>Commission Summary</CardTitle>
                 <CardDescription>15-25% marketplace broker fee</CardDescription>
@@ -414,7 +416,7 @@ export default function ProviderCompliance() {
 
           {/* Audit Logs Tab */}
           <TabsContent value="logs">
-            <Card>
+            <Card className="luxury-glass-panel luxury-shadow-xl">
               <CardHeader>
                 <CardTitle>Compliance Audit Logs</CardTitle>
                 <CardDescription>SHA-256 verified compliance history</CardDescription>

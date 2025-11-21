@@ -127,21 +127,21 @@ export default function EmployeeExpenses() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black p-4 md:p-8">
+    <div className="min-h-screen luxury-bg-mesh p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl md:text-6xl font-light text-black dark:text-white mb-4 tracking-tight">
+        <div className="text-center mb-12 luxury-animate-fade-in">
+          <h1 className="luxury-heading-xl mb-4">
             PetWash™ Expense Center
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm uppercase tracking-widest">
+          <p className="luxury-text-small uppercase tracking-widest text-gray-500">
             7-Star Employee Expense Management
           </p>
         </div>
 
-        <Card className="border border-gray-200 dark:border-gray-800 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(255,255,255,0.05)] backdrop-blur-xl bg-white/95 dark:bg-black/95">
-          <CardHeader className="border-b border-gray-100 dark:border-gray-900 bg-gradient-to-b from-white to-gray-50/50 dark:from-black dark:to-gray-900/50 rounded-t-lg p-8">
-            <CardTitle className="text-2xl font-light text-black dark:text-white tracking-wide">Submit New Expense</CardTitle>
-            <CardDescription className="text-gray-500 dark:text-gray-400 mt-2">
+        <Card className="luxury-glass-card luxury-shadow-xl">
+          <CardHeader className="border-b border-purple-100 bg-gradient-to-b from-white/95 to-purple-50/30 rounded-t-lg p-8">
+            <CardTitle className="luxury-heading-md">Submit New Expense</CardTitle>
+            <CardDescription className="luxury-text-body mt-2">
               Fill in the expense details below. Each expense is tracked with cryptographic audit signatures for 7-year legal compliance.
             </CardDescription>
           </CardHeader>
@@ -154,10 +154,10 @@ export default function EmployeeExpenses() {
                     name="category"
                     render={({ field }) => (
                       <FormItem data-testid="form-item-category">
-                        <FormLabel className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">Expense Category *</FormLabel>
+                        <FormLabel className="luxury-text-small uppercase tracking-wide">Expense Category *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-category" className="h-14 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white hover:border-black dark:hover:border-white transition-all duration-200">
+                            <SelectTrigger data-testid="select-category" className="luxury-glass-minimal h-14">
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                           </FormControl>
@@ -179,10 +179,10 @@ export default function EmployeeExpenses() {
                     name="paymentMethod"
                     render={({ field }) => (
                       <FormItem data-testid="form-item-payment">
-                        <FormLabel className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">Payment Method *</FormLabel>
+                        <FormLabel className="luxury-text-small uppercase tracking-wide">Payment Method *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-payment" className="h-14 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white hover:border-black dark:hover:border-white transition-all duration-200">
+                            <SelectTrigger data-testid="select-payment" className="luxury-glass-minimal h-14">
                               <SelectValue placeholder="How was this paid?" />
                             </SelectTrigger>
                           </FormControl>
@@ -205,13 +205,13 @@ export default function EmployeeExpenses() {
                   name="vendor"
                   render={({ field }) => (
                     <FormItem data-testid="form-item-vendor">
-                      <FormLabel className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">Vendor/Supplier Name *</FormLabel>
+                      <FormLabel className="luxury-text-small uppercase tracking-wide">Vendor/Supplier Name *</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
                           data-testid="input-vendor"
                           placeholder="e.g., Paz Gas Station, Dell Technologies, Hotel Dan..."
-                          className="h-14 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white placeholder:text-gray-400 hover:border-black dark:hover:border-white focus:border-black dark:focus:border-white transition-all duration-200"
+                          className="luxury-glass-minimal h-14"
                         />
                       </FormControl>
                       <FormMessage />
@@ -224,13 +224,13 @@ export default function EmployeeExpenses() {
                   name="description"
                   render={({ field }) => (
                     <FormItem data-testid="form-item-description">
-                      <FormLabel className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">Detailed Description *</FormLabel>
+                      <FormLabel className="luxury-text-small uppercase tracking-wide">Detailed Description *</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
                           data-testid="textarea-description"
                           placeholder="Provide full details: purpose, date, location, who attended (if meal), project/client name..."
-                          className="min-h-28 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white placeholder:text-gray-400 hover:border-black dark:hover:border-white focus:border-black dark:focus:border-white transition-all duration-200"
+                          className="luxury-glass-minimal min-h-28"
                         />
                       </FormControl>
                       <FormMessage />
@@ -244,7 +244,7 @@ export default function EmployeeExpenses() {
                     name="amountBeforeVat"
                     render={({ field }) => (
                       <FormItem data-testid="form-item-amount-before-vat">
-                        <FormLabel className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">Amount Before VAT *</FormLabel>
+                        <FormLabel className="luxury-text-small uppercase tracking-wide">Amount Before VAT *</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -252,7 +252,7 @@ export default function EmployeeExpenses() {
                             type="number"
                             step="0.01"
                             placeholder="₪0.00"
-                            className="h-14 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-black dark:text-white placeholder:text-gray-400 hover:border-black dark:hover:border-white focus:border-black dark:focus:border-white transition-all duration-200"
+                            className="luxury-glass-minimal h-14"
                             onBlur={calculateVAT}
                           />
                         </FormControl>
@@ -266,7 +266,7 @@ export default function EmployeeExpenses() {
                     name="vatAmount"
                     render={({ field }) => (
                       <FormItem data-testid="form-item-vat-amount">
-                        <FormLabel className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">VAT Amount (18%)</FormLabel>
+                        <FormLabel className="luxury-text-small uppercase tracking-wide">VAT Amount (18%)</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -274,7 +274,7 @@ export default function EmployeeExpenses() {
                             type="number"
                             step="0.01"
                             placeholder="Auto-calculated"
-                            className="h-14 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400"
+                            className="luxury-glass-minimal h-14 bg-gray-50"
                             readOnly
                           />
                         </FormControl>
@@ -288,7 +288,7 @@ export default function EmployeeExpenses() {
                     name="totalAmount"
                     render={({ field }) => (
                       <FormItem data-testid="form-item-total-amount">
-                        <FormLabel className="text-sm font-medium tracking-wide uppercase text-gray-700 dark:text-gray-300">Total Amount *</FormLabel>
+                        <FormLabel className="luxury-text-small uppercase tracking-wide">Total Amount *</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -296,7 +296,7 @@ export default function EmployeeExpenses() {
                             type="number"
                             step="0.01"
                             placeholder="₪0.00"
-                            className="h-14 border border-black dark:border-white rounded-lg bg-white dark:bg-black text-black dark:text-white placeholder:text-gray-400 font-semibold text-lg hover:border-black dark:hover:border-white focus:border-black dark:focus:border-white transition-all duration-200"
+                            className="luxury-glass-minimal h-14 font-semibold text-lg border-purple-300"
                           />
                         </FormControl>
                         <FormMessage />
@@ -311,13 +311,13 @@ export default function EmployeeExpenses() {
                     name="receiptNumber"
                     render={({ field }) => (
                       <FormItem data-testid="form-item-receipt">
-                        <FormLabel>Receipt Number</FormLabel>
+                        <FormLabel className="luxury-text-small">Receipt Number</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
                             data-testid="input-receipt-number"
                             placeholder="Optional"
-                            className="h-12 border-2"
+                            className="luxury-glass-minimal h-12"
                           />
                         </FormControl>
                         <FormMessage />
@@ -330,13 +330,13 @@ export default function EmployeeExpenses() {
                     name="invoiceNumber"
                     render={({ field }) => (
                       <FormItem data-testid="form-item-invoice">
-                        <FormLabel>Invoice Number</FormLabel>
+                        <FormLabel className="luxury-text-small">Invoice Number</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
                             data-testid="input-invoice-number"
                             placeholder="Optional"
-                            className="h-12 border-2"
+                            className="luxury-glass-minimal h-12"
                           />
                         </FormControl>
                         <FormMessage />
@@ -349,10 +349,10 @@ export default function EmployeeExpenses() {
                     name="taxMonth"
                     render={({ field }) => (
                       <FormItem data-testid="form-item-tax-month">
-                        <FormLabel>Tax Month *</FormLabel>
+                        <FormLabel className="luxury-text-small">Tax Month *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-tax-month" className="h-12 border-2">
+                            <SelectTrigger data-testid="select-tax-month" className="luxury-glass-minimal h-12">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
@@ -375,13 +375,13 @@ export default function EmployeeExpenses() {
                   name="notes"
                   render={({ field }) => (
                     <FormItem data-testid="form-item-notes">
-                      <FormLabel>Additional Notes</FormLabel>
+                      <FormLabel className="luxury-text-small">Additional Notes</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
                           data-testid="textarea-notes"
                           placeholder="Any additional information..."
-                          className="border-2"
+                          className="luxury-glass-minimal"
                         />
                       </FormControl>
                       <FormMessage />
@@ -389,11 +389,11 @@ export default function EmployeeExpenses() {
                   )}
                 />
 
-                <div className="flex gap-4 pt-8 border-t border-gray-200 dark:border-gray-800 mt-8">
+                <div className="flex gap-4 pt-8 border-t border-purple-100 mt-8">
                   <Button
                     type="submit"
                     data-testid="button-submit-expense"
-                    className="flex-1 h-16 text-base font-medium tracking-wide uppercase bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 shadow-[0_4px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.1)] transition-all duration-200 rounded-lg"
+                    className="luxury-btn-primary flex-1 h-16 text-base font-medium tracking-wide uppercase"
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
@@ -414,8 +414,8 @@ export default function EmployeeExpenses() {
           </CardContent>
         </Card>
 
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400 tracking-wide">
+        <div className="mt-8 text-center luxury-animate-fade-in">
+          <p className="luxury-text-small text-gray-500 tracking-wide">
             Your supervisor will receive WhatsApp notification • Cryptographic audit signature applied
           </p>
         </div>

@@ -11,6 +11,7 @@ import { PasskeyEnforcementBanner } from '@/components/security/PasskeyEnforceme
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
+import { motion } from 'framer-motion';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -194,17 +195,22 @@ export default function SecuritySettings() {
 
   return (
     <Layout language={language} onLanguageChange={setLanguage}>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="min-h-screen luxury-bg-mesh">
         <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2" data-testid="page-title">
+        <motion.div 
+          className="mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <h1 className="luxury-heading-lg mb-2" data-testid="page-title">
             <Shield className="inline-block mr-2 h-8 w-8" />
             {t('security.title')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400" data-testid="page-subtitle">
+          <p className="luxury-text-body" data-testid="page-subtitle">
             {t('security.subtitle')}
           </p>
-        </div>
+        </motion.div>
 
         {roleLoading ? (
           <Skeleton className="h-24 mb-6" />
@@ -217,12 +223,17 @@ export default function SecuritySettings() {
           />
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle data-testid="passkeys-title">{t('security.yourPasskeys')}</CardTitle>
-            <CardDescription>{t('devices.subtitle')}</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Card className="luxury-glass-card luxury-shadow-lg">
+            <CardHeader>
+              <CardTitle className="luxury-heading-sm" data-testid="passkeys-title">{t('security.yourPasskeys')}</CardTitle>
+              <CardDescription className="luxury-text-small">{t('devices.subtitle')}</CardDescription>
+            </CardHeader>
+            <CardContent>
             {passkeysLoading ? (
               <div className="space-y-4">
                 <Skeleton className="h-24" />
@@ -241,6 +252,7 @@ export default function SecuritySettings() {
                   onClick={() => createPasskeyMutation.mutate()}
                   disabled={createPasskeyMutation.isPending}
                   data-testid="add-first-passkey-button"
+                  className="luxury-btn-primary"
                 >
                   <Shield className="mr-2 h-4 w-4" />
                   {createPasskeyMutation.isPending ? t('security.creating') : t('security.addPasskey')}
@@ -248,8 +260,14 @@ export default function SecuritySettings() {
               </div>
             ) : (
               <div className="space-y-4">
-                {passkeys.map((passkey) => (
-                  <Card key={passkey.id} className="border-2" data-testid={`passkey-${passkey.id}`}>
+                {passkeys.map((passkey, index) => (
+                  <motion.div
+                    key={passkey.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                  >
+                    <Card className="luxury-glass-card luxury-hover-lift border-2" data-testid={`passkey-${passkey.id}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3 flex-1">
@@ -332,6 +350,7 @@ export default function SecuritySettings() {
                                 variant="destructive"
                                 onClick={() => setRevokeId(passkey.id)}
                                 data-testid={`revoke-button-${passkey.id}`}
+                                className="luxury-btn-secondary"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -340,13 +359,14 @@ export default function SecuritySettings() {
                         </div>
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </motion.div>
                 ))}
 
                 <Button
                   onClick={() => createPasskeyMutation.mutate()}
                   disabled={createPasskeyMutation.isPending}
-                  className="w-full"
+                  className="w-full luxury-btn-primary"
                   data-testid="add-another-passkey-button"
                 >
                   <Smartphone className="mr-2 h-4 w-4" />
@@ -355,7 +375,8 @@ export default function SecuritySettings() {
               </div>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </motion.div>
 
         {/* Revoke confirmation dialog */}
         <AlertDialog open={!!revokeId} onOpenChange={() => setRevokeId(null)}>

@@ -274,7 +274,7 @@ export default function DeviceManagement() {
 
   return (
     <Layout language={language} onLanguageChange={setLanguage}>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50" dir={rtl ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen luxury-bg-mesh" dir={rtl ? 'rtl' : 'ltr'}>
         <div className="pt-20 pb-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header Section */}
@@ -283,11 +283,11 @@ export default function DeviceManagement() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <Shield className="h-8 w-8 text-blue-600" />
+            <h1 className="luxury-heading-lg flex items-center gap-3">
+              <Shield className="h-8 w-8" />
               {t('devices.title', language)}
             </h1>
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 luxury-text-body">
               {t('devices.subtitle', language)}
             </p>
           </motion.div>
@@ -302,7 +302,7 @@ export default function DeviceManagement() {
               <Button
                 onClick={handleAddPasskey}
                 disabled={addingPasskey}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
+                className="luxury-btn-primary"
                 data-testid="button-add-device"
               >
                 {addingPasskey ? (
@@ -325,14 +325,14 @@ export default function DeviceManagement() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
             >
-              <Card className="p-12 text-center bg-white shadow-xl">
+              <Card className="p-12 text-center luxury-glass-card luxury-shadow-lg">
                 <div className="mx-auto w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
                   <Shield className="h-10 w-10 text-blue-600" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                <h3 className="luxury-heading-md mb-3">
                   {t('devices.noDevices', language)}
                 </h3>
-                <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                <p className="luxury-text-body mb-8 max-w-md mx-auto">
                   {t('devices.noDevicesDesc', language)}
                 </p>
                 {isPasskeySupported() && (
@@ -340,7 +340,7 @@ export default function DeviceManagement() {
                     onClick={handleAddPasskey}
                     disabled={addingPasskey}
                     size="lg"
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
+                    className="luxury-btn-primary"
                     data-testid="button-add-first-device"
                   >
                     {addingPasskey ? (
@@ -370,7 +370,7 @@ export default function DeviceManagement() {
                     transition={{ delay: index * 0.1 }}
                     data-testid={`device-card-${device.credId}`}
                   >
-                    <Card className="p-6 hover:shadow-xl transition-all duration-300 bg-white border-2 hover:border-blue-200">
+                    <Card className="p-6 luxury-glass-card luxury-hover-lift border-2">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-4">
                           <div className="text-4xl">
@@ -439,10 +439,10 @@ export default function DeviceManagement() {
                               size="sm"
                               variant="ghost"
                               onClick={() => setDeletingDevice(device.credId)}
-                              className="h-8 w-8 p-0 hover:bg-red-50"
+                              className="h-8 w-8 p-0 luxury-btn-secondary"
                               data-testid="button-delete-device"
                             >
-                              <Trash2 className="h-4 w-4 text-red-600" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         )}

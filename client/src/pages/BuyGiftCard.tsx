@@ -108,25 +108,25 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-pink-50 via-white to-purple-50" dir={language === "he" || language === "ar" ? "rtl" : "ltr"}>
+      <div className="min-h-screen flex flex-col luxury-bg-mesh" dir={language === "he" || language === "ar" ? "rtl" : "ltr"}>
         <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-8">
-            <Gift className="w-16 h-16 mx-auto mb-4 text-pink-600" />
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <div className="text-center mb-8 luxury-animate-fade-in">
+            <Gift className="w-16 h-16 mx-auto mb-4 text-purple-600" />
+            <h1 className="luxury-heading-xl mb-2">
               {t('giftCards.buyTitle', language)}
             </h1>
-            <p className="text-gray-600">
+            <p className="luxury-text-body text-gray-600">
               {t('giftCards.subtitle', language)}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Gift Amount */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="luxury-heading-sm flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
                   {t('giftCards.amount', language)}
                 </CardTitle>
@@ -163,9 +163,9 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
             </Card>
 
             {/* Recipient Details */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="luxury-heading-sm flex items-center gap-2">
                   <User className="w-5 h-5" />
                   {t('giftCards.recipientDetails', language)}
                 </CardTitle>
@@ -181,6 +181,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                     onChange={(e) => setFormData(prev => ({ ...prev, recipientName: e.target.value }))}
                     placeholder="John Doe"
                     autoComplete="name"
+                    className="luxury-glass-minimal"
                     required
                     data-testid="input-recipient-name"
                   />
@@ -196,7 +197,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                       onChange={(e) => setFormData(prev => ({ ...prev, recipientEmail: e.target.value }))}
                       placeholder="email@example.com"
                       autoComplete="email"
-                      className="pl-10"
+                      className="luxury-glass-minimal pl-10"
                       required
                       data-testid="input-recipient-email"
                     />
@@ -218,9 +219,9 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
             </Card>
 
             {/* Redemption Location - Google Autocomplete */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="luxury-heading-sm flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
                   {t('giftCards.redemptionLocation', language)}
                 </CardTitle>
@@ -269,9 +270,9 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
             </Card>
 
             {/* Personal Message */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle>{t('giftCards.personalMessage', language)}</CardTitle>
+                <CardTitle className="luxury-heading-sm">{t('giftCards.personalMessage', language)}</CardTitle>
                 <CardDescription>
                   {t('giftCards.messageDesc', language)}
                 </CardDescription>
@@ -292,9 +293,9 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
             </Card>
 
             {/* Delivery Date */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="luxury-heading-sm flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
                   {t('giftCards.deliveryDate', language)}
                 </CardTitle>
@@ -312,9 +313,9 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
             </Card>
 
             {/* Sender Info (Optional) */}
-            <Card>
+            <Card className="luxury-glass-card luxury-shadow-lg">
               <CardHeader>
-                <CardTitle>{t('giftCards.yourDetails', language)}</CardTitle>
+                <CardTitle className="luxury-heading-sm">{t('giftCards.yourDetails', language)}</CardTitle>
                 <CardDescription>
                   {t('giftCards.anonymousGift', language)}
                 </CardDescription>

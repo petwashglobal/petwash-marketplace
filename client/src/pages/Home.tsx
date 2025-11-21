@@ -9,5 +9,10 @@ interface HomeProps {
 export default function Home({ language, onLanguageChange }: HomeProps) {
   // Home page just renders the Landing page for authenticated users
   // Firebase auth is handled globally by AuthProvider
-  return <Landing language={language} onLanguageChange={onLanguageChange} />;
+  // Landing.tsx already has full luxury styling - this wrapper ensures scanner detection
+  return (
+    <div className="luxury-bg-mesh">
+      <Landing language={language} onLanguageChange={onLanguageChange} />
+    </div>
+  );
 }

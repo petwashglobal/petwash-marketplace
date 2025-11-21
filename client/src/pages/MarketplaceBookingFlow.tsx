@@ -250,7 +250,7 @@ export default function MarketplaceBookingFlow() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white dark:bg-black py-12">
+      <div className="min-h-screen luxury-bg-mesh py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Header */}
@@ -273,33 +273,33 @@ export default function MarketplaceBookingFlow() {
             </p>
           </div>
 
-          {/* Progress Steps */}
+          {/* Progress Steps - Luxury Gradient Circles */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
               {steps.map((step, index) => (
                 <div key={step.id} className="flex-1">
                   <div className="flex items-center">
                     <div
-                      className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
+                      className={`flex items-center justify-center w-14 h-14 rounded-full border-4 transition-all luxury-shadow-xl ${
                         currentStep === step.id
-                          ? 'border-purple-600 bg-purple-600 text-white'
+                          ? 'border-transparent bg-gradient-to-br from-purple-600 via-pink-600 to-purple-700 text-white shadow-purple-400/50 scale-110'
                           : step.completed
-                          ? 'border-green-600 bg-green-600 text-white'
-                          : 'border-gray-300 dark:border-gray-700 text-gray-400'
+                          ? 'border-transparent bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-green-400/50'
+                          : 'border-gray-300 dark:border-gray-700 text-gray-400 bg-white dark:bg-gray-900'
                       }`}
                       data-testid={`step-${step.id}`}
                     >
-                      {step.completed ? <Check className="w-5 h-5" /> : step.id}
+                      {step.completed ? <Check className="w-6 h-6" /> : <span className="text-lg font-bold">{step.id}</span>}
                     </div>
                     {index < steps.length - 1 && (
                       <div
-                        className={`flex-1 h-0.5 mx-2 transition-all ${
-                          step.completed ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-700'
+                        className={`flex-1 h-1 mx-2 transition-all rounded-full ${
+                          step.completed ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg shadow-green-400/30' : 'bg-gray-200 dark:bg-gray-700'
                         }`}
                       />
                     )}
                   </div>
-                  <p className="text-xs mt-2 text-center text-gray-600 dark:text-gray-400">
+                  <p className="text-xs mt-3 text-center font-semibold text-gray-700 dark:text-gray-300">
                     {isHebrew ? step.titleHe : step.title}
                   </p>
                 </div>
@@ -308,7 +308,7 @@ export default function MarketplaceBookingFlow() {
           </div>
 
           {/* Step Content */}
-          <GlassmorphismCard>
+          <GlassmorphismCard className="luxury-glass-card luxury-shadow-xl">
             <div className="p-8">
               
               {/* Step 1: Select Service */}
@@ -345,7 +345,7 @@ export default function MarketplaceBookingFlow() {
                   <Button
                     onClick={handleNextStep}
                     disabled={!selectedService}
-                    className="w-full mt-6 bg-gradient-to-r from-purple-600 to-pink-600"
+                    className="w-full mt-6 luxury-btn-primary luxury-shadow-xl"
                     data-testid="button-next-step"
                   >
                     {isHebrew ? 'הבא' : 'Next'}
@@ -381,7 +381,7 @@ export default function MarketplaceBookingFlow() {
                     <Button
                       onClick={handleNextStep}
                       disabled={!lockToken}
-                      className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
+                      className="flex-1 luxury-btn-primary luxury-shadow-xl"
                       data-testid="button-next-step"
                     >
                       {isHebrew ? 'הבא' : 'Next'}
@@ -464,7 +464,7 @@ export default function MarketplaceBookingFlow() {
                     <Button
                       onClick={handleNextStep}
                       disabled={!selectedPetId}
-                      className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
+                      className="flex-1 luxury-btn-primary luxury-shadow-xl"
                       data-testid="button-next-step"
                     >
                       {isHebrew ? 'הבא' : 'Next'}
@@ -582,7 +582,7 @@ export default function MarketplaceBookingFlow() {
                       </Button>
                       <Button
                         onClick={handleSubmitBooking}
-                        className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                        className="flex-1 luxury-btn-primary luxury-shadow-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                         data-testid="button-proceed-payment"
                       >
                         <CreditCard className="w-5 h-5 mr-2" />

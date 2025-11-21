@@ -26,7 +26,7 @@ export default function Privacy() {
 
   return (
     <Layout language={language} onLanguageChange={handleLanguageChange}>
-      <div className={`min-h-screen bg-white ${language === 'he' ? 'rtl' : 'ltr'}`}>
+      <div className={`min-h-screen luxury-bg-mesh ${language === 'he' ? 'rtl' : 'ltr'}`}>
         <div className="pt-20 pb-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-6">
@@ -37,9 +37,9 @@ export default function Privacy() {
               </Button>
             </Link>
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl text-center">
+          <Card className="luxury-glass-panel luxury-shadow-md">
+            <CardHeader className="bg-gradient-to-br from-white/95 to-purple-50/30 border-b border-purple-100">
+              <CardTitle className="luxury-heading-md text-center">
                 {language === 'en' ? 'Privacy Policy – Pet Wash Ltd' : 'מדיניות פרטיות – פט ווש בע"מ'}
               </CardTitle>
               <p className="text-gray-600 text-center">
@@ -57,7 +57,7 @@ export default function Privacy() {
                   </p>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">1. Information We Collect</h2>
+                    <h2 className="luxury-heading-sm mb-4">1. Information We Collect</h2>
                     <ul className="list-disc pl-6 mb-4">
                       <li>Full name</li>
                       <li>Email address</li>
@@ -70,7 +70,7 @@ export default function Privacy() {
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">2. How We Use Your Information</h2>
+                    <h2 className="luxury-heading-sm mb-4">2. How We Use Your Information</h2>
                     <ul className="list-disc pl-6 mb-4">
                       <li>To provide and operate our services</li>
                       <li>To process payments</li>
@@ -81,14 +81,14 @@ export default function Privacy() {
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">3. Data Storage</h2>
+                    <h2 className="luxury-heading-sm mb-4">3. Data Storage</h2>
                     <p className="mb-4">
                       We store personal data securely using cloud infrastructure and restrict access to authorized personnel only.
                     </p>
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">4. Sharing Information</h2>
+                    <h2 className="luxury-heading-sm mb-4">4. Sharing Information</h2>
                     <p className="mb-4">We do not sell or rent your data. We may share your information only with:</p>
                     <ul className="list-disc pl-6 mb-4">
                       <li>Trusted service providers (e.g. SMS, payment, or hosting platforms)</li>
@@ -97,7 +97,7 @@ export default function Privacy() {
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">5. Your Rights</h2>
+                    <h2 className="luxury-heading-sm mb-4">5. Your Rights</h2>
                     <p className="mb-4">Under Israeli privacy law, you have the right to:</p>
                     <ul className="list-disc pl-6 mb-4">
                       <li>Access your personal data</li>
@@ -108,21 +108,21 @@ export default function Privacy() {
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">6. Cookies</h2>
+                    <h2 className="luxury-heading-sm mb-4">6. Cookies</h2>
                     <p className="mb-4">
                       We may use cookies and similar technologies to improve your browsing experience.
                     </p>
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">7. Minors</h2>
+                    <h2 className="luxury-heading-sm mb-4">7. Minors</h2>
                     <p className="mb-4">
                       Our services are not intended for children under 13. If you are under 13, do not provide personal data.
                     </p>
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">8. Changes to the Policy</h2>
+                    <h2 className="luxury-heading-sm mb-4">8. Changes to the Policy</h2>
                     <p className="mb-4">
                       We may update this Privacy Policy. Updates will appear on this page with the revised date.
                     </p>
@@ -135,7 +135,7 @@ export default function Privacy() {
                   </p>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">1. מידע שאנו אוספים</h2>
+                    <h2 className="luxury-heading-sm mb-4">1. מידע שאנו אוספים</h2>
                     <ul className="list-disc pr-6 mb-4">
                       <li>שם מלא</li>
                       <li>כתובת דוא"ל</li>
@@ -148,7 +148,7 @@ export default function Privacy() {
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">2. כיצד אנו משתמשים במידע</h2>
+                    <h2 className="luxury-heading-sm mb-4">2. כיצד אנו משתמשים במידע</h2>
                     <ul className="list-disc pr-6 mb-4">
                       <li>לספק ולהפעיל את השירותים שלנו</li>
                       <li>לעבד תשלומים</li>
@@ -159,14 +159,14 @@ export default function Privacy() {
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">3. אחסון נתונים</h2>
+                    <h2 className="luxury-heading-sm mb-4">3. אחסון נתונים</h2>
                     <p className="mb-4">
                       אנו שומרים מידע אישי בצורה מאובטחת באמצעות תשתיות ענן ומגבילים גישה לאנשי צוות מורשים בלבד.
                     </p>
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">4. שיתוף מידע</h2>
+                    <h2 className="luxury-heading-sm mb-4">4. שיתוף מידע</h2>
                     <p className="mb-4">אנו לא מוכרים או משכירים את המידע שלכם. אנו עשויים לשתף מידע רק עם:</p>
                     <ul className="list-disc pr-6 mb-4">
                       <li>ספקי שירות מהימנים (כגון פלטפורמות SMS, תשלום או אחסון)</li>
@@ -175,7 +175,7 @@ export default function Privacy() {
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">5. הזכויות שלכם</h2>
+                    <h2 className="luxury-heading-sm mb-4">5. הזכויות שלכם</h2>
                     <p className="mb-4">על פי חוק הפרטיות הישראלי, יש לכם הזכות:</p>
                     <ul className="list-disc pr-6 mb-4">
                       <li>לגשת למידע האישי שלכם</li>
@@ -186,14 +186,14 @@ export default function Privacy() {
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">6. עוגיות</h2>
+                    <h2 className="luxury-heading-sm mb-4">6. עוגיות</h2>
                     <p className="mb-4">
                       אנו עשויים להשתמש בעוגיות וטכנולוגיות דומות כדי לשפר את חוויית הגלישה שלכם.
                     </p>
                   </section>
 
                   <section className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">7. קטינים</h2>
+                    <h2 className="luxury-heading-sm mb-4">7. קטינים</h2>
                     <p className="mb-4">
                       השירותים שלנו אינם מיועדים לילדים מתחת לגיל 13. אם אתם מתחת לגיל 13, אל תספקו מידע אישי.
                     </p>

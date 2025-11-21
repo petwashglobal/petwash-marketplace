@@ -149,36 +149,38 @@ export default function ProviderDetail() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white dark:bg-black py-12">
+      <div className="min-h-screen luxury-bg-mesh py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Provider Profile Header */}
-          <GlassmorphismCard className="mb-8">
+          <GlassmorphismCard className="mb-8 luxury-glass-card luxury-shadow-xl">
             <div className="grid lg:grid-cols-3 gap-8">
-              {/* Left: Profile Photo */}
-              <div className="lg:col-span-1">
-                <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-purple-200 via-pink-200 to-amber-200">
-                  {provider.profilePictureUrl ? (
-                    <img 
-                      src={provider.profilePictureUrl} 
-                      alt={`${provider.firstName} ${provider.lastName}`}
-                      className="w-full h-full object-cover"
-                      data-testid="img-provider-photo"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Users className="w-24 h-24 text-purple-400" />
-                    </div>
-                  )}
-                  {provider.isVerified && (
-                    <div className="absolute top-4 right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white p-3 rounded-full shadow-xl backdrop-blur-sm" data-testid="badge-verified-shield">
-                      <Shield className="w-6 h-6" />
-                    </div>
-                  )}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
-                    <div className="flex items-center gap-3">
-                      <Star className="h-8 w-8 fill-amber-300 text-amber-300" />
-                      <span className="text-white font-bold text-3xl" data-testid="text-provider-rating">{provider.rating || '5.0'}</span>
+              {/* Left: Profile Photo - Circular with Gradient Border */}
+              <div className="lg:col-span-1 flex items-center justify-center">
+                <div className="relative w-80 h-80 rounded-full overflow-hidden p-2 bg-gradient-to-br from-purple-600 via-pink-600 to-amber-600 luxury-shadow-xl">
+                  <div className="relative w-full h-full rounded-full overflow-hidden bg-gradient-to-br from-purple-200 via-pink-200 to-amber-200">
+                    {provider.profilePictureUrl ? (
+                      <img 
+                        src={provider.profilePictureUrl} 
+                        alt={`${provider.firstName} ${provider.lastName}`}
+                        className="w-full h-full object-cover"
+                        data-testid="img-provider-photo"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-900">
+                        <Users className="w-24 h-24 text-purple-400" />
+                      </div>
+                    )}
+                    {provider.isVerified && (
+                      <div className="absolute top-6 right-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white p-4 rounded-full shadow-2xl luxury-shadow-xl" data-testid="badge-verified-shield">
+                        <Shield className="w-8 h-8" />
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
+                      <div className="flex items-center justify-center gap-3">
+                        <Star className="h-10 w-10 fill-amber-300 text-amber-300" />
+                        <span className="text-white font-bold text-4xl" data-testid="text-provider-rating">{provider.rating || '5.0'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -212,9 +214,9 @@ export default function ProviderDetail() {
                   </div>
                 </div>
 
-                {/* Stats Row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-5 bg-white dark:bg-black rounded-2xl border-2 border-amber-200 dark:border-amber-800 shadow-lg">
+                {/* Stats Row - Luxury Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div className="text-center p-5 luxury-glass-panel luxury-shadow-xl rounded-2xl border-2 border-amber-200 dark:border-amber-800">
                     <div className="flex justify-center mb-2">
                       <Star className="w-7 h-7 text-amber-500 fill-amber-500" />
                     </div>
@@ -226,7 +228,7 @@ export default function ProviderDetail() {
                     </div>
                   </div>
 
-                  <div className="text-center p-5 bg-white dark:bg-black rounded-2xl border-2 border-purple-200 dark:border-purple-800 shadow-lg">
+                  <div className="text-center p-5 luxury-glass-panel luxury-shadow-xl rounded-2xl border-2 border-purple-200 dark:border-purple-800">
                     <div className="flex justify-center mb-2">
                       <Award className="w-7 h-7 text-purple-600" />
                     </div>
@@ -238,7 +240,7 @@ export default function ProviderDetail() {
                     </div>
                   </div>
 
-                  <div className="text-center p-5 bg-white dark:bg-black rounded-2xl border-2 border-green-200 dark:border-green-800 shadow-lg">
+                  <div className="text-center p-5 luxury-glass-panel luxury-shadow-xl rounded-2xl border-2 border-green-200 dark:border-green-800">
                     <div className="flex justify-center mb-2">
                       <Clock className="w-7 h-7 text-green-600" />
                     </div>
@@ -250,7 +252,7 @@ export default function ProviderDetail() {
                     </div>
                   </div>
 
-                  <div className="text-center p-5 bg-white dark:bg-black rounded-2xl border-2 border-blue-200 dark:border-blue-800 shadow-lg">
+                  <div className="text-center p-5 luxury-glass-panel luxury-shadow-xl rounded-2xl border-2 border-blue-200 dark:border-blue-800">
                     <div className="flex justify-center mb-2">
                       <TrendingUp className="w-7 h-7 text-blue-600" />
                     </div>
@@ -311,7 +313,7 @@ export default function ProviderDetail() {
                   <Button 
                     size="lg" 
                     onClick={handleBooking}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 shadow-xl px-8"
+                    className="luxury-btn-primary luxury-shadow-xl text-white px-8 py-6 text-lg"
                     data-testid="button-book-now"
                   >
                     <CalendarIcon className="w-5 h-5 mr-2" />
@@ -334,7 +336,7 @@ export default function ProviderDetail() {
 
           {/* Photos Section */}
           {provider.profilePictureUrl && (
-            <GlassmorphismCard>
+            <GlassmorphismCard className="luxury-glass-card luxury-shadow-xl mb-8">
               <div className="p-6">
                 <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                   {isHebrew ? 'תמונות' : 'Photos'}
@@ -362,7 +364,7 @@ export default function ProviderDetail() {
           {/* Contact & Reviews Grid */}
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Contact Info */}
-            <GlassmorphismCard>
+            <GlassmorphismCard className="luxury-glass-card luxury-shadow-xl">
               <div className="p-6">
                 <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                   {isHebrew ? 'יצירת קשר' : 'Contact'}
@@ -398,7 +400,7 @@ export default function ProviderDetail() {
             </GlassmorphismCard>
 
             {/* Reviews Section - Data-driven */}
-            <GlassmorphismCard>
+            <GlassmorphismCard className="luxury-glass-card luxury-shadow-xl">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">

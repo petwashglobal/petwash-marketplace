@@ -9,6 +9,7 @@ import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { apiRequest } from "@/lib/queryClient";
+import { motion } from "framer-motion";
 
 interface PasskeyDevice {
   id: string;
@@ -101,17 +102,22 @@ export default function MyDevices({ language, onLanguageChange }: MyDevicesProps
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
-      <div className="min-h-screen flex flex-col bg-gray-50" dir={language === 'he' ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen flex flex-col luxury-bg-mesh" dir={language === 'he' ? 'rtl' : 'ltr'}>
         <main className="flex-grow container mx-auto px-4 py-8 max-w-4xl">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">
-              {t('myDevices.title', language)}
-            </CardTitle>
-            <CardDescription>
-              {t('myDevices.subtitle', language)}
-            </CardDescription>
-          </CardHeader>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Card className="luxury-glass-card luxury-shadow-lg">
+            <CardHeader>
+              <CardTitle className="luxury-heading-lg">
+                {t('myDevices.title', language)}
+              </CardTitle>
+              <CardDescription className="luxury-text-small">
+                {t('myDevices.subtitle', language)}
+              </CardDescription>
+            </CardHeader>
 
           <CardContent className="space-y-4">
             {/* Info Alert */}
@@ -145,10 +151,13 @@ export default function MyDevices({ language, onLanguageChange }: MyDevicesProps
             {/* Device List */}
             {!isLoading && devices.length > 0 && (
               <div className="space-y-3">
-                {devices.map((device) => (
-                  <div
+                {devices.map((device, index) => (
+                  <motion.div
                     key={device.id}
-                    className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                    className="flex items-center justify-between p-4 luxury-glass-minimal luxury-hover-lift rounded-lg"
                   >
                     <div className="flex items-center gap-4 flex-1">
                       {getDeviceIcon(device)}
@@ -174,7 +183,7 @@ export default function MyDevices({ language, onLanguageChange }: MyDevicesProps
                       size="sm"
                       onClick={() => deleteMutation.mutate(device.id)}
                       disabled={deletingId === device.id}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 luxury-btn-secondary"
                       data-testid={`button-delete-device-${device.id}`}
                     >
                       {deletingId === device.id ? (
@@ -189,12 +198,13 @@ export default function MyDevices({ language, onLanguageChange }: MyDevicesProps
                         </>
                       )}
                     </Button>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </motion.div>
       </main>
       </div>
     </Layout>

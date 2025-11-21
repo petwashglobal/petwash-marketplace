@@ -20,7 +20,7 @@ export default function RoleAwareWeatherPlanner() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
+      <div className="luxury-bg-mesh min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
         <div className="relative z-10 container mx-auto px-4 py-12">
           <div className="max-w-7xl mx-auto space-y-8">
             <Skeleton className="h-32 w-full bg-white/10" />
@@ -37,7 +37,7 @@ export default function RoleAwareWeatherPlanner() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white flex items-center justify-center">
+      <div className="luxury-bg-mesh min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Unable to load weather data</h2>
           <p className="text-gray-400">Please try again later</p>
@@ -47,7 +47,7 @@ export default function RoleAwareWeatherPlanner() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
+    <div className="luxury-bg-mesh min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
       {/* Luxury Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{

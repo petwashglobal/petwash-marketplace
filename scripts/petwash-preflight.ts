@@ -68,6 +68,7 @@ const APPROVED_LUXURY_CSS = [
   'floating-stack.css',
   'ai-chat.css',
   'NewHumanAvatar.css',
+  'luxury-system-2025.css', // Centralized luxury design system - architect approved
 ];
 
 async function scanDirectory(dir: string, results: string[] = [], depth = 0): Promise<string[]> {
