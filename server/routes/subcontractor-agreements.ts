@@ -53,37 +53,40 @@ const router = Router();
  */
 router.post('/api/subcontractors/agreements/2025/sign', async (req: Request, res: Response) => {
   try {
-    const { rawSignatureData, ...bodyData } = req.body || {};
+    const bodyData = req.body || {};
 
-    // Validate raw signature data exists (separate from main schema)
-    if (!rawSignatureData) {
+    // Validate required fields
+    if (!bodyData.rawSignatureData) {
       return res.status(400).json({
         ok: false,
         error: 'Missing required field: rawSignatureData'
       });
     }
 
-    // Create signature record using contract module (this generates all the required fields)
+    // Create signature record using enhanced contract module
     const signatureData = createSubcontractorSignature({
       subcontractorId: bodyData.subcontractorId,
       fullName: bodyData.fullName,
       email: bodyData.email,
       phone: bodyData.phone,
       signatureMethod: bodyData.signatureMethod,
-      rawSignatureData,
+      rawSignatureData: bodyData.rawSignatureData,
+      clientDevice: bodyData.clientDevice, // Enhanced: ClientDeviceInfo object
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
-      deviceInfo: req.headers['x-device-info'] as string | undefined
+      agreedToPrivacy: bodyData.agreedToPrivacy !== false, // Default true for backwards compatibility
+      agreedToTerms: bodyData.agreedToTerms !== false       // Default true for backwards compatibility
     });
 
     // Validate using Drizzle/Zod schema (architect-mandated validation)
     const validationResult = insertSubcontractorSignatureSchema.safeParse({
+      id: signatureData.id,
       subcontractorId: signatureData.subcontractorId,
       fullName: signatureData.fullName,
       email: signatureData.email,
       phone: signatureData.phone,
       agreementVersion: signatureData.agreementVersion,
-      signedAt: new Date(signatureData.signedAt),
+      signedAt: signatureData.signedAt,
       ipAddress: signatureData.ipAddress,
       userAgent: signatureData.userAgent,
       deviceInfo: signatureData.deviceInfo,
@@ -104,24 +107,7 @@ router.post('/api/subcontractors/agreements/2025/sign', async (req: Request, res
     }
 
     // Insert into production Postgres database
-    const [savedSignature] = await db.insert(subcontractorSignatures).values({
-      id: signatureData.id,
-      subcontractorId: signatureData.subcontractorId,
-      fullName: signatureData.fullName,
-      email: signatureData.email,
-      phone: signatureData.phone,
-      agreementVersion: signatureData.agreementVersion,
-      signedAt: new Date(signatureData.signedAt),
-      ipAddress: signatureData.ipAddress,
-      userAgent: signatureData.userAgent,
-      deviceInfo: signatureData.deviceInfo,
-      signatureMethod: signatureData.signatureMethod,
-      signaturePayload: signatureData.signaturePayload,
-      agreementSnapshotJson: signatureData.agreementSnapshotJson, // Store as JSONB
-      agreedToPrivacy: signatureData.agreedToPrivacy,
-      agreedToTerms: signatureData.agreedToTerms,
-      auditTrailId: signatureData.auditTrailId,
-    }).returning();
+    const [savedSignature] = await db.insert(subcontractorSignatures).values(validationResult.data).returning();
 
     console.log(`[Subcontractor Agreement 2025] Signature saved: ${savedSignature.id} for ${savedSignature.email}`);
 
@@ -239,9 +225,10 @@ router.get('/api/subcontractors/agreements/2025/template', async (req: Request, 
     return res.json({
       ok: true,
       data: {
-        agreement: SUBCONTRACTOR_AGREEMENT_2025,
-        version: SUBCONTRACTOR_AGREEMENT_2025.version,
-        language: SUBCONTRACTOR_AGREEMENT_2025.language
+        agreement: SUBCONTRACTOR_AGREEMENT_IL_2025,
+        version: SUBCONTRACTOR_AGREEMENT_IL_2025.version,
+        language: SUBCONTRACTOR_AGREEMENT_IL_2025.language,
+        complianceConfig: ISRAEL_SUBCONTRACTOR_COMPLIANCE_2025 // Enhanced: compliance rules included
       }
     });
   } catch (err) {
