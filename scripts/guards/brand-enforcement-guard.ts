@@ -106,6 +106,13 @@ function scanFile(filePath: string): BrandViolation[] {
   
   // Check each line for violations
   lines.forEach((line, lineIdx) => {
+    const trimmedLine = line.trim();
+    
+    // Skip full-line comments only (not inline comments or JSDoc descriptions with code)
+    if ((trimmedLine.startsWith('//') || trimmedLine.startsWith('/*') || trimmedLine.startsWith('*')) && !trimmedLine.includes('<') && !trimmedLine.includes('const ') && !trimmedLine.includes('let ') && !trimmedLine.includes('var ')) {
+      return;
+    }
+    
     for (const [wrong, correct] of Object.entries(BRAND_VIOLATIONS)) {
       // Skip if this is a comment explaining the rule itself
       if (line.includes(`"${wrong}"`) && line.includes(`"${correct}"`)) {
@@ -149,14 +156,26 @@ function scanFile(filePath: string): BrandViolation[] {
         // Determine severity based on context
         let severity: "CRITICAL" | "WARNING" | "INFO" = "WARNING";
         
-        // CRITICAL: Customer-facing marketing copy in key pages
+        // CRITICAL: Customer-facing text/content in key pages
         const criticalPages = ["Landing", "Home", "Header", "Footer", "Navigation"];
-        if (criticalPages.some(page => relPath.includes(page))) {
+        
+        // Check if this is actual JSX text content (not just technical identifiers)
+        const isJSXTextContent = line.includes("<p") || line.includes("<h") || line.includes("<span") || 
+                                 line.includes("<div") || line.includes("<button") || line.includes("<a") || 
+                                 line.includes("<li") || line.includes(">{") || line.includes("</");
+        
+        // Skip technical labels/aria-labels (not visible to customers)
+        const isTechnicalLabel = line.includes("aria-label:") || line.includes("aria-describedby:");
+        
+        // Skip if it's in a full-line comment (not mixed code/comment)
+        const isFullLineComment = trimmedLine.startsWith('*') && !trimmedLine.includes('<');
+        
+        if (criticalPages.some(page => relPath.includes(page)) && isJSXTextContent && !isTechnicalLabel && !isFullLineComment) {
           severity = "CRITICAL";
         }
         
-        // INFO: Secondary text, descriptions, etc.
-        if (line.includes("description:") || line.includes("placeholder:") || line.includes("aria-label:")) {
+        // INFO: Technical identifiers, descriptions, placeholders
+        if (line.includes("description:") || line.includes("placeholder:") || isTechnicalLabel) {
           severity = "INFO";
         }
         

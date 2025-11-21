@@ -341,7 +341,7 @@ export const PetWashHeader: React.FC = () => {
               aria-label="Pet Wash home"
             >
               <div className="pw-logo-circle">
-                <span className="pw-logo-text">Pet Wash™</span>
+                <span className="pw-logo-text">PetWash™</span>
               </div>
             </button>
           </div>
@@ -492,7 +492,7 @@ export const PetWashHeader: React.FC = () => {
 
         <div className="pw-mobile-logo-wrap">
           <div className="pw-logo-circle pw-logo-circle-mobile">
-            <span className="pw-logo-text">Pet Wash™</span>
+            <span className="pw-logo-text">PetWash™</span>
           </div>
         </div>
 

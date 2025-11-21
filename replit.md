@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is an enterprise platform for the pet care industry, integrating IoT wash stations, pet sitting, walking, and avatar creation. It provides a global, scalable ecosystem for premium pet care services, targeting the luxury pet market. The platform features shared infrastructure for authentication, payments, AI services, compliance, and franchise management, a 7-Star Loyalty System, robust security, and a Unified Control Panel for enterprise orchestration.
+Pet Wash™ is an enterprise platform for the pet care industry, integrating IoT wash stations, pet sitting, walking, and avatar creation. It provides a global, scalable ecosystem for premium pet care services, targeting the luxury pet market. The platform features shared infrastructure for authentication, payments, AI services, compliance, and franchise management, a 7-Star Loyalty System, robust security, and a Unified Control Panel for enterprise orchestration. The business vision is to become the leading global provider of luxury pet care services, with initial operations focused on the Israeli market.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -53,27 +53,17 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 
 ## System Architecture
 
-### Production Deployment (Updated Nov 21, 2025 - 2025 Architecture)
-**🚨 CRITICAL: Replit = DEVELOPMENT ONLY. Production = GitHub → Google Cloud ONLY.**
-
-- **Development Environment**: Replit workspace with Vite HMR (DEV ONLY - NO production deployments)
-- **Production Pipeline**: GitHub → Google Cloud (Firebase Hosting / Cloud Run)
-- **Production Domain**: petwash.co.il
-- **Source Control**: GitHub repository `petwashglobal/petwash-marketplace`
-- **Firebase Project**: nifty-quanta-475212-v3 (Auth/Firestore/Storage/Hosting)
-- **Deployment Blocker**: `scripts/block-replit-deploy.ts` prevents ANY Replit production deployments
-- **CI/CD Pipeline**: `.github/workflows/petwash-ci.yml` - Automated GitHub Actions deployment
-- **Preflight Guardian**: `scripts/petwash-preflight.ts` enforces luxury 2025 standards before EVERY build
-- **Legacy UI Scanner**: Automated deployment protection blocks any old 2024 template code from reaching production. Runs automatically before every build via `prebuild` hook and on GitHub via CI/CD. Scans for forbidden patterns: `apple-package-*`, `apple-old-ui`, `legacy-ui`, `OldGiftCards`.
-- **Deployment Flow**: Code in Replit → Push to GitHub → GitHub Actions (preflight + tests + build) → Deploy to Google Cloud
-- **Backup Service**: `petwash-backups-93383` bucket with service account `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
-- **Architecture Documentation**: See `DEPLOYMENT_ARCHITECTURE_2025.md` for complete deployment rules and standards
+### Production Deployment
+- **Development Environment**: Replit workspace (DEV ONLY).
+- **Production Pipeline**: GitHub → Google Cloud (Firebase Hosting / Cloud Run).
+- **Source Control**: GitHub repository `petwashglobal/petwash-marketplace`.
+- **Firebase Project**: `nifty-quanta-475212-v3`.
+- **CI/CD Pipeline**: Automated GitHub Actions deployment (`.github/workflows/petwash-ci.yml`) with a 5-guard protection system for codebase integrity and architecture validation.
 
 ### Core Features & Design Decisions
-- **Global Architecture Module**: `shared/petwashGlobal.ts` for core platform catalog, KYC, wallet, payments, booking, and mobile contracts.
 - **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Focus on responsive, mobile-first, luxury designs with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
-- **Authentication & User Management**: Firebase Auth (project: nifty-quanta-475212-v3), WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
+- **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
 - **AI Chat Assistant**: Google Dialogflow CX powered by Gemini 2.5 Flash with Kenzo mascot, bilingual Hebrew/English, WCAG 2.1 AA compliant.
 - **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™.
 - **The Plush Lab™**: AI-powered pet avatar creator.
@@ -82,22 +72,21 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC.
 - **Financial Management**: Automated bookkeeping (Google Vision OCR + Gemini 2.5 Flash), Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
 - **Payment Gateway Architecture**: Nayax Israel is the mandatory and exclusive payment gateway, with 72-hour escrow.
-- **K9000 IoT Integration**: Cloud-based management, real-time status, remote control, AI predictive maintenance.
-- **K9000 LED Visual UX System (Nov 2025)**: 7-star luxury LED ecosystem with smart automation. Features: automated state machine (7 states: OFF, AVAILABLE, DRIVER_ON_ROUTE, IN_USE, MAINTENANCE, ERROR, PAUSED), EventBus integration (wash sessions, driver dispatch, station health), manual admin override with time-based expiry, hardware bridge pattern (MQTT/WebSocket/TCP ready), complete audit trail (k9000LedCommandHistory), color/pattern mapping (Green solid=Available, Blue pulsing=Driver approaching, Yellow flashing=In use, Purple pulsing=Maintenance, Red flashing=Error, Cyan breathing=Paused). Routes: GET `/api/stations/:id/led`, POST `/api/stations/:id/led/manual`, POST `/api/stations/:id/led/manual/clear`.
+- **K9000 IoT Integration**: Cloud-based management, real-time status, remote control, AI predictive maintenance, 7-star luxury LED ecosystem (K9000 LED Visual UX System) with smart automation and EventBus integration.
 - **Passport Verification (KYC)**: Google Vision API-powered passport verification with MRZ parsing.
 - **Security & Compliance**: Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail.
-- **Unified Luxury Booking System**: Enterprise-grade booking using a strategy pattern, supporting loyalty tiers, booking policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts.
+- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, booking policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts.
 - **Employee Expense Management System**: Production-ready with Israeli Tax Authority compliance, OCR receipt scanning, and cryptographic audit trail.
 - **Document Management System**: Production-ready with RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
 - **Legal & Compliance Systems**: Comprehensive routes and services for privacy settings, data rights, GDPR, Israeli Privacy Law 2025, e-signature workflows, and contract management.
 - **HR & Employee Systems**: Routes and services for employee management, hierarchy, and onboarding, including auto-approval workflows and WhatsApp notifications.
 - **Enterprise Route Infrastructure**: Extensive set of route files covering franchise management, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
-- **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments, enforcing access levels and department permissions.
-- **Israeli Contractor Compliance System**: Marketplace broker model preventing employee misclassification, with features like tax verification, National Insurance tracking, commission calculation (Israeli VAT compliant), independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails. Includes comprehensive service layer with rule engine (`shared/petwashIsraeliContractors.ts` + `IsraeliContractorComplianceService.ts`).
-- **Global Compliance Brain™**: Enterprise-grade unified eligibility engine (`shared/globalCompliance.ts`) integrating all compliance subsystems into single yes/no decision engine. Features Identity Verification, Criminal Background Checks, Driver Safety, Availability Management, Rating System, Incident Tracking, and Role-Based Requirements.
-- **Global Contractors Framework 2025**: Unified backend framework for managing contractors, drivers, ratings, identity documents, and compliance evaluation. Features 4 database tables, Zod validation, JWT authentication with role-based authorization, FK validation, and compliance evaluation endpoint. API routes at `/api/contractors-framework`.
-- **Unified Control Panel - Enterprise Orchestration Layer**: RBAC foundation (16 Departments, 11 Roles, 10 Platforms), Logistics & Fleet, Finance & Settlements (automated monthly settlements with Israeli VAT, SHA-256 audit hashing), Israeli CPI Service, Event-Driven Architecture (23 domain event types, EventPublisher service, K9000 & Nayax integration), Mobile Field Operations, Health & Safety, Inventory Management, Unified Notifications. Includes Israeli Contractor Compliance API with document upload/verification, multi-step onboarding, and Hebrew/English VAT-compliant invoice generation.
-- **Clean Console Mode (Nov 2025)**: Production UX improvement where `/api/simple-auth/me` and `/api/consent` return HTTP 200 for unauthenticated users instead of 401. Implementation via `publicAuthRouter` in `server/routes/publicAuthRoutes.ts` eliminates red console errors for normal logged-out state while maintaining security (401 only for invalid tokens).
+- **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments.
+- **Israeli Contractor Compliance System**: Marketplace broker model preventing employee misclassification, with features like tax verification, National Insurance tracking, commission calculation (Israeli VAT compliant), independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails.
+- **Global Compliance Brain™**: Enterprise-grade unified eligibility engine (`shared/globalCompliance.ts`) integrating all compliance subsystems into a single yes/no decision engine.
+- **Global Contractors Framework 2025**: Unified backend framework for managing contractors, drivers, ratings, identity documents, and compliance evaluation.
+- **Unified Control Panel - Enterprise Orchestration Layer**: RBAC foundation (16 Departments, 11 Roles, 10 Platforms), Logistics & Fleet, Finance & Settlements (automated monthly settlements with Israeli VAT, SHA-256 audit hashing), Israeli CPI Service, Event-Driven Architecture (23 domain event types), Mobile Field Operations, Health & Safety, Inventory Management, Unified Notifications. Includes Israeli Contractor Compliance API with document upload/verification, multi-step onboarding, and Hebrew/English VAT-compliant invoice generation.
+- **Clean Console Mode**: Production UX improvement where `/api/simple-auth/me` and `/api/consent` return HTTP 200 for unauthenticated users instead of 401.
 
 ## External Dependencies
 - **Database & ORM**: @neondatabase/serverless (PostgreSQL), drizzle-orm.
