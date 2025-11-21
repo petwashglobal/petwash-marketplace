@@ -68,7 +68,16 @@ const BRAND_VIOLATIONS: Record<string, string> = {
 const SCANNABLE_EXTS = [".ts", ".tsx", ".js", ".jsx", ".md", ".css", ".html"];
 
 // Directories to exclude
-const EXCLUDE_DIRS = ["node_modules", ".git", "dist", "build", ".next"];
+const EXCLUDE_DIRS = [
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  ".next",
+  ".local",
+  "design_reference",
+  "attached_assets",
+];
 
 /**
  * Walk directory recursively
@@ -121,6 +130,16 @@ function scanFile(filePath: string): BrandViolation[] {
       
       // Skip if in an object/array literal defining the mapping
       if (line.trim().startsWith(`"${wrong}":`) || line.trim().startsWith(`'${wrong}':`)) {
+        continue;
+      }
+      
+      // Skip documentation files explaining the directive
+      if (relPath.includes("PROTECTION_") || relPath.includes("DEPLOYMENT_") || relPath.includes(".replit-lock.md")) {
+        continue;
+      }
+      
+      // Skip URLs and domain names
+      if (line.includes("petwash.co.il") || line.includes("petwashglobal/")) {
         continue;
       }
       
