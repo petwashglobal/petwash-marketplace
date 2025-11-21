@@ -26,6 +26,9 @@ jobs:
       - name: 🛡️ Master Protection System
         run: npx tsx scripts/guards/master-protection-orchestrator.ts
 
+      - name: 🚨 PREFLIGHT GUARDIAN - Block Parallel UI Systems
+        run: npm run preflight
+
       - name: Build
         run: npm run build
 

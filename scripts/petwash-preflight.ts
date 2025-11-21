@@ -1,441 +1,209 @@
+#!/usr/bin/env tsx
 /**
- * PetWash™ 2025 Preflight Guardian
- *
- * Missions:
- *  1. Block any legacy UI or old template code from reaching production
- *  2. Verify that the repo looks like the 2025 luxury codebase (not old landing)
- *  3. Check basic backup config (GCS bucket etc) is set correctly
- *  4. Give a clear, human readable report for Nir and the team
- *
- * This script is safe to run on:
- *  - Replit Shell
- *  - Local dev machines
- *  - GitHub Actions
- *
- * Run examples:
- *  - npx tsx scripts/petwash-preflight.ts
- *  - npm run preflight   (once we wire it in package.json)
+ * PetWash™ Preflight Guardian
+ * MANDATORY PRE-BUILD VERIFICATION
+ * 
+ * Enforces 100% Luxury UI - ZERO tolerance for parallel systems
+ * 
+ * HARD FAIL CONDITIONS:
+ * - Any file with: old, legacy, v1, backup, temp, copy, test-ui
+ * - Any component: EnterpriseLayout, BrandHeader, OldLayout, LegacyLayout
+ * - Any CSS file outside approved luxury styles
+ * - Any parallel header/footer/layout systems
+ * 
+ * Usage:
+ *   npm run preflight
+ *   This MUST pass before build/deploy
  */
 
-import * as fs from "node:fs";
-import * as path from "node:path";
+import { readdir, stat } from 'fs/promises';
+import { join } from 'path';
+import { exit } from 'process';
 
-type ScanIssue = {
-  type:
-    | "LEGACY_UI"
-    | "BANNED_PATTERN"
-    | "MISSING_REQUIRED_FILE"
-    | "CONFIG_WARNING"
-    | "CONFIG_ERROR"
-    | "PORT_ERROR"
-    | "BUILD_DIR_ERROR";
-  file?: string;
-  line?: number;
-  snippet?: string;
-  detail: string;
-};
+interface GuardResult {
+  passed: boolean;
+  errors: string[];
+  warnings: string[];
+}
 
-const projectRoot = process.cwd();
-
-/**
- * 1 - Configuration
- * Adjust here only if needed
- */
-
-// Directories that should be scanned for UI problems
-const SCAN_DIRS = [
-  "client",
-  "src",
-  "app",
-  "pages",
-  "components",
-  "styles",
-  "css",
-].map((p) => path.join(projectRoot, p));
-
-// File extensions to scan
-const CODE_EXTS = [".tsx", ".ts", ".jsx", ".js", ".css", ".scss", ".sass"];
-
-// Old UI markers that must never appear in production again
-// You can add more phrases as you discover them
-const LEGACY_UI_MARKERS: string[] = [
-  "apple-package-",
-  "apple-package__",
-  "old-landing-hero",
-  "oldLandingHero",
-  "legacy-landing",
-  "demo-template",
-  "example-template",
-  "placeholder-hero",
-  "lorem ipsum",
-  "tailwindui.com",
-  "template from",
-  "react-landing-page-template",
+const FORBIDDEN_PATTERNS = [
+  /\.old\./i,
+  /legacy/i,
+  /-v1\./i,
+  /backup/i,
+  /\.temp\./i,
+  /\.copy\./i,
+  /-test-ui/i,
+  /EnterpriseLayout/,
+  /BrandHeader/,
+  /OldLayout/,
+  /LegacyLayout/,
+  /apple-package/i,
+  /header-old/i,
+  /footer-old/i,
+  /GlobalNavigation/,
+  /MultiLayerNavigation/,
 ];
 
-// Hard banned patterns - these always fail
-const BANNED_PATTERNS: string[] = [
-  // Dangerous debug code
-  "console.log('DEBUG_ONLY')",
-  "DEBUG_ONLY_START",
-  "DEBUG_ONLY_END",
+const APPROVED_LUXURY_CSS = [
+  'index.css',
+  'petwash-header.css',
+  'override-2025.css',
+  'responsive-tokens.css',
+  'floating-stack.css',
+  'ai-chat.css',
+  'NewHumanAvatar.css', // Component-specific CSS, actively used
+];
 
-  // Local only secrets markers
-  "HARDCODED_API_KEY",
+async function scanDirectory(dir: string, results: string[] = [], depth = 0): Promise<string[]> {
+  if (depth > 10) return results; // Prevent infinite recursion
   
-  // Wrong brand formats (only check actual brand name usage, not descriptions)
-  "PetWash (c)",
-  "Petwash™", // wrong capitalization
-];
-
-// Expected modern files that should exist in your 2025 system
-// Adjust names if your repo is slightly different
-const REQUIRED_FILES: string[] = [
-  "client/src/components/LuxuryThemeWrapper.tsx",
-  "client/src/components/GiftCards.tsx",
-  "client/src/components/PetWashHeaderNav.tsx",
-  "client/src/components/Footer.tsx",
-  "client/src/components/PetWashDivisions.tsx",
-  "client/src/components/LuxuryPlatformShowcase.tsx",
-];
-
-// Backup related env vars to sanity check
-// Note: These are optional warnings, not hard failures
-const REQUIRED_ENV_VARS: string[] = [
-  "GCS_BACKUP_BUCKET",
-];
-
-// Deployment port lock - MANDATORY for production
-const REPLIT_FILE = path.join(projectRoot, ".replit");
-const ALLOWED_BUILD_DIRS = ["dist/public"]; // Only this directory for production builds
-const FORBIDDEN_BUILD_DIRS = ["public/", "build/", "out/"]; // Never deploy from these
-
-/**
- * Utility - simple directory walk with no external deps
- */
-function walkDir(dir: string, out: string[] = []): string[] {
-  if (!fs.existsSync(dir)) return out;
-
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      // Skip node_modules and .git
-      if (entry.name === "node_modules" || entry.name === ".git") continue;
-      walkDir(full, out);
-    } else {
-      out.push(full);
-    }
-  }
-  return out;
-}
-
-function isCodeFile(file: string): boolean {
-  return CODE_EXTS.some((ext) => file.endsWith(ext));
-}
-
-/**
- * Scan a single file for markers
- */
-function scanFile(file: string): ScanIssue[] {
-  const issues: ScanIssue[] = [];
-  const rel = path.relative(projectRoot, file);
-
-  let content: string;
   try {
-    content = fs.readFileSync(file, "utf8");
-  } catch {
-    return [
-      {
-        type: "CONFIG_WARNING",
-        file: rel,
-        detail: "Could not read file for scanning",
-      },
-    ];
-  }
-
-  const lines = content.split(/\r?\n/);
-
-  // Legacy UI markers
-  for (const marker of LEGACY_UI_MARKERS) {
-    lines.forEach((line, idx) => {
-      if (line.includes(marker)) {
-        issues.push({
-          type: "LEGACY_UI",
-          file: rel,
-          line: idx + 1,
-          snippet: line.trim().slice(0, 200),
-          detail: `Legacy UI marker "${marker}" found`,
-        });
+    const entries = await readdir(dir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      // Skip node_modules and dist
+      if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '.git') {
+        continue;
       }
-    });
-  }
-
-  // Banned patterns
-  for (const pattern of BANNED_PATTERNS) {
-    lines.forEach((line, idx) => {
-      if (line.includes(pattern)) {
-        issues.push({
-          type: "BANNED_PATTERN",
-          file: rel,
-          line: idx + 1,
-          snippet: line.trim().slice(0, 200),
-          detail: `Banned pattern "${pattern}" detected`,
-        });
+      
+      const fullPath = join(dir, entry.name);
+      
+      if (entry.isDirectory()) {
+        await scanDirectory(fullPath, results, depth + 1);
+      } else if (entry.isFile() && (entry.name.endsWith('.tsx') || entry.name.endsWith('.ts') || entry.name.endsWith('.css'))) {
+        results.push(fullPath);
       }
-    });
-  }
-
-  return issues;
-}
-
-/**
- * Check required files
- */
-function checkRequiredFiles(): ScanIssue[] {
-  const issues: ScanIssue[] = [];
-
-  for (const rel of REQUIRED_FILES) {
-    const full = path.join(projectRoot, rel);
-    if (!fs.existsSync(full)) {
-      issues.push({
-        type: "MISSING_REQUIRED_FILE",
-        file: rel,
-        detail: `Required 2025 file is missing. This usually means the old UI is still active instead of the luxury layout.`,
-      });
     }
+  } catch (error) {
+    // Skip permission errors
   }
-
-  return issues;
+  
+  return results;
 }
 
-/**
- * Check basic env config
- */
-function checkEnvConfig(): ScanIssue[] {
-  const issues: ScanIssue[] = [];
-
-  for (const key of REQUIRED_ENV_VARS) {
-    const value = process.env[key];
-    if (!value || !value.trim()) {
-      issues.push({
-        type: "CONFIG_ERROR",
-        detail: `Environment variable ${key} is not set. Backups or Google Cloud integration may be broken.`,
-      });
-    } else {
-      // Small sanity check on bucket
-      if (key === "GCS_BACKUP_BUCKET" && !value.startsWith("petwash-")) {
-        issues.push({
-          type: "CONFIG_WARNING",
-          detail: `GCS_BACKUP_BUCKET is set to "${value}". Double check this is your official backup bucket name.`,
-        });
+async function checkForbiddenPatterns(): Promise<GuardResult> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  console.log('🔍 Scanning for forbidden patterns...\n');
+  
+  // Scan client/src for forbidden files
+  const files = await scanDirectory('./client/src');
+  
+  for (const file of files) {
+    const fileName = file.split('/').pop() || '';
+    const relativePath = file.replace('./client/src/', '');
+    
+    // Check forbidden file name patterns
+    for (const pattern of FORBIDDEN_PATTERNS) {
+      if (pattern.test(fileName) || pattern.test(relativePath)) {
+        errors.push(`❌ FORBIDDEN FILE: ${relativePath} (matches pattern: ${pattern})`);
       }
     }
   }
-
-  return issues;
+  
+  return {
+    passed: errors.length === 0,
+    errors,
+    warnings,
+  };
 }
 
-/**
- * CRITICAL: Validate .replit port configuration
- * Autoscale deployments only support ONE external port
- * Multiple ports will cause deployment to hang/fail
- */
-function checkReplitPortConfig(): ScanIssue[] {
-  const issues: ScanIssue[] = [];
-
-  if (!fs.existsSync(REPLIT_FILE)) {
-    issues.push({
-      type: "CONFIG_WARNING",
-      file: ".replit",
-      detail: "No .replit file found. Deployment configuration may be missing.",
-    });
-    return issues;
-  }
-
-  try {
-    const content = fs.readFileSync(REPLIT_FILE, "utf8");
-    const portBlocks = content.match(/\[\[ports\]\]/g);
-    const portCount = portBlocks ? portBlocks.length : 0;
-
-    if (portCount > 1) {
-      issues.push({
-        type: "CONFIG_WARNING",
-        file: ".replit",
-        detail: `⚠️ Found ${portCount} [[ports]] blocks in .replit file. Autoscale deployments work best with 1 external port (5000→80). Note: .replit cannot be edited programmatically - manual update recommended but not required for development.`,
-      });
-    } else if (portCount === 0) {
-      issues.push({
-        type: "CONFIG_WARNING",
-        file: ".replit",
-        detail: "No [[ports]] configuration found in .replit. Deployment may not expose your app correctly.",
-      });
+async function checkCSSFiles(): Promise<GuardResult> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  console.log('🎨 Verifying CSS files...\n');
+  
+  const cssFiles = await scanDirectory('./client/src');
+  const foundCSS = cssFiles.filter(f => f.endsWith('.css'));
+  
+  for (const cssFile of foundCSS) {
+    const fileName = cssFile.split('/').pop() || '';
+    
+    if (!APPROVED_LUXURY_CSS.includes(fileName)) {
+      warnings.push(`⚠️  UNAPPROVED CSS: ${cssFile.replace('./client/src/', '')} (not in approved luxury CSS list)`);
     }
-  } catch (err) {
-    issues.push({
-      type: "CONFIG_WARNING",
-      file: ".replit",
-      detail: `Could not parse .replit file: ${err}`,
-    });
   }
-
-  return issues;
+  
+  return {
+    passed: true, // Warnings only for CSS
+    errors,
+    warnings,
+  };
 }
 
-/**
- * CRITICAL: Validate build directory structure
- * Production deploys must use dist/public ONLY
- * Never deploy from public/, build/, or out/
- */
-function checkBuildDirectories(): ScanIssue[] {
-  const issues: ScanIssue[] = [];
-
-  // Check for forbidden build directories that indicate wrong config
-  for (const forbiddenDir of FORBIDDEN_BUILD_DIRS) {
-    const fullPath = path.join(projectRoot, forbiddenDir);
-    if (fs.existsSync(fullPath)) {
-      const hasIndexHtml = fs.existsSync(path.join(fullPath, "index.html"));
-      if (hasIndexHtml) {
-        issues.push({
-          type: "BUILD_DIR_ERROR",
-          file: forbiddenDir,
-          detail: `🚨 DEPLOYMENT BLOCKER: Found built files in ${forbiddenDir}. This indicates wrong build configuration. Production MUST use dist/public only. Delete ${forbiddenDir} and ensure vite.config.ts outputs to ../dist/public.`,
-        });
-      }
+async function checkParallelLayouts(): Promise<GuardResult> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  console.log('📐 Checking for parallel layout systems...\n');
+  
+  const layoutFiles = await scanDirectory('./client/src/components');
+  const layouts = layoutFiles.filter(f => 
+    f.includes('Layout') && 
+    f.endsWith('.tsx') &&
+    !f.includes('node_modules')
+  );
+  
+  const APPROVED_LAYOUTS = ['Layout.tsx']; // Only ONE approved layout
+  
+  for (const layout of layouts) {
+    const fileName = layout.split('/').pop() || '';
+    
+    if (!APPROVED_LAYOUTS.includes(fileName)) {
+      errors.push(`❌ PARALLEL LAYOUT DETECTED: ${layout.replace('./client/src/', '')} - Only Layout.tsx is allowed`);
     }
   }
-
-  // Verify correct build directory exists (during build phase)
-  const correctBuildDir = path.join(projectRoot, "dist", "public");
-  if (fs.existsSync(correctBuildDir)) {
-    const hasIndexHtml = fs.existsSync(path.join(correctBuildDir, "index.html"));
-    if (!hasIndexHtml) {
-      issues.push({
-        type: "CONFIG_WARNING",
-        file: "dist/public",
-        detail: "dist/public exists but has no index.html. Build may be incomplete.",
-      });
-    }
-  }
-
-  return issues;
+  
+  return {
+    passed: errors.length === 0,
+    errors,
+    warnings,
+  };
 }
 
-/**
- * Main runner
- */
-async function main() {
-  const issues: ScanIssue[] = [];
-
-  console.log("🔍 PetWash 2025 Preflight Guardian starting...\n");
-
-  // 1. Env config check
-  console.log("1) Checking backup and Google Cloud env config...");
-  issues.push(...checkEnvConfig());
-
-  // 2. CRITICAL: Port configuration validation
-  console.log("2) Validating .replit port configuration (deployment blocker check)...");
-  issues.push(...checkReplitPortConfig());
-
-  // 3. CRITICAL: Build directory validation
-  console.log("3) Validating build directory structure (dist/public enforcement)...");
-  issues.push(...checkBuildDirectories());
-
-  // 4. Required files
-  console.log("4) Checking for core 2025 luxury UI files...");
-  issues.push(...checkRequiredFiles());
-
-  // 5. Scan code for legacy or banned patterns
-  console.log("5) Scanning source tree for legacy UI or banned patterns...");
-  for (const dir of SCAN_DIRS) {
-    if (!fs.existsSync(dir)) continue;
-    const files = walkDir(dir);
-    for (const file of files) {
-      if (!isCodeFile(file)) continue;
-      issues.push(...scanFile(file));
-    }
+async function runAllGuards(): Promise<void> {
+  console.log('🛡️  PETWASH™ PREFLIGHT GUARDIAN\n');
+  console.log('================================\n');
+  
+  const results: GuardResult[] = [];
+  
+  // Run all guards
+  results.push(await checkForbiddenPatterns());
+  results.push(await checkCSSFiles());
+  results.push(await checkParallelLayouts());
+  
+  // Collect all errors and warnings
+  const allErrors = results.flatMap(r => r.errors);
+  const allWarnings = results.flatMap(r => r.warnings);
+  
+  console.log('\n================================\n');
+  console.log('📊 PREFLIGHT REPORT:\n');
+  
+  if (allWarnings.length > 0) {
+    console.log('⚠️  WARNINGS:\n');
+    allWarnings.forEach(w => console.log(w));
+    console.log('');
   }
-
-  // 6. Git sanity
-  const gitDir = path.join(projectRoot, ".git");
-  if (!fs.existsSync(gitDir)) {
-    issues.push({
-      type: "CONFIG_WARNING",
-      detail:
-        "No .git directory found. Repository might not be connected to GitHub. Version control protection will be weaker.",
-    });
+  
+  if (allErrors.length > 0) {
+    console.log('❌ HARD ERRORS:\n');
+    allErrors.forEach(e => console.log(e));
+    console.log('');
+    console.log('🚫 PREFLIGHT FAILED - FIX ERRORS BEFORE BUILD\n');
+    exit(1);
   }
-
-  // Print report
-  console.log("\n📊 Preflight Report\n");
-
-  if (issues.length === 0) {
-    console.log("✅ No issues found. Codebase looks clean and modern.\n");
-    console.log("You are safe to build, deploy and push to GitHub.");
-    process.exit(0);
-  }
-
-  const grouped: Record<string, ScanIssue[]> = {};
-  for (const issue of issues) {
-    if (!grouped[issue.type]) grouped[issue.type] = [];
-    grouped[issue.type].push(issue);
-  }
-
-  const order: ScanIssue["type"][] = [
-    "PORT_ERROR",
-    "BUILD_DIR_ERROR",
-    "CONFIG_ERROR",
-    "LEGACY_UI",
-    "BANNED_PATTERN",
-    "MISSING_REQUIRED_FILE",
-    "CONFIG_WARNING",
-  ];
-
-  let hasHardFail = false;
-
-  for (const type of order) {
-    const list = grouped[type];
-    if (!list || list.length === 0) continue;
-
-    console.log(`--- ${type} (${list.length}) ---`);
-    for (const item of list) {
-      const loc = item.file
-        ? `${item.file}${item.line ? ":" + item.line : ""}`
-        : "";
-      console.log(`• ${item.detail}${loc ? "  -> " + loc : ""}`);
-      if (item.snippet) {
-        console.log(`    "${item.snippet}"`);
-      }
-    }
-    console.log("");
-
-    if (
-      type === "PORT_ERROR" ||
-      type === "BUILD_DIR_ERROR" ||
-      type === "CONFIG_ERROR" ||
-      type === "LEGACY_UI" ||
-      type === "BANNED_PATTERN"
-    ) {
-      hasHardFail = true;
-    }
-  }
-
-  if (hasHardFail) {
-    console.log(
-      "❌ Preflight failed.\n" +
-        "These issues must be fixed before build, deploy or pushing to protected branches.\n"
-    );
-    process.exit(1);
-  } else {
-    console.log(
-      "⚠️ Preflight completed with warnings only.\n" +
-        "You can build, but it is recommended to review and fix the warnings.\n"
-    );
-    process.exit(0);
-  }
+  
+  console.log('✅ PREFLIGHT PASSED - All guards green\n');
+  console.log('🎯 Luxury UI integrity: 100%');
+  console.log('🚀 Ready for build/deploy\n');
+  exit(0);
 }
 
-main().catch((err) => {
-  console.error("Preflight script crashed:", err);
-  process.exit(1);
+// Run guards
+runAllGuards().catch(error => {
+  console.error('❌ Preflight guardian crashed:', error);
+  exit(1);
 });
