@@ -243,11 +243,24 @@ const MENU_STRUCTURE = {
   ],
 };
 
-export const PetWashHeader: React.FC = () => {
-  const [currentLanguage, setCurrentLanguage] = useState<string>(detectInitialLanguage);
+// Optional props for controlled component mode
+interface PetWashHeaderProps {
+  language?: string;
+  onLanguageChange?: (language: string) => void;
+}
+
+export const PetWashHeader: React.FC<PetWashHeaderProps> = ({ 
+  language: controlledLanguage, 
+  onLanguageChange: controlledOnLanguageChange 
+}) => {
+  // Internal state for uncontrolled mode (backwards compatibility)
+  const [internalLanguage, setInternalLanguage] = useState<string>(detectInitialLanguage);
   const [isPlatformsOpen, setIsPlatformsOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
+  // Use controlled value if provided, otherwise use internal state
+  const currentLanguage = controlledLanguage !== undefined ? controlledLanguage : internalLanguage;
+  
   // Apply RTL or LTR to html element
   useEffect(() => {
     const selected = LANGUAGES.find((l) => l.code === currentLanguage);
@@ -271,14 +284,15 @@ export const PetWashHeader: React.FC = () => {
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
-  // Restore saved language
+  // Restore saved language (only in uncontrolled mode)
   useEffect(() => {
+    if (controlledLanguage !== undefined) return; // Skip if controlled
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem("pw_lang");
     if (saved && LANGUAGES.some((l) => l.code === saved)) {
-      setCurrentLanguage(saved);
+      setInternalLanguage(saved);
     }
-  }, []);
+  }, [controlledLanguage]);
 
   const handleNavigate = (href: string) => {
     if (!href || href === "#") return;
@@ -291,9 +305,15 @@ export const PetWashHeader: React.FC = () => {
   };
 
   const handleLanguageChange = (code: string) => {
-    setCurrentLanguage(code);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("pw_lang", code);
+    // If controlled, call the parent handler
+    if (controlledOnLanguageChange) {
+      controlledOnLanguageChange(code);
+    } else {
+      // Uncontrolled mode: update internal state
+      setInternalLanguage(code);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("pw_lang", code);
+      }
     }
   };
 

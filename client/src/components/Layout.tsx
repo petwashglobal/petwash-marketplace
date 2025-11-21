@@ -36,7 +36,7 @@ export function Layout({ children, language, onLanguageChange }: LayoutProps) {
         Skip to content
       </a>
       
-      <PetWashHeader />
+      <PetWashHeader language={language} onLanguageChange={onLanguageChange} />
       
       <main id="main-content" role="main" className="bg-white">
         {children}
