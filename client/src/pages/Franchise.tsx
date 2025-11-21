@@ -126,56 +126,41 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                   </div>
                 </div>
                 
-                {/* Hero Title - Metallic Gold Text */}
-                <h1 
-                  className="text-6xl md:text-8xl font-bold leading-tight"
-                  style={{
-                    background: 'linear-gradient(135deg, #D4AF37 0%, #F9D976 25%, #D4AF37 50%, #C9A961 75%, #D4AF37 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundSize: '200% auto',
-                    animation: 'shimmer 3s linear infinite'
-                  }}
-                >
+                {/* Hero Title - Luxury System */}
+                <h1 className="luxury-heading-xl">
                   {t('franchise.heroLine1', language)}<br />{t('franchise.heroLine2', language)}
                 </h1>
                 
-                <p className="text-xl md:text-2xl max-w-4xl mx-auto text-gray-700 dark:text-gray-300 font-light">
+                <p className="luxury-text-body max-w-4xl mx-auto">
                   {t('franchise.heroStats', language)}
                 </p>
                 
                 {/* Premium CTA Buttons */}
-                <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8">
+                <div className="flex flex-col sm:flex-row luxury-gap-md justify-center items-center pt-8">
                   <button 
-                    className="group relative px-12 py-5 text-lg font-semibold transition-all duration-300 hover:scale-105"
+                    className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2"
                     data-testid="button-request-investment-package"
                   >
-                    <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 rounded-xl opacity-75 blur-sm group-hover:blur group-hover:opacity-100 transition duration-300"></div>
-                    <div className="relative flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-white rounded-xl shadow-2xl">
-                      <DollarSign className="w-6 h-6" />
-                      {t('franchise.requestPackage', language)}
-                    </div>
+                    <DollarSign className="w-6 h-6" />
+                    {t('franchise.requestPackage', language)}
                   </button>
                   
                   <button 
-                    className="group relative px-12 py-5 text-lg font-semibold transition-all duration-300 hover:scale-105"
+                    className="luxury-btn-secondary flex items-center gap-2"
                     data-testid="button-schedule-tour"
                     onClick={() => setCompletedSteps(prev => Math.max(prev, 5))}
                   >
-                    <div className="absolute -inset-1 bg-gradient-to-r from-slate-300 via-gray-400 to-slate-500 rounded-xl opacity-60 blur-sm group-hover:blur group-hover:opacity-80 transition duration-300"></div>
-                    <div className="relative flex items-center gap-2 px-8 py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl text-gray-900 dark:text-white rounded-xl shadow-xl border border-white/20">
-                      <Calendar className="w-6 h-6" />
-                      {t('franchise.scheduleTour', language)}
-                    </div>
+                    <Calendar className="w-6 h-6" />
+                    {t('franchise.scheduleTour', language)}
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Real-Time Stats - Glassmorphism Cards */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+          {/* Real-Time Stats - Luxury Glass Cards */}
+          <div className="luxury-container luxury-section-compact">
+            <div className="luxury-grid-4 mb-16">
               {[
                 { value: "52", label: t('franchise.activeStations', language), icon: Building2, gradient: 'from-blue-400 to-cyan-500' },
                 { value: "$5.8M", label: t('franchise.annualRevenue', language), icon: TrendingUp, gradient: 'from-emerald-400 to-green-500' },
@@ -184,22 +169,18 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
               ].map((stat, idx) => {
                 const Icon = stat.icon;
                 return (
-                  <div key={idx} className="group relative">
-                    {/* Glass Card */}
-                    <div className="relative overflow-hidden rounded-2xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-2xl border border-white/20 p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-                      {/* Metallic Accent */}
-                      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.gradient}`}></div>
-                      
-                      <div className="flex flex-col items-center text-center space-y-3">
-                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${stat.gradient} p-3 shadow-lg`}>
-                          <Icon className="w-full h-full text-white" />
-                        </div>
-                        <div className="text-4xl font-bold bg-gradient-to-br from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
-                          {stat.value}
-                        </div>
-                        <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                          {stat.label}
-                        </div>
+                  <div key={idx} className={`luxury-glass-card luxury-hover-glow luxury-shadow-md luxury-animate-fade-in luxury-delay-${idx + 1}`}>
+                    <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.gradient}`}></div>
+                    
+                    <div className="flex flex-col items-center text-center luxury-gap-sm p-6">
+                      <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${stat.gradient} p-3 shadow-lg`}>
+                        <Icon className="w-full h-full text-white" />
+                      </div>
+                      <div className="luxury-heading-lg luxury-text-gradient">
+                        {stat.value}
+                      </div>
+                      <div className="luxury-text-small">
+                        {stat.label}
                       </div>
                     </div>
                   </div>
@@ -207,23 +188,14 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
               })}
             </div>
 
-            {/* Success Stories - Premium Glassmorphism */}
+            {/* Success Stories - Luxury Cards */}
             <div className="mb-16">
-              <h2 
-                className="text-4xl md:text-5xl font-bold text-center mb-12"
-                style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #F9D976 50%, #C9A961 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}
-              >
+              <h2 className="luxury-heading-lg text-center mb-12 luxury-text-gradient">
                 {t('franchise.successStories', language)}
               </h2>
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="luxury-grid-4">
                 {successStories.map((story, idx) => (
-                  <div key={idx} className="group relative">
-                    {/* Glassmorphism Card with Metallic Border */}
-                    <div className="relative overflow-hidden rounded-2xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-2xl border border-white/30 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-2">
+                  <div key={idx} className={`luxury-glass-card luxury-hover-lift luxury-shadow-lg luxury-animate-slide-up luxury-delay-${(idx % 4) + 1}`}>
                       {/* Gold Metallic Top Border */}
                       <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500"></div>
                       
@@ -237,8 +209,8 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                             </div>
                           </div>
                           <div>
-                            <div className="font-bold text-gray-900 dark:text-white text-lg">{story.name}</div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                            <div className="luxury-heading-sm">{story.name}</div>
+                            <div className="luxury-text-small flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
                               {story.location}
                             </div>
@@ -247,18 +219,18 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                         
                         {/* Stats - Glass Pills */}
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-gradient-to-br from-emerald-400/20 to-green-500/20 backdrop-blur-xl rounded-xl p-3 border border-emerald-300/30">
-                            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{story.roi}</div>
-                            <div className="text-xs text-gray-600 dark:text-gray-400 font-medium">ROI</div>
+                          <div className="luxury-glass-minimal p-3 border border-emerald-300/30">
+                            <div className="luxury-heading-md luxury-text-gradient">{story.roi}</div>
+                            <div className="luxury-text-small">ROI</div>
                           </div>
-                          <div className="bg-gradient-to-br from-blue-400/20 to-cyan-500/20 backdrop-blur-xl rounded-xl p-3 border border-blue-300/30">
-                            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{story.revenue}</div>
-                            <div className="text-xs text-gray-600 dark:text-gray-400 font-medium">{t('franchise.monthly', language)}</div>
+                          <div className="luxury-glass-minimal p-3 border border-blue-300/30">
+                            <div className="luxury-heading-sm luxury-text-gradient">{story.revenue}</div>
+                            <div className="luxury-text-small">{t('franchise.monthly', language)}</div>
                           </div>
                         </div>
                         
                         {/* Quote */}
-                        <p className="text-sm text-gray-700 dark:text-gray-300 italic leading-relaxed">
+                        <p className="luxury-text-body italic leading-relaxed">
                           "{story.quote}"
                         </p>
                         
@@ -274,38 +246,27 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
               </div>
             </div>
 
-            {/* Global Network - Premium Map Style */}
+            {/* Global Network - Luxury Grid */}
             <div className="mb-16">
-              <h3 
-                className="text-4xl font-bold text-center mb-12"
-                style={{
-                  background: 'linear-gradient(135deg, #C0C0C0 0%, #E8E8E8 50%, #A8A8A8 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}
-              >
+              <h3 className="luxury-heading-lg text-center mb-12 luxury-text-gradient">
                 {t('franchise.globalNetwork', language)}
               </h3>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="luxury-grid-3">
                 {franchiseLocations.map((loc, idx) => (
-                  <div key={idx} className="group relative">
-                    <div className="relative overflow-hidden rounded-xl bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-white/30 p-5 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-                      {/* Platinum Accent */}
-                      <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-slate-300/30 to-gray-400/30 rounded-bl-3xl -mr-10 -mt-10"></div>
-                      
-                      <div className="flex items-center justify-between relative z-10">
-                        <div className="flex items-center gap-3">
+                  <div key={idx} className={`luxury-glass-card luxury-hover-lift luxury-shadow-md luxury-animate-fade-in luxury-delay-${(idx % 3) + 1}`}>
+                      <div className="flex items-center justify-between p-5">
+                        <div className="flex items-center luxury-gap-sm">
                           <div className="w-12 h-12 bg-gradient-to-br from-slate-300 via-gray-400 to-slate-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
                             {loc.units}
                           </div>
                           <div>
-                            <div className="font-bold text-gray-900 dark:text-white">{loc.city}</div>
-                            <div className="text-xs text-gray-600 dark:text-gray-400">{loc.units} {t('franchise.units', language)}</div>
+                            <div className="luxury-heading-sm">{loc.city}</div>
+                            <div className="luxury-text-small">{loc.units} {t('franchise.units', language)}</div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-bold text-gray-900 dark:text-white">{loc.revenue}</div>
-                          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                          <div className="luxury-heading-sm luxury-text-gradient">{loc.revenue}</div>
+                          <div className="luxury-text-small text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                             <TrendingUp className="w-3 h-3" />
                             +{loc.growth}%
                           </div>
@@ -319,29 +280,22 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
 
             {/* 🎮 GAMIFICATION: Progress Tracker - 2025/2026 Feature */}
             <div className="mb-16">
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-50/80 to-pink-50/80 dark:from-purple-950/40 dark:to-pink-950/40 backdrop-blur-3xl border border-purple-200/50 dark:border-purple-800/50 shadow-2xl p-8">
+              <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-bg-soft">
                 <div className="relative z-10">
                   <div className="text-center mb-6">
-                    <h3 
-                      className="text-3xl font-bold mb-2"
-                      style={{
-                        background: 'linear-gradient(135deg, #A855F7 0%, #EC4899 50%, #F97316 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
-                      }}
-                    >
+                    <h3 className="luxury-heading-lg mb-2 luxury-text-gradient">
                       {t('franchise.onboardingJourney', language)}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    <p className="luxury-text-body">
                       {t('franchise.trackProgress', language)}
                     </p>
                   </div>
                   <div className="max-w-2xl mx-auto space-y-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      <span className="luxury-heading-sm">
                         {t('franchise.completed', language)}: {completedSteps}/{totalSteps}
                       </span>
-                      <span className="text-sm text-purple-600 dark:text-purple-400 font-bold">
+                      <span className="luxury-heading-sm luxury-text-gradient">
                         {progressPercentage.toFixed(0)}%
                       </span>
                     </div>
@@ -361,13 +315,13 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                             <div 
                               className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-2 transition-all duration-300 ${
                                 step.completed 
-                                  ? 'bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg' 
-                                  : 'bg-gray-200 dark:bg-gray-700'
+                                  ? 'bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg luxury-badge-success' 
+                                  : 'luxury-glass-minimal'
                               }`}
                             >
                               <Icon className={`w-6 h-6 ${step.completed ? 'text-white' : 'text-gray-400'}`} />
                             </div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">{step.label}</p>
+                            <p className="luxury-text-small">{step.label}</p>
                           </div>
                         );
                       })}
@@ -387,18 +341,11 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
 
             {/* 📹 VIDEO TESTIMONIALS - 2025/2026 Feature */}
             <div className="mb-16">
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50/80 to-cyan-50/80 dark:from-blue-950/40 dark:to-cyan-950/40 backdrop-blur-3xl border border-blue-200/50 dark:border-blue-800/50 shadow-2xl p-8 md:p-12">
+              <div className="luxury-glass-card luxury-shadow-xl p-8 md:p-12 luxury-bg-soft">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-300/20 to-cyan-500/20 rounded-bl-full -mr-16 -mt-16"></div>
                 
                 <div className="relative z-10">
-                  <h3 
-                    className="text-4xl md:text-5xl font-bold text-center mb-12"
-                    style={{
-                      background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 50%, #3B82F6 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent'
-                    }}
-                  >
+                  <h3 className="luxury-heading-lg text-center mb-12 luxury-text-gradient">
                     {t('franchise.watchSuccessStories', language)}
                   </h3>
                   
@@ -425,9 +372,9 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                           </div>
                         </div>
                         <div className="text-left">
-                          <div className="font-bold text-gray-900 dark:text-white mb-1">{video.name}</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">{video.location}</div>
-                          <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{video.revenue}</div>
+                          <div className="luxury-heading-sm mb-1">{video.name}</div>
+                          <div className="luxury-text-small mb-2">{video.location}</div>
+                          <div className="luxury-heading-sm luxury-text-gradient">{video.revenue}</div>
                         </div>
                       </button>
                     ))}
@@ -438,7 +385,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
 
             {/* 🤖 AI CHATBOT ADVISOR - 2025/2026 Feature */}
             <div className="mb-16">
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50/80 to-purple-50/80 dark:from-indigo-950/40 dark:to-purple-950/40 backdrop-blur-3xl border border-indigo-200/50 dark:border-indigo-800/50 shadow-2xl p-8 md:p-12">
+              <div className="luxury-glass-card luxury-shadow-xl p-8 md:p-12 luxury-bg-soft">
                 <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-indigo-300/20 to-purple-500/20 rounded-tr-full -ml-16 -mb-16"></div>
                 
                 <div className="relative z-10">
@@ -446,28 +393,18 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                     <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 rounded-full mb-6 shadow-2xl">
                       <Bot className="w-12 h-12 text-white" />
                     </div>
-                    <h3 
-                      className="text-4xl font-bold mb-4"
-                      style={{
-                        background: 'linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
-                      }}
-                    >
+                    <h3 className="luxury-heading-lg mb-4 luxury-text-gradient">
                       {t('franchise.aiAdvisor', language)}
                     </h3>
-                    <p className="text-gray-700 dark:text-gray-300 text-lg mb-8">
+                    <p className="luxury-text-body mb-8">
                       {t('franchise.aiAdvisorDesc', language)}
                     </p>
                     <button 
                       onClick={() => setCompletedSteps(prev => Math.max(prev, 4))}
-                      className="group relative px-10 py-5 text-lg font-semibold transition-all duration-300 hover:scale-105"
+                      className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2 mx-auto"
                     >
-                      <div className="absolute -inset-1 bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500 rounded-xl opacity-75 blur group-hover:blur-md group-hover:opacity-100 transition duration-300"></div>
-                      <div className="relative flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600 text-white rounded-xl shadow-2xl">
-                        <Headset className="w-6 h-6" />
-                        {t('franchise.startChatAI', language)}
-                      </div>
+                      <Headset className="w-6 h-6" />
+                      {t('franchise.startChatAI', language)}
                     </button>
                   </div>
                 </div>
@@ -861,19 +798,12 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
               </div>
             </div>
 
-            {/* What's Included - Premium Grid */}
+            {/* What's Included - Luxury Grid */}
             <div className="mb-16">
-              <h3 
-                className="text-4xl font-bold text-center mb-12"
-                style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #F9D976 50%, #D4AF37 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}
-              >
+              <h3 className="luxury-heading-lg text-center mb-12 luxury-text-gradient">
                 {t('franchise.whatsIncluded', language)}
               </h3>
-              <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="luxury-grid-4">
                 {[
                   { icon: Wrench, title: t('franchise.completeEquipment', language), gradient: 'from-blue-400 to-cyan-500' },
                   { icon: GraduationCap, title: t('franchise.comprehensiveTraining', language), gradient: 'from-purple-400 to-pink-500' },
@@ -886,50 +816,34 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                 ].map((item, idx) => {
                   const Icon = item.icon;
                   return (
-                    <div key={idx} className="group relative">
-                      <div className="relative overflow-hidden rounded-xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl border border-white/30 p-5 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                        <div className={`w-12 h-12 bg-gradient-to-br ${item.gradient} rounded-lg flex items-center justify-center text-white mb-3 shadow-md`}>
-                          <Icon className="w-6 h-6" />
-                        </div>
-                        <div className="font-semibold text-gray-900 dark:text-white text-sm">{item.title}</div>
+                    <div key={idx} className={`luxury-glass-minimal luxury-hover-lift luxury-animate-scale-in luxury-delay-${(idx % 4) + 1} p-5`}>
+                      <div className={`w-12 h-12 bg-gradient-to-br ${item.gradient} rounded-lg flex items-center justify-center text-white mb-3 shadow-md`}>
+                        <Icon className="w-6 h-6" />
                       </div>
+                      <div className="luxury-heading-sm">{item.title}</div>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* Final CTA - Ultra Premium */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50/80 to-yellow-50/80 dark:from-amber-950/40 dark:to-yellow-950/40 backdrop-blur-3xl border border-amber-200/50 dark:border-amber-800/50 shadow-2xl p-16 text-center">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-100/30 via-transparent to-transparent"></div>
-              
+            {/* Final CTA - Luxury Premium */}
+            <div className="luxury-glass-card luxury-shadow-xl p-16 text-center luxury-bg-soft">
               <div className="relative z-10 space-y-6">
-                <h2 
-                  className="text-5xl md:text-6xl font-bold mb-6"
-                  style={{
-                    background: 'linear-gradient(135deg, #D4AF37 0%, #F9D976 25%, #D4AF37 50%, #C9A961 75%, #D4AF37 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundSize: '200% auto',
-                    animation: 'shimmer 3s linear infinite'
-                  }}
-                >
+                <h2 className="luxury-heading-xl mb-6">
                   {t('franchise.readyToJoin', language)}
                 </h2>
-                <p className="text-xl text-gray-700 dark:text-gray-300 max-w-2xl mx-auto font-light">
+                <p className="luxury-text-body max-w-2xl mx-auto">
                   {t('franchise.joinGlobalNetwork', language)}
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                <div className="flex flex-col sm:flex-row luxury-gap-md justify-center pt-4">
                   <button 
-                    className="group relative px-12 py-5 text-lg font-semibold transition-all duration-300 hover:scale-105"
+                    className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2 mx-auto"
                     onClick={() => setCompletedSteps(prev => Math.max(prev, 6))}
                     data-testid="button-apply-now"
                   >
-                    <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 rounded-xl opacity-75 blur group-hover:blur-md group-hover:opacity-100 transition duration-300"></div>
-                    <div className="relative flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-white rounded-xl shadow-2xl">
-                      <Phone className="w-6 h-6" />
-                      {t('franchise.talkAdvisor', language)}
-                    </div>
+                    <Phone className="w-6 h-6" />
+                    {t('franchise.talkAdvisor', language)}
                   </button>
                 </div>
               </div>

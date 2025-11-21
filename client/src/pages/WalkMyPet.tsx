@@ -529,121 +529,109 @@ export default function WalkMyPet() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-pink-900/20">
+      <div className="min-h-screen luxury-bg-mesh">
         
-        {/* 7-STAR LUXURY HERO SECTION - Burj Al Arab Inspired */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-amber-900 via-yellow-600 to-amber-700 text-white py-32">
-          {/* Premium Gold Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-yellow-900/40 via-amber-500/30 to-yellow-900/40"></div>
+        {/* LUXURY HERO SECTION */}
+        <div className="relative overflow-hidden luxury-bg-primary text-white py-32 luxury-animate-fade-in">
           
-          {/* Animated Luxury Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIxLTEuNzktNC00LTRzLTQgMS43OS00IDQgMS43OSA0IDQgNCA0LTEuNzkgNC00em0wLTEwYzAtMi4yMS0xLjc5LTQtNC00cy00IDEuNzktNCA0IDEuNzkgNCA0IDQgNC0xLjc5IDQtNHoiLz48L2c+PC9nPjwvc3ZnPg==')] animate-pulse"></div>
-          </div>
-          
-          {/* Premium Shimmer Effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer"></div>
-          
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative luxury-container">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               
               {/* Left: Headline + CTAs */}
               <div className="space-y-8">
                 <div className="space-y-6">
                   {/* Premium Badge */}
-                  <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-xl border border-yellow-300/30 px-6 py-3 rounded-full shadow-2xl">
-                    <Crown className="w-6 h-6 text-yellow-300" />
-                    <span className="text-sm font-bold tracking-wider text-yellow-100">7-STAR LUXURY SERVICE</span>
+                  <div className="luxury-badge luxury-badge-gold inline-flex items-center gap-2 luxury-shadow-md">
+                    <Crown className="w-6 h-6" />
+                    <span className="text-sm font-bold tracking-wider">7-STAR LUXURY SERVICE</span>
                   </div>
                   
-                  <h1 className="text-6xl lg:text-7xl font-black leading-tight tracking-tight drop-shadow-2xl">
+                  <h1 className="luxury-heading-xl luxury-animate-slide-up">
                     {t.hero.title}
                   </h1>
-                  <p className="text-2xl lg:text-3xl text-yellow-100 font-light drop-shadow-lg">
+                  <p className="luxury-text-body text-white/95 text-xl luxury-animate-slide-up luxury-delay-1">
                     {t.hero.subtitle}
                   </p>
                 </div>
 
                 {/* Premium Stats Grid - Glassmorphism */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="group bg-white/15 backdrop-blur-xl rounded-2xl p-6 border-2 border-white/30 shadow-2xl hover:bg-white/20 hover:scale-105 transition-all duration-300">
+                <div className="luxury-grid-2 luxury-gap-md luxury-animate-scale-in luxury-delay-2">
+                  <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-gradient-to-br from-yellow-400 to-amber-500 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
                         <Users className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-3xl font-black text-white drop-shadow-lg">{t.stats.walkers.value}</div>
+                      <div className="text-3xl font-black text-white">{t.stats.walkers.value}</div>
                     </div>
-                    <div className="text-sm font-medium text-yellow-100 tracking-wide">{t.stats.walkers.label}</div>
+                    <div className="text-sm font-medium text-white/90">{t.stats.walkers.label}</div>
                   </div>
-                  <div className="group bg-white/15 backdrop-blur-xl rounded-2xl p-6 border-2 border-white/30 shadow-2xl hover:bg-white/20 hover:scale-105 transition-all duration-300">
+                  <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-gradient-to-br from-blue-400 to-cyan-500 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
                         <Activity className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-3xl font-black text-white drop-shadow-lg">{t.stats.walks.value}</div>
+                      <div className="text-3xl font-black text-white">{t.stats.walks.value}</div>
                     </div>
-                    <div className="text-sm font-medium text-yellow-100 tracking-wide">{t.stats.walks.label}</div>
+                    <div className="text-sm font-medium text-white/90">{t.stats.walks.label}</div>
                   </div>
-                  <div className="group bg-white/15 backdrop-blur-xl rounded-2xl p-6 border-2 border-white/30 shadow-2xl hover:bg-white/20 hover:scale-105 transition-all duration-300">
+                  <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-gradient-to-br from-yellow-400 to-orange-500 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
                         <Star className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-3xl font-black text-white drop-shadow-lg">{t.stats.rating.value}</div>
+                      <div className="text-3xl font-black text-white">{t.stats.rating.value}</div>
                     </div>
-                    <div className="text-sm font-medium text-yellow-100 tracking-wide">{t.stats.rating.label}</div>
+                    <div className="text-sm font-medium text-white/90">{t.stats.rating.label}</div>
                   </div>
-                  <div className="group bg-white/15 backdrop-blur-xl rounded-2xl p-6 border-2 border-white/30 shadow-2xl hover:bg-white/20 hover:scale-105 transition-all duration-300">
+                  <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-gradient-to-br from-emerald-400 to-green-500 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
                         <Navigation className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-3xl font-black text-white drop-shadow-lg">{t.stats.gps.value}</div>
+                      <div className="text-3xl font-black text-white">{t.stats.gps.value}</div>
                     </div>
-                    <div className="text-sm font-medium text-yellow-100 tracking-wide">{t.stats.gps.label}</div>
+                    <div className="text-sm font-medium text-white/90">{t.stats.gps.label}</div>
                   </div>
                 </div>
 
                 {/* Premium CTA Buttons */}
-                <div className="flex flex-wrap gap-4">
-                  <Button 
-                    size="lg" 
-                    className="group bg-white text-amber-900 hover:bg-yellow-50 text-xl px-10 py-8 rounded-2xl shadow-2xl font-black tracking-wide hover:scale-105 transition-all duration-300 border-4 border-yellow-200"
+                <div className="flex flex-wrap gap-4 luxury-animate-fade-in luxury-delay-3">
+                  <button 
+                    className="luxury-btn-primary luxury-shadow-xl px-10 py-8 text-xl flex items-center gap-3"
                     onClick={() => {
                       const resultsSection = document.getElementById('walkers-results');
                       resultsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
                     data-testid="button-find-walker"
                   >
-                    <Search className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform" />
+                    <Search className="w-6 h-6" />
                     {isHebrew ? 'מצא ווקר' : 'Find a Walker'}
-                    <Sparkles className="w-5 h-5 ml-2 text-yellow-600" />
-                  </Button>
+                    <Sparkles className="w-5 h-5" />
+                  </button>
                   
                   <Link href="/provider-onboarding?type=walker">
-                    <Button 
-                      size="lg" 
-                      className="group bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500 hover:from-yellow-500 hover:via-amber-600 hover:to-orange-600 text-white text-xl px-10 py-8 rounded-2xl shadow-2xl font-black tracking-wide hover:scale-105 transition-all duration-300 border-4 border-yellow-200"
+                    <button 
+                      className="luxury-btn-secondary px-10 py-8 text-xl flex items-center gap-3"
                       data-testid="button-become-walker"
                     >
-                      <Trophy className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform" />
-                      <div>
+                      <Trophy className="w-6 h-6" />
+                      <div className="text-left">
                         <div className="flex items-center gap-2">
                           {t.hero.becomeWalker}
                           <Medal className="w-5 h-5" />
                         </div>
-                        <div className="text-sm font-semibold opacity-95">{t.hero.earnMoney}</div>
+                        <div className="text-sm font-semibold opacity-90">{t.hero.earnMoney}</div>
                       </div>
-                    </Button>
+                    </button>
                   </Link>
                 </div>
               </div>
 
               {/* Right: Search Card */}
-              <div className="lg:block">
-                <GlassCard className="p-8">
+              <div className="lg:block luxury-animate-scale-in luxury-delay-2">
+                <div className="luxury-glass-card luxury-shadow-xl p-8">
                   <div className="space-y-6">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <h3 className="luxury-heading-md">
                       {isHebrew ? 'מצא את הווקר המושלם 🐕' : 'Find Your Perfect Walker 🐕'}
                     </h3>
 
@@ -698,9 +686,8 @@ export default function WalkMyPet() {
                       </Badge>
                     </div>
 
-                    <Button 
-                      size="lg" 
-                      className="w-full h-14 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg font-semibold shadow-xl"
+                    <button 
+                      className="luxury-btn-primary luxury-shadow-lg w-full h-14 text-lg"
                       onClick={() => {
                         const resultsSection = document.getElementById('walkers-results');
                         resultsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -708,17 +695,17 @@ export default function WalkMyPet() {
                       data-testid="button-search"
                     >
                       {t.hero.searchNow}
-                    </Button>
+                    </button>
                   </div>
-                </GlassCard>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* EMERGENCY WALK BANNER */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 mb-8 relative z-10">
-          <div className="bg-gradient-to-r from-red-600 via-orange-600 to-yellow-600 p-8 rounded-3xl shadow-2xl border-4 border-white/20">
+        <div className="luxury-container -mt-8 mb-8 relative z-10">
+          <div className="luxury-glass-card luxury-shadow-xl p-8 bg-gradient-to-r from-red-600 via-orange-600 to-yellow-600 border-2 border-white/30">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="text-white space-y-2">
                 <h2 className="text-3xl font-black flex items-center gap-3">
@@ -744,182 +731,185 @@ export default function WalkMyPet() {
         </div>
 
         {/* TRUST & SAFETY BADGES */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="luxury-section luxury-container">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-black text-gray-900 dark:text-white mb-4">
+            <h2 className="luxury-heading-lg mb-4">
               {t.trust.title}
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <GlassCard className="p-6 hover:scale-105 transition-transform">
+          <div className="luxury-grid-3 luxury-gap-lg">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
               <div className="flex items-start gap-4">
-                <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl">
-                  <Navigation className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
+                  <Navigation className="w-8 h-8 text-[#667eea]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="luxury-heading-sm mb-2">
                     {t.trust.badge1Title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                  <p className="luxury-text-body text-sm">
                     {t.trust.badge1Desc}
                   </p>
                 </div>
               </div>
-            </GlassCard>
+            </div>
 
-            <GlassCard className="p-6 hover:scale-105 transition-transform">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
               <div className="flex items-start gap-4">
-                <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-xl">
-                  <Shield className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
+                  <Shield className="w-8 h-8 text-[#667eea]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="luxury-heading-sm mb-2">
                     {t.trust.badge2Title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                  <p className="luxury-text-body text-sm">
                     {t.trust.badge2Desc}
                   </p>
                 </div>
               </div>
-            </GlassCard>
+            </div>
 
-            <GlassCard className="p-6 hover:scale-105 transition-transform">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
               <div className="flex items-start gap-4">
-                <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-xl">
-                  <Activity className="w-8 h-8 text-red-600 dark:text-red-400" />
+                <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
+                  <Activity className="w-8 h-8 text-[#667eea]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="luxury-heading-sm mb-2">
                     {t.trust.badge3Title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                  <p className="luxury-text-body text-sm">
                     {t.trust.badge3Desc}
                   </p>
                 </div>
               </div>
-            </GlassCard>
+            </div>
 
-            <GlassCard className="p-6 hover:scale-105 transition-transform">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
               <div className="flex items-start gap-4">
-                <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-xl">
-                  <Shield className="w-8 h-8 text-green-600 dark:text-green-400" />
+                <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
+                  <Shield className="w-8 h-8 text-[#667eea]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="luxury-heading-sm mb-2">
                     {t.trust.badge4Title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                  <p className="luxury-text-body text-sm">
                     {t.trust.badge4Desc}
                   </p>
                 </div>
               </div>
-            </GlassCard>
+            </div>
 
-            <GlassCard className="p-6 hover:scale-105 transition-transform">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
               <div className="flex items-start gap-4">
-                <div className="bg-pink-100 dark:bg-pink-900/30 p-3 rounded-xl">
-                  <Video className="w-8 h-8 text-pink-600 dark:text-pink-400" />
+                <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
+                  <Video className="w-8 h-8 text-[#667eea]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="luxury-heading-sm mb-2">
                     {t.trust.badge5Title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                  <p className="luxury-text-body text-sm">
                     {t.trust.badge5Desc}
                   </p>
                 </div>
               </div>
-            </GlassCard>
+            </div>
 
-            <GlassCard className="p-6 hover:scale-105 transition-transform">
+            <div className="luxury-glass-minimal p-6 luxury-hover-lift">
               <div className="flex items-start gap-4">
-                <div className="bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded-xl">
-                  <DollarSign className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
+                <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center luxury-shadow-sm">
+                  <DollarSign className="w-8 h-8 text-[#667eea]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  <h3 className="luxury-heading-sm mb-2">
                     {t.trust.badge6Title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">
+                  <p className="luxury-text-body text-sm">
                     {t.trust.badge6Desc}
                   </p>
                 </div>
               </div>
-            </GlassCard>
+            </div>
           </div>
         </div>
 
         {/* FEATURED WALKERS */}
         {featuredWalkers && featuredWalkers.length > 0 && (
-          <div className="bg-white dark:bg-gray-900/50 py-16">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="luxury-section luxury-bg-soft">
+            <div className="luxury-container">
               <div className="text-center mb-12">
-                <h2 className="text-4xl font-black text-gray-900 dark:text-white mb-4">
+                <h2 className="luxury-heading-lg mb-4">
                   {t.featured.title}
                 </h2>
-                <p className="text-xl text-gray-600 dark:text-gray-300">
+                <p className="luxury-text-body text-xl">
                   {t.featured.subtitle}
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="luxury-grid-4 luxury-gap-lg">
                 {featuredWalkers.map((walker) => (
-                  <GlassCard key={walker.id} className="p-0 overflow-hidden hover:scale-105 transition-transform">
-                    <div className="aspect-square bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center relative">
+                  <div key={walker.id} className="luxury-glass-card luxury-shadow-md luxury-hover-glow p-0 overflow-hidden">
+                    <div className="aspect-square luxury-bg-soft flex items-center justify-center relative overflow-hidden">
                       {walker.profilePhotoUrl ? (
-                        <img src={walker.profilePhotoUrl} alt={walker.fullName} className="w-full h-full object-cover" />
+                        <div className="w-full h-full relative">
+                          <div className="absolute inset-0 luxury-bg-primary opacity-10"></div>
+                          <img src={walker.profilePhotoUrl} alt={walker.fullName} className="w-full h-full object-cover" />
+                        </div>
                       ) : (
-                        <div className="text-6xl font-black text-blue-600 dark:text-blue-400">
-                          {walker.fullName.charAt(0)}
+                        <div className="w-32 h-32 rounded-full luxury-bg-primary flex items-center justify-center luxury-shadow-lg border-4 border-white/50">
+                          <div className="text-5xl font-black text-white">
+                            {walker.fullName.charAt(0)}
+                          </div>
                         </div>
                       )}
-                      <div className="absolute top-3 right-3 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      <div className="luxury-badge-gold absolute top-3 right-3 flex items-center gap-1 px-3 py-1">
                         <Crown className="w-3 h-3" />
-                        TOP
+                        <span className="text-xs font-bold">TOP</span>
                       </div>
                     </div>
                     
                     <div className="p-4 space-y-3">
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <h3 className="luxury-heading-sm flex items-center gap-2">
                           {walker.fullName}
-                          {walker.verified && <CheckCircle2 className="w-4 h-4 text-blue-500" />}
+                          {walker.verified && <CheckCircle2 className="w-4 h-4 text-[#667eea]" />}
                         </h3>
-                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
+                        <div className="flex items-center gap-1 luxury-text-small">
                           <MapPin className="w-4 h-4" />
                           {walker.city}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                          <span className="font-bold">{walker.rating}</span>
+                        <div className="luxury-badge luxury-badge-gold flex items-center gap-1 px-2 py-1">
+                          <Star className="w-3 h-3" />
+                          <span className="text-xs font-bold">{walker.rating}</span>
                         </div>
-                        <span className="text-sm text-gray-500">({walker.totalReviews} reviews)</span>
+                        <span className="luxury-text-small">({walker.totalReviews})</span>
                       </div>
 
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="text-gray-600 dark:text-gray-300">
-                          {walker.completedWalks} {t.featured.completed}
-                        </div>
+                      <div className="luxury-text-small">
+                        {walker.completedWalks} {t.featured.completed}
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <div className="luxury-text-gradient text-2xl font-black">
                           ₪{walker.hourlyRateIls}
-                          <span className="text-sm text-gray-500">/hr</span>
+                          <span className="text-sm luxury-text-body">/hr</span>
                         </div>
                       </div>
 
                       <Link href={`/walk-my-pet/book/${walker.id}`}>
-                        <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" data-testid={`button-book-${walker.id}`}>
+                        <button className="luxury-btn-primary w-full" data-testid={`button-book-${walker.id}`}>
                           {t.featured.bookNow}
-                        </Button>
+                        </button>
                       </Link>
                     </div>
-                  </GlassCard>
+                  </div>
                 ))}
               </div>
             </div>
@@ -927,94 +917,122 @@ export default function WalkMyPet() {
         )}
 
         {/* EARNINGS CALCULATOR */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <GlassCard className="p-8 lg:p-12">
+        <div className="luxury-section luxury-container">
+          <div className="luxury-glass-card luxury-shadow-lg p-8 lg:p-12">
             <div className="text-center mb-8">
-              <h2 className="text-4xl font-black text-gray-900 dark:text-white mb-4">
+              <h2 className="luxury-heading-lg mb-4">
                 {t.earnings.title}
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-300">
+              <p className="luxury-text-body text-xl">
                 {t.earnings.subtitle}
               </p>
             </div>
 
             <EarningsCalculator isHebrew={isHebrew} t={t.earnings} />
-          </GlassCard>
+          </div>
         </div>
 
         {/* HOW IT WORKS */}
-        <div className="bg-white dark:bg-gray-900/50 py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="luxury-section luxury-bg-soft">
+          <div className="luxury-container">
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-black text-gray-900 dark:text-white mb-4">
+              <h2 className="luxury-heading-lg mb-4">
                 {t.howItWorks.title}
               </h2>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <GlassCard className="p-6 text-center">
-                <div className="bg-blue-100 dark:bg-blue-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <div className="luxury-grid-4 luxury-gap-lg relative">
+              {/* Step 1 */}
+              <div className="luxury-glass-card luxury-hover-lift p-6 text-center relative">
+                <div className="w-20 h-20 rounded-full luxury-bg-primary flex items-center justify-center mx-auto mb-4 luxury-shadow-lg relative">
+                  <span className="luxury-text-gradient text-4xl font-black absolute inset-0 flex items-center justify-center">1</span>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center mx-auto mb-4 luxury-shadow-sm">
+                  <Search className="w-8 h-8 text-[#667eea]" />
+                </div>
+                <h3 className="luxury-heading-sm mb-3">
                   {t.howItWorks.step1Title}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300">
+                <p className="luxury-text-body text-sm">
                   {t.howItWorks.step1Desc}
                 </p>
-              </GlassCard>
-
-              <GlassCard className="p-6 text-center">
-                <div className="bg-purple-100 dark:bg-purple-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                {/* Connector Arrow */}
+                <div className="hidden lg:block absolute top-1/2 -right-8 transform -translate-y-1/2">
+                  <div className="luxury-divider-vertical h-1 w-16 rotate-90"></div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+              </div>
+
+              {/* Step 2 */}
+              <div className="luxury-glass-card luxury-hover-lift p-6 text-center relative">
+                <div className="w-20 h-20 rounded-full luxury-bg-primary flex items-center justify-center mx-auto mb-4 luxury-shadow-lg relative">
+                  <span className="luxury-text-gradient text-4xl font-black absolute inset-0 flex items-center justify-center">2</span>
+                </div>
+                <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center mx-auto mb-4 luxury-shadow-sm">
+                  <Calendar className="w-8 h-8 text-[#667eea]" />
+                </div>
+                <h3 className="luxury-heading-sm mb-3">
                   {t.howItWorks.step2Title}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300">
+                <p className="luxury-text-body text-sm">
                   {t.howItWorks.step2Desc}
                 </p>
-              </GlassCard>
-
-              <GlassCard className="p-6 text-center">
-                <div className="bg-green-100 dark:bg-green-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Navigation className="w-8 h-8 text-green-600 dark:text-green-400" />
+                {/* Connector Arrow */}
+                <div className="hidden lg:block absolute top-1/2 -right-8 transform -translate-y-1/2">
+                  <div className="luxury-divider-vertical h-1 w-16 rotate-90"></div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+              </div>
+
+              {/* Step 3 */}
+              <div className="luxury-glass-card luxury-hover-lift p-6 text-center relative">
+                <div className="w-20 h-20 rounded-full luxury-bg-primary flex items-center justify-center mx-auto mb-4 luxury-shadow-lg relative">
+                  <span className="luxury-text-gradient text-4xl font-black absolute inset-0 flex items-center justify-center">3</span>
+                </div>
+                <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center mx-auto mb-4 luxury-shadow-sm">
+                  <Navigation className="w-8 h-8 text-[#667eea]" />
+                </div>
+                <h3 className="luxury-heading-sm mb-3">
                   {t.howItWorks.step3Title}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300">
+                <p className="luxury-text-body text-sm">
                   {t.howItWorks.step3Desc}
                 </p>
-              </GlassCard>
-
-              <GlassCard className="p-6 text-center">
-                <div className="bg-pink-100 dark:bg-pink-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <BarChart className="w-8 h-8 text-pink-600 dark:text-pink-400" />
+                {/* Connector Arrow */}
+                <div className="hidden lg:block absolute top-1/2 -right-8 transform -translate-y-1/2">
+                  <div className="luxury-divider-vertical h-1 w-16 rotate-90"></div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+              </div>
+
+              {/* Step 4 */}
+              <div className="luxury-glass-card luxury-hover-lift p-6 text-center">
+                <div className="w-20 h-20 rounded-full luxury-bg-primary flex items-center justify-center mx-auto mb-4 luxury-shadow-lg relative">
+                  <span className="luxury-text-gradient text-4xl font-black absolute inset-0 flex items-center justify-center">4</span>
+                </div>
+                <div className="w-16 h-16 rounded-2xl luxury-bg-soft flex items-center justify-center mx-auto mb-4 luxury-shadow-sm">
+                  <BarChart className="w-8 h-8 text-[#667eea]" />
+                </div>
+                <h3 className="luxury-heading-sm mb-3">
                   {t.howItWorks.step4Title}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300">
+                <p className="luxury-text-body text-sm">
                   {t.howItWorks.step4Desc}
                 </p>
-              </GlassCard>
+              </div>
             </div>
           </div>
         </div>
 
         {/* WALKER REQUIREMENTS */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="luxury-section luxury-container">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-black text-gray-900 dark:text-white mb-4">
+            <h2 className="luxury-heading-lg mb-4">
               {t.requirements.title}
             </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300">
+            <p className="luxury-text-body text-xl">
               {t.requirements.subtitle}
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="luxury-grid-4 luxury-gap-md">
             {[
               t.requirements.req1,
               t.requirements.req2,
@@ -1025,56 +1043,58 @@ export default function WalkMyPet() {
               t.requirements.req7,
               t.requirements.req8,
             ].map((req, index) => (
-              <GlassCard key={index} className="p-4 flex items-center gap-3">
-                <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0" />
-                <span className="text-gray-700 dark:text-gray-200">{req}</span>
-              </GlassCard>
+              <div key={index} className="luxury-glass-minimal p-4 flex items-center gap-3 luxury-hover-lift">
+                <div className="w-8 h-8 rounded-full luxury-bg-primary flex items-center justify-center flex-shrink-0 luxury-shadow-sm">
+                  <CheckCircle2 className="w-5 h-5 text-white" />
+                </div>
+                <span className="luxury-text-body text-sm">{req}</span>
+              </div>
             ))}
           </div>
         </div>
 
         {/* TESTIMONIALS */}
-        <div className="bg-white dark:bg-gray-900/50 py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="luxury-section luxury-bg-soft">
+          <div className="luxury-container">
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-black text-gray-900 dark:text-white mb-4">
+              <h2 className="luxury-heading-lg mb-4">
                 {t.testimonials.title}
               </h2>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="luxury-grid-4 luxury-gap-lg">
               {[
                 { name: t.testimonials.test1Name, text: t.testimonials.test1Text },
                 { name: t.testimonials.test2Name, text: t.testimonials.test2Text },
                 { name: t.testimonials.test3Name, text: t.testimonials.test3Text },
                 { name: t.testimonials.test4Name, text: t.testimonials.test4Text },
               ].map((testimonial, index) => (
-                <GlassCard key={index} className="p-6">
+                <div key={index} className="luxury-glass-card luxury-shadow-md p-6 luxury-hover-lift">
                   <div className="flex items-center gap-1 mb-4">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className="w-4 h-4 text-yellow-500 fill-current" />
                     ))}
                   </div>
-                  <p className="text-gray-700 dark:text-gray-200 mb-4 italic">
+                  <p className="luxury-text-body text-sm mb-4 italic">
                     "{testimonial.text}"
                   </p>
-                  <div className="font-semibold text-gray-900 dark:text-white">
+                  <div className="luxury-heading-sm text-sm">
                     {testimonial.name}
                   </div>
-                </GlassCard>
+                </div>
               ))}
             </div>
           </div>
         </div>
 
         {/* ALL WALKERS GRID */}
-        <div id="walkers-results" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div id="walkers-results" className="luxury-section luxury-container">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="luxury-heading-lg">
                 {t.allWalkers.title}
               </h2>
-              <p className="text-gray-600 dark:text-gray-300 mt-2">
+              <p className="luxury-text-body mt-2">
                 {t.allWalkers.showing} {filteredWalkers?.length || 0} {t.allWalkers.walkers}
               </p>
             </div>
@@ -1090,7 +1110,7 @@ export default function WalkMyPet() {
           </div>
 
           {showFilters && (
-            <GlassCard className="p-6 mb-8">
+            <div className="luxury-glass-card luxury-shadow-md p-6 mb-8">
               <div className="space-y-6">
                 <div>
                   <Label className="text-lg font-semibold mb-3 block">{t.filters.priceRange}</Label>
@@ -1175,13 +1195,16 @@ export default function WalkMyPet() {
               >
                 {t.filters.clear}
               </Button>
-            </GlassCard>
+            </div>
           )}
 
           {isLoading ? (
-            <div className="text-center py-12">Loading walkers...</div>
+            <div className="luxury-glass-card luxury-shadow-md p-12 text-center">
+              <div className="luxury-spinner mx-auto mb-4"></div>
+              <p className="luxury-text-body">Loading walkers...</p>
+            </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="luxury-grid-3 luxury-gap-lg">
               {filteredWalkers?.map((walker) => (
                 <WalkerCard key={walker.id} walker={walker} isHebrew={isHebrew} />
               ))}
@@ -1190,20 +1213,19 @@ export default function WalkMyPet() {
         </div>
 
         {/* FINAL CTA */}
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-16">
+        <div className="luxury-section luxury-bg-primary text-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-4xl font-black mb-4">
+            <h2 className="luxury-heading-lg mb-4 text-white">
               {isHebrew ? 'מוכן להתחיל?' : 'Ready to Get Started?'}
             </h2>
-            <p className="text-xl mb-8 text-white/90">
+            <p className="luxury-text-body text-xl mb-8 text-white/95">
               {isHebrew 
                 ? 'הצטרף לאלפי בעלי כלבים מרוצים או התחל להרוויח כווקר מקצועי' 
                 : 'Join thousands of happy dog owners or start earning as a professional walker'}
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <Button 
-                size="lg" 
-                className="bg-white text-blue-700 hover:bg-gray-100 text-lg px-8 py-6 rounded-xl shadow-2xl font-semibold"
+              <button 
+                className="luxury-btn-secondary luxury-shadow-xl text-lg px-8 py-6"
                 onClick={() => {
                   const resultsSection = document.getElementById('walkers-results');
                   resultsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1211,16 +1233,15 @@ export default function WalkMyPet() {
                 data-testid="button-final-find-walker"
               >
                 {isHebrew ? 'מצא ווקר עכשיו' : 'Find a Walker Now'}
-              </Button>
+              </button>
               
               <Link href="/provider-onboarding?type=walker">
-                <Button 
-                  size="lg" 
-                  className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white text-lg px-8 py-6 rounded-xl shadow-2xl font-semibold"
+                <button 
+                  className="luxury-btn-primary luxury-shadow-xl text-lg px-8 py-6"
                   data-testid="button-final-become-walker"
                 >
                   {isHebrew ? 'הצטרף כווקר' : 'Join as Walker'}
-                </Button>
+                </button>
               </Link>
             </div>
           </div>
@@ -1314,22 +1335,27 @@ function EarningsCalculator({ isHebrew, t }: { isHebrew: boolean; t: any }) {
 // Walker Card Component
 function WalkerCard({ walker, isHebrew }: { walker: WalkerProfile; isHebrew: boolean }) {
   return (
-    <GlassCard className="p-0 overflow-hidden hover:scale-105 transition-transform">
-      <div className="aspect-[4/3] bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center relative">
+    <div className="luxury-glass-card luxury-shadow-md luxury-hover-glow p-0 overflow-hidden">
+      <div className="aspect-[4/3] luxury-bg-soft flex items-center justify-center relative overflow-hidden">
         {walker.profilePhotoUrl ? (
-          <img src={walker.profilePhotoUrl} alt={walker.fullName} className="w-full h-full object-cover" />
+          <div className="w-full h-full relative">
+            <div className="absolute inset-0 luxury-bg-primary opacity-10"></div>
+            <img src={walker.profilePhotoUrl} alt={walker.fullName} className="w-full h-full object-cover" />
+          </div>
         ) : (
-          <div className="text-6xl font-black text-blue-600 dark:text-blue-400">
-            {walker.fullName.charAt(0)}
+          <div className="w-32 h-32 rounded-full luxury-bg-primary flex items-center justify-center luxury-shadow-lg border-4 border-white/50">
+            <div className="text-5xl font-black text-white">
+              {walker.fullName.charAt(0)}
+            </div>
           </div>
         )}
         {walker.available && (
-          <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+          <div className="luxury-badge-success absolute top-3 left-3 px-3 py-1 text-xs font-bold">
             {isHebrew ? 'זמין' : 'Available'}
           </div>
         )}
         {walker.instantBook && (
-          <div className="absolute top-3 right-3 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+          <div className="luxury-badge absolute top-3 right-3 flex items-center gap-1 px-3 py-1 text-xs font-bold">
             <Zap className="w-3 h-3" />
             {isHebrew ? 'הזמנה מיידית' : 'Instant Book'}
           </div>
@@ -1338,63 +1364,63 @@ function WalkerCard({ walker, isHebrew }: { walker: WalkerProfile; isHebrew: boo
       
       <div className="p-4 space-y-3">
         <div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="luxury-heading-sm flex items-center gap-2">
             {walker.fullName}
-            {walker.verified && <CheckCircle2 className="w-4 h-4 text-blue-500" />}
+            {walker.verified && <CheckCircle2 className="w-4 h-4 text-[#667eea]" />}
           </h3>
-          <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
+          <div className="flex items-center gap-1 luxury-text-small">
             <MapPin className="w-4 h-4" />
             {walker.city}
           </div>
         </div>
 
-        <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+        <p className="luxury-text-body text-sm line-clamp-2">
           {walker.bio}
         </p>
 
         <div className="flex flex-wrap gap-1">
           {walker.specialties.slice(0, 3).map((spec) => (
-            <Badge key={spec} variant="secondary" className="text-xs">
+            <span key={spec} className="luxury-badge text-xs px-2 py-1">
               {spec}
-            </Badge>
+            </span>
           ))}
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Star className="w-4 h-4 text-yellow-500 fill-current" />
-            <span className="font-bold">{walker.rating}</span>
+          <div className="luxury-badge luxury-badge-gold flex items-center gap-1 px-2 py-1">
+            <Star className="w-3 h-3" />
+            <span className="text-xs font-bold">{walker.rating}</span>
           </div>
-          <span className="text-sm text-gray-500">({walker.totalReviews} reviews)</span>
+          <span className="luxury-text-small">({walker.totalReviews})</span>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <div className="text-gray-600 dark:text-gray-300">
+        <div className="flex items-center justify-between">
+          <div className="luxury-text-small">
             {walker.experienceYears} {isHebrew ? 'שנות ניסיון' : 'years exp'}
           </div>
           {walker.completedWalks && (
-            <div className="text-gray-600 dark:text-gray-300">
+            <div className="luxury-text-small">
               {walker.completedWalks} {isHebrew ? 'הליכות' : 'walks'}
             </div>
           )}
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="luxury-text-gradient text-2xl font-black">
             ₪{walker.hourlyRateIls}
-            <span className="text-sm text-gray-500">/hr</span>
+            <span className="text-sm luxury-text-body">/hr</span>
           </div>
-          <Button size="icon" variant="ghost" data-testid={`button-favorite-${walker.id}`}>
+          <button className="luxury-btn-ghost p-2" data-testid={`button-favorite-${walker.id}`}>
             <Heart className="w-5 h-5" />
-          </Button>
+          </button>
         </div>
 
         <Link href={`/walk-my-pet/book/${walker.id}`}>
-          <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" data-testid={`button-book-walker-${walker.id}`}>
+          <button className="luxury-btn-primary w-full" data-testid={`button-book-walker-${walker.id}`}>
             {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
-          </Button>
+          </button>
         </Link>
       </div>
-    </GlassCard>
+    </div>
   );
 }

@@ -312,10 +312,10 @@ export default function SitterSuite() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+      <div className="min-h-screen luxury-bg-purple-fade">
         
-        {/* 7-STAR LUXURY HERO SECTION - Burj Al Arab Inspired */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-purple-900 via-pink-600 to-purple-700 text-white py-32">
+        {/* 7-STAR LUXURY HERO SECTION */}
+        <div className="relative overflow-hidden luxury-bg-primary text-white py-32 luxury-animate-fade-in">
           {/* Premium Rose Gold Overlay */}
           <div className="absolute inset-0 bg-gradient-to-r from-pink-900/40 via-purple-500/30 to-pink-900/40"></div>
           
@@ -338,10 +338,10 @@ export default function SitterSuite() {
                 </div>
 
                 <div className="space-y-6">
-                  <h1 className="text-6xl lg:text-7xl font-black leading-tight tracking-tight drop-shadow-2xl">
+                  <h1 className="luxury-heading-xl text-white">
                     {t.hero.title}
                   </h1>
-                  <p className="text-2xl lg:text-3xl text-pink-100 font-light drop-shadow-lg">
+                  <p className="luxury-text-body text-white text-opacity-95 text-xl">
                     {t.hero.subtitle}
                   </p>
                 </div>
@@ -379,30 +379,28 @@ export default function SitterSuite() {
 
                 {/* Premium CTA Buttons */}
                 <div className="flex flex-wrap gap-4">
-                  <Button 
-                    size="lg" 
-                    className="group bg-white text-purple-900 hover:bg-pink-50 text-xl px-10 py-8 rounded-2xl shadow-2xl font-black tracking-wide hover:scale-105 transition-all duration-300 border-4 border-pink-200"
+                  <button 
+                    className="luxury-btn-primary luxury-hover-glow flex items-center gap-3"
                     onClick={() => {
                       const resultsSection = document.getElementById('sitters-results');
                       resultsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
                     data-testid="button-browse-sitters"
                   >
-                    <Search className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform" />
+                    <Search className="w-6 h-6" />
                     {isHebrew ? 'מצא שמרטף' : 'Find a Sitter'}
-                    <Heart className="w-5 h-5 ml-2 text-pink-600" />
-                  </Button>
+                    <Heart className="w-5 h-5" />
+                  </button>
                   
                   <Link href="/provider-onboarding?type=sitter">
-                    <Button 
-                      size="lg" 
-                      className="group bg-gradient-to-r from-pink-500 via-purple-500 to-pink-600 hover:from-pink-600 hover:via-purple-600 hover:to-pink-700 text-white text-xl px-10 py-8 rounded-2xl shadow-2xl font-black tracking-wide hover:scale-105 transition-all duration-300 border-4 border-pink-200"
+                    <button 
+                      className="luxury-btn-secondary flex items-center gap-3"
                       data-testid="button-become-sitter"
                     >
-                      <Sparkles className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform" />
+                      <Sparkles className="w-6 h-6" />
                       {t.hero.becomeSitter}
-                      <Award className="w-5 h-5 ml-2" />
-                    </Button>
+                      <Award className="w-5 h-5" />
+                    </button>
                   </Link>
                 </div>
 
@@ -416,9 +414,9 @@ export default function SitterSuite() {
               </div>
 
               {/* RIGHT: Search Card */}
-              <div>
-                <GlassCard className="p-8 border-white/20">
-                  <h3 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+              <div className="luxury-animate-slide-up luxury-delay-2">
+                <div className="luxury-glass-card luxury-shadow-lg p-8">
+                  <h3 className="luxury-heading-md mb-6">
                     {isHebrew ? 'מצא את השמרטף המושלם' : 'Find Your Perfect Sitter'}
                   </h3>
                   
@@ -438,47 +436,34 @@ export default function SitterSuite() {
 
                     {/* Quick Filters */}
                     <div className="flex flex-wrap gap-2">
-                      <Badge 
-                        className={`px-4 py-2 cursor-pointer transition-all ${
-                          instantBookOnly 
-                            ? 'bg-purple-600 text-white hover:bg-purple-700' 
-                            : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                        }`}
+                      <span 
+                        className={`luxury-badge cursor-pointer ${instantBookOnly ? 'luxury-badge-gold' : ''}`}
                         onClick={() => setInstantBookOnly(!instantBookOnly)}
                         data-testid="badge-filter-instant-book"
                       >
                         {instantBookOnly && '✓ '}
                         {isHebrew ? 'הזמנה מיידית' : 'Instant Book'}
-                      </Badge>
-                      <Badge 
-                        className={`px-4 py-2 cursor-pointer transition-all ${
-                          certifiedOnly 
-                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                        }`}
+                      </span>
+                      <span 
+                        className={`luxury-badge cursor-pointer ${certifiedOnly ? 'luxury-badge-success' : ''}`}
                         onClick={() => setCertifiedOnly(!certifiedOnly)}
                         data-testid="badge-filter-certified"
                       >
                         {certifiedOnly && '✓ '}
                         {isHebrew ? 'מוסמך' : 'Certified'}
-                      </Badge>
-                      <Badge 
-                        className={`px-4 py-2 cursor-pointer transition-all ${
-                          availableToday 
-                            ? 'bg-green-600 text-white hover:bg-green-700' 
-                            : 'bg-green-100 text-green-700 hover:bg-green-200'
-                        }`}
+                      </span>
+                      <span 
+                        className={`luxury-badge cursor-pointer ${availableToday ? 'luxury-badge-success' : ''}`}
                         onClick={() => setAvailableToday(!availableToday)}
                         data-testid="badge-filter-available-today"
                       >
                         {availableToday && '✓ '}
                         {isHebrew ? 'זמין היום' : 'Available Today'}
-                      </Badge>
+                      </span>
                     </div>
 
-                    <Button 
-                      size="lg" 
-                      className="w-full h-14 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg font-semibold shadow-xl"
+                    <button 
+                      className="luxury-btn-primary w-full"
                       onClick={() => {
                         const resultsSection = document.getElementById('sitters-results');
                         resultsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -486,67 +471,74 @@ export default function SitterSuite() {
                       data-testid="button-search"
                     >
                       {isHebrew ? 'חפש עכשיו' : 'Search Now'}
-                    </Button>
+                    </button>
                   </div>
-                </GlassCard>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* TRUST & SAFETY SECTION - Booking.com Style */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent">
-              {t.trust.title}
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">{t.trust.subtitle}</p>
-          </div>
+        <div className="luxury-divider"></div>
 
-          <div className="grid md:grid-cols-4 gap-6">
-            {[
-              { icon: Shield, title: isHebrew ? 'בדיקת רקע' : 'Background Checks', desc: isHebrew ? 'כל השמרטפים עוברים בדיקה יסודית' : 'All sitters pass thorough screening' },
-              { icon: CheckCircle2, title: isHebrew ? 'ביטוח מלא' : 'Full Insurance', desc: isHebrew ? 'כיסוי עד ₪10,000 לכל הזמנה' : 'Up to ₪10,000 coverage per booking' },
-              { icon: Award, title: isHebrew ? 'אישורים' : 'Certifications', desc: isHebrew ? 'שמרטפים מוסמכים ומאומנים' : 'Certified & trained professionals' },
-              { icon: ThumbsUp, title: isHebrew ? 'ערבות החזר כסף' : 'Money-Back Guarantee', desc: isHebrew ? 'החזר מלא אם לא מרוצה' : 'Full refund if not satisfied' },
-            ].map((item, i) => (
-              <GlassCard key={i} className="p-6 text-center hover:scale-105 transition-transform duration-300">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                  <item.icon className="w-8 h-8 text-white" />
+        {/* TRUST & SAFETY SECTION */}
+        <div className="luxury-section">
+          <div className="luxury-container">
+            <div className="text-center mb-12 luxury-animate-fade-in">
+              <h2 className="luxury-heading-lg mb-4 luxury-text-gradient">
+                {t.trust.title}
+              </h2>
+              <p className="luxury-text-body">{t.trust.subtitle}</p>
+            </div>
+
+            <div className="luxury-grid-4">
+              {[
+                { icon: Shield, title: isHebrew ? 'בדיקת רקע' : 'Background Checks', desc: isHebrew ? 'כל השמרטפים עוברים בדיקה יסודית' : 'All sitters pass thorough screening' },
+                { icon: CheckCircle2, title: isHebrew ? 'ביטוח מלא' : 'Full Insurance', desc: isHebrew ? 'כיסוי עד ₪10,000 לכל הזמנה' : 'Up to ₪10,000 coverage per booking' },
+                { icon: Award, title: isHebrew ? 'אישורים' : 'Certifications', desc: isHebrew ? 'שמרטפים מוסמכים ומאומנים' : 'Certified & trained professionals' },
+                { icon: ThumbsUp, title: isHebrew ? 'ערבות החזר כסף' : 'Money-Back Guarantee', desc: isHebrew ? 'החזר מלא אם לא מרוצה' : 'Full refund if not satisfied' },
+              ].map((item, i) => (
+                <div key={i} className={`luxury-glass-minimal luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-scale-in luxury-delay-${i + 1}`}>
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center luxury-shadow-md">
+                    <item.icon className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="luxury-heading-sm mb-2">{item.title}</h3>
+                  <p className="luxury-text-small">{item.desc}</p>
                 </div>
-                <h3 className="font-bold text-lg mb-2 text-gray-900 dark:text-white">{item.title}</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{item.desc}</p>
-              </GlassCard>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
+        <div className="luxury-divider"></div>
+
         {/* FEATURED SITTERS SECTION */}
         {featuredSitters && featuredSitters.length > 0 && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 bg-gradient-to-r from-purple-100/30 to-pink-100/30 dark:from-purple-900/20 dark:to-pink-900/20 rounded-3xl mb-16">
-            <div className="text-center mb-12">
-              <Badge className="mb-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2">
-                <Star className="w-4 h-4 mr-1" />
-                {isHebrew ? 'מומלץ' : 'Featured'}
-              </Badge>
-              <h2 className="text-4xl font-bold mb-3">{t.featured.title}</h2>
-              <p className="text-lg text-gray-600 dark:text-gray-400">{t.featured.subtitle}</p>
-            </div>
+          <div className="luxury-section luxury-bg-soft">
+            <div className="luxury-container">
+              <div className="text-center mb-12 luxury-animate-fade-in">
+                <span className="luxury-badge luxury-badge-gold mb-4 inline-flex items-center gap-2">
+                  <Star className="w-4 h-4" />
+                  {isHebrew ? 'מומלץ' : 'Featured'}
+                </span>
+                <h2 className="luxury-heading-lg mb-3">{t.featured.title}</h2>
+                <p className="luxury-text-body">{t.featured.subtitle}</p>
+              </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
-              {featuredSitters.map((sitter) => (
-                <Card 
-                  key={sitter.id}
-                  className="group hover:shadow-2xl transition-all duration-300 border-2 border-yellow-200 dark:border-yellow-700/50 relative overflow-hidden"
-                  data-testid={`card-featured-${sitter.id}`}
-                >
-                  {/* Featured Badge */}
-                  <div className="absolute top-4 right-4 z-10">
-                    <Badge className="bg-yellow-500 text-white">
-                      <Star className="w-3 h-3 mr-1" />
-                      {isHebrew ? 'מומלץ' : 'Top Rated'}
-                    </Badge>
-                  </div>
+              <div className="luxury-grid-3">
+                {featuredSitters.map((sitter, idx) => (
+                  <div 
+                    key={sitter.id}
+                    className={`luxury-glass-card luxury-hover-lift luxury-shadow-lg relative overflow-hidden luxury-animate-scale-in luxury-delay-${idx + 1}`}
+                    data-testid={`card-featured-${sitter.id}`}
+                  >
+                    {/* Featured Badge */}
+                    <div className="absolute top-4 right-4 z-10">
+                      <span className="luxury-badge luxury-badge-gold">
+                        <Star className="w-3 h-3" />
+                        {isHebrew ? 'מומלץ' : 'Top Rated'}
+                      </span>
+                    </div>
 
                   {/* Large Profile Photo */}
                   <div className="relative h-64 overflow-hidden">
@@ -572,112 +564,114 @@ export default function SitterSuite() {
                     )}
                   </div>
 
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-2xl mb-2">{sitter.fullName}</CardTitle>
-                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-3">
-                          <MapPin className="w-4 h-4" />
-                          {sitter.city}
-                        </div>
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="flex items-center gap-1">
-                            <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                            <span className="font-bold text-lg">{sitter.rating.toFixed(1)}</span>
+                    <div className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="luxury-heading-md mb-2">{sitter.fullName}</h3>
+                          <div className="luxury-text-small flex items-center gap-2 mb-3">
+                            <MapPin className="w-4 h-4" />
+                            {sitter.city}
                           </div>
-                          <span className="text-gray-500">({sitter.totalReviews} {isHebrew ? 'ביקורות' : 'reviews'})</span>
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="flex items-center gap-1">
+                              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                              <span className="font-bold text-lg luxury-text-gradient">{sitter.rating.toFixed(1)}</span>
+                            </div>
+                            <span className="luxury-text-small">({sitter.totalReviews} {isHebrew ? 'ביקורות' : 'reviews'})</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
 
-                  <CardContent className="space-y-4">
-                    <p className="text-gray-700 dark:text-gray-300 line-clamp-3">{sitter.bio}</p>
+                      <p className="luxury-text-body line-clamp-3 mb-4">{sitter.bio}</p>
 
-                    <div className="flex items-center gap-4 text-sm">
-                      <div className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
-                        <Clock className="w-4 h-4" />
-                        <span>{sitter.experienceYears}+ {isHebrew ? 'שנות ניסיון' : 'yrs exp'}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                        <MessageCircle className="w-4 h-4" />
-                        <span>{sitter.responseTime || '< 1hr'}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {sitter.services.slice(0, 4).map((service, i) => (
-                        <Badge key={i} variant="outline" className="border-purple-300">
-                          {service}
-                        </Badge>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <div>
-                        <div className="text-3xl font-bold text-purple-700 dark:text-purple-400">
-                          ₪{sitter.hourlyRateIls}
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          <span className="luxury-text-small">{sitter.experienceYears}+ {isHebrew ? 'שנות ניסיון' : 'yrs exp'}</span>
                         </div>
-                        <div className="text-sm text-gray-500">{isHebrew ? 'לשעה' : 'per hour'}</div>
+                        <div className="flex items-center gap-1">
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="luxury-text-small">{sitter.responseTime || '< 1hr'}</span>
+                        </div>
                       </div>
+
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {sitter.services.slice(0, 4).map((service, i) => (
+                          <span key={i} className="luxury-badge">
+                            {service}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="luxury-divider"></div>
+
+                      <div className="flex items-center justify-between pt-4">
+                        <div>
+                          <div className="text-3xl font-bold luxury-text-gradient">
+                            ₪{sitter.hourlyRateIls}
+                          </div>
+                          <div className="luxury-text-small">{isHebrew ? 'לשעה' : 'per hour'}</div>
+                        </div>
                       
-                      {user ? (
-                        <Link href={`/sitter-suite/book/${sitter.id}`}>
-                          <Button 
-                            size="lg"
-                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg"
-                            data-testid={`button-book-featured-${sitter.id}`}
-                          >
-                            {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
-                          </Button>
-                        </Link>
-                      ) : (
-                        <Link href="/signin">
-                          <Button size="lg">
-                            {isHebrew ? 'התחבר להזמנה' : 'Sign in to book'}
-                          </Button>
-                        </Link>
-                      )}
+                        {user ? (
+                          <Link href={`/sitter-suite/book/${sitter.id}`}>
+                            <button 
+                              className="luxury-btn-primary"
+                              data-testid={`button-book-featured-${sitter.id}`}
+                            >
+                              {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
+                            </button>
+                          </Link>
+                        ) : (
+                          <Link href="/signin">
+                            <button className="luxury-btn-secondary">
+                              {isHebrew ? 'התחבר להזמנה' : 'Sign in to book'}
+                            </button>
+                          </Link>
+                        )}
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* ALL SITTERS GRID WITH FILTERS */}
-        <div id="sitters-results" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          {/* Filters Bar */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {isHebrew ? 'כל השמרטפים' : 'All Sitters'}
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                {filteredSitters?.length || 0} {isHebrew ? 'שמרטפים זמינים' : 'sitters available'}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="gap-2"
-              data-testid="button-toggle-filters"
-            >
-              <Filter className="w-4 h-4" />
-              {isHebrew ? 'סינון' : 'Filters'}
-            </Button>
-          </div>
+        <div className="luxury-divider"></div>
 
-          {/* Filter Panel */}
-          {showFilters && (
-            <GlassCard className="p-6 mb-8">
-              <div className="grid md:grid-cols-3 gap-8">
-                {/* Price Range */}
-                <div>
-                  <label className="block text-sm font-semibold mb-3 text-gray-900 dark:text-white">
-                    {t.filters.priceRange}: ₪{priceRange[0]} - ₪{priceRange[1]}
-                  </label>
+        {/* ALL SITTERS GRID WITH FILTERS */}
+        <div id="sitters-results" className="luxury-section">
+          <div className="luxury-container">
+            {/* Filters Bar */}
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="luxury-heading-lg">
+                  {isHebrew ? 'כל השמרטפים' : 'All Sitters'}
+                </h2>
+                <p className="luxury-text-body">
+                  {filteredSitters?.length || 0} {isHebrew ? 'שמרטפים זמינים' : 'sitters available'}
+                </p>
+              </div>
+              <button
+                className="luxury-btn-ghost flex items-center gap-2"
+                onClick={() => setShowFilters(!showFilters)}
+                data-testid="button-toggle-filters"
+              >
+                <Filter className="w-4 h-4" />
+                {isHebrew ? 'סינון' : 'Filters'}
+              </button>
+            </div>
+
+            {/* Filter Panel */}
+            {showFilters && (
+              <div className="luxury-glass-panel luxury-shadow-md p-6 mb-8">
+                <div className="grid md:grid-cols-3 gap-8">
+                  {/* Price Range */}
+                  <div>
+                    <label className="luxury-heading-sm block mb-3">
+                      {t.filters.priceRange}: ₪{priceRange[0]} - ₪{priceRange[1]}
+                    </label>
                   <Slider
                     min={0}
                     max={200}
@@ -689,11 +683,11 @@ export default function SitterSuite() {
                   />
                 </div>
 
-                {/* Services Filter */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold mb-3 text-gray-900 dark:text-white">
-                    {t.filters.services}
-                  </label>
+                  {/* Services Filter */}
+                  <div className="md:col-span-2">
+                    <label className="luxury-heading-sm block mb-3">
+                      {t.filters.services}
+                    </label>
                   <div className="grid grid-cols-2 gap-3">
                     {SERVICES_OPTIONS.map((service) => (
                       <div key={service} className="flex items-center gap-2">
@@ -707,33 +701,32 @@ export default function SitterSuite() {
                               setSelectedServices(selectedServices.filter(s => s !== service));
                             }
                           }}
-                          data-testid={`checkbox-service-${service.toLowerCase().replace(/ /g, '-')}`}
-                        />
-                        <label htmlFor={service} className="text-sm cursor-pointer">
-                          {service}
-                        </label>
-                      </div>
-                    ))}
+                            data-testid={`checkbox-service-${service.toLowerCase().replace(/ /g, '-')}`}
+                          />
+                          <label htmlFor={service} className="luxury-text-small cursor-pointer">
+                            {service}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setPriceRange([0, 200]);
-                  setSelectedServices([]);
-                  setInstantBookOnly(false);
-                  setCertifiedOnly(false);
-                  setAvailableToday(false);
-                }}
-                className="mt-4"
-                data-testid="button-clear-filters"
-              >
-                {t.filters.clear}
-              </Button>
-            </GlassCard>
-          )}
+                <button
+                  className="luxury-btn-ghost mt-4"
+                  onClick={() => {
+                    setPriceRange([0, 200]);
+                    setSelectedServices([]);
+                    setInstantBookOnly(false);
+                    setCertifiedOnly(false);
+                    setAvailableToday(false);
+                  }}
+                  data-testid="button-clear-filters"
+                >
+                  {t.filters.clear}
+                </button>
+              </div>
+            )}
 
           {/* Sitters Grid */}
           {!user && (
@@ -766,30 +759,28 @@ export default function SitterSuite() {
             </Card>
           )}
 
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i} className="animate-pulse">
-                  <div className="h-48 bg-gray-200 dark:bg-gray-700" />
-                  <CardHeader>
-                    <div className="space-y-3">
-                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+            {isLoading ? (
+              <div className="luxury-grid-3">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="luxury-glass-card">
+                    <div className="luxury-skeleton h-48" />
+                    <div className="p-6 space-y-3">
+                      <div className="luxury-skeleton h-6 w-3/4" />
+                      <div className="luxury-skeleton h-4 w-1/2" />
                     </div>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          ) : filteredSitters && filteredSitters.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredSitters.map((sitter) => (
-                <Card 
-                  key={sitter.id}
-                  className="group hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] overflow-hidden"
-                  data-testid={`card-sitter-${sitter.id}`}
-                >
-                  {/* Profile Photo */}
-                  <div className="relative h-56 overflow-hidden">
+                  </div>
+                ))}
+              </div>
+            ) : filteredSitters && filteredSitters.length > 0 ? (
+              <div className="luxury-grid-3">
+                {filteredSitters.map((sitter) => (
+                  <div 
+                    key={sitter.id}
+                    className="luxury-glass-card luxury-hover-lift luxury-shadow-md overflow-hidden"
+                    data-testid={`card-sitter-${sitter.id}`}
+                  >
+                    {/* Profile Photo */}
+                    <div className="relative h-56 overflow-hidden">
                     {sitter.profilePhotoUrl ? (
                       <img 
                         src={sitter.profilePhotoUrl} 
@@ -802,136 +793,137 @@ export default function SitterSuite() {
                       </div>
                     )}
                     
-                    {/* Status Badge */}
-                    <div className="absolute top-3 left-3">
-                      {sitter.available && (
-                        <Badge className="bg-green-500 text-white">
-                          {isHebrew ? 'זמין' : 'Available'}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Favorite Button */}
-                    <button 
-                      className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center text-gray-600 hover:text-pink-500 hover:scale-110 transition-all shadow-lg"
-                      data-testid={`button-favorite-${sitter.id}`}
-                    >
-                      <Heart className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <CardHeader>
-                    <CardTitle className="text-xl group-hover:text-purple-600 transition-colors">
-                      {sitter.fullName}
-                    </CardTitle>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                      <MapPin className="w-4 h-4" />
-                      {sitter.city}
-                    </div>
-                    
-                    {sitter.totalReviews > 0 && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex">
-                          {[...Array(5)].map((_, i) => (
-                            <Star 
-                              key={i}
-                              className={`w-4 h-4 ${i < Math.floor(sitter.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-                            />
-                          ))}
-                        </div>
-                        <span className="font-semibold">{sitter.rating.toFixed(1)}</span>
-                        <span className="text-gray-500 text-sm">({sitter.totalReviews})</span>
+                      {/* Status Badge */}
+                      <div className="absolute top-3 left-3">
+                        {sitter.available && (
+                          <span className="luxury-badge luxury-badge-success">
+                            {isHebrew ? 'זמין' : 'Available'}
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </CardHeader>
 
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
-                      {sitter.bio}
-                    </p>
-
-                    <div className="flex items-center gap-3 text-sm">
-                      <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                        {sitter.experienceYears}+ {isHebrew ? 'שנים' : 'years'}
-                      </Badge>
-                      {sitter.verified && (
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          {isHebrew ? 'מאומת' : 'Verified'}
-                        </Badge>
-                      )}
+                      {/* Favorite Button */}
+                      <button 
+                        className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center text-gray-600 hover:text-pink-500 hover:scale-110 transition-all shadow-lg"
+                        data-testid={`button-favorite-${sitter.id}`}
+                      >
+                        <Heart className="w-5 h-5" />
+                      </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5">
-                      {sitter.services.slice(0, 3).map((service, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">
-                          {service}
-                        </Badge>
-                      ))}
-                      {sitter.services.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{sitter.services.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <div>
-                        <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">
-                          ₪{sitter.hourlyRateIls}
-                        </div>
-                        <div className="text-xs text-gray-500">{isHebrew ? 'לשעה' : 'per hour'}</div>
+                    <div className="p-6">
+                      <h3 className="luxury-heading-sm mb-2">
+                        {sitter.fullName}
+                      </h3>
+                      <div className="luxury-text-small flex items-center gap-2 mb-3">
+                        <MapPin className="w-4 h-4" />
+                        {sitter.city}
                       </div>
                       
-                      {user ? (
-                        <Link href={`/sitter-suite/book/${sitter.id}`}>
-                          <Button 
-                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                            data-testid={`button-book-${sitter.id}`}
-                          >
-                            {isHebrew ? 'הזמן' : 'Book'}
-                          </Button>
-                        </Link>
-                      ) : (
-                        <Link href="/signin">
-                          <Button variant="outline">
-                            {isHebrew ? 'התחבר' : 'Sign in'}
-                          </Button>
-                        </Link>
+                      {sitter.totalReviews > 0 && (
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <Star 
+                                key={i}
+                                className={`w-4 h-4 ${i < Math.floor(sitter.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                              />
+                            ))}
+                          </div>
+                          <span className="font-semibold luxury-text-gradient">{sitter.rating.toFixed(1)}</span>
+                          <span className="luxury-text-small">({sitter.totalReviews})</span>
+                        </div>
                       )}
+
+                      <p className="luxury-text-small line-clamp-2 mb-4">
+                        {sitter.bio}
+                      </p>
+
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="luxury-badge">
+                          {sitter.experienceYears}+ {isHebrew ? 'שנים' : 'years'}
+                        </span>
+                        {sitter.verified && (
+                          <span className="luxury-badge luxury-badge-success flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {isHebrew ? 'מאומת' : 'Verified'}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {sitter.services.slice(0, 3).map((service, i) => (
+                          <span key={i} className="luxury-badge text-xs">
+                            {service}
+                          </span>
+                        ))}
+                        {sitter.services.length > 3 && (
+                          <span className="luxury-badge text-xs">
+                            +{sitter.services.length - 3}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="luxury-divider"></div>
+
+                      <div className="flex items-center justify-between pt-4">
+                        <div>
+                          <div className="text-2xl font-bold luxury-text-gradient">
+                            ₪{sitter.hourlyRateIls}
+                          </div>
+                          <div className="luxury-text-small">{isHebrew ? 'לשעה' : 'per hour'}</div>
+                        </div>
+                        
+                        {user ? (
+                          <Link href={`/sitter-suite/book/${sitter.id}`}>
+                            <button 
+                              className="luxury-btn-primary"
+                              data-testid={`button-book-${sitter.id}`}
+                            >
+                              {isHebrew ? 'הזמן' : 'Book'}
+                            </button>
+                          </Link>
+                        ) : (
+                          <Link href="/signin">
+                            <button className="luxury-btn-ghost">
+                              {isHebrew ? 'התחבר' : 'Sign in'}
+                            </button>
+                          </Link>
+                        )}
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card className="text-center py-16">
-              <CardContent>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="luxury-glass-card luxury-shadow-md text-center py-16 px-6">
                 <Search className="w-20 h-20 mx-auto text-gray-300 mb-4" />
-                <h3 className="text-2xl font-semibold mb-2 text-gray-900 dark:text-white">
+                <h3 className="luxury-heading-md mb-2">
                   {isHebrew ? 'לא נמצאו שמרטפים' : 'No sitters found'}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="luxury-text-body">
                   {isHebrew ? 'נסה לשנות את החיפוש או הסינונים' : 'Try adjusting your search or filters'}
                 </p>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
+          </div>
         </div>
 
+        <div className="luxury-divider"></div>
+
         {/* HOW IT WORKS SECTION */}
-        <div className="bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 py-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent">
+        <div className="luxury-section luxury-bg-soft">
+          <div className="luxury-container">
+            <div className="text-center mb-16 luxury-animate-fade-in">
+              <h2 className="luxury-heading-lg mb-4 luxury-text-gradient">
                 {isHebrew ? 'איך זה עובד?' : 'How It Works'}
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-400">
+              <p className="luxury-text-body">
                 {isHebrew ? 'פשוט, מהיר ובטוח' : 'Simple, Fast & Secure'}
               </p>
             </div>
             
-            <div className="grid md:grid-cols-4 gap-8">
+            <div className="luxury-grid-4">
               {[
                 { 
                   num: '1', 
@@ -957,41 +949,44 @@ export default function SitterSuite() {
                   title: isHebrew ? 'נוח והערך' : 'Relax & Review',
                   desc: isHebrew ? 'חיית המחמד שלך בידיים מהימנות. השאר ביקורת לאחר סיום השירות' : 'Your pet is in trusted hands. Leave a review after service completion'
                 },
-              ].map((step) => (
-                <div key={step.num} className="text-center space-y-4">
-                  <div className="relative inline-block">
+              ].map((step, idx) => (
+                <div key={step.num} className={`luxury-glass-card luxury-hover-glow luxury-shadow-md text-center p-6 luxury-animate-scale-in luxury-delay-${idx + 1}`}>
+                  <div className="relative inline-block mb-4">
                     <div className="w-20 h-20 mx-auto bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-2xl">
                       {step.num}
                     </div>
                     <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-lg">
                       <step.icon className="w-6 h-6 text-purple-600" />
                     </div>
+                    </div>
+                    <h3 className="luxury-heading-sm mb-2">{step.title}</h3>
+                    <p className="luxury-text-small">{step.desc}</p>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">{step.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-400">{step.desc}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+
+        <div className="luxury-divider"></div>
 
         {/* TESTIMONIALS SECTION */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">
-              {isHebrew ? 'מה לקוחות אומרים' : 'What Pet Parents Say'}
-            </h2>
-            <div className="flex items-center justify-center gap-2 text-yellow-400">
-              <Star className="w-6 h-6 fill-current" />
-              <Star className="w-6 h-6 fill-current" />
-              <Star className="w-6 h-6 fill-current" />
-              <Star className="w-6 h-6 fill-current" />
-              <Star className="w-6 h-6 fill-current" />
-              <span className="text-gray-700 dark:text-gray-300 ml-2">4.9/5 {isHebrew ? 'מתוך 12,000+ ביקורות' : 'from 12,000+ reviews'}</span>
+        <div className="luxury-section">
+          <div className="luxury-container">
+            <div className="text-center mb-12 luxury-animate-fade-in">
+              <h2 className="luxury-heading-lg mb-4 luxury-text-gradient">
+                {isHebrew ? 'מה לקוחות אומרים' : 'What Pet Parents Say'}
+              </h2>
+              <div className="flex items-center justify-center gap-2 text-yellow-400">
+                <Star className="w-6 h-6 fill-current" />
+                <Star className="w-6 h-6 fill-current" />
+                <Star className="w-6 h-6 fill-current" />
+                <Star className="w-6 h-6 fill-current" />
+                <Star className="w-6 h-6 fill-current" />
+                <span className="luxury-text-body ml-2">4.9/5 {isHebrew ? 'מתוך 12,000+ ביקורות' : 'from 12,000+ reviews'}</span>
+              </div>
             </div>
-          </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+            <div className="luxury-grid-3">
             {[
               {
                 name: 'Jessica Williams',
@@ -1056,59 +1051,59 @@ export default function SitterSuite() {
                 rating: 5,
                 petType: '🐕 Poodle'
               },
-            ].map((review, i) => (
-              <GlassCard key={i} className="p-6">
-                <div className="flex items-center gap-1 mb-3">
-                  {[...Array(review.rating)].map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-700 dark:text-gray-300 mb-4 italic">"{review.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
-                    {review.name.charAt(0)}
+              ].map((review, i) => (
+                <div key={i} className={`luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-scale-in luxury-delay-${(i % 3) + 1}`}>
+                  <div className="flex items-center gap-1 mb-3">
+                    {[...Array(review.rating)].map((_, j) => (
+                      <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    ))}
                   </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900 dark:text-white">{review.name}</div>
-                    <div className="text-sm text-gray-500">{review.city}</div>
-                    {review.petType && (
-                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{review.petType}</div>
-                    )}
+                  <p className="luxury-text-body mb-4 italic">"{review.text}"</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold luxury-shadow-md">
+                      {review.name.charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                      <div className="luxury-heading-sm">{review.name}</div>
+                      <div className="luxury-text-small">{review.city}</div>
+                      {review.petType && (
+                        <div className="luxury-text-small mt-1">{review.petType}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </GlassCard>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
+        <div className="luxury-divider"></div>
+
         {/* FINAL CTA SECTION */}
-        <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 text-white py-20">
-          <div className="max-w-4xl mx-auto px-4 text-center">
-            <h2 className="text-5xl font-bold mb-6">
+        <div className="luxury-section luxury-bg-primary text-white">
+          <div className="luxury-container max-w-4xl text-center">
+            <h2 className="luxury-heading-xl text-white mb-6">
               {isHebrew ? 'מוכן להתחיל?' : 'Ready to Get Started?'}
             </h2>
-            <p className="text-2xl mb-8 text-white/90">
+            <p className="luxury-text-body text-white text-opacity-95 text-xl mb-8">
               {isHebrew 
                 ? 'הצטרף לאלפי בעלי חיות מחמד מרוצים שמצאו את השמרטף המושלם'
                 : 'Join thousands of happy pet parents who found their perfect sitter'}
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <Button 
-                size="lg"
-                className="bg-white text-purple-700 hover:bg-gray-100 text-xl px-10 py-7 rounded-xl shadow-2xl font-bold"
+              <button 
+                className="luxury-btn-primary luxury-hover-glow flex items-center gap-2"
               >
-                <Search className="w-6 h-6 mr-2" />
+                <Search className="w-6 h-6" />
                 {isHebrew ? 'מצא שמרטף עכשיו' : 'Find a Sitter Now'}
-              </Button>
+              </button>
               <Link href="/provider-onboarding?type=sitter">
-                <Button 
-                  size="lg"
-                  variant="outline"
-                  className="border-2 border-white text-white hover:bg-white/10 text-xl px-10 py-7 rounded-xl font-bold backdrop-blur-sm"
+                <button 
+                  className="luxury-btn-secondary flex items-center gap-2"
                 >
-                  <DollarSign className="w-6 h-6 mr-2" />
+                  <DollarSign className="w-6 h-6" />
                   {isHebrew ? 'הרווח כשמרטף' : 'Earn as a Sitter'}
-                </Button>
+                </button>
               </Link>
             </div>
           </div>

@@ -158,161 +158,170 @@ export default function Contact({ language }: ContactProps) {
 
   return (
     <Layout language={currentLanguage} onLanguageChange={handleLanguageChange}>
-      <div className={`min-h-screen bg-white ${currentLanguage === 'he' ? 'rtl' : 'ltr'}`}>
-        <div className="luxury-content-section pt-20 pb-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-6">
+      <div className={`min-h-screen luxury-bg-mesh ${currentLanguage === 'he' ? 'rtl' : 'ltr'}`}>
+        <div className="luxury-section pt-20">
+        <div className="luxury-container">
+          <div className="mb-6 luxury-animate-fade-in">
             <Link href="/">
-              <Button variant="ghost" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+              <button className="luxury-btn-ghost flex items-center gap-2" data-testid="button-back-home">
                 <ArrowLeft className="h-4 w-4" />
                 {currentLanguage === 'en' ? 'Back to Home' : 'חזרה לעמוד הבית'}
-              </Button>
+              </button>
             </Link>
           </div>
 
-          <div className="luxury-content-header text-center mb-8">
-            <h1 className="luxury-content-title">
+          <div className="text-center mb-12 luxury-animate-fade-in luxury-delay-1">
+            <h1 className="luxury-heading-xl mb-4">
               {currentLanguage === 'en' ? 'Contact Us' : 'צור קשר'}
             </h1>
-            <p className="luxury-content-subtitle">
+            <p className="luxury-text-body">
               {currentLanguage === 'en' ? 'We\'re here to help 24/7' : 'אנחנו כאן כדי לעזור 24/7'}
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="luxury-grid-2 luxury-animate-fade-in luxury-delay-2">
             {/* Contact Information */}
-            <Card className="luxury-feature-card">
-              <CardHeader>
-                <CardTitle className="luxury-feature-title text-center">
-                  {currentLanguage === 'en' ? 'Contact Information' : 'פרטי התקשרות'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                  <Phone className="h-6 w-6 text-blue-600" />
+            <div className="luxury-glass-minimal luxury-hover-lift p-8">
+              <h2 className="luxury-heading-md text-center mb-8">
+                {currentLanguage === 'en' ? 'Contact Information' : 'פרטי התקשרות'}
+              </h2>
+              
+              <div className="space-y-6">
+                <div className="flex items-center space-x-4 rtl:space-x-reverse" data-testid="contact-phone">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                    <Phone className="h-6 w-6 text-white" />
+                  </div>
                   <div>
-                    <h3 className="font-semibold">
+                    <h3 className="luxury-heading-sm">
                       {currentLanguage === 'en' ? 'Phone Support' : 'תמיכה טלפונית'}
                     </h3>
-                    <p className="text-gray-600">+972-54-983-3355</p>
+                    <p className="luxury-text-small">+972-54-983-3355</p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                  <Mail className="h-6 w-6 text-blue-600" />
+                <div className="flex items-center space-x-4 rtl:space-x-reverse" data-testid="contact-email">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0">
+                    <Mail className="h-6 w-6 text-white" />
+                  </div>
                   <div>
-                    <h3 className="font-semibold">
+                    <h3 className="luxury-heading-sm">
                       {currentLanguage === 'en' ? 'Email Support' : 'תמיכה במייל'}
                     </h3>
-                    <p className="text-gray-600">Support@PetWash.co.il</p>
+                    <p className="luxury-text-small">Support@PetWash.co.il</p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-4 rtl:space-x-reverse">
-                  <MapPin className="h-6 w-6 text-blue-600" />
+                <div className="flex items-center space-x-4 rtl:space-x-reverse" data-testid="contact-company">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="h-6 w-6 text-white" />
+                  </div>
                   <div>
-                    <h3 className="font-semibold">
+                    <h3 className="luxury-heading-sm">
                       {currentLanguage === 'en' ? 'Company' : 'חברה'}
                     </h3>
-                    <p className="text-gray-600">
+                    <p className="luxury-text-small">
                       {currentLanguage === 'en' ? 'Pet Wash Ltd' : 'פט ווש בע"מ'}<br />
                       {currentLanguage === 'en' ? 'Company Number: 517145033' : 'מספר חברה: 517145033'}
                     </p>
                   </div>
                 </div>
 
-                <Button onClick={openWhatsApp} className="w-full bg-green-600 hover:bg-green-700 text-white">
-                  <MessageCircle className="h-4 w-4 mr-2" />
+                <button 
+                  onClick={openWhatsApp} 
+                  className="luxury-btn-primary w-full flex items-center justify-center gap-2"
+                  data-testid="button-whatsapp"
+                >
+                  <MessageCircle className="h-5 w-5" />
                   {currentLanguage === 'en' ? 'Chat on WhatsApp' : 'צ\'אט בוואטסאפ'}
-                </Button>
-              </CardContent>
-            </Card>
+                </button>
+              </div>
+            </div>
 
             {/* HubSpot Contact Form */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl text-center">
-                  {currentLanguage === 'en' ? 'Send us a Message' : 'שלח לנו הודעה'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {/* HubSpot Form Container */}
-                <div id="hubspot-contact-form" className="min-h-[400px]"></div>
-                
-                {/* Fallback message while HubSpot form loads */}
-                <script dangerouslySetInnerHTML={{
-                  __html: `
-                    document.addEventListener('DOMContentLoaded', function() {
-                      const formContainer = document.getElementById('hubspot-contact-form');
-                      if (formContainer && !formContainer.innerHTML.trim()) {
-                        formContainer.innerHTML = '<div class="text-center p-8 text-gray-600">${currentLanguage === 'en' ? 'Loading contact form...' : 'טוען טופס יצירת קשר...'}</div>';
-                      }
-                    });
-                  `
-                }} />
-              </CardContent>
-            </Card>
+            <div className="luxury-glass-card luxury-shadow-xl p-8">
+              <h2 className="luxury-heading-md text-center mb-8">
+                {currentLanguage === 'en' ? 'Send us a Message' : 'שלח לנו הודעה'}
+              </h2>
+              
+              {/* HubSpot Form Container */}
+              <div id="hubspot-contact-form" className="min-h-[400px]" data-testid="hubspot-form"></div>
+              
+              {/* Fallback message while HubSpot form loads */}
+              <script dangerouslySetInnerHTML={{
+                __html: `
+                  document.addEventListener('DOMContentLoaded', function() {
+                    const formContainer = document.getElementById('hubspot-contact-form');
+                    if (formContainer && !formContainer.innerHTML.trim()) {
+                      formContainer.innerHTML = '<div class="text-center p-8 luxury-text-small">${currentLanguage === 'en' ? 'Loading contact form...' : 'טוען טופס יצירת קשר...'}</div>';
+                    }
+                  });
+                `
+              }} />
+            </div>
           </div>
 
           {/* Get Directions Section */}
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle className="text-2xl text-center flex items-center justify-center gap-2">
-                <Navigation className="h-6 w-6 text-blue-600" />
-                {currentLanguage === 'en' ? 'Get Directions' : 'קבל הוראות הגעה'}
-              </CardTitle>
-              <p className="text-center text-gray-600 mt-2">
+          <div className="luxury-glass-card luxury-shadow-lg p-8 mt-8 luxury-animate-fade-in luxury-delay-3">
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                  <Navigation className="h-6 w-6 text-white" />
+                </div>
+                <h2 className="luxury-heading-lg">
+                  {currentLanguage === 'en' ? 'Get Directions' : 'קבל הוראות הגעה'}
+                </h2>
+              </div>
+              <p className="luxury-text-body">
                 {currentLanguage === 'en' 
                   ? 'Navigate to Pet Wash™ using your preferred map service' 
                   : 'נווט לפט ווש™ באמצעות שירות המפות המועדף עליך'}
               </p>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-3 justify-center">
-                {/* Google Maps */}
-                <a
-                  href="https://maps.app.goo.gl/yrWXbYi6eMqxntRX8?g_st=ipc"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 min-w-[180px] max-w-[240px] px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3 font-semibold text-base group"
-                  data-testid="button-directions-google"
-                >
-                  <MapPin className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                  <span>{currentLanguage === 'en' ? 'Google Maps' : 'גוגל מפות'}</span>
-                </a>
+            </div>
+            
+            <div className="flex flex-wrap gap-4 justify-center">
+              {/* Google Maps */}
+              <a
+                href="https://maps.app.goo.gl/yrWXbYi6eMqxntRX8?g_st=ipc"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="luxury-btn-primary flex-1 min-w-[180px] max-w-[240px] flex items-center justify-center gap-3"
+                data-testid="button-directions-google"
+              >
+                <MapPin className="h-5 w-5" />
+                <span>{currentLanguage === 'en' ? 'Google Maps' : 'גוגל מפות'}</span>
+              </a>
 
-                {/* Apple Maps */}
-                <a
-                  href="https://maps.apple.com/?q=Pet+Wash+Ltd+Israel"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 min-w-[180px] max-w-[240px] px-6 py-4 bg-gradient-to-r from-gray-900 to-black hover:from-black hover:to-gray-900 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3 font-semibold text-base group"
-                  data-testid="button-directions-apple"
-                >
-                  <MapPin className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                  <span>{currentLanguage === 'en' ? 'Apple Maps' : 'אפל מפות'}</span>
-                </a>
+              {/* Apple Maps */}
+              <a
+                href="https://maps.apple.com/?q=Pet+Wash+Ltd+Israel"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="luxury-btn-secondary flex-1 min-w-[180px] max-w-[240px] flex items-center justify-center gap-3"
+                data-testid="button-directions-apple"
+              >
+                <MapPin className="h-5 w-5" />
+                <span>{currentLanguage === 'en' ? 'Apple Maps' : 'אפל מפות'}</span>
+              </a>
 
-                {/* Waze */}
-                <a
-                  href="https://waze.com/ul?q=Pet+Wash+Ltd+Israel"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 min-w-[180px] max-w-[240px] px-6 py-4 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3 font-semibold text-base group"
-                  data-testid="button-directions-waze"
-                >
-                  <Navigation className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                  <span>Waze</span>
-                </a>
-              </div>
-              
-              <p className="text-center text-sm text-gray-500 mt-6">
-                {currentLanguage === 'en' 
-                  ? 'Choose your preferred navigation app to get turn-by-turn directions' 
-                  : 'בחר את אפליקציית הניווט המועדפת עליך לקבלת הוראות הגעה צעד אחר צעד'}
-              </p>
-            </CardContent>
-          </Card>
+              {/* Waze */}
+              <a
+                href="https://waze.com/ul?q=Pet+Wash+Ltd+Israel"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="luxury-btn-primary flex-1 min-w-[180px] max-w-[240px] flex items-center justify-center gap-3"
+                data-testid="button-directions-waze"
+              >
+                <Navigation className="h-5 w-5" />
+                <span>Waze</span>
+              </a>
+            </div>
+            
+            <p className="text-center luxury-text-small mt-6">
+              {currentLanguage === 'en' 
+                ? 'Choose your preferred navigation app to get turn-by-turn directions' 
+                : 'בחר את אפליקציית הניווט המועדפת עליך לקבלת הוראות הגעה צעד אחר צעד'}
+            </p>
+          </div>
         </div>
       </div>
       </div>

@@ -100,46 +100,43 @@ export default function EGift() {
   const suggestedAmounts = [50, 100, 200, 500];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 relative overflow-hidden">
-      {/* Luxury Background Effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(168,85,247,0.08),transparent_50%)]"></div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(236,72,153,0.08),transparent_50%)]"></div>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 relative z-10">
+    <div className="min-h-screen luxury-bg-purple-fade relative overflow-hidden">
+      <div className="luxury-container py-8 sm:py-12 lg:py-16 relative z-10">
         {/* Luxury Header Section */}
-        <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+        <div className="text-center mb-8 sm:mb-12 lg:mb-16 luxury-animate-fade-in">
           {/* Premium Badge */}
-          <div className="inline-flex items-center justify-center p-2 bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-full mb-4 sm:mb-6">
-            <span className="px-4 py-2 bg-white rounded-full text-xs sm:text-sm font-semibold text-gray-700 shadow-sm">
+          <div className="inline-flex items-center justify-center mb-4 sm:mb-6 luxury-animate-scale-in">
+            <span className="luxury-badge luxury-badge-gold">
               7-STAR LUXURY VOUCHERS
             </span>
           </div>
 
           {/* Main Title */}
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-pink-900 bg-clip-text text-transparent mb-4 sm:mb-6 px-4">
+          <h1 className="luxury-heading-xl mb-4 sm:mb-6 px-4 luxury-animate-slide-up luxury-delay-1">
             Pet Wash™ Digital Gifts
           </h1>
           
           {/* Subtitle */}
-          <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-2 sm:mb-4 px-4">
+          <p className="luxury-text-body max-w-3xl mx-auto mb-2 sm:mb-4 px-4 luxury-animate-slide-up luxury-delay-2">
             Premium luxury vouchers with metallic themes, QR codes, and SHA256 security
           </p>
           
-          {/* Additional tagline */}
-          <p className="text-base sm:text-lg text-gray-500 max-w-2xl mx-auto italic px-4">
-            Send the perfect gift of pet pampering
-          </p>
+          {/* CTA Badge */}
+          <button className="luxury-btn-primary luxury-shadow-xl luxury-animate-slide-up luxury-delay-3">
+            <Sparkles className="w-4 h-4 inline mr-2" />
+            Start Creating Your Luxury Gift
+          </button>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
+        <div className="grid md:grid-cols-2 gap-6 sm:gap-8 luxury-animate-fade-in luxury-delay-4">
           {/* E-Gift Form */}
-          <Card className="border-2 border-purple-200 shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden">
+          <Card className="luxury-glass-card luxury-shadow-lg overflow-hidden">
             <CardHeader className="bg-gradient-to-r from-purple-50 via-pink-50 to-blue-50">
-              <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+              <CardTitle className="luxury-heading-sm flex items-center gap-2">
                 <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
                 Create 7-Star Voucher
               </CardTitle>
-              <CardDescription className="text-base">
+              <CardDescription className="luxury-text-small">
                 Luxury digital voucher with metallic themes & enhanced security
               </CardDescription>
             </CardHeader>
@@ -152,38 +149,40 @@ export default function EGift() {
                     name="amount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-semibold">
-                          Gift Amount (₪)
+                        <FormLabel className="luxury-heading-sm">
+                          Gift Amount (<span className="luxury-text-gradient">₪</span>)
                         </FormLabel>
-                        <div className="grid grid-cols-2 gap-3 mb-4">
-                          {suggestedAmounts.map((amount) => (
-                            <Button
-                              key={amount}
-                              type="button"
-                              variant={field.value === amount ? "default" : "outline"}
-                              className={`h-12 text-lg font-bold ${
-                                field.value === amount 
-                                  ? 'bg-gradient-to-r from-pink-600 to-purple-600' 
-                                  : ''
-                              }`}
-                              onClick={() => field.onChange(amount)}
-                              data-testid={`button-amount-${amount}`}
-                            >
-                              ₪{amount}
-                            </Button>
-                          ))}
+                        <div className="luxury-glass-card p-4 luxury-shadow-md">
+                          <div className="grid grid-cols-2 gap-3 mb-4">
+                            {suggestedAmounts.map((amount) => (
+                              <Button
+                                key={amount}
+                                type="button"
+                                variant={field.value === amount ? "default" : "outline"}
+                                className={`h-12 text-lg font-bold transition-all ${
+                                  field.value === amount 
+                                    ? 'luxury-badge luxury-badge-gold luxury-shadow-md border-2 border-amber-400' 
+                                    : 'luxury-badge hover:luxury-shadow-sm'
+                                }`}
+                                onClick={() => field.onChange(amount)}
+                                data-testid={`button-amount-${amount}`}
+                              >
+                                ₪{amount}
+                              </Button>
+                            ))}
+                          </div>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="10"
+                              max="5000"
+                              className="h-12 text-lg luxury-glass-minimal"
+                              placeholder="Custom amount"
+                              data-testid="input-custom-amount"
+                              {...field}
+                            />
+                          </FormControl>
                         </div>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="10"
-                            max="5000"
-                            className="h-12 text-lg"
-                            placeholder="Custom amount"
-                            data-testid="input-custom-amount"
-                            {...field}
-                          />
-                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -195,8 +194,8 @@ export default function EGift() {
                     name="recipientName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <User className="w-4 h-4" />
+                        <FormLabel className="luxury-heading-sm flex items-center gap-2">
+                          <User className="w-4 h-4 text-purple-600" />
                           Recipient Name
                         </FormLabel>
                         <FormControl>
@@ -218,8 +217,8 @@ export default function EGift() {
                     name="recipientEmail"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Mail className="w-4 h-4" />
+                        <FormLabel className="luxury-heading-sm flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-purple-600" />
                           Recipient Email
                         </FormLabel>
                         <FormControl>
@@ -242,8 +241,8 @@ export default function EGift() {
                     name="purchaserEmail"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Mail className="w-4 h-4" />
+                        <FormLabel className="luxury-heading-sm flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-purple-600" />
                           Your Email
                         </FormLabel>
                         <FormControl>
@@ -260,57 +259,66 @@ export default function EGift() {
                     )}
                   />
 
-                  {/* Theme Selection */}
+                  {/* Theme Selection - Gift Card Design Options */}
                   <FormField
                     control={form.control}
                     name="theme"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-semibold">
-                          Card Theme
+                        <FormLabel className="luxury-heading-sm">
+                          Select Gift Card Design
                         </FormLabel>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="luxury-grid-3 gap-3">
                           <Button
                             type="button"
-                            variant={field.value === 'neo_black_platinum' ? "default" : "outline"}
-                            className={`h-20 flex flex-col items-center justify-center ${
+                            variant="outline"
+                            className={`luxury-glass-card luxury-hover-glow h-24 flex flex-col items-center justify-center transition-all ${
                               field.value === 'neo_black_platinum' 
-                                ? 'bg-gradient-to-br from-gray-900 to-gray-700 text-white' 
-                                : ''
+                                ? 'luxury-shadow-lg border-4 border-purple-600 luxury-hover-glow bg-gradient-to-br from-gray-900 to-gray-700 text-white' 
+                                : 'luxury-shadow-md hover:luxury-shadow-lg'
                             }`}
                             onClick={() => field.onChange('neo_black_platinum')}
                             data-testid="button-theme-platinum"
                           >
-                            <span className="text-xs font-bold">Black</span>
-                            <span className="text-xs">Platinum</span>
+                            <span className="text-sm font-bold">Black</span>
+                            <span className="text-xs opacity-80">Platinum</span>
+                            {field.value === 'neo_black_platinum' && (
+                              <span className="text-xl mt-1">✨</span>
+                            )}
                           </Button>
                           <Button
                             type="button"
-                            variant={field.value === 'neo_emerald' ? "default" : "outline"}
-                            className={`h-20 flex flex-col items-center justify-center ${
+                            variant="outline"
+                            className={`luxury-glass-card luxury-hover-glow h-24 flex flex-col items-center justify-center transition-all ${
                               field.value === 'neo_emerald' 
-                                ? 'bg-gradient-to-br from-emerald-700 to-emerald-500 text-white' 
-                                : ''
+                                ? 'luxury-shadow-lg border-4 border-purple-600 luxury-hover-glow bg-gradient-to-br from-emerald-700 to-emerald-500 text-white' 
+                                : 'luxury-shadow-md hover:luxury-shadow-lg'
                             }`}
                             onClick={() => field.onChange('neo_emerald')}
                             data-testid="button-theme-emerald"
                           >
-                            <span className="text-xs font-bold">Emerald</span>
-                            <span className="text-xs">Luxury</span>
+                            <span className="text-sm font-bold">Emerald</span>
+                            <span className="text-xs opacity-80">Luxury</span>
+                            {field.value === 'neo_emerald' && (
+                              <span className="text-xl mt-1">✨</span>
+                            )}
                           </Button>
                           <Button
                             type="button"
-                            variant={field.value === 'neo_silver' ? "default" : "outline"}
-                            className={`h-20 flex flex-col items-center justify-center ${
+                            variant="outline"
+                            className={`luxury-glass-card luxury-hover-glow h-24 flex flex-col items-center justify-center transition-all ${
                               field.value === 'neo_silver' 
-                                ? 'bg-gradient-to-br from-gray-400 to-gray-300 text-gray-900' 
-                                : ''
+                                ? 'luxury-shadow-lg border-4 border-purple-600 luxury-hover-glow bg-gradient-to-br from-gray-400 to-gray-300 text-gray-900' 
+                                : 'luxury-shadow-md hover:luxury-shadow-lg'
                             }`}
                             onClick={() => field.onChange('neo_silver')}
                             data-testid="button-theme-silver"
                           >
-                            <span className="text-xs font-bold">Silver</span>
-                            <span className="text-xs">Classic</span>
+                            <span className="text-sm font-bold">Silver</span>
+                            <span className="text-xs opacity-80">Classic</span>
+                            {field.value === 'neo_silver' && (
+                              <span className="text-xl mt-1">✨</span>
+                            )}
                           </Button>
                         </div>
                         <FormMessage />
@@ -324,10 +332,10 @@ export default function EGift() {
                     name="message"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Personal Message (Optional)</FormLabel>
+                        <FormLabel className="luxury-heading-sm">Personal Message (Optional)</FormLabel>
                         <FormControl>
                           <textarea
-                            className="w-full min-h-[100px] p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                            className="w-full min-h-[100px] p-3 luxury-glass-minimal focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all"
                             placeholder="Add a heartfelt message... 💝"
                             maxLength={200}
                             data-testid="textarea-message"
@@ -342,32 +350,44 @@ export default function EGift() {
                     )}
                   />
 
-                  {/* Payment Methods - Modern 2025 Design */}
-                  <div className="space-y-4 pt-4 border-t-2 border-purple-100">
+                  {/* Checkout Summary - Payment Methods */}
+                  <div className="luxury-glass-card luxury-shadow-xl p-5 space-y-4">
                     <div>
-                      <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+                      <h3 className="luxury-heading-sm mb-3 flex items-center gap-2">
                         <CreditCard className="w-5 h-5 text-purple-600" />
-                        Accepted Payment Methods
+                        Checkout Summary
                       </h3>
                     </div>
                     
-                    <div className="flex justify-center">
-                      <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 px-4 py-2 rounded-lg border border-white/20">
-                        <Shield className="w-4 h-4 text-white" />
-                        <span className="text-white text-sm font-semibold">Secure Payment</span>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center luxury-text-body">
+                        <span>Gift Amount:</span>
+                        <span className="luxury-text-gradient font-bold">₪{form.watch('amount')}</span>
+                      </div>
+                      <div className="luxury-divider my-2"></div>
+                      <div className="flex justify-between items-center">
+                        <span className="luxury-heading-lg">Total:</span>
+                        <span className="luxury-heading-lg luxury-text-gradient">₪{form.watch('amount')}</span>
                       </div>
                     </div>
 
-                    <p className="text-xs text-gray-500 text-center">
-                      🔒 Secured by Nayax Payment Gateway • Bank-level encryption
+                    <div className="flex justify-center mt-4">
+                      <div className="luxury-badge luxury-badge-success">
+                        <Shield className="w-4 h-4" />
+                        <span>Secure Payment Gateway</span>
+                      </div>
+                    </div>
+
+                    <p className="luxury-text-small text-center opacity-75">
+                      🔒 Secured by Nayax • Bank-level encryption
                     </p>
                   </div>
 
-                  {/* Submit Button */}
+                  {/* Submit Button - Premium */}
                   <Button
                     type="submit"
                     size="lg"
-                    className="w-full h-14 text-lg font-bold bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 hover:opacity-90 transition-all"
+                    className="luxury-btn-primary luxury-shadow-xl w-full h-16 text-xl font-bold"
                     disabled={createVoucherMutation.isPending}
                     data-testid="button-send-egift"
                   >
@@ -389,15 +409,15 @@ export default function EGift() {
           </Card>
 
           {/* Live Preview & Benefits Section */}
-          <div className="space-y-6">
+          <div className="space-y-6 luxury-animate-fade-in luxury-delay-5">
             {/* Live Voucher Preview Card */}
-            <Card className="border-2 border-purple-200 shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
-              <CardHeader>
-                <CardTitle className="text-purple-700 flex items-center gap-2 text-xl sm:text-2xl">
+            <Card className="luxury-glass-card luxury-hover-glow luxury-shadow-lg overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-purple-50 via-pink-50 to-blue-50">
+                <CardTitle className="luxury-heading-sm text-purple-700 flex items-center gap-2">
                   <Gift className="w-5 h-5 sm:w-6 sm:h-6" />
                   Live Preview
                 </CardTitle>
-                <CardDescription className="text-base">See your voucher in real-time</CardDescription>
+                <CardDescription className="luxury-text-small">See your voucher in real-time</CardDescription>
               </CardHeader>
               <CardContent>
                 {/* Voucher Card Preview */}
@@ -453,50 +473,60 @@ export default function EGift() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-pink-200 shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden">
+            <Card className="luxury-glass-card luxury-hover-glow luxury-shadow-lg overflow-hidden">
               <CardHeader className="bg-gradient-to-r from-pink-50 to-rose-50">
-                <CardTitle className="text-pink-700 text-xl sm:text-2xl">7-Star Features</CardTitle>
+                <CardTitle className="luxury-heading-sm text-pink-700">7-Star Features</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-3">
-                    <span className="text-2xl">💎</span>
+                <ul className="space-y-4">
+                  <li className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white flex-shrink-0">
+                      💎
+                    </div>
                     <div>
-                      <p className="font-semibold">Metallic Themes</p>
-                      <p className="text-sm text-gray-600">Choose from Platinum, Emerald, or Silver</p>
+                      <p className="luxury-heading-sm text-sm">Metallic Themes</p>
+                      <p className="luxury-text-small">Choose from Platinum, Emerald, or Silver</p>
                     </div>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-2xl">🔒</span>
+                  <li className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white flex-shrink-0">
+                      🔒
+                    </div>
                     <div>
-                      <p className="font-semibold">SHA256 Security</p>
-                      <p className="text-sm text-gray-600">Military-grade encryption & JWS signing</p>
+                      <p className="luxury-heading-sm text-sm">SHA256 Security</p>
+                      <p className="luxury-text-small">Military-grade encryption & JWS signing</p>
                     </div>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-2xl">📱</span>
+                  <li className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white flex-shrink-0">
+                      📱
+                    </div>
                     <div>
-                      <p className="font-semibold">QR Code Ready</p>
-                      <p className="text-sm text-gray-600">Instant redemption at any station</p>
+                      <p className="luxury-heading-sm text-sm">QR Code Ready</p>
+                      <p className="luxury-text-small">Instant redemption at any station</p>
                     </div>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-2xl">📊</span>
+                  <li className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white flex-shrink-0">
+                      📊
+                    </div>
                     <div>
-                      <p className="font-semibold">Usage Tracking</p>
-                      <p className="text-sm text-gray-600">Full redemption history & analytics</p>
+                      <p className="luxury-heading-sm text-sm">Usage Tracking</p>
+                      <p className="luxury-text-small">Full redemption history & analytics</p>
                     </div>
                   </li>
                 </ul>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-purple-200 shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50">
+            <Card className="luxury-glass-card luxury-hover-glow luxury-shadow-lg overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <Shield className="w-12 h-12 text-purple-600 mx-auto mb-3" />
-                  <h3 className="font-bold text-lg sm:text-xl mb-2">Secure Payment</h3>
-                  <p className="text-sm sm:text-base text-gray-600">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center mx-auto mb-3">
+                    <Shield className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="luxury-heading-sm mb-2">Secure Payment</h3>
+                  <p className="luxury-text-small">
                     Powered by Nayax Payment Gateway with bank-level encryption
                   </p>
                 </div>
@@ -506,13 +536,33 @@ export default function EGift() {
         </div>
 
         {/* Trust Badges */}
-        <div className="mt-12 text-center">
-          <p className="text-sm text-gray-500 mb-4">Trusted by thousands of pet parents</p>
-          <div className="flex flex-wrap justify-center gap-4 text-xs text-gray-400">
-            <span>🔒 SSL Encrypted</span>
-            <span>✅ Israeli Registered Business</span>
-            <span>🌿 Organic Products</span>
-            <span>⭐ 5-Star Rated</span>
+        <div className="mt-12 text-center luxury-animate-fade-in">
+          <p className="luxury-text-body mb-6">Trusted by thousands of pet parents</p>
+          <div className="flex flex-wrap justify-center gap-6">
+            <div className="luxury-glass-minimal p-4 flex flex-col items-center gap-2 min-w-[140px] luxury-hover-lift">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white text-xl">
+                🔒
+              </div>
+              <span className="luxury-text-small font-semibold">SSL Encrypted</span>
+            </div>
+            <div className="luxury-glass-minimal p-4 flex flex-col items-center gap-2 min-w-[140px] luxury-hover-lift">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white text-xl">
+                ✅
+              </div>
+              <span className="luxury-text-small font-semibold">Israeli Registered</span>
+            </div>
+            <div className="luxury-glass-minimal p-4 flex flex-col items-center gap-2 min-w-[140px] luxury-hover-lift">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center text-white text-xl">
+                🌿
+              </div>
+              <span className="luxury-text-small font-semibold">Organic Products</span>
+            </div>
+            <div className="luxury-glass-minimal p-4 flex flex-col items-center gap-2 min-w-[140px] luxury-hover-lift">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-600 to-yellow-600 flex items-center justify-center text-white text-xl">
+                ⭐
+              </div>
+              <span className="luxury-text-small font-semibold">5-Star Rated</span>
+            </div>
           </div>
         </div>
       </div>

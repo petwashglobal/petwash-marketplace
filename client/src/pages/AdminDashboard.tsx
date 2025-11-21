@@ -164,7 +164,7 @@ export default function AdminDashboard() {
   const overview = analytics?.data;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+    <div className="min-h-screen luxury-bg-mesh relative overflow-hidden luxury-animate-fade-in">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
@@ -279,119 +279,117 @@ export default function AdminDashboard() {
             {/* Premium Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Revenue Card */}
-              <div className="group backdrop-blur-xl bg-gradient-to-br from-green-500/20 to-emerald-600/20 border border-green-400/30 rounded-2xl p-6 shadow-2xl hover:shadow-green-500/50 transition-all duration-300 hover:scale-105" data-testid="card-revenue">
+              <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-1" data-testid="card-revenue">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-green-500/20 rounded-xl">
-                    <DollarSign className="h-6 w-6 text-green-300" />
+                  <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl">
+                    <DollarSign className="h-6 w-6 text-white" />
                   </div>
                   {overview?.revenue.growthRate !== undefined && (
-                    <div className={`flex items-center space-x-1 ${overview.revenue.growthRate >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                    <div className={`flex items-center space-x-1 ${overview.revenue.growthRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {overview.revenue.growthRate >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                       <span className="text-sm font-bold">{Math.abs(overview.revenue.growthRate).toFixed(1)}%</span>
                     </div>
                   )}
                 </div>
-                <div className="text-3xl font-bold text-white mb-2" data-testid="text-monthly-revenue">
+                <div className="luxury-heading-lg luxury-text-gradient mb-2" data-testid="text-monthly-revenue">
                   ₪{overview?.revenue.thisMonth.toLocaleString() || 0}
                 </div>
-                <div className="text-green-200 text-sm font-medium">Monthly Revenue</div>
-                <div className="mt-4 pt-4 border-t border-green-400/20">
+                <div className="luxury-text-small text-gray-600">Monthly Revenue</div>
+                <div className="mt-4 pt-4 border-t border-purple-200/30">
                   <div className="flex justify-between text-xs">
-                    <span className="text-green-300">Today: ₪{overview?.revenue.today.toLocaleString() || 0}</span>
-                    <span className="text-green-300">Week: ₪{overview?.revenue.thisWeek.toLocaleString() || 0}</span>
+                    <span className="text-gray-600">Today: ₪{overview?.revenue.today.toLocaleString() || 0}</span>
+                    <span className="text-gray-600">Week: ₪{overview?.revenue.thisWeek.toLocaleString() || 0}</span>
                   </div>
                 </div>
               </div>
 
               {/* Customers Card */}
-              <div className="group backdrop-blur-xl bg-gradient-to-br from-blue-500/20 to-purple-600/20 border border-blue-400/30 rounded-2xl p-6 shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105" data-testid="card-customers">
+              <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-2" data-testid="card-customers">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-blue-500/20 rounded-xl">
-                    <Users className="h-6 w-6 text-blue-300" />
+                  <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
+                    <Users className="h-6 w-6 text-white" />
                   </div>
                   {overview?.customers.growthRate !== undefined && (
-                    <div className={`flex items-center space-x-1 ${overview.customers.growthRate >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                    <div className={`flex items-center space-x-1 ${overview.customers.growthRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {overview.customers.growthRate >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                       <span className="text-sm font-bold">{Math.abs(overview.customers.growthRate).toFixed(1)}%</span>
                     </div>
                   )}
                 </div>
-                <div className="text-3xl font-bold text-white mb-2" data-testid="text-total-customers">
+                <div className="luxury-heading-lg luxury-text-gradient mb-2" data-testid="text-total-customers">
                   {overview?.customers.total.toLocaleString() || 0}
                 </div>
-                <div className="text-blue-200 text-sm font-medium">Total Customers</div>
-                <div className="mt-4 pt-4 border-t border-blue-400/20">
+                <div className="luxury-text-small text-gray-600">Total Customers</div>
+                <div className="mt-4 pt-4 border-t border-purple-200/30">
                   <div className="flex justify-between text-xs">
-                    <span className="text-blue-300">Active: {overview?.customers.active.toLocaleString() || 0}</span>
-                    <span className="text-blue-300">New: {overview?.customers.new.toLocaleString() || 0}</span>
+                    <span className="text-gray-600">Active: {overview?.customers.active.toLocaleString() || 0}</span>
+                    <span className="text-gray-600">New: {overview?.customers.new.toLocaleString() || 0}</span>
                   </div>
                 </div>
               </div>
 
               {/* Stations Card */}
-              <div className="group backdrop-blur-xl bg-gradient-to-br from-purple-500/20 to-pink-600/20 border border-purple-400/30 rounded-2xl p-6 shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-105" data-testid="card-stations">
+              <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-3" data-testid="card-stations">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-purple-500/20 rounded-xl">
-                    <MapPin className="h-6 w-6 text-purple-300" />
+                  <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
+                    <MapPin className="h-6 w-6 text-white" />
                   </div>
-                  <div className="flex items-center space-x-1 text-purple-300">
+                  <div className="flex items-center space-x-1 text-purple-600">
                     <Target className="w-4 h-4" />
                     <span className="text-sm font-bold">{overview?.stations.utilizationRate.toFixed(0) || 0}%</span>
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-white mb-2" data-testid="text-total-stations">
+                <div className="luxury-heading-lg luxury-text-gradient mb-2" data-testid="text-total-stations">
                   {overview?.stations.total || 0}
                 </div>
-                <div className="text-purple-200 text-sm font-medium">Total Stations</div>
-                <div className="mt-4 pt-4 border-t border-purple-400/20">
+                <div className="luxury-text-small text-gray-600">Total Stations</div>
+                <div className="mt-4 pt-4 border-t border-purple-200/30">
                   <div className="flex justify-between text-xs mb-3">
-                    <span className="text-purple-300">Online: {overview?.stations.active || 0}</span>
-                    <span className="text-purple-300">Offline: {overview?.stations.offline || 0}</span>
+                    <span className="text-gray-600">Online: {overview?.stations.active || 0}</span>
+                    <span className="text-gray-600">Offline: {overview?.stations.offline || 0}</span>
                   </div>
                   <Link href="/admin/stations">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full bg-purple-500/20 border-purple-400/50 text-purple-100 hover:bg-purple-500/30 hover:text-white transition-all"
+                    <button 
+                      className="luxury-btn-secondary w-full text-sm"
                       data-testid="button-manage-stations"
                     >
-                      <Settings className="w-4 h-4 mr-2" />
+                      <Settings className="w-4 h-4 mr-2 inline" />
                       Manage Stations
-                    </Button>
+                    </button>
                   </Link>
                 </div>
               </div>
 
               {/* Transactions Card */}
-              <div className="group backdrop-blur-xl bg-gradient-to-br from-orange-500/20 to-red-600/20 border border-orange-400/30 rounded-2xl p-6 shadow-2xl hover:shadow-orange-500/50 transition-all duration-300 hover:scale-105" data-testid="card-transactions">
+              <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-4" data-testid="card-transactions">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-orange-500/20 rounded-xl">
-                    <Zap className="h-6 w-6 text-orange-300" />
+                  <div className="p-3 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl">
+                    <Zap className="h-6 w-6 text-white" />
                   </div>
-                  <div className="flex items-center space-x-1 text-orange-300">
+                  <div className="flex items-center space-x-1 text-orange-600">
                     <TrendingUp className="w-4 h-4" />
                     <span className="text-sm font-bold">{overview?.transactions.successRate.toFixed(1) || 0}%</span>
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-white mb-2" data-testid="text-total-transactions">
+                <div className="luxury-heading-lg luxury-text-gradient mb-2" data-testid="text-total-transactions">
                   {overview?.transactions.total.toLocaleString() || 0}
                 </div>
-                <div className="text-orange-200 text-sm font-medium">Total Transactions</div>
-                <div className="mt-4 pt-4 border-t border-orange-400/20">
+                <div className="luxury-text-small text-gray-600">Total Transactions</div>
+                <div className="mt-4 pt-4 border-t border-purple-200/30">
                   <div className="flex justify-between text-xs">
-                    <span className="text-orange-300">Success: {overview?.transactions.completed || 0}</span>
-                    <span className="text-orange-300">Failed: {overview?.transactions.failed || 0}</span>
+                    <span className="text-gray-600">Success: {overview?.transactions.completed || 0}</span>
+                    <span className="text-gray-600">Failed: {overview?.transactions.failed || 0}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 luxury-animate-slide-up luxury-delay-2">
               {/* Revenue Trend Chart */}
-              <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl" data-testid="chart-revenue-trend">
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
-                  <BarChart3 className="w-5 h-5 text-rose-400" />
+              <div className="luxury-glass-card luxury-shadow-lg" data-testid="chart-revenue-trend">
+                <h3 className="luxury-heading-md mb-6 flex items-center space-x-2">
+                  <BarChart3 className="w-5 h-5 text-purple-600" />
                   <span>Revenue Trend (30 Days)</span>
                 </h3>
                 {revenueLoading ? (
@@ -421,9 +419,9 @@ export default function AdminDashboard() {
               </div>
 
               {/* Loyalty Distribution */}
-              <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl" data-testid="chart-loyalty">
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
-                  <Award className="w-5 h-5 text-purple-400" />
+              <div className="luxury-glass-card luxury-shadow-lg" data-testid="chart-loyalty">
+                <h3 className="luxury-heading-md mb-6 flex items-center space-x-2">
+                  <Award className="w-5 h-5 text-purple-600" />
                   <span>Loyalty Tier Distribution</span>
                 </h3>
                 <div className="space-y-4">
@@ -458,29 +456,29 @@ export default function AdminDashboard() {
             </div>
 
             {/* Recent Activity */}
-            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl" data-testid="section-recent-activity">
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
-                <Activity className="w-5 h-5 text-blue-400" />
+            <div className="luxury-glass-panel luxury-animate-fade-in luxury-delay-3" data-testid="section-recent-activity">
+              <h3 className="luxury-heading-md mb-6 flex items-center space-x-2">
+                <Activity className="w-5 h-5 text-purple-600" />
                 <span>Recent Activity</span>
               </h3>
               <div className="space-y-3">
                 {stats?.recentActivity && stats.recentActivity.length > 0 ? (
                   stats.recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all" data-testid={`activity-${activity.id}`}>
+                    <div key={activity.id} className="flex items-center justify-between p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-purple-200/30 luxury-hover-lift transition-all" data-testid={`activity-${activity.id}`}>
                       <div>
-                        <p className="text-sm font-medium text-white">{activity.action}</p>
-                        <p className="text-xs text-purple-300">{activity.resource}</p>
+                        <p className="text-sm font-medium text-gray-800">{activity.action}</p>
+                        <p className="luxury-text-small">{activity.resource}</p>
                       </div>
                       <div className="text-right">
-                        <Badge variant="secondary" className="text-xs bg-purple-500/30 text-purple-200 border-purple-400/30">
+                        <Badge variant="secondary" className="luxury-badge text-xs">
                           {activity.adminName}
                         </Badge>
-                        <p className="text-xs text-purple-400 mt-1">{activity.timestamp}</p>
+                        <p className="luxury-text-small mt-1">{activity.timestamp}</p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-12 text-purple-300">
+                  <div className="text-center py-12 text-gray-500">
                     <Activity className="w-12 h-12 mx-auto mb-4 opacity-30" />
                     <p>No recent activity</p>
                   </div>
@@ -493,39 +491,43 @@ export default function AdminDashboard() {
         {selectedSection === 'analytics' && (
           <div className="space-y-8">
             {/* Advanced Analytics Section */}
-            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 shadow-2xl">
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center space-x-3">
-                <BarChart3 className="w-6 h-6 text-rose-400" />
+            <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
+              <h2 className="luxury-heading-lg mb-6 flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl">
+                  <BarChart3 className="w-6 h-6 text-white" />
+                </div>
                 <span>Advanced Business Intelligence</span>
-                <Badge className="bg-gradient-to-r from-rose-500 to-purple-500 text-white border-0">PREMIUM</Badge>
+                <Badge className="luxury-badge-gold">PREMIUM</Badge>
               </h2>
 
               {/* Station Performance */}
               <div className="mb-8">
-                <h3 className="text-lg font-bold text-white mb-4">Top Performing Stations</h3>
+                <h3 className="luxury-heading-md mb-4">Top Performing Stations</h3>
                 {stationLoading ? (
-                  <div className="text-purple-300 text-center py-8">Loading station data...</div>
+                  <div className="text-gray-500 text-center py-8">Loading station data...</div>
                 ) : (
                   <div className="space-y-3">
                     {stationData?.data?.slice(0, 5).map((station, index) => (
-                      <div key={station.stationId} className="flex items-center justify-between p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10" data-testid={`station-${station.stationId}`}>
-                        <div className="flex items-center space-x-4">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white ${
-                            index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' :
-                            index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-600' :
-                            index === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-600' :
-                            'bg-white/10'
-                          }`}>
-                            #{index + 1}
+                      <div key={station.stationId} className="luxury-glass-minimal luxury-hover-lift p-4" data-testid={`station-${station.stationId}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white ${
+                              index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' :
+                              index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-600' :
+                              index === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-600' :
+                              'bg-gradient-to-br from-purple-500 to-blue-600'
+                            }`}>
+                              #{index + 1}
+                            </div>
+                            <div>
+                              <div className="text-gray-800 font-medium">{station.stationName}</div>
+                              <div className="luxury-text-small">{station.totalTransactions} transactions</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="text-white font-medium">{station.stationName}</div>
-                            <div className="text-purple-300 text-sm">{station.totalTransactions} transactions</div>
+                          <div className="text-right">
+                            <div className="luxury-heading-sm luxury-text-gradient">₪{station.totalRevenue.toLocaleString()}</div>
+                            <div className="luxury-text-small">Avg: ₪{station.averageTransaction.toFixed(0)}</div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-white font-bold text-lg">₪{station.totalRevenue.toLocaleString()}</div>
-                          <div className="text-purple-300 text-sm">Avg: ₪{station.averageTransaction.toFixed(0)}</div>
                         </div>
                       </div>
                     ))}
@@ -535,7 +537,7 @@ export default function AdminDashboard() {
 
               {/* Transaction Volume Chart */}
               <div>
-                <h3 className="text-lg font-bold text-white mb-4">Transaction Volume (30 Days)</h3>
+                <h3 className="luxury-heading-md mb-4">Transaction Volume (30 Days)</h3>
                 {revenueLoading ? (
                   <div className="h-64 flex items-center justify-center">
                     <div className="text-purple-300">Loading chart...</div>
@@ -560,44 +562,46 @@ export default function AdminDashboard() {
         )}
 
         {selectedSection === 'loyalty' && (
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-white mb-4">Loyalty Program Dashboard</h2>
-            <p className="text-purple-200 mb-8">Manage customer loyalty, tiers, and rewards</p>
-            <div className="text-center py-12 text-purple-300">
-              <Award className="w-16 h-16 mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-medium text-white">Loyalty Management</p>
-              <p className="text-sm">Advanced loyalty features coming soon</p>
+          <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
+            <h2 className="luxury-heading-lg mb-4">Loyalty Program Dashboard</h2>
+            <p className="luxury-text-body mb-8">Manage customer loyalty, tiers, and rewards</p>
+            <div className="text-center py-12 text-gray-500">
+              <Award className="w-16 h-16 mx-auto mb-4 opacity-30 text-purple-400" />
+              <p className="luxury-heading-sm">Loyalty Management</p>
+              <p className="luxury-text-small">Advanced loyalty features coming soon</p>
             </div>
           </div>
         )}
 
         {selectedSection === 'inventory' && (
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-white mb-4">Inventory Management</h2>
-            <p className="text-purple-200 mb-8">Track stock levels, supplies, and equipment</p>
-            <div className="text-center py-12 text-purple-300">
-              <Package className="w-16 h-16 mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-medium text-white">Inventory Tracker</p>
-              <p className="text-sm">Real-time inventory monitoring coming soon</p>
+          <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
+            <h2 className="luxury-heading-lg mb-4">Inventory Management</h2>
+            <p className="luxury-text-body mb-8">Track stock levels, supplies, and equipment</p>
+            <div className="text-center py-12 text-gray-500">
+              <Package className="w-16 h-16 mx-auto mb-4 opacity-30 text-purple-400" />
+              <p className="luxury-heading-sm">Inventory Tracker</p>
+              <p className="luxury-text-small">Real-time inventory monitoring coming soon</p>
             </div>
           </div>
         )}
 
         {selectedSection === 'hr' && (
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-white mb-4">HR Document Management</h2>
-            <p className="text-purple-200 mb-8">Manage employee documents, contracts, and records</p>
-            <div className="text-center py-12 text-purple-300">
-              <FileText className="w-16 h-16 mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-medium text-white">HR Documents</p>
-              <p className="text-sm">Document management system coming soon</p>
+          <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
+            <h2 className="luxury-heading-lg mb-4">HR Document Management</h2>
+            <p className="luxury-text-body mb-8">Manage employee documents, contracts, and records</p>
+            <div className="text-center py-12 text-gray-500">
+              <FileText className="w-16 h-16 mx-auto mb-4 opacity-30 text-purple-400" />
+              <p className="luxury-heading-sm">HR Documents</p>
+              <p className="luxury-text-small">Document management system coming soon</p>
             </div>
           </div>
         )}
 
         {selectedSection === 'payments' && (
-          <div className="space-y-6">
-            <NayaxMonitoring />
+          <div className="space-y-6 luxury-animate-fade-in">
+            <div className="luxury-glass-card luxury-shadow-lg">
+              <NayaxMonitoring />
+            </div>
           </div>
         )}
       </main>

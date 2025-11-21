@@ -68,10 +68,10 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
   if (analyticsLoading) {
     return (
       <Layout language={language} onLanguageChange={onLanguageChange}>
-        <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="luxury-bg-mesh min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading enterprise dashboard...</p>
+            <div className="luxury-spinner mx-auto mb-4"></div>
+            <p className="luxury-text-body">Loading enterprise dashboard...</p>
           </div>
         </div>
       </Layout>
@@ -128,19 +128,21 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen bg-white dark:bg-black">
+      <div className="min-h-screen luxury-bg-mesh">
         {/* Enterprise Admin Bar */}
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-6">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="luxury-bg-primary text-white py-4 px-6 luxury-shadow-md">
+          <div className="luxury-container flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Building2 className="h-5 w-5" />
-              <span className="font-semibold">Pet Wash™ Enterprise Control Panel</span>
+              <div className="p-2 rounded-xl bg-white/10 backdrop-blur-sm">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <span className="luxury-heading-sm text-white">Pet Wash™ Enterprise Control Panel</span>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm opacity-90">{user?.displayName || user?.email}</span>
               <button
                 onClick={() => signOut()}
-                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+                className="p-2 rounded-xl bg-white/20 hover:bg-white/30 transition-all hover:scale-105"
                 data-testid="button-logout"
               >
                 <LogOut className="h-4 w-4" />
@@ -149,11 +151,11 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
           </div>
         </div>
 
-        <div className="flex max-w-7xl mx-auto">
+        <div className="flex luxury-container">
           {/* Enterprise Sidebar Navigation with Luxury Styling */}
-          <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 min-h-[calc(100vh-200px)]">
-            <nav className="p-4 space-y-2">
-              {navigation.map((item) => {
+          <aside className="w-72 luxury-glass-panel luxury-shadow-lg min-h-[calc(100vh-200px)] m-6 mr-0">
+            <nav className="p-6 space-y-2">
+              {navigation.map((item, index) => {
                 const isActive = location === item.href || location.startsWith(item.href + "/");
                 const Icon = item.icon;
                 
@@ -162,16 +164,19 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
                     key={item.name}
                     href={item.href}
                     className={`
-                      flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                      flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all
+                      luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}
                       ${isActive
-                        ? "bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300"
-                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        ? "luxury-btn-secondary luxury-shadow-md"
+                        : "luxury-btn-ghost"
                       }
                     `}
                     data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                   >
-                    <Icon className={`h-5 w-5 ${isActive ? "text-purple-600 dark:text-purple-400" : ""}`} />
-                    <span className="font-medium">{item.name}</span>
+                    <div className={`p-2 rounded-lg ${isActive ? 'luxury-bg-primary' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                      <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-gray-600 dark:text-gray-400"}`} />
+                    </div>
+                    <span className="font-semibold text-sm">{item.name}</span>
                   </Link>
                 );
               })}
@@ -179,16 +184,18 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
           </aside>
 
           {/* Main Content Area with Luxury Styling */}
-          <main className="flex-1 p-8 bg-white dark:bg-black">
+          <main className="flex-1 p-8">
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 luxury-animate-fade-in">
           <div>
-            <h1 className="text-4xl font-bold flex items-center gap-2 text-gray-900">
-              <Globe className="h-8 w-8 text-blue-600" />
+            <h1 className="luxury-heading-lg flex items-center gap-3">
+              <div className="p-3 rounded-2xl luxury-bg-primary">
+                <Globe className="h-8 w-8 text-white" />
+              </div>
               Global HQ Dashboard
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="luxury-text-body mt-2">
               Pet Wash™ 2026 Enterprise Command Center
             </p>
           </div>
@@ -200,241 +207,248 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
                 placeholder="Search stations, franchisees, assets..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-white border-gray-300"
+                className="pl-10 luxury-glass-minimal border-0 focus:ring-2 focus:ring-purple-400"
                 data-testid="input-search-global"
               />
             </div>
-            <Button variant="outline" size="icon" className="border-gray-300 hover:bg-gray-50" data-testid="button-filter">
+            <Button variant="outline" size="icon" className="luxury-glass-minimal border-0 hover:luxury-shadow-md" data-testid="button-filter">
               <Filter className="h-4 w-4 text-gray-600" />
             </Button>
           </div>
         </div>
 
         {/* Key Metrics */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => {
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <Card key={stat.title} data-testid={`card-metric-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  {"active" in stat && (
-                    <p className="text-xs text-muted-foreground">
-                      {stat.active} active
-                    </p>
-                  )}
-                  {"critical" in stat && stat.critical > 0 && (
-                    <p className="text-xs text-red-600 font-medium">
-                      {stat.critical} critical
-                    </p>
-                  )}
-                  {"inProgress" in stat && (
-                    <p className="text-xs text-muted-foreground">
-                      {stat.inProgress} in progress
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              <div 
+                key={stat.title} 
+                className={`luxury-glass-card luxury-shadow-md luxury-hover-lift p-6 luxury-animate-slide-up luxury-delay-${index + 1}`}
+                data-testid={`card-metric-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="luxury-heading-sm text-gray-700 dark:text-gray-300">{stat.title}</h3>
+                  <div className={`p-3 rounded-xl ${stat.color.replace('text-', 'bg-').replace('-600', '-100')}`}>
+                    <Icon className={`h-5 w-5 ${stat.color}`} />
+                  </div>
+                </div>
+                <div className="luxury-heading-lg luxury-text-gradient mb-2">{stat.value}</div>
+                {"active" in stat && (
+                  <p className="luxury-text-small">
+                    {stat.active} active
+                  </p>
+                )}
+                {"critical" in stat && stat.critical > 0 && (
+                  <div className="luxury-badge luxury-badge-gold mt-2 inline-flex">
+                    <AlertTriangle className="h-3 w-3" />
+                    {stat.critical} critical
+                  </div>
+                )}
+                {"inProgress" in stat && (
+                  <p className="luxury-text-small">
+                    {stat.inProgress} in progress
+                  </p>
+                )}
+              </div>
             );
           })}
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="map" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="map" data-testid="tab-map">
+        <Tabs defaultValue="map" className="space-y-6 luxury-animate-fade-in luxury-delay-3">
+          <TabsList className="luxury-glass-panel p-2 grid w-full grid-cols-4">
+            <TabsTrigger value="map" data-testid="tab-map" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white">
               <MapPin className="h-4 w-4 mr-2" />
               Global Map
             </TabsTrigger>
-            <TabsTrigger value="stations" data-testid="tab-stations">
+            <TabsTrigger value="stations" data-testid="tab-stations" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white">
               <Building2 className="h-4 w-4 mr-2" />
               Stations
             </TabsTrigger>
-            <TabsTrigger value="franchisees" data-testid="tab-franchisees">
+            <TabsTrigger value="franchisees" data-testid="tab-franchisees" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white">
               <Users className="h-4 w-4 mr-2" />
               Franchisees
             </TabsTrigger>
-            <TabsTrigger value="financials" data-testid="tab-financials">
+            <TabsTrigger value="financials" data-testid="tab-financials" className="data-[state=active]:luxury-bg-primary data-[state=active]:text-white">
               <DollarSign className="h-4 w-4 mr-2" />
               Financials
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="map" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Live Station Network</CardTitle>
-                <CardDescription>
+            <div className="luxury-glass-card luxury-shadow-md luxury-hover-lift p-8">
+              <div className="mb-6">
+                <h2 className="luxury-heading-md mb-2">Live Station Network</h2>
+                <p className="luxury-text-body">
                   Real-time status of {(stations as any[])?.length || 0} stations worldwide
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-muted rounded-lg p-4 min-h-[500px] flex items-center justify-center">
-                  <div className="text-center space-y-4">
-                    <MapPin className="h-16 w-16 text-muted-foreground mx-auto" />
-                    <div>
-                      <p className="text-lg font-semibold">Interactive Map Coming Soon</p>
-                      <p className="text-sm text-muted-foreground">
-                        Integrated with Google Maps / Mapbox for real-time station visualization
-                      </p>
-                    </div>
-                    
-                    {/* Station List Preview */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-                      {(stations as any[])?.slice(0, 8).map((station: any) => (
-                        <div
-                          key={station.id}
-                          className="bg-background p-3 rounded-lg border text-left"
-                          data-testid={`station-${station.id}`}
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <div
-                              className={`h-3 w-3 rounded-full ${healthStatusColor(
-                                station.healthStatus
-                              )}`}
-                            />
-                            <span className="text-xs font-medium truncate">
-                              {station.stationCode}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {station.city}
-                          </p>
+                </p>
+              </div>
+              <div className="luxury-glass-minimal rounded-2xl p-8 min-h-[500px] flex items-center justify-center">
+                <div className="text-center space-y-6">
+                  <div className="p-6 rounded-full luxury-bg-soft inline-flex">
+                    <MapPin className="h-16 w-16 luxury-text-gradient" />
+                  </div>
+                  <div>
+                    <p className="luxury-heading-md mb-2">Interactive Map Coming Soon</p>
+                    <p className="luxury-text-body">
+                      Integrated with Google Maps / Mapbox for real-time station visualization
+                    </p>
+                  </div>
+                  
+                  {/* Station List Preview */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                    {(stations as any[])?.slice(0, 8).map((station: any, index) => (
+                      <div
+                        key={station.id}
+                        className={`luxury-glass-card p-4 text-left luxury-animate-scale-in luxury-delay-${Math.min(index + 1, 5)}`}
+                        data-testid={`station-${station.id}`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div
+                            className={`h-3 w-3 rounded-full ${healthStatusColor(
+                              station.healthStatus
+                            )}`}
+                          />
+                          <span className="text-xs font-semibold truncate">
+                            {station.stationCode}
+                          </span>
                         </div>
-                      ))}
-                    </div>
+                        <p className="luxury-text-small truncate">
+                          {station.city}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="stations" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Station Directory</CardTitle>
-                <CardDescription>
+            <div className="luxury-glass-card luxury-shadow-md luxury-hover-lift p-8">
+              <div className="mb-6">
+                <h2 className="luxury-heading-md mb-2 luxury-text-gradient">Station Directory</h2>
+                <p className="luxury-text-body">
                   Comprehensive list of all Pet Wash™ stations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {(stations as any[])?.slice(0, 10).map((station: any) => (
-                    <div
-                      key={station.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                      data-testid={`station-row-${station.id}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`h-10 w-10 rounded-full ${healthStatusColor(
-                            station.healthStatus
-                          )} flex items-center justify-center`}
-                        >
-                          <Building2 className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-semibold">{station.stationName}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {station.stationCode} • {station.city}
-                          </p>
-                        </div>
+                </p>
+              </div>
+              <div className="space-y-3">
+                {(stations as any[])?.slice(0, 10).map((station: any, index) => (
+                  <div
+                    key={station.id}
+                    className={`flex items-center justify-between p-5 luxury-glass-minimal rounded-xl hover:luxury-shadow-md transition-all luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}
+                    data-testid={`station-row-${station.id}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`h-12 w-12 rounded-xl ${healthStatusColor(
+                          station.healthStatus
+                        )} flex items-center justify-center luxury-shadow-sm`}
+                      >
+                        <Building2 className="h-5 w-5 text-white" />
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant={station.operationalStatus === 'active' ? 'default' : 'secondary'}>
-                          {station.operationalStatus}
-                        </Badge>
-                        <Button variant="outline" size="sm" data-testid={`button-view-station-${station.id}`}>
-                          View Details
-                        </Button>
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">{station.stationName}</p>
+                        <p className="luxury-text-small">
+                          {station.stationCode} • {station.city}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    <div className="flex items-center gap-3">
+                      <div className={`luxury-badge ${station.operationalStatus === 'active' ? 'luxury-badge-success' : ''}`}>
+                        {station.operationalStatus}
+                      </div>
+                      <button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-view-station-${station.id}`}>
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="franchisees" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Franchise Partners</CardTitle>
-                <CardDescription>
+            <div className="luxury-glass-card luxury-shadow-md luxury-hover-lift p-8">
+              <div className="mb-6">
+                <h2 className="luxury-heading-md mb-2 luxury-text-gradient">Franchise Partners</h2>
+                <p className="luxury-text-body">
                   Manage {(franchisees as any[])?.length || 0} franchise relationships
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {(franchisees as any[])?.slice(0, 10).map((franchisee: any) => (
-                    <div
-                      key={franchisee.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                      data-testid={`franchisee-row-${franchisee.id}`}
-                    >
-                      <div>
-                        <p className="font-semibold">{franchisee.companyName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {franchisee.contactFirstName} {franchisee.contactLastName} • {franchisee.totalStations} stations
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant={franchisee.status === 'active' ? 'default' : 'secondary'}>
-                          {franchisee.status}
-                        </Badge>
-                        <Button variant="outline" size="sm" data-testid={`button-view-franchisee-${franchisee.id}`}>
-                          View Details
-                        </Button>
-                      </div>
+                </p>
+              </div>
+              <div className="space-y-3">
+                {(franchisees as any[])?.slice(0, 10).map((franchisee: any, index) => (
+                  <div
+                    key={franchisee.id}
+                    className={`flex items-center justify-between p-5 luxury-glass-minimal rounded-xl hover:luxury-shadow-md transition-all luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 5)}`}
+                    data-testid={`franchisee-row-${franchisee.id}`}
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{franchisee.companyName}</p>
+                      <p className="luxury-text-small">
+                        {franchisee.contactFirstName} {franchisee.contactLastName} • 
+                        <span className="luxury-badge luxury-badge-gold ml-2 px-2 py-0.5 text-xs">
+                          {franchisee.totalStations} stations
+                        </span>
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    <div className="flex items-center gap-3">
+                      <div className={`luxury-badge ${franchisee.status === 'active' ? 'luxury-badge-success' : ''}`}>
+                        {franchisee.status}
+                      </div>
+                      <button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-view-franchisee-${franchisee.id}`}>
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="financials" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Unpaid Bills</CardTitle>
-                  <CardDescription>Outstanding station expenses</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-2xl font-bold">
-                        {analyticsData?.bills?.totalUnpaid || 0}
-                      </span>
-                      <Badge variant="destructive">
-                        {analyticsData?.bills?.totalOverdue || 0} overdue
-                      </Badge>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="luxury-glass-card luxury-shadow-md luxury-hover-lift p-8 luxury-animate-slide-up luxury-delay-1">
+                <div className="mb-6">
+                  <h2 className="luxury-heading-md mb-2 luxury-text-gradient">Unpaid Bills</h2>
+                  <p className="luxury-text-body">Outstanding station expenses</p>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="luxury-heading-lg luxury-text-gradient">
+                      {analyticsData?.bills?.totalUnpaid || 0}
+                    </span>
+                    <div className="luxury-badge luxury-badge-gold">
+                      <AlertTriangle className="h-3 w-3" />
+                      {analyticsData?.bills?.totalOverdue || 0} overdue
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Total Amount: {analyticsData?.bills?.totalAmount || '0.00'} ILS
-                    </p>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="luxury-divider"></div>
+                  <p className="luxury-text-small">
+                    Total Amount: <span className="font-semibold text-gray-900 dark:text-gray-100">{analyticsData?.bills?.totalAmount || '0.00'} ILS</span>
+                  </p>
+                </div>
+              </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Revenue Overview</CardTitle>
-                  <CardDescription>Global network performance</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                    <span className="text-2xl font-bold">Coming Soon</span>
+              <div className="luxury-glass-card luxury-shadow-md luxury-hover-lift p-8 luxury-animate-slide-up luxury-delay-2">
+                <div className="mb-6">
+                  <h2 className="luxury-heading-md mb-2 luxury-text-gradient">Revenue Overview</h2>
+                  <p className="luxury-text-body">Global network performance</p>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-green-100">
+                      <TrendingUp className="h-6 w-6 text-green-600" />
+                    </div>
+                    <span className="luxury-heading-lg luxury-text-gradient">Coming Soon</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <div className="luxury-divider"></div>
+                  <p className="luxury-text-small">
                     Real-time revenue tracking and analytics
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

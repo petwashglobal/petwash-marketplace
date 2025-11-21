@@ -148,129 +148,126 @@ export default function Loyalty() {
 
   return (
     <Layout language={language} onLanguageChange={setLanguage}>
-      {/* Premium Background with Animated Gradient */}
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-          <div className="absolute top-40 right-10 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-          <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
-        </div>
-
-        <motion.div 
-          className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          {/* VIP Header */}
+      {/* Ultra-Luxury Background with Mesh Gradient */}
+      <div className="min-h-screen luxury-bg-mesh">
+        <div className="luxury-container luxury-section">
+          {/* VIP Header with Luxury Typography */}
           <motion.div 
-            className="text-center mb-12"
+            className="text-center mb-16 luxury-animate-fade-in"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
           >
-            <div className="inline-flex items-center gap-3 mb-4">
-              <Shield className="w-8 h-8 text-purple-400" />
-              <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-200 via-pink-200 to-purple-200 bg-clip-text text-transparent tracking-tight">
+            <div className="inline-flex items-center luxury-gap-md mb-6">
+              <div className="p-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 luxury-shadow-md">
+                <Shield className="w-10 h-10 text-purple-600" />
+              </div>
+              <h1 className="luxury-heading-xl">
                 {t('loyalty.title', language)}
               </h1>
-              <Shield className="w-8 h-8 text-purple-400" />
+              <div className="p-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 luxury-shadow-md">
+                <Shield className="w-10 h-10 text-purple-600" />
+              </div>
             </div>
-            <p className="text-xl text-purple-200/80 font-light tracking-wide">{t('loyalty.subtitle', language)}</p>
+            <p className="luxury-text-body text-gray-600">{t('loyalty.subtitle', language)}</p>
           </motion.div>
 
           {/* Personalized Welcome */}
           <motion.div 
-            className="text-center mb-12"
+            className="text-center mb-16 luxury-animate-fade-in luxury-delay-1"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.6 }}
           >
-            <h2 className="text-3xl md:text-4xl font-light text-white mb-2">
-              {t('loyalty.welcome', language)} <span className="font-semibold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">{firstName}</span>
+            <h2 className="luxury-heading-lg mb-3">
+              {t('loyalty.welcome', language)} <span className="luxury-text-gradient">{firstName}</span>
             </h2>
             {memberSince && (
-              <p className="text-purple-300/70 text-sm tracking-wider uppercase">{t('loyalty.memberSince', language)} {memberSince}</p>
+              <p className="luxury-text-small uppercase tracking-wider text-gray-500">{t('loyalty.memberSince', language)} {memberSince}</p>
             )}
           </motion.div>
 
           {/* Luxury VIP Member Card */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, rotateX: 10 }}
-            animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.5, duration: 0.7, type: "spring" }}
-            className="mb-12"
+            className="mb-16 luxury-animate-scale-in luxury-delay-2"
           >
-            <div className="relative max-w-2xl mx-auto">
+            <div className="relative max-w-3xl mx-auto">
               {/* Premium Card with Glassmorphism */}
-              <div className={`relative rounded-3xl p-1 bg-gradient-to-br ${getLuxuryGradient(tierProgress.currentTier)} shadow-2xl`}>
-                <div className="rounded-3xl bg-black/40 backdrop-blur-xl p-8 md:p-10">
+              <div className={`luxury-glass-card luxury-hover-glow p-1 bg-gradient-to-br ${getLuxuryGradient(tierProgress.currentTier)} luxury-shadow-xl`}>
+                <div className="rounded-3xl bg-gradient-to-br from-white/95 to-white/90 backdrop-blur-xl p-10 md:p-12">
                   {/* Card Header */}
-                  <div className="flex items-start justify-between mb-8">
-                    <div>
-                      <div className="flex items-center gap-3 mb-3">
-                        <motion.div
-                          animate={{ rotate: [0, 10, -10, 0] }}
-                          transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                          className="text-white"
-                        >
+                  <div className="flex items-start justify-between mb-10 luxury-gap-lg">
+                    <div className="flex items-center luxury-gap-md">
+                      <motion.div
+                        animate={{ rotate: [0, 10, -10, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                        className={`p-4 rounded-2xl bg-gradient-to-br ${getLuxuryGradient(tierProgress.currentTier)} luxury-shadow-md`}
+                      >
+                        <div className="text-white">
                           {getTierIcon(tierProgress.currentTier)}
-                        </motion.div>
-                        <div>
-                          <h3 className="text-3xl md:text-4xl font-bold text-white tracking-wide" data-testid="tier-name">
+                        </div>
+                      </motion.div>
+                      <div>
+                        <div className={`luxury-badge ${tierProgress.currentTier === 'gold' ? 'luxury-badge-gold' : tierProgress.currentTier === 'platinum' ? '' : tierProgress.currentTier === 'silver' ? '' : ''} mb-2`}>
+                          <h3 className="luxury-heading-md" data-testid="tier-name">
                             {getTierDisplay(tierProgress.currentTier, language).toUpperCase()}
                           </h3>
-                          <p className="text-white/60 text-sm tracking-wider uppercase">{t('loyalty.vipCard', language)}</p>
                         </div>
+                        <p className="luxury-text-small uppercase tracking-wider text-gray-500">{t('loyalty.vipCard', language)}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-white/60 text-xs uppercase tracking-wider mb-1">Pet Wash™</div>
-                      <Sparkles className="w-8 h-8 text-white/40 ml-auto" />
+                      <div className="luxury-text-small uppercase tracking-wider text-gray-400 mb-2">Pet Wash™</div>
+                      <Sparkles className="w-10 h-10 text-purple-400 ml-auto" />
                     </div>
                   </div>
 
                   {/* LUXURY STATS with Progress Circle */}
-                  <div className="flex items-center justify-between gap-8 mb-8">
+                  <div className="flex items-center justify-between luxury-gap-xl mb-10">
                     {/* LEFT: Circular Progress */}
                     <div className="flex-shrink-0">
                       <ProgressCircle 
                         progress={tierProgress.progressPercentage || 0}
-                        size={140}
-                        strokeWidth={14}
+                        size={160}
+                        strokeWidth={16}
                         color={tierProgress.currentTier === 'platinum' ? '#A855F7' : tierProgress.currentTier === 'gold' ? '#EAB308' : tierProgress.currentTier === 'silver' ? '#9CA3AF' : '#6B7280'}
                       >
                         <div className="text-center">
-                          <div className="text-3xl font-bold text-white" data-testid="tier-stats">{washes}</div>
-                          <div className="text-white/50 text-xs uppercase mt-1">{t('loyalty.washes', language)}</div>
+                          <div className="luxury-heading-lg luxury-text-gradient" data-testid="tier-stats">{washes}</div>
+                          <div className="luxury-text-small text-gray-500 uppercase mt-2">{t('loyalty.washes', language)}</div>
                         </div>
                       </ProgressCircle>
                     </div>
 
                     {/* RIGHT: Stats Grid */}
-                    <div className="flex-1 grid grid-cols-2 gap-4">
-                      <div className="backdrop-blur-sm bg-white/5 rounded-xl p-4 border border-white/10">
-                        <div className="text-white/50 text-xs uppercase tracking-wider mb-2">{t('loyalty.discount', language)}</div>
-                        <div className="text-3xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">{currentTierConfig.discount}%</div>
+                    <div className="flex-1 luxury-grid-2">
+                      <div className="luxury-glass-minimal luxury-shadow-sm p-5 rounded-2xl">
+                        <div className="luxury-text-small uppercase tracking-wider text-gray-500 mb-3">{t('loyalty.discount', language)}</div>
+                        <div className="luxury-heading-lg luxury-text-gradient">{currentTierConfig.discount}%</div>
                       </div>
-                      <div className="backdrop-blur-sm bg-white/5 rounded-xl p-4 border border-white/10">
-                        <div className="text-white/50 text-xs uppercase tracking-wider mb-2">{t('loyalty.totalSaved', language)}</div>
-                        <div className="text-2xl font-bold text-green-400" data-testid="total-saved-amount">{formatILS(totalSaved, language)}</div>
+                      <div className="luxury-glass-minimal luxury-shadow-sm p-5 rounded-2xl">
+                        <div className="luxury-text-small uppercase tracking-wider text-gray-500 mb-3">{t('loyalty.totalSaved', language)}</div>
+                        <div className="luxury-heading-md text-green-600" data-testid="total-saved-amount">{formatILS(totalSaved, language)}</div>
                       </div>
                       {/* Wash Activity Sparkline */}
-                      <div className="col-span-2 backdrop-blur-sm bg-white/5 rounded-xl p-4 border border-white/10">
-                        <div className="text-white/50 text-xs uppercase tracking-wider mb-3">
+                      <div className="col-span-2 luxury-glass-minimal luxury-shadow-sm p-5 rounded-2xl">
+                        <div className="luxury-text-small uppercase tracking-wider text-gray-500 mb-4">
                           {t('loyalty.recentActivity', language)}
                         </div>
                         <SparklineChart 
                           data={[washes * 0.3, washes * 0.5, washes * 0.7, washes * 0.85, washes]}
                           color="#A855F7"
-                          height={40}
+                          height={50}
                         />
                       </div>
                     </div>
                   </div>
+
+                  {/* Premium Divider */}
+                  <div className="luxury-divider my-8"></div>
 
                   {/* Progress to Next Tier */}
                   {tierProgress.nextTier && (
@@ -279,13 +276,13 @@ export default function Loyalty() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.8, duration: 0.5 }}
                     >
-                      <div className="flex justify-between text-sm text-white/80 mb-2">
-                        <span>{tierProgress.washesUntilNext} {t('loyalty.washesUntil', language)} {getTierDisplay(tierProgress.nextTier, language)}</span>
-                        <span>{tierProgress.currentWashes} / {tierProgress.nextTierAt}</span>
+                      <div className="flex justify-between luxury-text-body text-gray-600 mb-3">
+                        <span>{tierProgress.washesUntilNext} {t('loyalty.washesUntil', language)} <span className="luxury-text-gradient font-semibold">{getTierDisplay(tierProgress.nextTier, language)}</span></span>
+                        <span className="font-semibold">{tierProgress.currentWashes} / {tierProgress.nextTierAt}</span>
                       </div>
-                      <div className="relative h-3 bg-white/10 rounded-full overflow-hidden">
+                      <div className="relative h-4 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full overflow-hidden luxury-shadow-sm">
                         <motion.div
-                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 rounded-full"
+                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 rounded-full luxury-shadow-md"
                           initial={{ width: 0 }}
                           animate={{ width: `${tierProgress.progressPercentage}%` }}
                           transition={{ delay: 1, duration: 1.2, ease: "easeOut" }}
@@ -300,22 +297,21 @@ export default function Loyalty() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.8, duration: 0.5 }}
-                      className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl px-6 py-3 border border-purple-400/30"
+                      className="mt-6 luxury-badge luxury-badge-success flex items-center justify-center luxury-gap-sm py-4"
                     >
-                      <Sparkles className="h-5 w-5 text-purple-300 animate-pulse" />
-                      <span className="text-white font-semibold tracking-wide">
+                      <Sparkles className="h-5 w-5 animate-pulse" />
+                      <span className="font-bold tracking-wide">
                         {t('loyalty.eliteStatus', language)}
                       </span>
-                      <Sparkles className="h-5 w-5 text-pink-300 animate-pulse" />
+                      <Sparkles className="h-5 w-5 animate-pulse" />
                     </motion.div>
                   )}
 
                   {/* Membership Number (Premium Detail) */}
-                  <div className="mt-6 pt-6 border-t border-white/10">
-                    <div className="flex items-center justify-between">
-                      <div className="text-white/40 text-xs uppercase tracking-widest">Member ID</div>
-                      <div className="text-white/60 font-mono text-sm tracking-wider">{firebaseUser?.uid.slice(0, 12).toUpperCase()}</div>
-                    </div>
+                  <div className="luxury-divider my-8"></div>
+                  <div className="flex items-center justify-between">
+                    <div className="luxury-text-small uppercase tracking-widest text-gray-400">Member ID</div>
+                    <div className="luxury-text-body font-mono tracking-wider text-gray-600">{firebaseUser?.uid.slice(0, 12).toUpperCase()}</div>
                   </div>
                 </div>
               </div>
