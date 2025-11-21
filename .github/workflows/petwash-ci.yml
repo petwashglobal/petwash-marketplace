@@ -23,8 +23,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Preflight Guardian – Luxury Scan
-        run: npm run preflight
+      - name: 🛡️ Master Protection System
+        run: npx tsx scripts/guards/master-protection-orchestrator.ts
 
       - name: Build
         run: npm run build
