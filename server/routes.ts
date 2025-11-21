@@ -20,6 +20,8 @@ import documentsRoutes from "./routes/documents";
 import k9000SupplierRoutes from "./routes/k9000-supplier";
 import k9000IotRoutes from "./routes/k9000";
 import k9000DashboardRoutes from "./routes/k9000Dashboard";
+import { createLedRouter, wireLedAutomation } from "./iot/ledController";
+import { eventBus } from "./services/EventBus";
 import walletRoutes from "./routes/wallet";
 import googleWalletRoutes from "./routes/google-wallet";
 import googleServicesRoutes from "./routes/google-services";
@@ -7940,6 +7942,10 @@ self.addEventListener('notificationclick', (event) => {
   // K9000 IoT Hardware Wash Activation (IP-secured, machine-to-server)
   app.use('/api/k9000', k9000IotRoutes);
   
+  // K9000 LED Control Routes (7-Star Luxury Visual UX)
+  const ledRouter = createLedRouter({ requireAuth, requireAdmin });
+  app.use('/api', ledRouter);
+  
   // Apple Wallet Pass Generation (VIP Cards & E-Vouchers)
   app.use('/api/wallet', apiLimiter, walletRoutes);
   app.use('/api/google-wallet', apiLimiter, googleWalletRoutes);
@@ -11618,6 +11624,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     }
   });
+
+  // ==================== LED AUTOMATION WIRING ====================
+  // Wire K9000 LED automation to EventBus for smart triggers
+  wireLedAutomation(eventBus);
+  logger.info('[K9000 LED] Automation wired to EventBus successfully! 🚨💡');
 
   const server = createServer(app);
   return server;
