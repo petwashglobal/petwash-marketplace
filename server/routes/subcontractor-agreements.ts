@@ -51,7 +51,7 @@ const router = Router();
  * - agreementVersion: Version that was signed (e.g., "2025.01")
  * - signedAt: ISO timestamp
  */
-router.post('/api/subcontractors/agreements/2025/sign', async (req: Request, res: Response) => {
+router.post('/2025/sign', async (req: Request, res: Response) => {
   try {
     const bodyData = req.body || {};
 
@@ -129,12 +129,84 @@ router.post('/api/subcontractors/agreements/2025/sign', async (req: Request, res
 });
 
 /**
+ * GET /api/subcontractors/agreements/2025/template
+ * 
+ * Get the current agreement template (for preview before signing).
+ * Returns the latest version of the agreement without requiring signature.
+ * 
+ * ⚠️ ROUTING ORDER CRITICAL: This specific route MUST be before /:signatureId
+ */
+router.get('/2025/template', async (req: Request, res: Response) => {
+  try {
+    return res.json({
+      ok: true,
+      data: {
+        agreement: SUBCONTRACTOR_AGREEMENT_IL_2025,
+        version: SUBCONTRACTOR_AGREEMENT_IL_2025.version,
+        language: SUBCONTRACTOR_AGREEMENT_IL_2025.language,
+        complianceConfig: ISRAEL_SUBCONTRACTOR_COMPLIANCE_2025 // Enhanced: compliance rules included
+      }
+    });
+  } catch (err) {
+    console.error('[Subcontractor Agreement 2025] Get template error:', err);
+    return res.status(500).json({
+      ok: false,
+      error: 'Internal server error while retrieving agreement template'
+    });
+  }
+});
+
+/**
+ * GET /api/subcontractors/agreements/2025/contractor/:contractorId
+ * 
+ * Get all signed agreements for a specific contractor.
+ * Returns signatures sorted by most recent first.
+ * 
+ * ⚠️ ROUTING ORDER CRITICAL: This specific route MUST be before /:signatureId
+ */
+router.get('/2025/contractor/:contractorId', async (req: Request, res: Response) => {
+  try {
+    const { contractorId } = req.params;
+
+    if (!contractorId) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Missing contractorId parameter'
+      });
+    }
+
+    // Query all signatures for this contractor
+    const signatures = await db.query.subcontractorSignatures.findMany({
+      where: eq(subcontractorSignatures.subcontractorId, contractorId),
+      orderBy: [desc(subcontractorSignatures.signedAt)]
+    });
+
+    return res.json({
+      ok: true,
+      data: {
+        contractorId,
+        signatures,
+        count: signatures.length
+      }
+    });
+  } catch (err) {
+    console.error('[Subcontractor Agreement 2025] Get contractor signatures error:', err);
+    return res.status(500).json({
+      ok: false,
+      error: 'Internal server error while retrieving contractor signatures'
+    });
+  }
+});
+
+/**
  * GET /api/subcontractors/agreements/2025/:signatureId
  * 
  * Retrieve signed agreement details for legal documentation.
  * Returns full signature record including agreement snapshot.
+ * 
+ * ⚠️ ROUTING ORDER CRITICAL: This generic param route MUST be LAST
  */
-router.get('/api/subcontractors/agreements/2025/:signatureId', async (req: Request, res: Response) => {
+router.get('/2025/:signatureId', async (req: Request, res: Response) => {
   try {
     const { signatureId } = req.params;
 
@@ -170,72 +242,6 @@ router.get('/api/subcontractors/agreements/2025/:signatureId', async (req: Reque
     return res.status(500).json({
       ok: false,
       error: 'Internal server error while retrieving signature'
-    });
-  }
-});
-
-/**
- * GET /api/subcontractors/agreements/2025/contractor/:contractorId
- * 
- * Get all signed agreements for a specific contractor.
- * Returns signatures sorted by most recent first.
- */
-router.get('/api/subcontractors/agreements/2025/contractor/:contractorId', async (req: Request, res: Response) => {
-  try {
-    const { contractorId } = req.params;
-
-    if (!contractorId) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Missing contractorId parameter'
-      });
-    }
-
-    // Query all signatures for this contractor
-    const signatures = await db.query.subcontractorSignatures.findMany({
-      where: eq(subcontractorSignatures.subcontractorId, contractorId),
-      orderBy: [desc(subcontractorSignatures.signedAt)]
-    });
-
-    return res.json({
-      ok: true,
-      data: {
-        contractorId,
-        signatures,
-        count: signatures.length
-      }
-    });
-  } catch (err) {
-    console.error('[Subcontractor Agreement 2025] Get contractor signatures error:', err);
-    return res.status(500).json({
-      ok: false,
-      error: 'Internal server error while retrieving contractor signatures'
-    });
-  }
-});
-
-/**
- * GET /api/subcontractors/agreements/2025/template
- * 
- * Get the current agreement template (for preview before signing).
- * Returns the latest version of the agreement without requiring signature.
- */
-router.get('/api/subcontractors/agreements/2025/template', async (req: Request, res: Response) => {
-  try {
-    return res.json({
-      ok: true,
-      data: {
-        agreement: SUBCONTRACTOR_AGREEMENT_IL_2025,
-        version: SUBCONTRACTOR_AGREEMENT_IL_2025.version,
-        language: SUBCONTRACTOR_AGREEMENT_IL_2025.language,
-        complianceConfig: ISRAEL_SUBCONTRACTOR_COMPLIANCE_2025 // Enhanced: compliance rules included
-      }
-    });
-  } catch (err) {
-    console.error('[Subcontractor Agreement 2025] Get template error:', err);
-    return res.status(500).json({
-      ok: false,
-      error: 'Internal server error while retrieving agreement template'
     });
   }
 });

@@ -7895,7 +7895,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/contractor-onboarding', apiLimiter, contractorOnboardingRoutes);
   app.use('/api/contractor-invoices', apiLimiter, contractorInvoicesRoutes);
   // Israeli Subcontractor Agreement 2025 - FREE internal e-signature system (NO paid providers)
-  app.use(apiLimiter, subcontractorAgreementsRoutes);
+  app.use('/api/subcontractors/agreements', apiLimiter, subcontractorAgreementsRoutes);
   
   // Employee Management routes
   const employeeRoutes = await import('./routes/employees');
