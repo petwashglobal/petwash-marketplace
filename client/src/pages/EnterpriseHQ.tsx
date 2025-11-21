@@ -5,7 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { EnterpriseLayout } from "@/components/EnterpriseLayout";
+import { Layout } from "@/components/Layout";
+import { Link, useLocation } from "wouter";
+import { useFirebaseAuth } from "@/auth/AuthProvider";
 import {
   Globe,
   Building2,
@@ -17,12 +19,29 @@ import {
   TrendingUp,
   Users,
   Search,
-  Filter
+  Filter,
+  Home,
+  FileText,
+  BarChart3,
+  Shield,
+  LogOut
 } from "lucide-react";
 
 export default function EnterpriseHQ() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [location] = useLocation();
+  const { user, signOut } = useFirebaseAuth();
+
+  const navigation = [
+    { name: "HQ Dashboard", href: "/enterprise/hq", icon: Home },
+    { name: "Stations", href: "/enterprise/stations", icon: Building2 },
+    { name: "Franchisees", href: "/enterprise/franchisees", icon: Users },
+    { name: "Documents", href: "/enterprise/documents", icon: FileText },
+    { name: "Work Orders", href: "/enterprise/work-orders", icon: Wrench },
+    { name: "Analytics", href: "/enterprise/analytics", icon: BarChart3 },
+    { name: "Security & Access", href: "/enterprise/rbac", icon: Shield },
+  ];
 
   const { data: analytics, isLoading: analyticsLoading} = useQuery({
     queryKey: ["/api/enterprise/analytics/global"],
@@ -42,14 +61,14 @@ export default function EnterpriseHQ() {
 
   if (analyticsLoading) {
     return (
-      <EnterpriseLayout>
+      <Layout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading enterprise dashboard...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading enterprise dashboard...</p>
           </div>
         </div>
-      </EnterpriseLayout>
+      </Layout>
     );
   }
 
@@ -102,7 +121,59 @@ export default function EnterpriseHQ() {
   };
 
   return (
-    <EnterpriseLayout>
+    <Layout>
+      <div className="min-h-screen bg-white dark:bg-black">
+        {/* Enterprise Admin Bar */}
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-6">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Building2 className="h-5 w-5" />
+              <span className="font-semibold">Pet Wash™ Enterprise Control Panel</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm opacity-90">{user?.displayName || user?.email}</span>
+              <button
+                onClick={() => signOut()}
+                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+                data-testid="button-logout"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex max-w-7xl mx-auto">
+          {/* Enterprise Sidebar Navigation with Luxury Styling */}
+          <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 min-h-[calc(100vh-200px)]">
+            <nav className="p-4 space-y-2">
+              {navigation.map((item) => {
+                const isActive = location === item.href || location.startsWith(item.href + "/");
+                const Icon = item.icon;
+                
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`
+                      flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                      ${isActive
+                        ? "bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      }
+                    `}
+                    data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Icon className={`h-5 w-5 ${isActive ? "text-purple-600 dark:text-purple-400" : ""}`} />
+                    <span className="font-medium">{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </aside>
+
+          {/* Main Content Area with Luxury Styling */}
+          <main className="flex-1 p-8 bg-white dark:bg-black">
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -362,6 +433,9 @@ export default function EnterpriseHQ() {
           </TabsContent>
         </Tabs>
       </div>
-    </EnterpriseLayout>
+          </main>
+        </div>
+      </div>
+    </Layout>
   );
 }
