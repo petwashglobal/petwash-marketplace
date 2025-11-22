@@ -499,12 +499,16 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
       </header>
 
       {/* Mobile drawer */}
-      <div className={`pw-mobile-drawer ${isMobileOpen ? "open" : ""}`}>
+      <div 
+        className={`pw-mobile-drawer ${isMobileOpen ? "open" : ""}`}
+        aria-hidden={!isMobileOpen}
+      >
         <div className="pw-mobile-top">
           <button
             className="pw-mobile-close"
             onClick={() => setIsMobileOpen(false)}
             aria-label="Close menu"
+            tabIndex={isMobileOpen ? 0 : -1}
           >
             ✕
           </button>
