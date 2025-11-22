@@ -1,52 +1,197 @@
-name: PetWash 2025 CI
+name: PetWash 2025 CI & Deploy
 
 on:
   push:
     branches: [ "main", "production" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: nifty-quanta-475212-v3
+  NODE_VERSION: "20"
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      # ========================================
+      # PHASE 1: CHECKOUT & SETUP
+      # ========================================
+      
+      - name: 📦 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Use Node 20
+      - name: ⚙️ Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: 📥 Install Dependencies
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Installing npm dependencies..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          npm ci
+          echo "✅ Dependencies installed successfully"
+
+      # ========================================
+      # PHASE 2: SECURITY & QUALITY GUARDS
+      # ========================================
 
       - name: 🛡️ Master Protection System
-        run: npx tsx scripts/guards/master-protection-orchestrator.ts
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Running Master Protection System..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          npx tsx scripts/guards/master-protection-orchestrator.ts
+          echo "✅ Master Protection System passed"
 
-      - name: 🚨 PREFLIGHT GUARDIAN - Block Parallel UI Systems
-        run: npm run preflight
+      - name: 🚨 Preflight Guardian - Block Parallel UI Systems
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Running Preflight Guardian..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          npm run preflight
+          echo "✅ Preflight Guardian passed"
 
-      - name: Build
-        run: npm run build
+      # ========================================
+      # PHASE 3: LUXURY BUILD SYSTEM
+      # ========================================
 
-      - name: Authenticate to Google Cloud (2025 Method)
+      - name: 🏗️ Build Production Assets
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Building production assets..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          npm run build
+          echo "✅ Build completed successfully"
+
+      - name: 🔍 Verify Build Artifacts
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Verifying build artifacts..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          if [ -d "dist" ]; then
+            echo "✅ dist/ directory exists"
+            echo "📊 Build size:"
+            du -sh dist/
+            echo "📁 Top-level files:"
+            ls -lh dist/ | head -20
+          else
+            echo "❌ ERROR: dist/ directory not found!"
+            exit 1
+          fi
+
+      # ========================================
+      # PHASE 4: FIREBASE DEPLOYMENT (MAIN ONLY)
+      # ========================================
+
+      - name: 🔐 Prepare Google Cloud Service Account Credentials
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Decoding service account credentials..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # Decode Base64 service account JSON
+          echo "${{ secrets.GCP_SA_KEY }}" | base64 -d > $HOME/gcp-key.json
+          
+          # Verify JSON is valid
+          if [ -f "$HOME/gcp-key.json" ]; then
+            echo "✅ Service account JSON created"
+            echo "📄 File size: $(wc -c < $HOME/gcp-key.json) bytes"
+            
+            # Extract and display service account email (for logging only)
+            SERVICE_ACCOUNT_EMAIL=$(cat $HOME/gcp-key.json | grep -o '"client_email": "[^"]*"' | cut -d'"' -f4)
+            echo "📧 Service Account: $SERVICE_ACCOUNT_EMAIL"
+            echo "🏢 Project ID: ${{ env.PROJECT_ID }}"
+          else
+            echo "❌ ERROR: Failed to create service account JSON!"
+            exit 1
+          fi
+          
+          # Export environment variable for Firebase CLI
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcp-key.json" >> $GITHUB_ENV
+
+      - name: 🔑 Authenticate to Google Cloud (2025 Method)
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
           create_credentials_file: true
 
-      - name: Install Firebase CLI
+      - name: 🔥 Install Firebase CLI
         if: github.ref == 'refs/heads/main'
-        run: npm install -g firebase-tools@latest
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Installing Firebase CLI..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          npm install -g firebase-tools@latest
+          
+          echo "✅ Firebase CLI installed"
+          echo "📊 Version: $(firebase --version)"
 
-      - name: Show Firebase Project Info
+      - name: 🔍 Verify Firebase Project Configuration
         if: github.ref == 'refs/heads/main'
-        run: firebase projects:list || true
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Verifying Firebase project access..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # List all accessible Firebase projects
+          echo "📋 Accessible Firebase projects:"
+          firebase projects:list || {
+            echo "⚠️ Warning: Could not list projects (might be permission issue)"
+            echo "Continuing deployment anyway..."
+          }
+          
+          # Show current project
+          echo ""
+          echo "🎯 Target project: ${{ env.PROJECT_ID }}"
+          
+          # Verify firebase.json exists
+          if [ -f "firebase.json" ]; then
+            echo "✅ firebase.json found"
+            echo "📄 Configuration:"
+            cat firebase.json
+          else
+            echo "❌ ERROR: firebase.json not found!"
+            exit 1
+          fi
 
-      - name: Deploy to Firebase Hosting
+      - name: 🚀 Deploy to Firebase Hosting
         if: github.ref == 'refs/heads/main'
-        run: firebase deploy --only hosting --project nifty-quanta-475212-v3 --non-interactive
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 DEPLOYING TO FIREBASE HOSTING"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Project: ${{ env.PROJECT_ID }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          firebase deploy \
+            --only hosting \
+            --project ${{ env.PROJECT_ID }} \
+            --non-interactive \
+            --force
+          
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ DEPLOYMENT SUCCESSFUL!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🌐 Live URL: https://${{ env.PROJECT_ID }}.web.app"
+          echo "🌐 Custom Domain: https://petwash.co.il"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: 🧹 Cleanup Credentials
+        if: always() && github.ref == 'refs/heads/main'
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Cleaning up credentials..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          rm -f $HOME/gcp-key.json
+          echo "✅ Credentials cleaned up"
