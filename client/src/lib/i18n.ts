@@ -100,6 +100,10 @@ export const translations: TranslationStrings = {
   'organic.teaTreeDesc': { en: 'Natural pest repellent and antibacterial', he: 'דוחה מזיקים טבעי ואנטיבקטריאלי', ar: 'طارد طبيعي للآفات ومضاد للبكتيريا', ru: 'Натуральный репеллент и антибактериальное средство', fr: 'Répulsif naturel et antibactérien', es: 'Repelente natural y antibacteriano' },
   'organic.ecoFriendly': { en: 'Eco-Friendly', he: 'ידידותי לסביבה', ar: 'صديق للبيئة', ru: 'Экологичный', fr: 'Écologique', es: 'Ecológico' },
   'organic.ecoDesc': { en: 'Sustainable and responsible', he: 'בר קיימא ואחראי', ar: 'مستدام ومسؤول', ru: 'Устойчивый и ответственный', fr: 'Durable et responsable', es: 'Sostenible y responsable' },
+  // Payment Methods
+  'payment.title': { en: 'Accepted Payment Methods', he: 'אמצעי תשלום מקובלים', ar: 'طرق الدفع المقبولة', ru: 'Принимаемые способы оплаты', fr: 'Modes de paiement acceptés', es: 'Métodos de pago aceptados' },
+  'payment.subtitle': { en: 'Secure payment processing with trusted global brands', he: 'עיבוד תשלומים מאובטח עם מותגים עולמיים מהימנים', ar: 'معالجة الدفع الآمن مع العلامات التجارية العالمية الموثوقة', ru: 'Безопасная обработка платежей с надежными мировыми брендами', fr: 'Traitement sécurisé des paiements avec des marques mondiales de confiance', es: 'Procesamiento seguro de pagos con marcas globales confiables' },
+  'payment.secureCheckout': { en: '🔒 100% Secure Checkout', he: '🔒 תשלום מאובטח 100%', ar: '🔒 الدفع آمن 100٪', ru: '🔒 100% безопасная оплата', fr: '🔒 Paiement 100% sécurisé', es: '🔒 Pago 100% seguro' },
   // Gift Cards
   'giftCards.title': { en: 'Premium Digital Gift Cards', he: 'כרטיסי מתנה דיגיטליים יוקרתיים', ar: 'بطاقات هدايا رقمية فاخرة', ru: 'Премиум цифровые подарочные карты', fr: 'Cartes cadeaux numériques premium', es: 'Tarjetas de regalo digitales premium' },
   'giftCards.subtitle': { en: 'The perfect gift for pet lovers', he: 'המתנה המושלמת לאוהבי חיות מחמד', ar: 'الهدية المثالية لمحبي الحيوانات الأليفة', ru: 'Идеальный подарок для любителей питомцев', fr: 'Le cadeau parfait pour les amoureux des animaux', es: 'El regalo perfecto para los amantes de las mascotas' },

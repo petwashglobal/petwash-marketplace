@@ -184,9 +184,88 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Gift Cards Section */}
         <GiftCards language={language} />
 
-        {/* Payment Methods Accepted Section - Sharp SVG Icons */}
-        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
-          <div className="max-w-6xl mx-auto text-center">
+        {/* Payment Methods Accepted Section - 2025 Luxury Full-Color Icons */}
+        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-gray-50">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
+                {t('payment.title', language)}
+              </h2>
+              <p className="text-base sm:text-lg text-gray-600">
+                {t('payment.subtitle', language)}
+              </p>
+            </div>
+            
+            {/* Premium Payment Icons Grid - Official Brand SVGs */}
+            <div className="grid grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-10 items-center justify-items-center max-w-5xl mx-auto">
+              {/* Visa - Official Brand Colors */}
+              <div className="group relative">
+                <svg className="w-20 h-auto hover:scale-110 transition-transform duration-300" viewBox="0 0 750 471" xmlns="http://www.w3.org/2000/svg">
+                  <rect fill="#1434CB" width="750" height="471" rx="40"/>
+                  <path fill="#fff" d="M278.2 334.2h-42.7l26.6-164.1h42.7l-26.6 164.1zm161.2-161c-8.4-3.3-21.7-6.9-38.2-6.9-42.1 0-71.7 22.4-71.9 54.4-.2 23.7 21.2 36.9 37.3 44.8 16.5 8.1 22 13.3 22 20.5-.1 11.1-13.2 16.1-25.5 16.1-17 0-26-2.5-39.9-8.7l-5.5-2.6-5.9 36.7c10 4.6 28.4 8.6 47.5 8.8 44.8 0 73.8-22.1 74.1-56.3.1-18.8-11.2-33.1-35.9-44.9-15-7.6-24.1-12.6-24.1-20.3.1-6.9 7.7-14.2 24.4-14.2 13.9-.2 24 3 31.8 6.4l3.8 1.9 5.8-35.8zm97.5-3.1h-33c-10.2 0-17.9 3-22.4 13.7l-63.6 151.2h44.8s7.3-20.4 9-24.8l54.5.1c1.3 5.8 5.2 24.7 5.2 24.7H575l-38.3-164.9zM510 277.9c3.5-9.6 17.1-46.2 17.1-46.2-.2.4 3.5-9.6 5.7-15.8l2.9 14.3s8.2 39.7 9.9 48.1l-35.6-.4zm-215.1-107.8l-42 112.4-4.5-22.7c-7.7-26.3-32-54.8-59-69.1l38.2 143.5h45.2l67.2-164.1h-45.1z"/>
+                  <path fill="#FAA61A" d="M131.9 170.1H63.1l-.6 3.7c53.5 13.7 88.9 46.8 103.5 86.6l-14.9-73.8c-2.5-10.4-10-13.2-19.2-16.5z"/>
+                </svg>
+              </div>
+
+              {/* Mastercard - Official Brand Colors */}
+              <div className="group relative">
+                <svg className="w-20 h-auto hover:scale-110 transition-transform duration-300" viewBox="0 0 152 108" xmlns="http://www.w3.org/2000/svg">
+                  <g fill="none" fillRule="evenodd">
+                    <rect fill="#000" width="152" height="108" rx="8"/>
+                    <circle fill="#EB001B" cx="55.5" cy="54" r="30.5"/>
+                    <circle fill="#F79E1B" cx="96.5" cy="54" r="30.5"/>
+                    <path fill="#FF5F00" d="M76 29.5c-6.2 4.7-10 12-10 20.5s3.8 15.8 10 20.5c6.2-4.7 10-12 10-20.5s-3.8-15.8-10-20.5z"/>
+                  </g>
+                </svg>
+              </div>
+
+              {/* American Express - Official Brand Colors */}
+              <div className="group relative">
+                <svg className="w-20 h-auto hover:scale-110 transition-transform duration-300" viewBox="0 0 152 108" xmlns="http://www.w3.org/2000/svg">
+                  <rect fill="#006FCF" width="152" height="108" rx="8"/>
+                  <path fill="#fff" d="M45 45h14l-7-10-7 10zm-8 4l-2 5H24l2-5h11zm90-4l7-10 7 10h-14zm-99 15h41v-5H28v5zm62-5h25v5H90v-5z"/>
+                </svg>
+              </div>
+
+              {/* Apple Pay - Official Brand Colors */}
+              <div className="group relative">
+                <svg className="w-20 h-auto hover:scale-110 transition-transform duration-300" viewBox="0 0 165 105" xmlns="http://www.w3.org/2000/svg">
+                  <rect fill="#000" width="165" height="105" rx="8"/>
+                  <path fill="#fff" d="M38 46c-2.3-.2-4.5.7-6 2.5-1.4 1.7-2.2 4-2 6.2 2.2.1 4.4-.7 5.9-2.4 1.4-1.6 2.2-3.8 2.1-6.3zm.2 10c-3.3 0-4.7 1.6-7 1.6-2.4 0-4.2-1.5-6.9-1.5-3.6 0-7.4 2.2-9.8 5.9-3.4 5.2-2.8 15 2.7 23.5 1.9 3 4.3 6.4 7.6 6.5 2.3.1 2.9-1.6 6.1-1.6 3.1 0 3.7 1.6 6.9 1.6 3.3 0 5.5-3.2 7.4-6.3 1.4-2.2 1.9-3.3 3-5.9-7.4-3-8.6-14.1-1.2-17.9-1.3-1.9-3.2-3.7-5.3-4.7-1.2-.5-2.5-.8-3.7-1.2z"/>
+                  <text x="55" y="65" fill="#fff" fontFamily="Arial" fontSize="16" fontWeight="600">Pay</text>
+                </svg>
+              </div>
+
+              {/* Google Pay - Official Brand Colors */}
+              <div className="group relative">
+                <svg className="w-20 h-auto hover:scale-110 transition-transform duration-300" viewBox="0 0 165 105" xmlns="http://www.w3.org/2000/svg">
+                  <rect fill="#fff" stroke="#E8E8E8" strokeWidth="2" width="165" height="105" rx="8"/>
+                  <path fill="#5F6368" d="M72 52h9v23h-9V52zm30 0v23h-8V55.5c-1.3 1.3-2.9 2-4.8 2-3.9 0-7.2-3.2-7.2-7.2s3.2-7.2 7.2-7.2c1.9 0 3.5.7 4.8 2V52h8zm-33-5c-2.8 0-5 2.2-5 5v13h-9V44h9v2.3c1.4-1.7 3.5-2.7 5.9-2.7 4.1 0 7.4 3.2 7.4 7.2V75h-9V55.5c-.9-1.1-2.3-1.8-3.8-1.8-1.5 0-2.9.7-3.8 1.8z"/>
+                  <path fill="#4285F4" d="M24 50.2c0-5.5 4.5-10 10-10s10 4.5 10 10v.5H26.8c.5 2.4 2.6 4.2 5.2 4.2 1.9 0 3.7-.9 4.8-2.4l6.7 3.9c-2.3 3.6-6.3 5.9-10.5 5.9-6.6 0-12-5.4-12-12.1v.5z"/>
+                </svg>
+              </div>
+
+              {/* Diners Club - Official Brand Colors */}
+              <div className="group relative">
+                <svg className="w-20 h-auto hover:scale-110 transition-transform duration-300" viewBox="0 0 152 108" xmlns="http://www.w3.org/2000/svg">
+                  <rect fill="#0079BE" width="152" height="108" rx="8"/>
+                  <circle fill="none" stroke="#fff" strokeWidth="4" cx="76" cy="54" r="26"/>
+                  <path fill="#fff" d="M62 54c0-12 9.7-22 21.7-22V76c-12 0-21.7-10-21.7-22zm28 22V32c12 0 21.7 10 21.7 22S102 76 90 76z"/>
+                </svg>
+              </div>
+            </div>
+            
+            {/* Trust Badge */}
+            <div className="mt-8 text-center">
+              <div className="inline-flex items-center gap-2 px-6 py-3 bg-green-50 rounded-full border border-green-200">
+                <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-semibold text-green-900">
+                  {t('payment.secureCheckout', language)}
+                </span>
+              </div>
+            </div>
           </div>
         </section>
 
