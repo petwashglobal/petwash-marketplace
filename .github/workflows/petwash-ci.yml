@@ -43,6 +43,10 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: npm install -g firebase-tools@latest
 
+      - name: Show Firebase Project Info
+        if: github.ref == 'refs/heads/main'
+        run: firebase projects:list || true
+
       - name: Deploy to Firebase Hosting
         if: github.ref == 'refs/heads/main'
-        run: firebase deploy --only hosting --project nifty-quanta-475212-v3
+        run: firebase deploy --only hosting --project nifty-quanta-475212-v3 --non-interactive
