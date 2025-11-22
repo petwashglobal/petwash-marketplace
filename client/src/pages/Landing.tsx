@@ -95,7 +95,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             {/* Main Hero Image - BELOW the text - Prioritized for LCP */}
             <div className="text-center">
               <img 
-                src="/IMG_7114_1751624638881.jpeg"
+                src="/hero-image.jpeg"
                 alt="Professional pet washing service with adorable dogs and cats"
                 className="w-full max-w-sm sm:max-w-lg lg:max-w-2xl mx-auto rounded-lg shadow-lg object-cover h-60 sm:h-80 lg:h-96"
                 loading="eager"

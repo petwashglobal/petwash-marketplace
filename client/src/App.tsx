@@ -28,7 +28,6 @@ import { initializeInteractionTracking } from "@/lib/interactionTracker";
 import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
-import { PetWashHeader } from "@/components/PetWashHeader";
 
 // CRITICAL: Only import home route components (for instant load)
 import Landing from "@/pages/Landing";
@@ -315,9 +314,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     <Suspense fallback={<PageLoader />}>
       {/* Google One Tap - Disabled to improve page load speed */}
       {/* {showOneTap && <GoogleOneTap enabled={true} autoPrompt={true} />} */}
-      
-      {/* Pet Wash™ Global Header 2025 */}
-      <PetWashHeader />
       
       <Switch>
         {/* Public routes */}
