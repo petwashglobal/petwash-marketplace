@@ -19,6 +19,13 @@ USER EXPLICITLY FORBID: Touching header layout, logo positioning, social media i
 - Violating this causes extreme user frustration
 BRANDING MANDATE: Only use official PetWash™ logo with TM trademark (Download PetWash_Logo_HighRes_1762743316767.png at /brand/petwash-logo-official.png - 891KB high-res version). Never create custom logos or use unofficial designs. Logo MUST include legal TM symbol. Logo is embedded as base64 in all emails for universal display across iOS Mail, Android Gmail, Outlook, and web clients.
 
+HOMEPAGE CONTENT GUARD - CRITICAL:
+- **Master Source**: `src/brand/petwash-homepage-content-guard-2025.ts` contains ALL approved homepage wording
+- **Hebrew Hero Text**: "מהפכה בטיפוח ושטיפת חיות המחמד בשירות עצמי" (title), "מהיר, קל, 24/7" (subtitle), "שמפו אורגני 100% עם שמן עץ התה האוסטרלי. דוחה מזיקים, אנטיבקטריאלי ומרגיע לחבר הטוב ביותר שלך." (description)
+- **Implementation**: All homepage text rendered via `client/src/lib/i18n.ts` translation keys
+- **Rule**: NEVER change these exact Hebrew phrases without explicit user approval - they are final creative direction, not suggestions
+- **Git History**: Original text preserved in commits 7830068 and 2af014e - never revert to later "luxury branding" versions without permission
+
 LANGUAGE STRATEGY FOR ISRAELI MARKET:
 - **Primary Language**: Messages, notifications, and communications to Israeli users and local partners should be MAINLY in Hebrew
 - **Brand Touches**: Include touches of English to maintain cool, luxury, leading lifestyle, global brand image

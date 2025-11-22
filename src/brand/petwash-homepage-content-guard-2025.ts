@@ -99,8 +99,8 @@ export const HOMEPAGE_APPROVED_2025 = {
       id: "hero_headline",
       description: "Main hero headline at top of homepage.",
       approvedText: {
-        en: "7-Star Luxury Pet Grooming Excellence",
-        he: "מהפכה בשטיפת חיות המחמד"
+        en: "Revolutionizing Self-Service Pet Grooming & Washing",
+        he: "מהפכה בטיפוח ושטיפת חיות המחמד בשירות עצמי"
       },
       required: true,
       locked: true
@@ -109,8 +109,8 @@ export const HOMEPAGE_APPROVED_2025 = {
       id: "hero_subheadline",
       description: "Hero subheadline directly under the main headline.",
       approvedText: {
-        en: "Premium Professional Care, Available 24/7",
-        he: "שירותי רחצה וטיפוח מתקדמים בטכנולוגיית K9000"
+        en: "Quick, Easy, 24/7",
+        he: "מהיר, קל, 24/7"
       },
       required: true,
       locked: true
@@ -120,7 +120,7 @@ export const HOMEPAGE_APPROVED_2025 = {
       description: "Short description under hero subheadline.",
       approvedText: {
         en: "100% organic shampoo with Tea Tree Oil. Pest-repelling, antibacterial, and soothing for your furry friend.",
-        he: "100% שמפו אורגני עם שמן עץ התה. טיפול אנטיבקטריאלי ועדין לכלב ולחתול."
+        he: "שמפו אורגני 100% עם שמן עץ התה האוסטרלי. דוחה מזיקים, אנטיבקטריאלי ומרגיע לחבר הטוב ביותר שלך."
       },
       required: true,
       locked: true
