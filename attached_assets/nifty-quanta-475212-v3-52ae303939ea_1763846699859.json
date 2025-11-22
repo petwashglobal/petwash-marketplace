@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "nifty-quanta-475212-v3",
+  "private_key_id": "52ae303939ea3c6ee5c8bfa1207b71a61a9e6b74",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCzIWeKKxqFmGAv\npdUtuyvB3AnYkplZAr5El6OiwSG5szHu7cMQkEceH4/PL7UyctxymBlsDHSUbVgz\nrxZIyaS43Q8WSeTPX8saFNluN15iLrWwYNgb8/SBTmwHKNM6Eop117P6izfK1oFL\n5n023QywGKmlHA7TXW7yIM3T1PX5YS5Xgf8pMV8mdCqLyE4xnLpVamT8+1N9bt9s\ngRWAXCUiM0cCPuKpJ9L51JJ6hWs11MEUye5HNEBwjOIwBAskiqpJ0R0oWvlXJknO\nsv4cjTqlS5j6OTIauB9CLp3QYm9CME10pW8OLA2rc4fdOJOfZQPoXq4RwHSP2amW\n76SUgwnvAgMBAAECggEACpqr+Mz2bqQyRX/UBTddrsXqO0zqZmTi2J1VeDlmArVD\nUSP4ITnj9o+NwYkkeTkS0yHX7MKMADa85Z+0JQOdjGgMZZhi7Y0mhoO8yhPdsthA\nXzxMbtMxTUT+4NRKNNeLeiXBJ3rTBwn4cNgoih/p3rQxuW7WHdhxIe+j36oYFEwn\n9HjtQazOhBzq37yNCDU8TfR5ZHQbCutrJ2ve0rSK+y3m5RHI4x9k6zTmtE3N/5DP\ndlI1tR4FYtrdNO9jzQUDaGaN1uiG7do1OEra2glBTKBVY+gIq6sfjtluH8/4TIQd\nFSElq0LVOT2RnnDwJxa20cmSGEmj80fjQK5caQI4YQKBgQDwJmfnuATuv6l3FCR4\n4JSPE2zZujGI0JP2iSWNU4wrQlceNZNDr+Ymx7nqqmMS0FHFe37F1rll9ZDkIZx3\nE7mc0BWGtFj2gYm8WAKY0U59ic0J9RBkldXW8PDTB70Sv0wFemK8HmJ3nIeRR8VQ\nFpXE7Ewro0qCG9WDoomN7nx8EQKBgQC+9AHv2vcnjzCmGF+euARUfGE5d1hwzUoR\nU1UjIs1yAfAgPs07c8tQkZ5NM7dML9WdwmbkTJoY3dA9gM4ol8/yWbBENIzPc3Xy\nUl7OgNcCk1NQvIaeEs8yp3DM4Rkiw6ltTx/IwDN7cIFc1oTMc516NMWOhB8NEoXi\nN2vNGEUl/wKBgGRXN7z7B5yWGoG1udODyq7JaAbFJGNM+zXccgNN8Fg23N2zdvem\nLFzxwL3LOaAnyLLh+cNCB68RXtvjK1QZuslJrGTfP/ingVxfzZ36fng3tqM9cP8G\nGBY6D/Ws2xRVN7dmPpDphS0DCyXpvgjLlwJz1RO6o6wfYyQgKqdSCVNxAoGAeQEz\ngQVm/aCVmYt0fKXryIYRLlNcrg7JUvVVzDAvtIFZ43UopPYZ7vJ4OD//db4SRih8\n/0szk3Jslazb94lMcy02r+IFISjvoyFjhsTKe41UjKMLQ3xz5IuKxaoXPZpz8Rrk\n71gsx5phv60I9m6Fan2qe0dqTeRhBxtLquooV40CgYEAmYyAmAgLBKiPD7R2E9yw\nvDtZvF5i/0wGAj2Uun6DG3+JeZMgTytOUgJgnF5VZbso6NzKo/gRCHhpk8x0fJtk\nzGPMCCcxZwdv5kdLDBH/+06YtPvBSvP4ZOZ/1lvz+5QBzH0d0/553/Ef9rp8foyI\nc7ifZEV3PWzyBylN0l/7TU4=\n-----END PRIVATE KEY-----\n",
+  "client_email": "petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com",
+  "client_id": "110426201017169560287",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/petwash-backup-service%40nifty-quanta-475212-v3.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
