@@ -23,13 +23,6 @@ jobs:
       - name: 📦 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🔑 Authenticate to Google Cloud (2025 Method)
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
-          project_id: ${{ env.PROJECT_ID }}
-
       - name: ⚙️ Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
@@ -96,60 +89,37 @@ jobs:
       # PHASE 4: FIREBASE DEPLOYMENT (MAIN ONLY)
       # ========================================
 
-      - name: 🔥 Install Firebase CLI
+      - name: 🔑 Authenticate to Google Cloud (2025 Method)
         if: github.ref == 'refs/heads/main'
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Installing Firebase CLI..."
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          npm install -g firebase-tools@latest
-          echo "✅ Firebase CLI installed"
-          echo "📊 Version: $(firebase --version)"
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
 
-      - name: 🔍 Verify Firebase Project Configuration
+      - name: ⚙️ Setup Google Cloud SDK
         if: github.ref == 'refs/heads/main'
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Verifying Firebase project access..."
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          
-          # List all accessible Firebase projects
-          echo "📋 Accessible Firebase projects:"
-          firebase projects:list || {
-            echo "⚠️ Warning: Could not list projects (might be permission issue)"
-            echo "Continuing deployment anyway..."
-          }
-          
-          # Show current project
-          echo ""
-          echo "🎯 Target project: ${{ env.PROJECT_ID }}"
-          
-          # Verify firebase.json exists
-          if [ -f "firebase.json" ]; then
-            echo "✅ firebase.json found"
-            echo "📄 Configuration:"
-            cat firebase.json
-          else
-            echo "❌ ERROR: firebase.json not found!"
-            exit 1
-          fi
+        uses: google-github-actions/setup-gcloud@v2
 
-      - name: 🚀 Deploy to Firebase Hosting
+      - name: 🔄 Update Google Cloud Components
         if: github.ref == 'refs/heads/main'
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🚀 DEPLOYING TO FIREBASE HOSTING"
+          echo "Updating Google Cloud components..."
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Project: ${{ env.PROJECT_ID }}"
-          echo "Branch: ${{ github.ref }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          
-          npx firebase-tools deploy \
-            --only hosting \
-            --project ${{ env.PROJECT_ID }} \
-            --non-interactive
-          
+          gcloud --quiet components update
+          echo "✅ Google Cloud components updated"
+
+      - name: 🚀 Deploy to Firebase Hosting (Official Action)
+        if: github.ref == 'refs/heads/main'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          channelId: live
+          projectId: ${{ env.PROJECT_ID }}
+
+      - name: ✅ Deployment Complete
+        if: github.ref == 'refs/heads/main'
+        run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "✅ DEPLOYMENT SUCCESSFUL!"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
