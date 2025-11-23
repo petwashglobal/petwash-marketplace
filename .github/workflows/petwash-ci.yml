@@ -62,6 +62,8 @@ jobs:
       # ========================================
 
       - name: 🏗️ Build Production Assets
+        env:
+          VITE_RECAPTCHA_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "Building production assets..."
