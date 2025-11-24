@@ -2,66 +2,37 @@ name: PetWash 2025 CI & Deploy
 
 on:
   push:
-    branches: [ "main", "production" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
-env:
-  PROJECT_ID: nifty-quanta-475212-v3
-  NODE_VERSION: "20"
-
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
-      # ========================================
-      # PHASE 1: CHECKOUT & SETUP
-      # ========================================
-      
+      # 1. Checkout repository
       - name: 📦 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Node.js ${{ env.NODE_VERSION }}
+      # 2. Authenticate to Google Cloud using service account
+      - name: 🔑 Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      # 3. Setup Node.js
+      - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "20"
           cache: "npm"
 
+      # 4. Install dependencies
       - name: 📥 Install Dependencies
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Installing npm dependencies..."
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          npm ci
-          echo "✅ Dependencies installed successfully"
+        run: npm ci
 
-      # ========================================
-      # PHASE 2: SECURITY & QUALITY GUARDS
-      # ========================================
-
-      - name: 🛡️ Master Protection System
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Running Master Protection System..."
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          npx tsx scripts/guards/master-protection-orchestrator.ts
-          echo "✅ Master Protection System passed"
-
-      - name: 🚨 Preflight Guardian - Block Parallel UI Systems
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Running Preflight Guardian..."
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          npm run preflight
-          echo "✅ Preflight Guardian passed"
-
-      # ========================================
-      # PHASE 3: LUXURY BUILD SYSTEM
-      # ========================================
-
-      - name: 🏗️ Build Production Assets
+      # 5. Build the project with all environment variables
+      - name: 🏗️ Build Production
         env:
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -72,67 +43,23 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
           VITE_WEBAUTHN_RP_ID: ${{ secrets.VITE_WEBAUTHN_RP_ID }}
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Building production assets..."
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          npm run build
-          echo "✅ Build completed successfully"
+        run: vite build
 
-      - name: 🔍 Verify Build Artifacts
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Verifying build artifacts..."
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          if [ -d "dist" ]; then
-            echo "✅ dist/ directory exists"
-            echo "📊 Build size:"
-            du -sh dist/
-            echo "📁 Top-level files:"
-            ls -lh dist/ | head -20
-          else
-            echo "❌ ERROR: dist/ directory not found!"
-            exit 1
-          fi
-
-      # ========================================
-      # PHASE 4: FIREBASE DEPLOYMENT (MAIN ONLY)
-      # ========================================
-
-      - name: 🔑 Authenticate to Google Cloud (2025 Method)
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
-
-      - name: ⚙️ Setup Google Cloud SDK
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: 🔄 Update Google Cloud Components
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Updating Google Cloud components..."
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          gcloud --quiet components update
-          echo "✅ Google Cloud components updated"
-
-      - name: 🚀 Deploy to Firebase Hosting (Official Action)
-        if: github.ref == 'refs/heads/main'
+      # 6. Deploy to Firebase Hosting
+      - name: 🚀 Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          projectId: nifty-quanta-475212-v3
           channelId: live
-          projectId: ${{ env.PROJECT_ID }}
 
+      # Success notification
       - name: ✅ Deployment Complete
-        if: github.ref == 'refs/heads/main'
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "✅ DEPLOYMENT SUCCESSFUL!"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🌐 Live URL: https://${{ env.PROJECT_ID }}.web.app"
+          echo "🌐 Live URL: https://nifty-quanta-475212-v3.web.app"
           echo "🌐 Custom Domain: https://petwash.co.il"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

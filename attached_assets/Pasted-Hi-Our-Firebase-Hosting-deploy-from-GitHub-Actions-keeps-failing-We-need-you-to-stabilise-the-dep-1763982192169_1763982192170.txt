@@ -1,0 +1,84 @@
+Hi,
+
+Our Firebase Hosting deploy from GitHub Actions keeps failing. We need you to stabilise the deployment pipeline for the repo:
+
+petwashglobal / petwash-marketplace
+
+Requirements:
+	1.	Fix Firebase hosting config – build output path
+
+	•	Please run the production build locally or in a dev environment:
+	•	Command: “npm run build”
+	•	After it finishes, check which folder actually contains the built static files for the web app. It will be one of these, for example:
+	•	“client/dist”
+	•	or “dist”
+	•	or “build”
+	•	Right now our “firebase.json” has:
+	•	hosting.public = “dist/public”
+	•	This is almost certainly wrong and is why Firebase shows “Site Not Found”.
+	•	Update “firebase.json” so that:
+	•	“hosting.public” points to the real build folder from “npm run build”.
+	•	Example (only if the build goes into client/dist):
+	•	hosting.public = “client/dist”
+	•	Make sure there is exactly one “hosting” block in firebase.json and that rewrites and headers stay intact.
+
+	2.	Fix GitHub Actions workflow – one CI + deploy file
+
+We want one workflow only:
+	•	File path: “.github/workflows/petwash-ci.yml”
+	•	Trigger: on push to “main”
+
+Inside that workflow we need a single job called “deploy” that does the following in order:
+	1.	Checkout repository
+	•	Use “actions/checkout@v4”
+	2.	Authenticate to Google Cloud using the service account JSON
+	•	Use “google-github-actions/auth@v2”
+	•	with “credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}”
+	3.	Set up Node
+	•	Use “actions/setup-node@v4”
+	•	Node version: “20”
+	4.	Install dependencies
+	•	Command: “npm ci”
+	5.	Build the project
+	•	Command: “npm run build”
+	6.	Deploy to Firebase Hosting
+	•	Use “FirebaseExtended/action-hosting-deploy@v0”
+	•	with:
+	•	“repoToken: ${{ secrets.GITHUB_TOKEN }}”
+	•	“firebaseServiceAccount: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}”
+	•	“projectId: nifty-quanta-475212-v3”
+	•	“channelId: live”
+
+Important notes:
+	•	Do not use “firebase login:ci” anywhere. We want deployment only via the service account JSON that is already stored in the secret “GOOGLE_APPLICATION_CREDENTIALS_JSON”.
+	•	Remove or disable any older workflows like “.github/workflows/main.yml” or “firebase-deploy.yml” so only “petwash-ci.yml” is active.
+
+	3.	Verify secrets
+
+In GitHub repo settings under:
+
+Settings → Security → Secrets and variables → Actions
+
+Make sure these repository secrets exist and are correct:
+	•	GOOGLE_APPLICATION_CREDENTIALS_JSON – full service account JSON for the Firebase project “nifty-quanta-475212-v3”
+	•	VITE_FIREBASE_API_KEY
+	•	VITE_FIREBASE_AUTH_DOMAIN
+	•	VITE_FIREBASE_PROJECT_ID
+	•	VITE_FIREBASE_STORAGE_BUCKET
+	•	VITE_FIREBASE_MESSAGING_SENDER_ID
+	•	VITE_FIREBASE_APP_ID
+	•	VITE_FIREBASE_MEASUREMENT_ID
+	•	VITE_RECAPTCHA_SITE_KEY
+	•	VITE_WEBAUTHN_RP_ID
+	•	FIREBASE_CI_TOKEN is no longer required if you use the service account, so you can ignore it or remove it from the workflow.
+
+	4.	Final test
+
+	•	After adjusting firebase.json and the workflow, push to “main” so the workflow runs automatically, or trigger it manually from GitHub Actions (“Re-run jobs”).
+	•	Confirm that:
+	•	The job completes successfully with no errors.
+	•	“nifty-quanta-475212-v3.web.app” serves the built PetWash Marketplace app (not “Site Not Found”).
+
+If you need to change the build command (for example if the correct script is “npm run client:build” or similar), please:
+	•	Update the workflow to use that script.
+	•	Keep the rest of the pipeline the same.
