@@ -208,6 +208,9 @@ const SharedServicesPrograms = lazy(() => import("@/pages/SharedServicesPrograms
 const SharedServicesImpact = lazy(() => import("@/pages/SharedServicesImpact"));
 const GlobalCommunityHub = lazy(() => import("@/pages/GlobalCommunityHub"));
 
+// Pet Wash Platform Hub - Unified Service Discovery (Rover/MadPaws style)
+const PlatformHub = lazy(() => import("@/pages/PlatformHub"));
+
 // K9000 Wash Stations - Self-Service Organic Pet Washing
 const K9000Overview = lazy(() => import("@/pages/k9000/Overview"));
 const K9000BookingFlow = lazy(() => import("@/pages/k9000/BookingFlow"));
@@ -527,6 +530,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <Marketplace />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* PLATFORM HUB - Unified Service Discovery (Rover/MadPaws style) */}
+        <Route path="/services">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <PlatformHub />
             </Suspense>
           )}
         </Route>
