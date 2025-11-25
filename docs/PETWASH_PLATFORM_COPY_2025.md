@@ -108,21 +108,7 @@
 
 ---
 
-### 6. ✂️ PET GROOMING MARKETPLACE
-**Path:** /groomers
-
-**English:**
-- **Name:** Pet Grooming
-- **Description:** Professional grooming & styling
-- **Features:** Mobile groomers, Salon bookings, Specialty styling
-
-**Hebrew:**
-- **Name:** טיפוח חיות מחמד
-- **Description:** טיפוח ועיצוב מקצועי
-
----
-
-### 7. 🎓 PET WASH ACADEMY™ - Dog Training
+### 6. 🎓 PET WASH ACADEMY™ - Dog Training
 **Path:** /academy
 
 **English:**
@@ -136,7 +122,7 @@
 
 ---
 
-### 8. 🚿 K9000™ WASH HUB - Self-Service Wash Stations
+### 7. 🚿 K9000™ SMART HUB - Outdoor DIY Pet Wash Station
 **Path:** /k9000
 **TYPE: PHYSICAL OUTDOOR STATION (Not a marketplace)**
 

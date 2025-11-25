@@ -22,7 +22,7 @@ import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 
 type PetType = 'puppy' | 'dog' | 'cat' | 'other' | null;
-type ServiceType = 'boarding' | 'sitting' | 'daycare' | 'walking' | 'transport' | 'grooming' | 'training' | 'wash' | null;
+type ServiceType = 'boarding' | 'sitting' | 'daycare' | 'walking' | 'transport' | 'training' | 'wash' | null;
 
 const petTypes = [
   { id: 'puppy', icon: '🐕', label: 'Puppy', labelHe: 'גור', desc: 'Under 6 months', descHe: 'עד 6 חודשים' },
@@ -88,17 +88,6 @@ const services = [
     image: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=400&h=300&fit=crop',
   },
   {
-    id: 'grooming',
-    icon: Scissors,
-    color: 'from-teal-500 to-emerald-600',
-    name: 'Pet Grooming',
-    nameHe: 'טיפוח חיות מחמד',
-    desc: 'Professional grooming & styling',
-    descHe: 'טיפוח ועיצוב מקצועי',
-    path: '/groomers',
-    image: 'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=400&h=300&fit=crop',
-  },
-  {
     id: 'training',
     icon: GraduationCap,
     color: 'from-violet-500 to-purple-600',
@@ -113,10 +102,10 @@ const services = [
     id: 'wash',
     icon: Droplets,
     color: 'from-emerald-500 to-green-600',
-    name: 'K9000™ Wash',
-    nameHe: 'K9000™ שטיפה',
-    desc: 'Self-service wash stations 24/7',
-    descHe: 'עמדות שטיפה בשירות עצמי 24/7',
+    name: 'K9000™ Smart Hub',
+    nameHe: 'K9000™ עמדה חכמה',
+    desc: 'Outdoor DIY pet wash station - QR + Nayax, 24/7',
+    descHe: 'עמדת שטיפה חיצונית בשירות עצמי - QR + Nayax, 24/7',
     path: '/k9000',
     image: 'https://images.unsplash.com/photo-1581888227599-779811939961?w=400&h=300&fit=crop',
   },

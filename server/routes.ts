@@ -39,6 +39,7 @@ import voiceRoutes from "./routes/voice";
 import aiFeedbackRoutes from "./routes/ai-feedback";
 import nayaxPaymentsRoutes from "./routes/nayax-payments";
 import thankYouRoutes from "./routes/send-thank-you";
+import platformCopyEmailRoutes from "./routes/platform-copy-email";
 import ceoWalletRoutes from "./routes/ceo-wallet";
 import testLuxuryLaunchRoutes from "./routes/test-luxury-launch";
 import sendInvestorEventEmailRoutes from "./routes/send-investor-event-email";
@@ -8041,6 +8042,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Thank you email route (management use)
   app.use('/api', adminLimiter, thankYouRoutes);
+  app.use('/api/admin', adminLimiter, platformCopyEmailRoutes);
   app.use('/api', testLuxuryLaunchRoutes);
   app.use('/api', sendInvestorEventEmailRoutes);
   
