@@ -181,6 +181,7 @@ const ContractorDashboard = lazy(() => import("@/pages/contractor/Dashboard"));
 // Walk My Pet™ - Premium Dog Walking
 const WalkMyPetOverview = lazy(() => import("@/pages/walk-my-pet/Overview"));
 const WalkMyPet = lazy(() => import("@/pages/walk-my-pet/BrowseWalkers"));
+const WalkerDetail = lazy(() => import("@/pages/walk-my-pet/WalkerDetail"));
 const WalkBookingFlow = lazy(() => import("@/pages/walk-my-pet/BookingFlow"));
 const WalkOwnerDashboardPage = lazy(() => import("@/pages/walk-my-pet/OwnerDashboard"));
 const WalkerDashboardPage = lazy(() => import("@/pages/walk-my-pet/WalkerDashboard"));
@@ -188,6 +189,7 @@ const WalkerDashboardPage = lazy(() => import("@/pages/walk-my-pet/WalkerDashboa
 // PetTrek™ - Advanced Pet Transport
 const PetTrekOverview = lazy(() => import("@/pages/pettrek/Overview"));
 const PetTrek = lazy(() => import("@/pages/pettrek/BrowseDrivers"));
+const DriverDetail = lazy(() => import("@/pages/pettrek/DriverDetail"));
 const PetTrekBookingFlow = lazy(() => import("@/pages/pettrek/BookingFlow"));
 const PetTrekCustomerDashboard = lazy(() => import("@/pages/pettrek/CustomerDashboard"));
 const PetTrekDriverDashboard = lazy(() => import("@/pages/pettrek/DriverDashboard"));
@@ -195,6 +197,7 @@ const PetTrekDriverDashboard = lazy(() => import("@/pages/pettrek/DriverDashboar
 // Grooming Marketplace - Professional Pet Grooming Services
 const GroomersOverview = lazy(() => import("@/pages/groomers/Overview"));
 const Groomers = lazy(() => import("@/pages/Groomers"));
+const GroomerDetail = lazy(() => import("@/pages/groomers/GroomerDetail"));
 const GroomersBook = lazy(() => import("@/pages/GroomersBook"));
 const GroomersCustomerDashboard = lazy(() => import("@/pages/GroomersCustomerDashboard"));
 const GroomersProviderDashboard = lazy(() => import("@/pages/GroomersProviderDashboard"));
@@ -674,6 +677,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* Walk My Pet™ - Walker Detail Profile */}
+        <Route path="/walk-my-pet/walkers/:id">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <WalkerDetail />
+            </Suspense>
+          )}
+        </Route>
+        
         {/* Walk My Pet™ - Unified Hub (placeholder - routes to owner dashboard for now) */}
         <Route path="/walk-my-pet/hub">
           {() => (
@@ -772,6 +784,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <PetTrek />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* PetTrek™ - Driver Detail Profile */}
+        <Route path="/pettrek/drivers/:id">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <DriverDetail />
             </Suspense>
           )}
         </Route>
@@ -933,6 +954,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <Groomers language={language} />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Grooming Marketplace - Groomer Detail Profile */}
+        <Route path="/groomers/:id">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <GroomerDetail />
             </Suspense>
           )}
         </Route>
