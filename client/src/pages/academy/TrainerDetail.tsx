@@ -5,7 +5,7 @@ import { Layout } from "@/components/Layout";
 import { useLanguage } from "@/lib/languageStore";
 import { 
   ProviderProfilePage, 
-  getMarketplaceFAQ,
+  getFAQsForPlatform,
   type ProviderProfileData,
   type ServiceItem,
   type AddOn,
@@ -135,7 +135,7 @@ export default function TrainerDetail() {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
   
-  const faqItems = getMarketplaceFAQ('trainer', language);
+  const faqItems = getFAQsForPlatform('trainer', language);
 
   const trainerData: ProviderProfileData = {
     id: id || "trainer-1",
