@@ -14,7 +14,7 @@ interface WashPackagesProps {
   language: Language;
 }
 
-// Fallback packages when API fails
+// Fallback packages when API fails - OFFICIAL 2025 PRICES (NO DISCOUNTS)
 const FALLBACK_PACKAGES: WashPackage[] = [
   {
     id: '1',
@@ -28,9 +28,9 @@ const FALLBACK_PACKAGES: WashPackage[] = [
   },
   {
     id: '2',
-    name: '3 Wash Package',
-    description: 'Three premium washes - Save 10%',
-    price: '148.50',
+    name: '3-Wash Package',
+    description: 'Three premium organic washes',
+    price: '165',
     washCount: 3,
     isActive: true,
     createdAt: new Date(),
@@ -38,10 +38,20 @@ const FALLBACK_PACKAGES: WashPackage[] = [
   },
   {
     id: '3',
-    name: '5 Wash Package',
-    description: 'Five premium washes - Save 20%',
-    price: '220',
+    name: '5-Wash Package',
+    description: 'Five premium organic washes',
+    price: '275',
     washCount: 5,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: '4',
+    name: '10-Wash Package',
+    description: 'Ten premium organic washes - Family Pack',
+    price: '550',
+    washCount: 10,
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -93,34 +103,40 @@ export function WashPackages({ language }: WashPackagesProps) {
   // Show compact error notice if API fails (but still display fallback packages)
   const showErrorNotice = isError;
 
-  const getDiscountPercentage = (washCount: number): number => {
-    if (washCount === 3) return 10;
-    if (washCount === 5) return 20;
-    return 0;
+  // NO DISCOUNTS - Official 2025 pricing (55 per wash)
+  const getDiscountPercentage = (_washCount: number): number => {
+    return 0; // No discounts per official pricing
   };
 
   const getLuxuryTheme = (index: number) => {
     const themes = [
       {
-        // Premium Blue - Single Wash
-        gradient: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #1e40af 100%)',
-        badge: 'PREMIUM',
+        // Standard - Single Wash (Metallic Emerald)
+        gradient: 'linear-gradient(135deg, #008F46 0%, #00C569 50%, #008F46 100%)',
+        badge: 'STANDARD',
         icon: Sparkles,
-        shadowColor: 'rgba(59, 130, 246, 0.3)',
+        shadowColor: 'rgba(0, 197, 105, 0.3)',
       },
       {
-        // Royal Purple - 3 Washes (Recommended)
-        gradient: 'linear-gradient(135deg, #6b21a8 0%, #a855f7 50%, #7c3aed 100%)',
+        // Popular - 3 Washes (Metallic Emerald)
+        gradient: 'linear-gradient(135deg, #008F46 0%, #00C569 50%, #008F46 100%)',
         badge: 'POPULAR',
         icon: Crown,
-        shadowColor: 'rgba(168, 85, 247, 0.3)',
+        shadowColor: 'rgba(0, 197, 105, 0.3)',
       },
       {
-        // Elite Gold - 5 Washes (Best Value)
-        gradient: 'linear-gradient(135deg, #be5504 0%, #f59e0b 50%, #d97706 100%)',
+        // Best Value - 5 Washes (Metallic Emerald)
+        gradient: 'linear-gradient(135deg, #008F46 0%, #00C569 50%, #008F46 100%)',
         badge: 'BEST VALUE',
         icon: Crown,
-        shadowColor: 'rgba(245, 158, 11, 0.3)',
+        shadowColor: 'rgba(0, 197, 105, 0.3)',
+      },
+      {
+        // Family Pack - 10 Washes (Metallic Emerald)
+        gradient: 'linear-gradient(135deg, #008F46 0%, #00C569 50%, #008F46 100%)',
+        badge: 'FAMILY PACK',
+        icon: Shield,
+        shadowColor: 'rgba(0, 197, 105, 0.3)',
       },
     ];
     return themes[index] || themes[0];
