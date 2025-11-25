@@ -173,6 +173,7 @@ const SitterDashboardPage = SitterDashboard; // Alias
 // Pet Wash Academy™ - Professional Trainer Marketplace
 const Academy = lazy(() => import("@/pages/Academy"));
 const TrainerProfile = lazy(() => import("@/pages/academy/TrainerProfile"));
+const TrainerDetail = lazy(() => import("@/pages/academy/TrainerDetail"));
 const AcademyBookingFlow = lazy(() => import("@/pages/academy/BookingFlow"));
 
 // Contractor Dashboard - 2026 Lifecycle Management
@@ -585,11 +586,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Pet Wash Academy™ - Trainer Profile */}
+        {/* Pet Wash Academy™ - Trainer Profile (Legacy) */}
         <Route path="/academy/trainer/:trainerId">
           {() => (
             <Suspense fallback={<PageLoader />}>
               <TrainerProfile />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Pet Wash Academy™ - Trainer Detail (Luxury Shared Component) */}
+        <Route path="/academy/trainers/:id">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <TrainerDetail />
             </Suspense>
           )}
         </Route>
