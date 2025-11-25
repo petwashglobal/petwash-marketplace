@@ -211,6 +211,9 @@ const GlobalCommunityHub = lazy(() => import("@/pages/GlobalCommunityHub"));
 // Pet Wash Platform Hub - Unified Service Discovery (Rover/MadPaws style)
 const PlatformHub = lazy(() => import("@/pages/PlatformHub"));
 
+// PetWash HQ - Octopus Control Panel (Luxury 2025 Admin)
+const OctopusControlPanel = lazy(() => import("@/modules/octopus/PetWashOctopusControlPanel"));
+
 // K9000 Wash Stations - Self-Service Organic Pet Washing
 const K9000Overview = lazy(() => import("@/pages/k9000/Overview"));
 const K9000BookingFlow = lazy(() => import("@/pages/k9000/BookingFlow"));
@@ -539,6 +542,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <PlatformHub />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* PETWASH HQ - Octopus Control Panel (Admin Dashboard) */}
+        <Route path="/hq">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <OctopusControlPanel />
             </Suspense>
           )}
         </Route>
