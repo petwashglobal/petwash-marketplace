@@ -16,9 +16,14 @@ export function Footer({ language }: FooterProps) {
           
           {/* Company Information */}
           <div className="text-center md:text-left">
-            <h3 className="text-2xl font-bold text-black mb-4">
-              PetWash™️
-            </h3>
+            <Link href="/" aria-label={t('footer.backToHome', language)}>
+              <img 
+                src="/brand/petwash-logo-official.png" 
+                alt="PetWash™ Official Logo"
+                className="h-10 w-auto object-contain mx-auto md:mx-0 mb-4 cursor-pointer hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: 'transparent' }}
+              />
+            </Link>
             <p className="text-lg font-semibold text-black mb-2">
               {t('hero.slogan', language)}
             </p>
@@ -172,10 +177,10 @@ export function Footer({ language }: FooterProps) {
               <Link href="/" aria-label={t('footer.backToHome', language)}>
                 <img 
                   src="/brand/petwash-logo-official.png" 
-                  alt="PetWash™️ Official Logo"
-                  width="200"
-                  height="40"
-                  className="h-12 md:h-14 lg:h-16 w-auto object-contain mx-auto md:mx-0 mb-2 cursor-pointer hover:opacity-90 transition-opacity"
+                  alt="PetWash™ Official Logo"
+                  width="160"
+                  height="32"
+                  className="h-8 md:h-10 w-auto object-contain mx-auto md:mx-0 mb-2 cursor-pointer hover:opacity-90 transition-opacity"
                   style={{ backgroundColor: 'transparent' }}
                 />
               </Link>

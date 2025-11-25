@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2025 Logo Showcase</title>
+    <style>
+        /* --- CSS STYLES --- */
+        
+        /* Base Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Container */
+        .logo-section {
+            background: #ffffff;
+            padding: 3rem 2rem;
+            width: 100%;
+            max-width: 1200px;
+            margin: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .logo-section h3 {
+            color: #333;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 2.5rem;
+            opacity: 0.7;
+        }
+
+        /* Grid Layout */
+        .logo-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 3rem; /* Space between logos */
+        }
+
+        /* Logo Item Wrapper */
+        .logo-item {
+            flex: 0 1 150px; /* Base width of 150px, can shrink */
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        /* SVG Styling */
+        .logo-item svg {
+            width: 100%;
+            height: 100%;
+            max-height: 50px; /* Visual consistency height */
+            fill: #666; /* Default grayscale color */
+            transition: fill 0.3s ease, transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        /* Hover Effects */
+        .logo-item:hover svg {
+            transform: scale(1.1); /* Subtle zoom */
+        }
+
+        /* Specific Brand Colors on Hover */
+        .logo-item:hover .brand-alpha { fill: #E34F26; } /* Orange */
+        .logo-item:hover .brand-beta  { fill: #007ACC; } /* Blue */
+        .logo-item:hover .brand-gamma { fill: #41B883; } /* Green */
+        .logo-item:hover .brand-delta { fill: #FFC107; } /* Yellow */
+        .logo-item:hover .brand-epsilon { fill: #9C27B0; } /* Purple */
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .logo-grid {
+                gap: 2rem;
+            }
+            .logo-item {
+                flex: 0 1 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <section class="logo-section">
+        <h3>Trusted by Industry Leaders in 2025</h3>
+        
+        <div class="logo-grid">
+            
+            <div class="logo-item" title="Alpha Corp">
+                <svg class="brand-alpha" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <path d="M50 5 L90 95 L10 95 Z" />
+                </svg>
+            </div>
+
+            <div class="logo-item" title="Beta Systems">
+                <svg class="brand-beta" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <rect x="10" y="10" width="35" height="35" rx="5" />
+                    <rect x="55" y="10" width="35" height="35" rx="5" />
+                    <rect x="10" y="55" width="35" height="35" rx="5" />
+                    <rect x="55" y="55" width="35" height="35" rx="5" />
+                </svg>
+            </div>
+
+            <div class="logo-item" title="Gamma Tech">
+                <svg class="brand-gamma" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" />
+                    <path d="M50 25 L70 65 L30 65 Z" fill="#fff"/>
+                </svg>
+            </div>
+
+            <div class="logo-item" title="Delta Energy">
+                <svg class="brand-delta" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <path d="M20 50 L50 10 L80 50 L50 90 Z" />
+                </svg>
+            </div>
+
+            <div class="logo-item" title="Epsilon Creative">
+                <svg class="brand-epsilon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <path d="M10 20 H90 V40 H30 V50 H80 V70 H30 V80 H90 V100 H10 Z" />
+                </svg>
+            </div>
+
+        </div>
+    </section>
+
+</body>
+</html>
