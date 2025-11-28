@@ -5,9 +5,9 @@
 
 import { Storage } from '@google-cloud/storage';
 
-const PROJECT_ID = 'nifty-quanta-475212-v3';
+const PROJECT_ID = 'signinpetwash';
 const BUCKET_NAME = 'petwash-backups';
-const SERVICE_ACCOUNT_EMAIL = 'petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com';
+const SERVICE_ACCOUNT_EMAIL = 'petwash-backup-service@signinpetwash.iam.gserviceaccount.com';
 
 async function createBackupBucket() {
   console.log('🔧 Creating PetWash Backup Bucket');

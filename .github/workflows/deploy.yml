@@ -39,5 +39,5 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           firebaseServiceAccount: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
-          projectId: nifty-quanta-475212-v3
+          projectId: signinpetwash
           channelId: live

@@ -66,7 +66,7 @@ git push origin main
 ## 🌐 Live URLs
 
 After successful deployment:
-- **Firebase URL**: https://nifty-quanta-475212-v3.web.app
+- **Firebase URL**: https://signinpetwash.web.app
 - **Custom Domain**: https://petwash.co.il
 
 ---

@@ -3,7 +3,7 @@
 ## ❌ **Current Error**
 
 ```
-Service Account: petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+Service Account: petwash-backup-service@signinpetwash.iam.gserviceaccount.com
 Error: Permission 'storage.objects.create' denied
 Bucket: signinpetwash.firebasestorage.app
 ```
@@ -18,7 +18,7 @@ Your Google Cloud service account exists but **lacks write permissions** to the 
 
 1. Go to: **https://console.cloud.google.com**
 2. Make sure you're logged in with your Google account
-3. Select Project: **`nifty-quanta-475212-v3`** (top navigation bar)
+3. Select Project: **`signinpetwash`** (top navigation bar)
 
 ### **Step 2: Grant Storage Permissions**
 
@@ -31,7 +31,7 @@ Your Google Cloud service account exists but **lacks write permissions** to the 
 5. Click **"+ GRANT ACCESS"** button
 6. In the **"New principals"** field, paste:
    ```
-   petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+   petwash-backup-service@signinpetwash.iam.gserviceaccount.com
    ```
 7. In the **"Select a role"** dropdown, choose:
    - **Storage Object Admin** (full control)
@@ -42,7 +42,7 @@ Your Google Cloud service account exists but **lacks write permissions** to the 
 
 1. In Google Cloud Console, click the hamburger menu (☰)
 2. Navigate to: **IAM & Admin** → **IAM**
-3. Find the service account: `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
+3. Find the service account: `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`
    - If you don't see it, click **"+ GRANT ACCESS"** at the top
 4. Click the **pencil icon** (Edit) next to the service account
 5. Click **"ADD ANOTHER ROLE"**
@@ -117,8 +117,8 @@ It's a **least-privilege permission** designed specifically for backups.
 If you don't have access to the Google Cloud Console:
 
 1. **Contact your Google Cloud admin** with this info:
-   - Project: `nifty-quanta-475212-v3`
-   - Service Account: `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
+   - Project: `signinpetwash`
+   - Service Account: `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`
    - Bucket: `signinpetwash.firebasestorage.app`
    - Required Role: `Storage Object Creator` or `Storage Object Admin`
 

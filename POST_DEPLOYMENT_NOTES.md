@@ -27,12 +27,12 @@
 ### Google Cloud Storage Backup - IAM Permissions
 **Status**: Deferred to post-deployment session per your request
 
-**Issue**: Service account `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com` getting 403 errors when uploading to `gs://nifty-quanta-475212-v3.appspot.com`
+**Issue**: Service account `petwash-backup-service@signinpetwash.iam.gserviceaccount.com` getting 403 errors when uploading to `gs://signinpetwash.appspot.com`
 
 **Impact**: LOW - Local backups and GitHub provide adequate disaster recovery
 
 **Next Steps** (for future focused session):
-1. Verify service account appears in bucket permissions: https://console.cloud.google.com/storage/browser/nifty-quanta-475212-v3.appspot.com
+1. Verify service account appears in bucket permissions: https://console.cloud.google.com/storage/browser/signinpetwash.appspot.com
 2. Check for organization-level IAM deny policies
 3. Wait 24 hours for full permission propagation
 4. Alternative: Create dedicated backup bucket (not Firebase Storage)

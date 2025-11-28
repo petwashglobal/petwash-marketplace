@@ -3,7 +3,7 @@
 **Last Updated**: November 20, 2025  
 **Production Domain**: petwash.co.il  
 **Deployment Platform**: Replit Cloud Run (Google Cloud Platform)  
-**Firebase Project**: nifty-quanta-475212-v3 (Auth/DB/Storage ONLY)
+**Firebase Project**: signinpetwash (Auth/DB/Storage ONLY)
 
 ---
 
@@ -15,7 +15,7 @@
 - **Build**: Vite production build → `dist/public`
 - **Server**: Node.js Express (port 5000)
 
-### Firebase Services (nifty-quanta-475212-v3)
+### Firebase Services (signinpetwash)
 - **Firebase Authentication**: User login, WebAuthn/Passkeys
 - **Firestore Database**: NoSQL data storage
 - **Cloud Storage**: Biometric data, documents, images
@@ -87,7 +87,7 @@ find dist/public -type f | wc -l  # Should be 300+ files
 
 ### 4. Environment Variables
 Ensure all secrets are configured in Replit Secrets:
-- `FIREBASE_PROJECT_ID`: nifty-quanta-475212-v3
+- `FIREBASE_PROJECT_ID`: signinpetwash
 - `GOOGLE_APPLICATION_CREDENTIALS`: Service account JSON
 - `JWT_SECRET`, `JWT_REFRESH_SECRET`
 - `COOKIE_SECRET`
@@ -257,7 +257,7 @@ npm run build
 - Verify dist/public/index.html exists after build
 
 ### Firebase Auth Not Working
-- Verify FIREBASE_PROJECT_ID matches nifty-quanta-475212-v3
+- Verify FIREBASE_PROJECT_ID matches signinpetwash
 - Check service account permissions in Firebase Console
 
 ### Domain Not Resolving

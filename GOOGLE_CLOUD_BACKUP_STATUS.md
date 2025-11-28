@@ -4,18 +4,18 @@
 **Status**: ❌ BLOCKED by IAM permissions
 
 ## What We've Tried
-1. ✅ Created service account: `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
+1. ✅ Created service account: `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`
 2. ✅ Generated and configured service account key in GOOGLE_APPLICATION_CREDENTIALS
 3. ✅ Granted Storage Admin role at project-level IAM
-4. ✅ Identified correct bucket: `nifty-quanta-475212-v3.appspot.com` (not the vanity domain)
+4. ✅ Identified correct bucket: `signinpetwash.appspot.com` (not the vanity domain)
 5. ✅ User granted Storage Object Admin role at bucket-level permissions
 6. ✅ Updated backup script to use correct `.appspot.com` bucket
 7. ✅ Waited 5+ minutes for IAM propagation
 8. ❌ Still getting 403 "storage.objects.create permission denied" errors
 
 ## Technical Details
-- **Error**: `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com does not have storage.objects.create access`
-- **Bucket**: `gs://nifty-quanta-475212-v3.appspot.com`
+- **Error**: `petwash-backup-service@signinpetwash.iam.gserviceaccount.com does not have storage.objects.create access`
+- **Bucket**: `gs://signinpetwash.appspot.com`
 - **Permission Granted**: Storage Object Admin (bucket-level)
 - **Tables**: 279 tables discovered, 0 backed up due to permission error
 

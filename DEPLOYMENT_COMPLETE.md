@@ -99,8 +99,8 @@
 
 ### ⏳ Deferred (Post-Deployment)
 3. **Google Cloud Storage**: IAM permissions to be resolved
-   - Target bucket: `gs://nifty-quanta-475212-v3.appspot.com`
-   - Service account: `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
+   - Target bucket: `gs://signinpetwash.appspot.com`
+   - Service account: `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`
    - Issue: 403 permission errors (propagation delay or org policy)
    - Resolution: Dedicated session post-deployment per user request
 

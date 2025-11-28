@@ -52,7 +52,7 @@ complete-backup/2025-11-19T19-17-25-292Z/
 ### **Current Status:**
 The Google Cloud service account exists but **lacks write permissions**.
 
-**Service Account**: `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`  
+**Service Account**: `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`  
 **Bucket**: `signinpetwash.firebasestorage.app`  
 **Issue**: Missing `storage.objects.create` permission
 
@@ -65,7 +65,7 @@ Permission 'storage.objects.create' denied on resource
 
 1. **Go to Google Cloud Console**:
    - Visit: https://console.cloud.google.com
-   - Select project: `nifty-quanta-475212-v3`
+   - Select project: `signinpetwash`
 
 2. **Navigate to IAM & Admin**:
    - Go to IAM & Admin → Service Accounts
@@ -81,7 +81,7 @@ Permission 'storage.objects.create' denied on resource
    - Go to Cloud Storage → Buckets
    - Click: `signinpetwash.firebasestorage.app`
    - Go to "Permissions" tab
-   - Add Member: `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
+   - Add Member: `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`
    - Add Role: **Storage Object Creator**
 
 5. **After Granting Permissions**:

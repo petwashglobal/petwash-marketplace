@@ -51,7 +51,7 @@ jobs:
         with:
           # Full JSON of the service account key from Secrets
           # Example service account:
-          # petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+          # petwash-backup-service@signinpetwash.iam.gserviceaccount.com
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
 
       - name: Set up gcloud SDK

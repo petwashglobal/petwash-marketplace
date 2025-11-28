@@ -34,7 +34,7 @@ console.error(`
 ║                                                               ║
 ║  Official Production:                                        ║
 ║  🌐 petwash.co.il                                            ║
-║  🔐 Firebase Project: nifty-quanta-475212-v3                 ║
+║  🔐 Firebase Project: signinpetwash                          ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
 `);

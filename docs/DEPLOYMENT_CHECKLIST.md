@@ -3,7 +3,7 @@
 ## ✅ Pre-Deployment Security (COMPLETE FIRST!)
 
 - [ ] **Revoke exposed service account key** (ID: 52ae303939ea)
-  - Go to: https://console.cloud.google.com/iam-admin/serviceaccounts?project=nifty-quanta-475212-v3
+  - Go to: https://console.cloud.google.com/iam-admin/serviceaccounts?project=signinpetwash
   - Find Firebase service account → Keys tab
   - Delete key 52ae303939ea
 
@@ -57,7 +57,7 @@ git push origin main
 ## ✅ Verification After Deployment
 
 - [ ] Workflow shows **green checkmark** ✅
-- [ ] Visit: https://nifty-quanta-475212-v3.web.app
+- [ ] Visit: https://signinpetwash.web.app
 - [ ] Homepage loads correctly
 - [ ] Visit: https://petwash.co.il (custom domain)
 - [ ] Custom domain works
@@ -101,7 +101,7 @@ git push origin main
 
 After successful deployment:
 
-- **Firebase URL**: https://nifty-quanta-475212-v3.web.app
+- **Firebase URL**: https://signinpetwash.web.app
 - **Custom Domain**: https://petwash.co.il
 
 ---

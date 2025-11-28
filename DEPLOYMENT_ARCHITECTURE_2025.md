@@ -44,7 +44,7 @@ Production deployments MUST go through:
 ┌─────────────────────────────────────────────────────────────┐
 │              PRODUCTION (Google Cloud)                       │
 │                                                              │
-│  Firebase Project: nifty-quanta-475212-v3                   │
+│  Firebase Project: signinpetwash                   │
 │  Domain: petwash.co.il                                      │
 │                                                              │
 │  Services:                                                  │
@@ -128,7 +128,7 @@ Located at: `.github/workflows/petwash-ci.yml`
 
 ### Required GitHub Secrets
 - `GCP_SA_KEY` - Google Cloud Service Account key
-- `PROJECT_ID` - Firebase project ID (nifty-quanta-475212-v3)
+- `PROJECT_ID` - Firebase project ID (signinpetwash)
 
 ---
 
@@ -197,7 +197,7 @@ Each platform is a stand-alone module but connects to central infrastructure:
 
 ### Backup Service
 - Bucket: `petwash-backups-93383`
-- Service Account: `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
+- Service Account: `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`
 - Daily automated backups
 
 ---
@@ -218,7 +218,7 @@ Any attempt to deploy directly from Replit to production will:
 ## Contact & Support
 
 - **Production Domain**: https://petwash.co.il
-- **Firebase Console**: https://console.firebase.google.com/project/nifty-quanta-475212-v3
+- **Firebase Console**: https://console.firebase.google.com/project/signinpetwash
 - **GitHub Repository**: https://github.com/petwashglobal/petwash-marketplace
 
 For deployment issues, check:

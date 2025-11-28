@@ -4,7 +4,7 @@
 
 Your bucket `signinpetwash.firebasestorage.app` is a **Firebase Storage bucket**, which requires special permission handling.
 
-**Service Account**: `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`  
+**Service Account**: `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`  
 **Bucket**: `signinpetwash.firebasestorage.app`  
 **Missing Permission**: `storage.objects.create`
 
@@ -15,7 +15,7 @@ Your bucket `signinpetwash.firebasestorage.app` is a **Firebase Storage bucket**
 ### **Method 1: Firebase Console (Recommended for Firebase Storage)**
 
 1. **Go to Firebase Console**: https://console.firebase.google.com
-2. **Select Project**: `signinpetwash` or `nifty-quanta-475212-v3`
+2. **Select Project**: `signinpetwash` or `signinpetwash`
 3. **Navigate to**: Build → Storage
 4. **Click on**: Rules tab
 5. **Add a service account rule** (temporarily for backup):
@@ -28,7 +28,7 @@ service firebase.storage {
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
       // Allow backup service account
-      allow read, write: if request.auth.token.email == "petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com";
+      allow read, write: if request.auth.token.email == "petwash-backup-service@signinpetwash.iam.gserviceaccount.com";
     }
   }
 }
@@ -43,18 +43,18 @@ service firebase.storage {
 ### **Method 2: Google Cloud Console (Correct Way for Service Accounts)**
 
 1. **Go to**: https://console.cloud.google.com
-2. **Select Project**: `nifty-quanta-475212-v3`
+2. **Select Project**: `signinpetwash`
 3. **Navigate to**: Cloud Storage → Buckets
-4. **Important**: Look for the bucket named `nifty-quanta-475212-v3.appspot.com` 
+4. **Important**: Look for the bucket named `signinpetwash.appspot.com` 
    - Firebase buckets use `.appspot.com` in Google Cloud Console
-   - Your bucket might be listed as: `nifty-quanta-475212-v3.appspot.com`
+   - Your bucket might be listed as: `signinpetwash.appspot.com`
 
 5. **Click** on the bucket
 6. **Go to**: Permissions tab
 7. **Click**: "GRANT ACCESS"
 8. **New principals**: 
    ```
-   petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+   petwash-backup-service@signinpetwash.iam.gserviceaccount.com
    ```
 9. **Select role**: `Storage Object Admin`
 10. **Click**: Save
@@ -64,12 +64,12 @@ service firebase.storage {
 ### **Method 3: IAM Project-Level Permissions**
 
 1. **Go to**: https://console.cloud.google.com
-2. **Select Project**: `nifty-quanta-475212-v3`
+2. **Select Project**: `signinpetwash`
 3. **Navigate to**: IAM & Admin → IAM
 4. **Click**: "+ GRANT ACCESS"
 5. **New principals**:
    ```
-   petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+   petwash-backup-service@signinpetwash.iam.gserviceaccount.com
    ```
 6. **Assign roles**:
    - `Storage Admin` (full storage access)
@@ -84,8 +84,8 @@ If you have `gcloud` CLI installed:
 
 ```bash
 # Grant Storage Admin role
-gcloud projects add-iam-policy-binding nifty-quanta-475212-v3 \
-  --member="serviceAccount:petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding signinpetwash \
+  --member="serviceAccount:petwash-backup-service@signinpetwash.iam.gserviceaccount.com" \
   --role="roles/storage.admin"
 ```
 
@@ -151,7 +151,7 @@ tsx scripts/backup-to-google-cloud-storage.ts
 
 1. **Check the correct bucket name**:
    - In Firebase Console: `signinpetwash.firebasestorage.app`
-   - In Google Cloud Console: might be `nifty-quanta-475212-v3.appspot.com`
+   - In Google Cloud Console: might be `signinpetwash.appspot.com`
 
 2. **Verify service account exists**:
    - Go to: IAM & Admin → Service Accounts
@@ -184,10 +184,10 @@ tsx scripts/backup-to-google-cloud-storage.ts
 Share this info with your Google Cloud admin:
 
 ```
-Project: nifty-quanta-475212-v3
-Service Account: petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+Project: signinpetwash
+Service Account: petwash-backup-service@signinpetwash.iam.gserviceaccount.com
 Required Role: Storage Object Admin or Storage Admin
-Bucket: signinpetwash.firebasestorage.app (or nifty-quanta-475212-v3.appspot.com)
+Bucket: signinpetwash.firebasestorage.app (or signinpetwash.appspot.com)
 Purpose: Automated database backups
 ```
 

@@ -10,20 +10,20 @@
 ## Please Verify These Steps in Google Cloud Console
 
 ### Step 1: Open Your Bucket
-1. Go to: https://console.cloud.google.com/storage/browser?project=nifty-quanta-475212-v3
+1. Go to: https://console.cloud.google.com/storage/browser?project=signinpetwash
 2. Click on bucket: **petwash-backups-93383**
 
 ### Step 2: Check Permissions Tab
 1. Click the **PERMISSIONS** tab (top of page, next to "OBJECTS")
 2. Look for this service account in the list:
    ```
-   petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+   petwash-backup-service@signinpetwash.iam.gserviceaccount.com
    ```
 
 ### Step 3: Verify the Role Assignment
 
 **Question 1: Do you see the service account listed?**
-- [ ] YES - I see `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
+- [ ] YES - I see `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`
 - [ ] NO - I don't see it
 
 **If YES, Question 2: What role(s) does it have?**
@@ -35,7 +35,7 @@
 1. Click **+ GRANT ACCESS** button (blue button, top right)
 2. In "New principals" field, paste:
    ```
-   petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+   petwash-backup-service@signinpetwash.iam.gserviceaccount.com
    ```
 3. Click "Select a role" dropdown
 4. Type "Storage Object Admin" or navigate to: **Cloud Storage** → **Storage Object Admin**
@@ -52,7 +52,7 @@
 **Solutions**:
 1. **Refresh the page** - Sometimes the UI doesn't update immediately
 2. **Check you're on the right bucket** - Verify bucket name is `petwash-backups-93383`
-3. **Check the correct project** - Verify project is `nifty-quanta-475212-v3` (top bar)
+3. **Check the correct project** - Verify project is `signinpetwash` (top bar)
 4. **Try adding again** - Sometimes the first add doesn't stick
 
 ### Issue 2: Wrong Role Assigned
@@ -73,7 +73,7 @@
 3. Click **+ GRANT ACCESS** again
 4. **Copy and paste** (don't type) this email:
    ```
-   petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+   petwash-backup-service@signinpetwash.iam.gserviceaccount.com
    ```
 5. Add Storage Object Admin role
 6. Click **SAVE**
@@ -86,7 +86,7 @@ If you have `gcloud` CLI installed, you can grant permissions with this command:
 
 ```bash
 gcloud storage buckets add-iam-policy-binding gs://petwash-backups-93383 \
-  --member=serviceAccount:petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com \
+  --member=serviceAccount:petwash-backup-service@signinpetwash.iam.gserviceaccount.com \
   --role=roles/storage.objectAdmin
 ```
 
@@ -103,7 +103,7 @@ gcloud storage buckets get-iam-policy gs://petwash-backups-93383 \
 bindings:
 - role: roles/storage.objectAdmin
   members:
-  - serviceAccount:petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+  - serviceAccount:petwash-backup-service@signinpetwash.iam.gserviceaccount.com
 ```
 
 ---
@@ -114,7 +114,7 @@ Please confirm by checking these boxes:
 
 - [ ] I can see `petwash-backups-93383` bucket in Cloud Console
 - [ ] I clicked on the bucket and opened the PERMISSIONS tab
-- [ ] I can see `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com` in the list
+- [ ] I can see `petwash-backup-service@signinpetwash.iam.gserviceaccount.com` in the list
 - [ ] The role next to it says "Storage Object Admin" or "Storage Admin"
 - [ ] No error messages or warnings in the Cloud Console
 

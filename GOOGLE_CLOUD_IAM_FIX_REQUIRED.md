@@ -2,8 +2,8 @@
 
 ## Diagnostic Results: Service Account Has ZERO Permissions
 
-**Service Account**: `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`  
-**Target Bucket**: `nifty-quanta-475212-v3.appspot.com`  
+**Service Account**: `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`  
+**Target Bucket**: `signinpetwash.appspot.com`  
 **Current Status**: ❌ ALL permissions DENIED (403 Forbidden)
 
 ### Failed Permission Tests:
@@ -24,7 +24,7 @@
    Go to: https://console.cloud.google.com/storage/browser
 
 2. **Navigate to the CORRECT bucket**  
-   - Click on `nifty-quanta-475212-v3.appspot.com`
+   - Click on `signinpetwash.appspot.com`
    - **NOT** `signinpetwash.firebasestorage.app` (vanity domain - wrong bucket)
 
 3. **Open Permissions Tab**  
@@ -36,7 +36,7 @@
 5. **Add Service Account**  
    - In **"New principals"** field, paste EXACTLY:
      ```
-     petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com
+     petwash-backup-service@signinpetwash.iam.gserviceaccount.com
      ```
 
 6. **Assign MULTIPLE Roles** (This is critical!)  
@@ -58,7 +58,7 @@
 
 8. **Verify in UI**  
    - Scroll down in Permissions tab
-   - Look for `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
+   - Look for `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`
    - Verify it shows BOTH roles:
      * Storage Object Admin
      * Firebase Storage Admin
@@ -76,19 +76,19 @@ If you have `gcloud` CLI installed, run these commands:
 
 ```bash
 # Grant Storage Object Admin role
-gcloud storage buckets add-iam-policy-binding gs://nifty-quanta-475212-v3.appspot.com \
-  --member=serviceAccount:petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com \
+gcloud storage buckets add-iam-policy-binding gs://signinpetwash.appspot.com \
+  --member=serviceAccount:petwash-backup-service@signinpetwash.iam.gserviceaccount.com \
   --role=roles/storage.objectAdmin
 
 # Grant Firebase Storage Admin role
-gcloud storage buckets add-iam-policy-binding gs://nifty-quanta-475212-v3.appspot.com \
-  --member=serviceAccount:petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com \
+gcloud storage buckets add-iam-policy-binding gs://signinpetwash.appspot.com \
+  --member=serviceAccount:petwash-backup-service@signinpetwash.iam.gserviceaccount.com \
   --role=roles/firebasestorage.admin
 
 # Verify bindings (optional)
-gcloud storage buckets get-iam-policy gs://nifty-quanta-475212-v3.appspot.com \
+gcloud storage buckets get-iam-policy gs://signinpetwash.appspot.com \
   --flatten="bindings[].members" \
-  --filter="bindings.members:petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com"
+  --filter="bindings.members:petwash-backup-service@signinpetwash.iam.gserviceaccount.com"
 ```
 
 ---
@@ -124,11 +124,11 @@ tsx scripts/diagnose-gcs-permissions.ts
 
 **Expected Success Output:**
 ```
-✅ Bucket "nifty-quanta-475212-v3.appspot.com" exists
+✅ Bucket "signinpetwash.appspot.com" exists
 ✅ Successfully listed bucket contents
 ✅ Successfully fetched bucket metadata
 ✅ Successfully fetched IAM policy
-📊 IAM Roles for petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com:
+📊 IAM Roles for petwash-backup-service@signinpetwash.iam.gserviceaccount.com:
    - roles/storage.objectAdmin
    - roles/firebasestorage.admin
 ✅ Successfully uploaded test file: petwash-diagnostic-test-[timestamp].txt
@@ -165,19 +165,19 @@ tsx scripts/backup-to-google-cloud-storage.ts
 2. **Verify You're Using Correct Bucket**  
    Run this to confirm bucket exists:
    ```bash
-   gsutil ls gs://nifty-quanta-475212-v3.appspot.com
+   gsutil ls gs://signinpetwash.appspot.com
    ```
 
 3. **Check Service Account Status**  
    - Go to: https://console.cloud.google.com/iam-admin/serviceaccounts
-   - Find `petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com`
+   - Find `petwash-backup-service@signinpetwash.iam.gserviceaccount.com`
    - Ensure it's **Enabled** (not disabled)
 
 4. **Try Alternative Bucket** (Last Resort)  
    If organization policies block Firebase Storage buckets, create a regular GCS bucket:
    ```bash
    gsutil mb gs://petwash-backups-2025
-   gsutil iam ch serviceAccount:petwash-backup-service@nifty-quanta-475212-v3.iam.gserviceaccount.com:roles/storage.objectAdmin gs://petwash-backups-2025
+   gsutil iam ch serviceAccount:petwash-backup-service@signinpetwash.iam.gserviceaccount.com:roles/storage.objectAdmin gs://petwash-backups-2025
    ```
    Then update `BIOMETRIC_BUCKET_NAME` secret to `petwash-backups-2025`
 

@@ -64,7 +64,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Development Environment**: Replit workspace (DEV ONLY).
 - **Production Pipeline**: GitHub → Google Cloud (Firebase Hosting / Cloud Run).
 - **Source Control**: GitHub repository `petwashglobal/petwash-marketplace`.
-- **Firebase Project**: `nifty-quanta-475212-v3`.
+- **Firebase Project**: `signinpetwash`.
 - **CI/CD Pipeline**: Automated GitHub Actions deployment (`.github/workflows/petwash-ci.yml`) with a 5-guard protection system.
 
 ### Core Features & Design Decisions
