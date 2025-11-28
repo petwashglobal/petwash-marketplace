@@ -1,0 +1,208 @@
+// ============================================
+// PetWash Referral System - Firestore Security Rules
+// Add to your firestore.rules file
+// ============================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================
+    // HELPER FUNCTIONS
+    // ========================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the document owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if user is admin (store admin UIDs in admins collection)
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    // Check if user is super admin
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'SUPER_ADMIN';
+    }
+    
+    // Validate referral code format (8 alphanumeric chars)
+    function isValidReferralCode(code) {
+      return code is string && 
+        code.size() == 8 && 
+        code.matches('^[A-Z0-9]+$');
+    }
+    
+    // Rate limiting helper - check if too many writes in timeframe
+    function notRateLimited(collection, userId, maxPerHour) {
+      let oneHourAgo = request.time - duration.value(1, 'h');
+      return !exists(/databases/$(database)/documents/$(collection)/$(userId)) ||
+        get(/databases/$(database)/documents/rateLimits/$(userId)).data.count < maxPerHour;
+    }
+    
+    // ========================
+    // USERS COLLECTION
+    // ========================
+    
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Users can update specific fields only
+      allow update: if isOwner(userId) && (
+        // Allow updating only safe fields
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['displayName', 'phone', 'email', 'photoURL', 'preferences'])
+      );
+      
+      // Only system can update referral stats and credits
+      // (handled via Firebase Admin SDK in cloud functions)
+      allow create: if false; // Users created via Auth triggers only
+      allow delete: if false; // Never delete users directly
+    }
+    
+    // ========================
+    // REFERRALS COLLECTION
+    // ========================
+    
+    match /referrals/{referralId} {
+      // Users can read referrals they're part of (as referrer or referee)
+      allow read: if isAuthenticated() && (
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid
+      ) || isAdmin();
+      
+      // Only cloud functions can create/update referrals
+      // This prevents users from gaming the system
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+      
+      // Admins can read all for dashboard
+      allow list: if isAdmin();
+    }
+    
+    // ========================
+    // REFERRAL CREDITS COLLECTION
+    // ========================
+    
+    match /referralCredits/{creditId} {
+      // Users can only read their own credits
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Only system can create credits (via cloud functions)
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+      
+      // Admins can read all
+      allow list: if isAdmin();
+    }
+    
+    // ========================
+    // TRANSACTIONS COLLECTION
+    // ========================
+    
+    match /transactions/{transactionId} {
+      // Users can read their own transactions
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Only Nayax webhook (via cloud function) can create
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+      
+      // Finance team can read all
+      allow list: if isAdmin();
+    }
+    
+    // ========================
+    // RATE LIMITS COLLECTION
+    // ========================
+    
+    match /rateLimits/{userId} {
+      // Only system can read/write rate limits
+      allow read: if false;
+      allow write: if false;
+    }
+    
+    // ========================
+    // REFERRAL CLICKS (ANTI-FRAUD)
+    // ========================
+    
+    match /referralClicks/{clickId} {
+      // Public can create clicks (when clicking referral link)
+      // But rate limited to prevent abuse
+      allow create: if request.resource.data.keys().hasOnly([
+        'referralCode', 'deviceId', 'ipHash', 'userAgent', 'createdAt'
+      ]) && isValidReferralCode(request.resource.data.referralCode);
+      
+      // No one can read/update/delete clicks
+      allow read: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // ========================
+    // FRAUD SIGNALS COLLECTION
+    // ========================
+    
+    match /fraudSignals/{signalId} {
+      // Only system and admins can access
+      allow read: if isAdmin();
+      allow write: if false; // Only cloud functions
+    }
+    
+    // ========================
+    // ADMINS COLLECTION
+    // ========================
+    
+    match /admins/{adminId} {
+      // Only super admins can manage admins
+      allow read: if isAuthenticated() && request.auth.uid == adminId;
+      allow write: if isSuperAdmin();
+    }
+    
+    // ========================
+    // AUDIT LOG COLLECTION
+    // ========================
+    
+    match /auditLog/{logId} {
+      // Append-only audit log
+      allow read: if isAdmin();
+      allow create: if isAuthenticated(); // Anyone can create audit entries
+      allow update: if false; // Never update audit logs
+      allow delete: if false; // Never delete audit logs
+    }
+    
+    // ========================
+    // REFERRAL INVITES (EMAIL/SMS)
+    // ========================
+    
+    match /referralInvites/{inviteId} {
+      // Users can see their sent invites
+      allow read: if isAuthenticated() && 
+        resource.data.fromUserId == request.auth.uid;
+      
+      // Users can create invites (rate limited in cloud function)
+      allow create: if isAuthenticated() && 
+        request.resource.data.fromUserId == request.auth.uid &&
+        request.resource.data.keys().hasOnly([
+          'fromUserId', 'toEmail', 'toPhone', 'referralCode', 
+          'sentAt', 'channel', 'status'
+        ]);
+      
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
