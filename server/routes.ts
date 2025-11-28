@@ -94,6 +94,7 @@ import contractorDocumentsRoutes from "./routes/contractor-documents";
 import contractorOnboardingRoutes from "./routes/contractor-onboarding";
 import contractorInvoicesRoutes from "./routes/contractor-invoices";
 import subcontractorAgreementsRoutes from "./routes/subcontractor-agreements";
+import referralRoutes from "./routes/referral";
 import accountingRoutes from "./routes/accounting";
 import adminRoutes from "./routes/admin";
 import aiInsightsRoutes from "./routes/ai-insights";
@@ -7856,6 +7857,10 @@ self.addEventListener('notificationclick', (event) => {
   // Loyalty & Rewards routes - Protected with Firebase auth
   const { validateFirebaseToken } = await import('./middleware/firebase-auth');
   app.use('/api/loyalty', validateFirebaseToken, apiLimiter, loyaltyRoutes);
+
+  // Referral System - חבר מביא חבר (Friend Brings Friend)
+  app.use('/api/referral', apiLimiter, referralRoutes);
+  logger.info('[Routes] ✅ Referral system routes registered');
 
   // Inbox routes (User + Franchise)
   const inboxRoutes = await import('./routes/inbox');
