@@ -28,6 +28,7 @@ import { initializeInteractionTracking } from "@/lib/interactionTracker";
 import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
+import { LuxuryAwardBadge2025 } from "@/components/LuxuryAwardBadge2025";
 
 // CRITICAL: Only import home route components (for instant load)
 import Landing from "@/pages/Landing";
@@ -1971,6 +1972,9 @@ function App() {
             isOpen={isConsentManagerOpen}
             onClose={() => setIsConsentManagerOpen(false)}
           />
+          
+          {/* Luxury Award Badge 2025 - Fashion-style floating badge */}
+          <LuxuryAwardBadge2025 />
         </TooltipProvider>
       </LanguageProvider>
     </QueryClientProvider>
