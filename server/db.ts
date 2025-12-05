@@ -7,16 +7,6 @@ import * as unifiedPlatformSchema from "@shared/schema-unified-platform";
 
 neonConfig.webSocketConstructor = ws;
 
-// CRITICAL: Graceful handling for missing DATABASE_URL
-// Don't crash startup - log warning and allow server to start in degraded mode
-if (!process.env.DATABASE_URL) {
-  console.error('--------------------------------------------------');
-  console.error('⚠️ WARNING: DATABASE_URL is not set!');
-  console.error('   Database features will be unavailable.');
-  console.error('   Set DATABASE_URL in Replit Secrets for full functionality.');
-  console.error('--------------------------------------------------');
-}
-
 const combinedSchema = { 
   ...schema, 
   ...enterpriseSchema,
@@ -25,31 +15,43 @@ const combinedSchema = {
 
 // --- DATABASE "AUTO-HEAL" PATTERN (2025 Production Standard) ---
 
-// Create pool with connection resilience settings - only if DATABASE_URL exists
-let pool: Pool | null = null;
-let db: ReturnType<typeof drizzle> | null = null;
+// Flag to track if database is available
+export const isDatabaseAvailable = !!process.env.DATABASE_URL;
 
-if (process.env.DATABASE_URL) {
-  pool = new Pool({ 
-    connectionString: process.env.DATABASE_URL,
-    max: 20, // Maximum connections
-    idleTimeoutMillis: 30000, // 30 seconds
-    connectionTimeoutMillis: 10000, // 10 seconds (increased for cloud environments)
-  });
+// Log status at startup (non-crashing)
+if (!isDatabaseAvailable) {
+  console.warn('--------------------------------------------------');
+  console.warn('⚠️ DATABASE_URL not set - database features disabled');
+  console.warn('   Server will start but database operations will fail');
+  console.warn('--------------------------------------------------');
+}
 
-  // The "Auto-Heal" Listener - Prevents pool errors from crashing server
-  pool.on('error', (err, client) => {
+// Create pool with connection resilience settings
+// Uses a dummy connection string if DATABASE_URL is missing to prevent TypeScript errors
+// Actual usage will check isDatabaseAvailable first
+export const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder',
+  max: 20, // Maximum connections
+  idleTimeoutMillis: 30000, // 30 seconds
+  connectionTimeoutMillis: 10000, // 10 seconds (increased for cloud environments)
+});
+
+// The "Auto-Heal" Listener - Prevents pool errors from crashing server
+pool.on('error', (err, client) => {
+  // Only log if database was supposed to be available
+  if (isDatabaseAvailable) {
     console.error('--------------------------------------------------');
     console.error('❌ Unexpected error on idle database client:', err);
     console.error('   Client:', client ? 'exists' : 'null');
     console.error('   Time:', new Date().toISOString());
     console.error('--------------------------------------------------');
-  });
+  }
+  // Do NOT exit process; the pool will try to reconnect new clients automatically
+});
 
-  db = drizzle({ client: pool, schema: combinedSchema });
+// Create drizzle instance
+export const db = drizzle({ client: pool, schema: combinedSchema });
+
+if (isDatabaseAvailable) {
   console.log('[Database] Pool initialized with auto-heal error handling');
-} else {
-  console.log('[Database] Running without database connection');
 }
-
-export { pool, db };
