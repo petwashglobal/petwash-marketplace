@@ -7,10 +7,14 @@ import * as unifiedPlatformSchema from "@shared/schema-unified-platform";
 
 neonConfig.webSocketConstructor = ws;
 
+// CRITICAL: Graceful handling for missing DATABASE_URL
+// Don't crash startup - log warning and allow server to start in degraded mode
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+  console.error('--------------------------------------------------');
+  console.error('⚠️ WARNING: DATABASE_URL is not set!');
+  console.error('   Database features will be unavailable.');
+  console.error('   Set DATABASE_URL in Replit Secrets for full functionality.');
+  console.error('--------------------------------------------------');
 }
 
 const combinedSchema = { 
@@ -21,28 +25,31 @@ const combinedSchema = {
 
 // --- DATABASE "AUTO-HEAL" PATTERN (2025 Production Standard) ---
 
-// Create pool with connection resilience settings
-export const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL,
-  // Neon serverless uses WebSocket, so traditional pool settings don't fully apply
-  // But we can still configure timeouts and limits
-  max: 20, // Maximum connections
-  idleTimeoutMillis: 30000, // 30 seconds
-  connectionTimeoutMillis: 10000, // 10 seconds (increased for cloud environments)
-});
+// Create pool with connection resilience settings - only if DATABASE_URL exists
+let pool: Pool | null = null;
+let db: ReturnType<typeof drizzle> | null = null;
 
-// The "Auto-Heal" Listener - Prevents pool errors from crashing server
-pool.on('error', (err, client) => {
-  console.error('--------------------------------------------------');
-  console.error('❌ Unexpected error on idle database client:', err);
-  console.error('   Client:', client ? 'exists' : 'null');
-  console.error('   Time:', new Date().toISOString());
-  console.error('--------------------------------------------------');
-  // Do NOT exit process; the pool will try to reconnect new clients automatically
-  // In production, you might want to send this to a monitoring service
-});
+if (process.env.DATABASE_URL) {
+  pool = new Pool({ 
+    connectionString: process.env.DATABASE_URL,
+    max: 20, // Maximum connections
+    idleTimeoutMillis: 30000, // 30 seconds
+    connectionTimeoutMillis: 10000, // 10 seconds (increased for cloud environments)
+  });
 
-// Pool connect success logging (helpful for debugging)
-console.log('[Database] Pool initialized with auto-heal error handling');
+  // The "Auto-Heal" Listener - Prevents pool errors from crashing server
+  pool.on('error', (err, client) => {
+    console.error('--------------------------------------------------');
+    console.error('❌ Unexpected error on idle database client:', err);
+    console.error('   Client:', client ? 'exists' : 'null');
+    console.error('   Time:', new Date().toISOString());
+    console.error('--------------------------------------------------');
+  });
 
-export const db = drizzle({ client: pool, schema: combinedSchema });
+  db = drizzle({ client: pool, schema: combinedSchema });
+  console.log('[Database] Pool initialized with auto-heal error handling');
+} else {
+  console.log('[Database] Running without database connection');
+}
+
+export { pool, db };

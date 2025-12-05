@@ -6,7 +6,7 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
+# CRITICAL: Do NOT exclude package-lock.json - npm ci requires it for production builds
 
 # Build outputs
 # CRITICAL: dist/public MUST be included for production (server copies it to server/public on startup)
