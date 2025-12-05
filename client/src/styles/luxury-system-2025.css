@@ -3,11 +3,12 @@
  * Apple/Tesla/Chanel inspired premium UI
  * 
  * Core Principles:
- * - Glassmorphism everywhere
- * - Purple gradient backgrounds
- * - Premium spacing & typography
+ * - Pure white backgrounds ONLY
+ * - Metallic emerald accents
+ * - Gold/Silver/Platinum metallics
+ * - Premium spacing & typography (Didot/Bodoni)
  * - Smooth animations
- * - Mind-blowing luxury experience
+ * - Luxury credit card aesthetic
  */
 
 /* ===========================
@@ -16,41 +17,25 @@
 
 .luxury-bg-primary {
   background: linear-gradient(135deg, 
-    #667eea 0%, 
-    #764ba2 100%
+    #008F46 0%, 
+    #00C569 100%
   );
 }
 
 .luxury-bg-soft {
-  background: linear-gradient(135deg,
-    rgba(102, 126, 234, 0.05) 0%,
-    rgba(118, 75, 162, 0.05) 100%
-  );
+  background: #FFFFFF;
 }
 
-.luxury-bg-purple-fade {
-  background: linear-gradient(180deg,
-    rgba(102, 126, 234, 0.08) 0%,
-    rgba(255, 255, 255, 1) 50%,
-    rgba(118, 75, 162, 0.08) 100%
-  );
+.luxury-bg-emerald-fade {
+  background: #FFFFFF;
 }
 
 .luxury-bg-radial {
-  background: radial-gradient(circle at top right,
-    rgba(102, 126, 234, 0.1) 0%,
-    rgba(255, 255, 255, 1) 50%,
-    rgba(118, 75, 162, 0.1) 100%
-  );
+  background: #FFFFFF;
 }
 
 .luxury-bg-mesh {
-  background: 
-    radial-gradient(at 0% 0%, rgba(102, 126, 234, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(118, 75, 162, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(102, 126, 234, 0.15) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(118, 75, 162, 0.15) 0px, transparent 50%),
-    #ffffff;
+  background: #FFFFFF;
 }
 
 /* ===========================
@@ -64,7 +49,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 24px;
   box-shadow: 
-    0 8px 32px rgba(102, 126, 234, 0.1),
+    0 8px 32px rgba(0, 143, 70, 0.1),
     0 2px 8px rgba(0, 0, 0, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -72,9 +57,9 @@
 .luxury-glass-card:hover {
   transform: translateY(-4px);
   box-shadow: 
-    0 12px 48px rgba(102, 126, 234, 0.15),
+    0 12px 48px rgba(0, 143, 70, 0.15),
     0 4px 16px rgba(0, 0, 0, 0.08);
-  border-color: rgba(102, 126, 234, 0.3);
+  border-color: rgba(0, 143, 70, 0.3);
 }
 
 .luxury-glass-panel {
@@ -84,7 +69,7 @@
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 20px;
   box-shadow: 
-    0 4px 24px rgba(102, 126, 234, 0.08),
+    0 4px 24px rgba(0, 143, 70, 0.08),
     0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
@@ -101,7 +86,7 @@
    =========================== */
 
 .luxury-btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #008F46 0%, #00C569 100%);
   color: white;
   padding: 12px 32px;
   border-radius: 12px;
@@ -110,7 +95,7 @@
   border: none;
   cursor: pointer;
   box-shadow: 
-    0 4px 16px rgba(102, 126, 234, 0.3),
+    0 4px 16px rgba(0, 143, 70, 0.3),
     0 1px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -120,7 +105,7 @@
 .luxury-btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 6px 24px rgba(102, 126, 234, 0.4),
+    0 6px 24px rgba(0, 143, 70, 0.4),
     0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
