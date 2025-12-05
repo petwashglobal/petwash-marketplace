@@ -129,6 +129,9 @@ ensureBiometricStorage()
     // We use process.cwd() to safely resolve from the project root
     const DIST_PUBLIC_PATH = path.join(process.cwd(), 'dist', 'public');
     
+    // CRITICAL FIX: Define indexPath at module scope so it's available in catchall route
+    const indexPath = path.join(DIST_PUBLIC_PATH, "index.html");
+    
     // 2. LOGGING: Verify the path on startup (as requested)
     console.log('--------------------------------------------------');
     console.log('📂 Static File Path Verification:');
@@ -139,7 +142,6 @@ ensureBiometricStorage()
     // 3. Verify build exists before starting server (PRODUCTION ONLY)
     // In development, Vite serves source files directly - no build needed
     if (process.env.NODE_ENV !== 'development') {
-      const indexPath = path.join(DIST_PUBLIC_PATH, "index.html");
       const fs = await import("fs");
       
       if (!fs.existsSync(indexPath)) {
@@ -235,21 +237,29 @@ ensureBiometricStorage()
       }));
     }
     
-    // 5a. Initialize notification event handlers (AFTER routes)
-    console.log('[Notifications] Registering event handlers...');
-    const { registerNotificationEventHandlers } = await import('./services/events/NotificationEventHandlers');
-    registerNotificationEventHandlers();
-    console.log('[Notifications] Event handlers registered successfully');
-    
-    // 5b. Initialize automated cron jobs (AFTER routes, BEFORE error handlers)
-    console.log('[Cron] Initializing automated jobs...');
-    startMonthlySettlementsCron();
-    console.log('[Cron] All cron jobs initialized successfully');
-    
-    // 5c. Initialize Israeli CPI data (AFTER routes, BEFORE serving)
-    console.log('[CPI] Initializing Israeli Consumer Price Index data...');
-    const IsraeliCPIService = (await import('./services/IsraeliCPIService')).default;
+    // 5a. Initialize notification event handlers (AFTER routes) - NON-BLOCKING
     try {
+      console.log('[Notifications] Registering event handlers...');
+      const { registerNotificationEventHandlers } = await import('./services/events/NotificationEventHandlers');
+      registerNotificationEventHandlers();
+      console.log('[Notifications] Event handlers registered successfully');
+    } catch (error) {
+      console.error('[Notifications] Failed to register handlers (non-fatal):', error);
+    }
+    
+    // 5b. Initialize automated cron jobs (AFTER routes, BEFORE error handlers) - NON-BLOCKING
+    try {
+      console.log('[Cron] Initializing automated jobs...');
+      startMonthlySettlementsCron();
+      console.log('[Cron] All cron jobs initialized successfully');
+    } catch (error) {
+      console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);
+    }
+    
+    // 5c. Initialize Israeli CPI data (AFTER routes, BEFORE serving) - NON-BLOCKING
+    try {
+      console.log('[CPI] Initializing Israeli Consumer Price Index data...');
+      const IsraeliCPIService = (await import('./services/IsraeliCPIService')).default;
       const isCurrent = await IsraeliCPIService.isCPIDataCurrent();
       if (!isCurrent) {
         console.log('[CPI] No CPI data found - seeding initial data...');
@@ -259,17 +269,17 @@ ensureBiometricStorage()
         console.log(`[CPI] ✅ CPI data current - Latest: ${latest?.month} = ${latest?.indexValue}`);
       }
     } catch (error) {
-      console.error('[CPI] Failed to initialize CPI data:', error);
+      console.error('[CPI] Failed to initialize CPI data (non-fatal):', error);
     }
     
-    // 5d. Initialize Control Panel Registry (AFTER routes, BEFORE serving)
-    console.log('[Control Panel] Initializing registry data...');
-    const { initializeControlPanelRegistry } = await import('./services/ControlPanelRegistry');
+    // 5d. Initialize Control Panel Registry (AFTER routes, BEFORE serving) - NON-BLOCKING
     try {
+      console.log('[Control Panel] Initializing registry data...');
+      const { initializeControlPanelRegistry } = await import('./services/ControlPanelRegistry');
       await initializeControlPanelRegistry();
       console.log('[Control Panel] ✅ Registry initialized successfully');
     } catch (error) {
-      console.error('[Control Panel] Failed to initialize registry:', error);
+      console.error('[Control Panel] Failed to initialize registry (non-fatal):', error);
     }
     
     // --- 2025 PRODUCTION SAFETY NET ---
