@@ -337,10 +337,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/signin">
-          {() => <FastSignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/login">
-          {() => <SimpleSignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/signin-advanced">
           {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
