@@ -40,14 +40,39 @@ app.use(helmet({
 app.use(compression());
 
 // C. CORS - Strict in production, permissive in dev
+// FIX 2025: Use function for origin checking (glob patterns don't work in Express CORS)
+const allowedOrigins = [
+  'https://petwash.co.il',
+  'https://www.petwash.co.il',
+  process.env.BASE_URL || 'http://localhost:5000',
+  // Replit preview domains
+  /\.replit\.dev$/,
+  /\.repl\.co$/,
+  /\.replit\.app$/,
+];
+
 app.use(cors({
   origin: isProduction 
-    ? [
-        'https://petwash.co.il',
-        'https://www.petwash.co.il',
-        'https://*.petwash.co.il',
-        process.env.BASE_URL || 'http://localhost:5000'
-      ]
+    ? (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin) return callback(null, true);
+        
+        // Check against allowed list (strings and regex patterns)
+        const isAllowed = allowedOrigins.some(allowed => {
+          if (allowed instanceof RegExp) return allowed.test(origin);
+          return origin === allowed;
+        });
+        
+        // Also allow any *.petwash.co.il subdomain
+        const isPetWashSubdomain = /^https:\/\/([a-z0-9-]+\.)?petwash\.co\.il$/.test(origin);
+        
+        if (isAllowed || isPetWashSubdomain) {
+          callback(null, true);
+        } else {
+          console.warn(`[CORS] Blocked origin: ${origin}`);
+          callback(new Error('Not allowed by CORS'));
+        }
+      }
     : true, // Allow all origins in dev
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
