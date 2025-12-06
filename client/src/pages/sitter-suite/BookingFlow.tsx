@@ -107,7 +107,7 @@ export default function SitterBookingFlow() {
         platformData: {
           sitterName: `${sitter.firstName} ${sitter.lastName}`,
           hours,
-          paymentMethod: 'nayax',
+          paymentMethod: 'reservation_hold',
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         }
       };
@@ -122,7 +122,7 @@ export default function SitterBookingFlow() {
 
       toast({
         title: "הזמנה נקלטה בהצלחה! 🎉",
-        description: "השמרטף/ית יקבל/תקבל הודעה. החיוב מתבצע רק דרך Nayax Israel.",
+        description: "השמרטף/ית יקבל/תקבל הודעה. התשלום יתואם לאחר ההזמנה.",
       });
     } catch (error: any) {
       toast({
@@ -358,7 +358,7 @@ export default function SitterBookingFlow() {
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
                 <Shield className="h-3 w-3 inline mr-1 text-emerald-500" />
-                החיוב מתבצע אך ורק דרך Nayax Israel. הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר לשמרטף/ית לאחר סיום השירות.
+                הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר לשמרטף/ית לאחר סיום השירות.
               </div>
             </div>
 
@@ -412,7 +412,7 @@ export default function SitterBookingFlow() {
                 <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.totalCharged.toFixed(2)}</span>
               </div>
               <div className="mt-4 luxury-text-small opacity-80">
-                החיוב רק דרך Nayax Israel. אין גובים באמצעים אחרים.
+                התשלום יתואם לאחר ההזמנה.
               </div>
             </div>
 
@@ -448,7 +448,7 @@ export default function SitterBookingFlow() {
               השמרטף/ית יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
             </p>
             <p className="luxury-text-small max-w-md mx-auto mb-8">
-              פרטי חיוב Nayax ישלחו בהודעה נפרדת.
+              פרטי התשלום ישלחו בהודעה נפרדת.
             </p>
             <Button
               className="luxury-btn-primary luxury-shadow-xl px-12"

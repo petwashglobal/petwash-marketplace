@@ -94,7 +94,7 @@ export default function PetTrekBookingFlow() {
           pickupAddress,
           dropoffAddress,
           estimatedDistance,
-          paymentMethod: 'nayax',
+          paymentMethod: 'reservation_hold',
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         }
       };
@@ -109,7 +109,7 @@ export default function PetTrekBookingFlow() {
 
       toast({
         title: "הזמנה נקלטה בהצלחה! 🚗",
-        description: "הנהג/ת יקבל/תקבל הודעה. החיוב מתבצע רק דרך Nayax Israel.",
+        description: "הנהג/ת יקבל/תקבל הודעה. התשלום יתואם לאחר ההזמנה.",
       });
     } catch (error: any) {
       toast({
@@ -309,7 +309,7 @@ export default function PetTrekBookingFlow() {
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
                 <Shield className="h-3 w-3 inline mr-1 text-amber-500" />
-                החיוב מתבצע אך ורק דרך Nayax Israel. הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר לנהג/ת לאחר סיום ההסעה.
+                הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר לנהג/ת לאחר סיום ההסעה.
               </div>
             </div>
 
@@ -363,7 +363,7 @@ export default function PetTrekBookingFlow() {
                 <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.totalCharged.toFixed(2)}</span>
               </div>
               <div className="mt-4 luxury-text-small opacity-80">
-                החיוב רק דרך Nayax Israel. אין גובים באמצעים אחרים.
+                התשלום יתואם לאחר ההזמנה.
               </div>
             </div>
 
@@ -399,7 +399,7 @@ export default function PetTrekBookingFlow() {
               הנהג/ת יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
             </p>
             <p className="luxury-text-small max-w-md mx-auto mb-8">
-              פרטי חיוב Nayax ומעקב GPS ישלחו בהודעה נפרדת.
+              פרטי התשלום ומעקב GPS ישלחו בהודעה נפרדת.
             </p>
             <Button
               className="luxury-btn-primary luxury-shadow-xl px-12"

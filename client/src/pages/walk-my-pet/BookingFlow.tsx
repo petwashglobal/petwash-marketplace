@@ -107,7 +107,7 @@ export default function WalkBookingFlow() {
           walkerName: walker.businessName || walker.displayName || 'Professional Walker',
           serviceArea: walker.serviceArea || 'Service Area',
           duration,
-          paymentMethod: 'nayax',
+          paymentMethod: 'reservation_hold',
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         }
       };
@@ -122,7 +122,7 @@ export default function WalkBookingFlow() {
 
       toast({
         title: "הזמנה נקלטה בהצלחה! 🐾",
-        description: "המוליך/ה יקבל/תקבל הודעה. החיוב מתבצע רק דרך Nayax Israel.",
+        description: "המוליך/ה יקבל/תקבל הודעה. התשלום יתואם לאחר ההזמנה.",
       });
     } catch (error: any) {
       toast({
@@ -341,7 +341,7 @@ export default function WalkBookingFlow() {
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
                 <Shield className="h-3 w-3 inline mr-1 text-blue-500" />
-                החיוב מתבצע אך ורק דרך Nayax Israel. הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר למוליך/ה לאחר סיום ההליכה.
+                הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר למוליך/ה לאחר סיום ההליכה.
               </div>
             </div>
 
@@ -392,7 +392,7 @@ export default function WalkBookingFlow() {
                 <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.totalCharged.toFixed(2)}</span>
               </div>
               <div className="mt-4 luxury-text-small opacity-80">
-                החיוב רק דרך Nayax Israel. אין גובים באמצעים אחרים.
+                התשלום יתואם לאחר ההזמנה.
               </div>
             </div>
 
@@ -428,7 +428,7 @@ export default function WalkBookingFlow() {
               המוליך/ה יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
             </p>
             <p className="luxury-text-small max-w-md mx-auto mb-8">
-              פרטי חיוב Nayax ומעקב GPS ישלחו בהודעה נפרדת.
+              פרטי התשלום ומעקב GPS ישלחו בהודעה נפרדת.
             </p>
             <Button
               className="luxury-btn-primary luxury-shadow-xl px-12"

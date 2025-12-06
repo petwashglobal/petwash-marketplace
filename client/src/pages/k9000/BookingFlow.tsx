@@ -100,7 +100,7 @@ export default function K9000BookingFlow() {
         platformData: {
           stationName: selectedStation.name,
           stationAddress: selectedStation.address,
-          paymentMethod: 'nayax-onsite',
+          paymentMethod: 'reservation_hold',
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         }
       };
@@ -115,7 +115,7 @@ export default function K9000BookingFlow() {
 
       toast({
         title: "הזמנה נקלטה בהצלחה! 🐾",
-        description: "התור נשמר. התשלום יתבצע בתחנה דרך Nayax.",
+        description: "התור נשמר. התשלום יתבצע בתחנה.",
       });
     } catch (error: any) {
       toast({
@@ -303,7 +303,7 @@ export default function K9000BookingFlow() {
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
                 <Shield className="h-4 w-4 inline mr-1 text-purple-500" />
-                התשלום מתבצע בתחנה דרך Nayax Israel בלבד. ההזמנה מבטיחה זמינות התחנה.
+                התשלום מתבצע בתחנה. ההזמנה מבטיחה זמינות התחנה.
               </div>
             </div>
 
@@ -354,7 +354,7 @@ export default function K9000BookingFlow() {
                 <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.totalCharged.toFixed(2)}</span>
               </div>
               <div className="mt-4 luxury-text-small opacity-80">
-                התשלום בתחנה דרך Nayax Israel בלבד.
+                התשלום יתבצע בתחנה.
               </div>
             </div>
 
@@ -389,7 +389,7 @@ export default function K9000BookingFlow() {
               התור שלך נשמר. מספר הזמנה: {bookingId || "בבדיקה"}
             </p>
             <p className="luxury-text-small max-w-md mx-auto mb-8">
-              התשלום יתבצע בתחנה דרך Nayax.
+              התשלום יתבצע בתחנה.
             </p>
             <button
               className="luxury-btn-primary luxury-shadow-xl px-12"
