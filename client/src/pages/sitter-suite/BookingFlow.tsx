@@ -7,6 +7,7 @@ import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
+import { getActivePaymentMethod } from "@/lib/paymentConfig";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -107,7 +108,7 @@ export default function SitterBookingFlow() {
         platformData: {
           sitterName: `${sitter.firstName} ${sitter.lastName}`,
           hours,
-          paymentMethod: 'reservation_hold',
+          paymentMethod: getActivePaymentMethod(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         }
       };
