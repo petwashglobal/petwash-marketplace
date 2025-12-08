@@ -243,6 +243,7 @@ const StationMap = lazy(() => import("@/pages/StationMap"));
 const Story = lazy(() => import("@/pages/Story"));
 const Media = lazy(() => import("@/pages/Media"));
 const Careers = lazy(() => import("@/pages/Careers"));
+const MyApplications = lazy(() => import("@/pages/MyApplications"));
 const Support = lazy(() => import("@/pages/Support"));
 const SystemStatus = lazy(() => import("@/pages/SystemStatus"));
 
@@ -466,6 +467,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/careers">
           {() => <Careers />}
+        </Route>
+        <Route path="/careers/my-applications">
+          {() => <MyApplications />}
         </Route>
         
         {/* Support & Status */}

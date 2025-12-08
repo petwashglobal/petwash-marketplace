@@ -104,6 +104,131 @@ router.get('/positions/:identifier', async (req: Request, res: Response) => {
   }
 });
 
+// =================== USER APPLICATIONS API ===================
+
+// Get user's applications by email (for applicant dashboard)
+router.get('/my-applications', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+    
+    // Get applications for this email with position details
+    const applications = await db
+      .select({
+        id: staffApplications.id,
+        applicationId: staffApplications.applicationId,
+        positionId: staffApplications.positionId,
+        firstName: staffApplications.firstName,
+        lastName: staffApplications.lastName,
+        email: staffApplications.email,
+        status: staffApplications.status,
+        reviewStage: staffApplications.reviewStage,
+        createdAt: staffApplications.createdAt,
+        submittedAt: staffApplications.submittedAt,
+        positionTitle: careerPositions.titleEn,
+        positionTitleHe: careerPositions.titleHe,
+        roleType: careerPositions.roleType,
+        location: careerPositions.location,
+      })
+      .from(staffApplications)
+      .leftJoin(careerPositions, eq(staffApplications.positionId, careerPositions.positionId))
+      .where(eq(staffApplications.email, email.toLowerCase()))
+      .orderBy(desc(staffApplications.createdAt));
+    
+    // Get documents for each application
+    const applicationIds = applications.map(a => a.id);
+    let documents: Array<{ applicationId: number; documentType: string; fileName: string; uploadedAt: Date | null }> = [];
+    
+    if (applicationIds.length > 0) {
+      documents = await db
+        .select({
+          applicationId: staffDocuments.applicationId,
+          documentType: staffDocuments.documentType,
+          fileName: staffDocuments.fileName,
+          uploadedAt: staffDocuments.uploadedAt,
+        })
+        .from(staffDocuments)
+        .where(sql`${staffDocuments.applicationId} IN (${sql.join(applicationIds.map(id => sql`${id}`), sql`, `)})`);
+    }
+    
+    // Attach documents to applications
+    const applicationsWithDocs = applications.map(app => ({
+      ...app,
+      documents: documents.filter(d => d.applicationId === app.id),
+    }));
+    
+    res.json(applicationsWithDocs);
+  } catch (error) {
+    logger.error('[Careers] Failed to fetch user applications', { error });
+    res.status(500).json({ error: 'Failed to fetch applications' });
+  }
+});
+
+// Get single application details with all step progress
+router.get('/my-applications/:applicationId', async (req: Request, res: Response) => {
+  try {
+    const { applicationId } = req.params;
+    const { email } = req.query;
+    
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Email is required for verification' });
+    }
+    
+    const [application] = await db
+      .select()
+      .from(staffApplications)
+      .where(
+        and(
+          eq(staffApplications.applicationId, applicationId),
+          eq(staffApplications.email, email.toLowerCase())
+        )
+      )
+      .limit(1);
+    
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    // Get position details
+    const [position] = await db
+      .select()
+      .from(careerPositions)
+      .where(eq(careerPositions.positionId, application.positionId))
+      .limit(1);
+    
+    // Get documents
+    const documents = await db
+      .select()
+      .from(staffDocuments)
+      .where(eq(staffDocuments.applicationId, application.id));
+    
+    // Get step progress
+    const steps = await db
+      .select()
+      .from(applicationStepProgress)
+      .where(eq(applicationStepProgress.applicationId, application.id))
+      .orderBy(applicationStepProgress.stepNumber);
+    
+    res.json({
+      application,
+      position,
+      documents,
+      steps,
+    });
+  } catch (error) {
+    logger.error('[Careers] Failed to fetch application details', { error });
+    res.status(500).json({ error: 'Failed to fetch application details' });
+  }
+});
+
 // =================== APPLICATION SUBMISSION API ===================
 
 // Application submission schema (SEEK-inspired multi-step)
