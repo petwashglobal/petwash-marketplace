@@ -96,10 +96,8 @@ export default function Careers() {
   // Start application mutation (creates draft)
   const startApplicationMutation = useMutation({
     mutationFn: async (positionId: string) => {
-      return apiRequest('/api/careers/start-application', {
-        method: 'POST',
-        body: JSON.stringify({ positionId }),
-      });
+      const response = await apiRequest('POST', '/api/careers/start-application', { positionId });
+      return response.json();
     },
     onSuccess: async (data: any) => {
       setApplicationId(data.applicationId);
@@ -119,10 +117,8 @@ export default function Careers() {
     mutationFn: async ({ stepNumber, stepName, data }: { stepNumber: number; stepName: string; data: any }) => {
       if (!applicationId) return null;
       setIsSaving(true);
-      return apiRequest(`/api/careers/applications/${applicationId}/autosave`, {
-        method: 'POST',
-        body: JSON.stringify({ stepNumber, stepName, data, sessionId }),
-      });
+      const response = await apiRequest('POST', `/api/careers/applications/${applicationId}/autosave`, { stepNumber, stepName, data, sessionId });
+      return response.json();
     },
     onSuccess: (data: any) => {
       if (data) {
@@ -195,11 +191,9 @@ export default function Careers() {
   }, []);
   
   const applyMutation = useMutation({
-    mutationFn: async (data: typeof formData & { positionId: string }) => {
-      return apiRequest('/api/careers/apply', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+    mutationFn: async (data: typeof formData & { positionId: string; applicationId?: number; sessionId?: string }) => {
+      const response = await apiRequest('POST', '/api/careers/apply', data);
+      return response.json();
     },
     onSuccess: (data: any) => {
       toast({
@@ -296,8 +290,10 @@ export default function Careers() {
     setCurrentStep(nextStep);
   };
   
-  // Move to previous step (no save needed)
+  // Move to previous step (also save current step to preserve data)
   const goToPreviousStep = (prevStep: number) => {
+    // Save current step before moving back to preserve any changes
+    saveStepProgress(currentStep);
     setCurrentStep(prevStep);
   };
   
