@@ -8582,3 +8582,162 @@ export const insertSubcontractorSignatureSchema = createInsertSchema(subcontract
   agreedToTerms: z.boolean().default(true),
   auditTrailId: z.string().optional(),
 }).omit({ id: true, createdAt: true, updatedAt: true });
+
+// =================== CAREER PORTAL SYSTEM ===================
+// SEEK.com.au inspired career portal with fraud prevention and application tracking
+
+export const careerPositions = pgTable("career_positions", {
+  id: serial("id").primaryKey(),
+  positionId: varchar("position_id", { length: 50 }).unique().notNull(), // POS-WALKER-001
+  
+  // Position Details
+  title: varchar("title", { length: 255 }).notNull(), // Pet Walker, Driver, Host, Sitter
+  titleHe: varchar("title_he", { length: 255 }), // Hebrew title
+  department: varchar("department", { length: 100 }).notNull(), // operations, logistics, care, admin
+  roleType: varchar("role_type", { length: 50 }).notNull(), // walker, driver, sitter, host, supplier, admin
+  
+  // Description
+  shortDescription: text("short_description").notNull(),
+  shortDescriptionHe: text("short_description_he"),
+  fullDescription: text("full_description").notNull(),
+  fullDescriptionHe: text("full_description_he"),
+  
+  // Requirements
+  requirements: jsonb("requirements").default(sql`'[]'::jsonb`), // Array of requirement strings
+  requirementsHe: jsonb("requirements_he").default(sql`'[]'::jsonb`),
+  qualifications: jsonb("qualifications").default(sql`'[]'::jsonb`),
+  benefits: jsonb("benefits").default(sql`'[]'::jsonb`),
+  
+  // Location & Type
+  location: varchar("location", { length: 255 }).notNull(), // Tel Aviv, Nationwide, Remote
+  locationType: varchar("location_type", { length: 50 }).default("hybrid"), // remote, onsite, hybrid, field
+  employmentType: varchar("employment_type", { length: 50 }).notNull(), // contractor, part-time, full-time
+  
+  // Compensation (ranges for transparency)
+  salaryRangeMin: decimal("salary_range_min", { precision: 10, scale: 2 }),
+  salaryRangeMax: decimal("salary_range_max", { precision: 10, scale: 2 }),
+  salaryCurrency: varchar("salary_currency", { length: 10 }).default("ILS"),
+  salaryPeriod: varchar("salary_period", { length: 20 }).default("hourly"), // hourly, daily, weekly, monthly
+  commissionStructure: text("commission_structure"),
+  
+  // Availability & Priority
+  isActive: boolean("is_active").default(true),
+  isFeatured: boolean("is_featured").default(false),
+  urgencyLevel: varchar("urgency_level", { length: 20 }).default("normal"), // normal, urgent, critical
+  openPositions: integer("open_positions").default(1),
+  
+  // Application Requirements
+  requiresResume: boolean("requires_resume").default(true),
+  requiresCoverLetter: boolean("requires_cover_letter").default(false),
+  requiresBackgroundCheck: boolean("requires_background_check").default(true),
+  requiresDrivingLicense: boolean("requires_driving_license").default(false),
+  minimumAge: integer("minimum_age").default(18),
+  
+  // SEO & Display
+  slug: varchar("slug", { length: 255 }).unique(), // pet-walker-tel-aviv
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: varchar("meta_description", { length: 500 }),
+  
+  // Statistics
+  viewCount: integer("view_count").default(0),
+  applicationCount: integer("application_count").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  publishedAt: timestamp("published_at"),
+  expiresAt: timestamp("expires_at"),
+}, (table) => ({
+  roleTypeIdx: index("idx_career_positions_role_type").on(table.roleType),
+  isActiveIdx: index("idx_career_positions_active").on(table.isActive),
+  locationIdx: index("idx_career_positions_location").on(table.location),
+  slugIdx: index("idx_career_positions_slug").on(table.slug),
+}));
+
+// SEEK-inspired fraud prevention signals for applications
+export const applicationFraudSignals = pgTable("application_fraud_signals", {
+  id: serial("id").primaryKey(),
+  applicationId: integer("application_id").notNull(), // References staffApplications.id
+  
+  // Detection Metadata
+  signalType: varchar("signal_type", { length: 50 }).notNull(), // duplicate, velocity, pattern, identity, device
+  severity: varchar("severity", { length: 20 }).notNull(), // low, medium, high, critical
+  confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(), // 0-100
+  
+  // Signal Details
+  description: text("description").notNull(),
+  evidenceJson: jsonb("evidence_json"), // Supporting data for the signal
+  
+  // Device & IP Fingerprinting (SEEK-inspired)
+  ipAddress: varchar("ip_address", { length: 100 }),
+  ipCountry: varchar("ip_country", { length: 10 }),
+  deviceFingerprint: varchar("device_fingerprint", { length: 255 }),
+  userAgent: text("user_agent"),
+  
+  // Duplicate Detection
+  matchedApplicationIds: jsonb("matched_application_ids").default(sql`'[]'::jsonb`), // Other apps with same email/phone/device
+  matchType: varchar("match_type", { length: 50 }), // email, phone, device, name, address
+  
+  // Resolution
+  status: varchar("status", { length: 20 }).default("pending"), // pending, reviewed, cleared, confirmed_fraud
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  applicationIdx: index("idx_fraud_signals_application").on(table.applicationId),
+  signalTypeIdx: index("idx_fraud_signals_type").on(table.signalType),
+  severityIdx: index("idx_fraud_signals_severity").on(table.severity),
+  statusIdx: index("idx_fraud_signals_status").on(table.status),
+}));
+
+// Application step progress tracking (multi-step wizard)
+export const applicationStepProgress = pgTable("application_step_progress", {
+  id: serial("id").primaryKey(),
+  applicationId: integer("application_id").notNull(),
+  
+  // Step Tracking
+  stepNumber: integer("step_number").notNull(),
+  stepName: varchar("step_name", { length: 100 }).notNull(), // personal_info, experience, documents, consent, review
+  status: varchar("status", { length: 20 }).default("pending"), // pending, in_progress, completed, skipped
+  
+  // Completion Data
+  completedAt: timestamp("completed_at"),
+  dataSnapshot: jsonb("data_snapshot"), // Data entered at this step
+  validationErrors: jsonb("validation_errors"),
+  
+  // Session Tracking (for autosave)
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow(),
+  sessionId: varchar("session_id", { length: 255 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  applicationIdx: index("idx_step_progress_application").on(table.applicationId),
+  stepIdx: index("idx_step_progress_step").on(table.stepNumber),
+}));
+
+// Career portal Zod schemas and type exports
+export const insertCareerPositionSchema = createInsertSchema(careerPositions, {
+  title: z.string().min(2, "Position title is required"),
+  roleType: z.enum(["walker", "driver", "sitter", "host", "supplier", "admin", "trainer"]),
+  department: z.string().min(1, "Department is required"),
+  shortDescription: z.string().min(10, "Short description is required"),
+  fullDescription: z.string().min(50, "Full description is required"),
+  location: z.string().min(1, "Location is required"),
+  employmentType: z.enum(["contractor", "part-time", "full-time"]),
+}).omit({ id: true, createdAt: true, updatedAt: true, viewCount: true, applicationCount: true });
+
+export type InsertCareerPosition = z.infer<typeof insertCareerPositionSchema>;
+export type CareerPosition = typeof careerPositions.$inferSelect;
+
+export const insertApplicationFraudSignalSchema = createInsertSchema(applicationFraudSignals, {
+  signalType: z.enum(["duplicate", "velocity", "pattern", "identity", "device"]),
+  severity: z.enum(["low", "medium", "high", "critical"]),
+  confidence: z.number().min(0).max(100),
+  description: z.string().min(1, "Description is required"),
+}).omit({ id: true, createdAt: true });
+
+export type InsertApplicationFraudSignal = z.infer<typeof insertApplicationFraudSignalSchema>;
+export type ApplicationFraudSignal = typeof applicationFraudSignals.$inferSelect;
+
+export type ApplicationStepProgress = typeof applicationStepProgress.$inferSelect;

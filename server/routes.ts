@@ -64,6 +64,7 @@ import esignRoutes from "./routes/esign";
 import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
 import notificationsRoutes from "./routes/notifications";
 import chatRoutes from "./routes/chat";
+import careersRoutes from "./routes/careers";
 import vatRoutes from "./routes/vat";
 import escrowRoutes from "./routes/escrow";
 import bookingsRoutes from "./routes/bookings";
@@ -8072,6 +8073,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // The Sitter Suite™ - Pet sitting marketplace (Nayax-only payments)
   app.use('/api/sitter-suite', apiLimiter, sitterSuiteRoutes);
+  
+  // 💼 CAREERS PORTAL - SEEK-inspired HR application system with fraud prevention
+  app.use('/api/careers', apiLimiter, careersRoutes);
   
   // Seed demo data endpoint (for testing/demo purposes)
   app.use('/api', seedDemoRoutes);

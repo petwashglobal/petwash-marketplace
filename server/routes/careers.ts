@@ -1,0 +1,960 @@
+import { Router, Request, Response } from 'express';
+import { db } from '../db';
+import { 
+  careerPositions, 
+  staffApplications, 
+  staffDocuments,
+  applicationFraudSignals,
+  applicationStepProgress,
+  insertCareerPositionSchema,
+  type InsertCareerPosition,
+  type CareerPosition,
+} from '@shared/schema';
+import { eq, and, desc, sql, ilike, or } from 'drizzle-orm';
+import { logger } from '../lib/logger';
+import { z } from 'zod';
+import multer from 'multer';
+import crypto from 'crypto';
+import { Storage } from '@google-cloud/storage';
+
+const router = Router();
+
+const storage = new Storage();
+const BUCKET_NAME = process.env.BIOMETRIC_BUCKET_NAME || 'signinpetwash.firebasestorage.app';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, DOC, DOCX, JPG, PNG allowed.'));
+    }
+  },
+});
+
+// =================== PUBLIC CAREER POSITIONS API ===================
+
+// Get all active career positions (public)
+router.get('/positions', async (req: Request, res: Response) => {
+  try {
+    const { roleType, location, featured } = req.query;
+    
+    let conditions = [eq(careerPositions.isActive, true)];
+    
+    if (roleType && typeof roleType === 'string') {
+      conditions.push(eq(careerPositions.roleType, roleType));
+    }
+    
+    if (location && typeof location === 'string') {
+      conditions.push(ilike(careerPositions.location, `%${location}%`));
+    }
+    
+    if (featured === 'true') {
+      conditions.push(eq(careerPositions.isFeatured, true));
+    }
+    
+    const positions = await db
+      .select()
+      .from(careerPositions)
+      .where(and(...conditions))
+      .orderBy(desc(careerPositions.isFeatured), desc(careerPositions.createdAt));
+    
+    res.json(positions);
+  } catch (error) {
+    logger.error('[Careers] Failed to fetch positions', { error });
+    res.status(500).json({ error: 'Failed to fetch career positions' });
+  }
+});
+
+// Get position by slug or ID (public)
+router.get('/positions/:identifier', async (req: Request, res: Response) => {
+  try {
+    const { identifier } = req.params;
+    
+    const [position] = await db
+      .select()
+      .from(careerPositions)
+      .where(
+        or(
+          eq(careerPositions.slug, identifier),
+          eq(careerPositions.positionId, identifier)
+        )
+      )
+      .limit(1);
+    
+    if (!position) {
+      return res.status(404).json({ error: 'Position not found' });
+    }
+    
+    // Increment view count
+    await db
+      .update(careerPositions)
+      .set({ viewCount: sql`${careerPositions.viewCount} + 1` })
+      .where(eq(careerPositions.id, position.id));
+    
+    res.json(position);
+  } catch (error) {
+    logger.error('[Careers] Failed to fetch position', { error });
+    res.status(500).json({ error: 'Failed to fetch position details' });
+  }
+});
+
+// =================== APPLICATION SUBMISSION API ===================
+
+// Application submission schema (SEEK-inspired multi-step)
+const applicationSchema = z.object({
+  positionId: z.string().min(1),
+  
+  // Draft application ID (for updating existing drafts)
+  applicationId: z.number().optional(),
+  sessionId: z.string().optional(),
+  
+  // Personal Information
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Valid email is required'),
+  phone: z.string().min(8, 'Valid phone number is required'),
+  dateOfBirth: z.string().min(1, 'Date of birth is required'),
+  
+  // Address
+  address: z.string().min(1, 'Address is required'),
+  city: z.string().min(1, 'City is required'),
+  country: z.string().default('Israel'),
+  postalCode: z.string().optional(),
+  
+  // Experience
+  yearsExperience: z.number().min(0).max(50).optional(),
+  previousEmployer: z.string().optional(),
+  relevantSkills: z.array(z.string()).optional(),
+  
+  // Availability
+  availableStartDate: z.string().optional(),
+  availableHoursPerWeek: z.number().min(1).max(60).optional(),
+  
+  // Consents (SEEK-inspired legal compliance)
+  consentDataProcessing: z.boolean().refine(v => v === true, 'You must consent to data processing'),
+  consentBackgroundCheck: z.boolean().refine(v => v === true, 'You must consent to background checks'),
+  consentTermsOfService: z.boolean().refine(v => v === true, 'You must accept terms of service'),
+  consentPrivacyPolicy: z.boolean().refine(v => v === true, 'You must accept privacy policy'),
+  
+  // Marketing (optional)
+  consentMarketing: z.boolean().optional(),
+  
+  // Referral
+  referralSource: z.string().optional(),
+  referralCode: z.string().optional(),
+});
+
+// Submit job application
+router.post('/apply', async (req: Request, res: Response) => {
+  const correlationId = crypto.randomUUID();
+  
+  try {
+    // Get device fingerprint data
+    const ipAddress = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip;
+    const userAgent = req.headers['user-agent'] || '';
+    const deviceFingerprint = req.headers['x-device-fingerprint']?.toString() || '';
+    
+    // Validate input
+    const validationResult = applicationSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: validationResult.error.flatten().fieldErrors 
+      });
+    }
+    
+    const data = validationResult.data;
+    
+    // Check position exists and is active
+    const [position] = await db
+      .select()
+      .from(careerPositions)
+      .where(eq(careerPositions.positionId, data.positionId))
+      .limit(1);
+    
+    if (!position || !position.isActive) {
+      return res.status(400).json({ error: 'Position is no longer available' });
+    }
+    
+    // Check if this is finalizing an existing draft
+    let existingDraft: typeof staffApplications.$inferSelect | null = null;
+    if (data.applicationId) {
+      const [draft] = await db
+        .select()
+        .from(staffApplications)
+        .where(
+          and(
+            eq(staffApplications.id, data.applicationId),
+            eq(staffApplications.status, 'draft')
+          )
+        )
+        .limit(1);
+      
+      if (draft) {
+        existingDraft = draft;
+      }
+    }
+    
+    // FRAUD PREVENTION: Check for duplicate applications (skip if updating own draft)
+    const existingApplications = await db
+      .select({ id: staffApplications.id, email: staffApplications.email, status: staffApplications.status })
+      .from(staffApplications)
+      .where(
+        and(
+          or(
+            eq(staffApplications.email, data.email),
+            eq(staffApplications.phone, data.phone)
+          ),
+          existingDraft ? sql`${staffApplications.id} != ${existingDraft.id}` : sql`1=1`
+        )
+      );
+    
+    const fraudSignals: Array<{
+      signalType: string;
+      severity: string;
+      confidence: number;
+      description: string;
+      matchType?: string;
+      matchedIds?: number[];
+    }> = [];
+    
+    // Duplicate email check (exclude current draft)
+    const emailDuplicates = existingApplications.filter(a => a.email === data.email && a.status !== 'draft');
+    if (emailDuplicates.length > 0) {
+      const recentPending = emailDuplicates.filter(a => a.status === 'pending' || a.status === 'under_review');
+      
+      if (recentPending.length > 0) {
+        return res.status(400).json({ 
+          error: 'You already have an active application. Please check your email for updates.',
+          applicationId: recentPending[0].id
+        });
+      }
+      
+      fraudSignals.push({
+        signalType: 'duplicate',
+        severity: emailDuplicates.length > 2 ? 'high' : 'low',
+        confidence: 95,
+        description: `Email ${data.email} has ${emailDuplicates.length} previous applications`,
+        matchType: 'email',
+        matchedIds: emailDuplicates.map(a => a.id)
+      });
+    }
+    
+    // FRAUD: Velocity check (multiple applications in short time)
+    const recentFromIP = await db
+      .select({ id: staffApplications.id })
+      .from(staffApplications)
+      .where(
+        and(
+          sql`${staffApplications.createdAt} > NOW() - INTERVAL '1 hour'`,
+          sql`${staffApplications.notes} LIKE ${`%${ipAddress}%`}`,
+          sql`${staffApplications.status} != 'draft'`
+        )
+      );
+    
+    if (recentFromIP.length > 2) {
+      fraudSignals.push({
+        signalType: 'velocity',
+        severity: 'high',
+        confidence: 85,
+        description: `${recentFromIP.length} applications from IP ${ipAddress} in last hour`,
+      });
+    }
+    
+    // Build notes JSON with all application data
+    const notesData = {
+      positionId: data.positionId,
+      ipAddress,
+      userAgent,
+      deviceFingerprint,
+      yearsExperience: data.yearsExperience,
+      previousEmployer: data.previousEmployer,
+      relevantSkills: data.relevantSkills,
+      availableStartDate: data.availableStartDate,
+      availableHoursPerWeek: data.availableHoursPerWeek,
+      referralSource: data.referralSource,
+      consents: {
+        dataProcessing: data.consentDataProcessing,
+        backgroundCheck: data.consentBackgroundCheck,
+        termsOfService: data.consentTermsOfService,
+        privacyPolicy: data.consentPrivacyPolicy,
+        marketing: data.consentMarketing || false,
+        timestamp: new Date().toISOString(),
+      },
+      submittedAt: new Date().toISOString(),
+    };
+    
+    let application: typeof staffApplications.$inferSelect;
+    
+    // Update existing draft or create new application
+    if (existingDraft) {
+      // Finalize the draft by updating it to pending status
+      const [updated] = await db
+        .update(staffApplications)
+        .set({
+          applicationType: position.roleType,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone,
+          dateOfBirth: data.dateOfBirth,
+          address: data.address,
+          city: data.city,
+          country: data.country,
+          postalCode: data.postalCode || null,
+          status: 'pending',
+          referralSource: data.referralSource || null,
+          notes: JSON.stringify(notesData),
+        })
+        .where(eq(staffApplications.id, existingDraft.id))
+        .returning();
+      
+      application = updated;
+      
+      // Update step progress to mark all steps as completed
+      await db
+        .update(applicationStepProgress)
+        .set({ status: 'completed', completedAt: new Date() })
+        .where(eq(applicationStepProgress.applicationId, existingDraft.id));
+      
+      logger.info('[Careers] Draft application finalized', {
+        applicationId: application.id,
+        positionId: data.positionId,
+        correlationId,
+      });
+    } else {
+      // Create new application
+      const [created] = await db
+        .insert(staffApplications)
+        .values({
+          applicationType: position.roleType,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone,
+          dateOfBirth: data.dateOfBirth,
+          address: data.address,
+          city: data.city,
+          country: data.country,
+          postalCode: data.postalCode || null,
+          status: 'pending',
+          referralSource: data.referralSource || null,
+          notes: JSON.stringify(notesData),
+        })
+        .returning();
+      
+      application = created;
+    }
+    
+    // Record fraud signals
+    if (fraudSignals.length > 0) {
+      await db.insert(applicationFraudSignals).values(
+        fraudSignals.map(signal => ({
+          applicationId: application.id,
+          signalType: signal.signalType,
+          severity: signal.severity,
+          confidence: signal.confidence.toString(),
+          description: signal.description,
+          ipAddress,
+          userAgent,
+          deviceFingerprint,
+          matchType: signal.matchType || null,
+          matchedApplicationIds: signal.matchedIds || [],
+        }))
+      );
+      
+      logger.warn('[Careers] Fraud signals detected for application', {
+        applicationId: application.id,
+        signalCount: fraudSignals.length,
+        correlationId,
+      });
+    }
+    
+    // Update position application count
+    await db
+      .update(careerPositions)
+      .set({ applicationCount: sql`${careerPositions.applicationCount} + 1` })
+      .where(eq(careerPositions.id, position.id));
+    
+    logger.info('[Careers] Application submitted', {
+      applicationId: application.id,
+      positionId: data.positionId,
+      roleType: position.roleType,
+      correlationId,
+    });
+    
+    res.status(201).json({
+      success: true,
+      applicationId: application.id,
+      message: 'Your application has been submitted successfully. We will review it and contact you within 3-5 business days.',
+      nextSteps: [
+        'Check your email for confirmation',
+        'Upload your resume/CV',
+        'Complete identity verification',
+      ],
+    });
+    
+  } catch (error) {
+    logger.error('[Careers] Application submission failed', { error, correlationId });
+    res.status(500).json({ error: 'Failed to submit application. Please try again.' });
+  }
+});
+
+// Upload resume/document for application
+router.post('/applications/:applicationId/documents', upload.single('document'), async (req: Request, res: Response) => {
+  const correlationId = crypto.randomUUID();
+  
+  try {
+    const { applicationId } = req.params;
+    const { documentType = 'resume' } = req.body;
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    // Verify application exists
+    const [application] = await db
+      .select()
+      .from(staffApplications)
+      .where(eq(staffApplications.id, parseInt(applicationId)))
+      .limit(1);
+    
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    // Upload to GCS
+    const fileName = `careers/${applicationId}/${documentType}_${Date.now()}_${req.file.originalname}`;
+    const bucket = storage.bucket(BUCKET_NAME);
+    const file = bucket.file(fileName);
+    
+    await file.save(req.file.buffer, {
+      contentType: req.file.mimetype,
+      metadata: {
+        applicationId,
+        documentType,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+    
+    const [signedUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+    });
+    
+    // Save document record
+    const [document] = await db
+      .insert(staffDocuments)
+      .values({
+        applicationId: parseInt(applicationId),
+        documentType,
+        documentUrl: signedUrl,
+        status: 'pending',
+      })
+      .returning();
+    
+    logger.info('[Careers] Document uploaded', {
+      applicationId,
+      documentId: document.id,
+      documentType,
+      correlationId,
+    });
+    
+    res.json({
+      success: true,
+      documentId: document.id,
+      message: 'Document uploaded successfully',
+    });
+    
+  } catch (error) {
+    logger.error('[Careers] Document upload failed', { error, correlationId });
+    res.status(500).json({ error: 'Failed to upload document' });
+  }
+});
+
+// =================== AUTOSAVE & STEP PROGRESS API ===================
+
+// Start a new application session (creates draft)
+router.post('/start-application', async (req: Request, res: Response) => {
+  const correlationId = crypto.randomUUID();
+  
+  try {
+    const { positionId, email } = req.body;
+    const sessionId = crypto.randomUUID();
+    const ipAddress = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip;
+    const userAgent = req.headers['user-agent'] || '';
+    
+    if (!positionId) {
+      return res.status(400).json({ error: 'Position ID is required' });
+    }
+    
+    // Check position exists
+    const [position] = await db
+      .select()
+      .from(careerPositions)
+      .where(eq(careerPositions.positionId, positionId))
+      .limit(1);
+    
+    if (!position || !position.isActive) {
+      return res.status(400).json({ error: 'Position is no longer available' });
+    }
+    
+    // Create draft application
+    const [application] = await db
+      .insert(staffApplications)
+      .values({
+        applicationType: position.roleType,
+        email: email || `draft_${sessionId}@pending.petwash.co.il`,
+        status: 'draft',
+        notes: JSON.stringify({
+          positionId,
+          sessionId,
+          ipAddress,
+          userAgent,
+          startedAt: new Date().toISOString(),
+        }),
+      })
+      .returning();
+    
+    // Create initial step progress records
+    const steps = [
+      { stepNumber: 1, stepName: 'personal_info' },
+      { stepNumber: 2, stepName: 'experience' },
+      { stepNumber: 3, stepName: 'consents' },
+    ];
+    
+    await db.insert(applicationStepProgress).values(
+      steps.map(step => ({
+        applicationId: application.id,
+        stepNumber: step.stepNumber,
+        stepName: step.stepName,
+        status: step.stepNumber === 1 ? 'in_progress' : 'pending',
+        sessionId,
+      }))
+    );
+    
+    logger.info('[Careers] Application session started', {
+      applicationId: application.id,
+      sessionId,
+      positionId,
+      correlationId,
+    });
+    
+    res.status(201).json({
+      success: true,
+      applicationId: application.id,
+      sessionId,
+      positionId,
+    });
+    
+  } catch (error) {
+    logger.error('[Careers] Failed to start application', { error, correlationId });
+    res.status(500).json({ error: 'Failed to start application' });
+  }
+});
+
+// Autosave step progress
+router.post('/applications/:applicationId/autosave', async (req: Request, res: Response) => {
+  const correlationId = crypto.randomUUID();
+  
+  try {
+    const { applicationId } = req.params;
+    const { stepNumber, stepName, data, sessionId } = req.body;
+    
+    if (!stepNumber || !data) {
+      return res.status(400).json({ error: 'Step number and data are required' });
+    }
+    
+    // Verify application exists and is in draft status
+    const [application] = await db
+      .select()
+      .from(staffApplications)
+      .where(eq(staffApplications.id, parseInt(applicationId)))
+      .limit(1);
+    
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    // Update or insert step progress
+    const existingStep = await db
+      .select()
+      .from(applicationStepProgress)
+      .where(
+        and(
+          eq(applicationStepProgress.applicationId, parseInt(applicationId)),
+          eq(applicationStepProgress.stepNumber, stepNumber)
+        )
+      )
+      .limit(1);
+    
+    if (existingStep.length > 0) {
+      await db
+        .update(applicationStepProgress)
+        .set({
+          dataSnapshot: data,
+          status: 'completed',
+          completedAt: new Date(),
+          lastUpdatedAt: new Date(),
+        })
+        .where(eq(applicationStepProgress.id, existingStep[0].id));
+    } else {
+      await db.insert(applicationStepProgress).values({
+        applicationId: parseInt(applicationId),
+        stepNumber,
+        stepName: stepName || `step_${stepNumber}`,
+        status: 'completed',
+        dataSnapshot: data,
+        completedAt: new Date(),
+        sessionId,
+      });
+    }
+    
+    // Update the application record with the step data (merge into notes)
+    const currentNotes = application.notes ? JSON.parse(application.notes) : {};
+    const updatedNotes = {
+      ...currentNotes,
+      [`step${stepNumber}Data`]: data,
+      lastSavedAt: new Date().toISOString(),
+    };
+    
+    // Also update main application fields if step 1 (personal info)
+    if (stepNumber === 1 && data) {
+      await db
+        .update(staffApplications)
+        .set({
+          firstName: data.firstName || application.firstName,
+          lastName: data.lastName || application.lastName,
+          email: data.email || application.email,
+          phone: data.phone || application.phone,
+          dateOfBirth: data.dateOfBirth || application.dateOfBirth,
+          address: data.address || application.address,
+          city: data.city || application.city,
+          country: data.country || application.country,
+          notes: JSON.stringify(updatedNotes),
+        })
+        .where(eq(staffApplications.id, parseInt(applicationId)));
+    } else {
+      await db
+        .update(staffApplications)
+        .set({ notes: JSON.stringify(updatedNotes) })
+        .where(eq(staffApplications.id, parseInt(applicationId)));
+    }
+    
+    // Mark next step as in_progress if applicable
+    if (stepNumber < 3) {
+      await db
+        .update(applicationStepProgress)
+        .set({ status: 'in_progress' })
+        .where(
+          and(
+            eq(applicationStepProgress.applicationId, parseInt(applicationId)),
+            eq(applicationStepProgress.stepNumber, stepNumber + 1)
+          )
+        );
+    }
+    
+    logger.info('[Careers] Step autosaved', {
+      applicationId,
+      stepNumber,
+      correlationId,
+    });
+    
+    res.json({
+      success: true,
+      stepNumber,
+      savedAt: new Date().toISOString(),
+    });
+    
+  } catch (error) {
+    logger.error('[Careers] Autosave failed', { error, correlationId });
+    res.status(500).json({ error: 'Failed to save progress' });
+  }
+});
+
+// Get step progress for an application
+router.get('/applications/:applicationId/progress', async (req: Request, res: Response) => {
+  try {
+    const { applicationId } = req.params;
+    const { sessionId } = req.query;
+    
+    const progress = await db
+      .select()
+      .from(applicationStepProgress)
+      .where(eq(applicationStepProgress.applicationId, parseInt(applicationId)))
+      .orderBy(applicationStepProgress.stepNumber);
+    
+    const [application] = await db
+      .select()
+      .from(staffApplications)
+      .where(eq(staffApplications.id, parseInt(applicationId)))
+      .limit(1);
+    
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    res.json({
+      applicationId: parseInt(applicationId),
+      status: application.status,
+      steps: progress.map(step => ({
+        stepNumber: step.stepNumber,
+        stepName: step.stepName,
+        status: step.status,
+        completedAt: step.completedAt,
+        data: step.dataSnapshot,
+      })),
+    });
+    
+  } catch (error) {
+    logger.error('[Careers] Failed to get progress', { error });
+    res.status(500).json({ error: 'Failed to get progress' });
+  }
+});
+
+// Get application status (for applicant tracking)
+router.get('/applications/:applicationId/status', async (req: Request, res: Response) => {
+  try {
+    const { applicationId } = req.params;
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email verification required' });
+    }
+    
+    const [application] = await db
+      .select({
+        id: staffApplications.id,
+        status: staffApplications.status,
+        applicationType: staffApplications.applicationType,
+        submittedAt: staffApplications.submittedAt,
+        reviewedAt: staffApplications.reviewedAt,
+      })
+      .from(staffApplications)
+      .where(
+        and(
+          eq(staffApplications.id, parseInt(applicationId)),
+          eq(staffApplications.email, email as string)
+        )
+      )
+      .limit(1);
+    
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    // Get documents
+    const documents = await db
+      .select({
+        documentType: staffDocuments.documentType,
+        status: staffDocuments.status,
+      })
+      .from(staffDocuments)
+      .where(eq(staffDocuments.applicationId, parseInt(applicationId)));
+    
+    const statusMessages: Record<string, string> = {
+      'pending': 'Your application is awaiting review',
+      'documents_required': 'Please upload the required documents',
+      'under_review': 'Your application is being reviewed by our team',
+      'background_check': 'Background verification in progress',
+      'approved': 'Congratulations! Your application has been approved',
+      'rejected': 'Unfortunately, we cannot proceed with your application at this time',
+    };
+    
+    res.json({
+      applicationId: application.id,
+      status: application.status,
+      statusMessage: statusMessages[application.status || 'pending'] || 'Status unknown',
+      roleType: application.applicationType,
+      submittedAt: application.submittedAt,
+      reviewedAt: application.reviewedAt,
+      documents: documents.map(d => ({
+        type: d.documentType,
+        status: d.status,
+      })),
+    });
+    
+  } catch (error) {
+    logger.error('[Careers] Status check failed', { error });
+    res.status(500).json({ error: 'Failed to check application status' });
+  }
+});
+
+// =================== ADMIN ENDPOINTS ===================
+
+// Create new career position (admin)
+router.post('/admin/positions', async (req: Request, res: Response) => {
+  try {
+    const validationResult = insertCareerPositionSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: validationResult.error.flatten().fieldErrors 
+      });
+    }
+    
+    const data = validationResult.data;
+    
+    // Generate position ID and slug
+    const positionId = `POS-${data.roleType.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+    const slug = `${data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${data.location.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    
+    const [position] = await db
+      .insert(careerPositions)
+      .values({
+        ...data,
+        positionId,
+        slug,
+        publishedAt: new Date(),
+      })
+      .returning();
+    
+    logger.info('[Careers Admin] Position created', { positionId: position.positionId });
+    
+    res.status(201).json(position);
+    
+  } catch (error) {
+    logger.error('[Careers Admin] Failed to create position', { error });
+    res.status(500).json({ error: 'Failed to create position' });
+  }
+});
+
+// Seed demo career positions
+router.post('/admin/seed-positions', async (req: Request, res: Response) => {
+  try {
+    const demoPositions: InsertCareerPosition[] = [
+      {
+        positionId: 'POS-WALKER-001',
+        title: 'Pet Walker',
+        titleHe: 'מטייל כלבים',
+        department: 'operations',
+        roleType: 'walker',
+        shortDescription: 'Join our team of professional pet walkers and help dogs stay happy and healthy.',
+        shortDescriptionHe: 'הצטרפו לצוות המטיילים המקצועי שלנו ועזרו לכלבים להישאר שמחים ובריאים.',
+        fullDescription: 'As a Pet Walker at Pet Wash™, you will provide daily exercise and companionship to dogs across Israel. You will be responsible for safe, enjoyable walks while building lasting relationships with pet owners. Our walkers use GPS tracking and real-time updates to keep owners informed.',
+        fullDescriptionHe: 'כמטייל כלבים ב-Pet Wash™, תספק פעילות גופנית יומית וחברות לכלבים ברחבי ישראל. תהיה אחראי על טיולים בטוחים ומהנים תוך בניית קשרים ארוכי טווח עם בעלי חיות מחמד.',
+        location: 'Nationwide Israel',
+        locationType: 'field',
+        employmentType: 'contractor',
+        salaryRangeMin: '35',
+        salaryRangeMax: '60',
+        salaryCurrency: 'ILS',
+        salaryPeriod: 'hourly',
+        requirements: ['Love for animals', 'Physical fitness', 'Reliable transportation', 'Smartphone with GPS', 'Clean background check'],
+        requiresBackgroundCheck: true,
+        requiresDrivingLicense: false,
+        isActive: true,
+        isFeatured: true,
+        urgencyLevel: 'urgent',
+        openPositions: 15,
+        slug: 'pet-walker-nationwide',
+      },
+      {
+        positionId: 'POS-DRIVER-001',
+        title: 'PetTrek™ Driver',
+        titleHe: 'נהג PetTrek™',
+        department: 'logistics',
+        roleType: 'driver',
+        shortDescription: 'Transport pets safely across Israel with our premium pet transport service.',
+        shortDescriptionHe: 'העבר חיות מחמד בבטחה ברחבי ישראל עם שירות ההובלה הפרמיום שלנו.',
+        fullDescription: 'PetTrek™ drivers provide safe, comfortable transportation for pets. You will use our climate-controlled vehicles and follow strict safety protocols. GPS-tracked journeys ensure peace of mind for pet owners.',
+        fullDescriptionHe: 'נהגי PetTrek™ מספקים הובלה בטוחה ונוחה לחיות מחמד. תשתמש ברכבים ממוזגים שלנו ותעקוב אחר פרוטוקולי בטיחות קפדניים.',
+        location: 'Tel Aviv, Jerusalem, Haifa',
+        locationType: 'field',
+        employmentType: 'contractor',
+        salaryRangeMin: '45',
+        salaryRangeMax: '80',
+        salaryCurrency: 'ILS',
+        salaryPeriod: 'hourly',
+        requirements: ['Valid driving license (min 3 years)', 'Clean driving record', 'Pet handling experience', 'Smartphone with GPS', 'Clean background check'],
+        requiresBackgroundCheck: true,
+        requiresDrivingLicense: true,
+        isActive: true,
+        isFeatured: true,
+        urgencyLevel: 'normal',
+        openPositions: 8,
+        slug: 'pettrek-driver-israel',
+      },
+      {
+        positionId: 'POS-SITTER-001',
+        title: 'Pet Sitter & Host',
+        titleHe: 'פט סיטר ומארח',
+        department: 'care',
+        roleType: 'sitter',
+        shortDescription: 'Provide loving care for pets in your home or the pet owner\'s home.',
+        shortDescriptionHe: 'ספק טיפול אוהב לחיות מחמד בביתך או בבית בעל חיית המחמד.',
+        fullDescription: 'As a Pet Sitter & Host, you will provide overnight care, feeding, and companionship. You can host pets in your home or visit pet owners\' homes. Our platform handles bookings, payments, and insurance.',
+        fullDescriptionHe: 'כפט סיטר ומארח, תספק טיפול לילי, האכלה וחברות. תוכל לארח חיות מחמד בביתך או לבקר בבתי בעלי חיות מחמד.',
+        location: 'All Major Cities',
+        locationType: 'hybrid',
+        employmentType: 'contractor',
+        salaryRangeMin: '150',
+        salaryRangeMax: '300',
+        salaryCurrency: 'ILS',
+        salaryPeriod: 'daily',
+        requirements: ['Pet care experience', 'Pet-friendly home (for hosting)', 'References', 'First aid training (preferred)', 'Background check'],
+        requiresBackgroundCheck: true,
+        requiresDrivingLicense: false,
+        isActive: true,
+        isFeatured: false,
+        urgencyLevel: 'normal',
+        openPositions: 25,
+        slug: 'pet-sitter-host-israel',
+      },
+      {
+        positionId: 'POS-SUPPLIER-001',
+        title: 'Organic Pet Products Supplier',
+        titleHe: 'ספק מוצרי חיות מחמד אורגניים',
+        department: 'operations',
+        roleType: 'supplier',
+        shortDescription: 'Partner with Pet Wash™ to supply premium organic pet care products.',
+        shortDescriptionHe: 'שתף פעולה עם Pet Wash™ לאספקת מוצרי טיפוח אורגניים פרמיום לחיות מחמד.',
+        fullDescription: 'We are looking for certified organic suppliers of shampoos, conditioners, and pet care products. Our K9000 stations use only the finest Australian Tea Tree Oil formulations. Become a trusted supplier partner.',
+        fullDescriptionHe: 'אנו מחפשים ספקים אורגניים מוסמכים של שמפו, מרכך ומוצרי טיפוח. עמדות ה-K9000 שלנו משתמשות רק בפורמולציות שמן עץ התה האוסטרלי המשובחות ביותר.',
+        location: 'Israel / International',
+        locationType: 'remote',
+        employmentType: 'contractor',
+        requirements: ['Organic certification', 'Quality assurance standards', 'Minimum 1000L/month capacity', 'Israeli Tax Registration'],
+        requiresBackgroundCheck: false,
+        requiresDrivingLicense: false,
+        isActive: true,
+        isFeatured: false,
+        urgencyLevel: 'normal',
+        openPositions: 5,
+        slug: 'organic-supplier-partner',
+      },
+    ];
+    
+    // Insert or update positions
+    for (const position of demoPositions) {
+      const existing = await db
+        .select({ id: careerPositions.id })
+        .from(careerPositions)
+        .where(eq(careerPositions.positionId, position.positionId))
+        .limit(1);
+      
+      if (existing.length === 0) {
+        await db.insert(careerPositions).values({
+          ...position,
+          publishedAt: new Date(),
+        });
+      }
+    }
+    
+    logger.info('[Careers Admin] Demo positions seeded');
+    
+    res.json({ success: true, message: 'Demo positions seeded successfully', count: demoPositions.length });
+    
+  } catch (error) {
+    logger.error('[Careers Admin] Failed to seed positions', { error });
+    res.status(500).json({ error: 'Failed to seed positions' });
+  }
+});
+
+export default router;
