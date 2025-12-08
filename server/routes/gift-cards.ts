@@ -9,6 +9,98 @@ import { logger } from '../lib/logger';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { paymentLimiter } from '../middleware/rateLimiter';
+import { AppleWalletService } from '../appleWallet';
+import { GoogleWalletService } from '../googleWallet';
+import rateLimit from 'express-rate-limit';
+
+// Wallet pass download rate limiter (prevents brute-force token guessing)
+const walletPassLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 requests per window per IP
+  message: { error: 'Too many wallet pass requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// 🔐 WALLET PASS TOKEN SECRET (FAIL CLOSED - no fallback for security)
+const WALLET_TOKEN_SECRET = process.env.WALLET_LINK_SECRET || process.env.COOKIE_SECRET;
+
+/**
+ * Check if wallet pass feature is properly configured
+ * Returns false if secret is missing (fail closed)
+ */
+function isWalletPassConfigured(): boolean {
+  return Boolean(WALLET_TOKEN_SECRET && WALLET_TOKEN_SECRET.length >= 32);
+}
+
+/**
+ * Generate secure, time-limited wallet pass token
+ * Uses HMAC to prevent tampering
+ * SECURITY: Returns null if secret not configured (fail closed)
+ */
+function generateWalletPassToken(voucherId: string, expiresInHours = 72): { token: string; expiresAt: number } | null {
+  // SECURITY: Fail closed - refuse to generate token without proper secret
+  if (!isWalletPassConfigured()) {
+    logger.error('[Wallet Token] Cannot generate token - WALLET_LINK_SECRET or COOKIE_SECRET not configured (min 32 chars required)');
+    return null;
+  }
+  
+  const expiresAt = Date.now() + (expiresInHours * 60 * 60 * 1000);
+  const payload = `${voucherId}|${expiresAt}`;
+  const signature = crypto
+    .createHmac('sha256', WALLET_TOKEN_SECRET!)
+    .update(payload)
+    .digest('base64url');
+  
+  return {
+    token: `${Buffer.from(payload).toString('base64url')}.${signature}`,
+    expiresAt
+  };
+}
+
+/**
+ * Verify wallet pass token
+ * Returns voucherId if valid, null if invalid/expired
+ * SECURITY: Returns null if secret not configured (fail closed)
+ */
+function verifyWalletPassToken(token: string): string | null {
+  // SECURITY: Fail closed - refuse to verify without proper secret
+  if (!isWalletPassConfigured()) {
+    logger.error('[Wallet Token] Cannot verify token - WALLET_LINK_SECRET or COOKIE_SECRET not configured');
+    return null;
+  }
+  
+  try {
+    const [payloadB64, signature] = token.split('.');
+    if (!payloadB64 || !signature) return null;
+    
+    const payload = Buffer.from(payloadB64, 'base64url').toString();
+    const [voucherId, expiresAtStr] = payload.split('|');
+    const expiresAt = parseInt(expiresAtStr, 10);
+    
+    // Check expiration
+    if (Date.now() > expiresAt) {
+      logger.warn('[Wallet Token] Token expired', { voucherId });
+      return null;
+    }
+    
+    // Verify signature
+    const expectedSignature = crypto
+      .createHmac('sha256', WALLET_TOKEN_SECRET!)
+      .update(payload)
+      .digest('base64url');
+    
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+      logger.warn('[Wallet Token] Invalid signature', { voucherId });
+      return null;
+    }
+    
+    return voucherId;
+  } catch (error) {
+    logger.error('[Wallet Token] Verification error', { error });
+    return null;
+  }
+}
 
 const router = Router();
 
@@ -68,6 +160,14 @@ async function sendGiftCardToRecipient(
     ? `🎁 You received a PetWash™ E-Gift Card from ${senderName}!`
     : `🎁 You received a PetWash™ E-Gift Card!`;
 
+  // Generate secure wallet pass tokens (valid for 72 hours)
+  // SECURITY: Will be null if secret not properly configured (fail closed)
+  const tokenResult = generateWalletPassToken(voucher.id, 72);
+  const baseUrl = process.env.BASE_URL || 'https://petwash.co.il';
+  const appleWalletUrl = tokenResult ? `${baseUrl}/api/gift-cards/${voucher.id}/wallet/apple?token=${tokenResult.token}` : null;
+  const googleWalletUrl = tokenResult ? `${baseUrl}/api/gift-cards/${voucher.id}/wallet/google?token=${tokenResult.token}` : null;
+  const walletButtonsEnabled = Boolean(appleWalletUrl && googleWalletUrl);
+
   const emailHtml = `
     <!DOCTYPE html>
     <html>
@@ -85,7 +185,11 @@ async function sendGiftCardToRecipient(
         .qr-code img { max-width: 300px; border: 3px solid #ec4899; border-radius: 12px; }
         .message-box { background: #fef2f2; border-left: 4px solid #ec4899; padding: 15px; margin: 20px 0; border-radius: 4px; }
         .code-box { background: #f9fafb; border: 2px dashed #9ca3af; padding: 20px; text-align: center; font-family: monospace; font-size: 20px; font-weight: bold; margin: 20px 0; border-radius: 8px; }
-        .btn { display: inline-block; background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+        .btn { display: inline-block; background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 10px 5px; }
+        .wallet-btn { display: inline-block; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 8px; font-size: 14px; }
+        .apple-btn { background: #000000; color: white; }
+        .google-btn { background: #4285F4; color: white; }
+        .wallet-section { text-align: center; background: #f8fafc; border-radius: 12px; padding: 20px; margin: 20px 0; }
         .footer { background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; }
         .legal { font-size: 10px; color: #9ca3af; margin-top: 15px; }
       </style>
@@ -118,17 +222,28 @@ async function sendGiftCardToRecipient(
             <p style="font-size: 12px; margin-top: 10px; color: #6b7280;">Gift Card Code (Last 4 digits)</p>
           </div>
           
-          <div style="text-align: center;">
-            <a href="${process.env.BASE_URL || 'https://petwash.co.il'}/my-wallet" class="btn">
-              Add to My Wallet
-            </a>
+          ${walletButtonsEnabled ? `
+          <!-- 📱 MOBILE WALLET BUTTONS -->
+          <div class="wallet-section">
+            <p style="margin: 0 0 15px 0; font-weight: bold; color: #374151;">Add to Your Mobile Wallet</p>
+            <p style="margin: 0 0 15px 0; font-size: 13px; color: #6b7280;">Keep your gift card handy - add it to your phone's wallet for easy access at any K9000 station</p>
+            <div>
+              <a href="${appleWalletUrl}" class="wallet-btn apple-btn" style="color: white;">
+                 Add to Apple Wallet
+              </a>
+              <a href="${googleWalletUrl}" class="wallet-btn google-btn" style="color: white;">
+                🤖 Add to Google Wallet
+              </a>
+            </div>
+            <p style="margin: 15px 0 0 0; font-size: 11px; color: #9ca3af;">Links expire in 72 hours. Open on your mobile device for best experience.</p>
           </div>
+          ` : ''}
           
           <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 15px; margin: 20px 0;">
             <p style="margin: 0; color: #166534;"><strong>✓ How to Use:</strong></p>
             <ul style="margin: 10px 0; color: #166534;">
               <li>Scan QR code at any K9000 wash station</li>
-              <li>Or add to Apple Wallet / Google Wallet</li>
+              <li>Or add to Apple Wallet / Google Wallet above</li>
               <li>Valid for 12 months from issue date</li>
               <li>Non-transferable & single-use only</li>
             </ul>
@@ -578,4 +693,234 @@ router.get('/:voucherId/status', async (req, res) => {
   }
 });
 
+// 🍎 APPLE WALLET PASS FOR E-GIFT CARD
+// Public endpoint - uses secure token from email link (no auth required)
+router.get('/:voucherId/wallet/apple', walletPassLimiter, async (req, res) => {
+  const correlationId = crypto.randomUUID();
+  
+  try {
+    const { voucherId } = req.params;
+    const { token } = req.query;
+    
+    // Verify secure token
+    if (!token || typeof token !== 'string') {
+      logger.warn('[E-Gift Wallet] Missing token', { voucherId, correlationId });
+      return res.status(401).json({ error: 'Missing or invalid token' });
+    }
+    
+    const verifiedVoucherId = verifyWalletPassToken(token);
+    if (!verifiedVoucherId || verifiedVoucherId !== voucherId) {
+      logger.warn('[E-Gift Wallet] Invalid token', { voucherId, correlationId });
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    
+    // Fetch voucher from database
+    const [voucher] = await db
+      .select()
+      .from(eVouchers)
+      .where(eq(eVouchers.id, voucherId));
+    
+    if (!voucher) {
+      return res.status(404).json({ error: 'Gift card not found' });
+    }
+    
+    // Check if voucher is still valid
+    if (voucher.status === 'REDEEMED') {
+      return res.status(400).json({ error: 'This gift card has already been redeemed' });
+    }
+    
+    if (voucher.status === 'EXPIRED' || (voucher.expiresAt && new Date(voucher.expiresAt) < new Date())) {
+      return res.status(400).json({ error: 'This gift card has expired' });
+    }
+    
+    // Check if Apple Wallet is configured
+    if (!AppleWalletService.hasValidCertificates()) {
+      logger.warn('[E-Gift Wallet] Apple Wallet not configured', { correlationId });
+      return res.status(503).json({ 
+        error: 'Apple Wallet is temporarily unavailable',
+        message: 'Please use the QR code to redeem your gift card at any K9000 station'
+      });
+    }
+    
+    // Generate QR code data for voucher redemption
+    const qrData = JSON.stringify({
+      type: 'PETWASH_EGIFT',
+      voucherId: voucher.id,
+      codeLast4: voucher.codeLast4,
+      amount: voucher.remainingAmount,
+      currency: voucher.currency,
+      timestamp: Date.now()
+    });
+    
+    // Generate Apple Wallet pass
+    const passBuffer = await AppleWalletService.generateEVoucher({
+      voucherId: voucher.id,
+      userId: voucher.ownerUid || 'gift-recipient',
+      userName: voucher.recipientName || 'Gift Recipient',
+      amount: Number(voucher.remainingAmount),
+      currency: voucher.currency,
+      expiryDate: voucher.expiresAt ? new Date(voucher.expiresAt) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      qrCode: qrData,
+      description: `₪${voucher.initialAmount} PetWash™ E-Gift Card`
+    });
+    
+    logger.info('[E-Gift Wallet] Apple pass generated', { 
+      voucherId, 
+      correlationId,
+      amount: voucher.remainingAmount 
+    });
+    
+    // Send pass file (opens directly in Apple Wallet on iOS)
+    res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
+    res.setHeader('Content-Disposition', `inline; filename="PetWash_GiftCard_${voucher.codeLast4}.pkpass"`);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.send(passBuffer);
+    
+  } catch (error: any) {
+    logger.error('[E-Gift Wallet] Apple pass error', { error: error.message, correlationId });
+    res.status(500).json({ error: 'Failed to generate Apple Wallet pass' });
+  }
+});
+
+// 🤖 GOOGLE WALLET PASS FOR E-GIFT CARD
+// Public endpoint - uses secure token from email link (no auth required)
+router.get('/:voucherId/wallet/google', walletPassLimiter, async (req, res) => {
+  const correlationId = crypto.randomUUID();
+  
+  try {
+    const { voucherId } = req.params;
+    const { token } = req.query;
+    
+    // Verify secure token
+    if (!token || typeof token !== 'string') {
+      logger.warn('[E-Gift Wallet] Missing token', { voucherId, correlationId });
+      return res.status(401).json({ error: 'Missing or invalid token' });
+    }
+    
+    const verifiedVoucherId = verifyWalletPassToken(token);
+    if (!verifiedVoucherId || verifiedVoucherId !== voucherId) {
+      logger.warn('[E-Gift Wallet] Invalid token', { voucherId, correlationId });
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    
+    // Fetch voucher from database
+    const [voucher] = await db
+      .select()
+      .from(eVouchers)
+      .where(eq(eVouchers.id, voucherId));
+    
+    if (!voucher) {
+      return res.status(404).json({ error: 'Gift card not found' });
+    }
+    
+    // Check if voucher is still valid
+    if (voucher.status === 'REDEEMED') {
+      return res.status(400).json({ error: 'This gift card has already been redeemed' });
+    }
+    
+    if (voucher.status === 'EXPIRED' || (voucher.expiresAt && new Date(voucher.expiresAt) < new Date())) {
+      return res.status(400).json({ error: 'This gift card has expired' });
+    }
+    
+    // Check if Google Wallet is configured
+    if (!GoogleWalletService.hasValidCredentials()) {
+      logger.warn('[E-Gift Wallet] Google Wallet not configured', { correlationId });
+      return res.status(503).json({ 
+        error: 'Google Wallet is temporarily unavailable',
+        message: 'Please use the QR code to redeem your gift card at any K9000 station'
+      });
+    }
+    
+    // Generate QR code data for voucher redemption
+    const qrData = JSON.stringify({
+      type: 'PETWASH_EGIFT',
+      voucherId: voucher.id,
+      codeLast4: voucher.codeLast4,
+      amount: voucher.remainingAmount,
+      currency: voucher.currency,
+      timestamp: Date.now()
+    });
+    
+    // Generate Google Wallet JWT
+    const jwt = await GoogleWalletService.generateEVoucherJWT({
+      voucherId: voucher.id,
+      userId: voucher.ownerUid || 'gift-recipient',
+      userName: voucher.recipientName || 'Gift Recipient',
+      amount: Number(voucher.remainingAmount),
+      currency: voucher.currency,
+      expiryDate: voucher.expiresAt ? new Date(voucher.expiresAt) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      qrCode: qrData,
+      description: `₪${voucher.initialAmount} PetWash™ E-Gift Card`
+    });
+    
+    // Construct Google Wallet save URL
+    const saveUrl = `https://pay.google.com/gp/v/save/${jwt}`;
+    
+    logger.info('[E-Gift Wallet] Google pass generated', { 
+      voucherId, 
+      correlationId,
+      amount: voucher.remainingAmount 
+    });
+    
+    // Redirect to Google Wallet save URL
+    res.redirect(saveUrl);
+    
+  } catch (error: any) {
+    logger.error('[E-Gift Wallet] Google pass error', { error: error.message, correlationId });
+    res.status(500).json({ error: 'Failed to generate Google Wallet pass' });
+  }
+});
+
+// 🔗 GENERATE WALLET LINKS (for including in emails)
+// Internal use - generates secure tokens for wallet pass URLs
+router.post('/:voucherId/wallet-links', async (req, res) => {
+  try {
+    const { voucherId } = req.params;
+    
+    // Verify voucher exists
+    const [voucher] = await db
+      .select({ id: eVouchers.id, status: eVouchers.status })
+      .from(eVouchers)
+      .where(eq(eVouchers.id, voucherId));
+    
+    if (!voucher) {
+      return res.status(404).json({ error: 'Gift card not found' });
+    }
+    
+    if (voucher.status === 'REDEEMED' || voucher.status === 'EXPIRED') {
+      return res.status(400).json({ error: 'Gift card is no longer valid' });
+    }
+    
+    // Generate secure tokens (valid for 72 hours)
+    // SECURITY: Returns null if secret not configured (fail closed)
+    const tokenResult = generateWalletPassToken(voucherId, 72);
+    
+    if (!tokenResult) {
+      logger.error('[E-Gift Wallet] Cannot generate wallet links - WALLET_LINK_SECRET or COOKIE_SECRET not configured');
+      return res.status(503).json({ 
+        error: 'Wallet pass feature temporarily unavailable',
+        message: 'Mobile wallet integration requires server configuration. Please use the QR code to redeem your gift card.'
+      });
+    }
+    
+    const baseUrl = process.env.BASE_URL || 'https://petwash.co.il';
+    
+    res.json({
+      success: true,
+      appleWalletUrl: `${baseUrl}/api/gift-cards/${voucherId}/wallet/apple?token=${tokenResult.token}`,
+      googleWalletUrl: `${baseUrl}/api/gift-cards/${voucherId}/wallet/google?token=${tokenResult.token}`,
+      expiresAt: new Date(tokenResult.expiresAt).toISOString(),
+      validForHours: 72
+    });
+    
+  } catch (error: any) {
+    logger.error('[E-Gift Wallet] Link generation error', { error: error.message });
+    res.status(500).json({ error: 'Failed to generate wallet links' });
+  }
+});
+
 export default router;
+
+// Export token generator for use in email sending
+export { generateWalletPassToken };
