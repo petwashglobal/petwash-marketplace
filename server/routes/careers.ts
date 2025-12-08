@@ -1082,4 +1082,254 @@ router.post('/admin/seed-positions', async (req: Request, res: Response) => {
   }
 });
 
+// =================== HR ADMIN DASHBOARD ===================
+
+// Get all applications with filtering (HR Admin)
+router.get('/admin/applications', async (req: Request, res: Response) => {
+  try {
+    const { status, roleType, positionId, search, limit = '50', offset = '0' } = req.query;
+    
+    // Build query conditions
+    let conditions: any[] = [];
+    
+    if (status && typeof status === 'string' && status !== 'all') {
+      conditions.push(eq(staffApplications.status, status));
+    }
+    
+    if (roleType && typeof roleType === 'string' && roleType !== 'all') {
+      conditions.push(eq(staffApplications.applicationType, roleType));
+    }
+    
+    if (positionId && typeof positionId === 'string') {
+      conditions.push(eq(staffApplications.positionId, positionId));
+    }
+    
+    // Build the where clause
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    // Get applications with position details
+    const applications = await db
+      .select({
+        id: staffApplications.id,
+        applicationId: staffApplications.applicationId,
+        positionId: staffApplications.positionId,
+        firstName: staffApplications.firstName,
+        lastName: staffApplications.lastName,
+        email: staffApplications.email,
+        phone: staffApplications.phone,
+        city: staffApplications.city,
+        applicationType: staffApplications.applicationType,
+        status: staffApplications.status,
+        reviewStage: staffApplications.reviewStage,
+        fraudRiskScore: staffApplications.fraudRiskScore,
+        createdAt: staffApplications.createdAt,
+        submittedAt: staffApplications.submittedAt,
+        reviewedAt: staffApplications.reviewedAt,
+        positionTitle: careerPositions.titleEn,
+        positionTitleHe: careerPositions.titleHe,
+        positionLocation: careerPositions.location,
+      })
+      .from(staffApplications)
+      .leftJoin(careerPositions, eq(staffApplications.positionId, careerPositions.positionId))
+      .where(whereClause)
+      .orderBy(desc(staffApplications.createdAt))
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
+    
+    // Get total count for pagination
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(staffApplications)
+      .where(whereClause);
+    
+    // Get status counts for dashboard
+    const statusCounts = await db
+      .select({
+        status: staffApplications.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(staffApplications)
+      .groupBy(staffApplications.status);
+    
+    res.json({
+      applications,
+      total: count,
+      statusCounts: statusCounts.reduce((acc, curr) => {
+        acc[curr.status || 'unknown'] = curr.count;
+        return acc;
+      }, {} as Record<string, number>),
+    });
+    
+  } catch (error) {
+    logger.error('[HR Admin] Failed to fetch applications', { error });
+    res.status(500).json({ error: 'Failed to fetch applications' });
+  }
+});
+
+// Get single application details (HR Admin)
+router.get('/admin/applications/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const [application] = await db
+      .select()
+      .from(staffApplications)
+      .where(eq(staffApplications.id, parseInt(id)))
+      .limit(1);
+    
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    // Get position details
+    const [position] = await db
+      .select()
+      .from(careerPositions)
+      .where(eq(careerPositions.positionId, application.positionId))
+      .limit(1);
+    
+    // Get documents
+    const documents = await db
+      .select()
+      .from(staffDocuments)
+      .where(eq(staffDocuments.applicationId, application.id));
+    
+    // Get fraud signals
+    const fraudSignals = await db
+      .select()
+      .from(applicationFraudSignals)
+      .where(eq(applicationFraudSignals.applicationId, application.id))
+      .orderBy(desc(applicationFraudSignals.detectedAt));
+    
+    // Get step progress
+    const steps = await db
+      .select()
+      .from(applicationStepProgress)
+      .where(eq(applicationStepProgress.applicationId, application.id))
+      .orderBy(applicationStepProgress.stepNumber);
+    
+    res.json({
+      application,
+      position,
+      documents,
+      fraudSignals,
+      steps,
+    });
+    
+  } catch (error) {
+    logger.error('[HR Admin] Failed to fetch application details', { error });
+    res.status(500).json({ error: 'Failed to fetch application details' });
+  }
+});
+
+// Update application status (HR Admin)
+router.patch('/admin/applications/:id/status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, reviewStage, reviewerNotes } = req.body;
+    
+    const validStatuses = ['draft', 'pending', 'under_review', 'documents_required', 'background_check', 
+                           'interview_scheduled', 'approved', 'rejected', 'withdrawn'];
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    
+    const updateData: any = {
+      status,
+      reviewedAt: new Date(),
+    };
+    
+    if (reviewStage) {
+      updateData.reviewStage = reviewStage;
+    }
+    
+    if (reviewerNotes) {
+      updateData.reviewerNotes = reviewerNotes;
+    }
+    
+    const [updated] = await db
+      .update(staffApplications)
+      .set(updateData)
+      .where(eq(staffApplications.id, parseInt(id)))
+      .returning();
+    
+    if (!updated) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    logger.info('[HR Admin] Application status updated', { 
+      applicationId: updated.id, 
+      newStatus: status 
+    });
+    
+    res.json(updated);
+    
+  } catch (error) {
+    logger.error('[HR Admin] Failed to update application status', { error });
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// Get HR dashboard statistics
+router.get('/admin/stats', async (req: Request, res: Response) => {
+  try {
+    // Total applications
+    const [{ total }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(staffApplications);
+    
+    // Applications by status
+    const statusCounts = await db
+      .select({
+        status: staffApplications.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(staffApplications)
+      .groupBy(staffApplications.status);
+    
+    // Applications by role type
+    const roleTypeCounts = await db
+      .select({
+        roleType: staffApplications.applicationType,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(staffApplications)
+      .groupBy(staffApplications.applicationType);
+    
+    // Recent applications (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const [{ recentCount }] = await db
+      .select({ recentCount: sql<number>`count(*)::int` })
+      .from(staffApplications)
+      .where(sql`${staffApplications.createdAt} >= ${sevenDaysAgo}`);
+    
+    // High risk applications
+    const [{ highRiskCount }] = await db
+      .select({ highRiskCount: sql<number>`count(*)::int` })
+      .from(staffApplications)
+      .where(sql`${staffApplications.fraudRiskScore} >= 50`);
+    
+    res.json({
+      total,
+      recentCount,
+      highRiskCount,
+      statusBreakdown: statusCounts.reduce((acc, curr) => {
+        acc[curr.status || 'unknown'] = curr.count;
+        return acc;
+      }, {} as Record<string, number>),
+      roleTypeBreakdown: roleTypeCounts.reduce((acc, curr) => {
+        acc[curr.roleType || 'unknown'] = curr.count;
+        return acc;
+      }, {} as Record<string, number>),
+    });
+    
+  } catch (error) {
+    logger.error('[HR Admin] Failed to fetch stats', { error });
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
 export default router;
