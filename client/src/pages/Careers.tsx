@@ -64,11 +64,15 @@ export default function Careers() {
   
   const [selectedPosition, setSelectedPosition] = useState<CareerPosition | null>(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [submittedApplicationId, setSubmittedApplicationId] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [applicationId, setApplicationId] = useState<number | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -200,7 +204,10 @@ export default function Careers() {
         title: isRTL ? 'מועמדות נשלחה בהצלחה!' : 'Application Submitted!',
         description: data.message,
       });
+      // Store the application ID for resume upload
+      setSubmittedApplicationId(data.applicationId);
       setShowApplicationForm(false);
+      setShowSuccessDialog(true);
       setCurrentStep(1);
       setFormData({
         firstName: '',
@@ -319,6 +326,51 @@ export default function Careers() {
       applicationId: applicationId || undefined,
       sessionId: sessionId || undefined,
     });
+  };
+  
+  // Handle resume file upload
+  const handleResumeUpload = async () => {
+    if (!resumeFile || !submittedApplicationId) return;
+    
+    setIsUploadingResume(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('document', resumeFile);
+      formDataUpload.append('documentType', 'resume');
+      
+      const response = await fetch(`/api/careers/applications/${submittedApplicationId}/documents`, {
+        method: 'POST',
+        body: formDataUpload,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const data = await response.json();
+      toast({
+        title: isRTL ? 'קורות החיים הועלו בהצלחה!' : 'Resume Uploaded!',
+        description: isRTL ? 'נבחן את המסמכים שלך בקרוב' : 'We will review your documents shortly',
+      });
+      setResumeFile(null);
+      setShowSuccessDialog(false);
+      setSubmittedApplicationId(null);
+    } catch (error) {
+      toast({
+        title: isRTL ? 'שגיאה' : 'Error',
+        description: isRTL ? 'העלאת הקובץ נכשלה' : 'Failed to upload file',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingResume(false);
+    }
+  };
+  
+  // Close success dialog without uploading
+  const handleCloseSuccessDialog = () => {
+    setShowSuccessDialog(false);
+    setSubmittedApplicationId(null);
+    setResumeFile(null);
   };
 
   return (
@@ -970,6 +1022,113 @@ export default function Careers() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Success Dialog with Resume Upload */}
+      <Dialog open={showSuccessDialog} onOpenChange={handleCloseSuccessDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader className="text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+              <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+            </div>
+            <DialogTitle className="text-2xl font-bold text-center">
+              {isRTL ? 'המועמדות נשלחה בהצלחה!' : 'Application Submitted!'}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {isRTL 
+                ? 'נבחן את המועמדות שלך ונחזור אליך תוך 3-5 ימי עסקים.'
+                : 'We will review your application and get back to you within 3-5 business days.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+              <h4 className="font-semibold text-emerald-800 mb-2">
+                {isRTL ? 'מה הלאה?' : 'What\'s Next?'}
+              </h4>
+              <ul className="text-sm text-emerald-700 space-y-1">
+                <li>• {isRTL ? 'בדוק את האימייל שלך לאישור' : 'Check your email for confirmation'}</li>
+                <li>• {isRTL ? 'העלה קורות חיים (מומלץ)' : 'Upload your resume (recommended)'}</li>
+                <li>• {isRTL ? 'השלם אימות זהות אם נדרש' : 'Complete identity verification if required'}</li>
+              </ul>
+            </div>
+            
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-emerald-400 transition-colors">
+              <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+              <h4 className="font-medium mb-2">
+                {isRTL ? 'העלה קורות חיים (אופציונלי)' : 'Upload Resume (Optional)'}
+              </h4>
+              <p className="text-sm text-gray-500 mb-4">
+                {isRTL ? 'PDF, DOC או DOCX עד 5MB' : 'PDF, DOC or DOCX up to 5MB'}
+              </p>
+              
+              <input
+                type="file"
+                id="resume-upload"
+                className="hidden"
+                accept=".pdf,.doc,.docx"
+                onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                data-testid="input-resume-upload"
+              />
+              
+              {resumeFile ? (
+                <div className="flex items-center justify-center gap-2 text-emerald-600 mb-4">
+                  <FileText className="w-5 h-5" />
+                  <span className="text-sm font-medium">{resumeFile.name}</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setResumeFile(null)}
+                    className="text-red-500 hover:text-red-700 p-1 h-auto"
+                  >
+                    ×
+                  </Button>
+                </div>
+              ) : (
+                <label 
+                  htmlFor="resume-upload" 
+                  className="inline-block cursor-pointer"
+                >
+                  <Button variant="outline" asChild>
+                    <span data-testid="button-choose-file">
+                      <Upload className="w-4 h-4 me-2" />
+                      {isRTL ? 'בחר קובץ' : 'Choose File'}
+                    </span>
+                  </Button>
+                </label>
+              )}
+            </div>
+            
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={handleCloseSuccessDialog}
+                data-testid="button-skip-resume"
+              >
+                {isRTL ? 'דלג' : 'Skip for Now'}
+              </Button>
+              <Button 
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                onClick={handleResumeUpload}
+                disabled={!resumeFile || isUploadingResume}
+                data-testid="button-upload-resume"
+              >
+                {isUploadingResume ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    {isRTL ? 'מעלה...' : 'Uploading...'}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    {isRTL ? 'העלה קורות חיים' : 'Upload Resume'}
+                  </span>
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
