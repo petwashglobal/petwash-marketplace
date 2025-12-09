@@ -23,8 +23,12 @@ import {
   Search,
   ChevronDown,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Brain,
+  Settings
 } from 'lucide-react';
+import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -144,6 +148,58 @@ export default function HRAdminDashboard() {
     },
   });
   
+  const bulkShortlistMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/careers/admin/applications/bulk-shortlist', {});
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: isRTL ? 'סינון חכם הושלם' : 'Smart Shortlisting Complete',
+        description: isRTL 
+          ? `עובדו ${data.processed} מועמדויות: ${data.shortlisted} ברשימה מקוצרת, ${data.rejected} נדחו, ${data.manualReview} לבדיקה ידנית`
+          : `Processed ${data.processed} applications: ${data.shortlisted} shortlisted, ${data.rejected} rejected, ${data.manualReview} for manual review`,
+      });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['/api/careers/admin/stats'] });
+    },
+    onError: () => {
+      toast({
+        title: isRTL ? 'שגיאה' : 'Error',
+        description: isRTL ? 'הסינון החכם נכשל' : 'Failed to run smart shortlisting',
+        variant: 'destructive',
+      });
+    },
+  });
+  
+  const shortlistSingleMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('POST', `/api/careers/admin/applications/${id}/shortlist`, {});
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      const recommendation = data.recommendation === 'shortlist' 
+        ? (isRTL ? 'ברשימה מקוצרת' : 'Shortlisted')
+        : data.recommendation === 'reject'
+        ? (isRTL ? 'נדחה' : 'Rejected')
+        : (isRTL ? 'נדרשת בדיקה ידנית' : 'Manual Review Required');
+      
+      toast({
+        title: isRTL ? 'סינון הושלם' : 'Shortlisting Complete',
+        description: `${recommendation} (${isRTL ? 'ציון' : 'Score'}: ${data.score}%)`,
+      });
+      setShowDetails(false);
+      refetch();
+    },
+    onError: () => {
+      toast({
+        title: isRTL ? 'שגיאה' : 'Error',
+        description: isRTL ? 'הסינון נכשל' : 'Failed to process shortlisting',
+        variant: 'destructive',
+      });
+    },
+  });
+  
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString(isRTL ? 'he-IL' : 'en-US', {
@@ -180,10 +236,31 @@ export default function HRAdminDashboard() {
                 {isRTL ? 'ניהול מועמדויות Pet Wash™' : 'Pet Wash™ Application Management'}
               </p>
             </div>
-            <Button onClick={() => refetch()} variant="outline" data-testid="button-refresh-all">
-              <RefreshCw className="w-4 h-4 me-2" />
-              {isRTL ? 'רענן' : 'Refresh'}
-            </Button>
+            <div className="flex gap-3">
+              <Link href="/admin/jobs">
+                <Button variant="outline" data-testid="button-manage-jobs">
+                  <Settings className="w-4 h-4 me-2" />
+                  {isRTL ? 'ניהול משרות' : 'Manage Jobs'}
+                </Button>
+              </Link>
+              <Button 
+                onClick={() => bulkShortlistMutation.mutate()}
+                disabled={bulkShortlistMutation.isPending}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                data-testid="button-bulk-shortlist"
+              >
+                {bulkShortlistMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin me-2" />
+                ) : (
+                  <Brain className="w-4 h-4 me-2" />
+                )}
+                {isRTL ? 'סינון חכם' : 'Smart Shortlist'}
+              </Button>
+              <Button onClick={() => refetch()} variant="outline" data-testid="button-refresh-all">
+                <RefreshCw className="w-4 h-4 me-2" />
+                {isRTL ? 'רענן' : 'Refresh'}
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -458,6 +535,23 @@ export default function HRAdminDashboard() {
               </div>
               
               <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <Label className="text-gray-500">{isRTL ? 'סינון חכם' : 'Smart Shortlisting'}</Label>
+                  <Button
+                    onClick={() => shortlistSingleMutation.mutate(selectedApplication.id)}
+                    disabled={shortlistSingleMutation.isPending}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                    data-testid="button-shortlist-single"
+                  >
+                    {shortlistSingleMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin me-2" />
+                    ) : (
+                      <Brain className="w-4 h-4 me-2" />
+                    )}
+                    {isRTL ? 'הפעל סינון חכם' : 'Run Smart Shortlist'}
+                  </Button>
+                </div>
+                
                 <Label className="text-gray-500 mb-2 block">{isRTL ? 'עדכן סטטוס' : 'Update Status'}</Label>
                 <div className="flex gap-3">
                   <Select value={newStatus} onValueChange={setNewStatus}>

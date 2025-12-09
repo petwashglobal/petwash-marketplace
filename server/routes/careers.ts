@@ -1082,6 +1082,493 @@ router.post('/admin/seed-positions', async (req: Request, res: Response) => {
   }
 });
 
+// =================== JOB ADVERTISEMENT MANAGEMENT ===================
+
+// Get all job positions (admin view)
+router.get('/admin/positions', async (req: Request, res: Response) => {
+  try {
+    const { isActive, roleType, limit = '50' } = req.query;
+    
+    let conditions: any[] = [];
+    
+    if (isActive !== undefined && isActive !== 'all') {
+      conditions.push(eq(careerPositions.isActive, isActive === 'true'));
+    }
+    
+    if (roleType && typeof roleType === 'string' && roleType !== 'all') {
+      conditions.push(eq(careerPositions.roleType, roleType));
+    }
+    
+    const positions = await db
+      .select()
+      .from(careerPositions)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(careerPositions.createdAt))
+      .limit(parseInt(limit as string));
+    
+    res.json(positions);
+  } catch (error) {
+    logger.error('[Jobs Admin] Failed to fetch positions', { error });
+    res.status(500).json({ error: 'Failed to fetch positions' });
+  }
+});
+
+// Create new job position
+router.post('/admin/positions', async (req: Request, res: Response) => {
+  try {
+    const validationResult = insertCareerPositionSchema.safeParse(req.body);
+    
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: validationResult.error.flatten() 
+      });
+    }
+    
+    const positionData = validationResult.data;
+    
+    // Generate unique position ID
+    const rolePrefix = (positionData.roleType || 'GEN').toUpperCase().substring(0, 3);
+    const counter = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const positionId = `POS-${rolePrefix}-${counter}`;
+    
+    // Generate slug
+    const slug = `${positionData.title.toLowerCase().replace(/\s+/g, '-')}-${positionData.location?.toLowerCase().replace(/\s+/g, '-') || 'israel'}`;
+    
+    const [newPosition] = await db
+      .insert(careerPositions)
+      .values({
+        ...positionData,
+        positionId,
+        slug,
+        publishedAt: positionData.isActive ? new Date() : null,
+      })
+      .returning();
+    
+    logger.info('[Jobs Admin] Position created', { positionId: newPosition.positionId });
+    
+    res.status(201).json(newPosition);
+    
+  } catch (error) {
+    logger.error('[Jobs Admin] Failed to create position', { error });
+    res.status(500).json({ error: 'Failed to create position' });
+  }
+});
+
+// Update job position
+router.patch('/admin/positions/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    // Remove fields that shouldn't be updated directly
+    delete updateData.id;
+    delete updateData.positionId;
+    delete updateData.createdAt;
+    delete updateData.viewCount;
+    delete updateData.applicationCount;
+    
+    // Update timestamp
+    updateData.updatedAt = new Date();
+    
+    // If activating, set published date
+    if (updateData.isActive === true) {
+      const [existing] = await db
+        .select({ publishedAt: careerPositions.publishedAt })
+        .from(careerPositions)
+        .where(eq(careerPositions.id, parseInt(id)))
+        .limit(1);
+      
+      if (!existing?.publishedAt) {
+        updateData.publishedAt = new Date();
+      }
+    }
+    
+    const [updated] = await db
+      .update(careerPositions)
+      .set(updateData)
+      .where(eq(careerPositions.id, parseInt(id)))
+      .returning();
+    
+    if (!updated) {
+      return res.status(404).json({ error: 'Position not found' });
+    }
+    
+    logger.info('[Jobs Admin] Position updated', { positionId: updated.positionId });
+    
+    res.json(updated);
+    
+  } catch (error) {
+    logger.error('[Jobs Admin] Failed to update position', { error });
+    res.status(500).json({ error: 'Failed to update position' });
+  }
+});
+
+// Delete/archive job position
+router.delete('/admin/positions/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Soft delete - just deactivate
+    const [archived] = await db
+      .update(careerPositions)
+      .set({ 
+        isActive: false, 
+        updatedAt: new Date(),
+        expiresAt: new Date(),
+      })
+      .where(eq(careerPositions.id, parseInt(id)))
+      .returning();
+    
+    if (!archived) {
+      return res.status(404).json({ error: 'Position not found' });
+    }
+    
+    logger.info('[Jobs Admin] Position archived', { positionId: archived.positionId });
+    
+    res.json({ success: true, message: 'Position archived' });
+    
+  } catch (error) {
+    logger.error('[Jobs Admin] Failed to archive position', { error });
+    res.status(500).json({ error: 'Failed to archive position' });
+  }
+});
+
+// =================== SMART SHORTLISTING ENGINE ===================
+
+// Shortlisting criteria configuration
+const SHORTLIST_CRITERIA = {
+  // Automatic rejection criteria
+  autoReject: {
+    criminalBackground: { 
+      weight: 100, 
+      description: 'Criminal background detected',
+      descriptionHe: 'רקע פלילי התגלה'
+    },
+    fraudRiskHigh: { 
+      weight: 80, 
+      threshold: 60,
+      description: 'High fraud risk score',
+      descriptionHe: 'ציון סיכון הונאה גבוה'
+    },
+    duplicateApplication: { 
+      weight: 70, 
+      description: 'Duplicate application detected',
+      descriptionHe: 'מועמדות כפולה התגלתה'
+    },
+    underAge: { 
+      weight: 100, 
+      minAge: 18,
+      description: 'Under minimum age requirement',
+      descriptionHe: 'מתחת לגיל המינימלי'
+    },
+    missingMandatoryDocs: { 
+      weight: 50, 
+      description: 'Missing mandatory documents',
+      descriptionHe: 'חסרים מסמכים חובה'
+    },
+  },
+  // Scoring criteria (positive factors)
+  scoring: {
+    hasExperience: { weight: 20, description: 'Has relevant experience' },
+    hasReferences: { weight: 15, description: 'Provided references' },
+    hasResume: { weight: 10, description: 'Uploaded resume/CV' },
+    hasLicense: { weight: 15, description: 'Has required license' },
+    localCandidate: { weight: 10, description: 'Local candidate' },
+    completedProfile: { weight: 10, description: 'Complete application profile' },
+  },
+  // Thresholds
+  thresholds: {
+    autoShortlist: 70, // Score >= 70 = auto shortlist
+    autoReject: 30,    // Score <= 30 = auto reject
+    manualReview: [31, 69], // Score 31-69 = manual review
+  }
+};
+
+// Calculate shortlist score for an application
+function calculateShortlistScore(application: any, position: any, fraudSignals: any[]): {
+  score: number;
+  flags: Array<{ type: string; reason: string; reasonHe: string; weight: number; isRejection: boolean }>;
+  recommendation: 'shortlist' | 'reject' | 'manual_review';
+} {
+  let score = 50; // Start at neutral
+  const flags: Array<{ type: string; reason: string; reasonHe: string; weight: number; isRejection: boolean }> = [];
+  
+  // Check auto-rejection criteria
+  
+  // 1. Criminal background (from declaration)
+  if (application.criminalRecord === true || application.hasCriminalBackground === true) {
+    flags.push({
+      type: 'criminal_background',
+      reason: SHORTLIST_CRITERIA.autoReject.criminalBackground.description,
+      reasonHe: SHORTLIST_CRITERIA.autoReject.criminalBackground.descriptionHe,
+      weight: -SHORTLIST_CRITERIA.autoReject.criminalBackground.weight,
+      isRejection: true,
+    });
+    score -= SHORTLIST_CRITERIA.autoReject.criminalBackground.weight;
+  }
+  
+  // 2. High fraud risk score
+  const fraudRiskScore = application.fraudRiskScore || 0;
+  if (fraudRiskScore >= SHORTLIST_CRITERIA.autoReject.fraudRiskHigh.threshold) {
+    flags.push({
+      type: 'fraud_risk',
+      reason: `${SHORTLIST_CRITERIA.autoReject.fraudRiskHigh.description} (${fraudRiskScore}%)`,
+      reasonHe: `${SHORTLIST_CRITERIA.autoReject.fraudRiskHigh.descriptionHe} (${fraudRiskScore}%)`,
+      weight: -SHORTLIST_CRITERIA.autoReject.fraudRiskHigh.weight,
+      isRejection: true,
+    });
+    score -= SHORTLIST_CRITERIA.autoReject.fraudRiskHigh.weight;
+  }
+  
+  // 3. Duplicate detection from fraud signals
+  const duplicateSignals = fraudSignals.filter(s => s.signalType === 'duplicate');
+  if (duplicateSignals.length > 0) {
+    flags.push({
+      type: 'duplicate',
+      reason: SHORTLIST_CRITERIA.autoReject.duplicateApplication.description,
+      reasonHe: SHORTLIST_CRITERIA.autoReject.duplicateApplication.descriptionHe,
+      weight: -SHORTLIST_CRITERIA.autoReject.duplicateApplication.weight,
+      isRejection: true,
+    });
+    score -= SHORTLIST_CRITERIA.autoReject.duplicateApplication.weight;
+  }
+  
+  // 4. Age check
+  if (application.dateOfBirth) {
+    const birthDate = new Date(application.dateOfBirth);
+    const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    const minAge = position?.minimumAge || SHORTLIST_CRITERIA.autoReject.underAge.minAge;
+    
+    if (age < minAge) {
+      flags.push({
+        type: 'underage',
+        reason: `${SHORTLIST_CRITERIA.autoReject.underAge.description} (${age} < ${minAge})`,
+        reasonHe: `${SHORTLIST_CRITERIA.autoReject.underAge.descriptionHe} (${age} < ${minAge})`,
+        weight: -SHORTLIST_CRITERIA.autoReject.underAge.weight,
+        isRejection: true,
+      });
+      score -= SHORTLIST_CRITERIA.autoReject.underAge.weight;
+    }
+  }
+  
+  // 5. Competency/qualification issues
+  if (position?.requiresDrivingLicense && !application.hasDrivingLicense) {
+    flags.push({
+      type: 'missing_license',
+      reason: 'Missing required driving license',
+      reasonHe: 'חסר רישיון נהיגה נדרש',
+      weight: -30,
+      isRejection: false,
+    });
+    score -= 30;
+  }
+  
+  // Add positive scoring factors
+  
+  // Experience
+  if (application.yearsOfExperience && application.yearsOfExperience > 0) {
+    const expBonus = Math.min(application.yearsOfExperience * 5, 20);
+    flags.push({
+      type: 'experience',
+      reason: `${application.yearsOfExperience} years of experience`,
+      reasonHe: `${application.yearsOfExperience} שנות ניסיון`,
+      weight: expBonus,
+      isRejection: false,
+    });
+    score += expBonus;
+  }
+  
+  // References provided
+  if (application.references && Array.isArray(application.references) && application.references.length > 0) {
+    flags.push({
+      type: 'references',
+      reason: SHORTLIST_CRITERIA.scoring.hasReferences.description,
+      reasonHe: 'סיפק המלצות',
+      weight: SHORTLIST_CRITERIA.scoring.hasReferences.weight,
+      isRejection: false,
+    });
+    score += SHORTLIST_CRITERIA.scoring.hasReferences.weight;
+  }
+  
+  // Complete profile (all required fields filled)
+  const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'city'];
+  const completedFields = requiredFields.filter(f => application[f] && application[f].toString().trim());
+  if (completedFields.length === requiredFields.length) {
+    flags.push({
+      type: 'complete_profile',
+      reason: SHORTLIST_CRITERIA.scoring.completedProfile.description,
+      reasonHe: 'פרופיל מועמדות מלא',
+      weight: SHORTLIST_CRITERIA.scoring.completedProfile.weight,
+      isRejection: false,
+    });
+    score += SHORTLIST_CRITERIA.scoring.completedProfile.weight;
+  }
+  
+  // Clamp score between 0 and 100
+  score = Math.max(0, Math.min(100, score));
+  
+  // Determine recommendation
+  let recommendation: 'shortlist' | 'reject' | 'manual_review';
+  
+  // Any hard rejection flag = auto reject
+  const hasHardRejection = flags.some(f => f.isRejection && f.type === 'criminal_background');
+  
+  if (hasHardRejection || score <= SHORTLIST_CRITERIA.thresholds.autoReject) {
+    recommendation = 'reject';
+  } else if (score >= SHORTLIST_CRITERIA.thresholds.autoShortlist) {
+    recommendation = 'shortlist';
+  } else {
+    recommendation = 'manual_review';
+  }
+  
+  return { score, flags, recommendation };
+}
+
+// Run smart shortlisting on an application
+router.post('/admin/applications/:id/shortlist', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Get application
+    const [application] = await db
+      .select()
+      .from(staffApplications)
+      .where(eq(staffApplications.id, parseInt(id)))
+      .limit(1);
+    
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    
+    // Get position details
+    const [position] = await db
+      .select()
+      .from(careerPositions)
+      .where(eq(careerPositions.positionId, application.positionId))
+      .limit(1);
+    
+    // Get fraud signals
+    const fraudSignals = await db
+      .select()
+      .from(applicationFraudSignals)
+      .where(eq(applicationFraudSignals.applicationId, application.id));
+    
+    // Calculate shortlist score
+    const result = calculateShortlistScore(application, position, fraudSignals);
+    
+    // Update application with shortlist result
+    const newStatus = result.recommendation === 'shortlist' ? 'under_review' :
+                      result.recommendation === 'reject' ? 'rejected' : 'pending';
+    
+    const [updated] = await db
+      .update(staffApplications)
+      .set({
+        shortlistScore: result.score,
+        shortlistRecommendation: result.recommendation,
+        shortlistFlags: result.flags,
+        status: newStatus,
+        reviewedAt: new Date(),
+      })
+      .where(eq(staffApplications.id, parseInt(id)))
+      .returning();
+    
+    logger.info('[Shortlist] Application processed', {
+      applicationId: id,
+      score: result.score,
+      recommendation: result.recommendation,
+      flagCount: result.flags.length,
+    });
+    
+    res.json({
+      applicationId: id,
+      ...result,
+      newStatus,
+    });
+    
+  } catch (error) {
+    logger.error('[Shortlist] Failed to process application', { error });
+    res.status(500).json({ error: 'Failed to process shortlisting' });
+  }
+});
+
+// Bulk shortlist all pending applications
+router.post('/admin/applications/bulk-shortlist', async (req: Request, res: Response) => {
+  try {
+    // Get all pending/submitted applications
+    const pendingApps = await db
+      .select()
+      .from(staffApplications)
+      .where(
+        and(
+          eq(staffApplications.status, 'pending'),
+          sql`${staffApplications.submittedAt} IS NOT NULL`
+        )
+      )
+      .limit(100);
+    
+    const results = {
+      processed: 0,
+      shortlisted: 0,
+      rejected: 0,
+      manualReview: 0,
+      errors: 0,
+    };
+    
+    for (const app of pendingApps) {
+      try {
+        // Get position and fraud signals
+        const [position] = await db
+          .select()
+          .from(careerPositions)
+          .where(eq(careerPositions.positionId, app.positionId))
+          .limit(1);
+        
+        const fraudSignals = await db
+          .select()
+          .from(applicationFraudSignals)
+          .where(eq(applicationFraudSignals.applicationId, app.id));
+        
+        const result = calculateShortlistScore(app, position, fraudSignals);
+        
+        const newStatus = result.recommendation === 'shortlist' ? 'under_review' :
+                          result.recommendation === 'reject' ? 'rejected' : 'pending';
+        
+        await db
+          .update(staffApplications)
+          .set({
+            shortlistScore: result.score,
+            shortlistRecommendation: result.recommendation,
+            shortlistFlags: result.flags,
+            status: newStatus,
+            reviewedAt: new Date(),
+          })
+          .where(eq(staffApplications.id, app.id));
+        
+        results.processed++;
+        if (result.recommendation === 'shortlist') results.shortlisted++;
+        else if (result.recommendation === 'reject') results.rejected++;
+        else results.manualReview++;
+        
+      } catch (err) {
+        results.errors++;
+        logger.error('[Bulk Shortlist] Error processing application', { appId: app.id, error: err });
+      }
+    }
+    
+    logger.info('[Bulk Shortlist] Completed', results);
+    
+    res.json({
+      success: true,
+      ...results,
+    });
+    
+  } catch (error) {
+    logger.error('[Bulk Shortlist] Failed', { error });
+    res.status(500).json({ error: 'Failed to run bulk shortlisting' });
+  }
+});
+
 // =================== HR ADMIN DASHBOARD ===================
 
 // Get all applications with filtering (HR Admin)

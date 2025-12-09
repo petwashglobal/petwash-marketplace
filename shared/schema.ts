@@ -6263,10 +6263,37 @@ export const staffApplications = pgTable("staff_applications", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  
+  // Career Portal Fields (SEEK-inspired)
+  applicationId: varchar("application_id", { length: 50 }).unique(), // APP-2025-XXXXX
+  positionId: varchar("position_id", { length: 50 }), // References career_positions.positionId
+  reviewStage: varchar("review_stage", { length: 50 }), // initial, technical, hr, final
+  reviewerNotes: text("reviewer_notes"),
+  
+  // Fraud Detection & Smart Shortlisting
+  fraudRiskScore: integer("fraud_risk_score").default(0), // 0-100
+  shortlistScore: integer("shortlist_score"), // 0-100 calculated score
+  shortlistRecommendation: varchar("shortlist_recommendation", { length: 30 }), // shortlist, reject, manual_review
+  shortlistFlags: jsonb("shortlist_flags").default(sql`'[]'::jsonb`), // Array of flag objects
+  
+  // Background & Competency Checks
+  criminalRecord: boolean("criminal_record").default(false),
+  hasDrivingLicense: boolean("has_driving_license").default(false),
+  drivingLicenseType: varchar("driving_license_type", { length: 20 }), // A, B, C, etc
+  yearsOfExperience: integer("years_of_experience").default(0),
+  references: jsonb("references").default(sql`'[]'::jsonb`), // Array of reference objects
+  
+  // Session & Autosave
+  sessionId: varchar("session_id", { length: 255 }), // For draft tracking
+  currentStep: integer("current_step").default(1),
+  formData: jsonb("form_data"), // Autosaved form data
 }, (table) => ({
   emailIdx: index("idx_staff_applications_email").on(table.email),
   statusIdx: index("idx_staff_applications_status").on(table.status),
   typeIdx: index("idx_staff_applications_type").on(table.applicationType),
+  applicationIdIdx: index("idx_staff_applications_app_id").on(table.applicationId),
+  positionIdIdx: index("idx_staff_applications_position").on(table.positionId),
+  shortlistIdx: index("idx_staff_applications_shortlist").on(table.shortlistRecommendation),
 }));
 
 export const staffDocuments = pgTable("staff_documents", {
@@ -8722,10 +8749,20 @@ export const insertCareerPositionSchema = createInsertSchema(careerPositions, {
   roleType: z.enum(["walker", "driver", "sitter", "host", "supplier", "admin", "trainer"]),
   department: z.string().min(1, "Department is required"),
   shortDescription: z.string().min(10, "Short description is required"),
-  fullDescription: z.string().min(50, "Full description is required"),
+  fullDescription: z.string().min(20, "Full description is required"),
   location: z.string().min(1, "Location is required"),
   employmentType: z.enum(["contractor", "part-time", "full-time"]),
-}).omit({ id: true, createdAt: true, updatedAt: true, viewCount: true, applicationCount: true });
+}).omit({ 
+  id: true, 
+  positionId: true,  // Auto-generated on backend
+  slug: true,        // Auto-generated on backend
+  createdAt: true, 
+  updatedAt: true, 
+  publishedAt: true, 
+  expiresAt: true,
+  viewCount: true, 
+  applicationCount: true 
+});
 
 export type InsertCareerPosition = z.infer<typeof insertCareerPositionSchema>;
 export type CareerPosition = typeof careerPositions.$inferSelect;
