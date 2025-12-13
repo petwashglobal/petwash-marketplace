@@ -53,17 +53,5 @@ integrations = [
 localPort = 5000
 externalPort = 80
 
-[[ports]]
-localPort = 39833
-externalPort = 3002
-
-[[ports]]
-localPort = 41037
-externalPort = 3001
-
-[[ports]]
-localPort = 42013
-externalPort = 3000
-
 
 
