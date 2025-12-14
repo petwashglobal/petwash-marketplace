@@ -72,6 +72,57 @@ export interface CommissionCalculation {
 }
 
 // ============================================================================
+// ISRAELI LAW 2025 COMPLIANCE TYPES
+// ============================================================================
+
+/**
+ * Israeli Withholding Tax (ניכוי מס במקור) 2025
+ * Per Israeli Tax Authority regulations, payers must withhold tax from contractor payments
+ */
+export interface WithholdingTaxCalculation {
+  grossPayment: number;           // Total payment before deductions
+  withholdingTaxRate: number;     // Rate based on provider's exemption certificate
+  withholdingTaxAmount: number;   // Amount to withhold (remit to Tax Authority)
+  netPaymentToProvider: number;   // Amount provider receives
+  hasExemptionCertificate: boolean; // אישור ניכוי מס במקור
+  exemptionPercentage: number;    // 0% = full withholding, 100% = no withholding
+  taxAuthorityCertificateId?: string; // Certificate reference number
+  validUntil?: Date;              // Certificate expiry
+}
+
+/**
+ * National Insurance (ביטוח לאומי) 2025 Rates for Self-Employed
+ * Based on Israeli National Insurance Institute (המוסד לביטוח לאומי) rates
+ */
+export interface NationalInsuranceCalculation {
+  monthlyIncome: number;
+  nationalInsuranceRate: number;   // ביטוח לאומי rate
+  healthInsuranceRate: number;     // ביטוח בריאות rate
+  totalContributionRate: number;
+  nationalInsuranceAmount: number;
+  healthInsuranceAmount: number;
+  totalContribution: number;
+  incomeBracket: 'reduced' | 'regular'; // Reduced rate up to 60% of average wage
+  averageWage2025: number;         // שכר ממוצע במשק
+}
+
+/**
+ * VAT Threshold Monitor (מעקב סף מע"מ)
+ * Israeli VAT Law requires registration when exceeding ₪120,000/year
+ */
+export interface VatThresholdStatus {
+  providerId: string;
+  currentYearRevenue: number;
+  vatThreshold: number;            // ₪120,000 for 2025
+  remainingUntilThreshold: number;
+  percentageOfThreshold: number;
+  mustRegisterForVat: boolean;
+  recommendUpgrade: boolean;       // Recommend upgrading to Osek Murshe
+  projectedAnnualRevenue?: number;
+  monthsUntilThreshold?: number;
+}
+
+// ============================================================================
 // TAX REGISTRATION VERIFICATION
 // ============================================================================
 
@@ -488,6 +539,380 @@ export class IsraeliContractorComplianceService {
       });
       throw error;
     }
+  }
+
+  // ============================================================================
+  // ISRAELI LAW 2025 COMPLIANCE METHODS
+  // ============================================================================
+
+  /**
+   * Israeli Withholding Tax Calculation (ניכוי מס במקור) 2025
+   * 
+   * Per Israeli Tax Authority (רשות המסים) regulations:
+   * - Default withholding: 20-30% for contractors without exemption
+   * - With exemption certificate (אישור ניכוי מס במקור): 0-100% exemption
+   * - Certificates must be verified with Tax Authority and renewed annually
+   * 
+   * ⚠️ PRODUCTION REQUIREMENT: Integrate with Israeli Tax Authority API
+   * to verify exemption certificates in real-time
+   */
+  static calculateWithholdingTax(
+    grossPayment: number,
+    hasExemptionCertificate: boolean = false,
+    exemptionPercentage: number = 0,
+    taxAuthorityCertificateId?: string,
+    validUntil?: Date,
+    providerWithholdingRate?: number // Provider-specific rate from certificate (0-50%)
+  ): WithholdingTaxCalculation {
+    logger.info('[Israeli Compliance 2025] Calculating withholding tax', {
+      grossPayment,
+      hasExemptionCertificate,
+      exemptionPercentage,
+      providerWithholdingRate
+    });
+
+    // Israeli Tax Authority withholding rates for contractors (2025)
+    // Default rates vary by provider type:
+    // - Services (general): 20%
+    // - Construction/subcontractors: 30%
+    // - Certificate holders: As specified in אישור ניכוי מס במקור (0-50%)
+    const DEFAULT_WITHHOLDING_RATE_SERVICES = 0.20; // 20% default for services
+    const DEFAULT_WITHHOLDING_RATE_CONSTRUCTION = 0.30; // 30% for construction
+
+    // Use provider-specific rate if available, otherwise default to 20% services rate
+    let baseRate = providerWithholdingRate !== undefined 
+      ? providerWithholdingRate / 100 
+      : DEFAULT_WITHHOLDING_RATE_SERVICES;
+
+    // Validate rate range (0-50%)
+    if (baseRate < 0) baseRate = 0;
+    if (baseRate > 0.50) baseRate = 0.50;
+
+    // Check certificate validity
+    let effectiveExemption = 0;
+    let certificateValid = false;
+    
+    if (hasExemptionCertificate && validUntil) {
+      if (new Date(validUntil) >= new Date()) {
+        effectiveExemption = exemptionPercentage;
+        certificateValid = true;
+      } else {
+        logger.warn('[Israeli Compliance 2025] Withholding certificate expired - using default rate', {
+          taxAuthorityCertificateId: taxAuthorityCertificateId ? `***${taxAuthorityCertificateId.slice(-4)}` : undefined,
+          validUntil
+        });
+      }
+    } else if (hasExemptionCertificate) {
+      effectiveExemption = exemptionPercentage;
+      certificateValid = true;
+    }
+
+    // Calculate effective withholding rate
+    // exemptionPercentage of 100% = no withholding, 0% = full withholding at base rate
+    const withholdingTaxRate = certificateValid 
+      ? baseRate * (1 - effectiveExemption / 100)
+      : baseRate;
+    const withholdingTaxAmount = parseFloat((grossPayment * withholdingTaxRate).toFixed(2));
+    const netPaymentToProvider = parseFloat((grossPayment - withholdingTaxAmount).toFixed(2));
+
+    logger.info('[Israeli Compliance 2025] Withholding tax calculated', {
+      grossPayment,
+      withholdingTaxRate: (withholdingTaxRate * 100).toFixed(1) + '%',
+      withholdingTaxAmount,
+      netPaymentToProvider
+    });
+
+    return {
+      grossPayment,
+      withholdingTaxRate,
+      withholdingTaxAmount,
+      netPaymentToProvider,
+      hasExemptionCertificate,
+      exemptionPercentage: effectiveExemption,
+      taxAuthorityCertificateId,
+      validUntil
+    };
+  }
+
+  /**
+   * Israeli National Insurance Calculation (ביטוח לאומי) 2025
+   * 
+   * Self-employed contribution rates per National Insurance Institute:
+   * 
+   * REDUCED RATE (up to 60% of average wage - ₪7,866/month in 2025):
+   * - National Insurance: 2.87%
+   * - Health Insurance: 3.10%
+   * - Total: 5.97%
+   * 
+   * REGULAR RATE (above 60% of average wage):
+   * - National Insurance: 12.83%
+   * - Health Insurance: 5.00%
+   * - Total: 17.83%
+   * 
+   * Maximum income for contributions: 5x average wage (₪65,550/month)
+   * 
+   * Average wage 2025: ₪13,110 (updated January 2025)
+   * Source: Israeli National Insurance Institute (המוסד לביטוח לאומי)
+   */
+  static calculateNationalInsurance(monthlyIncome: number): NationalInsuranceCalculation {
+    logger.info('[Israeli Compliance 2025] Calculating National Insurance', { monthlyIncome });
+
+    // 2025 Israeli National Insurance rates (המוסד לביטוח לאומי)
+    // Updated January 2025 based on official Bituach Leumi publication
+    // Source: https://www.btl.gov.il (National Insurance Institute of Israel)
+    const AVERAGE_WAGE_2025 = 13_110; // שכר ממוצע במשק ינואר 2025 (₪13,110)
+    const REDUCED_RATE_THRESHOLD = AVERAGE_WAGE_2025 * 0.60; // 60% = ₪7,866
+    const MAX_INCOME_THRESHOLD = AVERAGE_WAGE_2025 * 5; // 5x = ₪65,550
+
+    // Reduced rates (up to 60% of average wage)
+    const REDUCED_NI_RATE = 0.0287; // 2.87% National Insurance
+    const REDUCED_HEALTH_RATE = 0.031; // 3.10% Health Insurance
+
+    // Regular rates (above 60% of average wage)
+    const REGULAR_NI_RATE = 0.1283; // 12.83% National Insurance
+    const REGULAR_HEALTH_RATE = 0.05; // 5.00% Health Insurance
+
+    // Cap income at maximum threshold
+    const cappedIncome = Math.min(monthlyIncome, MAX_INCOME_THRESHOLD);
+
+    let nationalInsuranceAmount = 0;
+    let healthInsuranceAmount = 0;
+    let incomeBracket: 'reduced' | 'regular' = 'reduced';
+
+    if (cappedIncome <= REDUCED_RATE_THRESHOLD) {
+      // All income at reduced rate
+      nationalInsuranceAmount = cappedIncome * REDUCED_NI_RATE;
+      healthInsuranceAmount = cappedIncome * REDUCED_HEALTH_RATE;
+      incomeBracket = 'reduced';
+    } else {
+      // Split calculation: reduced rate up to threshold, regular rate above
+      const reducedPortion = REDUCED_RATE_THRESHOLD;
+      const regularPortion = cappedIncome - REDUCED_RATE_THRESHOLD;
+
+      nationalInsuranceAmount = 
+        (reducedPortion * REDUCED_NI_RATE) + 
+        (regularPortion * REGULAR_NI_RATE);
+      
+      healthInsuranceAmount = 
+        (reducedPortion * REDUCED_HEALTH_RATE) + 
+        (regularPortion * REGULAR_HEALTH_RATE);
+      
+      incomeBracket = 'regular';
+    }
+
+    // Round to 2 decimal places
+    nationalInsuranceAmount = parseFloat(nationalInsuranceAmount.toFixed(2));
+    healthInsuranceAmount = parseFloat(healthInsuranceAmount.toFixed(2));
+    const totalContribution = parseFloat((nationalInsuranceAmount + healthInsuranceAmount).toFixed(2));
+
+    // Calculate effective rates
+    const nationalInsuranceRate = cappedIncome > 0 ? nationalInsuranceAmount / cappedIncome : 0;
+    const healthInsuranceRate = cappedIncome > 0 ? healthInsuranceAmount / cappedIncome : 0;
+    const totalContributionRate = cappedIncome > 0 ? totalContribution / cappedIncome : 0;
+
+    logger.info('[Israeli Compliance 2025] National Insurance calculated', {
+      monthlyIncome: cappedIncome,
+      incomeBracket,
+      nationalInsuranceAmount,
+      healthInsuranceAmount,
+      totalContribution
+    });
+
+    return {
+      monthlyIncome: cappedIncome,
+      nationalInsuranceRate,
+      healthInsuranceRate,
+      totalContributionRate,
+      nationalInsuranceAmount,
+      healthInsuranceAmount,
+      totalContribution,
+      incomeBracket,
+      averageWage2025: AVERAGE_WAGE_2025
+    };
+  }
+
+  /**
+   * VAT Threshold Monitoring (מעקב סף מע"מ) 2025
+   * 
+   * Israeli VAT Law requires registration when annual revenue exceeds ₪120,000
+   * - Osek Patur (עוסק פטור): Exempt from VAT, max ₪120,000/year
+   * - Osek Murshe (עוסק מורשה): Must charge and remit 18% VAT
+   * 
+   * This method monitors provider revenue and alerts when approaching threshold
+   */
+  static async checkVatThreshold(providerId: string): Promise<VatThresholdStatus> {
+    logger.info('[Israeli Compliance 2025] Checking VAT threshold', { providerId });
+
+    // Israeli VAT threshold 2025
+    const VAT_THRESHOLD_2025 = 120_000; // ₪120,000/year
+
+    try {
+      // Get provider's current year earnings
+      const currentYear = new Date().getFullYear();
+      const yearStart = new Date(currentYear, 0, 1);
+      const yearEnd = new Date(currentYear, 11, 31);
+
+      const earnings = await db.select({
+        totalEarnings: sql<number>`COALESCE(SUM(CAST(${providerCommissions.providerEarnings} AS NUMERIC)), 0)`,
+        bookingCount: sql<number>`COUNT(*)`,
+      }).from(providerCommissions)
+        .where(and(
+          eq(providerCommissions.providerId, providerId),
+          gte(providerCommissions.createdAt, yearStart),
+          lte(providerCommissions.createdAt, yearEnd)
+        ));
+
+      const currentYearRevenue = parseFloat(earnings[0]?.totalEarnings?.toString() || '0');
+      const bookingCount = parseInt(earnings[0]?.bookingCount?.toString() || '0');
+      
+      // Calculate projections
+      const currentMonth = new Date().getMonth() + 1; // 1-12
+      const monthlyAverage = currentYearRevenue / currentMonth;
+      const projectedAnnualRevenue = monthlyAverage * 12;
+      
+      // Calculate remaining until threshold
+      const remainingUntilThreshold = Math.max(0, VAT_THRESHOLD_2025 - currentYearRevenue);
+      const percentageOfThreshold = (currentYearRevenue / VAT_THRESHOLD_2025) * 100;
+      
+      // Calculate months until threshold (at current pace)
+      const monthsUntilThreshold = monthlyAverage > 0 
+        ? Math.ceil(remainingUntilThreshold / monthlyAverage)
+        : undefined;
+
+      // Determine if VAT registration required
+      const mustRegisterForVat = currentYearRevenue >= VAT_THRESHOLD_2025;
+      
+      // Recommend upgrade if at 80%+ of threshold
+      const recommendUpgrade = percentageOfThreshold >= 80 || projectedAnnualRevenue >= VAT_THRESHOLD_2025;
+
+      // Log warning if approaching threshold
+      if (recommendUpgrade && !mustRegisterForVat) {
+        logger.warn('[Israeli Compliance 2025] Provider approaching VAT threshold', {
+          providerId,
+          currentYearRevenue,
+          percentageOfThreshold: percentageOfThreshold.toFixed(1) + '%',
+          projectedAnnualRevenue
+        });
+
+        // Log compliance check
+        await this.logComplianceCheck(
+          providerId,
+          'sitter', // Default type, should be fetched from provider
+          'vat_threshold_warning',
+          'warning',
+          {
+            currentYearRevenue,
+            vatThreshold: VAT_THRESHOLD_2025,
+            percentageOfThreshold,
+            projectedAnnualRevenue,
+            recommendation: 'Consider upgrading to Osek Murshe (עוסק מורשה)'
+          }
+        );
+      }
+
+      logger.info('[Israeli Compliance 2025] VAT threshold check complete', {
+        providerId,
+        currentYearRevenue,
+        mustRegisterForVat,
+        recommendUpgrade
+      });
+
+      return {
+        providerId,
+        currentYearRevenue,
+        vatThreshold: VAT_THRESHOLD_2025,
+        remainingUntilThreshold,
+        percentageOfThreshold,
+        mustRegisterForVat,
+        recommendUpgrade,
+        projectedAnnualRevenue,
+        monthsUntilThreshold
+      };
+    } catch (error: any) {
+      logger.error('[Israeli Compliance 2025] VAT threshold check failed', {
+        providerId,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate complete Israeli tax obligations for a payout
+   * Combines withholding tax, VAT, and provides National Insurance estimate
+   */
+  static async calculatePayoutTaxObligations(
+    providerId: string,
+    grossPayoutAmount: number,
+    providerTaxInfo?: {
+      hasWithholdingExemption?: boolean;
+      exemptionPercentage?: number;
+      certificateId?: string;
+      certificateValidUntil?: Date;
+      taxIdType?: TaxIdType;
+      isVatRegistered?: boolean;
+    }
+  ): Promise<{
+    grossAmount: number;
+    withholding: WithholdingTaxCalculation;
+    nationalInsuranceEstimate: NationalInsuranceCalculation;
+    vatStatus: VatThresholdStatus;
+    netPaymentToProvider: number;
+    taxSummary: {
+      totalDeductions: number;
+      providerTakeHome: number;
+      petwashCommission: number;
+      remitToTaxAuthority: number;
+    };
+  }> {
+    logger.info('[Israeli Compliance 2025] Calculating payout tax obligations', {
+      providerId,
+      grossPayoutAmount
+    });
+
+    // Calculate withholding tax
+    const withholding = this.calculateWithholdingTax(
+      grossPayoutAmount,
+      providerTaxInfo?.hasWithholdingExemption || false,
+      providerTaxInfo?.exemptionPercentage || 0,
+      providerTaxInfo?.certificateId,
+      providerTaxInfo?.certificateValidUntil
+    );
+
+    // Estimate National Insurance (monthly average based on payout)
+    // This is informational - providers pay NI directly to Bituach Leumi
+    const estimatedMonthlyFromPayout = grossPayoutAmount; // Simplified estimation
+    const nationalInsuranceEstimate = this.calculateNationalInsurance(estimatedMonthlyFromPayout);
+
+    // Check VAT threshold status
+    const vatStatus = await this.checkVatThreshold(providerId);
+
+    // Calculate summary
+    const petwashCommission = grossPayoutAmount * 0.20; // 20% default commission
+    const netAfterCommission = grossPayoutAmount - petwashCommission;
+    const remitToTaxAuthority = withholding.withholdingTaxAmount;
+    const providerTakeHome = netAfterCommission - remitToTaxAuthority;
+
+    logger.info('[Israeli Compliance 2025] Payout tax obligations calculated', {
+      providerId,
+      grossAmount: grossPayoutAmount,
+      withholdingTax: remitToTaxAuthority,
+      netPayment: withholding.netPaymentToProvider
+    });
+
+    return {
+      grossAmount: grossPayoutAmount,
+      withholding,
+      nationalInsuranceEstimate,
+      vatStatus,
+      netPaymentToProvider: withholding.netPaymentToProvider,
+      taxSummary: {
+        totalDeductions: petwashCommission + remitToTaxAuthority,
+        providerTakeHome,
+        petwashCommission,
+        remitToTaxAuthority
+      }
+    };
   }
 
   // ============================================================================

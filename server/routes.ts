@@ -100,6 +100,7 @@ import providerTrainingRoutes from "./routes/provider-training";
 import policeCheckRoutes from "./routes/police-check";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import aiPayoutVerificationRoutes from "./routes/ai-payout-verification";
+import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
 import referralRoutes from "./routes/referral";
 import accountingRoutes from "./routes/accounting";
 import adminRoutes from "./routes/admin";
@@ -7920,6 +7921,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // AI Payout Verification - Gemini 2.5 Flash work verification before payouts
   app.use('/api/ai-verification', apiLimiter, aiPayoutVerificationRoutes);
+  app.use('/api/israeli-compliance', apiLimiter, israeliCompliance2025Routes);
   
   // Employee Management routes
   const employeeRoutes = await import('./routes/employees');
