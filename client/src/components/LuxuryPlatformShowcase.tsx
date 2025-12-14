@@ -227,7 +227,7 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
           {/* Compact Hero Section */}
           <div className="relative w-full h-32 sm:h-40 md:h-48 overflow-hidden pt-16 sm:pt-0">
             <img 
-              src="/petwash-logo-official.png"
+              src="/brand/petwash-logo-official.png"
               alt="Happy Pet Owners"
               className="w-full h-full object-cover"
             />

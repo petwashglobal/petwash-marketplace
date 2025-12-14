@@ -161,7 +161,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
           {/* Hero Image - Mobile-optimized heights with safe spacing for close button */}
           <div className="relative w-full h-56 sm:h-64 md:h-80 lg:h-96 overflow-hidden pt-16 sm:pt-0">
             <img 
-              src="/petwash-logo-official.png"
+              src="/brand/petwash-logo-official.png"
               alt="Happy Pet Owners"
               className="w-full h-full object-cover"
             />

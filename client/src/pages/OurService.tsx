@@ -85,7 +85,7 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
               <div className="luxury-tech-showcase">
                 <div className="luxury-tech-image">
                   <img 
-                    src="/petwash-logo-official.png" 
+                    src="/brand/petwash-logo-official.png" 
                     alt={t('ourService.k9000SystemAlt', language)}
                     className="luxury-tech-photo"
                   />
