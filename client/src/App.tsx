@@ -1853,7 +1853,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 }
 
 function App() {
-  const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
+  // Default to Hebrew ('he') for Israeli market - PRIMARY language
+  const [currentLanguage, setCurrentLanguage] = useState<Language>(() => {
+    const saved = localStorage.getItem('petwash_lang') as Language;
+    return saved && ['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(saved) ? saved : 'he';
+  });
   const [isLanguageInitialized, setIsLanguageInitialized] = useState(false);
   const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
@@ -1900,22 +1904,27 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('language') as Language;
-    if (savedLanguage && (savedLanguage === 'en' || savedLanguage === 'he')) {
+    // Use consistent key 'petwash_lang' - default to Hebrew for Israeli market
+    const savedLanguage = localStorage.getItem('petwash_lang') as Language;
+    if (savedLanguage && ['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(savedLanguage)) {
       setCurrentLanguage(savedLanguage);
       setIsLanguageInitialized(true);
     } else {
-      setCurrentLanguage('en');
+      // Default to Hebrew for Israeli market
+      setCurrentLanguage('he');
+      localStorage.setItem('petwash_lang', 'he');
       setIsLanguageInitialized(true);
     }
 
     async function detectLanguageInBackground() {
       try {
         const defaultLanguage = await getDefaultLanguageByLocation();
+        const currentSaved = localStorage.getItem('petwash_lang') as Language;
         
-        if (defaultLanguage !== savedLanguage) {
+        // Only update if no saved preference exists
+        if (!currentSaved) {
           setCurrentLanguage(defaultLanguage);
-          localStorage.setItem('language', defaultLanguage);
+          localStorage.setItem('petwash_lang', defaultLanguage);
           
           if (typeof window !== 'undefined' && (window as any).gtag) {
             (window as any).gtag('event', 'automatic_language_detection', {
@@ -1926,6 +1935,7 @@ function App() {
           }
         }
       } catch (error) {
+        // On error, keep Hebrew default for Israeli market
         if (import.meta.env.DEV) {
           console.error('Background language detection error:', error);
         }
