@@ -18,6 +18,7 @@ import {
 import { eq, and, desc, lt, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { BiometricVerificationService } from './BiometricVerificationService';
 
 // Police check status types
 export type PoliceCheckStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'expired';
@@ -52,6 +53,32 @@ export interface PoliceCheckSummary {
   latestCheck: ProviderPoliceCheck | null;
   expiresAt: Date | null;
   daysUntilExpiry: number | null;
+}
+
+// ============================================================================
+// BIOMETRIC VERIFICATION TYPES - Pet Wash™ Subcontractor Onboarding
+// ============================================================================
+
+/**
+ * Complete onboarding verification result
+ * Includes police check, ID verification, and biometric selfie matching
+ */
+export interface BiometricOnboardingResult {
+  success: boolean;
+  checkId: number;
+  providerId: string;
+  verificationSteps: {
+    policeCheckUploaded: boolean;
+    idDocumentUploaded: boolean;
+    selfieUploaded: boolean;
+    biometricMatch: boolean;
+    biometricMatchScore?: number;
+  };
+  status: 'pending_verification' | 'biometric_failed' | 'documents_incomplete' | 'ready_for_review';
+  messageHe: string;
+  messageEn: string;
+  nextStepHe?: string;
+  nextStepEn?: string;
 }
 
 class PoliceCheckService {
@@ -138,6 +165,173 @@ class PoliceCheckService {
       };
     } catch (error) {
       logger.error('[PoliceCheck] Error submitting check', { error });
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // BIOMETRIC ONBOARDING - Pet Wash™ Subcontractor Registration
+  // ============================================================================
+
+  /**
+   * Complete biometric onboarding for subcontractors
+   * 
+   * Israeli Law 2025 compliance requires:
+   * 1. תעודת יושר (Police Clearance) - from משטרת ישראל
+   * 2. תעודת זהות ביומטרית (Biometric ID) - photo verification
+   * 3. סלפי עדכני (Current Selfie) - matched against ID
+   * 
+   * Process:
+   * 1. Upload police clearance document (gov.il or physical copy)
+   * 2. Upload biometric ID photo (front of תעודת זהות)
+   * 3. Capture current selfie
+   * 4. Biometric AI matches selfie to ID (Google Vision API)
+   * 5. If match successful → Ready for admin review
+   * 6. If match fails → Reject with retry option
+   */
+  async submitBiometricOnboarding(
+    providerId: string,
+    documents: {
+      policeCheckUrl: string;
+      policeCheckFileName: string;
+      policeCheckIssuedAt: Date;
+      idDocumentUrl: string;      // תעודת זהות ביומטרית photo
+      idDocumentFileName: string;
+      selfieUrl: string;          // Current selfie for face matching
+    }
+  ): Promise<BiometricOnboardingResult> {
+    logger.info('[PoliceCheck] Starting biometric onboarding', { providerId });
+
+    try {
+      // Step 1: Validate all documents are provided
+      if (!documents.policeCheckUrl || !documents.idDocumentUrl || !documents.selfieUrl) {
+        return {
+          success: false,
+          checkId: 0,
+          providerId,
+          verificationSteps: {
+            policeCheckUploaded: !!documents.policeCheckUrl,
+            idDocumentUploaded: !!documents.idDocumentUrl,
+            selfieUploaded: !!documents.selfieUrl,
+            biometricMatch: false,
+          },
+          status: 'documents_incomplete',
+          messageHe: 'חסרים מסמכים לקבלה לחברת Pet Wash™',
+          messageEn: 'Missing documents for Pet Wash™ subcontractor registration',
+          nextStepHe: 'אנא העלה את כל המסמכים הנדרשים: תעודת יושר, תעודת זהות ביומטרית וסלפי עדכני',
+          nextStepEn: 'Please upload all required documents: police clearance, biometric ID, and current selfie',
+        };
+      }
+
+      // Step 2: Validate police check expiry
+      const expiresAt = new Date(documents.policeCheckIssuedAt);
+      expiresAt.setMonth(expiresAt.getMonth() + this.VALIDITY_MONTHS);
+      
+      if (expiresAt < new Date()) {
+        return {
+          success: false,
+          checkId: 0,
+          providerId,
+          verificationSteps: {
+            policeCheckUploaded: true,
+            idDocumentUploaded: true,
+            selfieUploaded: true,
+            biometricMatch: false,
+          },
+          status: 'documents_incomplete',
+          messageHe: 'תעודת היושר פגת תוקף. אנא הפק תעודה חדשה מאתר משטרת ישראל או בתחנת משטרה.',
+          messageEn: 'Police clearance has expired. Please obtain a new certificate from Israel Police website or station.',
+          nextStepHe: 'כניסה לאתר gov.il או התייצבות בתחנת משטרה עם תעודת זהות ביומטרית',
+          nextStepEn: 'Visit gov.il or go to a police station with your biometric ID',
+        };
+      }
+
+      // Step 3: Perform biometric verification (selfie vs ID)
+      logger.info('[PoliceCheck] Performing biometric face matching', { providerId });
+      
+      const biometricService = new BiometricVerificationService();
+      const biometricResult = await biometricService.verifyIdentity(
+        documents.selfieUrl,
+        documents.idDocumentUrl
+      );
+
+      logger.info('[PoliceCheck] Biometric verification result', { 
+        providerId, 
+        isMatch: biometricResult.isMatch,
+        matchScore: biometricResult.matchScore,
+        status: biometricResult.status
+      });
+
+      // Step 4: Handle biometric match failure
+      if (!biometricResult.isMatch) {
+        return {
+          success: false,
+          checkId: 0,
+          providerId,
+          verificationSteps: {
+            policeCheckUploaded: true,
+            idDocumentUploaded: true,
+            selfieUploaded: true,
+            biometricMatch: false,
+            biometricMatchScore: biometricResult.matchScore,
+          },
+          status: 'biometric_failed',
+          messageHe: `אימות ביומטרי נכשל. הפנים בסלפי אינן תואמות לתעודת הזהות (ציון: ${biometricResult.matchScore}%)`,
+          messageEn: `Biometric verification failed. Selfie does not match ID photo (score: ${biometricResult.matchScore}%)`,
+          nextStepHe: 'אנא צלם סלפי חדש באור טוב, וודא שהפנים נראות בבירור ללא משקפי שמש או כיסוי ראש',
+          nextStepEn: 'Please take a new selfie in good lighting, ensure your face is clearly visible without sunglasses or head covering',
+        };
+      }
+
+      // Step 5: Biometric match successful - save police check record
+      const insertData: InsertProviderPoliceCheck = {
+        providerId,
+        documentType: 'police_clearance',
+        documentUrl: documents.policeCheckUrl,
+        documentFileName: documents.policeCheckFileName,
+        status: 'pending',
+        issuedAt: documents.policeCheckIssuedAt,
+        expiresAt,
+        biometricVerified: true,
+        biometricMatchScore: biometricResult.matchScore.toString(),
+        idDocumentUrl: documents.idDocumentUrl,
+        selfieUrl: documents.selfieUrl,
+        biometricVerifiedAt: new Date(),
+      };
+
+      const result = await db
+        .insert(providerPoliceChecks)
+        .values(insertData)
+        .returning();
+
+      logger.info('[PoliceCheck] Biometric onboarding complete - ready for admin review', { 
+        providerId, 
+        checkId: result[0].id,
+        biometricScore: biometricResult.matchScore
+      });
+
+      return {
+        success: true,
+        checkId: result[0].id,
+        providerId,
+        verificationSteps: {
+          policeCheckUploaded: true,
+          idDocumentUploaded: true,
+          selfieUploaded: true,
+          biometricMatch: true,
+          biometricMatchScore: biometricResult.matchScore,
+        },
+        status: 'ready_for_review',
+        messageHe: 'כל המסמכים אומתו בהצלחה! ברוכים הבאים למשפחת Pet Wash™',
+        messageEn: 'All documents verified successfully! Welcome to the Pet Wash™ family',
+        nextStepHe: 'הבקשה שלך נשלחה לצוות שלנו ותיבדק תוך 24-48 שעות',
+        nextStepEn: 'Your application has been sent to our team and will be reviewed within 24-48 hours',
+      };
+    } catch (error: any) {
+      logger.error('[PoliceCheck] Biometric onboarding error', { 
+        providerId, 
+        error: error.message 
+      });
       throw error;
     }
   }

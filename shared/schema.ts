@@ -8943,6 +8943,13 @@ export const providerPoliceChecks = pgTable("provider_police_checks", {
   badgeIssued: boolean("badge_issued").default(false),
   badgeIssuedAt: timestamp("badge_issued_at"),
   
+  // Biometric verification fields (Israeli Law 2025 compliance)
+  biometricVerified: boolean("biometric_verified").default(false),
+  biometricMatchScore: varchar("biometric_match_score", { length: 10 }), // 0-100%
+  idDocumentUrl: varchar("id_document_url", { length: 500 }), // תעודת זהות ביומטרית
+  selfieUrl: varchar("selfie_url", { length: 500 }), // Current selfie for face matching
+  biometricVerifiedAt: timestamp("biometric_verified_at"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
