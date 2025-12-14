@@ -99,6 +99,7 @@ import subcontractorAgreementsRoutes from "./routes/subcontractor-agreements";
 import providerTrainingRoutes from "./routes/provider-training";
 import policeCheckRoutes from "./routes/police-check";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
+import aiPayoutVerificationRoutes from "./routes/ai-payout-verification";
 import referralRoutes from "./routes/referral";
 import accountingRoutes from "./routes/accounting";
 import adminRoutes from "./routes/admin";
@@ -7916,6 +7917,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // Admin Provider Review Queue - MadPaws style approval workflow
   app.use('/api/provider-review', apiLimiter, adminProviderReviewRoutes);
+  
+  // AI Payout Verification - Gemini 2.5 Flash work verification before payouts
+  app.use('/api/ai-verification', apiLimiter, aiPayoutVerificationRoutes);
   
   // Employee Management routes
   const employeeRoutes = await import('./routes/employees');

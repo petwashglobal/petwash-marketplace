@@ -16,6 +16,7 @@ import { superAppPayouts, providers } from "@shared/schema";
 import { eq, and, lte, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
+import { AIPayoutVerificationService } from "./AIPayoutVerificationService";
 
 export class ProviderPayoutService {
   
@@ -49,10 +50,16 @@ export class ProviderPayoutService {
   /**
    * Release escrow and process payout
    * Updates status from 'in_escrow' → 'processing' → 'completed'
+   * MANDATORY: AI verification before payout release
    */
-  static async releaseEscrowAndPayout(payoutId: string): Promise<{
+  static async releaseEscrowAndPayout(payoutId: string, skipAIVerification = false): Promise<{
     success: boolean;
     error?: string;
+    aiVerification?: {
+      verified: boolean;
+      confidenceScore: number;
+      riskLevel: string;
+    };
   }> {
     try {
       // Get payout record
@@ -73,6 +80,49 @@ export class ProviderPayoutService {
           success: false,
           error: `Payout not in escrow (status: ${payout.status})`,
         };
+      }
+
+      // STEP 1: AI Verification (Gemini 2.5 Flash)
+      if (!skipAIVerification) {
+        logger.info('[ProviderPayout] Running AI verification before payout', { payoutId });
+        
+        const aiResult = await AIPayoutVerificationService.verifyWorkForPayout(payoutId);
+        
+        if (!aiResult.verified) {
+          logger.warn('[ProviderPayout] AI verification failed - payout blocked', {
+            payoutId,
+            confidenceScore: aiResult.confidenceScore,
+            riskLevel: aiResult.riskLevel,
+            issues: aiResult.issues,
+          });
+
+          // Update payout with verification failure
+          await db.update(superAppPayouts)
+            .set({
+              aiVerified: false,
+              aiVerificationScore: aiResult.confidenceScore,
+              aiRiskLevel: aiResult.riskLevel,
+              aiVerificationNotes: aiResult.issues.join('; '),
+              updatedAt: new Date(),
+            })
+            .where(eq(superAppPayouts.id, payoutId));
+
+          return {
+            success: false,
+            error: `AI verification failed: ${aiResult.issues.join('; ')}`,
+            aiVerification: {
+              verified: aiResult.verified,
+              confidenceScore: aiResult.confidenceScore,
+              riskLevel: aiResult.riskLevel,
+            },
+          };
+        }
+
+        logger.info('[ProviderPayout] AI verification passed', {
+          payoutId,
+          confidenceScore: aiResult.confidenceScore,
+          riskLevel: aiResult.riskLevel,
+        });
       }
 
       // Get provider bank details

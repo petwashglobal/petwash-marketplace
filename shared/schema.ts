@@ -7224,12 +7224,43 @@ export const superAppPayouts = pgTable("super_app_payouts", {
   scheduledFor: timestamp("scheduled_for"),
   processedAt: timestamp("processed_at"),
   paidAt: timestamp("paid_at"),
+  
+  // AI Verification (Gemini 2.5 Flash)
+  aiVerified: boolean("ai_verified"),
+  aiVerificationScore: integer("ai_verification_score"),
+  aiVerificationId: varchar("ai_verification_id"),
+  aiVerifiedAt: timestamp("ai_verified_at"),
+  aiVerificationNotes: text("ai_verification_notes"),
+  aiRiskLevel: varchar("ai_risk_level"), // low | medium | high | critical
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   providerIdx: index("super_app_payout_provider_idx").on(table.providerId),
   statusIdx: index("super_app_payout_status_idx").on(table.status),
+  aiVerifiedIdx: index("super_app_payout_ai_verified_idx").on(table.aiVerified),
 }));
+
+// ===== BOOKING PHOTOS TABLE (for AI verification) =====
+export const bookingPhotos = pgTable("booking_photos", {
+  id: serial("id").primaryKey(),
+  bookingId: varchar("booking_id").references(() => bookings.id).notNull(),
+  providerId: integer("provider_id").references(() => providers.id),
+  photoUrl: text("photo_url").notNull(),
+  photoType: varchar("photo_type").default("during"), // before | during | after
+  gpsLatitude: decimal("gps_latitude", { precision: 10, scale: 7 }),
+  gpsLongitude: decimal("gps_longitude", { precision: 10, scale: 7 }),
+  capturedAt: timestamp("captured_at"),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  metadata: jsonb("metadata"),
+}, (table) => ({
+  bookingIdx: index("booking_photo_booking_idx").on(table.bookingId),
+  providerIdx: index("booking_photo_provider_idx").on(table.providerId),
+}));
+
+export const insertBookingPhotoSchema = createInsertSchema(bookingPhotos).omit({ id: true });
+export type InsertBookingPhoto = z.infer<typeof insertBookingPhotoSchema>;
+export type SelectBookingPhoto = typeof bookingPhotos.$inferSelect;
 
 // ===== REVIEWS TABLE =====
 export const superAppReviews = pgTable("super_app_reviews", {

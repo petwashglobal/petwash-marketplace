@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import LogisticsFleetView from "@/components/control-panel/LogisticsFleetView";
 import FinanceSettlementsView from "@/components/control-panel/FinanceSettlementsView";
 import ComplianceView from "@/components/control-panel/ComplianceView";
+import ProviderManagementView from "@/components/control-panel/ProviderManagementView";
 
 export default function UnifiedControlPanel() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -146,6 +147,10 @@ export default function UnifiedControlPanel() {
           <TabsTrigger value="compliance" className="gap-2" data-testid="tab-compliance">
             <ShieldCheck className="w-4 h-4" />
             <span className="hidden sm:inline">Compliance</span>
+          </TabsTrigger>
+          <TabsTrigger value="providers" className="gap-2" data-testid="tab-providers">
+            <Users className="w-4 h-4" />
+            <span className="hidden sm:inline">Providers</span>
           </TabsTrigger>
           <TabsTrigger value="health-safety" className="gap-2" data-testid="tab-health-safety">
             <Shield className="w-4 h-4" />
@@ -296,6 +301,11 @@ export default function UnifiedControlPanel() {
         {/* Global Compliance Brain Module */}
         <TabsContent value="compliance">
           <ComplianceView />
+        </TabsContent>
+
+        {/* Provider Management Module */}
+        <TabsContent value="providers">
+          <ProviderManagementView />
         </TabsContent>
 
         <TabsContent value="health-safety">
