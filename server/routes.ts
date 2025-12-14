@@ -96,6 +96,7 @@ import contractorDocumentsRoutes from "./routes/contractor-documents";
 import contractorOnboardingRoutes from "./routes/contractor-onboarding";
 import contractorInvoicesRoutes from "./routes/contractor-invoices";
 import subcontractorAgreementsRoutes from "./routes/subcontractor-agreements";
+import providerTrainingRoutes from "./routes/provider-training";
 import referralRoutes from "./routes/referral";
 import accountingRoutes from "./routes/accounting";
 import adminRoutes from "./routes/admin";
@@ -7904,6 +7905,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/contractor-invoices', apiLimiter, contractorInvoicesRoutes);
   // Israeli Subcontractor Agreement 2025 - FREE internal e-signature system (NO paid providers)
   app.use('/api/subcontractors/agreements', apiLimiter, subcontractorAgreementsRoutes);
+  
+  // Provider Training - MadPaws style training, quizzes, certificates
+  app.use('/api/provider-training', apiLimiter, providerTrainingRoutes);
   
   // Employee Management routes
   const employeeRoutes = await import('./routes/employees');

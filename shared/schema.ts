@@ -8778,3 +8778,224 @@ export type InsertApplicationFraudSignal = z.infer<typeof insertApplicationFraud
 export type ApplicationFraudSignal = typeof applicationFraudSignals.$inferSelect;
 
 export type ApplicationStepProgress = typeof applicationStepProgress.$inferSelect;
+
+// ==================== PROVIDER TRAINING SYSTEM (MadPaws Style) ====================
+
+// Training modules configuration (stored in code, referenced here for tracking)
+export const providerTrainingModules = pgTable("provider_training_modules", {
+  id: serial("id").primaryKey(),
+  moduleId: varchar("module_id", { length: 50 }).unique().notNull(), // gen-001, sit-001, etc.
+  platform: varchar("platform", { length: 50 }).notNull(), // sitter_suite, walk_my_pet, pettrek, k9000, general
+  moduleNumber: integer("module_number").notNull(),
+  titleHe: varchar("title_he", { length: 255 }).notNull(),
+  titleEn: varchar("title_en", { length: 255 }).notNull(),
+  descriptionHe: text("description_he"),
+  descriptionEn: text("description_en"),
+  durationMinutes: integer("duration_minutes").default(15),
+  requiredForCertification: boolean("required_for_certification").default(true),
+  videoUrl: varchar("video_url", { length: 500 }),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  platformIdx: index("idx_training_modules_platform").on(table.platform),
+  moduleIdIdx: index("idx_training_modules_module_id").on(table.moduleId),
+}));
+
+// Provider training progress tracking
+export const providerTrainingProgress = pgTable("provider_training_progress", {
+  id: serial("id").primaryKey(),
+  providerId: varchar("provider_id", { length: 255 }).notNull(),
+  moduleId: varchar("module_id", { length: 50 }).notNull(),
+  platform: varchar("platform", { length: 50 }).notNull(),
+  
+  // Progress tracking
+  started: boolean("started").default(false),
+  startedAt: timestamp("started_at"),
+  completed: boolean("completed").default(false),
+  completedAt: timestamp("completed_at"),
+  
+  // Video progress (percentage watched)
+  videoProgress: integer("video_progress").default(0), // 0-100
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  providerIdx: index("idx_training_progress_provider").on(table.providerId),
+  moduleIdx: index("idx_training_progress_module").on(table.moduleId),
+  platformIdx: index("idx_training_progress_platform").on(table.platform),
+  providerModuleUnique: unique("uq_training_progress_provider_module").on(table.providerId, table.moduleId),
+}));
+
+// Quiz results tracking (100% pass required)
+export const providerTrainingQuizResults = pgTable("provider_training_quiz_results", {
+  id: serial("id").primaryKey(),
+  providerId: varchar("provider_id", { length: 255 }).notNull(),
+  moduleId: varchar("module_id", { length: 50 }).notNull(),
+  
+  // Quiz results
+  score: integer("score").notNull(), // 0-100
+  passed: boolean("passed").notNull(),
+  attemptNumber: integer("attempt_number").notNull(),
+  
+  // Detailed results
+  answers: jsonb("answers"), // [{questionId, selectedOptionId}]
+  incorrectQuestions: jsonb("incorrect_questions"), // [{questionId, correctOptionId, selectedOptionId}]
+  
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  providerIdx: index("idx_quiz_results_provider").on(table.providerId),
+  moduleIdx: index("idx_quiz_results_module").on(table.moduleId),
+  passedIdx: index("idx_quiz_results_passed").on(table.passed),
+}));
+
+// Provider certificates (issued after training complete)
+export const providerCertificates = pgTable("provider_certificates", {
+  id: serial("id").primaryKey(),
+  certificateId: varchar("certificate_id", { length: 50 }).unique().notNull(), // CERT-SITTER-XXXXXXXX
+  providerId: varchar("provider_id", { length: 255 }).notNull(),
+  platform: varchar("platform", { length: 50 }).notNull(),
+  providerName: varchar("provider_name", { length: 255 }).notNull(),
+  
+  // Certificate details
+  issuedAt: timestamp("issued_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // 2 years from issue
+  status: varchar("status", { length: 20 }).default("active"), // active, expired, revoked, suspended
+  
+  // Verification
+  verificationHash: varchar("verification_hash", { length: 64 }),
+  verificationUrl: varchar("verification_url", { length: 500 }),
+  
+  // PDF storage
+  pdfUrl: varchar("pdf_url", { length: 500 }),
+  qrCodeUrl: varchar("qr_code_url", { length: 500 }),
+  
+  // Revocation info
+  revokedAt: timestamp("revoked_at"),
+  revokedBy: varchar("revoked_by", { length: 255 }),
+  revocationReason: text("revocation_reason"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  providerIdx: index("idx_certificates_provider").on(table.providerId),
+  platformIdx: index("idx_certificates_platform").on(table.platform),
+  statusIdx: index("idx_certificates_status").on(table.status),
+  certificateIdIdx: index("idx_certificates_cert_id").on(table.certificateId),
+}));
+
+// Police check / background verification (Israeli תעודת יושר)
+export const providerPoliceChecks = pgTable("provider_police_checks", {
+  id: serial("id").primaryKey(),
+  providerId: varchar("provider_id", { length: 255 }).notNull(),
+  
+  // Document details
+  documentType: varchar("document_type", { length: 50 }).default("police_clearance"), // police_clearance, criminal_background
+  documentUrl: varchar("document_url", { length: 500 }), // GCS URL
+  documentFileName: varchar("document_file_name", { length: 255 }),
+  
+  // Status
+  status: varchar("status", { length: 20 }).default("pending"), // pending, under_review, approved, rejected, expired
+  
+  // Verification details
+  issuedAt: timestamp("issued_at"), // Date on the document
+  expiresAt: timestamp("expires_at"), // Usually valid for 3-6 months
+  
+  // Review
+  reviewedBy: varchar("reviewed_by", { length: 255 }),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  rejectionReason: text("rejection_reason"),
+  
+  // Badge issued flag
+  badgeIssued: boolean("badge_issued").default(false),
+  badgeIssuedAt: timestamp("badge_issued_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  providerIdx: index("idx_police_checks_provider").on(table.providerId),
+  statusIdx: index("idx_police_checks_status").on(table.status),
+}));
+
+// Admin provider approval queue
+export const providerApprovalQueue = pgTable("provider_approval_queue", {
+  id: serial("id").primaryKey(),
+  providerId: varchar("provider_id", { length: 255 }).notNull(),
+  platform: varchar("platform", { length: 50 }).notNull(),
+  
+  // Application status
+  status: varchar("status", { length: 20 }).default("pending"), // pending, under_review, approved, rejected, on_hold
+  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  
+  // Checklist items (MadPaws style)
+  photoApproved: boolean("photo_approved").default(false),
+  certificateApproved: boolean("certificate_approved").default(false),
+  idVerified: boolean("id_verified").default(false),
+  addressVerified: boolean("address_verified").default(false),
+  policeCheckApproved: boolean("police_check_approved").default(false),
+  insuranceVerified: boolean("insurance_verified").default(false),
+  pricingApproved: boolean("pricing_approved").default(false),
+  
+  // Review details
+  assignedTo: varchar("assigned_to", { length: 255 }),
+  assignedAt: timestamp("assigned_at"),
+  reviewedBy: varchar("reviewed_by", { length: 255 }),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  rejectionReason: text("rejection_reason"),
+  
+  // Approval outcome
+  approvedAt: timestamp("approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  providerIdx: index("idx_approval_queue_provider").on(table.providerId),
+  statusIdx: index("idx_approval_queue_status").on(table.status),
+  priorityIdx: index("idx_approval_queue_priority").on(table.priority),
+  platformIdx: index("idx_approval_queue_platform").on(table.platform),
+}));
+
+// Training Zod schemas and type exports
+export const insertProviderTrainingProgressSchema = createInsertSchema(providerTrainingProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertProviderTrainingProgress = z.infer<typeof insertProviderTrainingProgressSchema>;
+export type ProviderTrainingProgress = typeof providerTrainingProgress.$inferSelect;
+
+export const insertProviderTrainingQuizResultSchema = createInsertSchema(providerTrainingQuizResults).omit({
+  id: true,
+  createdAt: true,
+  submittedAt: true,
+});
+export type InsertProviderTrainingQuizResult = z.infer<typeof insertProviderTrainingQuizResultSchema>;
+export type ProviderTrainingQuizResult = typeof providerTrainingQuizResults.$inferSelect;
+
+export const insertProviderCertificateSchema = createInsertSchema(providerCertificates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertProviderCertificate = z.infer<typeof insertProviderCertificateSchema>;
+export type ProviderCertificate = typeof providerCertificates.$inferSelect;
+
+export const insertProviderPoliceCheckSchema = createInsertSchema(providerPoliceChecks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertProviderPoliceCheck = z.infer<typeof insertProviderPoliceCheckSchema>;
+export type ProviderPoliceCheck = typeof providerPoliceChecks.$inferSelect;
+
+export const insertProviderApprovalQueueSchema = createInsertSchema(providerApprovalQueue).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertProviderApprovalQueue = z.infer<typeof insertProviderApprovalQueueSchema>;
+export type ProviderApprovalQueue = typeof providerApprovalQueue.$inferSelect;
