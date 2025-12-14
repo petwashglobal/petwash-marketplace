@@ -1071,6 +1071,33 @@ export class BackgroundJobProcessor {
       
       logger.info('Daily backup completed successfully');
       
+      // === Google Drive Backup (Additional cloud backup) ===
+      try {
+        const { googleDriveBackupService } = await import('./services/googleDriveBackupService');
+        
+        // Create a summary JSON backup of the day
+        const backupSummary = {
+          backupId,
+          timestamp,
+          totalDocuments,
+          collections: collectionNames,
+          errors: errors.length > 0 ? errors : undefined,
+          status: errors.length > 0 ? 'partial' : 'completed'
+        };
+        
+        await googleDriveBackupService.backupJSON(
+          backupSummary,
+          `PetWash_Daily_Summary_${new Date().toISOString().split('T')[0]}`,
+          { includeTimestamp: false }
+        );
+        
+        logger.info('[BackgroundJobs] ✅ Google Drive backup completed');
+      } catch (driveError) {
+        logger.warn('[BackgroundJobs] Google Drive backup skipped (not configured or failed)', {
+          error: driveError instanceof Error ? driveError.message : 'Unknown error'
+        });
+      }
+      
     } catch (error) {
       logger.error('Error performing daily backup', error);
       
