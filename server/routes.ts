@@ -97,6 +97,8 @@ import contractorOnboardingRoutes from "./routes/contractor-onboarding";
 import contractorInvoicesRoutes from "./routes/contractor-invoices";
 import subcontractorAgreementsRoutes from "./routes/subcontractor-agreements";
 import providerTrainingRoutes from "./routes/provider-training";
+import policeCheckRoutes from "./routes/police-check";
+import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import referralRoutes from "./routes/referral";
 import accountingRoutes from "./routes/accounting";
 import adminRoutes from "./routes/admin";
@@ -7908,6 +7910,12 @@ self.addEventListener('notificationclick', (event) => {
   
   // Provider Training - MadPaws style training, quizzes, certificates
   app.use('/api/provider-training', apiLimiter, providerTrainingRoutes);
+  
+  // Police Check Badge System - Israeli תעודת יושר verification
+  app.use('/api/police-check', apiLimiter, policeCheckRoutes);
+  
+  // Admin Provider Review Queue - MadPaws style approval workflow
+  app.use('/api/provider-review', apiLimiter, adminProviderReviewRoutes);
   
   // Employee Management routes
   const employeeRoutes = await import('./routes/employees');
