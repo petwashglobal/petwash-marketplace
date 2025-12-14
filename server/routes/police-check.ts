@@ -78,6 +78,15 @@ const rejectCheckSchema = z.object({
   rejectionReason: z.string().min(1, 'נדרשת סיבת דחייה'),
 });
 
+const biometricOnboardingSchema = z.object({
+  policeCheckUrl: z.string().url('כתובת URL לא תקינה לתעודת יושר'),
+  policeCheckFileName: z.string().min(1, 'שם קובץ תעודת יושר חסר'),
+  policeCheckIssuedAt: z.string().datetime({ message: 'תאריך הנפקה לא תקין' }),
+  idDocumentUrl: z.string().url('כתובת URL לא תקינה לתעודת זהות'),
+  idDocumentFileName: z.string().min(1, 'שם קובץ תעודת זהות חסר'),
+  selfieUrl: z.string().url('כתובת URL לא תקינה לסלפי'),
+});
+
 /**
  * POST /api/police-check/submit
  * Submit a police check document for verification
@@ -105,6 +114,63 @@ router.post('/submit', requireAuth, async (req: any, res) => {
     logger.error('[Police Check Routes] Error submitting check', error);
     res.status(500).json({ 
       error: error.message || 'שגיאה בהגשת תעודת היושר' 
+    });
+  }
+});
+
+/**
+ * POST /api/police-check/biometric-onboarding
+ * Complete biometric onboarding for subcontractors
+ * 
+ * Israeli Law 2025 compliance requires:
+ * 1. תעודת יושר (Police Clearance) - from משטרת ישראל
+ * 2. תעודת זהות ביומטרית (Biometric ID) - photo verification
+ * 3. סלפי עדכני (Current Selfie) - matched against ID using AI
+ * 
+ * Process:
+ * - Upload all 3 documents
+ * - AI performs face matching (selfie vs ID)
+ * - If match successful → Ready for admin review
+ * - If match fails → Reject with retry option
+ */
+router.post('/biometric-onboarding', requireAuth, async (req: any, res) => {
+  try {
+    const validation = biometricOnboardingSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: validation.error.errors[0]?.message || 'נתונים לא תקינים',
+        errorEn: 'Invalid data provided',
+        details: validation.error.errors
+      });
+    }
+
+    const { 
+      policeCheckUrl, 
+      policeCheckFileName, 
+      policeCheckIssuedAt,
+      idDocumentUrl,
+      idDocumentFileName,
+      selfieUrl 
+    } = validation.data;
+
+    const result = await policeCheckService.submitBiometricOnboarding(
+      req.userId,
+      {
+        policeCheckUrl,
+        policeCheckFileName,
+        policeCheckIssuedAt: new Date(policeCheckIssuedAt),
+        idDocumentUrl,
+        idDocumentFileName,
+        selfieUrl,
+      }
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    logger.error('[Police Check Routes] Error in biometric onboarding', error);
+    res.status(500).json({ 
+      error: error.message || 'שגיאה בתהליך ההצטרפות הביומטרי',
+      errorEn: 'Error in biometric onboarding process'
     });
   }
 });
