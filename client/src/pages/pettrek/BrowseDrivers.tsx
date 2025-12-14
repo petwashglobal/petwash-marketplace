@@ -19,9 +19,11 @@ import {
   TrendingUp,
   Users,
   X,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Sparkles
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { BookingWizard, BookingFilters } from '@/components/BookingWizard';
 
 interface Driver {
   id: string;
@@ -56,6 +58,17 @@ export default function BrowseDrivers() {
     availableNow: false,
     priceRange: [0, 100],
   });
+  const [showWizard, setShowWizard] = useState(false);
+  const [bookingFilters, setBookingFilters] = useState<BookingFilters | null>(null);
+
+  const handleWizardComplete = (wizardFilters: BookingFilters) => {
+    setBookingFilters(wizardFilters);
+    setShowWizard(false);
+    if (wizardFilters.location) {
+      setFilters(prev => ({ ...prev, location: wizardFilters.location }));
+    }
+    document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const { data, isLoading } = useQuery<{ drivers: Driver[] }>({
     queryKey: ["/api/providers/drivers", filters, sortBy],
@@ -131,6 +144,16 @@ export default function BrowseDrivers() {
                 onChange={(e) => setFilters({ ...filters, location: e.target.value })}
                 data-testid="input-search-location"
               />
+            </div>
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={() => setShowWizard(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold shadow-lg hover:from-purple-700 hover:to-indigo-700 transition-all hover:scale-105"
+                data-testid="button-start-wizard"
+              >
+                <Sparkles className="w-5 h-5" />
+                חיפוש מודרך / Guided Search
+              </button>
             </div>
           </div>
         </div>
@@ -388,6 +411,7 @@ export default function BrowseDrivers() {
         )}
 
         {/* Results */}
+        <div id="results-section">
         {isLoading ? (
           <div className="text-center py-12">
             <div className="luxury-spinner mx-auto"></div>
@@ -565,7 +589,19 @@ export default function BrowseDrivers() {
             )}
           </>
         )}
+        </div>
       </div>
+
+      {/* Booking Wizard Modal */}
+      {showWizard && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <BookingWizard
+            platform="pettrek"
+            onComplete={handleWizardComplete}
+            onClose={() => setShowWizard(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
