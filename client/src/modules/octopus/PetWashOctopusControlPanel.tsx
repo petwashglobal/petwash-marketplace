@@ -1,10 +1,16 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 /**
  * FILE: src/modules/octopus/PetWashOctopusControlPanel.tsx
  *
  * PETWASH LUXE 2025 - MAIN OCTOPUS CONTROL PANEL
  * Pure white - metallic - 7 star luxury - Apple level clean UI.
+ * 
+ * December 2025 Upgrade:
+ * - Added TanStack Query integration for real-time admin metrics
+ * - Updated all sample data to December 2025
+ * - Connected to /api/admin/metrics for live dashboard data
  *
  * This is a front end blueprint for:
  * - Global control panel (HQ)
@@ -230,37 +236,37 @@ const PLATFORMS: PetWashPlatform[] = [
 
 const MOCK_BOOKINGS: BookingSummary[] = [
   {
-    id: "BKG-2025-0001",
+    id: "BKG-2025-1201",
     platformId: "pet_sitter",
     guestName: "Dana Levi",
     petName: "Luna",
     serviceType: "Overnight at sitter home",
-    checkIn: "2025-11-30",
-    checkOut: "2025-12-02",
+    checkIn: "2025-12-13",
+    checkOut: "2025-12-15",
     status: "confirmed",
     amountNis: 620,
     city: "Tel Aviv",
   },
   {
-    id: "BKG-2025-0002",
+    id: "BKG-2025-1202",
     platformId: "walk_my_pet",
     guestName: "Omer Ben",
     petName: "Rocky",
     serviceType: "60 min GPS Walk",
-    checkIn: "2025-11-26",
-    checkOut: "2025-11-26",
+    checkIn: "2025-12-13",
+    checkOut: "2025-12-13",
     status: "pending",
     amountNis: 89,
     city: "Ramat Gan",
   },
   {
-    id: "BKG-2025-0003",
+    id: "BKG-2025-1203",
     platformId: "pettrek",
     guestName: "Shiri Cohen",
     petName: "Milo",
     serviceType: "Vet transport - return",
-    checkIn: "2025-11-27",
-    checkOut: "2025-11-27",
+    checkIn: "2025-12-12",
+    checkOut: "2025-12-12",
     status: "completed",
     amountNis: 210,
     city: "Ra'anana",
@@ -307,19 +313,19 @@ const MOCK_LOYALTY: LoyaltySnapshot = {
 
 const MOCK_INVOICES: InvoiceSummary[] = [
   {
-    id: "INV-2025-1001",
+    id: "INV-2025-1201",
     type: "customer",
     label: "Single Wash - National Park",
-    date: "2025-11-25",
+    date: "2025-12-12",
     amountNis: 55,
     status: "paid",
     counterparty: "Customer",
   },
   {
-    id: "INV-2025-1002",
+    id: "INV-2025-1202",
     type: "customer",
     label: "3 Wash Package",
-    date: "2025-11-24",
+    date: "2025-12-11",
     amountNis: 150,
     status: "issued",
     counterparty: "Customer",
@@ -327,8 +333,8 @@ const MOCK_INVOICES: InvoiceSummary[] = [
   {
     id: "INV-2025-2001",
     type: "payout",
-    label: "Payout - Ido (Week 47)",
-    date: "2025-11-25",
+    label: "Payout - Ido (Week 50)",
+    date: "2025-12-13",
     amountNis: 1820,
     status: "paid",
     counterparty: "Ido Shakarzi",
@@ -1025,12 +1031,149 @@ const K9000StatusStrip: React.FC = () => {
 };
 
 /* -----------------------------------------------------------
-   10. MAIN OCTOPUS CONTROL PANEL WRAPPER
+   10. ADMIN METRICS API TYPES & HOOK
+   ----------------------------------------------------------- */
+
+interface AdminMetricsResponse {
+  success: boolean;
+  metrics: {
+    revenue: {
+      total: string;
+      today: string;
+      avgTransaction: string;
+      transactionCount: number;
+      todayTransactionCount: number;
+    };
+    stations: {
+      active: number;
+      total: number;
+      errors: number;
+      totalWashes: number;
+      healthRate: string;
+    };
+    loyalty: {
+      totalMembers: number;
+      bronze: number;
+      silver: number;
+      gold: number;
+      platinum: number;
+      diamond: number;
+      emerald: number;
+      royal: number;
+      platinumRate: string;
+    };
+    franchises: {
+      active_franchises: number;
+      total_franchises: number;
+      activation_rate: number;
+    };
+    timestamp: string;
+    timezone: string;
+  };
+}
+
+const useAdminMetrics = () => {
+  return useQuery<AdminMetricsResponse>({
+    queryKey: ['/api/admin/metrics'],
+    refetchInterval: 60000, // Refresh every minute
+    staleTime: 30000, // Consider fresh for 30 seconds
+    retry: 2,
+  });
+};
+
+/* -----------------------------------------------------------
+   11. K9000 STATUS STRIP WITH LIVE DATA
+   ----------------------------------------------------------- */
+
+const K9000StatusStripWithData: React.FC<{
+  stationData?: AdminMetricsResponse['metrics']['stations'];
+  isLoading?: boolean;
+}> = ({ stationData, isLoading }) => {
+  const activeCount = stationData?.active ?? 2;
+  const totalCount = stationData?.total ?? 2;
+  const errorsCount = stationData?.errors ?? 0;
+  const healthRate = stationData?.healthRate ?? '100.0';
+
+  return (
+    <div
+      className={[
+        "col-span-12",
+        "border",
+        "mt-4",
+        luxe.borderSoft,
+        luxe.radiusXL,
+        "px-4 py-3 md:px-6 md:py-4",
+        "bg-gradient-to-r from-slate-50 via-white to-slate-50",
+        "flex flex-col md:flex-row md:items-center md:justify-between gap-3",
+      ].join(" ")}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className={[
+            "h-9 w-9 rounded-2xl",
+            "bg-gradient-to-br from-emerald-500 via-emerald-400 to-emerald-500",
+            "text-white flex items-center justify-center text-lg shadow-lg",
+          ].join(" ")}
+        >
+          🚿
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold text-slate-900">
+            K9000 and Smart Hub Status {isLoading && <span className="text-xs text-slate-400 ml-2">⟳</span>}
+          </span>
+          <span className="text-xs text-slate-500">
+            Live bays, water temperature, payment health and QR terminals.
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <div className="flex items-center gap-1.5">
+          <span className={`h-1.5 w-1.5 rounded-full ${activeCount === totalCount ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          <span className="text-slate-700">
+            Bays online: <b>{activeCount} / {totalCount}</b>
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className={`h-1.5 w-1.5 rounded-full ${errorsCount === 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+          <span className="text-slate-700">
+            QR terminals: <b>{errorsCount === 0 ? 'OK' : `${errorsCount} errors`}</b>
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <span className="text-slate-700">
+            Health rate: <b>{healthRate}%</b>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* -----------------------------------------------------------
+   12. MAIN OCTOPUS CONTROL PANEL WRAPPER
    ----------------------------------------------------------- */
 
 export const PetWashOctopusControlPanel: React.FC = () => {
   const [selectedPlatformId, setSelectedPlatformId] =
     useState<PetWashPlatformId>("pet_sitter");
+  
+  // Fetch real-time admin metrics from API
+  const { data: metricsData, isLoading: metricsLoading } = useAdminMetrics();
+  
+  // Derive loyalty data from API or fallback to mock
+  const loyaltyData: LoyaltySnapshot = useMemo(() => {
+    if (metricsData?.success && metricsData.metrics?.loyalty) {
+      const l = metricsData.metrics.loyalty;
+      return {
+        activeMembers: l.totalMembers,
+        pointsIssued: MOCK_LOYALTY.pointsIssued, // Keep mock for now
+        pointsRedeemed: MOCK_LOYALTY.pointsRedeemed,
+        avgPointsPerUser: MOCK_LOYALTY.avgPointsPerUser,
+      };
+    }
+    return MOCK_LOYALTY;
+  }, [metricsData]);
 
   return (
     <div
@@ -1068,7 +1211,7 @@ export const PetWashOctopusControlPanel: React.FC = () => {
         </div>
         <div className="flex items-center gap-2 md:gap-3">
           <LuxeButton variant="pill" size="sm">
-            Global status: <span className={luxe.emeraldAccent}>Stable</span>
+            Global status: <span className={luxe.emeraldAccent}>{metricsLoading ? '...' : 'Stable'}</span>
           </LuxeButton>
           <LuxeButton size="sm">New manual booking</LuxeButton>
         </div>
@@ -1087,10 +1230,13 @@ export const PetWashOctopusControlPanel: React.FC = () => {
         />
         <TalentPanel talent={MOCK_TALENT} />
         <LoyaltyAndInvoicesPanel
-          loyalty={MOCK_LOYALTY}
+          loyalty={loyaltyData}
           invoices={MOCK_INVOICES}
         />
-        <K9000StatusStrip />
+        <K9000StatusStripWithData 
+          stationData={metricsData?.metrics?.stations}
+          isLoading={metricsLoading}
+        />
       </main>
     </div>
   );
