@@ -83,6 +83,7 @@ import enterprisePolicyRoutes from "./routes/enterprise-policy";
 import enterpriseFranchiseRoutes from "./routes/enterprise-franchise";
 import unifiedPlatformRoutes from "./routes/unified-platform";
 import weatherRoutes from "./routes/weather";
+import backupRoutes from "./routes/backup";
 import environmentRoutes from "./routes/environment";
 import translationRoutes from "./routes/translation";
 import promotionsRoutes from "./routes/promotions";
@@ -7972,6 +7973,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // Weather API - Pet Wash Day Planner (Google Weather + Open-Meteo)
   app.use('/api/weather', apiLimiter, weatherRoutes);
+  
+  // Google Drive Backup API - Comprehensive data backup and management
+  app.use('/api/backup', adminLimiter, backupRoutes);
   
   // Environment API - Air Quality + Pollen + Gemini AI Insights (Luxury Pet Care)
   app.use('/api/environment', apiLimiter, environmentRoutes);
