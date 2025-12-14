@@ -17,6 +17,7 @@ import { Link } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 import { useSEO, pageSEO } from '@/lib/seo';
+import { BookingWizard, BookingFilters } from '@/components/BookingWizard';
 
 interface SitterProfile {
   id: string;
@@ -256,6 +257,19 @@ export default function SitterSuite() {
   const [instantBookOnly, setInstantBookOnly] = useState(false);
   const [certifiedOnly, setCertifiedOnly] = useState(false);
   const [availableToday, setAvailableToday] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const [bookingFilters, setBookingFilters] = useState<BookingFilters | null>(null);
+
+  const handleWizardComplete = (filters: BookingFilters) => {
+    setBookingFilters(filters);
+    setShowWizard(false);
+    if (filters.location) {
+      setSelectedCity(filters.location);
+      setSearchQuery(filters.location);
+    }
+    const resultsSection = document.getElementById('sitters-results');
+    resultsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   
   const { data: sittersFromAPI, isLoading } = useQuery<SitterProfile[]>({
     queryKey: ['/api/sitter-suite/sitters', selectedCity],
@@ -421,6 +435,21 @@ export default function SitterSuite() {
                   </h3>
                   
                   <div className="space-y-4">
+                    {/* Guided Booking Button - MadPaws Style Wizard */}
+                    <button
+                      onClick={() => setShowWizard(true)}
+                      className="w-full h-16 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-bold text-lg flex items-center justify-center gap-3 hover:from-emerald-700 hover:to-teal-700 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02]"
+                      data-testid="button-start-wizard"
+                    >
+                      <Sparkles className="w-6 h-6" />
+                      {isHebrew ? 'חיפוש מודרך' : 'Guided Search'}
+                      <Crown className="w-5 h-5" />
+                    </button>
+
+                    <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+                      {isHebrew ? '— או חפש ישירות —' : '— or search directly —'}
+                    </div>
+                    
                     {/* Search Input */}
                     <div className="relative">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -1108,6 +1137,17 @@ export default function SitterSuite() {
           </div>
         </div>
       </div>
+
+      {/* Booking Wizard Modal */}
+      {showWizard && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <BookingWizard
+            platform="sitter"
+            onComplete={handleWizardComplete}
+            onClose={() => setShowWizard(false)}
+          />
+        </div>
+      )}
     </Layout>
   );
 }
