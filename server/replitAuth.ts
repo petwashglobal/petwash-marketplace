@@ -13,7 +13,7 @@ if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Environment variable REPLIT_DOMAINS not provided");
 }
 
-// Configure domains for A record setup (pointing to 34.111.179.208)
+// Configure domains for Firebase Hosting (pointing to 199.36.158.100)
 const authorizedDomains = [
   "petwash.co.il",
   "www.petwash.co.il"

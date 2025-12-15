@@ -9,15 +9,14 @@ export function setupDNSMonitoring(app: Express) {
       timestamp: new Date().toISOString(),
       status: {
         'petwash.co.il': {
-          configured: 'A Record → 34.111.179.208',
-          status: 'Propagating...',
+          configured: 'A Record → 199.36.158.100 (Firebase)',
+          status: 'Active',
           lastCheck: new Date().toISOString()
         },
         'www.petwash.co.il': {
-          configured: 'CNAME → cname.replit.com', 
-          status: 'Propagating...',
-          lastCheck: new Date().toISOString(),
-          currentIP: '34.111.179.208 (old IP, updating...)'
+          configured: 'A Record → 199.36.158.100 (Firebase)', 
+          status: 'Active',
+          lastCheck: new Date().toISOString()
         }
       },
       workingDomain: 'https://f46fb046-7dd0-4090-af9e-1be17d9de48e-00-15el1m8qkuf16.picard.replit.dev',

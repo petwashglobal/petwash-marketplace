@@ -58,12 +58,12 @@ export function setupDNSStatus(app: Express) {
         <div>Issue: Platform serving default page instead of Pet Wash app</div>
     </div>
     
-    <div class="status-card pending">
+    <div class="status-card working">
         <div class="domain">petwash.co.il</div>
-        <div class="status"><span class="pending-badge">⏳ DNS PROPAGATING</span></div>
-        <div>Status: A record configured by user, global DNS propagation in progress</div>
-        <div>Configuration: A Record → 34.111.179.208 ✅</div>
-        <div>Progress: Local resolution working, waiting for global propagation</div>
+        <div class="status"><span class="working-badge">✅ FIREBASE HOSTING</span></div>
+        <div>Status: A record pointing to Firebase Hosting</div>
+        <div>Configuration: A Record → 199.36.158.100 ✅</div>
+        <div>Progress: Firebase hosting active</div>
     </div>
     
     <div class="status-card working">
