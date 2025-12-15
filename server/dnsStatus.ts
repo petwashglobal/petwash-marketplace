@@ -50,12 +50,11 @@ export function setupDNSStatus(app: Express) {
     <h1>🌐 Pet Wash™️ DNS Status</h1>
     <p>Real-time DNS propagation status for Pet Wash domains</p>
     
-    <div class="status-card error">
+    <div class="status-card working">
         <div class="domain">www.petwash.co.il</div>
-        <div class="status"><span class="error-badge">⚠️ PLATFORM ISSUE</span></div>
-        <div>Status: DNS resolves but Replit default page served</div>
-        <div>Configuration: CNAME → f46fb046...picard.replit.dev ✅</div>
-        <div>Issue: Platform serving default page instead of Pet Wash app</div>
+        <div class="status"><span class="working-badge">✅ FIREBASE HOSTING</span></div>
+        <div>Status: Serving from Firebase Hosting</div>
+        <div>Configuration: A Record → 199.36.158.100 (Firebase) ✅</div>
     </div>
     
     <div class="status-card working">
@@ -67,10 +66,10 @@ export function setupDNSStatus(app: Express) {
     </div>
     
     <div class="status-card working">
-        <div class="domain">Development Domain</div>
+        <div class="domain">Firebase Default Domain</div>
         <div class="status"><span class="working-badge">✅ ALWAYS WORKING</span></div>
         <div>Status: HTTP 200 - Full application access</div>
-        <div><a href="https://f46fb046-7dd0-4090-af9e-1be17d9de48e-00-15el1m8qkuf16.picard.replit.dev" target="_blank">Access Pet Wash Platform →</a></div>
+        <div><a href="https://signinpetwash.web.app" target="_blank">Access Pet Wash Platform →</a></div>
     </div>
     
     <div class="info">

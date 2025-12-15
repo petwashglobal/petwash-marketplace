@@ -22,16 +22,15 @@ export function iosCompatibilityMiddleware(req: Request, res: Response, next: Ne
     
     // iOS CORS Fix - Critical for preventing 404s
     const allowedOrigins = [
-      'https://f46fb046-7dd0-4090-af9e-1be17d9de48e-00-15el1m8qkuf16.picard.replit.dev',
       'https://petwash.co.il',
       'https://www.petwash.co.il',
-      'http://petwash.co.il',
-      'http://www.petwash.co.il'
+      'https://signinpetwash.web.app',
+      'https://signinpetwash.firebaseapp.com'
     ];
     
     if (origin && allowedOrigins.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-    } else if (host.includes('petwash.co.il') || host.includes('picard.replit.dev')) {
+    } else if (host.includes('petwash.co.il') || host.includes('signinpetwash')) {
       res.setHeader('Access-Control-Allow-Origin', `https://${host}`);
     }
     
