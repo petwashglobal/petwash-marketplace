@@ -67,6 +67,13 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Firebase Project**: `signinpetwash`.
 - **CI/CD Pipeline**: Automated GitHub Actions deployment (`.github/workflows/petwash-ci.yml`) with a 5-guard protection system.
 
+**CRITICAL DEPLOYMENT RULE:**
+- We develop on Replit, push to GitHub, and deploy ONLY to Google Firebase.
+- Replit URLs are development-only and MUST NEVER be connected to DNS or production domains.
+- Production domains (petwash.co.il, www.petwash.co.il) always point to Firebase Hosting IP: 199.36.158.100.
+- NEVER use Replit Publishing "Domains" feature for production - it causes conflicts with Firebase.
+- The Replit "Publish" feature is for development preview only.
+
 ### Core Features & Design Decisions
 - **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Focus on responsive, mobile-first, luxury designs with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
