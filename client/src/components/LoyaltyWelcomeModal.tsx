@@ -109,7 +109,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
       hdCard: '/petwash-logo-official.png',
       gradient: 'linear-gradient(135deg, #E5E4E2 0%, #FFFFFF 20%, #B4C5E4 40%, #9CC4E4 60%, #7C98B3 80%, #536878 100%)',
       borderGlow: 'shadow-[0_0_60px_rgba(229,228,226,0.7),0_0_120px_rgba(156,196,228,0.5),0_0_180px_rgba(124,152,179,0.3)]',
-      iconColor: 'text-indigo-400',
+      iconColor: 'text-amber-400',
       benefits: isHebrew ? ['הנחה פרימיום 20%', 'שירותי קונסיירז׳ 24/7', 'אירועים פרטיים בלבד'] : ['Premium 20% Discount', '24/7 Concierge Services', 'Exclusive Private Events']
     },
     {
@@ -172,7 +172,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
           {/* Hero Section - Mobile-first responsive padding with safe zone for close button */}
           <div className="relative px-4 sm:px-8 md:px-12 lg:px-16 -mt-12 sm:-mt-24 md:-mt-32 pb-6 sm:pb-12 md:pb-16 text-center">
             {/* Luxury Crown Icon - Mobile-optimized size */}
-            <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 shadow-[0_20px_60px_rgba(79,70,229,0.4)] mb-4 sm:mb-6 md:mb-8 animate-in fade-in duration-700 ring-2 sm:ring-4 ring-white">
+            <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 shadow-[0_20px_60px_rgba(245,158,11,0.4)] mb-4 sm:mb-6 md:mb-8 animate-in fade-in duration-700 ring-2 sm:ring-4 ring-white">
               <Crown className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 text-white" strokeWidth={1.5} />
             </div>
 
@@ -182,13 +182,13 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
                 <>
                   <span className="font-normal text-gray-900 drop-shadow-[0_2px_8px_rgba(255,255,255,0.9)]">יוקרה</span>
                   <br />
-                  <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent font-medium drop-shadow-[0_2px_8px_rgba(255,255,255,0.5)]">ללא פשרות</span>
+                  <span className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 bg-clip-text text-transparent font-medium drop-shadow-[0_2px_8px_rgba(255,255,255,0.5)]">ללא פשרות</span>
                 </>
               ) : (
                 <>
                   <span className="font-normal text-gray-900 drop-shadow-[0_2px_8px_rgba(255,255,255,0.9)]">Uncompromising</span>
                   <br />
-                  <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent font-medium drop-shadow-[0_2px_8px_rgba(255,255,255,0.5)]">Luxury</span>
+                  <span className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 bg-clip-text text-transparent font-medium drop-shadow-[0_2px_8px_rgba(255,255,255,0.5)]">Luxury</span>
                 </>
               )}
             </h1>
@@ -315,7 +315,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
                   { icon: <Crown className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={1.5} />, text: isHebrew ? 'כרטיס דיגיטלי ל-Apple & Google Wallet' : 'Apple & Google Wallet Card' },
                 ].map((item, i) => (
                   <div key={i} className="flex flex-col items-center text-center gap-3 sm:gap-4">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white shadow-lg">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white shadow-lg">
                       {item.icon}
                     </div>
                     <p className="text-sm sm:text-base text-gray-700 font-light leading-relaxed">
@@ -335,7 +335,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
                 <Button
                   onClick={handleJoinNow}
                   size="lg"
-                  className="px-8 sm:px-12 md:px-16 py-4 sm:py-6 md:py-8 text-base sm:text-lg md:text-xl font-light tracking-wider bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white shadow-[0_20px_60px_rgba(79,70,229,0.35)] hover:shadow-[0_25px_70px_rgba(79,70,229,0.45)] transition-all duration-500 hover:scale-105 rounded-full"
+                  className="px-8 sm:px-12 md:px-16 py-4 sm:py-6 md:py-8 text-base sm:text-lg md:text-xl font-light tracking-wider bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:via-amber-700 hover:to-amber-800 text-white shadow-[0_20px_60px_rgba(245,158,11,0.35)] hover:shadow-[0_25px_70px_rgba(245,158,11,0.45)] transition-all duration-500 hover:scale-105 rounded-full"
                   data-testid="button-join-loyalty"
                 >
                   {isHebrew ? 'קבלו את ההזמנה שלכם' : 'Accept Your Invitation'}

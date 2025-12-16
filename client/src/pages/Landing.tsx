@@ -380,7 +380,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                   {t('loyalty.regularDesc', language)}
                 </p>
               </div>
-              <div className="text-center p-6 bg-white rounded-xl border border-purple-200 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
+              <div className="text-center p-6 bg-white rounded-xl border border-amber-200 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
                 <h3 className="text-base font-semibold text-gray-900 mb-3">
                   {t('loyalty.senior', language)}
                 </h3>
