@@ -1,0 +1,298 @@
+################################################################################
+#                                                                              #
+#               PETWASH PLATFORM: COMPLETE CONSOLIDATED CODE (2025)            #
+#          (RTL, Flask Backend Integration, Luxury Pure White Frontend)        #
+#                                                                              #
+################################################################################
+
+# ==============================================================================
+# 1. BACKEND: PYTHON (FLASK API GATEWAY) - No changes needed for aesthetic.
+# ==============================================================================
+
+import datetime
+from flask import Flask, request, jsonify
+import json
+import requests 
+
+# --- SIMULATED OCTOPUS INTEGRATION SERVICE ---
+# (Assumes octopus_service.py logic is here)
+def submit_booking_to_octopus(booking_data):
+    """
+    SIMULATED CALL to the Octopus Control Panel API for booking submission.
+    """
+    if "error" in booking_data.get('client_name', '').lower():
+         return False, {"error": "Invalid client data", "detail": "Octopus rejected client name due to formatting"}
+    
+    unique_id = "PWBK" + str(datetime.datetime.utcnow().timestamp()).replace('.', '')[-8:]
+    return True, {
+        "octopus_booking_id": unique_id,
+        "status": "Confirmed",
+    }
+
+# --- FLASK APPLICATION ---
+app = Flask(__name__)
+
+@app.route('/api/bookings', methods=['POST'])
+def create_booking():
+    """API endpoint for mobile app to submit a booking."""
+    data = request.get_json()
+    
+    if not all(k in data for k in ('client_name', 'client_phone', 'pet_type', 'service')):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    data['booking_date'] = datetime.datetime.utcnow().isoformat()
+    data['service_code'] = data['service'].upper().replace(' ', '_')
+
+    success, result_data = submit_booking_to_octopus(data)
+
+    if success:
+        return jsonify({
+            "message": "Booking confirmed by Octopus Control Panel.", 
+            "booking_id": result_data['octopus_booking_id'],
+            "status": result_data['status']
+        }), 201
+    else:
+        return jsonify({
+            "error": "Booking failed at the core system.",
+            "details": result_data.get("error", "Unknown communication error"),
+            "system_message": result_data
+        }), 400 
+
+
+# ==============================================================================
+# 2. FRONTEND: REACT NATIVE (Luxury Pure White Pop-up)
+# ==============================================================================
+
+"""
+// ---------------------------------------------------------------------
+// --- Save this section as a .js or .jsx file in your React Native project ---
+// ---------------------------------------------------------------------
+
+import React, { useState, useEffect } from 'react';
+import { 
+    View, 
+    Text, 
+    StyleSheet, 
+    Button, 
+    TouchableOpacity,
+    Dimensions,
+    Alert,
+    I18nManager
+} from 'react-native';
+// Requires: npm install react-native-reanimated axios
+import Animated, { 
+    useSharedValue, 
+    useAnimatedStyle, 
+    withTiming, 
+    Easing 
+} from 'react-native-reanimated'; 
+import axios from 'axios';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const API_URL = 'http://127.0.0.1:5000/api/bookings'; 
+
+// --- The Luxury Full-Screen Modal Component (Pure White Aesthetic) ---
+const LuxuryPopUp = ({ isVisible, onClose, onAction }) => {
+    // Animation variables remain the same (Slide Up / Fade In)
+    const translateY = useSharedValue(SCREEN_HEIGHT);
+    const opacity = useSharedValue(0);
+
+    useEffect(() => {
+        if (isVisible) {
+            translateY.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.ease) });
+            opacity.value = withTiming(1, { duration: 300 });
+        } else {
+            translateY.value = withTiming(SCREEN_HEIGHT, { duration: 350, easing: Easing.in(Easing.ease) });
+            opacity.value = withTiming(0, { duration: 300 });
+        }
+    }, [isVisible]);
+
+    const modalStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateY: translateY.value }],
+        };
+    });
+
+    const overlayStyle = useAnimatedStyle(() => {
+        return {
+            opacity: opacity.value,
+        };
+    });
+
+    return (
+        <Animated.View 
+            style={[StyleSheet.absoluteFill, styles.pop_overlay, overlayStyle]} 
+            pointerEvents={isVisible ? 'auto' : 'none'}
+        >
+            {/* Pop-up container is now pure white */}
+            <Animated.View style={[styles.pop_container, modalStyle]}>
+                
+                {/* Close button remains on the left for RTL */}
+                <TouchableOpacity onPress={onClose} style={styles.pop_closeButton}>
+                    <Text style={styles.pop_closeText}>X</Text>
+                </TouchableOpacity>
+
+                <View style={styles.pop_content}>
+                    <Text style={styles.pop_header}>
+                        💎 הצעה בלעדית לטיפוח הפרווה
+                    </Text>
+                    
+                    <Text style={styles.pop_body}>
+                        קבלו 50% הנחה על השטיפה הראשונה של חיית המחמד שלכם!
+                        למה לבחור בנו? כי האיכות היא הפינוק שלנו.
+                    </Text>
+                    
+                    {/* Gold/High-Contrast Action Button */}
+                    <TouchableOpacity onPress={onAction} style={styles.pop_actionButton}>
+                        <Text style={styles.pop_actionText}>
+                            קבעו תור יוקרתי עכשיו
+                        </Text>
+                    </TouchableOpacity>
+
+                </View>
+
+            </Animated.View>
+        </Animated.View>
+    );
+};
+
+// --- Main App Screen Component ---
+export default function PetWashApp() {
+    const [isPopUpVisible, setIsPopUpVisible] = useState(false);
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsPopUpVisible(true);
+        }, 3000); 
+        return () => clearTimeout(timer);
+    }, []);
+
+    const handlePopUpAction = async () => {
+        setIsPopUpVisible(false);
+        
+        const bookingPayload = {
+            client_name: "דוגמה לקוחה",
+            client_phone: "0521234567",
+            pet_type: "Dog",
+            service: "Full Grooming"
+        };
+        
+        try {
+            const response = await axios.post(API_URL, bookingPayload);
+            Alert.alert(
+                'הזמנה הצליחה!', 
+                `מערכת Octopus אישרה את ההזמנה ID: ${response.data.booking_id}`
+            );
+        } catch (error) {
+            Alert.alert(
+                'שגיאת הזמנה', 
+                'הבקשה נכשלה. אנא ודא שהשרת פועל ושהנתונים תקינים.'
+            );
+        }
+    };
+
+    return (
+        <View style={styles.app_container}>
+            <Text style={styles.app_title}>ברוכים הבאים ל-PetWash</Text>
+            <Button 
+                title="הצג מבצע VIP" 
+                onPress={() => setIsPopUpVisible(true)} 
+                color="#4CAF50" 
+            />
+
+            <LuxuryPopUp 
+                isVisible={isPopUpVisible} 
+                onClose={() => setIsPopUpVisible(false)} 
+                onAction={handlePopUpAction}
+            />
+        </View>
+    );
+}
+
+// --- Stylesheet (Pure White Luxury + RTL) ---
+const styles = StyleSheet.create({
+    app_container: {
+        flex: 1,
+        justifyContent: 'center', 
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5', // Light grey background for main app screen
+        padding: 20,
+    },
+    app_title: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        marginBottom: 30,
+        color: '#333',
+        textAlign: 'right',
+    },
+    // Pop-up Styles (Luxury Pure White Aesthetic)
+    pop_overlay: {
+        // Darkened overlay for focus remains, but slightly lighter for modern look
+        backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+        zIndex: 100, 
+        justifyContent: 'flex-end',
+    },
+    pop_container: {
+        width: '100%',
+        height: '100%', 
+        backgroundColor: '#FFFFFF', // PURE WHITE BACKGROUND
+        padding: 20,
+        elevation: 20, // Adds a subtle shadow for depth
+    },
+    pop_closeButton: {
+        position: 'absolute',
+        top: 40,
+        left: 20, // RTL FIX: Position 'X' on the left side
+        width: 44, 
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 110,
+    },
+    pop_closeText: {
+        fontSize: 24,
+        fontWeight: '300', // Thinner font for luxury feel
+        color: '#333333', // Deep grey for high contrast
+    },
+    pop_content: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingTop: 40,
+    },
+    pop_header: {
+        fontSize: 32,
+        fontWeight: '900', // Ultra bold for maximum impact
+        color: '#000000', // Pure black text
+        textAlign: 'right', 
+        marginBottom: 10,
+    },
+    pop_body: {
+        fontSize: 18,
+        color: '#555555', // Softer text color for body
+        textAlign: 'right', 
+        lineHeight: 28,
+        marginBottom: 50,
+        maxWidth: 300,
+    },
+    pop_actionButton: {
+        backgroundColor: '#C5B358', // Muted Gold/Bronze color for luxury
+        paddingVertical: 15,
+        paddingHorizontal: 30,
+        borderRadius: 8, // Slightly squared edges for modern look
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 5,
+        elevation: 4,
+    },
+    pop_actionText: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#FFFFFF', // White text on gold button for high contrast
+        textAlign: 'right', 
+    },
+});
+
+// ---------------------------------------------------------------------
+"""
