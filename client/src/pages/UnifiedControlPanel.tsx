@@ -68,7 +68,7 @@ export default function UnifiedControlPanel() {
         <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-platforms">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Active Platforms</CardTitle>
-            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600">
               <Building2 className="w-4 h-4 text-white" />
             </div>
           </CardHeader>
@@ -98,7 +98,7 @@ export default function UnifiedControlPanel() {
         <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-events">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Events Today</CardTitle>
-            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600">
               <Activity className="w-4 h-4 text-white" />
             </div>
           </CardHeader>
@@ -277,7 +277,7 @@ export default function UnifiedControlPanel() {
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
                     <CardContent className="pt-6">
-                      <dept.icon className="w-6 h-6 mx-auto mb-2 text-purple-500" />
+                      <dept.icon className="w-6 h-6 mx-auto mb-2 text-amber-500" />
                       <div className="text-2xl font-bold luxury-text-gradient">{dept.count}</div>
                       <p className="text-xs text-muted-foreground">{dept.name}</p>
                     </CardContent>

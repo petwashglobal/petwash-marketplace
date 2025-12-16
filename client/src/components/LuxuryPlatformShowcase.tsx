@@ -117,14 +117,14 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
       name: 'PetTrek™',
       nameHe: 'PetTrek™',
       icon: Car,
-      gradient: 'from-purple-500 via-indigo-500 to-violet-600',
+      gradient: 'from-amber-500 via-orange-500 to-amber-600',
       description: 'Uber-style pet transport with live tracking',
       descriptionHe: 'הובלת חיות מחמד בסגנון Uber עם מעקב חי',
       features: ['Live ETA', 'Dynamic Pricing', 'Safety'],
       featuresHe: ['ETA חי', 'תמחור דינמי', 'בטיחות'],
       path: '/pettrek',
       badge: 'Real-time',
-      shimmer: 'bg-gradient-to-r from-purple-200/0 via-white/80 to-purple-200/0',
+      shimmer: 'bg-gradient-to-r from-amber-200/0 via-white/80 to-amber-200/0',
     },
     {
       id: 'paw-finder',
@@ -202,12 +202,12 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
           </DialogDescription>
         </DialogHeader>
         
-        <div className="relative bg-gradient-to-br from-white via-blue-50/30 to-purple-50/30 overflow-hidden">
+        <div className="relative bg-gradient-to-br from-white via-blue-50/30 to-amber-50/30 overflow-hidden">
           
           {/* Animated Background Effects */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
             <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-pink-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
           </div>
           
@@ -324,10 +324,10 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
                       
                       {/* CTA Arrow */}
                       <div className="flex items-center justify-between pt-1 sm:pt-2">
-                        <span className="text-xs sm:text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 group-hover:from-purple-600 group-hover:to-pink-600 transition-all duration-300">
+                        <span className="text-xs sm:text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-amber-700 group-hover:from-amber-700 group-hover:to-amber-800 transition-all duration-300">
                           {isHebrew ? 'גלה עוד' : 'Explore'}
                         </span>
-                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all duration-300" />
+                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all duration-300" />
                       </div>
                     </div>
                     
@@ -340,12 +340,12 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
             
             {/* Bottom CTA - Ultra Luxurious */}
             <div className="mt-8 sm:mt-12 text-center max-w-4xl mx-auto">
-              <div className="relative bg-gradient-to-br from-white via-blue-50/50 to-purple-50/50 rounded-3xl sm:rounded-[2rem] p-6 sm:p-8 md:p-10 shadow-[0_30px_90px_rgba(0,0,0,0.1)] border-2 border-white/60 backdrop-blur-xl overflow-hidden">
+              <div className="relative bg-gradient-to-br from-white via-amber-50/50 to-amber-50/50 rounded-3xl sm:rounded-[2rem] p-6 sm:p-8 md:p-10 shadow-[0_30px_90px_rgba(0,0,0,0.1)] border-2 border-white/60 backdrop-blur-xl overflow-hidden">
                 {/* Animated Stars */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                   <Star className="absolute top-4 left-8 w-4 h-4 text-yellow-400/30 animate-pulse" />
                   <Star className="absolute top-8 right-12 w-3 h-3 text-blue-400/30 animate-pulse" style={{ animationDelay: '0.5s' }} />
-                  <Star className="absolute bottom-6 left-16 w-5 h-5 text-purple-400/30 animate-pulse" style={{ animationDelay: '1s' }} />
+                  <Star className="absolute bottom-6 left-16 w-5 h-5 text-amber-400/30 animate-pulse" style={{ animationDelay: '1s' }} />
                   <Sparkles className="absolute bottom-8 right-8 w-6 h-6 text-pink-400/30 animate-pulse" style={{ animationDelay: '1.5s' }} />
                 </div>
                 
@@ -353,11 +353,11 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
                   <div className="inline-flex items-center gap-2 mb-4">
                     <Globe className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                     <h3 className="text-xl sm:text-2xl md:text-3xl font-serif font-light">
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800">
                         {isHebrew ? 'הצטרף למהפכה הגלובלית' : 'Join the Global Revolution'}
                       </span>
                     </h3>
-                    <Globe className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+                    <Globe className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
                   </div>
                   
                   <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-6 font-light leading-relaxed">
@@ -369,7 +369,7 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
                   <Button 
                     onClick={() => handlePlatformClick('/signup', 'global-cta')}
                     size="lg"
-                    className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-[0_20px_60px_rgba(139,92,246,0.3)] hover:shadow-[0_30px_90px_rgba(139,92,246,0.4)] transition-all duration-500 hover:scale-105 active:scale-95 text-base sm:text-lg px-8 py-3 sm:py-4 rounded-full border-2 border-white/50"
+                    className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:via-amber-700 hover:to-amber-800 text-white shadow-[0_20px_60px_rgba(245,158,11,0.3)] hover:shadow-[0_30px_90px_rgba(245,158,11,0.4)] transition-all duration-500 hover:scale-105 active:scale-95 text-base sm:text-lg px-8 py-3 sm:py-4 rounded-full border-2 border-white/50"
                     data-testid="button-join-global"
                   >
                     <Crown className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />

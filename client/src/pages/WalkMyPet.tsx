@@ -704,8 +704,8 @@ export default function WalkMyPet() {
                       <Badge 
                         className={`px-4 py-2 cursor-pointer transition-all ${
                           availableToday 
-                            ? 'bg-purple-600 text-white hover:bg-purple-700' 
-                            : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                            ? 'bg-amber-600 text-white hover:bg-amber-700' 
+                            : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                         }`}
                         onClick={() => setAvailableToday(!availableToday)}
                         data-testid="badge-filter-available-today"
@@ -1363,9 +1363,9 @@ function EarningsCalculator({ isHebrew, t }: { isHebrew: boolean; t: any }) {
           </div>
         </GlassCard>
 
-        <GlassCard className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+        <GlassCard className="p-6 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-900/20">
           <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">{t.yearlyEarnings}</div>
-          <div className="text-4xl font-black text-purple-600 dark:text-purple-400">
+          <div className="text-4xl font-black text-amber-600 dark:text-amber-400">
             ₪{yearlyEarnings.toFixed(0)}
           </div>
         </GlassCard>

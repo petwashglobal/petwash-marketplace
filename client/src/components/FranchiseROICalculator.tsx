@@ -178,7 +178,7 @@ export function FranchiseROICalculator({ language, onCalculatorUse }: FranchiseR
               </div>
 
               {/* Payback Period */}
-              <div className="luxury-glass-minimal p-5 border border-purple-300/30">
+              <div className="luxury-glass-minimal p-5 border border-pink-300/30">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="luxury-text-small mb-1">
@@ -188,7 +188,7 @@ export function FranchiseROICalculator({ language, onCalculatorUse }: FranchiseR
                       {paybackYears} {t('roi.years', language)}
                     </div>
                   </div>
-                  <div className="w-14 h-14 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center">
+                  <div className="w-14 h-14 bg-gradient-to-br from-pink-400 to-pink-500 rounded-xl flex items-center justify-center">
                     <Clock className="w-8 h-8 text-white" />
                   </div>
                 </div>

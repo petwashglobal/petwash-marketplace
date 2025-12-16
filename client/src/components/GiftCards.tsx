@@ -135,14 +135,14 @@ export function GiftCards({ language }: GiftCardsProps) {
         {/* Luxury Header Section */}
         <div className="text-center mb-12 sm:mb-16 lg:mb-20">
           {/* Premium Badge */}
-          <div className="inline-flex items-center justify-center p-2 bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-full mb-4 sm:mb-6">
+          <div className="inline-flex items-center justify-center p-2 bg-gradient-to-r from-amber-600/10 to-pink-600/10 rounded-full mb-4 sm:mb-6">
             <span className="px-4 py-2 bg-white rounded-full text-xs sm:text-sm font-semibold text-gray-700 shadow-sm">
               {language === 'he' ? 'כרטיסי מתנה דיגיטליים' : 'PREMIUM DIGITAL GIFTS'}
             </span>
           </div>
 
           {/* Main Title */}
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-pink-900 bg-clip-text text-transparent mb-4 sm:mb-6 px-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-gray-900 via-amber-900 to-pink-900 bg-clip-text text-transparent mb-4 sm:mb-6 px-4">
             {t('giftCards.title', language)}
           </h2>
           
@@ -174,7 +174,7 @@ export function GiftCards({ language }: GiftCardsProps) {
                 {/* Recommended Badge - Most Popular */}
                 {voucher.washCount === 3 && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                    <div className="px-4 sm:px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs sm:text-sm font-bold rounded-full shadow-lg animate-pulse">
+                    <div className="px-4 sm:px-6 py-2 bg-gradient-to-r from-amber-600 to-pink-600 text-white text-xs sm:text-sm font-bold rounded-full shadow-lg animate-pulse">
                       {language === 'he' ? 'הכי פופולרי' : 'MOST POPULAR'}
                     </div>
                   </div>

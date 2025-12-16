@@ -45,7 +45,7 @@ export default function PlatformPlaceholder({
           <div className="luxury-glass-card luxury-shadow-xl mb-8 p-8 luxury-animate-fade-in">
             <div className="text-center space-y-4 pb-8">
               <div className="flex justify-center">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center luxury-shadow-lg">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center luxury-shadow-lg">
                   <div className="text-white scale-125">{icon}</div>
                 </div>
               </div>
@@ -62,7 +62,7 @@ export default function PlatformPlaceholder({
           {displayFeatures.length > 0 && (
             <div className="luxury-glass-card luxury-shadow-md mb-8 p-6 luxury-animate-fade-in luxury-delay-1">
               <h2 className="flex items-center gap-2 luxury-heading-sm mb-4">
-                <Sparkles className="w-4 h-4 text-purple-600" />
+                <Sparkles className="w-4 h-4 text-amber-600" />
                 {isHebrew ? 'תכונות מתוכננות' : 'Planned Features'}
               </h2>
               <ul className="grid gap-3 md:grid-cols-2">

@@ -42,7 +42,7 @@ export function SmartReceiptViewer() {
     return (
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
         <div className="text-center luxury-glass-card luxury-shadow-lg p-12 rounded-2xl luxury-animate-slide-up">
-          <Receipt className="h-16 w-16 text-purple-300 mx-auto mb-4" />
+          <Receipt className="h-16 w-16 text-amber-300 mx-auto mb-4" />
           <h2 className="luxury-heading-md mb-2">Receipt Not Found</h2>
           <p className="luxury-text-small">The receipt you're looking for doesn't exist or has been removed.</p>
         </div>
@@ -61,7 +61,7 @@ export function SmartReceiptViewer() {
   const getTierColor = (tier: string) => {
     switch (tier.toLowerCase()) {
       case 'platinum':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
+        return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'gold':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'silver':
@@ -95,7 +95,7 @@ export function SmartReceiptViewer() {
         <div className="text-center mb-8 luxury-animate-fade-in">
           <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
             <div className="flex items-center justify-center mb-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mr-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mr-3">
                 <Receipt className="h-6 w-6 text-white" />
               </div>
               <h1 className="luxury-heading-lg">Pet Wash™ Receipt</h1>
@@ -117,14 +117,14 @@ export function SmartReceiptViewer() {
               <div>
                 <p className="luxury-text-small">Date & Time</p>
                 <p className="font-semibold flex items-center gap-2 text-gray-900">
-                  <Calendar className="h-4 w-4 text-purple-500" />
+                  <Calendar className="h-4 w-4 text-amber-500" />
                   {format(new Date(receipt.washDateTime), 'MMM dd, yyyy HH:mm')}
                 </p>
               </div>
               <div>
                 <p className="luxury-text-small">Location</p>
                 <p className="font-semibold flex items-center gap-2 text-gray-900">
-                  <MapPin className="h-4 w-4 text-purple-500" />
+                  <MapPin className="h-4 w-4 text-amber-500" />
                   {receipt.locationName}
                 </p>
               </div>
@@ -138,7 +138,7 @@ export function SmartReceiptViewer() {
               <div>
                 <p className="luxury-text-small">Duration</p>
                 <p className="font-semibold flex items-center gap-2 text-gray-900">
-                  <Clock className="h-4 w-4 text-purple-500" />
+                  <Clock className="h-4 w-4 text-amber-500" />
                   {receipt.washDuration} minutes
                 </p>
               </div>
@@ -152,7 +152,7 @@ export function SmartReceiptViewer() {
               <div>
                 <p className="luxury-text-small">Payment Method</p>
                 <p className="font-semibold flex items-center gap-2 text-gray-900">
-                  <CreditCard className="h-4 w-4 text-purple-500" />
+                  <CreditCard className="h-4 w-4 text-amber-500" />
                   {receipt.paymentMethod}
                 </p>
               </div>
@@ -181,7 +181,7 @@ export function SmartReceiptViewer() {
               </div>
             )}
             
-            <div className="border-t border-purple-100 pt-4">
+            <div className="border-t border-amber-100 pt-4">
               <div className="flex justify-between text-lg font-bold">
                 <span className="text-gray-900">Final Total:</span>
                 <span className="luxury-text-gradient">{formatCurrency(receipt.finalTotal)}</span>
@@ -224,7 +224,7 @@ export function SmartReceiptViewer() {
                 </div>
                 <div className="w-full luxury-glass-minimal rounded-full h-2 overflow-hidden">
                   <div 
-                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${progressPercentage}%` }}
                   ></div>
                 </div>

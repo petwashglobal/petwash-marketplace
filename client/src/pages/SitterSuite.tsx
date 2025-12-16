@@ -331,7 +331,7 @@ export default function SitterSuite() {
         {/* 7-STAR LUXURY HERO SECTION */}
         <div className="relative overflow-hidden luxury-bg-primary text-white py-32 luxury-animate-fade-in">
           {/* Premium Rose Gold Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-pink-900/40 via-purple-500/30 to-pink-900/40"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-pink-900/40 via-pink-600/30 to-pink-900/40"></div>
           
           {/* Animated Luxury Pattern */}
           <div className="absolute inset-0 opacity-10">
@@ -364,7 +364,7 @@ export default function SitterSuite() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="group bg-white/15 backdrop-blur-xl rounded-2xl p-6 border-2 border-white/30 shadow-2xl hover:bg-white/20 hover:scale-105 transition-all duration-300">
                     <div className="flex flex-col items-center text-center">
-                      <div className="bg-gradient-to-br from-pink-400 to-purple-500 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform mb-2">
+                      <div className="bg-gradient-to-br from-pink-400 to-pink-600 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform mb-2">
                         <Users className="w-6 h-6 text-white" />
                       </div>
                       <div className="text-3xl font-black text-white drop-shadow-lg">1,200+</div>
@@ -528,7 +528,7 @@ export default function SitterSuite() {
                 { icon: ThumbsUp, title: isHebrew ? 'ערבות החזר כסף' : 'Money-Back Guarantee', desc: isHebrew ? 'החזר מלא אם לא מרוצה' : 'Full refund if not satisfied' },
               ].map((item, i) => (
                 <div key={i} className={`luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-scale-in luxury-delay-${i + 1}`}>
-                  <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center luxury-shadow-lg">
+                  <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl flex items-center justify-center luxury-shadow-lg">
                     <item.icon className="w-10 h-10 text-white" />
                   </div>
                   <h3 className="luxury-heading-sm mb-3">{item.title}</h3>
@@ -571,7 +571,7 @@ export default function SitterSuite() {
 
                   {/* Large Profile Photo - Circular with Gradient Border */}
                   <div className="relative h-64 flex items-center justify-center p-8">
-                    <div className="w-48 h-48 rounded-full p-1 bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-2xl luxury-hover-glow">
+                    <div className="w-48 h-48 rounded-full p-1 bg-gradient-to-br from-pink-500 via-pink-400 to-pink-600 shadow-2xl luxury-hover-glow">
                       {sitter.profilePhotoUrl ? (
                         <img 
                           src={sitter.profilePhotoUrl} 
@@ -579,7 +579,7 @@ export default function SitterSuite() {
                           className="w-full h-full object-cover rounded-full group-hover:scale-110 transition-transform duration-500"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                        <div className="w-full h-full bg-gradient-to-br from-pink-500 to-pink-600 rounded-full flex items-center justify-center">
                           <span className="text-white text-6xl font-bold">{sitter.fullName.charAt(0)}</span>
                         </div>
                       )}
@@ -761,10 +761,10 @@ export default function SitterSuite() {
 
           {/* Sitters Grid */}
           {!user && (
-            <Card className="mb-8 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+            <Card className="mb-8 border-pink-200 dark:border-pink-800 bg-gradient-to-br from-pink-50 to-amber-50 dark:from-pink-900/20 dark:to-amber-900/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-purple-600" />
+                  <Shield className="w-5 h-5 text-pink-600" />
                   {isHebrew ? 'התחבר להזמנה' : 'Sign in to book'}
                 </CardTitle>
                 <CardDescription>
@@ -776,7 +776,7 @@ export default function SitterSuite() {
               <CardContent>
                 <div className="flex gap-3">
                   <Link href="/signin">
-                    <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                    <Button className="bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-700 hover:to-pink-600">
                       {isHebrew ? 'התחבר' : 'Sign In'}
                     </Button>
                   </Link>
@@ -812,7 +812,7 @@ export default function SitterSuite() {
                   >
                     {/* Profile Photo - Circular with Gradient Border */}
                     <div className="relative h-56 flex items-center justify-center p-6">
-                      <div className="w-40 h-40 rounded-full p-1 bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-xl">
+                      <div className="w-40 h-40 rounded-full p-1 bg-gradient-to-br from-pink-500 via-pink-400 to-pink-600 shadow-xl">
                         {sitter.profilePhotoUrl ? (
                           <img 
                             src={sitter.profilePhotoUrl} 
@@ -820,7 +820,7 @@ export default function SitterSuite() {
                             className="w-full h-full object-cover rounded-full group-hover:scale-110 transition-transform duration-500"
                           />
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                          <div className="w-full h-full bg-gradient-to-br from-pink-500 to-pink-600 rounded-full flex items-center justify-center">
                             <span className="text-white text-5xl font-bold">{sitter.fullName.charAt(0)}</span>
                           </div>
                         )}
@@ -980,11 +980,11 @@ export default function SitterSuite() {
               ].map((step, idx) => (
                 <div key={step.num} className={`luxury-glass-card luxury-hover-glow luxury-shadow-lg text-center p-8 luxury-animate-scale-in luxury-delay-${idx + 1}`}>
                   <div className="relative inline-block mb-6">
-                    <div className="w-24 h-24 mx-auto bg-gradient-to-br from-purple-600 via-pink-600 to-purple-700 rounded-2xl flex items-center justify-center text-white text-4xl font-black shadow-2xl luxury-hover-glow">
+                    <div className="w-24 h-24 mx-auto bg-gradient-to-br from-pink-600 via-pink-500 to-pink-700 rounded-2xl flex items-center justify-center text-white text-4xl font-black shadow-2xl luxury-hover-glow">
                       {step.num}
                     </div>
-                    <div className="absolute -bottom-3 -right-3 w-14 h-14 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-xl border-4 border-purple-100 dark:border-purple-900">
-                      <step.icon className="w-7 h-7 text-purple-600" />
+                    <div className="absolute -bottom-3 -right-3 w-14 h-14 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-xl border-4 border-pink-100 dark:border-pink-900">
+                      <step.icon className="w-7 h-7 text-pink-600" />
                     </div>
                     </div>
                     <h3 className="luxury-heading-sm mb-3">{step.title}</h3>
@@ -1088,7 +1088,7 @@ export default function SitterSuite() {
                   </div>
                   <p className="luxury-text-body mb-4 italic">"{review.text}"</p>
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold luxury-shadow-md">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center text-white font-bold luxury-shadow-md">
                       {review.name.charAt(0)}
                     </div>
                     <div className="flex-1">
