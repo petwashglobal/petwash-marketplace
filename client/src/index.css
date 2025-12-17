@@ -96,23 +96,23 @@ html, body, #root {
 
 /* === PET WASH™ LUXURY BRAND TOKENS - SINGLE SOURCE OF TRUTH === */
 :root {
-  /* Core Colors - PURE WHITE ONLY */
+  /* Core Colors - PURE WHITE + LUXURY GOLD */
   --color-bg: #FFFFFF;
   --color-text: #1A1A1A;
   --color-text-dark: #2A2A2A;  /* dark variant */
-  --color-gold: #0EA5E9;  /* Fresh summer sky blue */
-  --color-gold-2: #06B6D4;  /* Fresh summer cyan */
+  --color-gold: #D4AF37;  /* Real metallic gold */
+  --color-gold-2: #F59E0B;  /* Warm amber accent */
   --color-muted: #6B7280;   /* body copy */
   
-  /* Gradients */
-  --gradient-gold: linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-2) 100%);
+  /* Gradients - LUXURY GOLD/AMBER */
+  --gradient-gold: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%);
   --gradient-black: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-dark) 100%);
   
-  /* Effects */
-  --gold-glow-light: rgba(14, 165, 233, 0.2);  /* Sky blue glow */
-  --gold-glow-medium: rgba(14, 165, 233, 0.3);
-  --gold-glow-heavy: rgba(14, 165, 233, 0.4);
-  --shadow-gold: 0 8px 24px rgba(14, 165, 233, 0.3);
+  /* Effects - GOLD GLOW */
+  --gold-glow-light: rgba(212, 175, 55, 0.2);  /* Gold glow */
+  --gold-glow-medium: rgba(212, 175, 55, 0.3);
+  --gold-glow-heavy: rgba(212, 175, 55, 0.4);
+  --shadow-gold: 0 8px 24px rgba(212, 175, 55, 0.3);
   --shadow-default: 0 8px 32px rgba(0, 0, 0, 0.08);
   
   /* ===== 2025 LUXURY METALLIC GRADIENTS - 7-STAR DESIGN ===== */
@@ -144,7 +144,7 @@ html, body, #root {
   --gradient-frosted: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.3) 100%);
   
   /* Premium Button Gradients with Animated Shimmer */
-  --gradient-luxury-primary: linear-gradient(135deg, #0EA5E9 0%, #06B6D4 50%, #0EA5E9 100%);
+  --gradient-luxury-primary: linear-gradient(135deg, #D4AF37 0%, #F59E0B 50%, #D4AF37 100%);
   --gradient-luxury-gold-button: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
   --gradient-luxury-rose-button: linear-gradient(135deg, #FF69B4 0%, #FF1493 50%, #FF69B4 100%);
   --gradient-luxury-platinum-button: linear-gradient(135deg, #E5E4E2 0%, #F5F5F5 50%, #E5E4E2 100%);

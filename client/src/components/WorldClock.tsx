@@ -71,7 +71,7 @@ export function WorldClock({ showMultiple = false, compact = false }: WorldClock
     return (
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
             <Clock className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -102,7 +102,7 @@ export function WorldClock({ showMultiple = false, compact = false }: WorldClock
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-800">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl">
+        <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
           <Globe className="h-6 w-6 text-white" />
         </div>
         <h3 className="text-xl font-bold text-gray-900 dark:text-white">

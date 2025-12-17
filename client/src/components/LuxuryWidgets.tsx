@@ -152,7 +152,7 @@ export const MetricWidget = ({
 }) => {
   const colorClasses = {
     blue: 'from-blue-500 to-blue-600',
-    purple: 'from-purple-500 to-purple-600',
+    purple: 'from-amber-500 to-amber-600',
     green: 'from-green-500 to-green-600',
     orange: 'from-orange-500 to-orange-600',
     pink: 'from-pink-500 to-pink-600',

@@ -101,7 +101,7 @@ export function PetAvatarDisplay({
     return (
       <div className={`${sizeClasses[size]} ${className}`}>
         <div className="relative w-full h-full">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 rounded-full animate-pulse" />
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-400 via-pink-400 to-blue-400 rounded-full animate-pulse" />
           <div className="absolute inset-2 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center text-4xl">
             🐾
           </div>
@@ -119,7 +119,7 @@ export function PetAvatarDisplay({
         <img
           src={defaultAvatar.thumbnailUrl || defaultAvatar.photoUrl}
           alt={defaultAvatar.petName}
-          className="w-full h-full object-cover rounded-full border-4 border-purple-300 dark:border-purple-700 shadow-xl"
+          className="w-full h-full object-cover rounded-full border-4 border-amber-300 dark:border-amber-700 shadow-xl"
         />
         
         {/* Emotion indicator */}
@@ -140,7 +140,7 @@ export function PetAvatarDisplay({
       )}
       
       {greeting && (
-        <div className="mt-2 px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+        <div className="mt-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-pink-100 dark:from-amber-900/30 dark:to-pink-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
           <p className="text-sm text-gray-700 dark:text-gray-300 text-center">
             {greeting}
           </p>

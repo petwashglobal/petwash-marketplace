@@ -46,7 +46,7 @@
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%);
   color: white;
   font-size: 0.75rem;
   font-weight: 600;
@@ -56,7 +56,7 @@
 
 .pw-social-link:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
 }
 
 /* ===========================
@@ -82,17 +82,17 @@
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
   transition: all 0.3s ease;
 }
 
 .pw-logo-link:hover .pw-logo-circle {
   transform: scale(1.05) rotate(-5deg);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
 }
 
 .pw-logo-text {
@@ -219,8 +219,8 @@
 }
 
 .pw-mega-link:hover {
-  background: rgba(102, 126, 234, 0.08);
-  color: #667eea;
+  background: rgba(212, 175, 55, 0.08);
+  color: #D4AF37;
 }
 
 .pw-mega-link-frozen {
@@ -259,14 +259,14 @@
 }
 
 .pw-language-select:hover {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
 }
 
 .pw-language-select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
 }
 
 /* ===========================
@@ -325,7 +325,7 @@
 }
 
 .pw-burger:hover span {
-  background: #667eea;
+  background: #D4AF37;
 }
 
 /* ===========================
@@ -445,8 +445,8 @@
 }
 
 .pw-mobile-link:hover {
-  background: rgba(102, 126, 234, 0.08);
-  color: #667eea;
+  background: rgba(212, 175, 55, 0.08);
+  color: #D4AF37;
 }
 
 /* ===========================
