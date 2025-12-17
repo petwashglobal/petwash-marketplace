@@ -95,33 +95,41 @@ html, body, #root {
 }
 
 /* === PET WASH™ LUXURY BRAND TOKENS - SINGLE SOURCE OF TRUTH === */
+/* ===== CARTIER 18K YELLOW GOLD PALETTE - From Love Bracelet Reference ===== */
 :root {
-  /* Core Colors - PURE WHITE + LUXURY GOLD */
+  /* Core Colors - PURE WHITE + CARTIER GOLD */
   --color-bg: #FFFFFF;
   --color-text: #1A1A1A;
-  --color-text-dark: #2A2A2A;  /* dark variant */
-  --color-gold: #D4AF37;  /* Real metallic gold */
-  --color-gold-2: #F59E0B;  /* Warm amber accent */
-  --color-muted: #6B7280;   /* body copy */
+  --color-text-dark: #2A2A2A;
+  --color-muted: #6B7280;
   
-  /* Gradients - LUXURY GOLD/AMBER */
-  --gradient-gold: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%);
+  /* CARTIER 18K GOLD - Exact match from Love bracelet */
+  --cartier-gold: #C9A227;           /* Main gold tone */
+  --cartier-gold-light: #E8C252;     /* Highlight */
+  --cartier-gold-dark: #A67C00;      /* Shadow */
+  --cartier-gold-highlight: #F0DC82; /* Bright accent */
+  --cartier-gold-shadow: #8B6914;    /* Deep shadow */
+  --color-gold: #C9A227;             /* Primary gold reference */
+  --color-gold-2: #D4AF37;           /* Secondary gold */
+  
+  /* Gradients - CARTIER GOLD (realistic metallic) */
+  --gradient-gold: linear-gradient(135deg, #E8C252 0%, #C9A227 50%, #A67C00 100%);
   --gradient-black: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-dark) 100%);
   
-  /* Effects - GOLD GLOW */
-  --gold-glow-light: rgba(212, 175, 55, 0.2);  /* Gold glow */
-  --gold-glow-medium: rgba(212, 175, 55, 0.3);
-  --gold-glow-heavy: rgba(212, 175, 55, 0.4);
-  --shadow-gold: 0 8px 24px rgba(212, 175, 55, 0.3);
+  /* Effects - CARTIER GOLD GLOW */
+  --gold-glow-light: rgba(201, 162, 39, 0.2);
+  --gold-glow-medium: rgba(201, 162, 39, 0.3);
+  --gold-glow-heavy: rgba(201, 162, 39, 0.4);
+  --shadow-gold: 0 8px 24px rgba(201, 162, 39, 0.3);
   --shadow-default: 0 8px 32px rgba(0, 0, 0, 0.08);
   
-  /* ===== 2025 LUXURY METALLIC GRADIENTS - 7-STAR DESIGN ===== */
+  /* ===== 2025 CARTIER METALLIC GRADIENTS - Realistic 18K Gold ===== */
   
-  /* Premium Gold Variants - Real Gold Shimmer */
-  --gradient-metallic-gold: linear-gradient(135deg, #FFD700 0%, #FFC700 20%, #FFB700 40%, #FFA500 60%, #FFD700 80%, #FFED4E 100%);
-  --gradient-gold-rich: linear-gradient(135deg, #F7D358 0%, #E5B73B 25%, #D4A127 50%, #E5B73B 75%, #F7D358 100%);
-  --gradient-gold-royal: linear-gradient(to right, #FFE259 0%, #FFA751 100%);
-  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #FFD700, #FFA500 50%, #FF8C00);
+  /* Premium Cartier Gold Variants */
+  --gradient-metallic-gold: linear-gradient(135deg, #F0DC82 0%, #E8C252 25%, #C9A227 50%, #A67C00 75%, #E8C252 100%);
+  --gradient-gold-rich: linear-gradient(135deg, #E8C252 0%, #D4AF37 25%, #C9A227 50%, #A67C00 75%, #D4AF37 100%);
+  --gradient-gold-royal: linear-gradient(to right, #F0DC82 0%, #C9A227 50%, #A67C00 100%);
+  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #F0DC82, #C9A227 50%, #8B6914);
   
   /* Diamond & Crystal Effects */
   --gradient-diamond: linear-gradient(135deg, #FFFFFF 0%, #E8F4F8 20%, #D0E8F0 40%, #B8DDE8 60%, #A0D2E0 80%, #88C7D8 100%);
