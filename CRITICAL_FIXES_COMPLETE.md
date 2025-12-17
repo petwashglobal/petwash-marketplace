@@ -128,7 +128,7 @@ Pet Wash server ready
 ### Domains Should Work:
 - ✅ `https://petwash.co.il` → Loads website
 - ✅ `https://www.petwash.co.il` → Loads website
-- ✅ `https://pet-wash-il-nirhadad1.replit.app` → Loads website
+- ✅ `https://signinpetwash.web.app` → Loads website
 
 ---
 

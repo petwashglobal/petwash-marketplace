@@ -24,7 +24,7 @@
 3. Click **"Add domain"** and add these one by one:
    - `petwash.co.il`
    - `www.petwash.co.il`
-   - `pet-wash-nl-nirhadad1.replit.app`
+   - `signinpetwash.web.app`
    - `localhost` (if not already there)
 4. Click **Save** after each
 

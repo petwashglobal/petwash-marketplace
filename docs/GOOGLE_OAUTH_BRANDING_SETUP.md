@@ -78,7 +78,7 @@ Add these URLs:
 ```
 https://petwash.co.il
 https://www.petwash.co.il
-https://pet-wash-il-nirhadad1.replit.app
+https://signinpetwash.web.app
 http://localhost:5000
 ```
 
@@ -88,7 +88,7 @@ Firebase automatically handles redirects, but add these for safety:
 ```
 https://petwash.co.il/__/auth/handler
 https://www.petwash.co.il/__/auth/handler
-https://pet-wash-il-nirhadad1.replit.app/__/auth/handler
+https://signinpetwash.web.app/__/auth/handler
 http://localhost:5000/__/auth/handler
 ```
 

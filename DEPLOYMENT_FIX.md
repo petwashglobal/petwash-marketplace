@@ -63,7 +63,7 @@ if (isProd) {
 4. **Test your domains:**
    - https://petwash.co.il
    - https://www.petwash.co.il
-   - https://pet-wash-il-nirhadad1.replit.app
+   - https://signinpetwash.web.app
 
 All three should load your Pet Wash website! ✅
 

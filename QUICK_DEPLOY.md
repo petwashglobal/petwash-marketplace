@@ -43,7 +43,7 @@ firebase deploy --only firestore:indexes --project signinpetwash
 
 1. **Click the "Publish" button** in Replit (top right)
 2. Wait 2-5 minutes for first build
-3. **Done!** Your site is live at: `https://workspace-nirhadad1.replit.app`
+3. **Done!** Your site is live at: `https://signinpetwash.web.app`
 
 ---
 

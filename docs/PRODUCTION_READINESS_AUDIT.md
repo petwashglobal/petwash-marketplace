@@ -415,7 +415,7 @@ Test Query: SELECT 1 → Success
 **Allowed Origins**:
 - `https://petwash.co.il`
 - `https://www.petwash.co.il`
-- `https://pet-wash-nl-nirhadad1.replit.app` (staging)
+- `https://signinpetwash.web.app` (staging)
 - `http://localhost:5000` (development only)
 - `*.replit.dev` (development only)
 

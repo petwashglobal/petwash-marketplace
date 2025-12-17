@@ -28,7 +28,7 @@ Find your Replit preview URL (check browser address bar) and add it:
 <your-repl-name>-<username>.replit.dev
 ```
 
-Example: `pet-wash-nl-nirhadad1.replit.dev`
+Example: `signinpetwash.web.app`
 
 ### Verify
 After adding, you should see:

@@ -134,7 +134,7 @@
   'https://api.petwash.co.il',
   'https://hub.petwash.co.il',
   'https://status.petwash.co.il',
-  'https://pet-wash-nl-nirhadad1.replit.app', // Replit
+  'https://signinpetwash.web.app', // Replit
   'http://localhost:5000' // Development only
 ]
 ```

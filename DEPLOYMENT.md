@@ -56,7 +56,7 @@ npm run dev
 4. Click **"Set up your published app"**
 5. Wait for deployment to complete
 
-Your Replit deployment URL will be: `https://pet-wash-nl-nirhadad1.replit.app`
+Your Replit deployment URL will be: `https://signinpetwash.web.app`
 
 ---
 

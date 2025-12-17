@@ -119,7 +119,7 @@ npm run build  # Rebuilds dist/public/
 ### All domains will load correctly:
 - ✅ `https://petwash.co.il` → Homepage loads
 - ✅ `https://www.petwash.co.il` → Homepage loads (redirects to non-www)
-- ✅ `https://pet-wash-il-nirhadad1.replit.app` → Homepage loads
+- ✅ `https://signinpetwash.web.app` → Homepage loads
 
 ### Backend APIs will work:
 - ✅ `/health` → System health check
@@ -183,7 +183,7 @@ cat .dockerignore | grep dist  # Should NOT show "dist" as excluded
 After deployment, confirm:
 - [ ] `https://petwash.co.il` loads homepage (not 500 error)
 - [ ] `https://www.petwash.co.il` loads homepage
-- [ ] `https://pet-wash-il-nirhadad1.replit.app` loads homepage
+- [ ] `https://signinpetwash.web.app` loads homepage
 - [ ] Firebase authentication works
 - [ ] Admin dashboard accessible
 - [ ] All 6 languages load correctly

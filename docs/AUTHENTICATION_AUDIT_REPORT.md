@@ -67,7 +67,7 @@ rpId: process.env.WEBAUTHN_RP_ID || 'petwash.co.il'
 RP_IDS = [
   'petwash.co.il',
   'www.petwash.co.il',
-  'pet-wash-nl-nirhadad1.replit.app',
+  'signinpetwash.web.app',
   'localhost',
   '127.0.0.1'
 ]
@@ -103,7 +103,7 @@ RP_IDS = [
 ORIGINS = [
   'https://petwash.co.il',
   'https://www.petwash.co.il',
-  'https://pet-wash-nl-nirhadad1.replit.app',
+  'https://signinpetwash.web.app',
   'http://localhost:3000',
   'http://localhost:5000',
   'http://127.0.0.1:5000',
