@@ -30,12 +30,14 @@ const ENABLE_PER_IP_LIMITING = MAX_CONNECTIONS_PER_IP > 0;
 
 // Allowed origins for WebSocket connections (production)
 const ALLOWED_ORIGINS = [
+  'https://petwash.co.il',
+  'https://www.petwash.co.il',
   'https://api.petwash.co.il',
   'https://hub.petwash.co.il',
   'https://status.petwash.co.il',
+  'https://signinpetwash.web.app', // Firebase Hosting
   'http://localhost:5000', // Development
   'http://127.0.0.1:5000', // Development
-  'https://pet-wash-nl-nirhadad1.replit.app', // Replit deployment
 ];
 
 function isOriginAllowed(origin: string | undefined): boolean {
