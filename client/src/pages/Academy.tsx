@@ -212,9 +212,22 @@ export function Academy() {
   const [minRating, setMinRating] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch trainers from API
+  // Fetch trainers from API with fallback to mock data
   const { data: trainersData, isLoading } = useQuery<TrainerProfile[]>({
     queryKey: ['/api/academy/trainers'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/academy/trainers');
+        if (!response.ok) {
+          return MOCK_TRAINERS;
+        }
+        const data = await response.json();
+        return data.length > 0 ? data : MOCK_TRAINERS;
+      } catch {
+        return MOCK_TRAINERS;
+      }
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   // Use mock data if API returns empty or fails
