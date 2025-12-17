@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -202,7 +202,7 @@ const MOCK_TRAINERS: TrainerProfile[] = [
   },
 ];
 
-export function Academy() {
+export default function Academy() {
   const { t } = useLanguage();
   const { user } = useFirebaseAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -288,7 +288,7 @@ export function Academy() {
           <div className="luxury-container relative z-10">
             <div className="text-center max-w-4xl mx-auto mb-12">
               <div className="inline-flex items-center gap-2 luxury-badge luxury-shadow-lg mb-6 luxury-animate-slide-up luxury-delay-1">
-                <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg">
+                <div className="p-2 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-lg">
                   <GraduationCap className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-sm font-semibold">
@@ -306,7 +306,7 @@ export function Academy() {
 
               {/* Search Bar */}
               <div className="relative max-w-2xl mx-auto luxury-animate-scale-in luxury-delay-4">
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg">
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-lg">
                   <Search className="h-5 w-5 text-white" />
                 </div>
                 <Input
@@ -323,7 +323,7 @@ export function Academy() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto mt-12">
               <div className="luxury-glass-card luxury-shadow-lg p-4 text-center luxury-animate-fade-in luxury-delay-5">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+                  <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg">
                     <Crown className="h-5 w-5 text-white" />
                   </div>
                   <span className="luxury-heading-lg">
@@ -337,7 +337,7 @@ export function Academy() {
 
               <div className="luxury-glass-card luxury-shadow-lg p-4 text-center luxury-animate-fade-in luxury-delay-6">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
+                  <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-lg">
                     <Award className="h-5 w-5 text-white" />
                   </div>
                   <span className="luxury-heading-lg">
@@ -510,7 +510,7 @@ export function Academy() {
             <div className="luxury-grid-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="luxury-glass-card luxury-shadow-lg p-6 animate-pulse">
-                  <div className="h-48 bg-gradient-to-br from-purple-200/30 to-blue-200/30 rounded-lg mb-4" />
+                  <div className="h-48 bg-gradient-to-br from-amber-200/30 to-yellow-200/30 rounded-lg mb-4" />
                   <div className="h-6 luxury-skeleton rounded mb-2" />
                   <div className="h-4 luxury-skeleton rounded" />
                 </div>
@@ -562,7 +562,7 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
   return (
     <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl overflow-hidden luxury-animate-scale-in">
       {/* Cover Photo / Gradient */}
-      <div className="relative h-32 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500">
+      <div className="relative h-32 bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-500">
         {trainer.verified && (
           <div className="absolute top-3 left-3">
             <span className="luxury-badge-success luxury-shadow-lg">
@@ -588,12 +588,12 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
 
       {/* Profile Photo */}
       <div className="relative px-6 -mt-12">
-        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-3xl font-bold border-4 border-white dark:border-gray-800 luxury-shadow-xl">
+        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center text-white text-3xl font-bold border-4 border-white dark:border-gray-800 luxury-shadow-xl">
           {trainer.fullName.charAt(0)}
         </div>
       </div>
 
-      <CardContent className="p-6 pt-4">
+      <div className="p-6 pt-4">
         {/* Name & Location */}
         <div className="mb-3">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
@@ -681,7 +681,7 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
             </button>
           </Link>
         </div>
-      </CardContent>
+      </div>
     </div>
   );
 }

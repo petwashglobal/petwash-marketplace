@@ -1,25 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { PetWashHeader } from './PetWashHeader';
 import { Footer } from './Footer';
 import { type Language } from '@/lib/i18n';
+import { useLanguage } from '@/lib/languageStore';
 
 interface LayoutProps {
   children: React.ReactNode;
-  language: Language;
-  onLanguageChange: (language: Language) => void;
+  language?: Language;
+  onLanguageChange?: (language: Language) => void;
 }
 
-export function Layout({ children, language, onLanguageChange }: LayoutProps) {
+export function Layout({ children, language: propLanguage, onLanguageChange: propOnLanguageChange }: LayoutProps) {
+  const { language: contextLanguage, setLanguage: contextSetLanguage } = useLanguage();
+  
+  const language = propLanguage ?? contextLanguage;
+  const onLanguageChange = propOnLanguageChange ?? contextSetLanguage;
+
   useEffect(() => {
-    // Update document attributes when language changes
+    if (!language) return;
+    
     document.documentElement.lang = language;
     
-    // CRITICAL: Set proper text direction for RTL languages (Hebrew, Arabic)
-    // Text flows RTL, but UI element positions remain FIXED via CSS logical properties
     const isRTL = language === 'he' || language === 'ar';
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
     
-    // Add data attribute for CSS targeting
     document.documentElement.setAttribute('data-language', language);
     document.documentElement.setAttribute('data-rtl', isRTL ? 'true' : 'false');
     
