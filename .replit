@@ -13,17 +13,98 @@ packages = ["openssl", "pngquant", "optipng", "k6", "dig", "jq"]
 deploymentTarget = "cloudrun"
 build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
 
 [agent]
-integrations = ["javascript_database:1.0.0", "javascript_auth_all_persistence:1.0.0", "firebase_barebones_javascript:1.0.0", "javascript_log_in_with_replit:1.0.0", "hubspot:1.0.0", "javascript_gemini_ai_integrations:1.0.0", "google-mail:1.0.0", "google-sheet:1.0.0", "google-calendar:1.0.0", "github:1.0.0", "google-drive:1.0.0"]
+integrations = [
+  "javascript_database:1.0.0",
+  "javascript_auth_all_persistence:1.0.0",
+  "firebase_barebones_javascript:1.0.0",
+  "javascript_log_in_with_replit:1.0.0",
+  "hubspot:1.0.0",
+  "javascript_gemini_ai_integrations:1.0.0",
+  "google-mail:1.0.0",
+  "google-sheet:1.0.0",
+  "google-calendar:1.0.0",
+  "github:1.0.0"
+]
 
 [[ports]]
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 33149
+externalPort = 8099
 
+[[ports]]
+localPort = 33461
+externalPort = 8000
 
+[[ports]]
+localPort = 35841
+externalPort = 8081
+
+[[ports]]
+localPort = 36157
+externalPort = 5173
+
+[[ports]]
+localPort = 36367
+externalPort = 4200
+
+[[ports]]
+localPort = 36495
+externalPort = 6800
+
+[[ports]]
+localPort = 36839
+externalPort = 3001
+
+[[ports]]
+localPort = 37881
+externalPort = 3003
+
+[[ports]]
+localPort = 38777
+externalPort = 8080
+
+[[ports]]
+localPort = 39015
+externalPort = 5000
+
+[[ports]]
+localPort = 42745
+externalPort = 3002
+
+[[ports]]
+localPort = 45505
+externalPort = 3000
+
+[[ports]]
+localPort = 45849
+externalPort = 8008
+
+[[ports]]
+localPort = 45899
+externalPort = 6000
