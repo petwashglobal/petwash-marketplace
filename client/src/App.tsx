@@ -45,6 +45,7 @@ const SignIn = lazy(() => import("@/pages/SignIn"));
 const SignUp = lazy(() => import("@/pages/SignUp"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Marketplace = lazy(() => import("@/pages/Marketplace"));
+const TalentMarketplace = lazy(() => import("@/pages/PetWashTalentMarketplacePage"));
 const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
@@ -563,6 +564,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <Marketplace />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* TALENT MARKETPLACE - 7-Platform MadPaws-style Directory */}
+        <Route path="/talent">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <TalentMarketplace />
             </Suspense>
           )}
         </Route>
