@@ -93,7 +93,7 @@ interface ConsentChange {
   timestamp: string;
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#C9A227'];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#D4AF37'];
 
 export default function AdminSecurityMonitoring() {
   const [selectedTab, setSelectedTab] = useState('biometric');

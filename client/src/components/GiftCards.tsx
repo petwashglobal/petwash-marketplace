@@ -66,7 +66,7 @@ export function GiftCards({ language }: GiftCardsProps) {
       },
       {
         // Royal Purple - 3 Washes (Recommended)
-        gradient: 'linear-gradient(135deg, #A67C00 0%, #C9A227 50%, #D4AF37 100%)',
+        gradient: 'linear-gradient(135deg, #8B6508 0%, #B8860B 30%, #D4AF37 60%, #E8C84A 100%)',
         badge: 'POPULAR',
         icon: Crown,
         shadowColor: 'rgba(168, 85, 247, 0.3)',

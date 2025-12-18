@@ -1,5 +1,7 @@
-/* Luxury Typography System - Hermès/Chanel/Amex Centurion Level */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400;500;600;700;800&family=Inter:wght@200;300;400;500;600;700;800&display=swap');
+/* GUCCI-STYLE LUXURY TYPOGRAPHY - Elegant Serif for ALL Languages */
+/* Cormorant Garamond = Similar to Gucci's Granjon typeface */
+/* Noto Serif Hebrew/Arabic for RTL languages with same elegance */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Noto+Serif+Hebrew:wght@300;400;500;600;700&family=Noto+Serif+Arabic:wght@300;400;500;600;700&family=Inter:wght@200;300;400;500;600;700;800&family=Playfair+Display:wght@300;400;500;600;700;800&display=swap');
 
 /* Floating Stack Styles */
 @import './styles/floating-stack.css';
@@ -94,6 +96,33 @@ html, body, #root {
   background-color: #FFFFFF !important;
 }
 
+/* PURE WHITE BEHIND ALL IMAGES AND ICONS */
+img, svg, picture, video, canvas, .icon, [class*="icon"] {
+  background-color: transparent !important;
+}
+
+/* Container backgrounds must be pure white */
+section, article, main, aside, header, footer, nav,
+.container, .wrapper, .content, .card, .panel, .box {
+  background-color: #FFFFFF;
+}
+
+/* GUCCI-STYLE TYPOGRAPHY - Apply to headings */
+h1, h2, h3, h4, h5, h6,
+.font-serif, .font-display, .font-gucci, .font-luxury {
+  font-family: 'Cormorant Garamond', 'Noto Serif Hebrew', 'Noto Serif Arabic', Georgia, serif !important;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Hebrew/Arabic RTL languages use Noto Serif variants */
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, 
+[dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6,
+[lang="he"] h1, [lang="he"] h2, [lang="he"] h3,
+[lang="ar"] h1, [lang="ar"] h2, [lang="ar"] h3 {
+  font-family: 'Noto Serif Hebrew', 'Noto Serif Arabic', 'Cormorant Garamond', serif !important;
+}
+
 /* === PET WASH™ LUXURY BRAND TOKENS - SINGLE SOURCE OF TRUTH === */
 /* ===== CARTIER 18K YELLOW GOLD PALETTE - From Love Bracelet Reference ===== */
 :root {
@@ -103,33 +132,36 @@ html, body, #root {
   --color-text-dark: #2A2A2A;
   --color-muted: #6B7280;
   
-  /* CARTIER 18K GOLD - Exact match from Love bracelet */
-  --cartier-gold: #C9A227;           /* Main gold tone */
-  --cartier-gold-light: #E8C252;     /* Highlight */
-  --cartier-gold-dark: #A67C00;      /* Shadow */
-  --cartier-gold-highlight: #F0DC82; /* Bright accent */
-  --cartier-gold-shadow: #8B6914;    /* Deep shadow */
-  --color-gold: #C9A227;             /* Primary gold reference */
-  --color-gold-2: #D4AF37;           /* Secondary gold */
+  /* TRUE 18K YELLOW GOLD - Cartier/Bulgari exact match */
+  /* Warmer, more saturated yellow-gold (NOT olive) */
+  --cartier-gold: #D4AF37;           /* Classic goldenrod - main */
+  --cartier-gold-light: #E8C84A;     /* Bright warm gold */
+  --cartier-gold-dark: #B8860B;      /* Dark goldenrod */
+  --cartier-gold-highlight: #F5E6B3; /* Cream/champagne highlight */
+  --cartier-gold-shadow: #8B6508;    /* Deep bronze shadow */
+  --gold-metallic: #DAA520;          /* Goldenrod for metallic */
+  --color-gold: #D4AF37;             /* Primary gold reference */
+  --color-gold-2: #DAA520;           /* Secondary gold - goldenrod */
   
-  /* Gradients - CARTIER GOLD (realistic metallic) */
-  --gradient-gold: linear-gradient(135deg, #E8C252 0%, #C9A227 50%, #A67C00 100%);
+  /* METALLIC GOLD GRADIENT - Creates shiny 3D effect like real jewelry */
+  --gradient-gold: linear-gradient(145deg, #F5E6B3 0%, #E8C84A 25%, #D4AF37 50%, #B8860B 75%, #8B6508 100%);
+  --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
   --gradient-black: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-dark) 100%);
   
-  /* Effects - CARTIER GOLD GLOW */
-  --gold-glow-light: rgba(201, 162, 39, 0.2);
-  --gold-glow-medium: rgba(201, 162, 39, 0.3);
-  --gold-glow-heavy: rgba(201, 162, 39, 0.4);
-  --shadow-gold: 0 8px 24px rgba(201, 162, 39, 0.3);
+  /* Effects - TRUE 18K GOLD GLOW (warmer yellow) */
+  --gold-glow-light: rgba(212, 175, 55, 0.2);
+  --gold-glow-medium: rgba(212, 175, 55, 0.35);
+  --gold-glow-heavy: rgba(212, 175, 55, 0.5);
+  --shadow-gold: 0 8px 24px rgba(212, 175, 55, 0.35);
   --shadow-default: 0 8px 32px rgba(0, 0, 0, 0.08);
   
   /* ===== 2025 CARTIER METALLIC GRADIENTS - Realistic 18K Gold ===== */
   
-  /* Premium Cartier Gold Variants */
-  --gradient-metallic-gold: linear-gradient(135deg, #F0DC82 0%, #E8C252 25%, #C9A227 50%, #A67C00 75%, #E8C252 100%);
-  --gradient-gold-rich: linear-gradient(135deg, #E8C252 0%, #D4AF37 25%, #C9A227 50%, #A67C00 75%, #D4AF37 100%);
-  --gradient-gold-royal: linear-gradient(to right, #F0DC82 0%, #C9A227 50%, #A67C00 100%);
-  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #F0DC82, #C9A227 50%, #8B6914);
+  /* TRUE 18K GOLD METALLIC VARIANTS - Cartier/Bulgari Style */
+  --gradient-metallic-gold: linear-gradient(135deg, #F5E6B3 0%, #E8C84A 25%, #D4AF37 50%, #B8860B 75%, #E8C84A 100%);
+  --gradient-gold-rich: linear-gradient(135deg, #E8C84A 0%, #DAA520 25%, #D4AF37 50%, #B8860B 75%, #DAA520 100%);
+  --gradient-gold-royal: linear-gradient(to right, #F5E6B3 0%, #D4AF37 50%, #B8860B 100%);
+  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #F5E6B3, #D4AF37 50%, #8B6508);
   
   /* Diamond & Crystal Effects */
   --gradient-diamond: linear-gradient(135deg, #FFFFFF 0%, #E8F4F8 20%, #D0E8F0 40%, #B8DDE8 60%, #A0D2E0 80%, #88C7D8 100%);
