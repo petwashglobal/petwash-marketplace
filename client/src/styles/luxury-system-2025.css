@@ -4,11 +4,11 @@
  * 
  * Core Principles:
  * - Pure white backgrounds ONLY
- * - Metallic emerald accents
- * - Gold/Silver/Platinum metallics
- * - Premium spacing & typography (Didot/Bodoni)
+ * - TRUE 18K CARTIER GOLD accents (#D4AF37)
+ * - NO emerald, NO purple - GOLD ONLY
+ * - Premium spacing & typography (Gucci/Cormorant Garamond)
  * - Smooth animations
- * - Luxury credit card aesthetic
+ * - Luxury jewelry aesthetic
  */
 
 /* ===========================
@@ -17,8 +17,9 @@
 
 .luxury-bg-primary {
   background: linear-gradient(135deg, 
-    #008F46 0%, 
-    #00C569 100%
+    #B8860B 0%, 
+    #D4AF37 50%,
+    #E8C84A 100%
   );
 }
 
@@ -46,10 +47,10 @@
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(212, 175, 55, 0.15);
   border-radius: 24px;
   box-shadow: 
-    0 8px 32px rgba(0, 143, 70, 0.1),
+    0 8px 32px rgba(212, 175, 55, 0.1),
     0 2px 8px rgba(0, 0, 0, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -57,19 +58,19 @@
 .luxury-glass-card:hover {
   transform: translateY(-4px);
   box-shadow: 
-    0 12px 48px rgba(0, 143, 70, 0.15),
+    0 12px 48px rgba(212, 175, 55, 0.15),
     0 4px 16px rgba(0, 0, 0, 0.08);
-  border-color: rgba(0, 143, 70, 0.3);
+  border-color: rgba(212, 175, 55, 0.3);
 }
 
 .luxury-glass-panel {
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(212, 175, 55, 0.12);
   border-radius: 20px;
   box-shadow: 
-    0 4px 24px rgba(0, 143, 70, 0.08),
+    0 4px 24px rgba(212, 175, 55, 0.08),
     0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
@@ -86,7 +87,7 @@
    =========================== */
 
 .luxury-btn-primary {
-  background: linear-gradient(135deg, #008F46 0%, #00C569 100%);
+  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 50%, #E8C84A 100%);
   color: white;
   padding: 12px 32px;
   border-radius: 12px;
@@ -95,7 +96,7 @@
   border: none;
   cursor: pointer;
   box-shadow: 
-    0 4px 16px rgba(0, 143, 70, 0.3),
+    0 4px 16px rgba(212, 175, 55, 0.35),
     0 1px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -105,7 +106,7 @@
 .luxury-btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 6px 24px rgba(0, 143, 70, 0.4),
+    0 6px 24px rgba(212, 175, 55, 0.45),
     0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -335,7 +336,7 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(102, 126, 234, 0.2) 50%,
+    rgba(212, 175, 55, 0.25) 50%,
     transparent 100%
   );
   margin: 2rem 0;
@@ -346,7 +347,7 @@
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(102, 126, 234, 0.2) 50%,
+    rgba(212, 175, 55, 0.25) 50%,
     transparent 100%
   );
 }
@@ -448,8 +449,8 @@
 
 .luxury-hover-glow:hover {
   box-shadow: 
-    0 0 20px rgba(102, 126, 234, 0.3),
-    0 0 40px rgba(102, 126, 234, 0.15);
+    0 0 20px rgba(212, 175, 55, 0.35),
+    0 0 40px rgba(212, 175, 55, 0.18);
 }
 
 /* ===========================
@@ -473,27 +474,28 @@
 }
 
 /* ===========================
-   DARK MODE SUPPORT
+   DARK MODE SUPPORT - DISABLED
+   Pure white backgrounds ONLY
    =========================== */
 
 .dark .luxury-glass-card {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(148, 163, 184, 0.1);
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(212, 175, 55, 0.15) !important;
 }
 
 .dark .luxury-glass-panel {
-  background: rgba(30, 41, 59, 0.92);
-  border-color: rgba(148, 163, 184, 0.08);
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(212, 175, 55, 0.12) !important;
 }
 
 .dark .luxury-heading-lg,
 .dark .luxury-heading-md,
 .dark .luxury-heading-sm {
-  color: #f1f5f9;
+  color: #1a202c !important;
 }
 
 .dark .luxury-text-body {
-  color: #cbd5e1;
+  color: #4a5568 !important;
 }
 
 .dark .luxury-text-small {
