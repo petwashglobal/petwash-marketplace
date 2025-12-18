@@ -90,10 +90,34 @@ video.lazy-loaded {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
+/* =====================================================
+   MANDATORY PURE WHITE BACKGROUND - NO EXCEPTIONS
+   ===================================================== */
+
 /* FORCE PURE WHITE BACKGROUND EVERYWHERE */
 html, body, #root {
   background: #FFFFFF !important;
   background-color: #FFFFFF !important;
+}
+
+/* Override ALL dark backgrounds from old Replit/legacy styles */
+.bg-slate-900, .bg-slate-800, .bg-gray-900, .bg-gray-800,
+.bg-zinc-900, .bg-zinc-800, .bg-neutral-900, .bg-neutral-800,
+.bg-black, [class*="bg-[#1"], [class*="bg-[#0"],
+.from-slate-900, .from-gray-900, .from-zinc-900, .from-black,
+[style*="background-color: #1"], [style*="background: #1"],
+[style*="background-color: #0"], [style*="background: #0"] {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+}
+
+/* Override dark gradients to pure white */
+[class*="from-slate"], [class*="from-gray-9"], [class*="from-zinc"],
+[class*="to-slate"], [class*="to-gray-9"], [class*="to-zinc"],
+[class*="via-slate"], [class*="via-gray-9"], [class*="via-zinc"] {
+  --tw-gradient-from: #FFFFFF !important;
+  --tw-gradient-to: #FFFFFF !important;
+  --tw-gradient-via: #FFFFFF !important;
 }
 
 /* PURE WHITE BEHIND ALL IMAGES AND ICONS */
@@ -103,8 +127,14 @@ img, svg, picture, video, canvas, .icon, [class*="icon"] {
 
 /* Container backgrounds must be pure white */
 section, article, main, aside, header, footer, nav,
-.container, .wrapper, .content, .card, .panel, .box {
+.container, .wrapper, .content, .card, .panel, .box,
+div[class*="luxury-"], div[class*="glass-"] {
   background-color: #FFFFFF;
+}
+
+/* Force white on any remaining dark containers */
+.min-h-screen, .h-screen, .w-full {
+  background-color: #FFFFFF !important;
 }
 
 /* GUCCI-STYLE TYPOGRAPHY - Apply to headings */
