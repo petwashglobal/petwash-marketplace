@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { PinKeypad } from "@/components/PinKeypad";
 import {
   Fingerprint,
   Smartphone,
@@ -21,6 +22,7 @@ import {
   AlertCircle,
   Loader2,
   Plus,
+  KeyRound,
 } from "lucide-react";
 import { registerPasskey, getBiometricMethodName, isPasskeySupported } from "@/auth/passkey";
 import { useLocation } from "wouter";
@@ -46,6 +48,259 @@ interface PasskeyDevice {
   createdAt: string;
   lastUsedAt: string;
   deviceType?: string;
+}
+
+// PIN Security Section Component - December 2025
+function PinSecuritySection({ language, firebaseUser }: { language: string; firebaseUser: any }) {
+  const { toast } = useToast();
+  const [pinStatus, setPinStatus] = useState<{ hasPin: boolean; deviceName?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showSetup, setShowSetup] = useState(false);
+  const [showChange, setShowChange] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [setupStep, setSetupStep] = useState<'enter' | 'confirm'>('enter');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch PIN status
+  useEffect(() => {
+    const fetchPinStatus = async () => {
+      if (!firebaseUser) return;
+      try {
+        const token = await firebaseUser.getIdToken();
+        const response = await fetch('/api/pin-auth/status', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setPinStatus(data);
+        }
+      } catch (error) {
+        logger.error('Error fetching PIN status:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPinStatus();
+  }, [firebaseUser]);
+
+  // Handle PIN setup
+  const handleSetupPin = async () => {
+    if (!firebaseUser || newPin.length < 4) return;
+    
+    setIsSubmitting(true);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch('/api/pin-auth/setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          pin: newPin,
+          deviceId: `web-${Date.now()}`,
+          deviceName: navigator.userAgent.substring(0, 50),
+        }),
+      });
+
+      if (response.ok) {
+        setPinStatus({ hasPin: true });
+        setShowSetup(false);
+        setNewPin("");
+        setConfirmPin("");
+        setSetupStep('enter');
+        toast({
+          title: language === 'he' ? 'קוד PIN הוגדר בהצלחה' : 'PIN set successfully',
+          description: language === 'he' ? 'כעת תוכל להיכנס עם קוד PIN' : 'You can now sign in with your PIN',
+        });
+      } else {
+        const data = await response.json();
+        toast({
+          variant: "destructive",
+          title: language === 'he' ? 'שגיאה' : 'Error',
+          description: data.error || 'Failed to set PIN',
+        });
+      }
+    } catch (error) {
+      logger.error('Error setting PIN:', error);
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'שגיאה' : 'Error',
+        description: language === 'he' ? 'לא ניתן להגדיר קוד PIN' : 'Failed to set PIN',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle PIN removal
+  const handleRemovePin = async () => {
+    if (!firebaseUser) return;
+    
+    setIsSubmitting(true);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch('/api/pin-auth/remove', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        setPinStatus({ hasPin: false });
+        toast({
+          title: language === 'he' ? 'קוד PIN הוסר' : 'PIN removed',
+          description: language === 'he' ? 'קוד ה-PIN שלך הוסר בהצלחה' : 'Your PIN has been removed',
+        });
+      }
+    } catch (error) {
+      logger.error('Error removing PIN:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePinEntered = (pin: string) => {
+    if (setupStep === 'enter') {
+      setNewPin(pin);
+      setSetupStep('confirm');
+    } else {
+      setConfirmPin(pin);
+      if (pin === newPin) {
+        handleSetupPin();
+      } else {
+        toast({
+          variant: "destructive",
+          title: language === 'he' ? 'קודי PIN לא תואמים' : 'PINs do not match',
+          description: language === 'he' ? 'נסה שוב' : 'Please try again',
+        });
+        setSetupStep('enter');
+        setNewPin("");
+        setConfirmPin("");
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="luxury-glass-card luxury-shadow-lg p-8 mt-6 luxury-animate-scale-in">
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="luxury-glass-card luxury-shadow-lg p-8 mt-6 luxury-animate-scale-in luxury-delay-2">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8860B] shadow-lg">
+            <KeyRound className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h2 className="luxury-heading-md">
+              {language === 'he' ? 'קוד PIN' : 'PIN Code'}
+            </h2>
+            <p className="luxury-text-small mt-1">
+              {language === 'he' ? 'התחברות מהירה עם קוד PIN בן 4-6 ספרות' : 'Quick sign-in with 4-6 digit PIN'}
+            </p>
+          </div>
+        </div>
+        
+        {pinStatus?.hasPin ? (
+          <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+            {language === 'he' ? 'מופעל' : 'Enabled'}
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="border-gray-300 text-gray-500">
+            {language === 'he' ? 'לא מופעל' : 'Not set'}
+          </Badge>
+        )}
+      </div>
+
+      {showSetup ? (
+        <div className="luxury-glass-minimal p-6 rounded-2xl">
+          <h3 className="luxury-heading-sm text-center mb-4">
+            {setupStep === 'enter' 
+              ? (language === 'he' ? 'הזן קוד PIN חדש' : 'Enter new PIN')
+              : (language === 'he' ? 'אשר את קוד ה-PIN' : 'Confirm your PIN')
+            }
+          </h3>
+          <p className="luxury-text-small text-center mb-6 text-gray-600">
+            {language === 'he' ? 'בחר קוד בן 4-6 ספרות' : 'Choose a 4-6 digit code'}
+          </p>
+          
+          <PinKeypad 
+            onComplete={handlePinEntered}
+            onCancel={() => {
+              setShowSetup(false);
+              setNewPin("");
+              setConfirmPin("");
+              setSetupStep('enter');
+            }}
+            language={language}
+            loading={isSubmitting}
+          />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {pinStatus?.hasPin ? (
+            <>
+              <p className="luxury-text-body text-gray-600">
+                {language === 'he' 
+                  ? 'קוד ה-PIN שלך מוגדר ופעיל. תוכל להשתמש בו להתחברות מהירה.'
+                  : 'Your PIN is set and active. You can use it for quick sign-in.'
+                }
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowSetup(true)}
+                  variant="outline"
+                  className="luxury-glass-minimal"
+                  data-testid="button-change-pin"
+                >
+                  <KeyRound className="h-4 w-4 mr-2" />
+                  {language === 'he' ? 'שנה קוד PIN' : 'Change PIN'}
+                </Button>
+                <Button
+                  onClick={handleRemovePin}
+                  variant="outline"
+                  disabled={isSubmitting}
+                  className="text-red-600 hover:bg-red-50 border-red-300"
+                  data-testid="button-remove-pin"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  {language === 'he' ? 'הסר PIN' : 'Remove PIN'}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="luxury-text-body text-gray-600">
+                {language === 'he' 
+                  ? 'הגדר קוד PIN להתחברות מהירה ומאובטחת לחשבונך.'
+                  : 'Set up a PIN for quick and secure sign-in to your account.'
+                }
+              </p>
+              <Button
+                onClick={() => setShowSetup(true)}
+                className="luxury-btn-primary bg-gradient-to-r from-[#D4AF37] to-[#B8860B] hover:from-[#B8860B] hover:to-[#996515]"
+                data-testid="button-setup-pin"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {language === 'he' ? 'הגדר קוד PIN' : 'Set up PIN'}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Settings() {
@@ -630,6 +885,9 @@ export default function Settings() {
                   </div>
                 )}
               </div>
+
+              {/* PIN Authentication Section - December 2025 */}
+              <PinSecuritySection language={language} firebaseUser={firebaseUser} />
             </TabsContent>
           </Tabs>
         </div>
