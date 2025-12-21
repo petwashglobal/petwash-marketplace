@@ -104,6 +104,7 @@ import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
 import referralRoutes from "./routes/referral";
 import accountingRoutes from "./routes/accounting";
 import adminRoutes from "./routes/admin";
+import pinAuthRoutes from "./routes/pin-auth";
 import aiInsightsRoutes from "./routes/ai-insights";
 import analyticsRoutes from "./routes/analytics";
 import auditRoutes from "./routes/audit";
@@ -8025,6 +8026,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // 🔐 Mobile App Authentication - Email/Password with JWT tokens, refresh token rotation, biometric unlock
   app.use('/api/auth', apiLimiter, authRoutes);
+
+  // 🔐 PIN Authentication - December 2025 Edition (4-6 digit PIN, device binding, rate limiting)
+  app.use('/api/pin-auth', apiLimiter, pinAuthRoutes);
 
   // 🔐 Mobile Biometric Authentication - NIST SP 800-63B AAL2 Compliant (Passkeys, Health Data)
   app.use('/api/mobile/biometric', apiLimiter, mobileBiometricRoutes);

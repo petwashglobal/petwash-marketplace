@@ -9037,3 +9037,92 @@ export const insertProviderApprovalQueueSchema = createInsertSchema(providerAppr
 });
 export type InsertProviderApprovalQueue = z.infer<typeof insertProviderApprovalQueueSchema>;
 export type ProviderApprovalQueue = typeof providerApprovalQueue.$inferSelect;
+
+// ============================================================================
+// PIN AUTHENTICATION SYSTEM - December 2025 Edition
+// Modern passwordless PIN login following Apple/Google/Microsoft standards
+// ============================================================================
+
+// User PIN credentials (device-bound, hashed, with rate limiting)
+export const userPins = pgTable("user_pins", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(), // Links to users or customers table
+  userType: varchar("user_type", { length: 20 }).notNull().default("customer"), // "user" or "customer"
+  
+  // PIN Security (bcrypt hashed, never stored in plaintext)
+  pinHash: varchar("pin_hash", { length: 255 }).notNull(), // bcrypt hash of 4-6 digit PIN
+  pinLength: integer("pin_length").notNull().default(6), // 4, 5, or 6 digits
+  
+  // Device Binding (optional - for enhanced security)
+  deviceId: varchar("device_id", { length: 255 }), // UUID of trusted device
+  deviceName: varchar("device_name", { length: 100 }), // "iPhone 15 Pro", "Galaxy S24"
+  deviceType: varchar("device_type", { length: 50 }), // "ios", "android", "web", "kiosk"
+  
+  // Rate Limiting & Security
+  failedAttempts: integer("failed_attempts").default(0).notNull(), // Reset after successful login
+  lockoutUntil: timestamp("lockout_until"), // Temporary lockout after too many failures
+  lastFailedAt: timestamp("last_failed_at"),
+  
+  // Status
+  isActive: boolean("is_active").default(true).notNull(),
+  isPrimary: boolean("is_primary").default(true).notNull(), // Main PIN for this user
+  
+  // Audit
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("idx_user_pins_user").on(table.userId),
+  deviceIdx: index("idx_user_pins_device").on(table.deviceId),
+  activeIdx: index("idx_user_pins_active").on(table.isActive),
+}));
+
+// PIN authentication audit log (immutable security trail)
+export const pinAuthLogs = pgTable("pin_auth_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  userType: varchar("user_type", { length: 20 }).notNull(),
+  
+  // Action details
+  action: varchar("action", { length: 30 }).notNull(), // "login_success", "login_failed", "pin_created", "pin_changed", "pin_reset", "lockout_triggered"
+  
+  // Context
+  ipAddress: varchar("ip_address", { length: 45 }), // IPv4 or IPv6
+  userAgent: text("user_agent"),
+  deviceId: varchar("device_id", { length: 255 }),
+  deviceType: varchar("device_type", { length: 50 }),
+  
+  // Security metadata
+  failedAttemptNumber: integer("failed_attempt_number"), // Which attempt was this (1-5)
+  lockoutDuration: integer("lockout_duration"), // Minutes of lockout if triggered
+  
+  // Geolocation (optional)
+  country: varchar("country", { length: 2 }), // ISO country code
+  city: varchar("city", { length: 100 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("idx_pin_auth_logs_user").on(table.userId),
+  actionIdx: index("idx_pin_auth_logs_action").on(table.action),
+  createdIdx: index("idx_pin_auth_logs_created").on(table.createdAt),
+}));
+
+// PIN Zod schemas and type exports
+export const insertUserPinSchema = createInsertSchema(userPins).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  failedAttempts: true,
+  lockoutUntil: true,
+  lastFailedAt: true,
+  lastUsedAt: true,
+});
+export type InsertUserPin = z.infer<typeof insertUserPinSchema>;
+export type UserPin = typeof userPins.$inferSelect;
+
+export const insertPinAuthLogSchema = createInsertSchema(pinAuthLogs).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPinAuthLog = z.infer<typeof insertPinAuthLogSchema>;
+export type PinAuthLog = typeof pinAuthLogs.$inferSelect;
