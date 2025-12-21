@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Info, Fingerprint, Smartphone, ScanFace, Phone, User, Lock, ArrowRight, Sparkles } from "lucide-react";
+import { PinKeypad } from "@/components/PinKeypad";
+import { Loader2, Mail, Info, Fingerprint, Smartphone, ScanFace, Phone, User, Lock, ArrowRight, Sparkles, KeyRound } from "lucide-react";
 import { SiGmail } from "react-icons/si";
 import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -57,6 +58,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [magicLinkResendCountdown, setMagicLinkResendCountdown] = useState(0);
   const [showFallbackHint, setShowFallbackHint] = useState(false);
   const [forcePasswordMode, setForcePasswordMode] = useState(false);
+  const [pinMode, setPinMode] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinError, setPinError] = useState("");
   
   const autoFaceID = useAutoFaceID({
     language,
@@ -249,6 +253,108 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       setPasskeyLoading(false);
     }
   };
+
+  // PIN Login Handler - December 2025
+  // NOTE: PIN login on SignIn page requires a trusted device token
+  // Users must first authenticate with full credentials, then set up PIN in Settings
+  const handlePinLogin = async (pin: string) => {
+    if (!formData.email) {
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'שגיאה' : 'Error',
+        description: language === 'he' ? 'הזן כתובת אימייל תחילה' : 'Please enter your email first',
+      });
+      setPinError(language === 'he' ? 'הזן אימייל' : 'Enter email first');
+      return;
+    }
+
+    // Check if device is trusted (has previously authenticated)
+    const deviceTrustToken = localStorage.getItem('petwash_device_trust_token');
+    if (!deviceTrustToken) {
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'מכשיר לא מהימן' : 'Device not trusted',
+        description: language === 'he' 
+          ? 'יש להתחבר תחילה עם סיסמה או Face ID כדי להפעיל קוד PIN'
+          : 'Please sign in with password or Face ID first to enable PIN login',
+      });
+      setPinError(language === 'he' ? 'מכשיר לא מהימן' : 'Device not trusted');
+      setPinMode(false);
+      return;
+    }
+
+    try {
+      setPinLoading(true);
+      setPinError("");
+
+      // Use the device trust token for secure PIN verification
+      const response = await fetch('/api/pin-auth/trusted-device-verify', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Device-Trust-Token': deviceTrustToken,
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          pin,
+          deviceId: localStorage.getItem('petwash_device_id') || `web-${Date.now()}`,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.token) {
+        // Sign in with custom token from backend
+        await signInWithCustomToken(auth, data.token);
+        
+        trackEvent({
+          action: 'pin_login_success',
+          category: 'authentication',
+          label: 'pin_code',
+          language,
+        });
+
+        toast({
+          title: language === 'he' ? 'התחברות הצליחה!' : 'Signed in!',
+        });
+
+        window.scrollTo(0, 0);
+        navigate("/");
+      } else {
+        setPinError(data.error || (language === 'he' ? 'קוד PIN שגוי' : 'Invalid PIN'));
+        toast({
+          variant: "destructive",
+          title: language === 'he' ? 'שגיאה' : 'Error',
+          description: data.error || (language === 'he' ? 'קוד PIN שגוי' : 'Invalid PIN'),
+        });
+
+        // If device trust token is invalid, clear it
+        if (response.status === 401) {
+          localStorage.removeItem('petwash_device_trust_token');
+        }
+
+        trackEvent({
+          action: 'pin_login_error',
+          category: 'authentication',
+          label: data.error || 'invalid_pin',
+          language,
+        });
+      }
+    } catch (error: any) {
+      logger.error("PIN login error:", error);
+      setPinError(language === 'he' ? 'שגיאת התחברות' : 'Login error');
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'שגיאה' : 'Error',
+        description: error.message || (language === 'he' ? 'נכשל להתחבר' : 'Failed to sign in'),
+      });
+    } finally {
+      setPinLoading(false);
+    }
+  };
+
+  // Check if PIN login should be available (device is trusted)
+  const isPinLoginAvailable = !!localStorage.getItem('petwash_device_trust_token');
 
   const handleSocialLogin = async (provider: 'google') => {
     await performOAuthLogin(provider);
@@ -658,6 +764,18 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 )}
               </Button>
             )}
+
+            {/* PIN Login Option - Only available for trusted devices */}
+            {isPinLoginAvailable && (
+              <Button
+                onClick={() => setPinMode(true)}
+                className="luxury-btn-secondary w-full h-14 sm:h-16 md:h-16 lg:h-14 text-base font-medium bg-gradient-to-r from-[#D4AF37]/10 to-[#B8860B]/10 hover:from-[#D4AF37]/20 hover:to-[#B8860B]/20 border-[#D4AF37]/30"
+                data-testid="button-pin-signin"
+              >
+                <KeyRound className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-[#D4AF37]" />
+                {language === 'he' ? 'התחבר עם קוד PIN' : 'Sign in with PIN'}
+              </Button>
+            )}
           </motion.div>
 
           {/* Divider */}
@@ -677,8 +795,60 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </div>
           </motion.div>
 
+          {/* PIN Login Mode */}
+          {pinMode && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+              className="space-y-6"
+            >
+              <div className="space-y-2">
+                <Input
+                  type="email"
+                  placeholder={t('signin.emailPlaceholder', language)}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                  autoComplete="email"
+                  className="luxury-glass-minimal h-14 text-base text-black placeholder:text-gray-400"
+                  data-testid="input-pin-email"
+                />
+              </div>
+              
+              <div className="luxury-glass-minimal p-6 rounded-2xl">
+                <h3 className="text-center text-lg font-medium mb-4 text-black">
+                  {language === 'he' ? 'הזן קוד PIN' : 'Enter your PIN'}
+                </h3>
+                <PinKeypad 
+                  onComplete={handlePinLogin}
+                  onCancel={() => {
+                    setPinMode(false);
+                    setPinError("");
+                  }}
+                  language={language as 'en' | 'he'}
+                  loading={pinLoading}
+                  error={pinError}
+                />
+              </div>
+
+              <Button
+                type="button"
+                onClick={() => {
+                  setPinMode(false);
+                  setPinError("");
+                }}
+                variant="ghost"
+                className="luxury-btn-ghost w-full h-12"
+                data-testid="button-back-from-pin"
+              >
+                {language === 'he' ? 'חזור להתחברות רגילה' : 'Back to regular sign in'}
+              </Button>
+            </motion.div>
+          )}
+
           {/* Email/Password Form */}
-          {!magicLinkMode && !showPasswordReset && (
+          {!magicLinkMode && !showPasswordReset && !pinMode && (
             <motion.form
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

@@ -12,11 +12,13 @@
 
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { db } from '../db';
 import { userPins, pinAuthLogs, customers, users } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
+import { auth as firebaseAdminAuth } from '../lib/firebase-admin';
 
 const router = Router();
 
@@ -213,9 +215,33 @@ router.post('/setup', async (req: Request, res: Response) => {
 /**
  * POST /api/pin-auth/verify
  * Verify PIN and return auth token/session
+ * SECURITY: Requires Firebase authentication (Bearer token) to prevent brute-force attacks
  */
 router.post('/verify', async (req: Request, res: Response) => {
   try {
+    // SECURITY: Require Firebase authentication before PIN verification
+    // This prevents unauthenticated brute-force attacks
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required. Use trusted-device-verify for trusted devices.',
+        code: 'AUTH_REQUIRED'
+      });
+    }
+
+    const idToken = authHeader.substring(7);
+    let decodedToken;
+    try {
+      decodedToken = await firebaseAdminAuth.verifyIdToken(idToken);
+    } catch (verifyError) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid authentication token',
+        code: 'INVALID_TOKEN'
+      });
+    }
+
     const validation = verifyPinSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({ 
@@ -225,6 +251,15 @@ router.post('/verify', async (req: Request, res: Response) => {
     }
 
     const { pin, email, deviceId } = validation.data;
+
+    // Verify email matches authenticated user
+    if (email.toLowerCase() !== decodedToken.email?.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Email does not match authenticated user',
+        code: 'EMAIL_MISMATCH'
+      });
+    }
 
     // Find user
     const userInfo = await findUserByEmail(email);
@@ -600,6 +635,357 @@ router.get('/status', async (req: Request, res: Response) => {
     return res.status(500).json({ 
       success: false, 
       error: 'Failed to check PIN status' 
+    });
+  }
+});
+
+// In-memory rate limiting for PIN verification (per IP)
+const pinVerifyRateLimits = new Map<string, { count: number; resetAt: number }>();
+const PIN_VERIFY_MAX_REQUESTS = 10;
+const PIN_VERIFY_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+// Device trust token secrets - MUST be set via environment variable
+const DEVICE_TRUST_SECRET = process.env.JWT_SECRET;
+if (!DEVICE_TRUST_SECRET) {
+  logger.warn('[PIN Auth] JWT_SECRET not configured - device trust tokens will fail validation');
+}
+
+// Helper: Generate device trust token
+function generateDeviceTrustToken(userId: string, email: string, deviceId: string): string {
+  if (!DEVICE_TRUST_SECRET) {
+    throw new Error('JWT_SECRET not configured - cannot generate device trust token');
+  }
+  const payload = JSON.stringify({
+    userId,
+    email,
+    deviceId,
+    issuedAt: Date.now(),
+    expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+  });
+  const signature = crypto.createHmac('sha256', DEVICE_TRUST_SECRET)
+    .update(payload)
+    .digest('hex');
+  return Buffer.from(`${payload}.${signature}`).toString('base64');
+}
+
+// Helper: Verify device trust token
+function verifyDeviceTrustToken(token: string): { 
+  valid: boolean; 
+  userId?: string; 
+  email?: string; 
+  deviceId?: string 
+} {
+  try {
+    if (!DEVICE_TRUST_SECRET) {
+      logger.error('[PIN Auth] Cannot verify token: JWT_SECRET not configured');
+      return { valid: false };
+    }
+
+    const decoded = Buffer.from(token, 'base64').toString('utf8');
+    const [payloadStr, signature] = decoded.split('.');
+    
+    if (!payloadStr || !signature) {
+      return { valid: false };
+    }
+    
+    const expectedSignature = crypto.createHmac('sha256', DEVICE_TRUST_SECRET)
+      .update(payloadStr)
+      .digest('hex');
+    
+    if (signature !== expectedSignature) {
+      return { valid: false };
+    }
+    
+    const payload = JSON.parse(payloadStr);
+    
+    if (payload.expiresAt < Date.now()) {
+      return { valid: false };
+    }
+    
+    return { 
+      valid: true, 
+      userId: payload.userId, 
+      email: payload.email,
+      deviceId: payload.deviceId 
+    };
+  } catch (error) {
+    return { valid: false };
+  }
+}
+
+/**
+ * POST /api/pin-auth/trusted-device-verify
+ * Verify PIN from a trusted device and return Firebase custom token
+ * Requires X-Device-Trust-Token header
+ */
+router.post('/trusted-device-verify', async (req: Request, res: Response) => {
+  try {
+    // Rate limiting by IP
+    const clientIP = getClientIP(req);
+    const now = Date.now();
+    const rateLimit = pinVerifyRateLimits.get(clientIP);
+    
+    if (rateLimit) {
+      if (now < rateLimit.resetAt) {
+        if (rateLimit.count >= PIN_VERIFY_MAX_REQUESTS) {
+          logger.warn('[PIN Auth] Rate limit exceeded', { ip: clientIP });
+          return res.status(429).json({
+            success: false,
+            error: 'Too many attempts. Please wait 15 minutes.',
+            code: 'RATE_LIMITED'
+          });
+        }
+        rateLimit.count++;
+      } else {
+        pinVerifyRateLimits.set(clientIP, { count: 1, resetAt: now + PIN_VERIFY_WINDOW_MS });
+      }
+    } else {
+      pinVerifyRateLimits.set(clientIP, { count: 1, resetAt: now + PIN_VERIFY_WINDOW_MS });
+    }
+
+    // Verify device trust token
+    const trustToken = req.headers['x-device-trust-token'] as string;
+    if (!trustToken) {
+      return res.status(401).json({
+        success: false,
+        error: 'Device not trusted. Please sign in with full credentials first.',
+        code: 'NO_TRUST_TOKEN'
+      });
+    }
+
+    const tokenResult = verifyDeviceTrustToken(trustToken);
+    if (!tokenResult.valid) {
+      return res.status(401).json({
+        success: false,
+        error: 'Device trust expired. Please sign in again.',
+        code: 'INVALID_TRUST_TOKEN'
+      });
+    }
+
+    // Validate request body
+    const validation = verifyPinSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid PIN format' 
+      });
+    }
+
+    const { pin, email, deviceId } = validation.data;
+
+    // Verify email matches trust token
+    if (email.toLowerCase() !== tokenResult.email?.toLowerCase()) {
+      return res.status(401).json({
+        success: false,
+        error: 'Email does not match trusted device.',
+        code: 'EMAIL_MISMATCH'
+      });
+    }
+
+    // Find user
+    const userInfo = await findUserByEmail(email);
+    if (!userInfo) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid email or PIN' 
+      });
+    }
+
+    // Get PIN record
+    const [pinRecord] = await db.select()
+      .from(userPins)
+      .where(and(
+        eq(userPins.userId, userInfo.id),
+        eq(userPins.userType, userInfo.type),
+        eq(userPins.isActive, true)
+      ))
+      .limit(1);
+
+    if (!pinRecord) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'PIN not set up for this account.',
+        code: 'PIN_NOT_SETUP'
+      });
+    }
+
+    // Check lockout
+    if (pinRecord.lockoutUntil && new Date() < new Date(pinRecord.lockoutUntil)) {
+      const remainingMinutes = Math.ceil(
+        (new Date(pinRecord.lockoutUntil).getTime() - Date.now()) / 60000
+      );
+      return res.status(429).json({ 
+        success: false, 
+        error: `Account temporarily locked. Try again in ${remainingMinutes} minutes.`,
+        code: 'ACCOUNT_LOCKED',
+        lockoutMinutes: remainingMinutes
+      });
+    }
+
+    // Verify PIN
+    const isValid = await bcrypt.compare(pin, pinRecord.pinHash);
+
+    if (!isValid) {
+      const newFailedAttempts = pinRecord.failedAttempts + 1;
+      const shouldLockout = newFailedAttempts >= MAX_FAILED_ATTEMPTS;
+      
+      const lockoutUntil = shouldLockout 
+        ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000)
+        : null;
+
+      await db.update(userPins)
+        .set({
+          failedAttempts: newFailedAttempts,
+          lastFailedAt: new Date(),
+          lockoutUntil,
+        })
+        .where(eq(userPins.id, pinRecord.id));
+
+      await logPinEvent({
+        userId: userInfo.id,
+        userType: userInfo.type,
+        action: shouldLockout ? 'trusted_device_lockout' : 'trusted_device_login_failed',
+        req,
+        deviceId,
+        failedAttemptNumber: newFailedAttempts,
+        lockoutDuration: shouldLockout ? LOCKOUT_MINUTES : undefined,
+      });
+
+      if (shouldLockout) {
+        return res.status(429).json({ 
+          success: false, 
+          error: `Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`,
+          code: 'ACCOUNT_LOCKED',
+          lockoutMinutes: LOCKOUT_MINUTES
+        });
+      }
+
+      const attemptsRemaining = MAX_FAILED_ATTEMPTS - newFailedAttempts;
+      return res.status(401).json({ 
+        success: false, 
+        error: `Invalid PIN. ${attemptsRemaining} attempts remaining.`,
+        code: 'INVALID_PIN',
+        attemptsRemaining
+      });
+    }
+
+    // Success! Reset failed attempts
+    await db.update(userPins)
+      .set({
+        failedAttempts: 0,
+        lockoutUntil: null,
+        lastUsedAt: new Date(),
+        lastSuccessIP: clientIP,
+      })
+      .where(eq(userPins.id, pinRecord.id));
+
+    await logPinEvent({
+      userId: userInfo.id,
+      userType: userInfo.type,
+      action: 'trusted_device_login_success',
+      req,
+      deviceId,
+    });
+
+    // Generate Firebase custom token
+    let customToken: string | null = null;
+    try {
+      customToken = await firebaseAdminAuth.createCustomToken(userInfo.id);
+    } catch (tokenError) {
+      logger.error('[PIN Auth] Failed to create Firebase custom token', tokenError);
+      return res.status(500).json({
+        success: false,
+        error: 'Authentication service error. Please try again.'
+      });
+    }
+
+    logger.info('[PIN Auth] Trusted device PIN login success', { userId: userInfo.id, email });
+    return res.json({ 
+      success: true, 
+      message: 'PIN verified successfully',
+      token: customToken,
+      userType: userInfo.type
+    });
+
+  } catch (error) {
+    logger.error('[PIN Auth] Trusted device verify error', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Verification failed. Please try again.' 
+    });
+  }
+});
+
+/**
+ * POST /api/pin-auth/generate-device-trust
+ * Generate a device trust token after successful authentication
+ * This should be called after user logs in with full credentials
+ */
+router.post('/generate-device-trust', async (req: Request, res: Response) => {
+  try {
+    // This endpoint requires Firebase auth (user must be logged in)
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    const idToken = authHeader.substring(7);
+    
+    // Verify Firebase ID token
+    let decodedToken;
+    try {
+      decodedToken = await firebaseAdminAuth.verifyIdToken(idToken);
+    } catch (verifyError) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid authentication token'
+      });
+    }
+
+    const { deviceId } = req.body;
+    if (!deviceId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Device ID is required'
+      });
+    }
+
+    const email = decodedToken.email;
+    const userId = decodedToken.uid;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email not found in authentication token'
+      });
+    }
+
+    // Generate device trust token
+    const trustToken = generateDeviceTrustToken(userId, email, deviceId);
+
+    await logPinEvent({
+      userId,
+      userType: 'user',
+      action: 'device_trust_created',
+      req,
+      deviceId,
+    });
+
+    logger.info('[PIN Auth] Device trust token generated', { userId, email, deviceId });
+    return res.json({
+      success: true,
+      deviceTrustToken: trustToken,
+      expiresInDays: 30
+    });
+
+  } catch (error) {
+    logger.error('[PIN Auth] Generate device trust error', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to generate device trust'
     });
   }
 });
