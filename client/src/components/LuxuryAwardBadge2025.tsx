@@ -29,7 +29,9 @@ export function LuxuryAwardBadge2025() {
           position: fixed;
           bottom: 24px;
           right: 24px;
-          z-index: 9999999;
+          width: 80px;
+          height: 80px;
+          z-index: 9999;
           pointer-events: none;
         }
 
@@ -84,6 +86,8 @@ export function LuxuryAwardBadge2025() {
           .luxury-medallion-container {
             bottom: 16px;
             right: 16px;
+            width: 60px;
+            height: 60px;
           }
           .luxury-medallion {
             width: 60px;
