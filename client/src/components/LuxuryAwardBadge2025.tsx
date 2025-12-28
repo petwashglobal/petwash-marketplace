@@ -2,13 +2,25 @@ import { useEffect, useState } from "react";
 
 export function LuxuryAwardBadge2025() {
   const [isVisible, setIsVisible] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 800);
-    return () => clearTimeout(timer);
+    // Pre-check if image exists before showing component
+    const img = new Image();
+    img.onload = () => {
+      setImageLoaded(true);
+      setTimeout(() => setIsVisible(true), 800);
+    };
+    img.onerror = () => {
+      setImageError(true);
+      setIsVisible(false);
+    };
+    img.src = "/award-medallion-2025.png";
   }, []);
 
-  if (!isVisible) return null;
+  // Don't render if image failed to load or hasn't loaded yet
+  if (!isVisible || imageError || !imageLoaded) return null;
 
   return (
     <>
