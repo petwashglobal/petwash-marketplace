@@ -29,3 +29,8 @@ npm-debug.log*
 # Cache
 .cache/
 tmp/
+
+# Large test/benchmark files (exceed GitHub 100MB limit)
+load-test-results.json
+*.results.json
+*-results.json
