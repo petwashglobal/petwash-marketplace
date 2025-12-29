@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -100,6 +101,7 @@ export default function EGift() {
   const suggestedAmounts = [50, 100, 200, 500];
 
   return (
+    <Layout>
     <div className="min-h-screen luxury-bg-purple-fade relative overflow-hidden">
       <div className="luxury-container py-8 sm:py-12 lg:py-16 relative z-10">
         {/* Luxury Header Section */}
@@ -567,5 +569,6 @@ export default function EGift() {
         </div>
       </div>
     </div>
+    </Layout>
   );
 }

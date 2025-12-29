@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { Layout } from "@/components/Layout";
 import {
   Home,
   Droplets,
@@ -144,6 +145,7 @@ export default function Hub() {
   ];
 
   return (
+    <Layout>
     <div className="min-h-screen luxury-bg-purple-fade">
       <div className="luxury-container py-12">
         
@@ -359,5 +361,6 @@ export default function Hub() {
 
       </div>
     </div>
+    </Layout>
   );
 }

@@ -330,11 +330,13 @@
 
 /* ===========================
    MOBILE DRAWER
+   CRITICAL: Always slides from RIGHT side regardless of RTL/LTR
    =========================== */
 .pw-mobile-drawer {
   position: fixed;
   top: 0;
   right: -100%;
+  left: auto !important; /* Force right-side positioning */
   width: 100%;
   max-width: 400px;
   height: 100vh;
@@ -348,6 +350,7 @@
 
 .pw-mobile-drawer.open {
   right: 0;
+  left: auto !important; /* Force right-side positioning */
 }
 
 .pw-mobile-top {
@@ -472,14 +475,16 @@
   text-align: right;
 }
 
+/* CRITICAL: Mobile drawer ALWAYS slides from RIGHT side regardless of RTL/LTR
+   This is per user requirement - hamburger stays top-right, drawer slides from right */
 [dir="rtl"] .pw-mobile-drawer {
-  right: auto;
-  left: -100%;
+  right: -100%;
+  left: auto;
 }
 
 [dir="rtl"] .pw-mobile-drawer.open {
-  left: 0;
-  right: auto;
+  right: 0;
+  left: auto;
 }
 
 /* ===========================
