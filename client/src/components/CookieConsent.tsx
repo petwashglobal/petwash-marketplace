@@ -105,6 +105,7 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
   
   return (
     <div 
+      data-testid="cookie-consent-banner"
       className={`fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-md z-40 transition-all duration-400 ${
         isAnimatingOut ? 'opacity-0 translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100'
       }`}
