@@ -100,15 +100,8 @@ export function GiftCards({ language }: GiftCardsProps) {
     
     setSelectedPackage(packageData);
     
-    // ✅ Require authentication for purchases (security & payment processing)
-    if (!user) {
-      logger.debug('User not authenticated - showing signup modal');
-      setPendingPurchase(true);
-      setIsSignupModalOpen(true);
-      return;
-    }
-    
-    // User is authenticated - proceed to checkout
+    // ✅ E-Gift cards can be purchased by anyone - no membership required
+    // Gift cards are meant to be given to loved ones, so express checkout is open to all
     setIsCheckoutOpen(true);
     logger.debug('Gift card modal state set to open');
   };
