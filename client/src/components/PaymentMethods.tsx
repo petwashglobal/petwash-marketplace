@@ -3,7 +3,7 @@ export default function PaymentMethods() {
     <div className="flex flex-wrap items-center justify-center gap-4 py-2">
       {/* VISA */}
       <img
-        src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_2021.svg"
+        src="/assets/payments/visa-color.svg"
         alt="Visa"
         className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
         data-testid="icon-visa"
@@ -11,7 +11,7 @@ export default function PaymentMethods() {
 
       {/* MasterCard */}
       <img
-        src="https://upload.wikimedia.org/wikipedia/commons/0/04/Mastercard-logo.png"
+        src="/assets/payments/mastercard-color.svg"
         alt="Mastercard"
         className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
         data-testid="icon-mastercard"
@@ -19,15 +19,15 @@ export default function PaymentMethods() {
 
       {/* American Express */}
       <img
-        src="https://upload.wikimedia.org/wikipedia/commons/3/30/American_Express_logo_%282018%29.svg"
+        src="/assets/payments/amex-color.svg"
         alt="American Express"
         className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
         data-testid="icon-amex"
       />
 
-      {/* Apple Pay */}
+      {/* Apple Pay - Official black wordmark */}
       <img
-        src="https://upload.wikimedia.org/wikipedia/commons/b/b9/Apple_Pay_logo.svg"
+        src="/assets/payments/apple-pay-color.svg"
         alt="Apple Pay"
         className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
         data-testid="icon-apple-pay"
@@ -35,7 +35,7 @@ export default function PaymentMethods() {
 
       {/* Google Pay */}
       <img
-        src="https://upload.wikimedia.org/wikipedia/commons/5/5b/Google_Pay_Logo.svg"
+        src="/assets/payments/google-pay-color.svg"
         alt="Google Pay"
         className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
         data-testid="icon-google-pay"
