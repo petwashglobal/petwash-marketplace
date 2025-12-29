@@ -25,6 +25,89 @@
 @tailwind utilities;
 
 /* ============================================================================
+   SHADCN/UI THEME VARIABLES - TRUE 18K CARTIER GOLD (#D4AF37)
+   ============================================================================ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    
+    /* Card and Popover */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    
+    /* TRUE 18K GOLD - Cartier/Bulgari Style */
+    --primary: 43 74% 52%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 45 93% 90%;
+    --secondary-foreground: 43 74% 40%;
+    
+    --muted: 45 30% 96%;
+    --muted-foreground: 0 0% 45%;
+    
+    --accent: 45 93% 94%;
+    --accent-foreground: 43 74% 40%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 45 30% 90%;
+    --input: 45 30% 90%;
+    --ring: 43 74% 52%;
+    --radius: 0.75rem;
+    
+    /* Chart colors - Gold palette */
+    --chart-1: 43 74% 52%;
+    --chart-2: 45 85% 60%;
+    --chart-3: 38 90% 45%;
+    --chart-4: 48 100% 70%;
+    --chart-5: 35 80% 40%;
+    
+    /* Sidebar - Gold themed */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-primary: 43 74% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 45 93% 94%;
+    --sidebar-accent-foreground: 43 74% 40%;
+    --sidebar-border: 45 30% 90%;
+    --sidebar-ring: 43 74% 52%;
+  }
+  
+  .dark {
+    --background: 0 0% 5%;
+    --foreground: 0 0% 98%;
+    
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 43 74% 52%;
+    --primary-foreground: 0 0% 5%;
+    
+    --secondary: 43 74% 20%;
+    --secondary-foreground: 45 93% 90%;
+    
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    
+    --accent: 43 74% 25%;
+    --accent-foreground: 45 93% 90%;
+    
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 43 74% 52%;
+  }
+}
+
+/* ============================================================================
    LAZY LOADING PERFORMANCE OPTIMIZATIONS 2025
    ============================================================================ */
 
