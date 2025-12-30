@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Layout } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,124 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { BookingWizard, BookingFilters } from '@/components/BookingWizard';
+
+// Demo drivers for display when API returns empty
+const DEMO_DRIVERS: Driver[] = [
+  {
+    id: "demo-1",
+    name: "אבי כהן",
+    bio: "נהג מקצועי עם 8 שנות ניסיון בהובלת חיות מחמד. רכב מאובזר עם מיזוג אוויר וכלובי בטיחות.",
+    photoUrl: "",
+    serviceArea: "תל אביב והמרכז",
+    vehicleType: "SUV",
+    vehicleMake: "Toyota",
+    vehicleModel: "RAV4",
+    pricePerKm: 4.5,
+    averageRating: 4.9,
+    totalTrips: 324,
+    yearsExperience: 8,
+    currentlyAvailable: true,
+    specialFeatures: ["מיזוג אוויר", "כלובי בטיחות", "מים לחיות"],
+    languages: ["עברית", "אנגלית"],
+    verified: true,
+    featured: true,
+  },
+  {
+    id: "demo-2",
+    name: "מיכל לוי",
+    bio: "אוהבת חיות עם רכב מרווח במיוחד לכלבים גדולים. זמינה 24/7 לשעות חירום.",
+    photoUrl: "",
+    serviceArea: "ירושלים והסביבה",
+    vehicleType: "Van",
+    vehicleMake: "Volkswagen",
+    vehicleModel: "Transporter",
+    pricePerKm: 5.0,
+    averageRating: 5.0,
+    totalTrips: 186,
+    yearsExperience: 5,
+    currentlyAvailable: true,
+    specialFeatures: ["רכב מרווח", "זמינות 24/7", "טיפול בחיות"],
+    languages: ["עברית"],
+    verified: true,
+    featured: true,
+  },
+  {
+    id: "demo-3",
+    name: "דוד מזרחי",
+    bio: "נהג וטרינר בהכשרה. מתמחה בהובלת חיות מחמד לטיפולים רפואיים.",
+    photoUrl: "",
+    serviceArea: "חיפה והצפון",
+    vehicleType: "Sedan",
+    vehicleMake: "Hyundai",
+    vehicleModel: "Sonata",
+    pricePerKm: 4.0,
+    averageRating: 4.8,
+    totalTrips: 256,
+    yearsExperience: 6,
+    currentlyAvailable: false,
+    specialFeatures: ["ידע וטרינרי", "ציוד עזרה ראשונה"],
+    languages: ["עברית", "רוסית"],
+    verified: true,
+    featured: false,
+  },
+  {
+    id: "demo-4",
+    name: "נועה שפירא",
+    bio: "נהגת עם אהבה מיוחדת לחתולים. רכב שקט ונוח במיוחד לחיות רגישות.",
+    photoUrl: "",
+    serviceArea: "השרון",
+    vehicleType: "Sedan",
+    vehicleMake: "Mazda",
+    vehicleModel: "CX-5",
+    pricePerKm: 4.2,
+    averageRating: 4.7,
+    totalTrips: 143,
+    yearsExperience: 3,
+    currentlyAvailable: true,
+    specialFeatures: ["התמחות בחתולים", "נסיעה שקטה"],
+    languages: ["עברית", "אנגלית"],
+    verified: true,
+    featured: false,
+  },
+  {
+    id: "demo-5",
+    name: "יוסי גולן",
+    bio: "בעל ניסיון בהובלת בעלי חיים גדולים. רכב מותאם במיוחד לכלבים גדולים ומשפחות.",
+    photoUrl: "",
+    serviceArea: "דרום והנגב",
+    vehicleType: "Van",
+    vehicleMake: "Ford",
+    vehicleModel: "Transit",
+    pricePerKm: 5.5,
+    averageRating: 4.9,
+    totalTrips: 412,
+    yearsExperience: 10,
+    currentlyAvailable: true,
+    specialFeatures: ["כלבים גדולים", "רכב מותאם", "ניסיון רב"],
+    languages: ["עברית"],
+    verified: true,
+    featured: true,
+  },
+  {
+    id: "demo-6",
+    name: "אלון אברהם",
+    bio: "נהג אמין עם רכב חדש ונקי. מתמחה בנסיעות ארוכות בין ערים.",
+    photoUrl: "",
+    serviceArea: "כל הארץ",
+    vehicleType: "SUV",
+    vehicleMake: "Kia",
+    vehicleModel: "Sportage",
+    pricePerKm: 4.8,
+    averageRating: 4.6,
+    totalTrips: 98,
+    yearsExperience: 2,
+    currentlyAvailable: false,
+    specialFeatures: ["נסיעות ארוכות", "רכב חדש"],
+    languages: ["עברית", "ערבית"],
+    verified: false,
+    featured: false,
+  },
+];
 
 interface Driver {
   id: string;
@@ -74,7 +193,9 @@ export default function BrowseDrivers() {
     queryKey: ["/api/providers/drivers", filters, sortBy],
   });
 
-  const drivers = data?.drivers || [];
+  // Use demo drivers if API returns empty
+  const apiDrivers = data?.drivers || [];
+  const drivers = apiDrivers.length > 0 ? apiDrivers : DEMO_DRIVERS;
   const featuredDrivers = drivers.filter(d => d.featured).slice(0, 4);
   const regularDrivers = drivers.filter(d => !d.featured);
   
@@ -118,6 +239,7 @@ export default function BrowseDrivers() {
   };
 
   return (
+    <Layout>
     <div className="min-h-screen luxury-bg-mesh">
       {/* Hero Section */}
       <div className="luxury-container py-12 luxury-animate-fade-in">
@@ -603,5 +725,6 @@ export default function BrowseDrivers() {
         </div>
       )}
     </div>
+    </Layout>
   );
 }
