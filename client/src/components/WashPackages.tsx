@@ -107,56 +107,60 @@ export function WashPackages({ language }: WashPackagesProps) {
     return 0; // No discounts per official pricing
   };
 
-  // LUXURY CREDIT CARD THEMES - Metallic Gold, Silver, Platinum, Black
+  // GUCCI-STYLE MINIMALIST THEMES - Black and White only
   const getLuxuryTheme = (index: number) => {
     const themes = [
       {
-        // SILVER - Single Wash
-        gradient: 'linear-gradient(135deg, #C0C0C0 0%, #E8E8E8 25%, #A8A8A8 50%, #D4D4D4 75%, #C0C0C0 100%)',
-        textGradient: 'linear-gradient(135deg, #4A4A4A 0%, #1A1A1A 100%)',
-        badge: 'SILVER',
-        badgeBg: 'rgba(192, 192, 192, 0.3)',
+        // WHITE - Single Wash
+        gradient: '#FFFFFF',
+        textGradient: '#000000',
+        badge: 'BASIC',
+        badgeBg: 'rgba(0, 0, 0, 0.05)',
         icon: CreditCard,
-        shadowColor: 'rgba(160, 160, 160, 0.5)',
-        chipColor: '#A8A8A8',
-        textColor: '#1A1A1A',
-        accentColor: '#666666',
+        shadowColor: 'rgba(0, 0, 0, 0.1)',
+        chipColor: '#000000',
+        textColor: '#000000',
+        accentColor: '#000000',
+        border: '1px solid #000000',
       },
       {
-        // GOLD - 3 Washes (Most Popular)
-        gradient: 'linear-gradient(135deg, #FFD700 0%, #FFF2CC 20%, #DAA520 40%, #FFD700 60%, #FFC107 80%, #FFE55C 100%)',
-        textGradient: 'linear-gradient(135deg, #5D4E0B 0%, #3D3200 100%)',
-        badge: 'GOLD',
-        badgeBg: 'rgba(255, 215, 0, 0.3)',
+        // WHITE WITH BORDER - 3 Washes (Most Popular)
+        gradient: '#FFFFFF',
+        textGradient: '#000000',
+        badge: 'POPULAR',
+        badgeBg: 'rgba(0, 0, 0, 0.1)',
         icon: Crown,
-        shadowColor: 'rgba(218, 165, 32, 0.5)',
-        chipColor: '#DAA520',
-        textColor: '#3D3200',
-        accentColor: '#5D4E0B',
+        shadowColor: 'rgba(0, 0, 0, 0.15)',
+        chipColor: '#000000',
+        textColor: '#000000',
+        accentColor: '#000000',
+        border: '2px solid #000000',
       },
       {
-        // PLATINUM - 5 Washes
-        gradient: 'linear-gradient(135deg, #E5E4E2 0%, #FFFFFF 20%, #C9C9C7 40%, #E5E4E2 60%, #FFFFFF 80%, #D3D3D3 100%)',
-        textGradient: 'linear-gradient(135deg, #2C2C2C 0%, #1A1A1A 100%)',
-        badge: 'PLATINUM',
-        badgeBg: 'rgba(229, 228, 226, 0.5)',
+        // LIGHT GRAY - 5 Washes
+        gradient: '#F5F5F5',
+        textGradient: '#000000',
+        badge: 'PREMIUM',
+        badgeBg: 'rgba(0, 0, 0, 0.08)',
         icon: Sparkles,
-        shadowColor: 'rgba(200, 200, 200, 0.6)',
-        chipColor: '#B0B0B0',
-        textColor: '#1A1A1A',
-        accentColor: '#4A4A4A',
+        shadowColor: 'rgba(0, 0, 0, 0.12)',
+        chipColor: '#000000',
+        textColor: '#000000',
+        accentColor: '#000000',
+        border: '1px solid #000000',
       },
       {
         // BLACK CARD - 10 Washes (Family Pack - Elite)
-        gradient: 'linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 25%, #0D0D0D 50%, #1F1F1F 75%, #1A1A1A 100%)',
-        textGradient: 'linear-gradient(135deg, #FFD700 0%, #FFC107 100%)',
-        badge: 'BLACK CARD',
-        badgeBg: 'rgba(255, 215, 0, 0.2)',
+        gradient: '#000000',
+        textGradient: '#FFFFFF',
+        badge: 'ELITE',
+        badgeBg: 'rgba(255, 255, 255, 0.2)',
         icon: Shield,
-        shadowColor: 'rgba(0, 0, 0, 0.6)',
-        chipColor: '#FFD700',
+        shadowColor: 'rgba(0, 0, 0, 0.3)',
+        chipColor: '#FFFFFF',
         textColor: '#FFFFFF',
-        accentColor: '#FFD700',
+        accentColor: '#FFFFFF',
+        border: 'none',
       },
     ];
     return themes[index] || themes[0];
@@ -227,14 +231,14 @@ export function WashPackages({ language }: WashPackagesProps) {
                   perspective: '1000px',
                 }}
               >
-                {/* Most Popular Badge - Gold Card */}
+                {/* Most Popular Badge */}
                 {pkg.washCount === 3 && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
                     <div 
                       className="px-4 py-1.5 text-xs font-bold rounded-full shadow-lg"
                       style={{
-                        background: 'linear-gradient(135deg, #FFD700 0%, #FFC107 100%)',
-                        color: '#3D3200',
+                        background: '#000000',
+                        color: '#FFFFFF',
                       }}
                     >
                       {t('packages.mostPopular', language)}
@@ -247,7 +251,8 @@ export function WashPackages({ language }: WashPackagesProps) {
                   className="relative overflow-hidden rounded-2xl transition-all duration-500"
                   style={{
                     background: theme.gradient,
-                    boxShadow: `0 20px 60px ${theme.shadowColor}, 0 0 0 1px rgba(255,255,255,0.2) inset`,
+                    border: theme.border,
+                    boxShadow: `0 10px 40px ${theme.shadowColor}`,
                     aspectRatio: '1.586/1', // Standard credit card ratio
                     minHeight: '380px',
                   }}

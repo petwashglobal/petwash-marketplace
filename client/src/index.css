@@ -183,13 +183,10 @@ html, body, #root {
   background-color: #FFFFFF !important;
 }
 
-/* Override ALL dark backgrounds from old Replit/legacy styles */
+/* Override dark backgrounds from old Replit/legacy styles (class-based only) */
 .bg-slate-900, .bg-slate-800, .bg-gray-900, .bg-gray-800,
 .bg-zinc-900, .bg-zinc-800, .bg-neutral-900, .bg-neutral-800,
-.bg-black, [class*="bg-[#1"], [class*="bg-[#0"],
-.from-slate-900, .from-gray-900, .from-zinc-900, .from-black,
-[style*="background-color: #1"], [style*="background: #1"],
-[style*="background-color: #0"], [style*="background: #0"] {
+.from-slate-900, .from-gray-900, .from-zinc-900, .from-black {
   background: #FFFFFF !important;
   background-color: #FFFFFF !important;
 }
@@ -377,6 +374,21 @@ h1, h2, h3, h4, h5, h6,
   color: #1A1A1A !important;
   font-weight: 600;
   text-shadow: 0 1px 4px rgba(255, 255, 255, 0.9);
+}
+
+/* ===========================================
+   GUCCI-STYLE BLACK/WHITE BUTTON CLASSES
+   =========================================== */
+.btn-gucci-black {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: none !important;
+}
+
+.btn-gucci-white {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
 }
 
 /* Official PetWash™ Logo - Brand Guidelines (MANDATORY: top-center, no container) */

@@ -116,16 +116,16 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
       <div 
         className="backdrop-blur-xl rounded-2xl p-5 shadow-2xl"
         style={{
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 249, 240, 0.98) 100%)',
-          border: '1px solid rgba(212, 175, 55, 0.15)',
-          boxShadow: '0 20px 60px rgba(212, 175, 55, 0.2), 0 0 1px rgba(212, 175, 55, 0.3)',
+          background: '#FFFFFF',
+          border: '1px solid #000000',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
         }}
       >
         <div className="flex gap-4">
           <div 
             className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
             style={{
-              background: 'linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)',
+              background: '#000000',
             }}
           >
             <Cookie className="w-5 h-5 text-white" />
@@ -154,8 +154,9 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
                 href="/privacy" 
                 className="inline-flex items-center hover:opacity-80 transition-opacity"
                 style={{
-                  color: '#d4af37',
-                  fontWeight: 400,
+                  color: '#000000',
+                  fontWeight: 500,
+                  textDecoration: 'underline',
                 }}
               >
                 {t.privacyPolicy}
@@ -165,12 +166,10 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
             <div className="flex flex-col gap-2">
               <button
                 onClick={handleAcceptAll}
-                className="w-full text-white hover:opacity-90 transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+                className="btn-gucci-black w-full hover:opacity-90 transition-all duration-200 px-4 py-2.5 text-sm rounded-xl shadow-lg"
                 style={{
-                  background: 'linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)',
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                  fontWeight: 400,
-                  boxShadow: '0 4px 12px rgba(212, 175, 55, 0.25)',
+                  fontWeight: 500,
                 }}
                 data-testid="button-accept-all-cookies"
               >
@@ -180,7 +179,7 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
               <div className="flex gap-2">
                 <button
                   onClick={handleRejectAll}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+                  className="flex-1 bg-white hover:bg-gray-100 text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
                   style={{
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                     fontWeight: 400,
@@ -192,7 +191,7 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
                 
                 <button
                   onClick={handleManagePreferences}
-                  className="flex-1 bg-amber-50 hover:bg-amber-100 text-[#D4AF37] transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+                  className="flex-1 bg-white hover:bg-gray-100 text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
                   style={{
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                     fontWeight: 400,
