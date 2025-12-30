@@ -46,8 +46,9 @@
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%);
-  color: white;
+  background: #FFFFFF;
+  border: 1px solid #000000;
+  color: #000000;
   font-size: 0.75rem;
   font-weight: 600;
   text-decoration: none;
@@ -55,8 +56,9 @@
 }
 
 .pw-social-link:hover {
+  background: #000000;
+  color: #FFFFFF;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
 }
 
 /* ===========================
@@ -82,17 +84,17 @@
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%);
+  background: #000000;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
 }
 
 .pw-logo-link:hover .pw-logo-circle {
-  transform: scale(1.05) rotate(-5deg);
-  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .pw-logo-text {
