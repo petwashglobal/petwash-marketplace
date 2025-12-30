@@ -353,16 +353,18 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             </a>
           </div>
 
-          {/* Center: logo */}
+          {/* Center: official logo - always visible on all screen sizes */}
           <div className="pw-header-center">
             <button
               className="pw-logo-link"
               onClick={() => handleNavigate("/")}
               aria-label="Pet Wash home"
             >
-              <div className="pw-logo-circle">
-                <span className="pw-logo-text">PetWash™</span>
-              </div>
+              <img 
+                src="/brand/petwash-logo-official.png" 
+                alt="PetWash™" 
+                className="pw-header-logo-img"
+              />
             </button>
           </div>
 

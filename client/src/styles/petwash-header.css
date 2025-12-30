@@ -82,6 +82,29 @@
   justify-content: center;
 }
 
+/* Official PetWash™ logo image - ALWAYS visible on all screen sizes */
+.pw-header-logo-img {
+  height: 2.5rem !important;
+  width: auto !important;
+  max-width: 120px !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+/* Larger logo on desktop */
+@media (min-width: 768px) {
+  .pw-header-logo-img {
+    height: 3rem !important;
+    max-width: 150px !important;
+  }
+}
+
+.pw-logo-link:hover .pw-header-logo-img {
+  transform: scale(1.05);
+  transition: transform 0.3s ease;
+}
+
+/* Fallback circle styles (kept for backwards compatibility) */
 .pw-logo-circle {
   width: 3rem;
   height: 3rem;
