@@ -192,7 +192,7 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
                 
                 <button
                   onClick={handleManagePreferences}
-                  className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+                  className="flex-1 bg-amber-50 hover:bg-amber-100 text-[#D4AF37] transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
                   style={{
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                     fontWeight: 400,

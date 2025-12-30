@@ -61,12 +61,12 @@ export function Footer({ language }: FooterProps) {
                 </Link>
               </div>
               <div>
-                <Link href="/admin/login-v2" className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer text-sm font-semibold">
+                <Link href="/admin/login-v2" className="text-[#D4AF37] hover:text-[#B8860B] transition-colors cursor-pointer text-sm font-semibold">
                   Admin Portal
                 </Link>
               </div>
               <div>
-                <Link href="/admin/guide" className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer text-sm">
+                <Link href="/admin/guide" className="text-[#D4AF37] hover:text-[#B8860B] transition-colors cursor-pointer text-sm">
                   {t('footer.adminGuide', language)}
                 </Link>
               </div>
@@ -140,9 +140,9 @@ export function Footer({ language }: FooterProps) {
               </div>
 
               {/* Israeli Business */}
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full border border-blue-200/50 group hover:border-blue-300 transition-all duration-300">
-                <CheckCircle2 className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-medium text-blue-800 tracking-wide">
+              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-full border border-amber-200/50 group hover:border-amber-300 transition-all duration-300">
+                <CheckCircle2 className="w-4 h-4 text-[#D4AF37] group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-amber-800 tracking-wide">
                   {t('footer.israeliRegistered', language)}
                 </span>
               </div>
