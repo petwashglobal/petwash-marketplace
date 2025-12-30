@@ -86,20 +86,36 @@
   justify-content: center;
 }
 
-/* Official PetWash™ logo image - ALWAYS visible on all screen sizes */
+/* Official PetWash™ logo image - ALWAYS DOMINANT, larger than any text/icons */
 .pw-header-logo-img {
-  height: 2.5rem !important;
+  height: 2.75rem !important;
   width: auto !important;
-  max-width: 120px !important;
+  max-width: 140px !important;
   object-fit: contain !important;
   display: block !important;
 }
 
-/* Larger logo on desktop */
+/* Tablet - larger logo */
+@media (min-width: 640px) {
+  .pw-header-logo-img {
+    height: 3.25rem !important;
+    max-width: 160px !important;
+  }
+}
+
+/* Desktop - dominant logo */
 @media (min-width: 768px) {
   .pw-header-logo-img {
-    height: 3rem !important;
-    max-width: 150px !important;
+    height: 3.5rem !important;
+    max-width: 180px !important;
+  }
+}
+
+/* Large screens - premium dominant logo */
+@media (min-width: 1024px) {
+  .pw-header-logo-img {
+    height: 4rem !important;
+    max-width: 200px !important;
   }
 }
 
