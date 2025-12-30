@@ -212,7 +212,7 @@ export default function OwnerDashboard() {
             </div>
             <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-[#B8860B] to-[#D4AF37] rounded-full transition-all duration-500"
                 style={{ width: `${(mockLoyaltyData.points / (mockLoyaltyData.points + mockLoyaltyData.pointsToNext)) * 100}%` }}
               ></div>
             </div>
@@ -331,7 +331,7 @@ export default function OwnerDashboard() {
           <div className="luxury-animate-fade-in luxury-delay-5">
             <div className="luxury-glass-card luxury-shadow-xl p-8 mb-6">
               <div className="flex items-center gap-4 mb-4">
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 luxury-shadow-md">
+                <div className="p-4 rounded-2xl luxury-icon-gold luxury-shadow-md">
                   <Search className="h-8 w-8 text-white" />
                 </div>
                 <div>
@@ -420,7 +420,7 @@ export default function OwnerDashboard() {
                     - {isHebrew ? 'שרה, תל אביב' : 'Sarah, Tel Aviv'}
                   </p>
                 </div>
-                <div className="border-l-4 border-blue-500 pl-4 py-2">
+                <div className="border-l-4 border-amber-500 pl-4 py-2">
                   <p className="luxury-text-body font-semibold">
                     {isHebrew 
                       ? '"הקהילה עזרה למצוא את הכלב שלי תוך שעתיים"' 
@@ -445,7 +445,7 @@ function TabButton({ active, onClick, icon, label, badge }: any) {
       onClick={onClick}
       className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-all ${
         active
-          ? 'border-blue-600 text-blue-600 dark:text-blue-400 font-semibold'
+          ? 'border-[#D4AF37] text-[#B8860B] dark:text-[#E8C84A] font-semibold'
           : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
       }`}
       data-testid={`tab-${label.toLowerCase().replace(/\s+/g, '-')}`}
@@ -474,7 +474,7 @@ function BookingCard({ booking, isHebrew }: any) {
     <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6" data-testid={`card-booking-${booking.id}`}>
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center luxury-shadow-md">
+          <div className="h-12 w-12 rounded-xl luxury-icon-gold flex items-center justify-center luxury-shadow-md">
             <PawPrint className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -520,7 +520,7 @@ function BookingCard({ booking, isHebrew }: any) {
           <span className="luxury-text-small">
             {isHebrew ? 'עמלת פלטפורמה (7%):' : 'Platform fee (7%):'}
           </span>
-          <span className="text-blue-600 font-semibold text-sm">
+          <span className="text-[#B8860B] font-semibold text-sm">
             ₪{(booking.totalChargeCents * 0.07 / 100).toFixed(2)}
           </span>
         </div>
@@ -538,9 +538,9 @@ function PetProfileCard({ name, type, breed, age, isHebrew }: any) {
     <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6" data-testid={`card-pet-${name.toLowerCase()}`}>
       <div className="flex flex-col items-center text-center mb-4">
         <div className="relative mb-4">
-          <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 p-1 luxury-shadow-md">
+          <div className="h-24 w-24 rounded-full luxury-gradient-gold p-1 luxury-shadow-md">
             <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
-              <PawPrint className="h-12 w-12 text-purple-500" />
+              <PawPrint className="h-12 w-12 text-[#D4AF37]" />
             </div>
           </div>
         </div>
@@ -561,10 +561,10 @@ function PetProfileCard({ name, type, breed, age, isHebrew }: any) {
 function MessagePreview({ message, isHebrew }: any) {
   return (
     <div 
-      className={`flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl cursor-pointer transition-all ${!message.isRead ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+      className={`flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl cursor-pointer transition-all ${!message.isRead ? 'bg-amber-50 dark:bg-amber-900/20' : ''}`}
       data-testid={`message-${message.id}`}
     >
-      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold luxury-shadow-md">
+      <div className="h-12 w-12 rounded-full luxury-gradient-gold flex items-center justify-center text-white font-bold luxury-shadow-md">
         {message.senderName?.charAt(0) || 'S'}
       </div>
       <div className="flex-1">
@@ -575,7 +575,7 @@ function MessagePreview({ message, isHebrew }: any) {
         <p className="luxury-text-small truncate">{message.messageText}</p>
       </div>
       {!message.isRead && (
-        <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
+        <div className="h-3 w-3 bg-[#D4AF37] rounded-full"></div>
       )}
     </div>
   );
