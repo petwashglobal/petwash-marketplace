@@ -16,8 +16,6 @@
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(226, 232, 240, 0.8);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  /* CRITICAL: Header layout NEVER flips on RTL - per user requirement */
-  direction: ltr !important;
 }
 
 .pw-header-inner {
@@ -455,38 +453,68 @@
 }
 
 /* ===========================
-   RTL SUPPORT
+   RTL SUPPORT - CRITICAL LAYOUT RULES
+   Per user requirement: Layout NEVER changes on RTL
+   - Social icons ALWAYS on physical LEFT
+   - Logo ALWAYS in physical CENTER  
+   - Hamburger ALWAYS on physical RIGHT
+   - Mobile drawer ALWAYS slides from RIGHT
    =========================== */
+
+/* Force header to maintain LTR layout even when document is RTL */
+[dir="rtl"] .pw-header {
+  direction: ltr;
+}
+
+/* Allow text inside header to be RTL where needed */
 [dir="rtl"] .pw-header-inner {
+  direction: ltr;
   grid-template-columns: 1fr auto 1fr;
 }
 
+/* Social icons stay on left - content can be RTL */
 [dir="rtl"] .pw-header-left {
+  direction: rtl;
   justify-content: flex-start;
 }
 
+/* Logo stays centered */
+[dir="rtl"] .pw-header-center {
+  direction: ltr;
+}
+
+/* Controls stay on right - reverse internal order so hamburger is rightmost */
 [dir="rtl"] .pw-header-right {
+  direction: ltr;
   justify-content: flex-end;
 }
 
+/* Text content inside menu items can be RTL */
 [dir="rtl"] .pw-mega-link {
+  direction: rtl;
   text-align: right;
 }
 
 [dir="rtl"] .pw-mobile-link {
+  direction: rtl;
   text-align: right;
+}
+
+/* Mobile drawer content can be RTL */
+[dir="rtl"] .pw-mobile-drawer {
+  direction: rtl;
 }
 
 /* CRITICAL: Mobile drawer ALWAYS slides from RIGHT side regardless of RTL/LTR
    This is per user requirement - hamburger stays top-right, drawer slides from right */
 [dir="rtl"] .pw-mobile-drawer {
   right: -100%;
-  left: auto;
+  left: auto !important;
 }
 
 [dir="rtl"] .pw-mobile-drawer.open {
   right: 0;
-  left: auto;
+  left: auto !important;
 }
 
 /* ===========================
