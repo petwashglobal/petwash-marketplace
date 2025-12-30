@@ -16,6 +16,8 @@
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(226, 232, 240, 0.8);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  /* CRITICAL: Header layout NEVER flips on RTL - per user requirement */
+  direction: ltr !important;
 }
 
 .pw-header-inner {
