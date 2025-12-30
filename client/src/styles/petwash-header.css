@@ -64,6 +64,24 @@
   transform: translateY(-2px);
 }
 
+/* Luxury social icon styling */
+.pw-social-luxury {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  border: 1.5px solid #000000 !important;
+  color: #000000 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.pw-social-luxury:hover {
+  background: #000000 !important;
+  color: #FFFFFF !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
 /* ===========================
    CENTER SECTION - LOGO
    =========================== */
@@ -294,6 +312,16 @@
 }
 
 /* ===========================
+   RIGHT STACK - Hamburger top, Language below
+   =========================== */
+.pw-right-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+/* ===========================
    LANGUAGE SELECTOR
    =========================== */
 .pw-language-select {
@@ -316,6 +344,26 @@
   outline: none;
   border-color: #000000;
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Luxury language toggle styling */
+.pw-language-luxury {
+  background: #FFFFFF !important;
+  border: 1.5px solid #000000 !important;
+  border-radius: 2rem !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  color: #000000 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  min-width: 5rem !important;
+  text-align: center !important;
+}
+
+.pw-language-luxury:hover {
+  background: #000000 !important;
+  color: #FFFFFF !important;
 }
 
 /* ===========================
@@ -376,6 +424,45 @@
 
 .pw-burger:hover span {
   background: #000000;
+}
+
+/* Luxury burger styling */
+.pw-burger-luxury {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  border: 1.5px solid #000000 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.2rem !important;
+  padding: 0 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.pw-burger-luxury span {
+  width: 1rem !important;
+  height: 1.5px !important;
+  background: #000000 !important;
+  border-radius: 9999px !important;
+}
+
+.pw-burger-luxury:hover {
+  background: #000000 !important;
+  transform: scale(1.1) !important;
+}
+
+.pw-burger-luxury:hover span {
+  background: #FFFFFF !important;
+}
+
+/* Always show burger on all screens (hamburger menu is primary navigation) */
+@media (min-width: 1024px) {
+  .pw-burger-luxury {
+    display: flex !important;
+  }
 }
 
 /* ===========================

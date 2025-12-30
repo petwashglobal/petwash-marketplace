@@ -31,7 +31,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { SiX, SiInstagram, SiTiktok } from "react-icons/si";
+import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from "react-icons/si";
 
 type LangDir = "ltr" | "rtl";
 
@@ -44,15 +44,51 @@ const LANGUAGES: { code: string; label: string; dir: LangDir }[] = [
   { code: "ar", label: "العربية", dir: "rtl" },
 ];
 
+// Geo-based language detection: Hebrew for Israel, English for rest of world
 function detectInitialLanguage(): string {
-  if (typeof navigator === "undefined") return "en";
+  if (typeof window === "undefined") return "en";
+  
+  // Check for saved preference first
+  const saved = window.localStorage.getItem("pw_lang");
+  if (saved && LANGUAGES.some(l => l.code === saved)) {
+    return saved;
+  }
+  
+  // Check for geo-detected country (set by App or geolocation service)
+  const countryCode = window.localStorage.getItem("pw_country");
+  if (countryCode === "IL") {
+    return "he"; // Hebrew default for Israel
+  }
+  
+  // Fallback: Use browser language or default to English
   const lang = navigator.language.toLowerCase();
   if (lang.startsWith("he")) return "he";
   if (lang.startsWith("ar")) return "ar";
   if (lang.startsWith("ru")) return "ru";
   if (lang.startsWith("fr")) return "fr";
   if (lang.startsWith("es")) return "es";
-  return "en";
+  
+  return "en"; // English default for rest of world
+}
+
+// Async geo-detection to set country code
+async function detectCountry(): Promise<string> {
+  try {
+    const response = await fetch("https://ipapi.co/country_code/", { 
+      method: "GET",
+      signal: AbortSignal.timeout(3000) 
+    });
+    if (response.ok) {
+      const countryCode = await response.text();
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("pw_country", countryCode.trim());
+      }
+      return countryCode.trim();
+    }
+  } catch (e) {
+    // Fallback silently
+  }
+  return "";
 }
 
 // Octopus platforms model
@@ -295,6 +331,25 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
     }
   }, [controlledLanguage]);
 
+  // Geo-detection for language default (Hebrew for Israel, English outside)
+  useEffect(() => {
+    if (controlledLanguage !== undefined) return; // Skip if controlled
+    if (typeof window === "undefined") return;
+    
+    // Only run geo-detection if no saved preference and no country yet
+    const saved = window.localStorage.getItem("pw_lang");
+    const country = window.localStorage.getItem("pw_country");
+    
+    if (!saved && !country) {
+      detectCountry().then((countryCode) => {
+        if (countryCode === "IL") {
+          setInternalLanguage("he");
+        }
+        // For other countries, keep the default (English)
+      });
+    }
+  }, [controlledLanguage]);
+
   const handleNavigate = (href: string) => {
     if (!href || href === "#") return;
     if (href.startsWith("http")) {
@@ -323,37 +378,47 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
       {/* Main header */}
       <header className="pw-header">
         <div className="pw-header-inner">
-          {/* Left: social icons */}
+          {/* Left: 4 luxury social icons - Instagram, Facebook, TikTok, Spotify */}
           <div className="pw-header-left">
             <a
-              className="pw-social-link"
-              href="https://x.com/search?q=%23PetWashLtd"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Pet Wash X hashtag"
-              data-testid="link-social-x"
-            >
-              <SiX size={16} />
-            </a>
-            <a
-              className="pw-social-link"
+              className="pw-social-link pw-social-luxury"
               href="https://www.instagram.com/petwashltd"
               target="_blank"
               rel="noreferrer"
               aria-label="Pet Wash Instagram"
               data-testid="link-social-instagram"
             >
-              <SiInstagram size={16} />
+              <SiInstagram size={20} strokeWidth={1} />
             </a>
             <a
-              className="pw-social-link"
+              className="pw-social-link pw-social-luxury"
+              href="https://www.facebook.com/petwashltd"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Pet Wash Facebook"
+              data-testid="link-social-facebook"
+            >
+              <SiFacebook size={20} strokeWidth={1} />
+            </a>
+            <a
+              className="pw-social-link pw-social-luxury"
               href="https://www.tiktok.com/@petwashltd"
               target="_blank"
               rel="noreferrer"
               aria-label="Pet Wash TikTok"
               data-testid="link-social-tiktok"
             >
-              <SiTiktok size={16} />
+              <SiTiktok size={20} strokeWidth={1} />
+            </a>
+            <a
+              className="pw-social-link pw-social-luxury"
+              href="https://open.spotify.com/user/petwashltd"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Pet Wash Spotify"
+              data-testid="link-social-spotify"
+            >
+              <SiSpotify size={20} strokeWidth={1} />
             </a>
           </div>
 
@@ -468,38 +533,34 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               </div>
             </nav>
 
-            {/* Language chooser */}
-            <select
-              className="pw-language-select"
-              value={currentLanguage}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-            >
-              {LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
+            {/* Right stack: Hamburger on top, Language toggle below */}
+            <div className="pw-right-stack">
+              {/* Burger menu - top right */}
+              <button
+                className="pw-burger pw-burger-luxury"
+                onClick={() => setIsMobileOpen(true)}
+                aria-label="Open menu"
+                data-testid="button-hamburger"
+              >
+                <span />
+                <span />
+                <span />
+              </button>
 
-            {/* Account circle */}
-            <button
-              className="pw-account-btn"
-              onClick={() => handleNavigate("/account")}
-              aria-label="Account"
-            >
-              <div className="pw-account-circle">👤</div>
-            </button>
-
-            {/* Burger for mobile */}
-            <button
-              className="pw-burger"
-              onClick={() => setIsMobileOpen(true)}
-              aria-label="Open menu"
-            >
-              <span />
-              <span />
-              <span />
-            </button>
+              {/* Language toggle - below hamburger, not touching */}
+              <select
+                className="pw-language-select pw-language-luxury"
+                value={currentLanguage}
+                onChange={(e) => handleLanguageChange(e.target.value)}
+                data-testid="select-language"
+              >
+                {LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </header>
