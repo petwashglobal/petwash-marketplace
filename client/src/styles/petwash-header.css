@@ -46,9 +46,10 @@
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: #FFFFFF;
-  border: 1px solid #000000;
-  color: #000000;
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #000000 !important;
+  color: #000000 !important;
   font-size: 0.75rem;
   font-weight: 600;
   text-decoration: none;
@@ -56,8 +57,9 @@
 }
 
 .pw-social-link:hover {
-  background: #000000;
-  color: #FFFFFF;
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
   transform: translateY(-2px);
 }
 
@@ -84,7 +86,8 @@
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  background: #000000;
+  background: #000000 !important;
+  background-color: #000000 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,7 +101,7 @@
 }
 
 .pw-logo-text {
-  color: white;
+  color: #FFFFFF !important;
   font-size: 0.75rem;
   font-weight: 700;
   text-align: center;
