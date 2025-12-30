@@ -27,6 +27,7 @@ interface Sitter {
 }
 
 // Demo sitters for display when API returns empty (MadPaws-style)
+// Note: rating is string in interface to match backend JSON response
 const DEMO_SITTERS: Sitter[] = [
   {
     id: 1,
@@ -39,7 +40,7 @@ const DEMO_SITTERS: Sitter[] = [
     bio: "שמרטפית מקצועית עם אהבה אינסופית לחיות. מטפלת בכלבים, חתולים ובעלי חיים קטנים. בית מרווח עם גינה גדולה.",
     yearsOfExperience: 8,
     pricePerDayCents: 15000,
-    profilePictureUrl: null,
+    profilePictureUrl: "",
     rating: "4.9",
     totalBookings: 156,
     isActive: true,
@@ -57,7 +58,7 @@ const DEMO_SITTERS: Sitter[] = [
     bio: "וטרינר בהכשרה עם ניסיון רב בטיפול בחיות מחמד. זמין 24/7 לשאלות ועדכונים. שולח תמונות יומיות!",
     yearsOfExperience: 5,
     pricePerDayCents: 18000,
-    profilePictureUrl: null,
+    profilePictureUrl: "",
     rating: "5.0",
     totalBookings: 89,
     isActive: true,
@@ -75,7 +76,7 @@ const DEMO_SITTERS: Sitter[] = [
     bio: "אוהבת חיות מילדות! מתמחה בכלבים גדולים ופעילים. יש לי כלב משלי שאוהב חברה. טיולים ארוכים מובטחים.",
     yearsOfExperience: 3,
     pricePerDayCents: 12000,
-    profilePictureUrl: null,
+    profilePictureUrl: "",
     rating: "4.8",
     totalBookings: 67,
     isActive: true,
@@ -93,7 +94,7 @@ const DEMO_SITTERS: Sitter[] = [
     bio: "בית פרטי גדול עם גינה מגודרת. ניסיון עם כל סוגי הכלבים. אוהב לפנק את האורחים הקטנים שלי!",
     yearsOfExperience: 6,
     pricePerDayCents: 16000,
-    profilePictureUrl: null,
+    profilePictureUrl: "",
     rating: "4.7",
     totalBookings: 124,
     isActive: true,
@@ -111,7 +112,7 @@ const DEMO_SITTERS: Sitter[] = [
     bio: "מאמנת כלבים מוסמכת עם 10 שנות ניסיון. מתמחה בכלבים חרדתיים ובעלי צרכים מיוחדים. סבלנות אינסופית.",
     yearsOfExperience: 10,
     pricePerDayCents: 22000,
-    profilePictureUrl: null,
+    profilePictureUrl: "",
     rating: "5.0",
     totalBookings: 203,
     isActive: true,
@@ -129,7 +130,7 @@ const DEMO_SITTERS: Sitter[] = [
     bio: "עובד מהבית אז תמיד זמין! דירה גדולה ומרווחת. אוהב לקחת את הכלבים לפארק הירקון.",
     yearsOfExperience: 4,
     pricePerDayCents: 14000,
-    profilePictureUrl: null,
+    profilePictureUrl: "",
     rating: "4.6",
     totalBookings: 45,
     isActive: true,

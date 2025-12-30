@@ -25,6 +25,7 @@ interface Walker {
 }
 
 // Demo walkers for display when API returns empty
+// Note: photoUrl uses empty string instead of null to avoid null reference errors
 const DEMO_WALKERS: Walker[] = [
   {
     id: 1,
@@ -37,7 +38,7 @@ const DEMO_WALKERS: Walker[] = [
     totalReviews: 127,
     yearsExperience: 5,
     verified: true,
-    photoUrl: null,
+    photoUrl: "",
   },
   {
     id: 2,
@@ -50,7 +51,7 @@ const DEMO_WALKERS: Walker[] = [
     totalReviews: 89,
     yearsExperience: 7,
     verified: true,
-    photoUrl: null,
+    photoUrl: "",
   },
   {
     id: 3,
@@ -63,7 +64,7 @@ const DEMO_WALKERS: Walker[] = [
     totalReviews: 156,
     yearsExperience: 4,
     verified: true,
-    photoUrl: null,
+    photoUrl: "",
   },
   {
     id: 4,
@@ -76,7 +77,7 @@ const DEMO_WALKERS: Walker[] = [
     totalReviews: 72,
     yearsExperience: 3,
     verified: false,
-    photoUrl: null,
+    photoUrl: "",
   },
   {
     id: 5,
@@ -89,7 +90,7 @@ const DEMO_WALKERS: Walker[] = [
     totalReviews: 45,
     yearsExperience: 6,
     verified: true,
-    photoUrl: null,
+    photoUrl: "",
   },
   {
     id: 6,
@@ -102,7 +103,7 @@ const DEMO_WALKERS: Walker[] = [
     totalReviews: 98,
     yearsExperience: 4,
     verified: true,
-    photoUrl: null,
+    photoUrl: "",
   },
 ];
 
