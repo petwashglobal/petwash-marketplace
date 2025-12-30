@@ -31,6 +31,7 @@
  */
 
 import React, { useEffect, useState } from "react";
+import { SiX, SiInstagram, SiTiktok } from "react-icons/si";
 
 type LangDir = "ltr" | "rtl";
 
@@ -330,8 +331,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               target="_blank"
               rel="noreferrer"
               aria-label="Pet Wash X hashtag"
+              data-testid="link-social-x"
             >
-              X
+              <SiX size={16} />
             </a>
             <a
               className="pw-social-link"
@@ -339,8 +341,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               target="_blank"
               rel="noreferrer"
               aria-label="Pet Wash Instagram"
+              data-testid="link-social-instagram"
             >
-              IG
+              <SiInstagram size={16} />
             </a>
             <a
               className="pw-social-link"
@@ -348,8 +351,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               target="_blank"
               rel="noreferrer"
               aria-label="Pet Wash TikTok"
+              data-testid="link-social-tiktok"
             >
-              TT
+              <SiTiktok size={16} />
             </a>
           </div>
 
