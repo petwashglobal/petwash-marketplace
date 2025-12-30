@@ -40,6 +40,34 @@
 }
 
 /* ===========================
+   METALLIC GOLD ICON BADGES (2025)
+   =========================== */
+
+.luxury-icon-gold {
+  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
+}
+
+.luxury-icon-gold-soft {
+  background: linear-gradient(135deg, #C5A027 0%, #E8C84A 100%);
+}
+
+.luxury-icon-gold-bright {
+  background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+}
+
+.luxury-gradient-gold {
+  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 50%, #E8C84A 100%);
+}
+
+.luxury-gradient-gold-soft {
+  background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+}
+
+.luxury-gradient-gold-dark {
+  background: linear-gradient(135deg, #8B7500 0%, #B8860B 100%);
+}
+
+/* ===========================
    GLASSMORPHISM CARDS
    =========================== */
 

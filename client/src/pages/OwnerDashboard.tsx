@@ -47,7 +47,7 @@ export default function OwnerDashboard() {
         <div className="luxury-container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-3 rounded-2xl luxury-shadow-md">
+              <div className="bg-gradient-to-br from-[#B8860B] via-[#D4AF37] to-[#E8C84A] p-3 rounded-2xl luxury-shadow-md">
                 <PawPrint className="h-8 w-8 text-white" />
               </div>
               <div>
@@ -69,7 +69,7 @@ export default function OwnerDashboard() {
               </button>
               
               <div className="flex items-center gap-3 luxury-glass-minimal px-4 py-2">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#B8860B] to-[#D4AF37] flex items-center justify-center text-white font-bold">
                   {user?.email?.charAt(0).toUpperCase()}
                 </div>
                 <div className="text-sm">
@@ -154,7 +154,7 @@ export default function OwnerDashboard() {
         <div className="luxury-grid-3 mb-8">
           <div className="luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-1">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 luxury-shadow-md">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-[#B8860B] to-[#D4AF37] luxury-shadow-md">
                 <PawPrint className="h-6 w-6 text-white" />
               </div>
             </div>
@@ -164,7 +164,7 @@ export default function OwnerDashboard() {
 
           <div className="luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-2">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 luxury-shadow-md">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-[#C5A027] to-[#E8C84A] luxury-shadow-md">
                 <Calendar className="h-6 w-6 text-white" />
               </div>
             </div>
@@ -174,7 +174,7 @@ export default function OwnerDashboard() {
 
           <div className="luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-3">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-pink-500 to-orange-500 luxury-shadow-md">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#F4D03F] luxury-shadow-md">
                 <Wallet className="h-6 w-6 text-white" />
               </div>
             </div>

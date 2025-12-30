@@ -1450,9 +1450,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/control-panel">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <UnifiedControlPanel />
-            </Suspense>
+            <ExecutiveSuiteGuard requiredRoles={['enterprise']}>
+              <Suspense fallback={<PageLoader />}>
+                <UnifiedControlPanel />
+              </Suspense>
+            </ExecutiveSuiteGuard>
           )}
         </Route>
         <Route path="/accessibility" component={Accessibility} />
