@@ -1,43 +1,41 @@
 export default function PaymentMethods() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-4 py-2">
-      {/* VISA */}
+    <div 
+      className="flex flex-wrap items-center justify-center gap-3 py-2"
+      data-testid="payment-icons-container"
+    >
       <img
-        src="/assets/payments/visa-color.svg"
+        src="/assets/payments/visa-mono.svg"
         alt="Visa"
-        className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
+        className="h-6 w-auto grayscale hover:grayscale-0 transition-all duration-300"
         data-testid="icon-visa"
       />
 
-      {/* MasterCard */}
       <img
-        src="/assets/payments/mastercard-color.svg"
+        src="/assets/payments/mastercard-mono.svg"
         alt="Mastercard"
-        className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
+        className="h-6 w-auto grayscale hover:grayscale-0 transition-all duration-300"
         data-testid="icon-mastercard"
       />
 
-      {/* American Express */}
       <img
-        src="/assets/payments/amex-color.svg"
+        src="/assets/payments/amex-mono.svg"
         alt="American Express"
-        className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
+        className="h-6 w-auto grayscale hover:grayscale-0 transition-all duration-300"
         data-testid="icon-amex"
       />
 
-      {/* Apple Pay - Official black wordmark */}
       <img
-        src="/assets/payments/apple-pay-color.svg"
+        src="/assets/payments/apple-pay-mono.svg"
         alt="Apple Pay"
-        className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
+        className="h-6 w-auto grayscale hover:grayscale-0 transition-all duration-300"
         data-testid="icon-apple-pay"
       />
 
-      {/* Google Pay */}
       <img
-        src="/assets/payments/google-pay-color.svg"
+        src="/assets/payments/google-pay-mono.svg"
         alt="Google Pay"
-        className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
+        className="h-6 w-auto grayscale hover:grayscale-0 transition-all duration-300"
         data-testid="icon-google-pay"
       />
     </div>
