@@ -1010,76 +1010,12 @@ export default function SitterSuite() {
                 <Star className="w-6 h-6 fill-current" />
                 <Star className="w-6 h-6 fill-current" />
                 <Star className="w-6 h-6 fill-current" />
-                <span className="luxury-text-body ml-2">4.9/5 {isHebrew ? 'מתוך 12,000+ ביקורות' : 'from 12,000+ reviews'}</span>
+                <span className="luxury-text-body ml-2">{isHebrew ? 'ביקורות לקוחות' : 'Customer Reviews'}</span>
               </div>
             </div>
 
             <div className="luxury-grid-3">
-            {[
-              {
-                name: 'Jessica Williams',
-                city: 'Toronto, Canada',
-                text: 'Amazing experience! Our sitter was professional, caring, and sent us photos every day. Highly recommend!',
-                rating: 5,
-                petType: '🐕 Golden Retriever'
-              },
-              {
-                name: 'David Thompson',
-                city: 'Sydney, Australia',
-                text: 'We found the perfect sitter for our cat. The platform made it so easy to book and communicate.',
-                rating: 5,
-                petType: '🐈 Persian Cat'
-              },
-              {
-                name: 'Rachel Anderson',
-                city: 'London, England',
-                text: 'Peace of mind while on vacation! Our dog was so happy and well cared for. Will book again!',
-                rating: 5,
-                petType: '🐕 Labrador'
-              },
-              {
-                name: 'Michael Roberts',
-                city: 'Vancouver, Canada',
-                text: 'Our anxious rescue dog felt comfortable immediately. The sitter was patient, experienced, and understanding. Best pet care we\'ve ever had!',
-                rating: 5,
-                petType: '🐕 Mixed Breed Rescue'
-              },
-              {
-                name: 'Sophie Bennett',
-                city: 'Melbourne, Australia',
-                text: 'Needed last-minute help and found a sitter within hours! Professional service with real-time updates. My cats were happy and healthy.',
-                rating: 5,
-                petType: '🐈 Two Siamese Cats'
-              },
-              {
-                name: 'James Mitchell',
-                city: 'Manchester, England',
-                text: 'The sitter administered my dog\'s medication perfectly and kept detailed care logs. Trustworthy and reliable professional!',
-                rating: 5,
-                petType: '🐕 German Shepherd'
-              },
-              {
-                name: 'Emma Parker',
-                city: 'Calgary, Canada',
-                text: 'Booked overnight care for our puppy. Received video updates and he came home tired and happy! Will definitely use again.',
-                rating: 5,
-                petType: '🐕 Beagle Puppy'
-              },
-              {
-                name: 'Oliver Davis',
-                city: 'Brisbane, Australia',
-                text: 'Our senior cat needs special care and the sitter was incredibly gentle and knowledgeable. Gave us peace of mind during our trip.',
-                rating: 5,
-                petType: '🐈 Senior Cat (16 years)'
-              },
-              {
-                name: 'Charlotte Wilson',
-                city: 'Birmingham, England',
-                text: 'The platform\'s insurance and background checks gave me confidence. The sitter exceeded expectations - professional and loving!',
-                rating: 5,
-                petType: '🐕 Poodle'
-              },
-              ].map((review, i) => (
+            {([] as Array<{name: string; city: string; text: string; rating: number; petType: string}>).map((review, i) => (
                 <div key={i} className={`luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-scale-in luxury-delay-${(i % 3) + 1}`}>
                   <div className="flex items-center gap-1 mb-3">
                     {[...Array(review.rating)].map((_, j) => (

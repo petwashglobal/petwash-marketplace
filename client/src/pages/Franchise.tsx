@@ -40,53 +40,19 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
     setCompletedSteps(prev => Math.max(prev, 1));
   }, []);
 
-  const franchiseLocations = [
-    { city: 'Toronto, Canada', units: 12, revenue: '$520K CAD', growth: 18 },
-    { city: 'Vancouver, Canada', units: 8, revenue: '$380K CAD', growth: 22 },
-    { city: 'Calgary, Canada', units: 10, revenue: '$450K CAD', growth: 20 },
-    { city: 'Sydney, Australia', units: 7, revenue: '$420K AUD', growth: 25 },
-    { city: 'Melbourne, Australia', units: 9, revenue: '$460K AUD', growth: 27 },
-    { city: 'London, England', units: 6, revenue: '£310K GBP', growth: 23 }
-  ];
+  // Franchise locations - will be populated when franchise program launches
+  const franchiseLocations: Array<{ city: string; units: number; revenue: string; growth: number }> = [];
 
-  const successStories = [
-    {
-      name: 'James Anderson',
-      location: 'Toronto, Canada',
-      investment: '$95K CAD',
-      roi: '225%',
-      period: '2 years',
-      quote: 'Best business decision I ever made. The support team is incredible and the profit margins exceeded my expectations.',
-      revenue: '$18K CAD/month'
-    },
-    {
-      name: 'Emily Roberts',
-      location: 'Sydney, Australia',
-      investment: '$105K AUD',
-      roi: '210%',
-      period: '1.8 years',
-      quote: 'The training program was comprehensive and the K9000 technology is a game-changer. Customers love it!',
-      revenue: '$19K AUD/month'
-    },
-    {
-      name: 'David Williams',
-      location: 'London, England',
-      investment: '£68K GBP',
-      roi: '218%',
-      period: '2 years',
-      quote: 'The UK market responded incredibly well. Premium organic pet care is exactly what customers want here.',
-      revenue: '£14K GBP/month'
-    },
-    {
-      name: 'Sophie Bennett',
-      location: 'Melbourne, Australia',
-      investment: '$92K AUD',
-      roi: '235%',
-      period: '2.2 years',
-      quote: 'Started with one station, now planning to open two more. The market demand in Melbourne is unbelievable.',
-      revenue: '$20K AUD/month'
-    }
-  ];
+  // Success stories - will be added when franchise partners are live
+  const successStories: Array<{
+    name: string;
+    location: string;
+    investment: string;
+    roi: string;
+    period: string;
+    quote: string;
+    revenue: string;
+  }> = [];
   
   return (
     <Layout language={language} onLanguageChange={handleLanguageChange}>
@@ -347,7 +313,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                       { name: 'James Anderson', location: 'Toronto, Canada', revenue: '$18K CAD/mo', thumbnail: '🇨🇦' },
                       { name: 'Emily Roberts', location: 'Sydney, Australia', revenue: '$19K AUD/mo', thumbnail: '🇦🇺' },
                       { name: 'David Williams', location: 'London, England', revenue: '£14K GBP/mo', thumbnail: '🇬🇧' }
-                    ].map((video, idx) => (
+                    ].filter(() => false).map((video, idx) => (
                       <button
                         key={idx}
                         onClick={() => {

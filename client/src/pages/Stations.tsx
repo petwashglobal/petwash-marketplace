@@ -22,82 +22,21 @@ import {
   X
 } from "lucide-react";
 
-// Mock station data
-const mockStations = [
-  {
-    id: 1,
-    name: "Tel Aviv Marina Station",
-    address: "34 HaYarkon St, Tel Aviv",
-    distance: "1.2 km",
-    status: "open",
-    availability: "Available",
-    image: "/gallery/IMG_8435_1761100129902.jpeg",
-    hours: "24/7",
-    amenities: ["wifi", "payment", "camera", "accessible"]
-  },
-  {
-    id: 2,
-    name: "Ramat Aviv Mall",
-    address: "40 Einstein St, Tel Aviv",
-    distance: "2.8 km",
-    status: "busy",
-    availability: "2 of 3 available",
-    image: "/gallery/IMG_8664_1761100129901.jpeg",
-    hours: "24/7",
-    amenities: ["wifi", "payment", "camera", "accessible", "cafe"]
-  },
-  {
-    id: 3,
-    name: "Herzliya Station",
-    address: "Arena Mall, Herzliya",
-    distance: "5.4 km",
-    status: "open",
-    availability: "Available",
-    image: "/gallery/IMG_8665_1761100129901.jpeg",
-    hours: "24/7",
-    amenities: ["wifi", "payment", "accessible"]
-  },
-  {
-    id: 4,
-    name: "Dizengoff Center",
-    address: "50 Dizengoff St, Tel Aviv",
-    distance: "3.1 km",
-    status: "open",
-    availability: "Available",
-    image: "/gallery/IMG_8666_1761100129901.jpeg",
-    hours: "24/7",
-    amenities: ["wifi", "payment", "camera", "accessible", "cafe"]
-  },
-  {
-    id: 5,
-    name: "Azrieli Mall",
-    address: "132 Menachem Begin Rd, Tel Aviv",
-    distance: "4.5 km",
-    status: "closed",
-    availability: "Maintenance",
-    image: "/gallery/IMG_8667_1761100129901.jpeg",
-    hours: "Reopens 6:00 AM",
-    amenities: ["wifi", "payment", "camera", "accessible"]
-  },
-  {
-    id: 6,
-    name: "Raanana Park Station",
-    address: "Park HaYarkon, Raanana",
-    distance: "8.2 km",
-    status: "open",
-    availability: "Available",
-    image: "/gallery/IMG_8668_1761100129901.jpeg",
-    hours: "24/7",
-    amenities: ["wifi", "payment", "accessible"]
-  }
-];
+// Station data - will be loaded from database when stations are live
+const mockStations: Array<{
+  id: number;
+  name: string;
+  address: string;
+  distance: string;
+  status: string;
+  availability: string;
+  image: string;
+  hours: string;
+  amenities: string[];
+}> = [];
 
-const stats = [
-  { label: "Active Stations", value: "47", icon: MapPin },
-  { label: "Cities Covered", value: "12", icon: Navigation },
-  { label: "Monthly Washes", value: "8.5K", icon: Droplet },
-  { label: "Avg. Rating", value: "4.9", icon: Sparkles }
-];
+// Stats will show when stations are live
+const stats: Array<{ label: string; value: string; icon: any }> = [];
 
 const amenityIcons: Record<string, any> = {
   wifi: Wifi,
