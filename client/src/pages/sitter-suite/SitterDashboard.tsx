@@ -172,8 +172,8 @@ export default function SitterDashboard() {
 
             <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-5">
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-full" style={{ background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(245, 158, 11, 0.3))' }}>
-                  <Award className="w-5 h-5 text-yellow-300" />
+                <div className="p-2 rounded-full" style={{ background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.2), rgba(50, 50, 50, 0.2))' }}>
+                  <Award className="w-5 h-5 text-white" />
                 </div>
                 <p className="text-sm text-purple-100">Total Earned</p>
               </div>

@@ -4,22 +4,22 @@
  * 
  * Core Principles:
  * - Pure white backgrounds ONLY
- * - TRUE 18K CARTIER GOLD accents (#D4AF37)
- * - NO emerald, NO purple - GOLD ONLY
+ * - PURE BLACK accents (#000000) - GUCCI STYLE
+ * - NO gold, NO emerald, NO purple - BLACK/WHITE ONLY
  * - Premium spacing & typography (Gucci/Cormorant Garamond)
  * - Smooth animations
- * - Luxury jewelry aesthetic
+ * - Minimalist luxury aesthetic
  */
 
 /* ===========================
-   LUXURY GRADIENT BACKGROUNDS
+   LUXURY GRADIENT BACKGROUNDS - BLACK/WHITE ONLY
    =========================== */
 
 .luxury-bg-primary {
   background: linear-gradient(135deg, 
-    #B8860B 0%, 
-    #D4AF37 50%,
-    #E8C84A 100%
+    #000000 0%, 
+    #1a1a1a 50%,
+    #333333 100%
   );
 }
 
@@ -40,82 +40,82 @@
 }
 
 /* ===========================
-   METALLIC GOLD ICON BADGES (2025)
+   BLACK/WHITE ICON BADGES (2025 GUCCI STYLE)
    =========================== */
 
 .luxury-icon-gold {
-  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
 }
 
 .luxury-icon-gold-soft {
-  background: linear-gradient(135deg, #C5A027 0%, #E8C84A 100%);
+  background: linear-gradient(135deg, #333333 0%, #555555 100%);
 }
 
 .luxury-icon-gold-bright {
-  background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
 }
 
 .luxury-gradient-gold {
-  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 50%, #E8C84A 100%);
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #333333 100%);
 }
 
 .luxury-gradient-gold-soft {
-  background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
 }
 
 .luxury-gradient-gold-dark {
-  background: linear-gradient(135deg, #8B7500 0%, #B8860B 100%);
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
 }
 
 /* ===========================
-   GLASSMORPHISM CARDS
+   GLASSMORPHISM CARDS - BLACK ACCENTS
    =========================== */
 
 .luxury-glass-card {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(212, 175, 55, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 24px;
   box-shadow: 
-    0 8px 32px rgba(212, 175, 55, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.05);
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .luxury-glass-card:hover {
   transform: translateY(-4px);
   box-shadow: 
-    0 12px 48px rgba(212, 175, 55, 0.15),
-    0 4px 16px rgba(0, 0, 0, 0.08);
-  border-color: rgba(212, 175, 55, 0.3);
+    0 12px 48px rgba(0, 0, 0, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 .luxury-glass-panel {
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 20px;
   box-shadow: 
-    0 4px 24px rgba(212, 175, 55, 0.08),
-    0 1px 4px rgba(0, 0, 0, 0.04);
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    0 1px 4px rgba(0, 0, 0, 0.03);
 }
 
 .luxury-glass-minimal {
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
 }
 
 /* ===========================
-   PREMIUM BUTTONS
+   PREMIUM BUTTONS - BLACK/WHITE GUCCI STYLE
    =========================== */
 
 .luxury-btn-primary {
-  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 50%, #E8C84A 100%);
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #333333 100%);
   color: white;
   padding: 12px 32px;
   border-radius: 12px;
@@ -124,7 +124,7 @@
   border: none;
   cursor: pointer;
   box-shadow: 
-    0 4px 16px rgba(212, 175, 55, 0.35),
+    0 4px 16px rgba(0, 0, 0, 0.25),
     0 1px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -134,7 +134,7 @@
 .luxury-btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 6px 24px rgba(212, 175, 55, 0.45),
+    0 6px 24px rgba(0, 0, 0, 0.35),
     0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -144,25 +144,25 @@
 
 .luxury-btn-secondary {
   background: rgba(255, 255, 255, 0.95);
-  color: #D4AF37;
+  color: #000000;
   padding: 12px 32px;
   border-radius: 12px;
   font-weight: 600;
   font-size: 15px;
-  border: 2px solid rgba(212, 175, 55, 0.2);
+  border: 2px solid rgba(0, 0, 0, 0.2);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .luxury-btn-secondary:hover {
-  background: rgba(212, 175, 55, 0.05);
-  border-color: rgba(212, 175, 55, 0.4);
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.4);
   transform: translateY(-2px);
 }
 
 .luxury-btn-ghost {
   background: transparent;
-  color: #D4AF37;
+  color: #000000;
   padding: 12px 24px;
   border-radius: 12px;
   font-weight: 600;
@@ -173,7 +173,7 @@
 }
 
 .luxury-btn-ghost:hover {
-  background: rgba(212, 175, 55, 0.08);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* ===========================
@@ -209,10 +209,7 @@
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #000000;
 }
 
 .luxury-heading-lg {
@@ -238,10 +235,7 @@
 }
 
 .luxury-text-gradient {
-  background: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #000000;
 }
 
 .luxury-text-body {
@@ -338,15 +332,15 @@
   border-radius: 100px;
   font-size: 0.875rem;
   font-weight: 600;
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%);
-  color: #D4AF37;
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: #FFFFFF;
+  color: #000000;
+  border: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 .luxury-badge-gold {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%);
-  color: #d97706;
-  border-color: rgba(251, 191, 36, 0.3);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.08) 0%, rgba(50, 50, 50, 0.08) 100%);
+  color: #000000;
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 .luxury-badge-success {
@@ -364,7 +358,7 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(212, 175, 55, 0.25) 50%,
+    rgba(0, 0, 0, 0.15) 50%,
     transparent 100%
   );
   margin: 2rem 0;
@@ -375,7 +369,7 @@
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(212, 175, 55, 0.25) 50%,
+    rgba(0, 0, 0, 0.15) 50%,
     transparent 100%
   );
 }
@@ -421,8 +415,8 @@
 .luxury-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(212, 175, 55, 0.1);
-  border-top-color: #D4AF37;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #000000;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -437,25 +431,25 @@
 
 .luxury-shadow-sm {
   box-shadow: 
-    0 2px 8px rgba(212, 175, 55, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.06),
     0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .luxury-shadow-md {
   box-shadow: 
-    0 4px 16px rgba(212, 175, 55, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.08),
     0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .luxury-shadow-lg {
   box-shadow: 
-    0 8px 32px rgba(212, 175, 55, 0.15),
+    0 8px 32px rgba(0, 0, 0, 0.1),
     0 4px 8px rgba(0, 0, 0, 0.08);
 }
 
 .luxury-shadow-xl {
   box-shadow: 
-    0 12px 48px rgba(212, 175, 55, 0.2),
+    0 12px 48px rgba(0, 0, 0, 0.12),
     0 6px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -477,8 +471,8 @@
 
 .luxury-hover-glow:hover {
   box-shadow: 
-    0 0 20px rgba(212, 175, 55, 0.35),
-    0 0 40px rgba(212, 175, 55, 0.18);
+    0 0 20px rgba(0, 0, 0, 0.15),
+    0 0 40px rgba(0, 0, 0, 0.08);
 }
 
 /* ===========================
@@ -508,12 +502,12 @@
 
 .dark .luxury-glass-card {
   background: rgba(255, 255, 255, 0.95) !important;
-  border-color: rgba(212, 175, 55, 0.15) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 .dark .luxury-glass-panel {
   background: rgba(255, 255, 255, 0.92) !important;
-  border-color: rgba(212, 175, 55, 0.12) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
 .dark .luxury-heading-lg,
@@ -535,7 +529,7 @@
    =========================== */
 
 .luxury-focus-visible:focus-visible {
-  outline: 2px solid #D4AF37;
+  outline: 2px solid #000000;
   outline-offset: 2px;
   border-radius: 8px;
 }

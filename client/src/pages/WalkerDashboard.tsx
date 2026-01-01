@@ -911,7 +911,7 @@ export default function WalkerDashboard() {
               </div>
             ) : (
               <>
-                <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)'}}>
+                <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-1" style={{background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.08) 100%)'}}>
                   <div className="p-8 text-center">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <span className="luxury-heading-xl luxury-text-gradient">{earnings?.rating.toFixed(2)}</span>
@@ -994,10 +994,10 @@ export default function WalkerDashboard() {
                       key={achievement.id} 
                       className={`luxury-glass-card luxury-hover-lift luxury-shadow-lg luxury-animate-fade-in luxury-delay-${Math.min(index + 2, 5)} ${
                         achievement.unlocked 
-                          ? 'border-2 border-yellow-500' 
+                          ? 'border-2 border-black' 
                           : 'opacity-75'
                       }`}
-                      style={achievement.unlocked ? {background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, rgba(245, 158, 11, 0.05) 100%)'} : {}}
+                      style={achievement.unlocked ? {background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.03) 0%, rgba(50, 50, 50, 0.03) 100%)'} : {}}
                     >
                       <div className="p-6">
                         <div className="flex items-start gap-4">

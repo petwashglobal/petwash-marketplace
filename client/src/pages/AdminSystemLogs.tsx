@@ -362,11 +362,11 @@ export default function AdminSystemLogs() {
             </button>
             <button
               onClick={() => setActiveLevel('warn')}
-              className={`luxury-badge ${activeLevel === 'warn' ? 'ring-2 ring-yellow-500' : ''}`}
+              className={`luxury-badge ${activeLevel === 'warn' ? 'ring-2 ring-gray-500' : ''}`}
               style={{ 
-                background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%)',
-                color: '#d97706',
-                borderColor: 'rgba(251, 191, 36, 0.3)'
+                background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(50, 50, 50, 0.1) 100%)',
+                color: '#000000',
+                borderColor: 'rgba(0, 0, 0, 0.3)'
               }}
               data-testid="filter-warn"
             >
@@ -495,9 +495,9 @@ export default function AdminSystemLogs() {
                           )}
                           {log.level === 'warn' && (
                             <span className="luxury-badge" style={{ 
-                              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%)',
-                              color: '#d97706',
-                              borderColor: 'rgba(251, 191, 36, 0.3)'
+                              background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(50, 50, 50, 0.1) 100%)',
+                              color: '#000000',
+                              borderColor: 'rgba(0, 0, 0, 0.3)'
                             }}>
                               <AlertTriangle className="h-4 w-4" />
                               Warning

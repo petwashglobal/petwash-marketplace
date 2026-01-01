@@ -25,56 +25,56 @@
 @tailwind utilities;
 
 /* ============================================================================
-   SHADCN/UI THEME VARIABLES - TRUE 18K CARTIER GOLD (#D4AF37)
+   SHADCN/UI THEME VARIABLES - GUCCI STYLE BLACK/WHITE
    ============================================================================ */
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
+    --foreground: 0 0% 0%;
     
     /* Card and Popover */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 0 0% 0%;
     
-    /* TRUE 18K GOLD - Cartier/Bulgari Style */
-    --primary: 43 74% 52%;
+    /* PURE BLACK - Gucci Style */
+    --primary: 0 0% 0%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 45 93% 90%;
-    --secondary-foreground: 43 74% 40%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
     
-    --muted: 45 30% 96%;
+    --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
     
-    --accent: 45 93% 94%;
-    --accent-foreground: 43 74% 40%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 10%;
     
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 45 30% 90%;
-    --input: 45 30% 90%;
-    --ring: 43 74% 52%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
     --radius: 0.75rem;
     
-    /* Chart colors - Gold palette */
-    --chart-1: 43 74% 52%;
-    --chart-2: 45 85% 60%;
-    --chart-3: 38 90% 45%;
-    --chart-4: 48 100% 70%;
-    --chart-5: 35 80% 40%;
+    /* Chart colors - Black/White/Grayscale palette */
+    --chart-1: 0 0% 0%;
+    --chart-2: 0 0% 20%;
+    --chart-3: 0 0% 40%;
+    --chart-4: 0 0% 60%;
+    --chart-5: 0 0% 80%;
     
-    /* Sidebar - Gold themed */
+    /* Sidebar - Black/White themed */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 43 74% 52%;
+    --sidebar-foreground: 0 0% 0%;
+    --sidebar-primary: 0 0% 0%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 45 93% 94%;
-    --sidebar-accent-foreground: 43 74% 40%;
-    --sidebar-border: 45 30% 90%;
-    --sidebar-ring: 43 74% 52%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 0%;
   }
   
   .dark {
@@ -86,24 +86,24 @@
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 98%;
     
-    --primary: 43 74% 52%;
+    --primary: 0 0% 100%;
     --primary-foreground: 0 0% 5%;
     
-    --secondary: 43 74% 20%;
-    --secondary-foreground: 45 93% 90%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 90%;
     
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 65%;
     
-    --accent: 43 74% 25%;
-    --accent-foreground: 45 93% 90%;
+    --accent: 0 0% 25%;
+    --accent-foreground: 0 0% 90%;
     
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
     
     --border: 0 0% 15%;
     --input: 0 0% 15%;
-    --ring: 43 74% 52%;
+    --ring: 0 0% 100%;
   }
 }
 
@@ -233,82 +233,81 @@ h1, h2, h3, h4, h5, h6,
   font-family: 'Noto Serif Hebrew', 'Noto Serif Arabic', 'Cormorant Garamond', serif !important;
 }
 
-/* === PET WASH™ LUXURY BRAND TOKENS - SINGLE SOURCE OF TRUTH === */
-/* ===== CARTIER 18K YELLOW GOLD PALETTE - From Love Bracelet Reference ===== */
+/* === PET WASH™ LUXURY BRAND TOKENS - GUCCI STYLE BLACK/WHITE === */
+/* ===== PURE BLACK & WHITE PALETTE - Minimalist Luxury ===== */
 :root {
-  /* Core Colors - PURE WHITE + CARTIER GOLD */
+  /* Core Colors - PURE WHITE + BLACK (Gucci Style) */
   --color-bg: #FFFFFF;
-  --color-text: #1A1A1A;
-  --color-text-dark: #2A2A2A;
-  --color-muted: #6B7280;
+  --color-text: #000000;
+  --color-text-dark: #000000;
+  --color-muted: #666666;
   
-  /* TRUE 18K YELLOW GOLD - Cartier/Bulgari exact match */
-  /* Warmer, more saturated yellow-gold (NOT olive) */
-  --cartier-gold: #D4AF37;           /* Classic goldenrod - main */
-  --cartier-gold-light: #E8C84A;     /* Bright warm gold */
-  --cartier-gold-dark: #B8860B;      /* Dark goldenrod */
-  --cartier-gold-highlight: #F5E6B3; /* Cream/champagne highlight */
-  --cartier-gold-shadow: #8B6508;    /* Deep bronze shadow */
-  --gold-metallic: #DAA520;          /* Goldenrod for metallic */
-  --color-gold: #D4AF37;             /* Primary gold reference */
-  --color-gold-2: #DAA520;           /* Secondary gold - goldenrod */
+  /* GUCCI STYLE - Pure Black & White (No Gold) */
+  --cartier-gold: #000000;           /* Replaced with black */
+  --cartier-gold-light: #333333;     /* Dark gray */
+  --cartier-gold-dark: #000000;      /* Pure black */
+  --cartier-gold-highlight: #FFFFFF; /* White highlight */
+  --cartier-gold-shadow: #000000;    /* Black shadow */
+  --gold-metallic: #000000;          /* Black */
+  --color-gold: #000000;             /* Primary black reference */
+  --color-gold-2: #000000;           /* Secondary black */
   
-  /* METALLIC GOLD GRADIENT - Creates shiny 3D effect like real jewelry */
-  --gradient-gold: linear-gradient(145deg, #F5E6B3 0%, #E8C84A 25%, #D4AF37 50%, #B8860B 75%, #8B6508 100%);
+  /* BLACK/WHITE GRADIENT - Clean minimalist */
+  --gradient-gold: linear-gradient(145deg, #FFFFFF 0%, #F5F5F5 25%, #000000 50%, #000000 75%, #000000 100%);
   --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
-  --gradient-black: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-dark) 100%);
+  --gradient-black: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
   
-  /* Effects - TRUE 18K GOLD GLOW (warmer yellow) */
-  --gold-glow-light: rgba(212, 175, 55, 0.2);
-  --gold-glow-medium: rgba(212, 175, 55, 0.35);
-  --gold-glow-heavy: rgba(212, 175, 55, 0.5);
-  --shadow-gold: 0 8px 24px rgba(212, 175, 55, 0.35);
+  /* Effects - BLACK SHADOWS (No gold glow) */
+  --gold-glow-light: rgba(0, 0, 0, 0.1);
+  --gold-glow-medium: rgba(0, 0, 0, 0.2);
+  --gold-glow-heavy: rgba(0, 0, 0, 0.3);
+  --shadow-gold: 0 8px 24px rgba(0, 0, 0, 0.2);
   --shadow-default: 0 8px 32px rgba(0, 0, 0, 0.08);
   
-  /* ===== 2025 CARTIER METALLIC GRADIENTS - Realistic 18K Gold ===== */
+  /* ===== 2025 BLACK/WHITE GRADIENTS - Gucci Minimalist ===== */
   
-  /* TRUE 18K GOLD METALLIC VARIANTS - Cartier/Bulgari Style */
-  --gradient-metallic-gold: linear-gradient(135deg, #F5E6B3 0%, #E8C84A 25%, #D4AF37 50%, #B8860B 75%, #E8C84A 100%);
-  --gradient-gold-rich: linear-gradient(135deg, #E8C84A 0%, #DAA520 25%, #D4AF37 50%, #B8860B 75%, #DAA520 100%);
-  --gradient-gold-royal: linear-gradient(to right, #F5E6B3 0%, #D4AF37 50%, #B8860B 100%);
-  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #F5E6B3, #D4AF37 50%, #8B6508);
+  /* BLACK/WHITE VARIANTS */
+  --gradient-metallic-gold: linear-gradient(135deg, #FFFFFF 0%, #F0F0F0 25%, #000000 50%, #1a1a1a 75%, #000000 100%);
+  --gradient-gold-rich: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
+  --gradient-gold-royal: linear-gradient(to right, #FFFFFF 0%, #000000 50%, #000000 100%);
+  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #FFFFFF, #000000 50%, #000000);
   
-  /* Diamond & Crystal Effects */
-  --gradient-diamond: linear-gradient(135deg, #FFFFFF 0%, #E8F4F8 20%, #D0E8F0 40%, #B8DDE8 60%, #A0D2E0 80%, #88C7D8 100%);
-  --gradient-crystal: linear-gradient(135deg, #F0F8FF 0%, #E6F3FF 25%, #DCEEFF 50%, #D2E9FF 75%, #C8E4FF 100%);
-  --gradient-diamond-shimmer: linear-gradient(to bottom right, rgba(255,255,255,0.9), rgba(230,243,255,0.8), rgba(200,228,255,0.7));
+  /* Diamond & Crystal Effects - Keep white/light */
+  --gradient-diamond: linear-gradient(135deg, #FFFFFF 0%, #F8F8F8 20%, #F0F0F0 40%, #E8E8E8 60%, #F0F0F0 80%, #FFFFFF 100%);
+  --gradient-crystal: linear-gradient(135deg, #FFFFFF 0%, #FAFAFA 25%, #F5F5F5 50%, #FAFAFA 75%, #FFFFFF 100%);
+  --gradient-diamond-shimmer: linear-gradient(to bottom right, rgba(255,255,255,0.9), rgba(245,245,245,0.8), rgba(240,240,240,0.7));
   
-  /* Platinum & Silver Variants */
+  /* Platinum & Silver Variants - Keep for variation */
   --gradient-metallic-silver: linear-gradient(135deg, #F8F8F8 0%, #E0E0E0 25%, #F0F0F0 50%, #D8D8D8 75%, #FFFFFF 100%);
   --gradient-platinum: linear-gradient(135deg, #E5E4E2 0%, #F5F5F5 20%, #E8E8E8 40%, #DADADA 60%, #F0F0F0 80%, #FFFFFF 100%);
   --gradient-chrome: linear-gradient(135deg, #FFFFFF 0%, #E8E8E8 20%, #D0D0D0 40%, #E0E0E0 60%, #F8F8F8 80%, #FFFFFF 100%);
   --gradient-silver-white: linear-gradient(to right, #FFFFFF 0%, #E8E8E8 50%, #FFFFFF 100%);
   
-  /* Rose Gold & Champagne */
-  --gradient-metallic-rose: linear-gradient(135deg, #FFD6E0 0%, #FFC0CB 25%, #FFB6C1 50%, #FF69B4 75%, #FFD6E0 100%);
-  --gradient-rose-gold: linear-gradient(135deg, #F4C2C2 0%, #D4A5A5 50%, #E6B8B8 100%);
-  --gradient-champagne: linear-gradient(135deg, #F7E7CE 0%, #E6D5B8 50%, #F5E6D3 100%);
+  /* Rose Gold & Champagne - Replaced with grayscale */
+  --gradient-metallic-rose: linear-gradient(135deg, #F0F0F0 0%, #E0E0E0 25%, #D0D0D0 50%, #C0C0C0 75%, #E0E0E0 100%);
+  --gradient-rose-gold: linear-gradient(135deg, #E0E0E0 0%, #C0C0C0 50%, #D0D0D0 100%);
+  --gradient-champagne: linear-gradient(135deg, #F5F5F5 0%, #E8E8E8 50%, #F0F0F0 100%);
   
   /* Glass & Frosted Effects */
   --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%);
   --gradient-frosted: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.3) 100%);
   
-  /* Premium Button Gradients with Animated Shimmer */
-  --gradient-luxury-primary: linear-gradient(135deg, #D4AF37 0%, #F59E0B 50%, #D4AF37 100%);
-  --gradient-luxury-gold-button: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
-  --gradient-luxury-rose-button: linear-gradient(135deg, #FF69B4 0%, #FF1493 50%, #FF69B4 100%);
-  --gradient-luxury-platinum-button: linear-gradient(135deg, #E5E4E2 0%, #F5F5F5 50%, #E5E4E2 100%);
+  /* Premium Button Gradients - BLACK/WHITE ONLY */
+  --gradient-luxury-primary: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
+  --gradient-luxury-gold-button: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
+  --gradient-luxury-rose-button: linear-gradient(135deg, #333333 0%, #000000 50%, #333333 100%);
+  --gradient-luxury-platinum-button: linear-gradient(135deg, #FFFFFF 0%, #F5F5F5 50%, #FFFFFF 100%);
   
   /* Glassmorphism Effects */
   --glass-bg: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.2);
   --glass-blur: blur(10px);
   
-  /* Premium Shadows */
-  --shadow-metallic: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(255, 215, 0, 0.2);
+  /* Premium Shadows - BLACK ONLY */
+  --shadow-metallic: 0 8px 32px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-luxury: 0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
-  --shadow-glow-gold: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.3);
-  --shadow-glow-rose: 0 0 20px rgba(255, 105, 180, 0.5), 0 0 40px rgba(255, 105, 180, 0.3);
+  --shadow-glow-gold: 0 0 20px rgba(0, 0, 0, 0.2), 0 0 40px rgba(0, 0, 0, 0.1);
+  --shadow-glow-rose: 0 0 20px rgba(0, 0, 0, 0.15), 0 0 40px rgba(0, 0, 0, 0.1);
   
   /* Perfect Text Contrast - For Accessibility & Luxury Reading Experience */
   --text-on-dark: #FFFFFF;          /* Pure white for dark backgrounds */
@@ -2204,7 +2203,7 @@ html[lang="en"] *,
 .luxury-hero-badge {
   display: inline-block;
   padding: 0.5rem 1.5rem;
-  background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+  background: linear-gradient(135deg, #000000 0%, #333333 100%);
   border-radius: 2rem;
   margin-bottom: 2rem;
   position: relative;
@@ -2253,7 +2252,7 @@ html[lang="en"] *,
 .luxury-hero-divider {
   width: 100px;
   height: 2px;
-  background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+  background: linear-gradient(135deg, #000000 0%, #333333 100%);
   margin: 0 auto;
   border-radius: 1px;
 }
@@ -2287,7 +2286,7 @@ html[lang="en"] *,
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+  background: linear-gradient(135deg, #000000 0%, #333333 100%);
 }
 
 .premium-station-header {
@@ -2307,7 +2306,7 @@ html[lang="en"] *,
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: #ffd700;
+  color: #ffffff;
   text-transform: uppercase;
 }
 
@@ -2351,7 +2350,7 @@ html[lang="en"] *,
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: #ffd700;
+  color: #ffffff;
 }
 
 /* Luxury Features Section */
@@ -2420,7 +2419,7 @@ html[lang="en"] *,
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+  background: linear-gradient(135deg, #000000 0%, #333333 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -2454,7 +2453,7 @@ html[lang="en"] *,
 }
 
 .speed-icon {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(135deg, #333333 0%, #000000 100%);
 }
 
 .eco-icon {
@@ -2976,7 +2975,7 @@ html[lang="en"] *,
 
 /* Premium Icon Glow */
 .icon-glow-gold {
-  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.3));
 }
 
 .icon-glow-rose {
@@ -2989,19 +2988,19 @@ html[lang="en"] *,
 .luxury-input {
   background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,248,248,0.98) 100%);
   border: 2px solid transparent;
-  border-image: linear-gradient(135deg, rgba(212,175,55,0.3), rgba(192,192,192,0.3)) 1;
+  border-image: linear-gradient(135deg, rgba(0,0,0,0.15), rgba(192,192,192,0.3)) 1;
   padding: 16px 20px;
   font-size: 16px;
   font-weight: 500;
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.04), inset 0 1px 3px rgba(255,215,0,0.1);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.04), inset 0 1px 3px rgba(0,0,0,0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .luxury-input:focus {
   outline: none;
-  border-image: linear-gradient(135deg, #FFD700, #FFA500) 1;
-  box-shadow: 0 8px 24px rgba(255,215,0,0.25), 0 0 0 4px rgba(255,215,0,0.1), inset 0 1px 3px rgba(255,215,0,0.2);
+  border-image: linear-gradient(135deg, #000000, #333333) 1;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 0 0 4px rgba(0,0,0,0.08), inset 0 1px 3px rgba(0,0,0,0.1);
   transform: translateY(-2px);
 }
 
@@ -3012,12 +3011,8 @@ html[lang="en"] *,
 
 /* ===== METALLIC TEXT EFFECTS ===== */
 .text-metallic-gold {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #000000;
   font-weight: 700;
-  text-shadow: 0 2px 8px rgba(255,215,0,0.3);
 }
 
 .text-metallic-silver {
@@ -3047,13 +3042,13 @@ html[lang="en"] *,
 
 /* ===== LUXURY BUTTON STYLING ===== */
 .btn-luxury-gold {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
-  color: #1A1A1A;
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #333333 100%);
+  color: #FFFFFF;
   font-weight: 700;
   padding: 16px 32px;
   border-radius: 12px;
   border: none;
-  box-shadow: 0 8px 24px rgba(255,215,0,0.4), 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25), 0 4px 8px rgba(0,0,0,0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -3066,7 +3061,7 @@ html[lang="en"] *,
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
   transition: left 0.5s;
 }
 
@@ -3076,7 +3071,7 @@ html[lang="en"] *,
 
 .btn-luxury-gold:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(255,215,0,0.5), 0 8px 16px rgba(0,0,0,0.15);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.35), 0 8px 16px rgba(0,0,0,0.15);
 }
 
 .btn-luxury-platinum {
@@ -3119,7 +3114,7 @@ html[lang="en"] *,
 }
 
 .shimmer-gold {
-  background: linear-gradient(90deg, #FFD700 0%, #FFF 50%, #FFD700 100%);
+  background: linear-gradient(90deg, #000000 0%, #555555 50%, #000000 100%);
   background-size: 1000px 100%;
   animation: shimmer 3s infinite;
 }
@@ -3134,8 +3129,8 @@ html[lang="en"] *,
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.3); }
-  50% { box-shadow: 0 0 40px rgba(255,215,0,0.6); }
+  0%, 100% { box-shadow: 0 0 20px rgba(0,0,0,0.15); }
+  50% { box-shadow: 0 0 40px rgba(0,0,0,0.25); }
 }
 
 .glow-pulse-gold {
