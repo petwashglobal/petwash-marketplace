@@ -237,14 +237,14 @@ export function BiometricConsentDialog({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir={isHebrew ? 'rtl' : 'ltr'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-2xl font-serif">
-            <IconComponent className="w-7 h-7 text-[#D4AF37]" />
+            <IconComponent className="w-7 h-7 text-black dark:text-white" />
             {t.title}
           </DialogTitle>
           <DialogDescription className="text-base mt-4">
             {t.description}
           </DialogDescription>
-          <div className="mt-2 px-4 py-2 bg-gradient-to-r from-[#D4AF37]/10 to-[#B8860B]/10 rounded-lg border border-[#D4AF37]/30">
-            <p className="text-sm font-medium text-[#8B7355] dark:text-[#D4AF37]">
+          <div className="mt-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
               {passkeyContent.method}
             </p>
           </div>
@@ -252,9 +252,9 @@ export function BiometricConsentDialog({
 
         <div className="space-y-6 py-4">
           {/* What is a Passkey */}
-          <div className="bg-gradient-to-r from-[#D4AF37]/5 to-[#B8860B]/5 p-6 rounded-xl border border-[#D4AF37]/20">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-6 rounded-xl border border-gray-200 dark:border-gray-600">
             <h3 className="font-bold text-lg mb-3 flex items-center gap-2 font-serif">
-              <Key className="w-5 h-5 text-[#D4AF37]" />
+              <Key className="w-5 h-5 text-black dark:text-white" />
               {passkeyContent.whatIsIt}
             </h3>
             <p className="text-sm text-gray-700 dark:text-gray-300">
@@ -263,9 +263,9 @@ export function BiometricConsentDialog({
           </div>
 
           {/* Biometric Data Processing */}
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-[#D4AF37]/30 shadow-[0_4px_16px_rgba(212,175,55,0.1)]">
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-xl border border-gray-300 dark:border-gray-600 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2 font-serif">
-              <Shield className="w-5 h-5 text-[#D4AF37]" />
+              <Shield className="w-5 h-5 text-black dark:text-white" />
               {passkeyContent.dataCollected}
             </h3>
             <ul className="space-y-3">

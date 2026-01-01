@@ -47,7 +47,7 @@ export default function OwnerDashboard() {
         <div className="luxury-container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-br from-[#B8860B] via-[#D4AF37] to-[#E8C84A] p-3 rounded-2xl luxury-shadow-md">
+              <div className="bg-gradient-to-br from-[#000000] via-[#333333] to-[#555555] p-3 rounded-2xl luxury-shadow-md">
                 <PawPrint className="h-8 w-8 text-white" />
               </div>
               <div>
@@ -69,7 +69,7 @@ export default function OwnerDashboard() {
               </button>
               
               <div className="flex items-center gap-3 luxury-glass-minimal px-4 py-2">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#B8860B] to-[#D4AF37] flex items-center justify-center text-white font-bold">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#000000] to-[#333333] flex items-center justify-center text-white font-bold">
                   {user?.email?.charAt(0).toUpperCase()}
                 </div>
                 <div className="text-sm">
@@ -154,7 +154,7 @@ export default function OwnerDashboard() {
         <div className="luxury-grid-3 mb-8">
           <div className="luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-1">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-[#B8860B] to-[#D4AF37] luxury-shadow-md">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-[#000000] to-[#333333] luxury-shadow-md">
                 <PawPrint className="h-6 w-6 text-white" />
               </div>
             </div>
@@ -164,7 +164,7 @@ export default function OwnerDashboard() {
 
           <div className="luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-2">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-[#C5A027] to-[#E8C84A] luxury-shadow-md">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-[#333333] to-[#555555] luxury-shadow-md">
                 <Calendar className="h-6 w-6 text-white" />
               </div>
             </div>
@@ -174,7 +174,7 @@ export default function OwnerDashboard() {
 
           <div className="luxury-glass-minimal luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-3">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#F4D03F] luxury-shadow-md">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-[#444444] to-[#666666] luxury-shadow-md">
                 <Wallet className="h-6 w-6 text-white" />
               </div>
             </div>
@@ -212,7 +212,7 @@ export default function OwnerDashboard() {
             </div>
             <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-[#B8860B] to-[#D4AF37] rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-[#000000] to-[#333333] rounded-full transition-all duration-500"
                 style={{ width: `${(mockLoyaltyData.points / (mockLoyaltyData.points + mockLoyaltyData.pointsToNext)) * 100}%` }}
               ></div>
             </div>
@@ -445,7 +445,7 @@ function TabButton({ active, onClick, icon, label, badge }: any) {
       onClick={onClick}
       className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-all ${
         active
-          ? 'border-[#D4AF37] text-[#B8860B] dark:text-[#E8C84A] font-semibold'
+          ? 'border-[#000000] text-[#000000] dark:text-[#FFFFFF] font-semibold'
           : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
       }`}
       data-testid={`tab-${label.toLowerCase().replace(/\s+/g, '-')}`}
@@ -520,7 +520,7 @@ function BookingCard({ booking, isHebrew }: any) {
           <span className="luxury-text-small">
             {isHebrew ? 'עמלת פלטפורמה (7%):' : 'Platform fee (7%):'}
           </span>
-          <span className="text-[#B8860B] font-semibold text-sm">
+          <span className="text-[#333333] dark:text-[#CCCCCC] font-semibold text-sm">
             ₪{(booking.totalChargeCents * 0.07 / 100).toFixed(2)}
           </span>
         </div>
@@ -540,7 +540,7 @@ function PetProfileCard({ name, type, breed, age, isHebrew }: any) {
         <div className="relative mb-4">
           <div className="h-24 w-24 rounded-full luxury-gradient-gold p-1 luxury-shadow-md">
             <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
-              <PawPrint className="h-12 w-12 text-[#D4AF37]" />
+              <PawPrint className="h-12 w-12 text-[#333333] dark:text-[#FFFFFF]" />
             </div>
           </div>
         </div>
@@ -575,7 +575,7 @@ function MessagePreview({ message, isHebrew }: any) {
         <p className="luxury-text-small truncate">{message.messageText}</p>
       </div>
       {!message.isRead && (
-        <div className="h-3 w-3 bg-[#D4AF37] rounded-full"></div>
+        <div className="h-3 w-3 bg-[#333333] dark:bg-[#FFFFFF] rounded-full"></div>
       )}
     </div>
   );

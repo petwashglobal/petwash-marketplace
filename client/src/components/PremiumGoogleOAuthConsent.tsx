@@ -133,7 +133,7 @@ export function PremiumGoogleOAuthConsent({ language, userEmail, onContinue, onC
 
           {/* App Logo & Name */}
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#d4af37] to-[#f4d03f] flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-black to-gray-700 flex items-center justify-center shadow-lg">
               <span className="text-xl font-bold text-white">P</span>
             </div>
             <span className="text-base font-medium text-gray-900">{t.appName}</span>

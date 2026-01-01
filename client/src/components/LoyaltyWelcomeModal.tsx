@@ -96,9 +96,9 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
       titleHe: 'יוקרה זהב',
       discount: '15%',
       hdCard: '/petwash-logo-official.png',
-      gradient: 'linear-gradient(135deg, #FFD700 0%, #FFC000 20%, #FFEA00 40%, #FFD700 60%, #DAA520 80%, #B8860B 100%)',
-      borderGlow: 'shadow-[0_0_50px_rgba(255,215,0,0.6),0_0_100px_rgba(255,215,0,0.4),0_0_150px_rgba(255,215,0,0.2)]',
-      iconColor: 'text-yellow-500',
+      gradient: 'linear-gradient(135deg, #1f2937 0%, #374151 20%, #4b5563 40%, #374151 60%, #1f2937 80%, #111827 100%)',
+      borderGlow: 'shadow-[0_0_50px_rgba(0,0,0,0.6),0_0_100px_rgba(0,0,0,0.4),0_0_150px_rgba(0,0,0,0.2)]',
+      iconColor: 'text-gray-700',
       benefits: isHebrew ? ['הנחה מיוחדת 15%', 'קונסיירז׳ אישי', 'עדיפות בתורים'] : ['Premium 15% Discount', 'Personal Concierge', 'Priority Queue']
     },
     {

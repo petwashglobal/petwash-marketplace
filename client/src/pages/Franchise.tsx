@@ -103,7 +103,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
             <div 
               className="absolute inset-0 opacity-30"
               style={{
-                backgroundImage: `linear-gradient(45deg, transparent 25%, rgba(212, 175, 55, 0.1) 25%, rgba(212, 175, 55, 0.1) 50%, transparent 50%, transparent 75%, rgba(212, 175, 55, 0.1) 75%, rgba(212, 175, 55, 0.1))`,
+                backgroundImage: `linear-gradient(45deg, transparent 25%, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.05) 50%, transparent 50%, transparent 75%, rgba(0, 0, 0, 0.05) 75%, rgba(0, 0, 0, 0.05))`,
                 backgroundSize: '60px 60px'
               }}
             ></div>
@@ -545,7 +545,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                   <h3 
                     className="text-4xl font-bold text-center mb-8"
                     style={{
-                      background: 'linear-gradient(135deg, #D4AF37 0%, #F9D976 50%, #D4AF37 100%)',
+                      background: 'linear-gradient(135deg, #333333 0%, #555555 50%, #333333 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent'
                     }}
@@ -562,7 +562,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                         <span 
                           className="text-3xl font-bold"
                           style={{
-                            background: 'linear-gradient(135deg, #D4AF37 0%, #F9D976 50%, #C9A961 100%)',
+                            background: 'linear-gradient(135deg, #333333 0%, #555555 50%, #444444 100%)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent'
                           }}

@@ -29,54 +29,53 @@ export default {
       },
       colors: {
         'luxury-dark': '#18181B',
-        'brand-accent': '#C02222',
-        // TRUE 18K YELLOW GOLD - Cartier/Bulgari Serpenti exact match
-        // Warmer, more saturated yellow-gold (NOT olive)
-        'cartier-gold': '#D4AF37',           // Classic goldenrod - main gold
-        'cartier-gold-light': '#E8C84A',     // Bright warm gold
-        'cartier-gold-dark': '#B8860B',      // Dark goldenrod
-        'cartier-gold-highlight': '#F5E6B3', // Cream/champagne highlight
-        'cartier-gold-shadow': '#8B6508',    // Deep bronze shadow
-        'gold-metallic': '#DAA520',          // Goldenrod for metallic effects
-        // GLOBAL OVERRIDE: Remap all purple/violet/indigo to TRUE 18K Gold palette
+        'brand-accent': '#000000',
+        // GUCCI-STYLE GRAYSCALE - Pure black/white palette
+        'cartier-gold': '#333333',           // Dark gray (replaces gold)
+        'cartier-gold-light': '#666666',     // Medium gray
+        'cartier-gold-dark': '#111111',      // Near black
+        'cartier-gold-highlight': '#E5E5E5', // Light gray
+        'cartier-gold-shadow': '#1A1A1A',    // Deep gray
+        'gold-metallic': '#444444',          // Gray for metallic effects
+        // GUCCI-STYLE: Remap purple/violet/indigo to grayscale
         purple: {
-          50: '#FFFBEB',
-          100: '#FEF3C7',
-          200: '#F5E6B3',
-          300: '#E8C84A',
-          400: '#D4AF37',
-          500: '#DAA520',
-          600: '#B8860B',
-          700: '#8B6508',
-          800: '#6B4F06',
-          900: '#4A3703',
-          950: '#2D2101',
+          50: '#FAFAFA',
+          100: '#F5F5F5',
+          200: '#E5E5E5',
+          300: '#D4D4D4',
+          400: '#A3A3A3',
+          500: '#737373',
+          600: '#525252',
+          700: '#404040',
+          800: '#262626',
+          900: '#171717',
+          950: '#0A0A0A',
         },
         violet: {
-          50: '#FFFBEB',
-          100: '#FEF3C7',
-          200: '#F5E6B3',
-          300: '#E8C84A',
-          400: '#D4AF37',
-          500: '#DAA520',
-          600: '#B8860B',
-          700: '#8B6508',
-          800: '#6B4F06',
-          900: '#4A3703',
-          950: '#2D2101',
+          50: '#FAFAFA',
+          100: '#F5F5F5',
+          200: '#E5E5E5',
+          300: '#D4D4D4',
+          400: '#A3A3A3',
+          500: '#737373',
+          600: '#525252',
+          700: '#404040',
+          800: '#262626',
+          900: '#171717',
+          950: '#0A0A0A',
         },
         indigo: {
-          50: '#FFFBEB',
-          100: '#FEF3C7',
-          200: '#F5E6B3',
-          300: '#E8C84A',
-          400: '#D4AF37',
-          500: '#DAA520',
-          600: '#B8860B',
-          700: '#8B6508',
-          800: '#6B4F06',
-          900: '#4A3703',
-          950: '#2D2101',
+          50: '#FAFAFA',
+          100: '#F5F5F5',
+          200: '#E5E5E5',
+          300: '#D4D4D4',
+          400: '#A3A3A3',
+          500: '#737373',
+          600: '#525252',
+          700: '#404040',
+          800: '#262626',
+          900: '#171717',
+          950: '#0A0A0A',
         },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",

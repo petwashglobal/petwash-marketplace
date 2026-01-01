@@ -22,7 +22,7 @@ export const AVATAR_PRESETS: AvatarPreset[] = [
     slug: "solar-paragon",
     thumb: "/avatars/solar-paragon.webp",
     style: "photoreal",
-    palette: ["#CE1126", "#0A3161", "#FFD200"],
+    palette: ["#CE1126", "#0A3161", "#374151"],
     prompt:
       "heroic human, athletic physique, short dark hair, flowing cape, streamlined suit in deep red and royal blue with golden accents, strong jawline, optimistic expression, flying pose above city skyline at golden hour, volumetric backlight, global illumination, cinematic DOF",
     negatives:
@@ -77,7 +77,7 @@ export const AVATAR_PRESETS: AvatarPreset[] = [
     slug: "amazon-champion",
     thumb: "/avatars/amazon-champion.webp",
     style: "photoreal",
-    palette: ["#D4AF37", "#A00022", "#1E2A5A"],
+    palette: ["#374151", "#A00022", "#1E2A5A"],
     prompt:
       "heroic warrior woman in elegant crimson and gold armor (no insignia), bracers, tiara-like headband, confident stance, island shoreline at sunrise, cinematic bokeh, soft hair dynamics",
     negatives: "logos, text"
@@ -116,7 +116,7 @@ export const AVATAR_PRESETS: AvatarPreset[] = [
     slug: "tech-paladin",
     thumb: "/avatars/tech-paladin.webp",
     style: "photoreal",
-    palette: ["#B11226", "#C49A00", "#1A1A1A"],
+    palette: ["#B11226", "#4b5563", "#1A1A1A"],
     prompt:
       "sleek powered armor hero in metallic red and brushed gold, chest light source, reflective PBR materials, HDRI studio lighting, subtle scratches, hovering flight pose, bokeh sparks",
     negatives: "logos, company marks, text"

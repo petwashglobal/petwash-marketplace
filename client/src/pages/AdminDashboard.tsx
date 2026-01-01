@@ -552,7 +552,7 @@ export default function AdminDashboard() {
                         contentStyle={{ backgroundColor: '#1e1b4b', border: '1px solid #ffffff30', borderRadius: '8px' }}
                         labelStyle={{ color: '#fff' }}
                       />
-                      <Bar dataKey="transactions" fill="#D4AF37" />
+                      <Bar dataKey="transactions" fill="#333333" />
                     </BarChart>
                   </ResponsiveContainer>
                 )}

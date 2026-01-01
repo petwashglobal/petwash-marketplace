@@ -68,7 +68,7 @@ export default function UnifiedControlPanel() {
         <Card className="luxury-glass-card luxury-shadow-lg" data-testid="card-platforms">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Active Platforms</CardTitle>
-            <div className="p-2 rounded-lg bg-gradient-to-br from-[#B8860B] to-[#D4AF37]">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-[#000000] to-[#333333]">
               <Building2 className="w-4 h-4 text-white" />
             </div>
           </CardHeader>

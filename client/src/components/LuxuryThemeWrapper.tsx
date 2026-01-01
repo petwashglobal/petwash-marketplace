@@ -301,8 +301,8 @@ export function useLuxuryTypography() {
 
 export function useLuxuryGradients() {
   return {
-    metallicGold: 'bg-[linear-gradient(135deg,#FFD700_0%,#FFC700_20%,#FFB700_40%,#FFA500_60%,#FFD700_80%,#FFED4E_100%)]',
-    goldRich: 'bg-[linear-gradient(135deg,#F7D358_0%,#E5B73B_25%,#D4A127_50%,#E5B73B_75%,#F7D358_100%)]',
+    metallicGold: 'bg-[linear-gradient(135deg,#1f2937_0%,#374151_20%,#4b5563_40%,#6b7280_60%,#374151_80%,#1f2937_100%)]',
+    goldRich: 'bg-[linear-gradient(135deg,#374151_0%,#4b5563_25%,#6b7280_50%,#4b5563_75%,#374151_100%)]',
     diamond: 'bg-[linear-gradient(135deg,#FFFFFF_0%,#E8F4F8_20%,#D0E8F0_40%,#B8DDE8_60%,#A0D2E0_80%,#88C7D8_100%)]',
     platinum: 'bg-[linear-gradient(135deg,#E5E4E2_0%,#F5F5F5_20%,#E8E8E8_40%,#DADADA_60%,#F0F0F0_80%,#FFFFFF_100%)]',
     roseGold: 'bg-[linear-gradient(135deg,#F4C2C2_0%,#D4A5A5_50%,#E6B8B8_100%)]',

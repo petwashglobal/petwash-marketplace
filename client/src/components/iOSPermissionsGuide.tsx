@@ -344,7 +344,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
           {onClose && (
             <Button
               onClick={onClose}
-              className="w-full h-14 bg-[#d4af37] hover:bg-[#c4a030] text-white text-lg font-semibold rounded-xl shadow-lg"
+              className="w-full h-14 bg-black hover:bg-gray-800 text-white text-lg font-semibold rounded-xl shadow-lg"
               data-testid="button-close-ios-permissions"
             >
               {t.close}

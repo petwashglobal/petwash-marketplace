@@ -150,7 +150,7 @@ export function DataProcessingConsent({
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#d4af37] to-[#f4d03f] p-6 sticky top-0 z-10">
+        <div className="bg-gradient-to-r from-black to-gray-800 p-6 sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-white" />
             <div>
@@ -165,7 +165,7 @@ export function DataProcessingConsent({
           {/* Data We Collect */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#d4af37]" />
+              <FileText className="w-5 h-5 text-black dark:text-white" />
               {t.dataWeCollect}
             </h3>
             <ul className="space-y-2">
@@ -259,10 +259,10 @@ export function DataProcessingConsent({
 
           {/* Links */}
           <div className="flex flex-col sm:flex-row gap-3 text-sm">
-            <a href="/privacy-policy" target="_blank" className="text-[#d4af37] hover:underline">
+            <a href="/privacy-policy" target="_blank" className="text-black dark:text-white hover:underline">
               {t.viewPrivacy} →
             </a>
-            <a href="/terms" target="_blank" className="text-[#d4af37] hover:underline">
+            <a href="/terms" target="_blank" className="text-black dark:text-white hover:underline">
               {t.viewTerms} →
             </a>
             <a href="/account-settings#data-rights" className="text-blue-600 hover:underline">
@@ -283,7 +283,7 @@ export function DataProcessingConsent({
           <Button
             onClick={handleAccept}
             disabled={!agreed}
-            className="bg-gradient-to-r from-[#d4af37] to-[#f4d03f] text-white hover:opacity-90 disabled:opacity-50"
+            className="bg-gradient-to-r from-black to-gray-800 text-white hover:opacity-90 disabled:opacity-50"
             data-testid="button-accept-data-processing"
           >
             {t.accept}

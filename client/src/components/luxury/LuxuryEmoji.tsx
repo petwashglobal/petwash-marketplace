@@ -32,11 +32,11 @@ interface LuxuryEmojiProps {
 // 👑 7-STAR MATERIALS LIBRARY (CSS Gradients)
 const MATERIAL_STYLES: Record<LuxuryMaterial, CSSProperties> = {
   'gold': {
-    background: 'var(--gradient-metallic-gold)',
+    background: 'linear-gradient(135deg, #1f2937, #374151, #4b5563, #374151, #1f2937)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
-    filter: 'drop-shadow(0 4px 12px rgba(255, 215, 0, 0.4))',
+    filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4))',
   },
   'diamond': {
     background: 'var(--gradient-diamond)',
@@ -79,7 +79,7 @@ const SIZE_CONFIG = {
 // ✨ SPARKLE PARTICLE SYSTEM
 function Sparkles({ size, material }: { size: number; material: LuxuryMaterial }) {
   const sparkleColor = {
-    'gold': '#FFD700',
+    'gold': '#374151',
     'diamond': '#FFFFFF',
     'platinum': '#E5E4E2',
     'rose-gold': '#FF69B4',
@@ -127,7 +127,7 @@ function Sparkles({ size, material }: { size: number; material: LuxuryMaterial }
 // 🌟 GLOW EFFECT
 function GlowRing({ material }: { material: LuxuryMaterial }) {
   const glowColor = {
-    'gold': 'rgba(255, 215, 0, 0.3)',
+    'gold': 'rgba(55, 65, 81, 0.3)',
     'diamond': 'rgba(255, 255, 255, 0.4)',
     'platinum': 'rgba(229, 228, 226, 0.3)',
     'rose-gold': 'rgba(255, 105, 180, 0.3)',

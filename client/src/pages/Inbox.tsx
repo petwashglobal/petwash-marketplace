@@ -184,7 +184,7 @@ export default function Inbox() {
   const unreadCount = messages.filter(m => !m.isRead).length;
 
   const getMessageIcon = (type: string) => {
-    const iconStyle = { color: '#d4af37' };
+    const iconStyle = { color: '#333333' };
     switch (type) {
       case 'receipt': return <Receipt className="h-5 w-5" style={iconStyle} />;
       case 'voucher': return <Gift className="h-5 w-5" style={iconStyle} />;
@@ -310,11 +310,11 @@ export default function Inbox() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-16 w-16 border-2" style={{
-                      borderColor: 'rgba(212, 175, 55, 0.4)',
+                      borderColor: 'rgba(0, 0, 0, 0.4)',
                     }}>
                       <AvatarImage src={pet.photoUrl} alt={pet.name} />
                       <AvatarFallback className="text-white text-xl" style={{
-                        background: 'linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)',
+                        background: 'linear-gradient(135deg, #333333 0%, #555555 100%)',
                       }}>
                         <Dog className="h-8 w-8" />
                       </AvatarFallback>
@@ -325,7 +325,7 @@ export default function Inbox() {
                           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                         }}>{pet.name}</CardTitle>
                         {isBirthday(pet.birthday) && (
-                          <PartyPopper className="h-5 w-5 animate-bounce" style={{ color: '#d4af37' }} />
+                          <PartyPopper className="h-5 w-5 animate-bounce" style={{ color: '#333333' }} />
                         )}
                       </div>
                       <CardDescription className="text-sm font-light" style={{
@@ -402,7 +402,7 @@ export default function Inbox() {
                 {isBirthday(pet.birthday) && (
                   <CardContent className="pt-0 pb-3">
                     <div className="text-white rounded-lg p-3 animate-pulse" style={{
-                      background: 'linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)',
+                      background: 'linear-gradient(135deg, #333333 0%, #555555 100%)',
                     }}>
                       <div className="flex items-center gap-2 mb-2">
                         <PartyPopper className="h-5 w-5" />
@@ -442,19 +442,19 @@ export default function Inbox() {
         {!selectedMessage ? (
           <Card className="luxury-glass-card luxury-shadow-lg">
             <CardHeader className="border-b" style={{
-              borderColor: 'rgba(212, 175, 55, 0.2)',
-              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 249, 240, 0.95) 100%)',
+              borderColor: 'rgba(0, 0, 0, 0.2)',
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 245, 245, 0.95) 100%)',
             }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg shadow-lg" style={{
-                    background: 'linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)',
+                    background: 'linear-gradient(135deg, #333333 0%, #555555 100%)',
                   }}>
                     <Mail className="h-6 w-6 text-white" />
                   </div>
                   <div>
                     <CardTitle className="text-2xl font-light tracking-tight" style={{
-                      background: 'linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)',
+                      background: 'linear-gradient(135deg, #333333 0%, #555555 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                       backgroundClip: 'text',
@@ -470,7 +470,7 @@ export default function Inbox() {
                   </div>
                   {unreadCount > 0 && (
                     <Badge className="text-white border-0 rounded-full animate-pulse" style={{
-                      background: 'linear-gradient(135deg, #d4af37 0%, #f4d03f 100%)',
+                      background: 'linear-gradient(135deg, #333333 0%, #555555 100%)',
                     }}>
                       {unreadCount}
                     </Badge>
@@ -486,27 +486,27 @@ export default function Inbox() {
                     fontWeight: 300,
                   }}>
                     <TabsTrigger value="all" className="data-[state=active]:border-b-2" style={{
-                      borderColor: '#d4af37',
+                      borderColor: '#333333',
                     }}>
                       {t('inbox.all', language)}
                     </TabsTrigger>
                     <TabsTrigger value="receipt" className="data-[state=active]:border-b-2" style={{
-                      borderColor: '#d4af37',
+                      borderColor: '#333333',
                     }}>
                       {t('inbox.receipts', language)}
                     </TabsTrigger>
                     <TabsTrigger value="voucher" className="data-[state=active]:border-b-2" style={{
-                      borderColor: '#d4af37',
+                      borderColor: '#333333',
                     }}>
                       {t('inbox.vouchers', language)}
                     </TabsTrigger>
                     <TabsTrigger value="promo" className="data-[state=active]:border-b-2" style={{
-                      borderColor: '#d4af37',
+                      borderColor: '#333333',
                     }}>
                       {t('inbox.promotions', language)}
                     </TabsTrigger>
                     <TabsTrigger value="reminder" className="data-[state=active]:border-b-2" style={{
-                      borderColor: '#d4af37',
+                      borderColor: '#333333',
                     }}>
                       {t('inbox.reminders', language)}
                     </TabsTrigger>
@@ -518,7 +518,7 @@ export default function Inbox() {
                     {isLoading ? (
                       <div className="flex items-center justify-center h-96">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{
-                          borderColor: '#d4af37',
+                          borderColor: '#333333',
                         }}></div>
                       </div>
                     ) : filteredMessages.length === 0 ? (
@@ -546,7 +546,7 @@ export default function Inbox() {
                           >
                             <div className="flex items-start gap-4">
                               <div className={`flex-shrink-0`} style={{
-                                color: !message.isRead ? '#d4af37' : '#9ca3af',
+                                color: !message.isRead ? '#333333' : '#9ca3af',
                               }}>
                                 {message.isRead ? <MailOpen className="h-5 w-5" /> : <Mail className="h-5 w-5" />}
                               </div>
@@ -558,8 +558,8 @@ export default function Inbox() {
                                     {message.subject}
                                   </h3>
                                   <Badge variant="outline" className="flex-shrink-0 text-xs" style={{
-                                    borderColor: 'rgba(212, 175, 55, 0.3)',
-                                    color: '#d4af37',
+                                    borderColor: 'rgba(0, 0, 0, 0.3)',
+                                    color: '#333333',
                                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                                   }}>
                                     {getTypeLabel(message.type)}
@@ -596,7 +596,7 @@ export default function Inbox() {
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
           }}>
             <CardHeader className="border-b" style={{
-              borderColor: 'rgba(212, 175, 55, 0.2)',
+              borderColor: 'rgba(0, 0, 0, 0.2)',
             }}>
               <div className="flex items-center gap-4">
                 <Button
@@ -604,9 +604,9 @@ export default function Inbox() {
                   size="icon"
                   onClick={() => setSelectedMessage(null)}
                   data-testid="button-back-to-inbox"
-                  className="hover:bg-amber-50"
+                  className="hover:bg-gray-50"
                 >
-                  <ArrowLeft className="h-5 w-5" style={{ color: '#d4af37' }} />
+                  <ArrowLeft className="h-5 w-5" style={{ color: '#333333' }} />
                 </Button>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -614,8 +614,8 @@ export default function Inbox() {
                       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                     }}>{selectedMessage.subject}</CardTitle>
                     <Badge variant="outline" style={{
-                      borderColor: 'rgba(212, 175, 55, 0.3)',
-                      color: '#d4af37',
+                      borderColor: 'rgba(0, 0, 0, 0.3)',
+                      color: '#333333',
                     }}>{getTypeLabel(selectedMessage.type)}</Badge>
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 font-light" style={{

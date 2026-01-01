@@ -112,7 +112,7 @@ const MainLoyaltyWidget = ({
           progress={Math.min(Math.max(progress, 0), 100)} 
           size={140}
           strokeWidth={14}
-          color={status.toLowerCase() === 'royal' ? '#D4AF37' : status.toLowerCase() === 'emerald' ? '#10b981' : status.toLowerCase() === 'diamond' ? '#3b82f6' : status.toLowerCase() === 'platinum' ? '#d1d5db' : status.toLowerCase() === 'gold' ? '#DAA520' : status.toLowerCase() === 'silver' ? '#9ca3af' : '#94a3b8'}
+          color={status.toLowerCase() === 'royal' ? '#333333' : status.toLowerCase() === 'emerald' ? '#10b981' : status.toLowerCase() === 'diamond' ? '#3b82f6' : status.toLowerCase() === 'platinum' ? '#d1d5db' : status.toLowerCase() === 'gold' ? '#333333' : status.toLowerCase() === 'silver' ? '#9ca3af' : '#94a3b8'}
         >
           <div className="text-center">
             <div className="text-3xl font-bold">{tierVisual.emoji}</div>

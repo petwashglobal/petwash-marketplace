@@ -185,7 +185,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
     return (
       <div className="luxury-glass-card luxury-shadow-lg p-8 mt-6 luxury-animate-scale-in">
         <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#000000] dark:text-[#FFFFFF]" />
         </div>
       </div>
     );
@@ -195,7 +195,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
     <div className="luxury-glass-card luxury-shadow-lg p-8 mt-6 luxury-animate-scale-in luxury-delay-2">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8860B] shadow-lg">
+          <div className="p-3 rounded-full bg-gradient-to-br from-[#000000] to-[#333333] shadow-lg">
             <KeyRound className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -289,7 +289,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
               </p>
               <Button
                 onClick={() => setShowSetup(true)}
-                className="luxury-btn-primary bg-gradient-to-r from-[#D4AF37] to-[#B8860B] hover:from-[#B8860B] hover:to-[#996515]"
+                className="luxury-btn-primary bg-gradient-to-r from-[#000000] to-[#333333] hover:from-[#333333] hover:to-[#555555]"
                 data-testid="button-setup-pin"
               >
                 <Plus className="h-4 w-4 mr-2" />

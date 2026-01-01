@@ -111,7 +111,7 @@ export default function DriverDashboard() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 luxury-animate-fade-in">
             <div>
               <h1 className="luxury-heading-xl mb-2" style={{ 
-                background: 'linear-gradient(135deg, #FFD700, #FFA500, #FFD700)',
+                background: 'linear-gradient(135deg, #FFFFFF, #CCCCCC, #FFFFFF)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 textShadow: '0 0 30px rgba(255,215,0,0.5)'

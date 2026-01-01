@@ -147,11 +147,11 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
         <div 
           className="bg-white rounded-2xl shadow-2xl overflow-hidden"
           style={{
-            border: '1px solid rgba(212, 175, 55, 0.2)',
+            border: '1px solid rgba(0, 0, 0, 0.2)',
           }}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#d4af37] to-[#f4d03f] p-6">
+          <div className="bg-gradient-to-r from-black to-gray-800 p-6">
             <div className="flex items-center gap-3">
               <Shield className="w-8 h-8 text-white" />
               <div className="flex-1">
@@ -302,7 +302,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
                 <>
                   <Button
                     onClick={handleAcceptAll}
-                    className="flex-1 bg-gradient-to-r from-[#d4af37] to-[#f4d03f] text-white hover:opacity-90"
+                    className="flex-1 bg-gradient-to-r from-black to-gray-800 text-white hover:opacity-90"
                     data-testid="button-accept-all-cookies"
                   >
                     {t.acceptAll}
@@ -310,7 +310,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
                   <Button
                     onClick={() => setShowDetails(true)}
                     variant="outline"
-                    className="flex-1 border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10"
+                    className="flex-1 border-black text-black hover:bg-black/10 dark:border-white dark:text-white dark:hover:bg-white/10"
                   >
                     {t.customize}
                   </Button>
@@ -326,7 +326,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
                 <>
                   <Button
                     onClick={handleSavePreferences}
-                    className="flex-1 bg-gradient-to-r from-[#d4af37] to-[#f4d03f] text-white hover:opacity-90"
+                    className="flex-1 bg-gradient-to-r from-black to-gray-800 text-white hover:opacity-90"
                     data-testid="button-save-preferences"
                   >
                     {t.savePreferences}
@@ -346,7 +346,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
                 <a 
                   href="/privacy-policy" 
-                  className="text-xs text-[#d4af37] hover:underline inline-flex items-center gap-1"
+                  className="text-xs text-black dark:text-white hover:underline inline-flex items-center gap-1"
                 >
                   {t.privacyPolicy} →
                 </a>

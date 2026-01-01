@@ -114,7 +114,7 @@ export function PinKeypad({
           className={cn(
             'w-4 h-4 rounded-full border-2 transition-all duration-200',
             i < pin.length
-              ? 'bg-[#D4AF37] border-[#D4AF37] scale-110'
+              ? 'bg-black dark:bg-white border-black dark:border-white scale-110'
               : 'bg-transparent border-gray-300 dark:border-gray-600'
           )}
         >
@@ -165,7 +165,7 @@ export function PinKeypad({
 
       <button
         onClick={() => setShowPin(!showPin)}
-        className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#D4AF37] mb-4 transition-colors"
+        className="flex items-center gap-2 text-sm text-gray-500 hover:text-black dark:hover:text-white mb-4 transition-colors"
         data-testid="toggle-pin-visibility"
       >
         {showPin ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -200,8 +200,8 @@ export function PinKeypad({
               variant="ghost"
               className={cn(
                 'w-20 h-16 text-2xl font-semibold rounded-xl transition-all',
-                'hover:bg-[#D4AF37]/10 hover:text-[#D4AF37]',
-                'active:scale-95 active:bg-[#D4AF37]/20'
+                'hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-black dark:hover:text-white',
+                'active:scale-95 active:bg-gray-200 dark:active:bg-gray-700'
               )}
               onClick={() => handleDigit(key)}
               disabled={loading}
@@ -227,7 +227,7 @@ export function PinKeypad({
 
       {loading && (
         <div className="absolute inset-0 bg-white/50 dark:bg-black/50 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin" />
         </div>
       )}
     </div>

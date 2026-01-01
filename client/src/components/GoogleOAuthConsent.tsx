@@ -117,7 +117,7 @@ export function GoogleOAuthConsent({ language, userEmail, onContinue, onCancel }
             {t.title}
           </h2>
           <div className="flex items-center gap-2 text-sm text-gray-700">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#d4af37] to-[#f4d03f] flex items-center justify-center text-white font-semibold">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-black to-gray-700 flex items-center justify-center text-white font-semibold">
               {t.email.charAt(0).toUpperCase()}
             </div>
             <span>{t.email}</span>
@@ -215,11 +215,11 @@ export function GoogleOAuthConsent({ language, userEmail, onContinue, onCancel }
           <div className="text-xs text-gray-600 text-center space-y-1">
             <div>
               {t.seePolicy}{' '}
-              <a href="/privacy-policy" target="_blank" className="text-[#d4af37] hover:underline">
+              <a href="/privacy-policy" target="_blank" className="text-black dark:text-white hover:underline">
                 {t.privacyPolicy}
               </a>
               {' '}{t.and}{' '}
-              <a href="/terms" target="_blank" className="text-[#d4af37] hover:underline">
+              <a href="/terms" target="_blank" className="text-black dark:text-white hover:underline">
                 {t.termsOfService}
               </a>
             </div>

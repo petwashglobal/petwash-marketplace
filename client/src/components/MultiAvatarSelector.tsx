@@ -49,7 +49,7 @@ export function MultiAvatarSelector({
   // Emotion to color mapping (complete coverage for all 9 states)
   const emotionColors: Record<string, string> = {
     happy: '#60a5fa', // blue-400
-    thinking: '#D4AF37', // TRUE 18K gold
+    thinking: '#6b7280', // gray-500 (replaced gold)
     excited: '#fb923c', // orange-400
     helpful: '#4ade80', // green-400
     playful: '#f472b6', // pink-400

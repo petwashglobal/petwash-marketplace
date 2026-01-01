@@ -43,8 +43,19 @@ jobs:
             echo "No preflight script, skipping"
           fi
 
+      - name: Clean dist folder
+        run: rm -rf dist/
+
       - name: Build production bundle
         run: npm run build
+        
+      - name: Verify build output
+        run: |
+          echo "=== Build output verification ==="
+          ls -la dist/public/
+          echo "=== CSS files ==="
+          find dist/public -name "*.css" -exec echo {} \; -exec head -20 {} \;
+          echo "=== Build timestamp: $(date) ==="
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2

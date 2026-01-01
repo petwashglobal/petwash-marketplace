@@ -769,10 +769,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             {isPinLoginAvailable && (
               <Button
                 onClick={() => setPinMode(true)}
-                className="luxury-btn-secondary w-full h-14 sm:h-16 md:h-16 lg:h-14 text-base font-medium bg-gradient-to-r from-[#D4AF37]/10 to-[#B8860B]/10 hover:from-[#D4AF37]/20 hover:to-[#B8860B]/20 border-[#D4AF37]/30"
+                className="luxury-btn-secondary w-full h-14 sm:h-16 md:h-16 lg:h-14 text-base font-medium bg-gradient-to-r from-[#000000]/10 to-[#333333]/10 hover:from-[#000000]/20 hover:to-[#333333]/20 border-[#000000]/30"
                 data-testid="button-pin-signin"
               >
-                <KeyRound className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-[#D4AF37]" />
+                <KeyRound className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-[#000000] dark:text-[#FFFFFF]" />
                 {language === 'he' ? 'התחבר עם קוד PIN' : 'Sign in with PIN'}
               </Button>
             )}
