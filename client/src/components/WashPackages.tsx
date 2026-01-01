@@ -107,7 +107,7 @@ export function WashPackages({ language }: WashPackagesProps) {
     return 0; // No discounts per official pricing
   };
 
-  // GUCCI-STYLE MINIMALIST THEMES - Black and White only
+  // GUCCI-STYLE MINIMALIST THEMES - Pure Black and White only
   const getLuxuryTheme = (index: number) => {
     const themes = [
       {
@@ -115,9 +115,9 @@ export function WashPackages({ language }: WashPackagesProps) {
         gradient: '#FFFFFF',
         textGradient: '#000000',
         badge: 'BASIC',
-        badgeBg: 'rgba(0, 0, 0, 0.05)',
+        badgeBg: '#FFFFFF',
         icon: CreditCard,
-        shadowColor: 'rgba(0, 0, 0, 0.1)',
+        shadowColor: 'transparent',
         chipColor: '#000000',
         textColor: '#000000',
         accentColor: '#000000',
@@ -128,22 +128,22 @@ export function WashPackages({ language }: WashPackagesProps) {
         gradient: '#FFFFFF',
         textGradient: '#000000',
         badge: 'POPULAR',
-        badgeBg: 'rgba(0, 0, 0, 0.1)',
+        badgeBg: '#000000',
         icon: Crown,
-        shadowColor: 'rgba(0, 0, 0, 0.15)',
+        shadowColor: 'transparent',
         chipColor: '#000000',
         textColor: '#000000',
         accentColor: '#000000',
         border: '2px solid #000000',
       },
       {
-        // LIGHT GRAY - 5 Washes
-        gradient: '#F5F5F5',
+        // WHITE - 5 Washes (Premium)
+        gradient: '#FFFFFF',
         textGradient: '#000000',
         badge: 'PREMIUM',
-        badgeBg: 'rgba(0, 0, 0, 0.08)',
+        badgeBg: '#FFFFFF',
         icon: Sparkles,
-        shadowColor: 'rgba(0, 0, 0, 0.12)',
+        shadowColor: 'transparent',
         chipColor: '#000000',
         textColor: '#000000',
         accentColor: '#000000',
@@ -154,9 +154,9 @@ export function WashPackages({ language }: WashPackagesProps) {
         gradient: '#000000',
         textGradient: '#FFFFFF',
         badge: 'ELITE',
-        badgeBg: 'rgba(255, 255, 255, 0.2)',
+        badgeBg: '#FFFFFF',
         icon: Shield,
-        shadowColor: 'rgba(0, 0, 0, 0.3)',
+        shadowColor: 'transparent',
         chipColor: '#FFFFFF',
         textColor: '#FFFFFF',
         accentColor: '#FFFFFF',
@@ -273,17 +273,17 @@ export function WashPackages({ language }: WashPackagesProps) {
                     <div className="flex items-start justify-between">
                       {/* Card Chip (EMV Chip) */}
                       <div 
-                        className="w-10 h-8 rounded-md"
+                        className="w-10 h-8 rounded-md border"
                         style={{
-                          background: `linear-gradient(135deg, ${theme.chipColor} 0%, ${isBlackCard ? '#FFFFFF' : '#888'} 50%, ${theme.chipColor} 100%)`,
-                          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)',
+                          background: theme.chipColor,
+                          borderColor: isBlackCard ? '#FFFFFF' : '#000000',
                         }}
                       >
                         <div className="w-full h-full grid grid-cols-2 gap-0.5 p-1">
-                          <div className="bg-white/20 rounded-sm"></div>
-                          <div className="bg-white/20 rounded-sm"></div>
-                          <div className="bg-white/20 rounded-sm"></div>
-                          <div className="bg-white/20 rounded-sm"></div>
+                          <div className="rounded-sm" style={{ background: isBlackCard ? '#FFFFFF' : '#000000', opacity: 0.3 }}></div>
+                          <div className="rounded-sm" style={{ background: isBlackCard ? '#FFFFFF' : '#000000', opacity: 0.3 }}></div>
+                          <div className="rounded-sm" style={{ background: isBlackCard ? '#FFFFFF' : '#000000', opacity: 0.3 }}></div>
+                          <div className="rounded-sm" style={{ background: isBlackCard ? '#FFFFFF' : '#000000', opacity: 0.3 }}></div>
                         </div>
                       </div>
 
@@ -368,10 +368,8 @@ export function WashPackages({ language }: WashPackagesProps) {
                         onClick={() => handleExpressCheckout(pkg)}
                         className="w-full py-2.5 px-4 rounded-lg font-bold text-sm shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 mb-3"
                         style={{
-                          background: isBlackCard 
-                            ? 'linear-gradient(135deg, #FFD700 0%, #FFC107 100%)' 
-                            : '#FFFFFF',
-                          color: isBlackCard ? '#1A1A1A' : theme.textColor,
+                          background: isBlackCard ? '#FFFFFF' : '#000000',
+                          color: isBlackCard ? '#000000' : '#FFFFFF',
                         }}
                         data-testid={`button-express-checkout-${pkg.id}`}
                       >
@@ -382,7 +380,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                       <div 
                         className="flex items-center justify-between text-xs pt-2 border-t"
                         style={{ 
-                          borderColor: isBlackCard ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                          borderColor: isBlackCard ? '#FFFFFF' : '#000000',
                           color: theme.textColor,
                           opacity: 0.7,
                         }}
