@@ -58,7 +58,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               <p className="luxury-services-subtitle">
                 {t('hero.subtitle', language)}
               </p>
-              <p className="text-base sm:text-lg text-gray-700 max-w-2xl lg:max-w-3xl mx-auto mb-8 sm:mb-12">
+              <p className="text-base sm:text-lg text-black max-w-2xl lg:max-w-3xl mx-auto mb-8 sm:mb-12">
                 {t('hero.description', language)}
               </p>
               
@@ -67,7 +67,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                   onClick={() => {
                     document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="bg-gray-900 text-white hover:shadow-2xl hover:scale-105 transition-all duration-300 px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg font-medium shadow-lg"
+                  className="bg-black text-white hover:shadow-2xl hover:scale-105 transition-all duration-300 px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg font-medium shadow-lg"
                 >
                   {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
                 </Button>
@@ -82,7 +82,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                   </button>
                   <button 
                     onClick={() => setLocation('/signin')}
-                    className="btn-gucci-white px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg font-medium w-full sm:w-auto rounded-lg hover:bg-gray-100 hover:shadow-2xl hover:scale-105 transition-all duration-300"
+                    className="btn-gucci-white px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg font-medium w-full sm:w-auto rounded-lg hover:bg-white hover:shadow-2xl hover:scale-105 transition-all duration-300"
                     data-testid="button-login-hero"
                   >
                     {t('landing.login', language)}
@@ -108,11 +108,11 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Technology Section */}
         <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto text-center">
-            <div className="p-8 bg-white rounded-2xl border border-gray-200 shadow-xl">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
+            <div className="p-8 bg-white rounded-2xl border border-black shadow-xl">
+              <h2 className="text-xl sm:text-2xl font-bold text-black mb-3 sm:mb-4">
                 {t('technology.title', language)}
               </h2>
-              <p className="text-base sm:text-lg text-gray-700 mb-0 max-w-2xl lg:max-w-3xl mx-auto">
+              <p className="text-base sm:text-lg text-black mb-0 max-w-2xl lg:max-w-3xl mx-auto">
                 {t('technology.description', language)}
               </p>
             </div>
@@ -124,11 +124,11 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-center">
               {features.map((feature, index) => (
-                <div key={index} className="p-6 bg-white rounded-xl border border-gray-200 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                  <h3 className="text-base font-semibold text-gray-900 mb-3">
+                <div key={index} className="p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                  <h3 className="text-base font-semibold text-black mb-3">
                     {feature.title}
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-black">
                     {feature.description}
                   </p>
                 </div>
@@ -140,34 +140,34 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Organic Promise Section */}
         <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-black mb-4 sm:mb-6">
               {t('organic.title', language)}
             </h2>
-            <p className="text-base sm:text-lg text-gray-700 mb-8 sm:mb-12 max-w-2xl lg:max-w-3xl mx-auto">
+            <p className="text-base sm:text-lg text-black mb-8 sm:mb-12 max-w-2xl lg:max-w-3xl mx-auto">
               {t('organic.subtitle', language)}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center p-6 bg-white rounded-xl border border-gray-200 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-gray-900 mb-3">
+              <div className="text-center p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
+                <h3 className="text-base font-semibold text-black mb-3">
                   {t('organic.biodegradable', language)}
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-black">
                   {t('organic.biodegradableDesc', language)}
                 </p>
               </div>
-              <div className="text-center p-6 bg-white rounded-xl border border-cyan-100 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-gray-900 mb-3">
+              <div className="text-center p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
+                <h3 className="text-base font-semibold text-black mb-3">
                   {t('organic.teaTreeBenefits', language)}
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-black">
                   {t('organic.teaTreeDesc', language)}
                 </p>
               </div>
-              <div className="text-center p-6 bg-white rounded-xl border border-gray-200 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-gray-900 mb-3">
+              <div className="text-center p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
+                <h3 className="text-base font-semibold text-black mb-3">
                   {t('organic.ecoFriendly', language)}
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-black">
                   {t('organic.ecoDesc', language)}
                 </p>
               </div>
@@ -184,13 +184,13 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         <GiftCards language={language} />
 
         {/* Payment Methods Accepted Section - 2025 Luxury Full-Color Icons */}
-        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-gray-50">
+        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-10">
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
+              <h2 className="text-2xl sm:text-3xl font-bold text-black mb-3">
                 {t('payment.title', language)}
               </h2>
-              <p className="text-base sm:text-lg text-gray-600">
+              <p className="text-base sm:text-lg text-black">
                 {t('payment.subtitle', language)}
               </p>
             </div>
@@ -256,11 +256,11 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             
             {/* Trust Badge */}
             <div className="mt-8 text-center">
-              <div className="inline-flex items-center gap-2 px-6 py-3 bg-green-50 rounded-full border border-green-200">
-                <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <div className="inline-flex items-center gap-2 px-6 py-3 bg-white rounded-full border border-black">
+                <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                <span className="text-sm font-semibold text-green-900">
+                <span className="text-sm font-semibold text-black">
                   {t('payment.secureCheckout', language)}
                 </span>
               </div>
@@ -269,7 +269,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </section>
 
         {/* Digital Wallet Download Section */}
-        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white keep-bg" data-keep-bg="true" style={{ background: 'linear-gradient(to bottom right, #2563eb, #9333ea, #ec4899)' }}>
+        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-black keep-bg" data-keep-bg="true">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
@@ -296,7 +296,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 </div>
                 <Button 
                   onClick={() => setLocation('/wallet')}
-                  className="w-full bg-black hover:bg-gray-900 text-white py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-2xl transition-all"
+                  className="w-full bg-black hover:bg-black text-white py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-2xl transition-all"
                   data-testid="button-homepage-apple-wallet"
                 >
                   {t('landing.addAppleWallet', language)}
@@ -312,10 +312,10 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               {/* Google Wallet Card */}
               <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border-2 border-white/20 hover:border-white/40 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
                 <div className="text-center mb-6">
-                  <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-12 h-12" viewBox="0 0 61 25" fill="white" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M20.7 9.9c0-.7-.1-1.4-.2-2.1H10.6v4h5.7c-.2 1.3-1 2.4-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.6z" fill="white"/>
-                      <path d="M10.6 21.8c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H1.3v2.7c1.7 3.4 5.2 5.7 9.3 5.7z" fill="white"/>
+                  <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-12 h-12" viewBox="0 0 61 25" fill="black" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M20.7 9.9c0-.7-.1-1.4-.2-2.1H10.6v4h5.7c-.2 1.3-1 2.4-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.6z" fill="black"/>
+                      <path d="M10.6 21.8c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H1.3v2.7c1.7 3.4 5.2 5.7 9.3 5.7z" fill="black"/>
                     </svg>
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-2">Google Wallet</h3>
@@ -325,7 +325,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 </div>
                 <Button 
                   onClick={() => setLocation('/wallet')}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-2xl transition-all"
+                  className="w-full bg-white hover:bg-white text-black border border-black py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-2xl transition-all"
                   data-testid="button-homepage-google-wallet"
                 >
                   {t('landing.addGoogleWallet', language)}
@@ -356,34 +356,34 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Loyalty Program Section */}
         <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-black mb-4 sm:mb-6">
               {t('loyalty.title', language)}
             </h2>
-            <p className="text-base sm:text-lg text-gray-700 mb-8 sm:mb-12 max-w-2xl lg:max-w-3xl mx-auto">
+            <p className="text-base sm:text-lg text-black mb-8 sm:mb-12 max-w-2xl lg:max-w-3xl mx-auto">
               {t('loyalty.description', language)}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center p-6 bg-white rounded-xl border border-gray-200 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-gray-900 mb-3">
+              <div className="text-center p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
+                <h3 className="text-base font-semibold text-black mb-3">
                   {t('loyalty.newMember', language)}
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-black">
                   {t('loyalty.newMemberDesc', language)}
                 </p>
               </div>
-              <div className="text-center p-6 bg-white rounded-xl border border-gray-200 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-gray-900 mb-3">
+              <div className="text-center p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
+                <h3 className="text-base font-semibold text-black mb-3">
                   {t('loyalty.regular', language)}
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-black">
                   {t('loyalty.regularDesc', language)}
                 </p>
               </div>
               <div className="text-center p-6 bg-white rounded-xl border border-amber-200 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-gray-900 mb-3">
+                <h3 className="text-base font-semibold text-black mb-3">
                   {t('loyalty.senior', language)}
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-black">
                   {t('loyalty.seniorDesc', language)}
                 </p>
               </div>
@@ -398,7 +398,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                     setLocation('/signin');
                   }
                 }}
-                className="bg-black text-white hover:bg-gray-800 hover:shadow-2xl hover:scale-105 transition-all duration-300 px-6 py-3 text-base font-medium shadow-lg"
+                className="bg-black text-white hover:bg-black hover:shadow-2xl hover:scale-105 transition-all duration-300 px-6 py-3 text-base font-medium shadow-lg"
               >
                 {user 
                   ? `${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`
