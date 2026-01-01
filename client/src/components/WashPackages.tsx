@@ -431,22 +431,20 @@ export function WashPackages({ language }: WashPackagesProps) {
           </div>
         </div>
 
-        {/* Trust Indicators - Emerald Theme */}
+        {/* Trust Indicators - Gucci Black/White */}
         <div className="mt-12 sm:mt-16 lg:mt-20 text-center">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-4xl mx-auto px-4">
             <div className="flex flex-col items-center">
               <div 
-                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center mb-3 sm:mb-4"
-                style={{
-                  background: 'linear-gradient(135deg, #008F46 0%, #00C569 100%)',
-                }}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center mb-3 sm:mb-4 border-2 border-black"
+                style={{ background: '#FFFFFF' }}
               >
-                <Check className="w-6 h-6 sm:w-7 sm:h-7 text-white" strokeWidth={3} />
+                <Check className="w-6 h-6 sm:w-7 sm:h-7 text-black" strokeWidth={3} />
               </div>
-              <h4 className="text-base sm:text-lg font-bold text-gray-900 mb-1 sm:mb-2">
+              <h4 className="text-base sm:text-lg font-bold text-black mb-1 sm:mb-2">
                 {t('packages.trust1Title', language)}
               </h4>
-              <p className="text-sm sm:text-base text-gray-600">
+              <p className="text-sm sm:text-base text-black">
                 {t('packages.trust1Desc', language)}
               </p>
             </div>
@@ -454,33 +452,29 @@ export function WashPackages({ language }: WashPackagesProps) {
             <div className="flex flex-col items-center">
               <div 
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center mb-3 sm:mb-4"
-                style={{
-                  background: 'linear-gradient(135deg, #FFD700 0%, #DAA520 100%)',
-                }}
+                style={{ background: '#000000' }}
               >
                 <Crown className="w-6 h-6 sm:w-7 sm:h-7 text-white" strokeWidth={2.5} />
               </div>
-              <h4 className="text-base sm:text-lg font-bold text-gray-900 mb-1 sm:mb-2">
+              <h4 className="text-base sm:text-lg font-bold text-black mb-1 sm:mb-2">
                 {t('packages.trust2Title', language)}
               </h4>
-              <p className="text-sm sm:text-base text-gray-600">
+              <p className="text-sm sm:text-base text-black">
                 {t('packages.trust2Desc', language)}
               </p>
             </div>
             
             <div className="flex flex-col items-center">
               <div 
-                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center mb-3 sm:mb-4"
-                style={{
-                  background: 'linear-gradient(135deg, #C0C0C0 0%, #E8E8E8 50%, #A8A8A8 100%)',
-                }}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center mb-3 sm:mb-4 border-2 border-black"
+                style={{ background: '#FFFFFF' }}
               >
-                <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 text-gray-700" strokeWidth={2.5} />
+                <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 text-black" strokeWidth={2.5} />
               </div>
-              <h4 className="text-base sm:text-lg font-bold text-gray-900 mb-1 sm:mb-2">
+              <h4 className="text-base sm:text-lg font-bold text-black mb-1 sm:mb-2">
                 {t('packages.trust3Title', language)}
               </h4>
-              <p className="text-sm sm:text-base text-gray-600">
+              <p className="text-sm sm:text-base text-black">
                 {t('packages.trust3Desc', language)}
               </p>
             </div>

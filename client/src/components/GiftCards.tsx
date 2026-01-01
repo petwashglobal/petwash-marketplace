@@ -35,7 +35,7 @@ export function GiftCards({ language }: GiftCardsProps) {
       nameHe: "רחיצה פרימיום אחת",
       washCount: 1,
       price: '55',
-      colorVariant: "fresh-pink"
+      colorVariant: "white"
     },
     {
       id: '2',
@@ -43,7 +43,7 @@ export function GiftCards({ language }: GiftCardsProps) {
       nameHe: "3 רחיצות פרימיום",
       washCount: 3,
       price: '150',
-      colorVariant: "pearl-silver"
+      colorVariant: "white"
     },
     {
       id: '3',
@@ -51,14 +51,13 @@ export function GiftCards({ language }: GiftCardsProps) {
       nameHe: "5 רחיצות פרימיום",
       washCount: 5,
       price: '220',
-      colorVariant: "champagne-gold"
+      colorVariant: "black"
     }
   ];
 
   const getLuxuryTheme = (index: number) => {
     const themes = [
       {
-        // White - Single Gift
         gradient: '#FFFFFF',
         badge: 'SIGNATURE',
         icon: Gift,
@@ -67,8 +66,7 @@ export function GiftCards({ language }: GiftCardsProps) {
         border: '1px solid #000000',
       },
       {
-        // Light Gray - 3 Washes (Recommended)
-        gradient: '#F5F5F5',
+        gradient: '#FFFFFF',
         badge: 'POPULAR',
         icon: Crown,
         shadowColor: 'rgba(0, 0, 0, 0.12)',
@@ -76,7 +74,6 @@ export function GiftCards({ language }: GiftCardsProps) {
         border: '2px solid #000000',
       },
       {
-        // Black - 5 Washes (Best Value)
         gradient: '#000000',
         badge: 'BEST VALUE',
         icon: Sparkles,
