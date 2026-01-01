@@ -88,6 +88,7 @@ import environmentRoutes from "./routes/environment";
 import translationRoutes from "./routes/translation";
 import promotionsRoutes from "./routes/promotions";
 import complianceRoutes from "./routes/compliance";
+import spotifyRoutes from "./routes/spotify";
 import monitoringRoutes, { trackRequestMetrics } from "./routes/monitoring";
 import { registerStaffOnboardingRoutes } from "./routes/staff-onboarding";
 import controlPanelRegistryRoutes from "./routes/control-panel-registry";
@@ -7979,6 +7980,9 @@ self.addEventListener('notificationclick', (event) => {
   // Apple Wallet Pass Generation (VIP Cards & E-Vouchers)
   app.use('/api/wallet', apiLimiter, walletRoutes);
   app.use('/api/google-wallet', apiLimiter, googleWalletRoutes);
+  
+  // Spotify Integration (Profile, Now Playing)
+  app.use('/api/spotify', apiLimiter, spotifyRoutes);
   
   // Wallet Telemetry (AI-assisted success tracking with UA detection & beacons)
   const walletTelemetryRoutes = await import('./routes/wallet-telemetry');
