@@ -378,47 +378,47 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
       {/* Main header */}
       <header className="pw-header">
         <div className="pw-header-inner">
-          {/* Left: 4 luxury social icons - Instagram, Facebook, TikTok, Spotify */}
+          {/* Left: 4 social icons with official brand colors - Instagram, Facebook, TikTok, Spotify */}
           <div className="pw-header-left">
             <a
-              className="pw-social-link pw-social-luxury"
+              className="pw-social-link pw-social-instagram"
               href="https://www.instagram.com/petwashltd"
               target="_blank"
               rel="noreferrer"
               aria-label="Pet Wash Instagram"
               data-testid="link-social-instagram"
             >
-              <SiInstagram size={20} strokeWidth={1} />
+              <SiInstagram size={18} />
             </a>
             <a
-              className="pw-social-link pw-social-luxury"
+              className="pw-social-link pw-social-facebook"
               href="https://www.facebook.com/petwashltd"
               target="_blank"
               rel="noreferrer"
               aria-label="Pet Wash Facebook"
               data-testid="link-social-facebook"
             >
-              <SiFacebook size={20} strokeWidth={1} />
+              <SiFacebook size={18} />
             </a>
             <a
-              className="pw-social-link pw-social-luxury"
+              className="pw-social-link pw-social-tiktok"
               href="https://www.tiktok.com/@petwashltd"
               target="_blank"
               rel="noreferrer"
               aria-label="Pet Wash TikTok"
               data-testid="link-social-tiktok"
             >
-              <SiTiktok size={20} strokeWidth={1} />
+              <SiTiktok size={18} />
             </a>
             <a
-              className="pw-social-link pw-social-luxury"
-              href="https://open.spotify.com/user/petwashltd"
+              className="pw-social-link pw-social-spotify"
+              href="https://open.spotify.com/user/31ff52czgq4ezgui5ufyplo5mrbq"
               target="_blank"
               rel="noreferrer"
               aria-label="Pet Wash Spotify"
               data-testid="link-social-spotify"
             >
-              <SiSpotify size={20} strokeWidth={1} />
+              <SiSpotify size={18} />
             </a>
           </div>
 

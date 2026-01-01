@@ -73,31 +73,75 @@
   transform: translateY(-2px);
 }
 
-/* Luxury social icon styling */
-.pw-social-luxury {
-  width: 2rem !important;
-  height: 2rem !important;
-  min-width: 2rem !important;
-  min-height: 2rem !important;
-  border-radius: 50% !important;
-  background: transparent !important;
-  border: 1.5px solid #000000 !important;
-  color: #000000 !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  line-height: 1 !important;
-}
+/* ===========================
+   OFFICIAL BRAND COLOR SOCIAL ICONS
+   Instagram, Facebook, TikTok, Spotify
+   =========================== */
 
-.pw-social-luxury svg {
-  display: block !important;
-  width: 1rem !important;
-  height: 1rem !important;
-}
-
-.pw-social-luxury:hover {
-  background: #000000 !important;
+/* Instagram - Official gradient colors */
+.pw-social-instagram {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+  border: none !important;
   color: #FFFFFF !important;
-  transform: scale(1.05) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+.pw-social-instagram:hover {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 15px rgba(225, 48, 108, 0.4) !important;
+  color: #FFFFFF !important;
+}
+
+/* Facebook - Official blue */
+.pw-social-facebook {
+  background: #1877F2 !important;
+  border: none !important;
+  color: #FFFFFF !important;
+}
+.pw-social-facebook:hover {
+  background: #1877F2 !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 15px rgba(24, 119, 242, 0.4) !important;
+  color: #FFFFFF !important;
+}
+
+/* TikTok - Official black with neon accent */
+.pw-social-tiktok {
+  background: #000000 !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  position: relative;
+}
+.pw-social-tiktok::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #25F4EE, #FE2C55);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.pw-social-tiktok:hover {
+  background: #000000 !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 15px rgba(254, 44, 85, 0.4) !important;
+  color: #FFFFFF !important;
+}
+.pw-social-tiktok:hover::before {
+  opacity: 1;
+}
+
+/* Spotify - Official green */
+.pw-social-spotify {
+  background: #1DB954 !important;
+  border: none !important;
+  color: #FFFFFF !important;
+}
+.pw-social-spotify:hover {
+  background: #1DB954 !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 15px rgba(29, 185, 84, 0.4) !important;
+  color: #FFFFFF !important;
 }
 
 /* ===========================
