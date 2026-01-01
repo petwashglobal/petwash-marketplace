@@ -174,47 +174,17 @@ video.lazy-loaded {
 }
 
 /* =====================================================
-   MANDATORY PURE WHITE BACKGROUND - NO EXCEPTIONS
+   BASE BACKGROUND - Light theme default
    ===================================================== */
 
-/* FORCE PURE WHITE BACKGROUND EVERYWHERE */
+/* Default light background (not forced) */
 html, body, #root {
-  background: #FFFFFF !important;
-  background-color: #FFFFFF !important;
+  background-color: var(--background, #FFFFFF);
 }
 
-/* Override dark backgrounds from old Replit/legacy styles (class-based only) */
-.bg-slate-900, .bg-slate-800, .bg-gray-900, .bg-gray-800,
-.bg-zinc-900, .bg-zinc-800, .bg-neutral-900, .bg-neutral-800,
-.from-slate-900, .from-gray-900, .from-zinc-900, .from-black {
-  background: #FFFFFF !important;
-  background-color: #FFFFFF !important;
-}
-
-/* Override dark gradients to pure white */
-[class*="from-slate"], [class*="from-gray-9"], [class*="from-zinc"],
-[class*="to-slate"], [class*="to-gray-9"], [class*="to-zinc"],
-[class*="via-slate"], [class*="via-gray-9"], [class*="via-zinc"] {
-  --tw-gradient-from: #FFFFFF !important;
-  --tw-gradient-to: #FFFFFF !important;
-  --tw-gradient-via: #FFFFFF !important;
-}
-
-/* PURE WHITE BEHIND ALL IMAGES AND ICONS */
-img, svg, picture, video, canvas, .icon, [class*="icon"] {
-  background-color: transparent !important;
-}
-
-/* Container backgrounds must be pure white */
-section, article, main, aside, header, footer, nav,
-.container, .wrapper, .content, .card, .panel, .box,
-div[class*="luxury-"], div[class*="glass-"] {
-  background-color: #FFFFFF;
-}
-
-/* Force white on any remaining dark containers */
-.min-h-screen, .h-screen, .w-full {
-  background-color: #FFFFFF !important;
+/* TRANSPARENT BEHIND ALL IMAGES AND ICONS */
+img, svg, picture, video, canvas {
+  background-color: transparent;
 }
 
 /* GUCCI-STYLE TYPOGRAPHY - Apply to headings */
