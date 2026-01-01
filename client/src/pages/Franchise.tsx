@@ -119,15 +119,10 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
             </div>
           </div>
 
-          {/* Real-Time Stats - Luxury Glass Cards */}
+          {/* Stats section - hidden until real data available */}
           <div className="luxury-container luxury-section-compact">
             <div className="luxury-grid-4 mb-16">
-              {[
-                { value: "52", label: t('franchise.activeStations', language), icon: Building2, gradient: 'from-blue-400 to-cyan-500' },
-                { value: "$5.8M", label: t('franchise.annualRevenue', language), icon: TrendingUp, gradient: 'from-emerald-400 to-green-500' },
-                { value: "98.5%", label: t('franchise.satisfaction', language), icon: Star, gradient: 'from-amber-400 to-yellow-500' },
-                { value: "2.1", label: t('franchise.yearsToROI', language), icon: Clock, gradient: 'from-purple-400 to-pink-500' }
-              ].map((stat, idx) => {
+              {([] as Array<{value: string; label: string; icon: any; gradient: string}>).map((stat, idx) => {
                 const Icon = stat.icon;
                 return (
                   <div key={idx} className={`luxury-glass-card luxury-hover-glow luxury-shadow-md luxury-animate-fade-in luxury-delay-${idx + 1}`}>
@@ -290,13 +285,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
               </div>
             </div>
 
-            {/* 🧮 INTERACTIVE ROI CALCULATOR - 2025/2026 Feature */}
-            <div className="mb-16">
-              <FranchiseROICalculator 
-                language={language} 
-                onCalculatorUse={() => setCompletedSteps(prev => Math.max(prev, 3))}
-              />
-            </div>
+            {/* ROI Calculator - Hidden until real data available */}
 
             {/* 📹 VIDEO TESTIMONIALS - 2025/2026 Feature */}
             <div className="mb-16">
@@ -500,7 +489,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
               </div>
             </div>
 
-            {/* Investment Package Summary */}
+            {/* Investment Package Summary - Contact for details */}
             <div className="mb-16">
               <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white/70 to-gray-50/70 dark:from-gray-800/70 dark:to-gray-900/70 backdrop-blur-3xl border border-white/40 shadow-2xl p-12">
                 {/* Metallic Corner Accents */}
@@ -519,58 +508,17 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                     {t('franchise.investmentSummary', language)}
                   </h3>
                   
-                  <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                    <div className="space-y-6">
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg text-gray-700 dark:text-gray-300 font-medium">
-                          {t('franchise.initialInvestment', language)}
-                        </span>
-                        <span 
-                          className="text-3xl font-bold"
-                          style={{
-                            background: 'linear-gradient(135deg, #333333 0%, #555555 50%, #444444 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent'
-                          }}
-                        >
-                          $90,000
-                        </span>
-                      </div>
-                      <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
-                        {[
-                          { item: 'K9000 Equipment', amount: '$60,000' },
-                          { item: 'Installation & Renovations', amount: '$13,000' },
-                          { item: 'Initial Inventory', amount: '$7,500' },
-                          { item: 'Marketing & Promotion', amount: '$5,500' },
-                          { item: 'Training & Licensing', amount: '$4,000' }
-                        ].map((line, i) => (
-                          <div key={i} className="flex justify-between items-center py-2 border-b border-gray-200/50 dark:border-gray-700/50">
-                            <span>{line.item}</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">{line.amount}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-center">
-                      <div className="text-center space-y-4">
-                        <div className="relative inline-block">
-                          <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full opacity-75 blur-lg"></div>
-                          <div className="relative w-40 h-40 bg-gradient-to-br from-emerald-400 via-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-2xl">
-                            <div className="text-center text-white">
-                              <div className="text-5xl font-bold">24</div>
-                              <div className="text-sm font-medium">{t('franchise.months', language)}</div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-xl font-semibold text-gray-900 dark:text-white">
-                          {t('franchise.avgPayback', language)}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          {t('franchise.avgROI', language)}
-                        </div>
-                      </div>
-                    </div>
+                  <div className="text-center max-w-2xl mx-auto space-y-6">
+                    <p className="text-lg text-gray-700 dark:text-gray-300">
+                      {language === 'he' ? 'צור קשר לקבלת פרטי השקעה מלאים והצעת מחיר מותאמת אישית.' : 'Contact us for complete investment details and a personalized quote.'}
+                    </p>
+                    <button 
+                      className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2 mx-auto"
+                      data-testid="button-contact-investment"
+                    >
+                      <DollarSign className="w-6 h-6" />
+                      {language === 'he' ? 'בקש חבילת השקעה' : 'Request Investment Package'}
+                    </button>
                   </div>
                 </div>
               </div>
