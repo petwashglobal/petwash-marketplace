@@ -89,8 +89,8 @@ export function WashPackages({ language }: WashPackagesProps) {
       <section className="py-16 sm:py-20 lg:py-24 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <div className="animate-spin w-10 h-10 sm:w-12 sm:h-12 border-4 border-emerald-600 border-t-transparent rounded-full mx-auto"></div>
-            <p className="mt-4 sm:mt-6 text-base sm:text-lg text-gray-600">
+            <div className="animate-spin w-10 h-10 sm:w-12 sm:h-12 border-4 border-black border-t-transparent rounded-full mx-auto"></div>
+            <p className="mt-4 sm:mt-6 text-base sm:text-lg text-black">
               {t('common.loading', language)}
             </p>
           </div>
@@ -175,27 +175,27 @@ export function WashPackages({ language }: WashPackagesProps) {
         {/* Luxury Header Section */}
         <div className="text-center mb-12 sm:mb-16 lg:mb-20">
           {/* Premium Badge */}
-          <div className="inline-flex items-center justify-center p-2 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-full mb-4 sm:mb-6">
-            <span className="px-4 py-2 bg-white rounded-full text-xs sm:text-sm font-semibold text-emerald-700 shadow-sm border border-emerald-100">
+          <div className="inline-flex items-center justify-center p-2 mb-4 sm:mb-6">
+            <span className="px-4 py-2 bg-white rounded-full text-xs sm:text-sm font-semibold text-black shadow-sm border border-black">
               {t('packages.premiumBadge', language)}
             </span>
           </div>
 
           {/* Main Title - Serif Typography */}
           <h2 
-            className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 px-4"
+            className="text-3xl sm:text-4xl lg:text-5xl font-bold text-black mb-4 sm:mb-6 px-4"
             style={{ fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', serif" }}
           >
             {t('packages.title', language)}
           </h2>
           
           {/* Subtitle */}
-          <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-2 sm:mb-4 px-4">
+          <p className="text-lg sm:text-xl lg:text-2xl text-black max-w-3xl mx-auto leading-relaxed mb-2 sm:mb-4 px-4">
             {t('packages.subtitle', language)}
           </p>
           
           {/* Additional tagline */}
-          <p className="text-base sm:text-lg text-gray-500 max-w-2xl mx-auto italic px-4">
+          <p className="text-base sm:text-lg text-black max-w-2xl mx-auto italic px-4">
             {t('packages.organicCare', language)}
           </p>
         </div>
@@ -416,13 +416,11 @@ export function WashPackages({ language }: WashPackagesProps) {
           })}
         </div>
 
-        {/* Secure Payment Badge - Emerald */}
+        {/* Secure Payment Badge - Gucci Black */}
         <div className="mt-12 sm:mt-16 lg:mt-20 flex justify-center">
           <div 
             className="inline-flex items-center gap-3 px-6 py-3 rounded-xl shadow-lg"
-            style={{
-              background: 'linear-gradient(135deg, #008F46 0%, #00C569 50%, #008F46 100%)',
-            }}
+            style={{ background: '#000000' }}
           >
             <Shield className="w-6 h-6 text-white" />
             <span className="text-white text-base font-semibold tracking-wide">

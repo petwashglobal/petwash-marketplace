@@ -140,12 +140,12 @@ export function GiftCards({ language }: GiftCardsProps) {
           </h2>
           
           {/* Subtitle */}
-          <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-2 sm:mb-4 px-4">
+          <p className="text-lg sm:text-xl lg:text-2xl text-black max-w-3xl mx-auto leading-relaxed mb-2 sm:mb-4 px-4">
             {t('giftCards.subtitle', language)}
           </p>
           
           {/* Additional tagline */}
-          <p className="text-base sm:text-lg text-gray-500 max-w-2xl mx-auto italic px-4">
+          <p className="text-base sm:text-lg text-black max-w-2xl mx-auto italic px-4">
             {language === 'he' ? 'המתנה המושלמת למישהו שאתה אוהב' : 'The perfect gift for someone you love'}
           </p>
         </div>
