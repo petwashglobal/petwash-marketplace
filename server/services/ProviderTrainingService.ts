@@ -1,5 +1,5 @@
 /**
- * Provider Training Service - MadPaws Style
+ * Provider Training Service - Pet Wash™
  * 
  * Training modules, quizzes, and certificate generation for:
  * - Sitter Suite™ - Pet sitting providers
@@ -91,7 +91,7 @@ export interface QuizResult {
   }[];
 }
 
-// Pre-defined training modules (MadPaws style)
+// Pre-defined training modules (Pet Wash™ professional style)
 const TRAINING_MODULES: TrainingModuleContent[] = [
   // GENERAL - Required for all platforms
   {

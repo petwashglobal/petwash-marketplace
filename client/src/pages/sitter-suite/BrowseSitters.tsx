@@ -26,7 +26,7 @@ interface Sitter {
   createdAt: string;
 }
 
-// Demo sitters for display when API returns empty (MadPaws-style)
+// Demo sitters for display when API returns empty (Pet Wash™ luxury style)
 // Note: rating is string in interface to match backend JSON response
 const DEMO_SITTERS: Sitter[] = [
   {
@@ -166,7 +166,7 @@ export default function BrowseSitters() {
   return (
     <Layout>
       <div className="min-h-screen bg-white">
-        {/* Hero Section - MadPaws Style */}
+        {/* Hero Section - Pet Wash™ Premium Design */}
         <div className="relative bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 overflow-hidden">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-30">
@@ -191,7 +191,7 @@ export default function BrowseSitters() {
                 שמרטפות מקצועית עם אהבה אינסופית לחיות המחמד שלך
               </p>
               
-              {/* Service Type Selection - MadPaws Style */}
+              {/* Service Type Selection - Pet Wash™ Luxury */}
               <div className="flex flex-wrap justify-center gap-3 mb-8">
                 {SERVICE_TYPES.map((service) => {
                   const Icon = service.icon;

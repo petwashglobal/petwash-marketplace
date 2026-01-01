@@ -8810,7 +8810,7 @@ export type ApplicationFraudSignal = typeof applicationFraudSignals.$inferSelect
 
 export type ApplicationStepProgress = typeof applicationStepProgress.$inferSelect;
 
-// ==================== PROVIDER TRAINING SYSTEM (MadPaws Style) ====================
+// ==================== PROVIDER TRAINING SYSTEM (Pet Wash™) ====================
 
 // Training modules configuration (stored in code, referenced here for tracking)
 export const providerTrainingModules = pgTable("provider_training_modules", {
@@ -8967,7 +8967,7 @@ export const providerApprovalQueue = pgTable("provider_approval_queue", {
   status: varchar("status", { length: 20 }).default("pending"), // pending, under_review, approved, rejected, on_hold
   priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
   
-  // Checklist items (MadPaws style)
+  // Checklist items (Pet Wash™ 7-point verification)
   photoApproved: boolean("photo_approved").default(false),
   certificateApproved: boolean("certificate_approved").default(false),
   idVerified: boolean("id_verified").default(false),

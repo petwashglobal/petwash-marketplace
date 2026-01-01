@@ -1,5 +1,5 @@
 /**
- * Admin Provider Review Queue API Routes - MadPaws Style
+ * Admin Provider Review Queue API Routes - Pet Wash™
  * 
  * Provider approval workflow, checklist management, and statistics
  * Hebrew-dominant with English brand touches

@@ -649,7 +649,7 @@ export default function WalkMyPet() {
                       {isHebrew ? 'מצא את הווקר המושלם 🐕' : 'Find Your Perfect Walker 🐕'}
                     </h3>
 
-                    {/* Guided Booking Button - MadPaws Style Wizard */}
+                    {/* Guided Booking Button - Pet Wash™ Luxury Wizard */}
                     <button
                       onClick={() => setShowWizard(true)}
                       className="w-full h-16 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-bold text-lg flex items-center justify-center gap-3 hover:from-emerald-700 hover:to-teal-700 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02]"

@@ -7912,13 +7912,13 @@ self.addEventListener('notificationclick', (event) => {
   // Israeli Subcontractor Agreement 2025 - FREE internal e-signature system (NO paid providers)
   app.use('/api/subcontractors/agreements', apiLimiter, subcontractorAgreementsRoutes);
   
-  // Provider Training - MadPaws style training, quizzes, certificates
+  // Provider Training - Pet Wash™ professional training, quizzes, certificates
   app.use('/api/provider-training', apiLimiter, providerTrainingRoutes);
   
   // Police Check Badge System - Israeli תעודת יושר verification
   app.use('/api/police-check', apiLimiter, policeCheckRoutes);
   
-  // Admin Provider Review Queue - MadPaws style approval workflow
+  // Admin Provider Review Queue - Pet Wash™ approval workflow
   app.use('/api/provider-review', apiLimiter, adminProviderReviewRoutes);
   
   // AI Payout Verification - Gemini 2.5 Flash work verification before payouts

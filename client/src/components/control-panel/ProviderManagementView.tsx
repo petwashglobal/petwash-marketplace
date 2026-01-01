@@ -336,7 +336,7 @@ export default function ProviderManagementView() {
         <TabsContent value="queue" className="space-y-4">
           <Card className="luxury-glass-card">
             <CardHeader>
-              <CardTitle>תור אישורים - MadPaws Style</CardTitle>
+              <CardTitle>תור אישורים - Pet Wash™</CardTitle>
               <CardDescription>
                 7-פריטים לבדיקה לכל ספק: תמונה, תעודות, זהות, כתובת, תעודת יושר, ביטוח, תמחור
               </CardDescription>
@@ -550,7 +550,7 @@ export default function ProviderManagementView() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <GraduationCap className="w-5 h-5" />
-                מערכת הכשרה - MadPaws Style
+                מערכת הכשרה - Pet Wash™
               </CardTitle>
               <CardDescription>
                 מודולים, מבחנים, ותעודות לכל פלטפורמה

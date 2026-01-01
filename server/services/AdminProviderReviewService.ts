@@ -1,5 +1,5 @@
 /**
- * Admin Provider Review Service - MadPaws Style
+ * Admin Provider Review Service - Pet Wash™
  * 
  * Provider approval workflow with checklist verification
  * for Pet Wash™ service providers.

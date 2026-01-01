@@ -133,7 +133,7 @@ export default function BrowseWalkers() {
   return (
     <Layout>
       <div className="min-h-screen bg-white">
-        {/* Hero Section - MadPaws Style with Green Theme */}
+        {/* Hero Section - Pet Wash™ Premium Design */}
         <div className="relative bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 overflow-hidden">
           <div className="absolute inset-0 opacity-30">
             <div className="absolute top-20 left-10 w-64 h-64 bg-emerald-200 rounded-full blur-3xl"></div>

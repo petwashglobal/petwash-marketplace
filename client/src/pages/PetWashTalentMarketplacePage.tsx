@@ -481,7 +481,7 @@ const PetWashTalentMarketplacePage: FC = () => {
               Book trusted PetWash partners
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-600">
-              Inspired by Airbnb and MadPaws, designed for 2026. All profiles
+              Pet Wash™ Luxury Marketplace, designed for 2026. All profiles
               are connected to the same PetWash account and Octopus Global
               Brain. Clear ratings, clear prices, one login.
             </p>

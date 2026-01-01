@@ -1,5 +1,5 @@
 /**
- * Provider Training API Routes - MadPaws Style
+ * Provider Training API Routes - Pet Wash™
  * 
  * Training modules, quizzes, and certificate management
  * Hebrew-dominant with English brand touches

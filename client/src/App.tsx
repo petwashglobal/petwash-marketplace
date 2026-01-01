@@ -210,7 +210,7 @@ const SharedServicesPrograms = lazy(() => import("@/pages/SharedServicesPrograms
 const SharedServicesImpact = lazy(() => import("@/pages/SharedServicesImpact"));
 const GlobalCommunityHub = lazy(() => import("@/pages/GlobalCommunityHub"));
 
-// Pet Wash Platform Hub - Unified Service Discovery (Rover/MadPaws style)
+// Pet Wash Platform Hub - Unified Service Discovery
 const PlatformHub = lazy(() => import("@/pages/PlatformHub"));
 
 // PetWash HQ - Octopus Control Panel (Luxury 2025 Admin)
@@ -573,7 +573,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* TALENT MARKETPLACE - 7-Platform MadPaws-style Directory */}
+        {/* TALENT MARKETPLACE - 7-Platform Pet Wash™ Directory */}
         <Route path="/talent">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -582,7 +582,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PLATFORM HUB - Unified Service Discovery (Rover/MadPaws style) */}
+        {/* PLATFORM HUB - Unified Service Discovery */}
         <Route path="/services">
           {() => (
             <Suspense fallback={<PageLoader />}>

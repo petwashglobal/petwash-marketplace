@@ -584,7 +584,7 @@ const generatePlatformCopyEmail = () => {
                       <tr>
                         <td style="padding: 12px 0;">
                           <span style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 400; color: #aaaaaa; letter-spacing: 2px; text-transform: uppercase;">Inspiration</span>
-                          <span style="float: right; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; color: #1a1a1a;">MadPaws · Rover · TrustedHousesitters</span>
+                          <span style="float: right; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; color: #1a1a1a;">Pet Wash™ Premium Design</span>
                         </td>
                       </tr>
                     </table>
