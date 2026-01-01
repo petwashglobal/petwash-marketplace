@@ -459,10 +459,10 @@ export default function WalkerDashboard() {
                     </p>
                     <div className="flex items-center gap-2">
                       <p className="luxury-heading-lg luxury-text-gradient">{earnings.rating.toFixed(1)}</p>
-                      <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                      <Star className="w-5 h-5 text-black fill-black" />
                     </div>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center luxury-shadow-md">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center luxury-shadow-md">
                     <Award className="w-6 h-6 text-white" />
                   </div>
                 </div>
@@ -915,7 +915,7 @@ export default function WalkerDashboard() {
                   <div className="p-8 text-center">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <span className="luxury-heading-xl luxury-text-gradient">{earnings?.rating.toFixed(2)}</span>
-                      <Star className="w-12 h-12 text-yellow-500 fill-yellow-500" />
+                      <Star className="w-12 h-12 text-black fill-black" />
                     </div>
                     <p className="luxury-text-body">
                       {isHebrew ? 'על בסיס' : 'Based on'} {reviews.length} {isHebrew ? 'ביקורות' : 'reviews'}
@@ -950,7 +950,7 @@ export default function WalkerDashboard() {
                               key={i}
                               className={`w-5 h-5 ${
                                 i < review.rating
-                                  ? 'text-yellow-500 fill-yellow-500'
+                                  ? 'text-black fill-black'
                                   : 'text-gray-300 dark:text-gray-600'
                               }`}
                             />

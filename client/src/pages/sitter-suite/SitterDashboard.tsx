@@ -107,10 +107,10 @@ export default function SitterDashboard() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 luxury-animate-slide-up luxury-delay-1">
             <div>
               <h1 className="luxury-heading-xl mb-2" style={{ 
-                background: 'linear-gradient(135deg, #FFD700, #FFA500, #FFD700)',
+                background: 'linear-gradient(135deg, #FFFFFF, #E0E0E0, #FFFFFF)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 30px rgba(255,215,0,0.5)'
+                textShadow: '0 0 30px rgba(255,255,255,0.5)'
               }}>
                 💰 Sitter Hub
               </h1>
@@ -120,7 +120,7 @@ export default function SitterDashboard() {
               <div className="text-right">
                 <p className="text-sm text-purple-100">Your Rating</p>
                 <div className="flex items-center gap-2">
-                  <Star className="w-6 h-6 fill-yellow-400 text-yellow-400" />
+                  <Star className="w-6 h-6 fill-white text-white" />
                   <span className="text-3xl font-bold">{stats?.rating.toFixed(1) || '5.0'}</span>
                   <span className="text-sm text-purple-100">({stats?.totalReviews || 0} reviews)</span>
                 </div>
@@ -162,12 +162,12 @@ export default function SitterDashboard() {
 
             <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-4">
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-full luxury-badge-gold">
-                  <Clock className="w-5 h-5 text-yellow-300" />
+                <div className="p-2 rounded-full" style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(200, 200, 200, 0.2))' }}>
+                  <Clock className="w-5 h-5 text-white" />
                 </div>
                 <p className="text-sm text-purple-100">Pending</p>
               </div>
-              <p className="text-2xl font-bold text-yellow-300">₪{earnings?.pending.toFixed(0) || '0'}</p>
+              <p className="text-2xl font-bold text-white">₪{earnings?.pending.toFixed(0) || '0'}</p>
             </div>
 
             <div className="luxury-glass-panel p-4 luxury-hover-lift luxury-delay-5">
