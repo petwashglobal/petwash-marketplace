@@ -59,333 +59,8 @@ const SPECIALTIES = [
   'Jogging/Running',
 ];
 
-// Mock walker data (fallback if API returns no data)
-const MOCK_WALKERS: WalkerProfile[] = [
-  {
-    id: '1',
-    fullName: 'David Cohen',
-    city: 'Tel Aviv',
-    bio: 'Professional dog walker with 8 years of experience. Specialized in training reactive dogs and large breeds. Certified in pet first aid and CPR.',
-    experienceYears: 8,
-    hourlyRateIls: 85,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.95,
-    totalReviews: 253,
-    specialties: ['Reactive Dogs', 'Multiple Dogs', 'Jogging/Running', 'Off-Leash'],
-    certifications: ['Pet First Aid', 'Dog Behavior Specialist'],
-    instantBook: true,
-    verified: true,
-    responseTime: '8 min',
-    completedWalks: 847,
-    dogSizes: ['Small (0-10kg)', 'Medium (10-25kg)', 'Large (25-45kg)', 'Giant (45kg+)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Tuesday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Wednesday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Thursday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Friday', startTime: '07:00', endTime: '15:00' },
-      { day: 'Sunday', startTime: '08:00', endTime: '18:00' },
-    ],
-  },
-  {
-    id: '2',
-    fullName: 'Maya Levi',
-    city: 'Jerusalem',
-    bio: 'Passionate dog lover specializing in senior dogs and puppies. Former veterinary assistant with deep understanding of dog health and behavior.',
-    experienceYears: 5,
-    hourlyRateIls: 75,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.98,
-    totalReviews: 189,
-    specialties: ['Senior Dogs', 'Puppy Training'],
-    certifications: ['Pet First Aid', 'Veterinary Assistant'],
-    instantBook: true,
-    verified: true,
-    responseTime: '12 min',
-    completedWalks: 523,
-    dogSizes: ['Small (0-10kg)', 'Medium (10-25kg)', 'Large (25-45kg)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '09:00', endTime: '18:00' },
-      { day: 'Tuesday', startTime: '09:00', endTime: '18:00' },
-      { day: 'Wednesday', startTime: '09:00', endTime: '18:00' },
-      { day: 'Thursday', startTime: '09:00', endTime: '18:00' },
-      { day: 'Sunday', startTime: '10:00', endTime: '16:00' },
-    ],
-  },
-  {
-    id: '3',
-    fullName: 'Yoni Peretz',
-    city: 'Haifa',
-    bio: 'High-energy walker perfect for active breeds! Experienced with high-energy breeds like Huskies and German Shepherds. GPS tracking guaranteed.',
-    experienceYears: 6,
-    hourlyRateIls: 90,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.92,
-    totalReviews: 201,
-    specialties: ['Jogging/Running', 'Off-Leash', 'Multiple Dogs'],
-    certifications: ['Pet First Aid', 'Canine Fitness Trainer'],
-    instantBook: true,
-    verified: true,
-    responseTime: '10 min',
-    completedWalks: 612,
-    dogSizes: ['Medium (10-25kg)', 'Large (25-45kg)', 'Giant (45kg+)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '06:00', endTime: '20:00' },
-      { day: 'Tuesday', startTime: '06:00', endTime: '20:00' },
-      { day: 'Wednesday', startTime: '06:00', endTime: '20:00' },
-      { day: 'Thursday', startTime: '06:00', endTime: '20:00' },
-      { day: 'Friday', startTime: '06:00', endTime: '20:00' },
-      { day: 'Saturday', startTime: '08:00', endTime: '16:00' },
-      { day: 'Sunday', startTime: '08:00', endTime: '16:00' },
-    ],
-  },
-  {
-    id: '4',
-    fullName: 'Noa Mizrahi',
-    city: 'Tel Aviv',
-    bio: 'Gentle walker specializing in anxious and fearful dogs. Trained in dog psychology and behavior modification. Perfect for reactive dogs.',
-    experienceYears: 7,
-    hourlyRateIls: 95,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.97,
-    totalReviews: 245,
-    specialties: ['Reactive Dogs', 'Puppy Training', 'Senior Dogs'],
-    certifications: ['Pet First Aid', 'Dog Psychology Specialist'],
-    instantBook: true,
-    verified: true,
-    responseTime: '7 min',
-    completedWalks: 734,
-    dogSizes: ['Small (0-10kg)', 'Medium (10-25kg)', 'Large (25-45kg)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '10:00', endTime: '17:00' },
-      { day: 'Tuesday', startTime: '10:00', endTime: '17:00' },
-      { day: 'Wednesday', startTime: '10:00', endTime: '17:00' },
-      { day: 'Thursday', startTime: '10:00', endTime: '17:00' },
-      { day: 'Friday', startTime: '10:00', endTime: '15:00' },
-    ],
-  },
-  {
-    id: '5',
-    fullName: 'Eitan Kaplan',
-    city: 'Beersheba',
-    bio: 'Professional dog walker with military K9 experience. Specialized in obedience training and working with protection breeds.',
-    experienceYears: 10,
-    hourlyRateIls: 100,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.91,
-    totalReviews: 287,
-    specialties: ['Multiple Dogs', 'Off-Leash', 'Reactive Dogs'],
-    certifications: ['Pet First Aid', 'K9 Handler', 'Professional Dog Trainer'],
-    instantBook: true,
-    verified: true,
-    responseTime: '9 min',
-    completedWalks: 956,
-    dogSizes: ['Medium (10-25kg)', 'Large (25-45kg)', 'Giant (45kg+)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '05:30', endTime: '21:00' },
-      { day: 'Tuesday', startTime: '05:30', endTime: '21:00' },
-      { day: 'Wednesday', startTime: '05:30', endTime: '21:00' },
-      { day: 'Thursday', startTime: '05:30', endTime: '21:00' },
-      { day: 'Friday', startTime: '05:30', endTime: '21:00' },
-      { day: 'Saturday', startTime: '07:00', endTime: '18:00' },
-      { day: 'Sunday', startTime: '07:00', endTime: '18:00' },
-    ],
-  },
-  {
-    id: '6',
-    fullName: 'Shira Goldstein',
-    city: 'Tel Aviv',
-    bio: 'Dedicated walker with animal shelter background. Experience with all breeds and temperaments. Available for mid-day walks and puppy breaks.',
-    experienceYears: 4,
-    hourlyRateIls: 70,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.89,
-    totalReviews: 142,
-    specialties: ['Puppy Training', 'Senior Dogs', 'Multiple Dogs'],
-    certifications: ['Pet First Aid'],
-    instantBook: false,
-    verified: true,
-    responseTime: '15 min',
-    completedWalks: 398,
-    dogSizes: ['Small (0-10kg)', 'Medium (10-25kg)', 'Large (25-45kg)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '11:00', endTime: '16:00' },
-      { day: 'Tuesday', startTime: '11:00', endTime: '16:00' },
-      { day: 'Wednesday', startTime: '11:00', endTime: '16:00' },
-      { day: 'Thursday', startTime: '11:00', endTime: '16:00' },
-      { day: 'Sunday', startTime: '12:00', endTime: '18:00' },
-    ],
-  },
-  {
-    id: '7',
-    fullName: 'Amit Shapira',
-    city: 'Herzliya',
-    bio: 'Professional walker and adventure guide! Organize group dog walks and beach outings. Your dog will make new friends!',
-    experienceYears: 5,
-    hourlyRateIls: 80,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.93,
-    totalReviews: 198,
-    specialties: ['Multiple Dogs', 'Off-Leash', 'Jogging/Running'],
-    certifications: ['Pet First Aid'],
-    instantBook: true,
-    verified: true,
-    responseTime: '11 min',
-    completedWalks: 567,
-    dogSizes: ['Small (0-10kg)', 'Medium (10-25kg)', 'Large (25-45kg)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '08:00', endTime: '18:00' },
-      { day: 'Tuesday', startTime: '08:00', endTime: '18:00' },
-      { day: 'Wednesday', startTime: '08:00', endTime: '18:00' },
-      { day: 'Thursday', startTime: '08:00', endTime: '18:00' },
-      { day: 'Friday', startTime: '08:00', endTime: '14:00' },
-      { day: 'Saturday', startTime: '09:00', endTime: '17:00' },
-      { day: 'Sunday', startTime: '09:00', endTime: '17:00' },
-    ],
-  },
-  {
-    id: '8',
-    fullName: 'Tali Ben-David',
-    city: 'Ramat Gan',
-    bio: 'Walker specializing in small breeds and toy dogs. Gentle handling with lots of patience. Medication administration certified.',
-    experienceYears: 6,
-    hourlyRateIls: 75,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.96,
-    totalReviews: 223,
-    specialties: ['Senior Dogs', 'Puppy Training', 'Reactive Dogs'],
-    certifications: ['Pet First Aid', 'Pet Medication Administration'],
-    instantBook: true,
-    verified: true,
-    responseTime: '8 min',
-    completedWalks: 689,
-    dogSizes: ['Small (0-10kg)', 'Medium (10-25kg)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Tuesday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Wednesday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Thursday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Friday', startTime: '07:00', endTime: '14:00' },
-      { day: 'Sunday', startTime: '09:00', endTime: '17:00' },
-    ],
-  },
-  {
-    id: '9',
-    fullName: 'Ron Avraham',
-    city: 'Tel Aviv',
-    bio: 'Tech-savvy walker with drone monitoring! Premium walks with aerial footage and real-time GPS tracking. Complete visibility guaranteed.',
-    experienceYears: 4,
-    hourlyRateIls: 110,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.94,
-    totalReviews: 167,
-    specialties: ['Multiple Dogs', 'Off-Leash', 'Jogging/Running'],
-    certifications: ['Pet First Aid', 'Drone Pilot'],
-    instantBook: true,
-    verified: true,
-    responseTime: '6 min',
-    completedWalks: 445,
-    dogSizes: ['Small (0-10kg)', 'Medium (10-25kg)', 'Large (25-45kg)', 'Giant (45kg+)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '10:00', endTime: '20:00' },
-      { day: 'Tuesday', startTime: '10:00', endTime: '20:00' },
-      { day: 'Wednesday', startTime: '10:00', endTime: '20:00' },
-      { day: 'Thursday', startTime: '10:00', endTime: '20:00' },
-      { day: 'Friday', startTime: '10:00', endTime: '16:00' },
-      { day: 'Saturday', startTime: '12:00', endTime: '18:00' },
-    ],
-  },
-  {
-    id: '10',
-    fullName: 'Lior Friedman',
-    city: 'Netanya',
-    bio: 'Walker and trainer specializing in behavior modification. Former military dog handler with expertise in discipline and structure.',
-    experienceYears: 9,
-    hourlyRateIls: 105,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.95,
-    totalReviews: 271,
-    specialties: ['Reactive Dogs', 'Multiple Dogs', 'Off-Leash'],
-    certifications: ['Pet First Aid', 'Professional Dog Trainer'],
-    instantBook: true,
-    verified: true,
-    responseTime: '7 min',
-    completedWalks: 812,
-    dogSizes: ['Medium (10-25kg)', 'Large (25-45kg)', 'Giant (45kg+)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '06:00', endTime: '18:00' },
-      { day: 'Tuesday', startTime: '06:00', endTime: '18:00' },
-      { day: 'Wednesday', startTime: '06:00', endTime: '18:00' },
-      { day: 'Thursday', startTime: '06:00', endTime: '18:00' },
-      { day: 'Friday', startTime: '06:00', endTime: '18:00' },
-      { day: 'Sunday', startTime: '08:00', endTime: '16:00' },
-    ],
-  },
-  {
-    id: '11',
-    fullName: 'Dana Katz',
-    city: 'Petah Tikva',
-    bio: 'Walker with veterinary technician background. Handle dogs with special medical needs and administer medications during walks.',
-    experienceYears: 7,
-    hourlyRateIls: 90,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.97,
-    totalReviews: 211,
-    specialties: ['Senior Dogs', 'Puppy Training', 'Reactive Dogs'],
-    certifications: ['Pet First Aid', 'Veterinary Technician'],
-    instantBook: true,
-    verified: true,
-    responseTime: '10 min',
-    completedWalks: 623,
-    dogSizes: ['Small (0-10kg)', 'Medium (10-25kg)', 'Large (25-45kg)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '09:00', endTime: '17:00' },
-      { day: 'Tuesday', startTime: '09:00', endTime: '17:00' },
-      { day: 'Wednesday', startTime: '13:00', endTime: '19:00' },
-      { day: 'Thursday', startTime: '09:00', endTime: '17:00' },
-      { day: 'Friday', startTime: '09:00', endTime: '14:00' },
-      { day: 'Sunday', startTime: '10:00', endTime: '16:00' },
-    ],
-  },
-  {
-    id: '12',
-    fullName: 'Ariel Rosenberg',
-    city: 'Haifa',
-    bio: 'Adventure-loving walker specializing in hiking and trail walks! Take dogs on exciting outdoor adventures in nature reserves and forests.',
-    experienceYears: 6,
-    hourlyRateIls: 95,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.92,
-    totalReviews: 184,
-    specialties: ['Off-Leash', 'Jogging/Running', 'Multiple Dogs'],
-    certifications: ['Pet First Aid', 'Trail Guide'],
-    instantBook: true,
-    verified: true,
-    responseTime: '12 min',
-    completedWalks: 534,
-    dogSizes: ['Medium (10-25kg)', 'Large (25-45kg)', 'Giant (45kg+)'],
-    availabilityCalendar: [
-      { day: 'Monday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Tuesday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Thursday', startTime: '07:00', endTime: '19:00' },
-      { day: 'Friday', startTime: '07:00', endTime: '15:00' },
-      { day: 'Saturday', startTime: '08:00', endTime: '18:00' },
-      { day: 'Sunday', startTime: '08:00', endTime: '18:00' },
-    ],
-  },
-];
+// No mock data - only real walkers from API
+const MOCK_WALKERS: WalkerProfile[] = [];
 
 export default function WalkMyPet() {
   const { user } = useFirebaseAuth();
@@ -454,9 +129,9 @@ export default function WalkMyPet() {
       searchNow: isHebrew ? 'חפש עכשיו' : 'Search Now',
     },
     stats: {
-      walkers: { value: '800+', label: isHebrew ? 'ווקרים מקצועיים' : 'Professional Walkers' },
-      walks: { value: '75,000+', label: isHebrew ? 'הליכות הושלמו' : 'Walks Completed' },
-      rating: { value: '4.9★', label: isHebrew ? 'דירוג ממוצע' : 'Average Rating' },
+      walkers: { value: '', label: isHebrew ? 'ווקרים מקצועיים' : 'Professional Walkers' },
+      walks: { value: '', label: isHebrew ? 'הליכות הושלמו' : 'Walks Completed' },
+      rating: { value: '', label: isHebrew ? 'דירוג ממוצע' : 'Average Rating' },
       gps: { value: '100%', label: isHebrew ? 'מעקב GPS' : 'GPS Tracked' },
     },
     trust: {
@@ -568,43 +243,43 @@ export default function WalkMyPet() {
                   </p>
                 </div>
 
-                {/* Premium Stats Grid - Glassmorphism */}
+                {/* Premium Features Grid - Only showing feature info, no fake stats */}
                 <div className="luxury-grid-2 luxury-gap-md luxury-animate-scale-in luxury-delay-2">
-                  <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
-                        <Users className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="text-3xl font-black text-white">{t.stats.walkers.value}</div>
-                    </div>
-                    <div className="text-sm font-medium text-white/90">{t.stats.walkers.label}</div>
-                  </div>
-                  <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
-                        <Activity className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="text-3xl font-black text-white">{t.stats.walks.value}</div>
-                    </div>
-                    <div className="text-sm font-medium text-white/90">{t.stats.walks.label}</div>
-                  </div>
-                  <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
-                        <Star className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="text-3xl font-black text-white">{t.stats.rating.value}</div>
-                    </div>
-                    <div className="text-sm font-medium text-white/90">{t.stats.rating.label}</div>
-                  </div>
                   <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
                         <Navigation className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-3xl font-black text-white">{t.stats.gps.value}</div>
+                      <div className="text-xl font-black text-white">{t.stats.gps.value}</div>
                     </div>
                     <div className="text-sm font-medium text-white/90">{t.stats.gps.label}</div>
+                  </div>
+                  <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
+                        <Shield className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="text-xl font-black text-white">₪2M</div>
+                    </div>
+                    <div className="text-sm font-medium text-white/90">{isHebrew ? 'ביטוח מלא' : 'Full Insurance'}</div>
+                  </div>
+                  <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
+                        <CheckCircle className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="text-xl font-black text-white">{isHebrew ? 'מאומת' : 'Verified'}</div>
+                    </div>
+                    <div className="text-sm font-medium text-white/90">{isHebrew ? 'כל הווקרים עברו אימות' : 'All Walkers Verified'}</div>
+                  </div>
+                  <div className="luxury-glass-card luxury-hover-lift p-6 border-2 border-white/30">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-12 h-12 rounded-xl luxury-bg-primary flex items-center justify-center luxury-shadow-md">
+                        <MapPin className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="text-xl font-black text-white">{isHebrew ? 'זמן אמת' : 'Real-Time'}</div>
+                    </div>
+                    <div className="text-sm font-medium text-white/90">{isHebrew ? 'מעקב מיקום חי' : 'Live Location Tracking'}</div>
                   </div>
                 </div>
 

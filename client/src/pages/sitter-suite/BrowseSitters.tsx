@@ -26,118 +26,7 @@ interface Sitter {
   createdAt: string;
 }
 
-// Demo sitters for display when API returns empty (Pet Wash™ luxury style)
-// Note: rating is string in interface to match backend JSON response
-const DEMO_SITTERS: Sitter[] = [
-  {
-    id: 1,
-    userId: "demo-1",
-    firstName: "שרה",
-    lastName: "כהן",
-    email: "sarah@demo.com",
-    phone: "+972501234567",
-    city: "תל אביב",
-    bio: "שמרטפית מקצועית עם אהבה אינסופית לחיות. מטפלת בכלבים, חתולים ובעלי חיים קטנים. בית מרווח עם גינה גדולה.",
-    yearsOfExperience: 8,
-    pricePerDayCents: 15000,
-    profilePictureUrl: "",
-    rating: "4.9",
-    totalBookings: 156,
-    isActive: true,
-    isVerified: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    userId: "demo-2",
-    firstName: "דוד",
-    lastName: "לוי",
-    email: "david@demo.com",
-    phone: "+972502345678",
-    city: "ירושלים",
-    bio: "וטרינר בהכשרה עם ניסיון רב בטיפול בחיות מחמד. זמין 24/7 לשאלות ועדכונים. שולח תמונות יומיות!",
-    yearsOfExperience: 5,
-    pricePerDayCents: 18000,
-    profilePictureUrl: "",
-    rating: "5.0",
-    totalBookings: 89,
-    isActive: true,
-    isVerified: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 3,
-    userId: "demo-3",
-    firstName: "מיכל",
-    lastName: "אברהם",
-    email: "michal@demo.com",
-    phone: "+972503456789",
-    city: "חיפה",
-    bio: "אוהבת חיות מילדות! מתמחה בכלבים גדולים ופעילים. יש לי כלב משלי שאוהב חברה. טיולים ארוכים מובטחים.",
-    yearsOfExperience: 3,
-    pricePerDayCents: 12000,
-    profilePictureUrl: "",
-    rating: "4.8",
-    totalBookings: 67,
-    isActive: true,
-    isVerified: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 4,
-    userId: "demo-4",
-    firstName: "יוסי",
-    lastName: "מזרחי",
-    email: "yossi@demo.com",
-    phone: "+972504567890",
-    city: "רעננה",
-    bio: "בית פרטי גדול עם גינה מגודרת. ניסיון עם כל סוגי הכלבים. אוהב לפנק את האורחים הקטנים שלי!",
-    yearsOfExperience: 6,
-    pricePerDayCents: 16000,
-    profilePictureUrl: "",
-    rating: "4.7",
-    totalBookings: 124,
-    isActive: true,
-    isVerified: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 5,
-    userId: "demo-5",
-    firstName: "נועה",
-    lastName: "גולן",
-    email: "noa@demo.com",
-    phone: "+972505678901",
-    city: "הרצליה",
-    bio: "מאמנת כלבים מוסמכת עם 10 שנות ניסיון. מתמחה בכלבים חרדתיים ובעלי צרכים מיוחדים. סבלנות אינסופית.",
-    yearsOfExperience: 10,
-    pricePerDayCents: 22000,
-    profilePictureUrl: "",
-    rating: "5.0",
-    totalBookings: 203,
-    isActive: true,
-    isVerified: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 6,
-    userId: "demo-6",
-    firstName: "אלון",
-    lastName: "שפירא",
-    email: "alon@demo.com",
-    phone: "+972506789012",
-    city: "רמת גן",
-    bio: "עובד מהבית אז תמיד זמין! דירה גדולה ומרווחת. אוהב לקחת את הכלבים לפארק הירקון.",
-    yearsOfExperience: 4,
-    pricePerDayCents: 14000,
-    profilePictureUrl: "",
-    rating: "4.6",
-    totalBookings: 45,
-    isActive: true,
-    isVerified: false,
-    createdAt: new Date().toISOString(),
-  },
-];
+// No demo data - only real sitters from API
 
 const SERVICE_TYPES = [
   { id: 'boarding', name: 'לינה בבית המארח', nameEn: 'Boarding', icon: Home },
@@ -160,8 +49,8 @@ export default function BrowseSitters() {
     queryKey: ["/api/sitter-suite/sitters", filters],
   });
 
-  // Use demo sitters if API returns empty or no data
-  const sitters = (data && data.length > 0) ? data : DEMO_SITTERS;
+  // Only use real sitters from API - no fake demo data
+  const sitters = data || [];
 
   return (
     <Layout>
@@ -297,6 +186,22 @@ export default function BrowseSitters() {
             <div className="text-center py-16">
               <div className="w-16 h-16 border-4 border-pink-200 border-t-pink-500 rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-gray-600 font-light">מחפשים שמרטפים מדהימים...</p>
+            </div>
+          ) : sitters.length === 0 ? (
+            <div className="text-center py-20 bg-gradient-to-br from-pink-50 to-purple-50 rounded-3xl" data-testid="empty-state">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center">
+                <Heart className="w-12 h-12 text-pink-500" />
+              </div>
+              <h3 className="text-2xl font-serif font-medium text-gray-900 mb-3" style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif Hebrew', serif" }}>
+                בקרוב - שמרטפים מקצועיים
+              </h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                אנחנו מגייסים שמרטפים מאומתים לפלטפורמה. רוצים להיות הראשונים לדעת כשנשיק?
+              </p>
+              <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full font-medium hover:shadow-lg transition-all" data-testid="button-notify-me">
+                <Sparkles className="w-5 h-5" />
+                עדכנו אותי
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

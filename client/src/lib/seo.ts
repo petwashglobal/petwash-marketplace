@@ -233,13 +233,6 @@ export function generateLocalBusinessSchema() {
       'https://www.instagram.com/petwashltd',
       'https://www.tiktok.com/@petwashltd',
     ],
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.9',
-      reviewCount: '156',
-      bestRating: '5',
-      worstRating: '1',
-    },
   };
 }
 

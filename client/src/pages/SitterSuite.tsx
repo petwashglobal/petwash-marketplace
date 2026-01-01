@@ -45,201 +45,8 @@ const SERVICES_OPTIONS = [
   'Pet Medication',
 ];
 
-// Mock sitter data (fallback if API returns no data)
-const MOCK_SITTERS: SitterProfile[] = [
-  {
-    id: '1',
-    fullName: 'Maya Goldstein',
-    city: 'Tel Aviv',
-    bio: 'Experienced pet sitter with 8 years of caring for dogs and cats. Certified in pet first aid and CPR. I treat every pet like family and provide daily photo updates. My home has a large backyard perfect for energetic dogs!',
-    experienceYears: 8,
-    hourlyRateIls: 85,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.95,
-    totalReviews: 124,
-    services: ['Dog Sitting', 'Cat Sitting', 'Overnight Care', 'Drop-in Visits', 'Pet Medication'],
-    instantBook: true,
-    verified: true,
-    responseTime: '< 30min',
-  },
-  {
-    id: '2',
-    fullName: 'Yonatan Mizrahi',
-    city: 'Jerusalem',
-    bio: 'Veterinary technician with 10 years of professional experience. Specialized in senior pet care and administering medications. Patient, gentle, and knowledgeable about pet health and behavior.',
-    experienceYears: 10,
-    hourlyRateIls: 110,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.98,
-    totalReviews: 156,
-    services: ['Dog Sitting', 'Cat Sitting', 'Overnight Care', 'Pet Medication', 'House Sitting'],
-    instantBook: true,
-    verified: true,
-    responseTime: '< 1hr',
-  },
-  {
-    id: '3',
-    fullName: 'Shira Cohen',
-    city: 'Haifa',
-    bio: 'Dog lover and certified dog trainer. I specialize in caring for puppies and dogs with behavioral needs. Active lifestyle - daily walks, playtime, and positive reinforcement training included!',
-    experienceYears: 6,
-    hourlyRateIls: 95,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.92,
-    totalReviews: 98,
-    services: ['Dog Sitting', 'Drop-in Visits', 'Overnight Care'],
-    instantBook: true,
-    verified: true,
-    responseTime: '< 45min',
-  },
-  {
-    id: '4',
-    fullName: 'David Katz',
-    city: 'Tel Aviv',
-    bio: 'Cat specialist with expertise in multi-cat households. Experienced with shy, anxious, and special needs cats. I provide a calm, quiet environment and respect each cat\'s unique personality.',
-    experienceYears: 7,
-    hourlyRateIls: 80,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.89,
-    totalReviews: 87,
-    services: ['Cat Sitting', 'Overnight Care', 'Drop-in Visits', 'Pet Medication'],
-    instantBook: false,
-    verified: true,
-    responseTime: '< 2hrs',
-  },
-  {
-    id: '5',
-    fullName: 'Rachel Avraham',
-    city: 'Netanya',
-    bio: 'Professional house sitter and pet caregiver. I stay in your home 24/7 to provide round-the-clock care for your pets and property. Extensive experience with multiple pets and large breeds.',
-    experienceYears: 12,
-    hourlyRateIls: 120,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.96,
-    totalReviews: 142,
-    services: ['House Sitting', 'Dog Sitting', 'Cat Sitting', 'Overnight Care', 'Pet Medication'],
-    instantBook: true,
-    verified: true,
-    responseTime: '< 1hr',
-  },
-  {
-    id: '6',
-    fullName: 'Eitan Levy',
-    city: 'Beer Sheva',
-    bio: 'Active outdoors enthusiast perfect for high-energy dogs! Daily runs, hiking trails, and beach trips available. I work from home so your pet gets constant attention and companionship.',
-    experienceYears: 5,
-    hourlyRateIls: 75,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.88,
-    totalReviews: 76,
-    services: ['Dog Sitting', 'Drop-in Visits', 'Overnight Care'],
-    instantBook: true,
-    verified: true,
-    responseTime: '< 1hr',
-  },
-  {
-    id: '7',
-    fullName: 'Noa Berkowitz',
-    city: 'Ramat Gan',
-    bio: 'Gentle and patient caregiver specializing in elderly pets and those with medical needs. Certified in pet first aid. I understand the special care senior pets require and provide compassionate, attentive service.',
-    experienceYears: 9,
-    hourlyRateIls: 100,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.97,
-    totalReviews: 134,
-    services: ['Dog Sitting', 'Cat Sitting', 'Overnight Care', 'Pet Medication', 'Drop-in Visits'],
-    instantBook: true,
-    verified: true,
-    responseTime: '< 30min',
-  },
-  {
-    id: '8',
-    fullName: 'Asher Rosenberg',
-    city: 'Herzliya',
-    bio: 'Former shelter volunteer with experience caring for 100+ dogs and cats. Comfortable with all temperaments and sizes. My spacious apartment allows separate areas for pets who prefer privacy.',
-    experienceYears: 4,
-    hourlyRateIls: 70,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.85,
-    totalReviews: 62,
-    services: ['Dog Sitting', 'Cat Sitting', 'Drop-in Visits'],
-    instantBook: false,
-    verified: true,
-    responseTime: '< 3hrs',
-  },
-  {
-    id: '9',
-    fullName: 'Tamar Friedman',
-    city: 'Rehovot',
-    bio: 'Experienced with exotic pets and small animals! In addition to dogs and cats, I care for rabbits, birds, hamsters, and reptiles. Knowledgeable about specialized diets and habitats.',
-    experienceYears: 6,
-    hourlyRateIls: 90,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.91,
-    totalReviews: 89,
-    services: ['Cat Sitting', 'House Sitting', 'Drop-in Visits', 'Overnight Care'],
-    instantBook: true,
-    verified: true,
-    responseTime: '< 1hr',
-  },
-  {
-    id: '10',
-    fullName: 'Ori Shapira',
-    city: 'Kfar Saba',
-    bio: 'Pet sitting is my full-time profession. Available for last-minute bookings and flexible scheduling. I provide detailed care reports and photos 3x daily. Your pet\'s happiness is my priority!',
-    experienceYears: 7,
-    hourlyRateIls: 85,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.93,
-    totalReviews: 118,
-    services: ['Dog Sitting', 'Cat Sitting', 'Overnight Care', 'Drop-in Visits'],
-    instantBook: true,
-    verified: true,
-    responseTime: '< 15min',
-  },
-  {
-    id: '11',
-    fullName: 'Liora Golan',
-    city: 'Petah Tikva',
-    bio: 'Certified animal behaviorist with expertise in anxiety and separation issues. I use positive reinforcement techniques and create customized care plans for each pet. Specialized in nervous rescues.',
-    experienceYears: 11,
-    hourlyRateIls: 115,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 4.99,
-    totalReviews: 167,
-    services: ['Dog Sitting', 'Cat Sitting', 'Overnight Care', 'House Sitting', 'Pet Medication'],
-    instantBook: true,
-    verified: true,
-    responseTime: '< 30min',
-  },
-  {
-    id: '12',
-    fullName: 'Avi Weinstein',
-    city: 'Rishon LeZion',
-    bio: 'Retired veterinarian now offering professional pet sitting services. 30+ years of animal care experience. Perfect for pets requiring medication, special diets, or post-surgery care.',
-    experienceYears: 30,
-    hourlyRateIls: 140,
-    available: true,
-    profilePhotoUrl: null,
-    rating: 5.0,
-    totalReviews: 203,
-    services: ['Dog Sitting', 'Cat Sitting', 'Overnight Care', 'Pet Medication', 'House Sitting', 'Drop-in Visits'],
-    instantBook: false,
-    verified: true,
-    responseTime: '< 2hrs',
-  },
-];
+// No mock data - only real sitters from API
+const MOCK_SITTERS: SitterProfile[] = [];
 
 export default function SitterSuite() {
   const { user } = useFirebaseAuth();
@@ -360,33 +167,33 @@ export default function SitterSuite() {
                   </p>
                 </div>
 
-                {/* Premium Stats Grid - Glassmorphism */}
+                {/* Premium Features Grid - No fake stats, only factual features */}
                 <div className="grid grid-cols-3 gap-4">
                   <div className="group bg-white/15 backdrop-blur-xl rounded-2xl p-6 border-2 border-white/30 shadow-2xl hover:bg-white/20 hover:scale-105 transition-all duration-300">
                     <div className="flex flex-col items-center text-center">
                       <div className="bg-gradient-to-br from-pink-400 to-pink-600 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform mb-2">
-                        <Users className="w-6 h-6 text-white" />
+                        <Shield className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-3xl font-black text-white drop-shadow-lg">1,200+</div>
-                      <div className="text-xs font-medium text-pink-100 tracking-wide mt-1">{isHebrew ? 'שמרטפים' : 'Sitters'}</div>
+                      <div className="text-xl font-black text-white drop-shadow-lg">{isHebrew ? 'מאומת' : 'Verified'}</div>
+                      <div className="text-xs font-medium text-pink-100 tracking-wide mt-1">{isHebrew ? 'כל השמרטפים' : 'All Sitters'}</div>
                     </div>
                   </div>
                   <div className="group bg-white/15 backdrop-blur-xl rounded-2xl p-6 border-2 border-white/30 shadow-2xl hover:bg-white/20 hover:scale-105 transition-all duration-300">
                     <div className="flex flex-col items-center text-center">
-                      <div className="bg-gradient-to-br from-yellow-400 to-orange-500 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform mb-2">
-                        <Calendar className="w-6 h-6 text-white" />
+                      <div className="bg-gradient-to-br from-emerald-400 to-green-500 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform mb-2">
+                        <CheckCircle2 className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-3xl font-black text-white drop-shadow-lg">50K+</div>
-                      <div className="text-xs font-medium text-pink-100 tracking-wide mt-1">{isHebrew ? 'הזמנות' : 'Bookings'}</div>
+                      <div className="text-xl font-black text-white drop-shadow-lg">{isHebrew ? 'מבוטח' : 'Insured'}</div>
+                      <div className="text-xs font-medium text-pink-100 tracking-wide mt-1">{isHebrew ? 'כיסוי מלא' : 'Full Coverage'}</div>
                     </div>
                   </div>
                   <div className="group bg-white/15 backdrop-blur-xl rounded-2xl p-6 border-2 border-white/30 shadow-2xl hover:bg-white/20 hover:scale-105 transition-all duration-300">
                     <div className="flex flex-col items-center text-center">
-                      <div className="bg-gradient-to-br from-yellow-400 to-amber-500 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform mb-2">
-                        <Star className="w-6 h-6 text-white" />
+                      <div className="bg-gradient-to-br from-blue-400 to-blue-600 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform mb-2">
+                        <Clock className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-3xl font-black text-white drop-shadow-lg">4.9 ⭐</div>
-                      <div className="text-xs font-medium text-pink-100 tracking-wide mt-1">{t.stats.rating}</div>
+                      <div className="text-xl font-black text-white drop-shadow-lg">24/7</div>
+                      <div className="text-xs font-medium text-pink-100 tracking-wide mt-1">{isHebrew ? 'תמיכה' : 'Support'}</div>
                     </div>
                   </div>
                 </div>
@@ -924,14 +731,23 @@ export default function SitterSuite() {
                 ))}
               </div>
             ) : (
-              <div className="luxury-glass-card luxury-shadow-md text-center py-16 px-6">
-                <Search className="w-20 h-20 mx-auto text-gray-300 mb-4" />
-                <h3 className="luxury-heading-md mb-2">
-                  {isHebrew ? 'לא נמצאו שמרטפים' : 'No sitters found'}
+              <div className="luxury-glass-card luxury-shadow-md text-center py-20 px-6" data-testid="empty-state">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center">
+                  <Heart className="w-12 h-12 text-white" />
+                </div>
+                <h3 className="luxury-heading-md mb-3">
+                  {isHebrew ? 'בקרוב - שמרטפים מקצועיים' : 'Coming Soon - Professional Sitters'}
                 </h3>
-                <p className="luxury-text-body">
-                  {isHebrew ? 'נסה לשנות את החיפוש או הסינונים' : 'Try adjusting your search or filters'}
+                <p className="luxury-text-body mb-6 max-w-md mx-auto">
+                  {isHebrew 
+                    ? 'אנחנו מגייסים שמרטפים מאומתים לפלטפורמה. רוצים להיות הראשונים לדעת כשנשיק?' 
+                    : 'We are recruiting verified sitters to our platform. Want to be the first to know when we launch?'}
                 </p>
+                <Link href="/provider-onboarding?type=sitter">
+                  <button className="luxury-btn-primary" data-testid="button-become-sitter">
+                    {isHebrew ? 'הפוך לשמרטף' : 'Become a Sitter'}
+                  </button>
+                </Link>
               </div>
             )}
           </div>
