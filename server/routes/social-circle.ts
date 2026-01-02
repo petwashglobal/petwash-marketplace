@@ -31,7 +31,7 @@ router.get("/social/feed", async (req: Request, res: Response) => {
   }
 });
 
-// Create new post (with AI moderation)
+// Create new post (with SYNCHRONOUS AI moderation - check BEFORE publishing)
 router.post("/social/posts", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
@@ -45,44 +45,59 @@ router.post("/social/posts", async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: "Content is required" });
     }
 
-    // Insert post with pending moderation
+    // SYNCHRONOUS AI moderation - CHECK BEFORE PUBLISHING
+    // This ensures NO inappropriate content ever reaches the database as "approved"
+    const moderationResult = await contentModerationService.moderateContent(
+      content.trim(), 
+      'post', 
+      user.id, 
+      0 // Temporary ID since post doesn't exist yet
+    );
+
+    logger.info('[SocialCircle] Pre-publish moderation complete', { 
+      userId: user.id,
+      approved: moderationResult.isApproved,
+      score: moderationResult.safetyScore,
+      flags: moderationResult.flags
+    });
+
+    // REJECT immediately if content is not approved
+    if (!moderationResult.isApproved) {
+      return res.status(400).json({
+        success: false,
+        error: 'התוכן שלך לא עבר את בדיקת הבטיחות / Your content did not pass safety review',
+        moderationDetails: {
+          reason: moderationResult.explanation,
+          flags: moderationResult.flags,
+          safetyScore: moderationResult.safetyScore
+        }
+      });
+    }
+
+    // Only insert APPROVED posts into the database
     const [newPost] = await db.insert(socialPosts).values({
       userId: user.id,
       userName: user.displayName || user.email?.split('@')[0] || 'Anonymous',
       userAvatar: user.profileImageUrl || null,
       content: content.trim(),
       imageUrls: imageUrls || [],
-      moderationStatus: 'pending',
+      moderationStatus: 'approved', // Already verified by AI
+      moderationScore: moderationResult.safetyScore,
+      moderationFlags: moderationResult.flags,
+      moderatedAt: new Date(),
+      moderatedBy: 'Gemini-AI',
     } as any).returning();
 
-    // AI moderation (async - don't block response)
-    contentModerationService.moderateContent(content, 'post', user.id, newPost.id)
-      .then(async (result) => {
-        // Update post with moderation result
-        await db.update(socialPosts)
-          .set({
-            moderationStatus: result.isApproved ? 'approved' : 'rejected',
-            moderationFlags: result.flags,
-            moderationScore: result.safetyScore,
-            moderatedAt: new Date(),
-            moderatedBy: 'AI',
-          })
-          .where(eq(socialPosts.id, newPost.id));
-
-        logger.info('[SocialCircle] Post moderated', { 
-          postId: newPost.id, 
-          approved: result.isApproved,
-          score: result.safetyScore
-        });
-      })
-      .catch(err => {
-        logger.error('[SocialCircle] Moderation failed', err);
-      });
+    logger.info('[SocialCircle] Post approved and published', { 
+      postId: newPost.id, 
+      userId: user.id,
+      score: moderationResult.safetyScore
+    });
 
     res.json({
       success: true,
       data: newPost,
-      message: '⏳ הפוסט עובר בדיקת אבטחה / Post is being reviewed for safety'
+      message: '✅ הפוסט שלך פורסם בהצלחה! / Your post has been published!'
     });
   } catch (error: any) {
     logger.error('[SocialCircle] Failed to create post', error);
@@ -163,7 +178,7 @@ router.get("/social/posts/:id/comments", async (req: Request, res: Response) => 
   }
 });
 
-// Add comment (with AI moderation)
+// Add comment (with SYNCHRONOUS AI moderation - check BEFORE publishing)
 router.post("/social/posts/:id/comments", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
@@ -178,44 +193,56 @@ router.post("/social/posts/:id/comments", async (req: Request, res: Response) =>
       return res.status(400).json({ success: false, error: "Comment is required" });
     }
 
-    // Insert comment with pending moderation
+    // SYNCHRONOUS AI moderation - CHECK BEFORE PUBLISHING
+    const moderationResult = await contentModerationService.moderateContent(
+      content.trim(), 
+      'comment', 
+      user.id, 
+      0 // Temporary ID
+    );
+
+    logger.info('[SocialCircle] Comment pre-publish moderation', { 
+      postId,
+      userId: user.id,
+      approved: moderationResult.isApproved,
+      score: moderationResult.safetyScore
+    });
+
+    // REJECT immediately if content is not approved
+    if (!moderationResult.isApproved) {
+      return res.status(400).json({
+        success: false,
+        error: 'התגובה שלך לא עברה בדיקת בטיחות / Your comment did not pass safety review',
+        moderationDetails: {
+          reason: moderationResult.explanation,
+          flags: moderationResult.flags
+        }
+      });
+    }
+
+    // Only insert APPROVED comments
     const [newComment] = await db.insert(socialComments).values({
       postId,
       userId: user.id,
       userName: user.displayName || user.email?.split('@')[0] || 'Anonymous',
       userAvatar: user.profileImageUrl || null,
       content: content.trim(),
-      moderationStatus: 'pending',
+      moderationStatus: 'approved',
+      moderationScore: moderationResult.safetyScore,
+      moderationFlags: moderationResult.flags,
+      moderatedAt: new Date(),
+      moderatedBy: 'Gemini-AI',
     } as any).returning();
 
-    // AI moderation (async)
-    contentModerationService.moderateContent(content, 'comment', user.id, newComment.id)
-      .then(async (result) => {
-        await db.update(socialComments)
-          .set({
-            moderationStatus: result.isApproved ? 'approved' : 'rejected',
-            moderationFlags: result.flags,
-            moderationScore: result.safetyScore,
-            moderatedAt: new Date(),
-            moderatedBy: 'AI',
-          })
-          .where(eq(socialComments.id, newComment.id));
-
-        if (result.isApproved) {
-          // Increment comments count
-          await db.update(socialPosts)
-            .set({ commentsCount: sql`${socialPosts.commentsCount} + 1` })
-            .where(eq(socialPosts.id, postId));
-        }
-      })
-      .catch(err => {
-        logger.error('[SocialCircle] Comment moderation failed', err);
-      });
+    // Increment comments count for approved comments
+    await db.update(socialPosts)
+      .set({ commentsCount: sql`${socialPosts.commentsCount} + 1` })
+      .where(eq(socialPosts.id, postId));
 
     res.json({
       success: true,
       data: newComment,
-      message: '⏳ התגובה בבדיקה / Comment under review'
+      message: '✅ התגובה פורסמה! / Comment published!'
     });
   } catch (error: any) {
     logger.error('[SocialCircle] Failed to add comment', error);

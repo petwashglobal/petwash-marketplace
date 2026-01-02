@@ -1,0 +1,186 @@
+
+
+לבנות Flow מלא שמתחיל בלקוח (חיפוש והזמנה) ומסתיים בספק מאושר (בדיקות, חוזים, זמינות, תשלומים, ציות).
+
+⸻
+
+2) 2 אפליקציות ברורות
+
+A) Web Public (ללקוחות)
+	•	דף בית
+	•	חיפוש + פילטרים
+	•	פרופיל ספק (כרטיס + ביקורות + זמינות + מחיר)
+	•	הזמנה + תשלום
+	•	הודעות
+	•	מעקב הזמנה
+	•	ביקורת בסיום
+
+B) Contractor Portal (לספקים)
+	•	הרשמה
+	•	אונבורדינג KYC
+	•	העלאת מסמכים
+	•	זמינות ולוח שנה
+	•	ניהול הזמנות
+	•	צ’אט
+	•	תשלומים וחשבוניות
+	•	התראות והפרות
+
+C) Admin Control Panel
+	•	אימות ספקים
+	•	ניהול קטלוג שירותים
+	•	ניהול מחירים, עמלות, קופונים
+	•	ניטור חריגות, תלונות, ביטולים
+	•	ניהול משתמשים והרשאות
+	•	לוגים ואודיט
+
+⸻
+
+3) מודל נתונים חובה (Firestore או Postgres)
+
+הטבלאות/אוספים הבאים חייבים להיות קיימים:
+
+Users
+	•	id, role: customer | contractor | admin
+	•	email, phone, status, createdAt
+	•	profile (name, photo, address)
+	•	flags (banned, kycLevel, riskScore)
+
+Contractors
+	•	userId
+	•	servicesOffered [serviceId]
+	•	coverageAreas (עיר, רדיוס, אזורים)
+	•	pricing (base, perHour, addons)
+	•	availabilityCalendar
+	•	verificationStatus: draft | pending | approved | rejected | suspended
+	•	verificationChecklist (bool per item)
+	•	ratingSummary (avg, count)
+	•	capacity (maxJobsPerDay)
+
+ContractorApplications
+	•	contractorId
+	•	stepsProgress
+	•	submittedAt
+	•	reviewedBy, reviewedAt
+	•	decision + reason
+
+Documents
+	•	contractorId
+	•	type: ID, policeCheck, insurance, certificate, bankProof
+	•	storageUrl
+	•	verified: true/false
+	•	expiresAt
+
+Listings (אפשר לשלב בתוך Contractors)
+	•	searchable fields: title, tags, serviceTypes, priceRange, geo
+
+Bookings
+	•	id
+	•	customerId, contractorId
+	•	serviceId
+	•	startAt, endAt
+	•	location (geo)
+	•	status: draft | requested | accepted | declined | paid | inProgress | completed | cancelled | dispute
+	•	priceBreakdown (fee, addons, tax, platformFee)
+	•	cancellationPolicySnapshot
+	•	timeline events
+
+Messages
+	•	threadId
+	•	bookingId
+	•	senderId
+	•	text, attachments
+	•	readAt
+
+Reviews
+	•	bookingId
+	•	stars
+	•	text
+	•	createdAt
+	•	moderationStatus
+
+Payments / Payouts
+	•	bookingId
+	•	paymentStatus
+	•	payoutStatus
+	•	payoutMethod
+	•	invoiceId
+
+AuditLogs
+	•	actorId
+	•	action
+	•	entity
+	•	before/after
+	•	ip, userAgent
+	•	createdAt
+
+⸻
+
+4) Search + Filters (כמו madpaws)
+
+חיפוש חובה לפי:
+	•	מיקום (Geo radius)
+	•	סוג שירות
+	•	תאריך ושעה פנוי
+	•	מחיר מינימום/מקסימום
+	•	דירוג מינימום
+	•	“Verified only”
+	•	ניסיון / תגי מומחיות
+	•	זמינות מיידית
+	•	גודל חיה / דרישות מיוחדות
+	•	שפה
+	•	ביטול גמיש
+
+לוגיקה קריטית
+	•	קודם מסננים לפי מיקום + זמינות, רק אחר כך דירוג/מחיר
+	•	לא להציג ספק שלא “approved”
+	•	להציג “כרטיס תוצאה” עם: מחיר החל מ-, דירוג, מרחק, תג Verified, מספר ביקורות, כפתור Book
+
+⸻
+
+5) Flow הזמנה end to end
+	1.	לקוח בוחר שירות ותאריך
+	2.	מערכת מחשבת זמינות ספקים (calendar + capacity)
+	3.	לקוח שולח “Request booking”
+	4.	ספק מקבל התראה, חייב לאשר בתוך X דקות/שעות
+	5.	אם אושר – הלקוח משלם
+	6.	צ’אט נפתח אוטומטית ל־booking
+	7.	Start service -> In progress
+	8.	Complete -> בקשת ביקורת + שחרור payout
+	9.	Dispute -> נועל payout עד החלטת אדמין
+
+⸻
+
+6) Onboarding קשוח לספקים (רק מי שעובר נכנס)
+
+שלבים חובה:
+	1.	פרטים אישיים + כתובת + טלפון מאומת
+	2.	תעודה מזהה (צילום קדמי/אחורי)
+	3.	סלפי/וידאו קצר להתאמה
+	4.	בדיקת עבר פלילי (מסמך)
+	5.	ביטוח צד ג’ (אם נדרש)
+	6.	פרטי בנק / הוכחת בעלות
+	7.	חתימה על חוזה דיגיטלי + מדיניות ביטולים
+	8.	מבחן קצר (שאלון נהלים) – ציון מינימום
+	9.	יצירת פרופיל: תמונות, תיאור, שירותים, מחירים
+	10.	קביעת זמינות מינימלית
+	11.	סטטוס: pending review
+	12.	אדמין בודק ומאשר או דוחה עם סיבה
+
+חוקים
+	•	בלי מסמך תקין -> אי אפשר להופיע בחיפוש
+	•	אם מסמך פג תוקף -> auto suspended
+	•	אם הרבה ביטולים/תלונות -> riskScore עולה -> הגבלות
+
+⸻
+
+7) Admin “Rule Engine”
+	•	auto flags:
+	•	ביטולים מעל X בחודש
+	•	תלונות safety
+	•	הודעות חשודות (ספאם)
+	•	שינויי בנק תכופים
+	•	actions:
+	•	suspend contractor
+	•	require re-verification
+	•	block payouts
+	•	force training
