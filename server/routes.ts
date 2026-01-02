@@ -3863,6 +3863,83 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // Multi-Service Gift Card Creation (Express Checkout for all platforms)
+  const multiServiceGiftSchema = z.object({
+    value: z.number().min(1).max(10000),
+    currency: z.string().default('ILS'),
+    recipientName: z.string().min(1).max(100),
+    recipientEmail: z.string().email(),
+    senderName: z.string().min(1).max(100),
+    senderEmail: z.string().email(),
+    message: z.string().max(500).optional(),
+    eligibleServices: z.array(z.enum(['wash', 'sitter', 'walk', 'trek', 'all'])).min(1).default(['wash', 'sitter', 'walk', 'trek'])
+  });
+
+  app.post('/api/multi-service-gift', async (req, res) => {
+    try {
+      const parseResult = multiServiceGiftSchema.safeParse({
+        ...req.body,
+        value: Number(req.body.value)
+      });
+      
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Validation failed",
+          errors: parseResult.error.flatten().fieldErrors
+        });
+      }
+
+      const { 
+        value, 
+        currency, 
+        recipientName, 
+        recipientEmail, 
+        senderName, 
+        senderEmail, 
+        message,
+        eligibleServices
+      } = parseResult.data;
+
+      const { giftOrchestrationService } = await import('./services/giftOrchestrationService');
+      
+      const result = await giftOrchestrationService.createMultiServiceGiftCard({
+        value,
+        currency,
+        purchaserEmail: senderEmail,
+        recipientEmail,
+        recipientName,
+        senderName,
+        message,
+        eligibleServices,
+        expiresInMonths: 12
+      });
+
+      logger.info('[Multi-Service Gift] Created', { 
+        giftCardId: result.giftCardId, 
+        value, 
+        services: eligibleServices,
+        recipientEmail 
+      });
+
+      res.json({
+        success: true,
+        giftCardId: result.giftCardId,
+        publicCode: result.publicCode,
+        qrCodeData: result.qrCodeData,
+        eligibleServices,
+        message: 'Gift card created successfully'
+      });
+
+    } catch (error) {
+      logger.error('Error creating multi-service gift:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to create gift card" 
+      });
+    }
+  });
+
   // Legacy gift card endpoint (redirects to Nayax)
   app.post('/api/express-gift-purchase', async (req, res) => {
     try {

@@ -260,6 +260,7 @@ export interface IStorage {
     purchaserUid?: string | null;
     expiresAt?: Date | null;
     nayaxTxId?: string | null;
+    eligibleServices?: string[];
   }): Promise<{ voucherId: string; codePlain: string; codeLast4: string }>;
   findVoucherByHash(codeHash: string): Promise<EVoucher | undefined>;
   getEVoucher(id: string): Promise<EVoucher | undefined>;
@@ -1389,6 +1390,7 @@ export class DatabaseStorage implements IStorage {
     purchaserUid?: string | null;
     expiresAt?: Date | null;
     nayaxTxId?: string | null;
+    eligibleServices?: string[];
   }): Promise<{ voucherId: string; codePlain: string; codeLast4: string }> {
     const { generateSecureCode, hashVoucherCode, getLast4 } = await import('./utils/voucherCodes');
     
@@ -1410,7 +1412,8 @@ export class DatabaseStorage implements IStorage {
         recipientEmail: data.recipientEmail,
         purchaserUid: data.purchaserUid,
         expiresAt: data.expiresAt,
-        nayaxTxId: data.nayaxTxId
+        nayaxTxId: data.nayaxTxId,
+        eligibleServices: data.eligibleServices || ['all']
       })
       .returning();
     

@@ -246,6 +246,7 @@ export const eVouchers = pgTable("e_vouchers", {
   purchaserUid: text("purchaser_uid"), // Firebase UID (optional)
   ownerUid: text("owner_uid"), // Bound user after claim; NULL until claimed
   nayaxTxId: text("nayax_tx_id"), // Origin purchase reference
+  eligibleServices: jsonb("eligible_services").default(['all']), // Services this voucher can be used for: wash, sitter, walk, trek, all
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   activatedAt: timestamp("activated_at", { withTimezone: true }),
