@@ -51,6 +51,7 @@ const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
 const BecomeProvider = lazy(() => import("@/pages/BecomeProvider"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
+const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
 const LoyaltyTiers = lazy(() => import("@/pages/LoyaltyTiers"));
@@ -585,6 +586,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <Marketplace />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* MADPAWS-STYLE BOOKING SEARCH - Pet filters, location, dates */}
+        <Route path="/search">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <BookingSearchPage />
             </Suspense>
           )}
         </Route>

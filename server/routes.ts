@@ -8300,6 +8300,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/provider-onboarding', apiLimiter, providerOnboardingRoutes);
   app.use('/api/provider-applications', validateFirebaseToken, apiLimiter, providerApplicationsRoutes);
 
+  // MadPaws-style Booking Search (pet count, types, area, filters)
+  const bookingSearchRoutes = (await import('./routes/booking-search')).default;
+  app.use('/api/booking-search', apiLimiter, bookingSearchRoutes);
+
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
   app.use(apiLimiter, esignRoutes);
   

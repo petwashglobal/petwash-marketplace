@@ -9127,3 +9127,170 @@ export const insertPinAuthLogSchema = createInsertSchema(pinAuthLogs).omit({
 });
 export type InsertPinAuthLog = z.infer<typeof insertPinAuthLogSchema>;
 export type PinAuthLog = typeof pinAuthLogs.$inferSelect;
+
+// ============================================================================
+// USER REGISTRATION TRACKING SYSTEM - MadPaws-style stamping
+// Comprehensive tracking of all user registrations with audit trail
+// ============================================================================
+
+export const userRegistrations = pgTable("user_registrations", {
+  id: serial("id").primaryKey(),
+  
+  // User identification
+  userId: varchar("user_id", { length: 255 }).notNull(), // Firebase UID
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  firstName: varchar("first_name", { length: 100 }),
+  lastName: varchar("last_name", { length: 100 }),
+  
+  // Registration type
+  registrationType: varchar("registration_type", { length: 30 }).notNull(), // "customer", "provider", "staff", "admin"
+  registrationMethod: varchar("registration_method", { length: 30 }).notNull(), // "email", "google", "apple", "phone", "passkey"
+  platformSource: varchar("platform_source", { length: 50 }), // "web", "ios", "android", "kiosk"
+  
+  // Location stamping
+  ipAddress: varchar("ip_address", { length: 45 }), // IPv4 or IPv6
+  country: varchar("country", { length: 2 }), // ISO country code
+  city: varchar("city", { length: 100 }),
+  region: varchar("region", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  timezone: varchar("timezone", { length: 50 }),
+  
+  // Device stamping
+  deviceId: varchar("device_id", { length: 255 }),
+  deviceType: varchar("device_type", { length: 50 }), // "desktop", "mobile", "tablet", "kiosk"
+  deviceModel: varchar("device_model", { length: 100 }),
+  osName: varchar("os_name", { length: 50 }),
+  osVersion: varchar("os_version", { length: 50 }),
+  browserName: varchar("browser_name", { length: 50 }),
+  browserVersion: varchar("browser_version", { length: 50 }),
+  userAgent: text("user_agent"),
+  
+  // Marketing attribution
+  referralCode: varchar("referral_code", { length: 50 }),
+  referredBy: varchar("referred_by", { length: 255 }), // userId of referrer
+  utmSource: varchar("utm_source", { length: 100 }),
+  utmMedium: varchar("utm_medium", { length: 100 }),
+  utmCampaign: varchar("utm_campaign", { length: 100 }),
+  utmContent: varchar("utm_content", { length: 100 }),
+  utmTerm: varchar("utm_term", { length: 100 }),
+  landingPage: text("landing_page"),
+  
+  // Compliance & consent
+  privacyConsentAt: timestamp("privacy_consent_at"),
+  marketingConsentAt: timestamp("marketing_consent_at"),
+  termsAcceptedAt: timestamp("terms_accepted_at"),
+  ageVerifiedAt: timestamp("age_verified_at"),
+  
+  // Verification status
+  emailVerified: boolean("email_verified").default(false),
+  phoneVerified: boolean("phone_verified").default(false),
+  identityVerified: boolean("identity_verified").default(false),
+  
+  // Security audit
+  registrationHash: varchar("registration_hash", { length: 64 }), // SHA-256 of registration data
+  previousHash: varchar("previous_hash", { length: 64 }), // Blockchain-style chain
+  
+  // Timestamps
+  registeredAt: timestamp("registered_at").defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("idx_user_registrations_user").on(table.userId),
+  emailIdx: index("idx_user_registrations_email").on(table.email),
+  typeIdx: index("idx_user_registrations_type").on(table.registrationType),
+  dateIdx: index("idx_user_registrations_date").on(table.registeredAt),
+  countryIdx: index("idx_user_registrations_country").on(table.country),
+}));
+
+export const insertUserRegistrationSchema = createInsertSchema(userRegistrations).omit({
+  id: true,
+  registeredAt: true,
+  updatedAt: true,
+});
+export type InsertUserRegistration = z.infer<typeof insertUserRegistrationSchema>;
+export type UserRegistration = typeof userRegistrations.$inferSelect;
+
+// ============================================================================
+// ENHANCED BOOKING SEARCH SYSTEM - MadPaws-style with pet filters
+// ============================================================================
+
+export const bookingSearchFiltersSchema = z.object({
+  // Service type
+  serviceType: z.enum(['pet_sitting', 'dog_walking', 'grooming', 'pet_taxi', 'daycare', 'training', 'k9000_wash']),
+  
+  // Pet information
+  petCount: z.number().min(1).max(10).optional(),
+  petTypes: z.array(z.enum(['dog', 'cat', 'bird', 'rabbit', 'hamster', 'fish', 'reptile', 'other'])).optional(),
+  petNames: z.array(z.string()).optional(),
+  petSizes: z.array(z.enum(['tiny', 'small', 'medium', 'large', 'giant'])).optional(),
+  petIds: z.array(z.number()).optional(), // Specific pet profile IDs
+  
+  // Location filters
+  area: z.string().optional(), // City or neighborhood name
+  city: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  radiusKm: z.number().min(1).max(50).default(10).optional(),
+  
+  // Date range
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  
+  // Provider preferences
+  minRating: z.number().min(0).max(5).optional(),
+  verifiedOnly: z.boolean().default(false).optional(),
+  policeCheckRequired: z.boolean().optional(),
+  experienceYears: z.number().optional(),
+  
+  // Price range
+  minPrice: z.number().optional(),
+  maxPrice: z.number().optional(),
+  
+  // Special requirements
+  specialNeeds: z.boolean().optional(),
+  medicationAdmin: z.boolean().optional(),
+  hasYard: z.boolean().optional(),
+  noOtherPets: z.boolean().optional(),
+  
+  // Pagination
+  limit: z.number().min(1).max(100).default(20).optional(),
+  offset: z.number().min(0).default(0).optional(),
+  
+  // Sorting
+  sortBy: z.enum(['rating', 'price', 'distance', 'reviews', 'experience']).default('rating').optional(),
+  sortOrder: z.enum(['asc', 'desc']).default('desc').optional(),
+});
+
+export type BookingSearchFilters = z.infer<typeof bookingSearchFiltersSchema>;
+
+export interface BookingSearchResult {
+  providers: Array<{
+    id: number;
+    userId: string;
+    firstName: string;
+    lastName: string;
+    profilePictureUrl: string | null;
+    rating: number;
+    totalReviews: number;
+    totalBookings: number;
+    pricePerNight: number | null;
+    pricePerHour: number | null;
+    city: string;
+    distance?: number;
+    isVerified: boolean;
+    hasPoliceCheck: boolean;
+    yearsExperience: number;
+    acceptedPetTypes: string[];
+    maxPets: number;
+    bio: string | null;
+    badges: string[];
+    responseTime: string;
+    lastActive: Date | null;
+  }>;
+  total: number;
+  filters: BookingSearchFilters;
+  searchId: string; // For analytics tracking
+}
