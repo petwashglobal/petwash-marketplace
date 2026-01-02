@@ -14,6 +14,9 @@ import {
   sitterProfiles, 
   walkerProfiles,
   pets,
+  trainers,
+  drivers,
+  stations,
   bookingSearchFiltersSchema,
   type BookingSearchFilters,
   type BookingSearchResult 
@@ -294,51 +297,258 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
 }
 
 /**
- * Search groomers (placeholder - returns empty for now)
+ * Search groomers - uses trainers table with grooming specialty
  */
 async function searchGroomers(filters: BookingSearchFilters, searchId: string): Promise<BookingSearchResult> {
-  return {
-    providers: [],
-    total: 0,
-    filters,
-    searchId,
-  };
+  try {
+    const conditions = [
+      eq(trainers.isActive, true),
+      sql`'grooming' = ANY(${trainers.serviceTypes})`
+    ];
+
+    if (filters.city) {
+      conditions.push(ilike(trainers.serviceArea, `%${filters.city}%`));
+    }
+
+    if (filters.minRating && filters.minRating > 0) {
+      conditions.push(gte(trainers.averageRating, filters.minRating.toString()));
+    }
+
+    if (filters.verifiedOnly) {
+      conditions.push(eq(trainers.verificationStatus, 'verified'));
+    }
+
+    const results = await db.select().from(trainers)
+      .where(and(...conditions))
+      .orderBy(desc(trainers.averageRating))
+      .limit(filters.limit || 20)
+      .offset(filters.offset || 0);
+
+    const [countResult] = await db.select({ count: sql`count(*)` })
+      .from(trainers)
+      .where(and(...conditions));
+
+    const total = Number(countResult?.count || 0);
+
+    const providers = results.map(trainer => ({
+      id: trainer.id,
+      odId: trainer.trainerId,
+      firstName: trainer.firstName,
+      lastName: trainer.lastName || '',
+      profilePictureUrl: trainer.profilePhotoUrl,
+      rating: parseFloat(trainer.averageRating || '0'),
+      totalReviews: trainer.totalReviews || 0,
+      totalBookings: trainer.totalSessions || 0,
+      pricePerNight: null,
+      pricePerHour: trainer.hourlyRate ? parseFloat(trainer.hourlyRate) : null,
+      city: trainer.serviceArea || '',
+      isVerified: trainer.verificationStatus === 'verified',
+      hasPoliceCheck: false,
+      yearsExperience: trainer.yearsOfExperience || 0,
+      acceptedPetTypes: ['dog', 'cat'],
+      maxPets: 1,
+      bio: trainer.bio,
+      badges: trainer.isCertified ? ['certified'] : [],
+      responseTime: 'within 24 hours',
+      lastActive: trainer.updatedAt,
+    }));
+
+    return { providers, total, filters, searchId };
+  } catch (error) {
+    logger.error('[BookingSearch] Groomer search error', { error });
+    return { providers: [], total: 0, filters, searchId };
+  }
 }
 
 /**
- * Search pet taxi drivers (placeholder)
+ * Search pet taxi drivers
  */
 async function searchDrivers(filters: BookingSearchFilters, searchId: string): Promise<BookingSearchResult> {
-  return {
-    providers: [],
-    total: 0,
-    filters,
-    searchId,
-  };
+  try {
+    const conditions = [eq(drivers.isActive, true)];
+
+    if (filters.city || filters.area) {
+      const searchTerm = filters.city || filters.area || '';
+      conditions.push(ilike(drivers.areasOfService, `%${searchTerm}%`));
+    }
+
+    const results = await db.select().from(drivers)
+      .where(and(...conditions))
+      .limit(filters.limit || 20)
+      .offset(filters.offset || 0);
+
+    const [countResult] = await db.select({ count: sql`count(*)` })
+      .from(drivers)
+      .where(and(...conditions));
+
+    const total = Number(countResult?.count || 0);
+
+    const providers = results.map(driver => ({
+      id: driver.id,
+      odId: driver.id,
+      firstName: 'Driver',
+      lastName: driver.id.substring(0, 8),
+      profilePictureUrl: null,
+      rating: 4.5,
+      totalReviews: 0,
+      totalBookings: 0,
+      pricePerNight: null,
+      pricePerHour: null,
+      city: driver.areasOfService || '',
+      isVerified: true,
+      hasPoliceCheck: true,
+      yearsExperience: 0,
+      acceptedPetTypes: ['dog', 'cat'],
+      maxPets: 3,
+      bio: `Licensed ${driver.vehicleType} driver`,
+      badges: ['licensed'],
+      responseTime: 'within 1 hour',
+      lastActive: driver.createdAt,
+    }));
+
+    return { providers, total, filters, searchId };
+  } catch (error) {
+    logger.error('[BookingSearch] Driver search error', { error });
+    return { providers: [], total: 0, filters, searchId };
+  }
 }
 
 /**
- * Search trainers (placeholder)
+ * Search trainers
  */
 async function searchTrainers(filters: BookingSearchFilters, searchId: string): Promise<BookingSearchResult> {
-  return {
-    providers: [],
-    total: 0,
-    filters,
-    searchId,
-  };
+  try {
+    const conditions = [eq(trainers.isActive, true)];
+
+    if (filters.city) {
+      conditions.push(ilike(trainers.serviceArea, `%${filters.city}%`));
+    }
+
+    if (filters.area) {
+      conditions.push(ilike(trainers.serviceArea, `%${filters.area}%`));
+    }
+
+    if (filters.minRating && filters.minRating > 0) {
+      conditions.push(gte(trainers.averageRating, filters.minRating.toString()));
+    }
+
+    if (filters.verifiedOnly) {
+      conditions.push(eq(trainers.verificationStatus, 'verified'));
+    }
+
+    const results = await db.select().from(trainers)
+      .where(and(...conditions))
+      .orderBy(desc(trainers.averageRating))
+      .limit(filters.limit || 20)
+      .offset(filters.offset || 0);
+
+    const [countResult] = await db.select({ count: sql`count(*)` })
+      .from(trainers)
+      .where(and(...conditions));
+
+    const total = Number(countResult?.count || 0);
+
+    const providers = results.map(trainer => ({
+      id: trainer.id,
+      odId: trainer.trainerId,
+      firstName: trainer.firstName,
+      lastName: trainer.lastName || '',
+      profilePictureUrl: trainer.profilePhotoUrl,
+      rating: parseFloat(trainer.averageRating || '0'),
+      totalReviews: trainer.totalReviews || 0,
+      totalBookings: trainer.totalSessions || 0,
+      pricePerNight: null,
+      pricePerHour: trainer.hourlyRate ? parseFloat(trainer.hourlyRate) : null,
+      city: trainer.serviceArea || '',
+      isVerified: trainer.verificationStatus === 'verified',
+      hasPoliceCheck: false,
+      yearsExperience: trainer.yearsOfExperience || 0,
+      acceptedPetTypes: ['dog', 'cat'],
+      maxPets: 1,
+      bio: trainer.bio,
+      badges: buildTrainerBadges(trainer),
+      responseTime: 'within 24 hours',
+      lastActive: trainer.updatedAt,
+    }));
+
+    return { providers, total, filters, searchId };
+  } catch (error) {
+    logger.error('[BookingSearch] Trainer search error', { error });
+    return { providers: [], total: 0, filters, searchId };
+  }
 }
 
 /**
- * Search K9000 stations (placeholder)
+ * Search K9000 stations
  */
 async function searchK9000Stations(filters: BookingSearchFilters, searchId: string): Promise<BookingSearchResult> {
-  return {
-    providers: [],
-    total: 0,
-    filters,
-    searchId,
-  };
+  try {
+    const conditions = [eq(stations.isActive, true)];
+
+    if (filters.city) {
+      conditions.push(ilike(stations.city, `%${filters.city}%`));
+    }
+
+    if (filters.area) {
+      conditions.push(or(
+        ilike(stations.city, `%${filters.area}%`),
+        ilike(stations.address, `%${filters.area}%`)
+      )!);
+    }
+
+    const results = await db.select().from(stations)
+      .where(and(...conditions))
+      .limit(filters.limit || 20)
+      .offset(filters.offset || 0);
+
+    const [countResult] = await db.select({ count: sql`count(*)` })
+      .from(stations)
+      .where(and(...conditions));
+
+    const total = Number(countResult?.count || 0);
+
+    const providers = results.map(station => ({
+      id: station.id,
+      odId: station.stationId,
+      firstName: station.name,
+      lastName: '',
+      profilePictureUrl: null,
+      rating: parseFloat(station.rating || '4.5'),
+      totalReviews: 0,
+      totalBookings: 0,
+      pricePerNight: null,
+      pricePerHour: null,
+      city: station.city || '',
+      isVerified: true,
+      hasPoliceCheck: false,
+      yearsExperience: 0,
+      acceptedPetTypes: station.supportedPetTypes || ['dog'],
+      maxPets: 1,
+      bio: `K9000 Self-Service Station at ${station.address}`,
+      badges: station.status === 'online' ? ['available'] : [],
+      responseTime: 'instant',
+      lastActive: station.updatedAt,
+    }));
+
+    return { providers, total, filters, searchId };
+  } catch (error) {
+    logger.error('[BookingSearch] K9000 search error', { error });
+    return { providers: [], total: 0, filters, searchId };
+  }
+}
+
+/**
+ * Build badges array for trainer
+ */
+function buildTrainerBadges(trainer: any): string[] {
+  const badges: string[] = [];
+  
+  if (trainer.verificationStatus === 'verified') badges.push('verified');
+  if (trainer.isCertified) badges.push('certified');
+  if ((trainer.yearsOfExperience || 0) >= 5) badges.push('experienced');
+  if (parseFloat(trainer.averageRating || '0') >= 4.8) badges.push('top_rated');
+  
+  return badges;
 }
 
 /**

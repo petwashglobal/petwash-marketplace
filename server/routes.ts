@@ -8282,6 +8282,10 @@ self.addEventListener('notificationclick', (event) => {
   // Returns normalized discriminated-union types for frontend
   app.use('/api/marketplace', apiLimiter, marketplaceRoutes);
 
+  // MadPaws-style Booking Search (pet count, types, area, filters) - PUBLIC ACCESS
+  const bookingSearchRoutes = (await import('./routes/booking-search')).default;
+  app.use('/api/booking-search', apiLimiter, bookingSearchRoutes);
+
   // Identity Service V2 - Modern OAuth 2.1/OIDC Authentication (P0 PRIORITY)
   app.use('/auth', identityServiceRoutes);
 
@@ -8299,10 +8303,6 @@ self.addEventListener('notificationclick', (event) => {
   const providerOnboardingRoutes = (await import('./routes/provider-onboarding')).default;
   app.use('/api/provider-onboarding', apiLimiter, providerOnboardingRoutes);
   app.use('/api/provider-applications', validateFirebaseToken, apiLimiter, providerApplicationsRoutes);
-
-  // MadPaws-style Booking Search (pet count, types, area, filters)
-  const bookingSearchRoutes = (await import('./routes/booking-search')).default;
-  app.use('/api/booking-search', apiLimiter, bookingSearchRoutes);
 
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
   app.use(apiLimiter, esignRoutes);

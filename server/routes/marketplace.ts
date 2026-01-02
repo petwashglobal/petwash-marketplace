@@ -12,6 +12,8 @@ import { db } from '../db';
 import {
   walkerProfiles,
   sitterProfiles,
+  trainers,
+  drivers,
   marketplaceSearchFiltersSchema,
   type MarketplaceProvider,
   type WalkerProvider,
@@ -19,7 +21,7 @@ import {
   type MarketplaceSearchResponse,
   type MarketplacePlatformId,
 } from '@shared/schema';
-import { eq, and, gte, lte, sql, desc, or } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, desc, or, ilike } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -261,21 +263,115 @@ async function searchDrivers(filters: MarketplaceSearchFilters): Promise<{
   providers: any[];
   total: number;
 }> {
-  // TODO: Implement when driverProfiles table is ready
-  logger.warn('[Marketplace] PetTrek driver search not yet implemented');
-  return { providers: [], total: 0 };
+  try {
+    const conditions = [eq(drivers.isActive, true)];
+
+    if (filters.city) {
+      conditions.push(ilike(drivers.areasOfService, `%${filters.city}%`));
+    }
+
+    const results = await db.select().from(drivers)
+      .where(and(...conditions))
+      .limit(filters.limit || 20)
+      .offset(filters.offset || 0);
+
+    const [countResult] = await db.select({ count: sql`count(*)` })
+      .from(drivers)
+      .where(and(...conditions));
+
+    const total = Number(countResult?.count || 0);
+
+    const providers = results.map(driver => ({
+      kind: 'driver' as const,
+      platform: 'pet_trek' as const,
+      id: driver.id,
+      odId: driver.id,
+      firstName: 'Driver',
+      lastName: driver.id.substring(0, 8),
+      profilePictureUrl: null,
+      rating: '4.5',
+      totalBookings: 0,
+      isActive: driver.isActive,
+      isVerified: true,
+      priceDisplay: 'Contact for quote',
+      city: driver.areasOfService || '',
+      bio: `Licensed ${driver.vehicleType} driver for pet transport`,
+      vehicleType: driver.vehicleType,
+      licenseNumber: driver.licenseNumber,
+      createdAt: driver.createdAt,
+    }));
+
+    return { providers, total };
+  } catch (error) {
+    logger.error('[Marketplace] Driver search error', { error });
+    return { providers: [], total: 0 };
+  }
 }
 
 /**
- * Search groomers (Groomers Marketplace platform)
+ * Search groomers (Groomers Marketplace platform) - uses trainers with grooming specialty
  */
 async function searchGroomers(filters: MarketplaceSearchFilters): Promise<{
   providers: any[];
   total: number;
 }> {
-  // TODO: Implement when groomerProfiles table is ready
-  logger.warn('[Marketplace] Groomers search not yet implemented');
-  return { providers: [], total: 0 };
+  try {
+    const conditions = [
+      eq(trainers.isActive, true),
+      sql`'grooming' = ANY(${trainers.serviceTypes})`
+    ];
+
+    if (filters.city) {
+      conditions.push(ilike(trainers.serviceArea, `%${filters.city}%`));
+    }
+
+    if (filters.minRating && filters.minRating > 0) {
+      conditions.push(gte(trainers.averageRating, filters.minRating.toString()));
+    }
+
+    if (filters.verifiedOnly) {
+      conditions.push(eq(trainers.verificationStatus, 'verified'));
+    }
+
+    const results = await db.select().from(trainers)
+      .where(and(...conditions))
+      .orderBy(desc(trainers.averageRating))
+      .limit(filters.limit || 20)
+      .offset(filters.offset || 0);
+
+    const [countResult] = await db.select({ count: sql`count(*)` })
+      .from(trainers)
+      .where(and(...conditions));
+
+    const total = Number(countResult?.count || 0);
+
+    const providers = results.map(trainer => ({
+      kind: 'groomer' as const,
+      platform: 'groomers' as const,
+      id: trainer.id,
+      odId: trainer.trainerId,
+      firstName: trainer.firstName,
+      lastName: trainer.lastName,
+      email: trainer.email,
+      phone: trainer.phone,
+      profilePictureUrl: trainer.profilePhotoUrl,
+      rating: trainer.averageRating,
+      totalBookings: trainer.totalSessions,
+      isActive: trainer.isActive,
+      isVerified: trainer.verificationStatus === 'verified',
+      priceDisplay: trainer.hourlyRate ? `₪${trainer.hourlyRate}/hr` : 'Contact for price',
+      city: trainer.serviceArea || '',
+      bio: trainer.bio,
+      specialties: trainer.specialties,
+      yearsOfExperience: trainer.yearsOfExperience,
+      createdAt: trainer.createdAt,
+    }));
+
+    return { providers, total };
+  } catch (error) {
+    logger.error('[Marketplace] Groomer search error', { error });
+    return { providers: [], total: 0 };
+  }
 }
 
 /**
