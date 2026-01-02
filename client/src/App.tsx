@@ -28,7 +28,6 @@ import { initializeInteractionTracking } from "@/lib/interactionTracker";
 import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
-import { VIPLoyaltyPopup } from "@/components/VIPLoyaltyPopup";
 
 // CRITICAL: Only import home route components (for instant load)
 import Landing from "@/pages/Landing";
@@ -1938,7 +1937,6 @@ function App() {
   const [isLanguageInitialized, setIsLanguageInitialized] = useState(false);
   const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
-  const [isVIPPopupOpen, setIsVIPPopupOpen] = useState(false);
   
   useKeyboardNavigation();
 
@@ -2061,7 +2059,6 @@ function App() {
           <FloatingStack 
             language={currentLanguage}
             onAIClick={() => setIsAIChatOpen(true)}
-            onVIPClick={() => setIsVIPPopupOpen(true)}
           />
           
           {/* Google Dialogflow CX AI Chat Widget - Gemini-powered Kenzo 🤖 */}
@@ -2089,12 +2086,6 @@ function App() {
             language={currentLanguage}
             isOpen={isConsentManagerOpen}
             onClose={() => setIsConsentManagerOpen(false)}
-          />
-          
-          {/* VIP Loyalty Program Popup */}
-          <VIPLoyaltyPopup 
-            isOpen={isVIPPopupOpen}
-            onClose={() => setIsVIPPopupOpen(false)}
           />
           
         </TooltipProvider>

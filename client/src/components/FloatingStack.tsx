@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Accessibility, Crown } from 'lucide-react';
+import { Accessibility } from 'lucide-react';
 import { AccessibilityMenu } from './AccessibilityMenu';
 import { Language, t } from '@/lib/i18n';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -7,10 +7,9 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 interface FloatingStackProps {
   language: Language;
   onAIClick: () => void;
-  onVIPClick?: () => void;
 }
 
-export function FloatingStack({ language, onAIClick, onVIPClick }: FloatingStackProps) {
+export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
   const [isAccessibilityMenuOpen, setIsAccessibilityMenuOpen] = useState(false);
   const { trackWhatsAppClick } = useAnalytics();
   const stackRef = useRef<HTMLDivElement>(null);
@@ -97,20 +96,6 @@ export function FloatingStack({ language, onAIClick, onVIPClick }: FloatingStack
   return (
     <>
       <div ref={stackRef} className="pw-float-stack" dir="ltr">
-        {/* VIP Loyalty - Top (232px from bottom) */}
-        {onVIPClick && (
-          <button
-            id="pw-vip"
-            className="pw-float pw-vip-btn"
-            data-base-bottom="232"
-            aria-label="VIP Loyalty Program"
-            onClick={onVIPClick}
-            data-testid="fab-vip"
-          >
-            <Crown className="h-6 w-6" aria-hidden="true" />
-          </button>
-        )}
-
         {/* Accessibility - (160px from bottom: 16 + 56 + 16 + 56 + 16) */}
         <button
           id="pw-a11y"
