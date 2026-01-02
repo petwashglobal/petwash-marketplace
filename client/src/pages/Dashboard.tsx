@@ -20,10 +20,14 @@ import {
   Activity,
   Syringe,
   AlertCircle,
+  Mail,
+  Shield,
+  Lock,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
 import { PersonalizedGreeting } from '@/components/PersonalizedGreeting';
+import { Link } from 'wouter';
 
 // Luxury Widget Card Component
 const DashboardWidget = ({ 
@@ -326,6 +330,75 @@ const VaccineCalendarWidget = ({ vaccines }: { vaccines: any[] }) => {
   );
 };
 
+// Private Inbox Widget - Israeli Privacy Law 2025 Compliant
+const PrivateInboxWidget = () => {
+  const { language } = useLanguage();
+  const isHebrew = language === 'he';
+  const { user: firebaseUser } = useFirebaseAuth();
+
+  // Fetch unread count
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ['/api/messages/unread/count'],
+    enabled: !!firebaseUser,
+  });
+
+  const unreadCount = unreadData?.count || 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Security Badge */}
+      <div className="flex items-center gap-2 luxury-glass-minimal px-3 py-2 rounded-xl">
+        <Shield className="w-4 h-4 text-green-600 dark:text-green-400" />
+        <span className="luxury-text-small text-green-700 dark:text-green-300">
+          {isHebrew ? 'מוגן לפי חוק הפרטיות הישראלי 2025' : 'Israeli Privacy Law 2025 Protected'}
+        </span>
+      </div>
+
+      {/* Unread Messages */}
+      <div className="flex items-center justify-between luxury-glass-minimal p-4 rounded-xl luxury-hover-lift">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20">
+            <Mail className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <p className="luxury-heading-sm">
+              {isHebrew ? 'הודעות שלא נקראו' : 'Unread Messages'}
+            </p>
+            <p className="luxury-text-small">
+              {isHebrew ? 'עם חתימה קריפטוגרפית' : 'With cryptographic signature'}
+            </p>
+          </div>
+        </div>
+        {unreadCount > 0 && (
+          <Badge className="bg-purple-600 text-white text-lg px-3 py-1">
+            {unreadCount}
+          </Badge>
+        )}
+      </div>
+
+      {/* Features List */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <Lock className="w-4 h-4 text-purple-500" />
+          <span>{isHebrew ? 'הצפנה מקצה לקצה' : 'End-to-end encryption'}</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <Shield className="w-4 h-4 text-purple-500" />
+          <span>{isHebrew ? 'יומן ביקורת SHA-256' : 'SHA-256 audit trail'}</span>
+        </div>
+      </div>
+
+      {/* Open Inbox Button */}
+      <Link href="/personal-inbox">
+        <button className="luxury-btn-primary w-full flex items-center justify-center gap-2" data-testid="button-open-inbox">
+          <Mail className="w-4 h-4" />
+          {isHebrew ? 'פתח תיבת דואר' : 'Open Inbox'}
+        </button>
+      </Link>
+    </div>
+  );
+};
+
 // Main Dashboard Component
 export default function Dashboard() {
   const { user: firebaseUser, loading } = useFirebaseAuth();
@@ -477,8 +550,19 @@ export default function Dashboard() {
               </DashboardWidget>
             </div>
 
+            {/* Private Luxury Inbox Widget */}
+            <div className="luxury-animate-slide-up luxury-delay-7">
+              <DashboardWidget
+                title={isHebrew ? '📬 תיבת דואר פרטית' : '📬 Private Inbox'}
+                icon={Mail}
+                className="luxury-shadow-xl"
+              >
+                <PrivateInboxWidget />
+              </DashboardWidget>
+            </div>
+
             {/* AI Tip - Full Width */}
-            <div className="lg:col-span-2 2xl:col-span-3 luxury-animate-slide-up luxury-delay-7">
+            <div className="lg:col-span-2 2xl:col-span-3 luxury-animate-slide-up luxury-delay-8">
               <DashboardWidget
                 title={isHebrew ? '🤖 טיפול מותאם אישית' : '🤖 Personalized Pet Care'}
                 icon={Sparkles}
