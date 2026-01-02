@@ -8923,8 +8923,10 @@ self.addEventListener('notificationclick', (event) => {
       const now = new Date().toISOString();
       
       // Create profile using Admin SDK (bypasses security rules)
+      // IMPORTANT: accountType: 'customer' marks this as PUBLIC sign-up
       await db.collection('users').doc(uid).collection('profile').doc('data').set({
         uid,
+        accountType: 'customer', // PUBLIC users only - internal users have 'internal'
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         name: `${firstName.trim()} ${lastName.trim()}`,
@@ -8960,6 +8962,389 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Create profile error', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // =================== INTERNAL INVITATION SYSTEM ===================
+  // Separate sign-up flow for staff, contractors, and franchisees
+  // These endpoints are STRICTLY for internal use only
+  
+  // Firebase Auth middleware for internal routes
+  const requireFirebaseAuth = async (req: any, res: any, next: any) => {
+    try {
+      const sessionCookie = req.cookies?.pw_session;
+      const { adminAuth } = await import('./lib/firebase-admin');
+      
+      if (sessionCookie) {
+        try {
+          const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
+          req.firebaseUser = {
+            uid: decodedClaims.uid,
+            email: decodedClaims.email,
+            email_verified: decodedClaims.email_verified
+          };
+          return next();
+        } catch (cookieError) {
+          // Fall through to try Authorization header
+        }
+      }
+      
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+      
+      const token = authHeader.split('Bearer ')[1];
+      const decodedToken = await adminAuth.verifyIdToken(token, true);
+      
+      req.firebaseUser = {
+        uid: decodedToken.uid,
+        email: decodedToken.email,
+        email_verified: decodedToken.email_verified
+      };
+      
+      next();
+    } catch (error) {
+      logger.error('[Internal Auth] Authentication failed:', error);
+      res.status(401).json({ success: false, error: 'Invalid or expired authentication token' });
+    }
+  };
+  
+  // Create internal invitation (Admin only)
+  app.post('/api/internal/invitations', requireFirebaseAuth, async (req, res) => {
+    try {
+      const adminEmail = req.firebaseUser?.email;
+      const adminUid = req.firebaseUser?.uid;
+      
+      if (!adminEmail || !adminUid) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+      
+      // Check if admin is authorized to create invitations
+      const { isSuperAdmin } = await import('./middleware/rbac');
+      if (!isSuperAdmin(adminEmail)) {
+        return res.status(403).json({ success: false, error: 'Only administrators can create invitations' });
+      }
+      
+      const { 
+        email, 
+        firstName, 
+        lastName, 
+        phone,
+        roleCode, // STAFF, CONTRACTOR, FRANCHISEE, MANAGER, etc.
+        department,
+        franchiseeId,
+        stationIds,
+        notes,
+        expiresInDays = 7 // Default 7-day expiry
+      } = req.body;
+      
+      if (!email || !roleCode) {
+        return res.status(400).json({ success: false, error: 'Email and roleCode are required' });
+      }
+      
+      // Generate unique invitation token
+      const { nanoid } = await import('nanoid');
+      const token = nanoid(32);
+      
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + (expiresInDays * 24 * 60 * 60 * 1000));
+      
+      // Store invitation in database
+      const { internalInvites } = await import('../shared/schema-enterprise');
+      const [invitation] = await db.insert(internalInvites).values({
+        token,
+        email: email.toLowerCase().trim(),
+        firstName: firstName?.trim(),
+        lastName: lastName?.trim(),
+        phone: phone?.trim(),
+        roleCode,
+        department,
+        franchiseeId: franchiseeId || null,
+        stationIds: stationIds || null,
+        status: 'pending',
+        expiresAt,
+        createdBy: adminEmail,
+        createdByUid: adminUid,
+        notes
+      }).returning();
+      
+      // Send invitation email
+      const { EmailService } = await import('./emailService');
+      const inviteUrl = `${req.protocol}://${req.get('host')}/internal/onboard?token=${token}`;
+      
+      await EmailService.sendInternalInvitation(
+        email,
+        firstName || '',
+        roleCode,
+        inviteUrl,
+        adminEmail
+      );
+      
+      // Update status to sent
+      await db.update(internalInvites)
+        .set({ status: 'sent', sentAt: new Date() })
+        .where(eq(internalInvites.id, invitation.id));
+      
+      logger.info(`Internal invitation created for ${email} as ${roleCode} by ${adminEmail}`);
+      
+      res.json({ 
+        success: true, 
+        invitation: {
+          id: invitation.id,
+          email,
+          roleCode,
+          status: 'sent',
+          expiresAt: expiresAt.toISOString()
+        }
+      });
+      
+    } catch (error: any) {
+      logger.error('Create invitation error', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+  
+  // Verify invitation token (Public - for onboarding page)
+  app.get('/api/internal/invitations/verify/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      if (!token) {
+        return res.status(400).json({ success: false, error: 'Token required' });
+      }
+      
+      const { internalInvites } = await import('../shared/schema-enterprise');
+      
+      const [invitation] = await db
+        .select()
+        .from(internalInvites)
+        .where(eq(internalInvites.token, token))
+        .limit(1);
+      
+      if (!invitation) {
+        return res.status(404).json({ success: false, error: 'Invitation not found' });
+      }
+      
+      // Check if already used
+      if (invitation.status === 'accepted') {
+        return res.status(400).json({ success: false, error: 'Invitation already used' });
+      }
+      
+      // Check if expired
+      if (new Date() > new Date(invitation.expiresAt)) {
+        return res.status(400).json({ success: false, error: 'Invitation expired' });
+      }
+      
+      // Check if revoked
+      if (invitation.status === 'revoked') {
+        return res.status(400).json({ success: false, error: 'Invitation revoked' });
+      }
+      
+      res.json({
+        success: true,
+        invitation: {
+          email: invitation.email,
+          firstName: invitation.firstName,
+          lastName: invitation.lastName,
+          phone: invitation.phone,
+          roleCode: invitation.roleCode,
+          department: invitation.department
+        }
+      });
+      
+    } catch (error: any) {
+      logger.error('Verify invitation error', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+  
+  // Accept invitation and create internal profile
+  app.post('/api/internal/invitations/accept', async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: 'Authorization required' });
+      }
+      
+      const tokenAuth = authHeader.split('Bearer ')[1];
+      const { adminAuth, db: firestoreDb } = await import('./lib/firebase-admin');
+      
+      // Verify Firebase token
+      const decoded = await adminAuth.verifyIdToken(tokenAuth);
+      const uid = decoded.uid;
+      const userEmail = decoded.email?.toLowerCase();
+      
+      const { token, firstName, lastName, phone, password } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ success: false, error: 'Invitation token required' });
+      }
+      
+      const { internalInvites, userRoleAssignments, systemRoles } = await import('../shared/schema-enterprise');
+      
+      // Get and validate invitation
+      const [invitation] = await db
+        .select()
+        .from(internalInvites)
+        .where(eq(internalInvites.token, token))
+        .limit(1);
+      
+      if (!invitation) {
+        return res.status(404).json({ success: false, error: 'Invitation not found' });
+      }
+      
+      if (invitation.status === 'accepted') {
+        return res.status(400).json({ success: false, error: 'Invitation already used' });
+      }
+      
+      if (new Date() > new Date(invitation.expiresAt)) {
+        return res.status(400).json({ success: false, error: 'Invitation expired' });
+      }
+      
+      // Verify email matches (case-insensitive)
+      if (userEmail !== invitation.email.toLowerCase()) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Email does not match invitation. Please sign up with the invited email address.' 
+        });
+      }
+      
+      const now = new Date().toISOString();
+      const finalFirstName = firstName?.trim() || invitation.firstName || '';
+      const finalLastName = lastName?.trim() || invitation.lastName || '';
+      
+      // Create INTERNAL profile in Firestore (NOT customer profile)
+      await firestoreDb.collection('users').doc(uid).collection('profile').doc('data').set({
+        uid,
+        accountType: 'internal', // INTERNAL users - NOT customer
+        firstName: finalFirstName,
+        lastName: finalLastName,
+        name: `${finalFirstName} ${finalLastName}`.trim(),
+        email: userEmail,
+        phone: phone?.trim() || invitation.phone || '',
+        roleCode: invitation.roleCode,
+        department: invitation.department || '',
+        franchiseeId: invitation.franchiseeId,
+        stationIds: invitation.stationIds,
+        verified: true, // Pre-verified via invitation
+        createdAt: now,
+        updatedAt: now
+      });
+      
+      // Get role ID for assignment
+      const [role] = await db
+        .select()
+        .from(systemRoles)
+        .where(eq(systemRoles.roleCode, invitation.roleCode))
+        .limit(1);
+      
+      // Create role assignment in PostgreSQL
+      if (role) {
+        await db.insert(userRoleAssignments).values({
+          userId: uid,
+          userEmail: userEmail!,
+          userName: `${finalFirstName} ${finalLastName}`.trim(),
+          roleId: role.id,
+          franchiseeId: invitation.franchiseeId,
+          stationIds: invitation.stationIds,
+          isActive: true,
+          assignedBy: invitation.createdBy
+        });
+      }
+      
+      // Mark invitation as accepted
+      await db.update(internalInvites)
+        .set({ 
+          status: 'accepted', 
+          acceptedAt: new Date(),
+          acceptedByUid: uid
+        })
+        .where(eq(internalInvites.id, invitation.id));
+      
+      // Set custom claims on Firebase user
+      await adminAuth.setCustomUserClaims(uid, {
+        accountType: 'internal',
+        roleCode: invitation.roleCode,
+        department: invitation.department
+      });
+      
+      logger.info(`Internal invitation accepted by ${userEmail} as ${invitation.roleCode}`);
+      
+      res.json({ 
+        success: true, 
+        profile: {
+          uid,
+          accountType: 'internal',
+          roleCode: invitation.roleCode,
+          department: invitation.department
+        }
+      });
+      
+    } catch (error: any) {
+      logger.error('Accept invitation error', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+  
+  // List invitations (Admin only)
+  app.get('/api/internal/invitations', requireFirebaseAuth, async (req, res) => {
+    try {
+      const adminEmail = req.firebaseUser?.email;
+      
+      if (!adminEmail) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+      
+      const { isSuperAdmin } = await import('./middleware/rbac');
+      if (!isSuperAdmin(adminEmail)) {
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+      
+      const { internalInvites } = await import('../shared/schema-enterprise');
+      
+      const invitations = await db
+        .select()
+        .from(internalInvites)
+        .orderBy(sql`created_at DESC`)
+        .limit(100);
+      
+      res.json({ success: true, invitations });
+      
+    } catch (error: any) {
+      logger.error('List invitations error', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+  
+  // Revoke invitation (Admin only)
+  app.delete('/api/internal/invitations/:id', requireFirebaseAuth, async (req, res) => {
+    try {
+      const adminEmail = req.firebaseUser?.email;
+      
+      if (!adminEmail) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+      
+      const { isSuperAdmin } = await import('./middleware/rbac');
+      if (!isSuperAdmin(adminEmail)) {
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+      
+      const { id } = req.params;
+      const { internalInvites } = await import('../shared/schema-enterprise');
+      
+      await db.update(internalInvites)
+        .set({ status: 'revoked', updatedAt: new Date() })
+        .where(eq(internalInvites.id, parseInt(id)));
+      
+      logger.info(`Invitation ${id} revoked by ${adminEmail}`);
+      
+      res.json({ success: true });
+      
+    } catch (error: any) {
+      logger.error('Revoke invitation error', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

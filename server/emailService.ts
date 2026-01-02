@@ -2981,4 +2981,127 @@ export class EmailService {
       return false;
     }
   }
+
+  /**
+   * Send internal invitation email for staff, contractors, franchisees
+   * STRICTLY SEPARATE from public user sign-up
+   */
+  static async sendInternalInvitation(
+    email: string,
+    firstName: string,
+    roleCode: string,
+    inviteUrl: string,
+    invitedBy: string
+  ): Promise<boolean> {
+    try {
+      const roleTitles: Record<string, { en: string; he: string }> = {
+        'STAFF': { en: 'Staff Member', he: 'חבר צוות' },
+        'CONTRACTOR': { en: 'Service Provider', he: 'נותן שירות' },
+        'FRANCHISEE': { en: 'Franchise Partner', he: 'שותף זיכיון' },
+        'MANAGER': { en: 'Manager', he: 'מנהל' },
+        'DRIVER': { en: 'Driver', he: 'נהג' },
+        'SITTER': { en: 'Pet Sitter', he: 'פטסיטר' },
+        'WALKER': { en: 'Dog Walker', he: 'מטייל כלבים' }
+      };
+      
+      const roleTitle = roleTitles[roleCode] || { en: roleCode, he: roleCode };
+      const greeting = firstName ? `שלום ${firstName}` : 'שלום';
+      
+      const htmlContent = `<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הזמנה לצוות Pet Wash™</title>
+</head>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f3f4f6; padding: 0; margin: 0;">
+    <div style="max-width: 600px; margin: 0 auto; background: white;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%); padding: 40px 30px; text-align: center;">
+            <img src="cid:petwash-logo" alt="Pet Wash™" style="height: 60px; margin-bottom: 15px;" />
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">הזמנה לצוות Pet Wash™</h1>
+        </div>
+        
+        <!-- Content -->
+        <div style="padding: 40px 30px;">
+            <h2 style="color: #1a1a1a; font-size: 22px; margin: 0 0 20px 0;">${greeting},</h2>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.8; margin-bottom: 25px;">
+                הוזמנת להצטרף לצוות <strong>Pet Wash™</strong> בתפקיד:<br>
+                <strong style="color: #000; font-size: 18px;">${roleTitle.he} (${roleTitle.en})</strong>
+            </p>
+            
+            <p style="color: #4a5568; font-size: 16px; line-height: 1.8; margin-bottom: 30px;">
+                לחץ על הכפתור למטה להשלמת ההרשמה שלך. ההזמנה תקפה ל-7 ימים.
+            </p>
+            
+            <div style="text-align: center; margin: 35px 0;">
+                <a href="${inviteUrl}" style="display: inline-block; background: #000000; color: white; padding: 18px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                    השלם הרשמה
+                </a>
+            </div>
+            
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 25px; margin-top: 30px;">
+                <h3 style="color: #1a1a1a; margin: 0 0 15px 0; font-size: 16px;">מידע חשוב:</h3>
+                <ul style="color: #6b7280; font-size: 14px; line-height: 1.8; margin: 0; padding-right: 20px;">
+                    <li>הזמנה זו היא אישית ומיועדת רק לכתובת דוא"ל זו</li>
+                    <li>אל תשתף את הקישור הזה עם אחרים</li>
+                    <li>ההזמנה תפוג בעוד 7 ימים</li>
+                    <li>לאחר ההרשמה תקבל גישה לפאנל הניהול</li>
+                </ul>
+            </div>
+            
+            <p style="color: #9ca3af; font-size: 13px; margin-top: 30px; text-align: center;">
+                הוזמנת על ידי: ${invitedBy}
+            </p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background: #111827; padding: 30px; text-align: center; color: white;">
+            <p style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.9;">
+                Pet Wash™ - Premium Pet Care
+            </p>
+            <p style="margin: 0; font-size: 12px; opacity: 0.7;">
+                זוהי הודעה פנימית של החברה. אם קיבלת הודעה זו בטעות, אנא התעלם ממנה.
+            </p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+      // Try Gmail first (preferred), fallback to SendGrid
+      const { sendEmail } = await import('./lib/gmail');
+      const sent = await sendEmail(
+        email,
+        `הזמנה לצוות Pet Wash™ - ${roleTitle.he}`,
+        htmlContent
+      );
+      
+      if (sent) {
+        logger.info(`Internal invitation email sent to ${email} for role ${roleCode}`);
+        return true;
+      }
+      
+      // Fallback to SendGrid if Gmail fails
+      if (process.env.SENDGRID_API_KEY) {
+        const mailService = await this.getSendGridService();
+        if (mailService) {
+          await mailService.send({
+            to: email,
+            from: { email: this.FROM_EMAIL, name: 'Pet Wash™ Team' },
+            subject: `הזמנה לצוות Pet Wash™ - ${roleTitle.he}`,
+            html: htmlContent
+          });
+          logger.info(`Internal invitation email sent via SendGrid to ${email}`);
+          return true;
+        }
+      }
+      
+      logger.warn(`Could not send internal invitation to ${email} - no email service available`);
+      return false;
+    } catch (error) {
+      logger.error('Failed to send internal invitation email', error);
+      return false;
+    }
+  }
 }

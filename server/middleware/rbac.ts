@@ -363,6 +363,118 @@ export function requireAdmin(
   }
 }
 
+/**
+ * Require internal account type (blocks customer accounts from internal routes)
+ * This enforces STRICT separation between public users and internal staff/contractors
+ */
+export async function requireInternalAccount(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.firebaseUser?.uid || !req.firebaseUser?.email) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'User not authenticated'
+      });
+    }
+
+    const userEmail = req.firebaseUser.email.toLowerCase();
+
+    // Super admins always have internal access
+    if (isSuperAdmin(userEmail)) {
+      return next();
+    }
+
+    // Check Firebase custom claims first (faster than Firestore)
+    const { adminAuth } = await import('../lib/firebase-admin');
+    const userRecord = await adminAuth.getUser(req.firebaseUser.uid);
+    const claims = userRecord.customClaims || {};
+    
+    if (claims.accountType === 'internal') {
+      return next();
+    }
+
+    // Fallback to Firestore check if claims not set
+    const { db: firestoreDb } = await import('../lib/firebase-admin');
+    const profileDoc = await firestoreDb
+      .collection('users')
+      .doc(req.firebaseUser.uid)
+      .collection('profile')
+      .doc('data')
+      .get();
+
+    if (!profileDoc.exists) {
+      return res.status(403).json({ 
+        error: 'Access denied',
+        message: 'No profile found'
+      });
+    }
+
+    const profileData = profileDoc.data();
+    
+    if (profileData?.accountType !== 'internal') {
+      logger.warn(`Internal access denied for customer account: ${userEmail}`);
+      return res.status(403).json({ 
+        error: 'Access denied',
+        message: 'This area is restricted to internal staff only'
+      });
+    }
+
+    next();
+  } catch (error) {
+    logger.error('Error in requireInternalAccount middleware:', error);
+    res.status(500).json({ error: 'Failed to verify account access' });
+  }
+}
+
+/**
+ * Require customer account type (for public-facing routes)
+ * This prevents internal accounts from accidentally using customer features
+ */
+export async function requireCustomerAccount(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.firebaseUser?.uid) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'User not authenticated'
+      });
+    }
+
+    const { db: firestoreDb } = await import('../lib/firebase-admin');
+    const profileDoc = await firestoreDb
+      .collection('users')
+      .doc(req.firebaseUser.uid)
+      .collection('profile')
+      .doc('data')
+      .get();
+
+    if (!profileDoc.exists) {
+      return next(); // Allow if no profile (new user)
+    }
+
+    const profileData = profileDoc.data();
+    
+    // Internal users should use internal dashboards, not customer features
+    if (profileData?.accountType === 'internal') {
+      return res.status(403).json({ 
+        error: 'Access denied',
+        message: 'Internal staff should use the admin dashboard instead'
+      });
+    }
+
+    next();
+  } catch (error) {
+    logger.error('Error in requireCustomerAccount middleware:', error);
+    res.status(500).json({ error: 'Failed to verify account access' });
+  }
+}
+
 export default {
   isSuperAdmin,
   loadUserRole,
@@ -372,5 +484,7 @@ export default {
   k9000SupplierAccess,
   franchiseAccess,
   checkFranchiseeOwnership,
-  requireAdmin
+  requireAdmin,
+  requireInternalAccount,
+  requireCustomerAccount
 };

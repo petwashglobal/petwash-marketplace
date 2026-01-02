@@ -358,6 +358,19 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/register">
           {() => <SignUp language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
+        
+        {/* Internal onboarding - STRICTLY for invited staff/contractors/franchisees ONLY */}
+        {/* NOT accessible via public sign-up - requires valid invitation token */}
+        <Route path="/internal/onboard">
+          {() => {
+            const InternalOnboard = lazy(() => import("./pages/internal/InternalOnboard"));
+            return (
+              <Suspense fallback={<PageLoader />}>
+                <InternalOnboard />
+              </Suspense>
+            );
+          }}
+        </Route>
         <Route path="/enterprise-features">
           {() => (
             <Suspense fallback={<PageLoader />}>
