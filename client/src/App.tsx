@@ -224,6 +224,7 @@ const K9000BookingFlow = lazy(() => import("@/pages/k9000/BookingFlow"));
 
 const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
+const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
 
 // Pet Wash Ltd Executive Suite - Centralized C-Suite Management
 const ExecutiveSuiteHome = lazy(() => import("@/pages/ExecutiveSuiteHome"));
@@ -1306,6 +1307,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <FraudDashboard />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        
+        {/* Admin route - Provider Applications Review Dashboard */}
+        <Route path="/admin/provider-review">
+          {() => (
+            <AdminRouteGuard>
+              <ProviderReview />
             </AdminRouteGuard>
           )}
         </Route>

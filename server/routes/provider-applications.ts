@@ -643,8 +643,64 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
       req
     );
     
-    // TODO: Send email with invitation link
     const invitationUrl = `${process.env.APP_URL || 'https://petwash.co.il'}/provider/onboard?token=${invitationToken}`;
+    
+    // Send invitation email
+    try {
+      const { EmailService } = await import('../emailService');
+      await EmailService.send({
+        to: application.email,
+        subject: application.preferredLanguage === 'he' 
+          ? '!ברוכים הבאים למשפחת Pet Wash™ - הזמנה להצטרפות'
+          : 'Welcome to Pet Wash™ - Your Provider Invitation',
+        html: application.preferredLanguage === 'he' 
+          ? `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: rtl;">
+              <h1 style="color: #7c3aed;">מזל טוב, ${application.firstName}!</h1>
+              <p style="font-size: 16px; line-height: 1.6;">
+                אנו שמחים לעדכן אותך שבקשתך להצטרף לצוות Pet Wash™ <strong>אושרה!</strong>
+              </p>
+              <p style="font-size: 16px; line-height: 1.6;">
+                כדי להשלים את תהליך ההצטרפות שלך, לחץ על הכפתור למטה:
+              </p>
+              <a href="${invitationUrl}" style="display: inline-block; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0;">
+                השלם הצטרפות
+              </a>
+              <p style="font-size: 14px; color: #666;">
+                הקישור תקף ל-7 ימים ויפוג בתאריך ${expiresAt.toLocaleDateString('he-IL')}.
+              </p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+              <p style="font-size: 12px; color: #999;">
+                Pet Wash™ - טיפוח פרימיום לחיית המחמד שלך
+              </p>
+            </div>
+          `
+          : `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #7c3aed;">Congratulations, ${application.firstName}!</h1>
+              <p style="font-size: 16px; line-height: 1.6;">
+                We're excited to let you know that your application to join the Pet Wash™ team has been <strong>approved!</strong>
+              </p>
+              <p style="font-size: 16px; line-height: 1.6;">
+                To complete your onboarding, please click the button below:
+              </p>
+              <a href="${invitationUrl}" style="display: inline-block; background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0;">
+                Complete Onboarding
+              </a>
+              <p style="font-size: 14px; color: #666;">
+                This link is valid for 7 days and will expire on ${expiresAt.toLocaleDateString('en-US')}.
+              </p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+              <p style="font-size: 12px; color: #999;">
+                Pet Wash™ - Premium care for your furry friends
+              </p>
+            </div>
+          `
+      });
+      logger.info('[ProviderApplication] Invitation email sent', { email: application.email });
+    } catch (emailError) {
+      logger.error('[ProviderApplication] Failed to send invitation email', { emailError });
+    }
     
     logger.info('[ProviderApplication] Application approved', {
       applicationId,
@@ -656,7 +712,8 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
       success: true,
       message: 'Application approved',
       invitationUrl,
-      invitationExpiresAt: expiresAt
+      invitationExpiresAt: expiresAt,
+      emailSent: true
     });
     
   } catch (error) {
