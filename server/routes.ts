@@ -149,6 +149,7 @@ import pawFinderRoutes from "./routes/paw-finder";
 import petsRoutes from "./routes/pets";
 import pricingRoutes from "./routes/pricing";
 import providerOnboardingRoutes from "./routes/provider-onboarding";
+import providerApplicationsRoutes from "./routes/provider-applications";
 import pushNotificationsRoutes from "./routes/push-notifications";
 import recaptchaRoutes from "./routes/recaptcha";
 import reviewsRoutes from "./routes/reviews";
@@ -8297,6 +8298,7 @@ self.addEventListener('notificationclick', (event) => {
   // Provider Onboarding (Uber-style invite codes & KYC verification)
   const providerOnboardingRoutes = (await import('./routes/provider-onboarding')).default;
   app.use('/api/provider-onboarding', apiLimiter, providerOnboardingRoutes);
+  app.use('/api/provider-applications', validateFirebaseToken, apiLimiter, providerApplicationsRoutes);
 
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
   app.use(apiLimiter, esignRoutes);

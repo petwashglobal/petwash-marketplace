@@ -1645,3 +1645,386 @@ export const insertPaymentAccountSchema = createInsertSchema(paymentAccounts).om
 export const insertLedgerTransactionSchema = createInsertSchema(ledgerTransactions).omit({ id: true, createdAt: true });
 export const insertInvoiceHeaderSchema = createInsertSchema(invoiceHeaders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true, createdAt: true });
+
+// =================== PROVIDER APPLICATION SYSTEM (MadPaws-Style) ===================
+// Complete 7-stage verification workflow for marketplace providers
+
+// Application stage enum
+export const providerApplicationStages = [
+  'application_submitted',    // Stage 1: Initial form submitted
+  'documents_pending',        // Stage 2: Waiting for document uploads
+  'documents_under_review',   // Stage 3: Admin reviewing documents
+  'background_check_pending', // Stage 4: Background check initiated
+  'background_check_complete',// Stage 5: Background check results received
+  'admin_final_review',       // Stage 6: Final admin approval/rejection
+  'approved',                 // Stage 7a: Approved - invitation sent
+  'rejected',                 // Stage 7b: Rejected - with reason
+  'withdrawn'                 // Applicant withdrew
+] as const;
+
+// Service types the provider can offer
+export const providerServiceTypes = [
+  'pet_sitting',      // The Sitter Suite™
+  'dog_walking',      // Walk My Pet™
+  'pet_transport',    // PetTrek™
+  'wash_hub_operator',// K9000™ Station Operator
+  'grooming',         // Mobile grooming services
+  'training',         // Pet training services
+  'veterinary_house_calls' // Home vet visits
+] as const;
+
+// Provider Applicants - Main application table
+export const providerApplicants = pgTable("provider_applicants", {
+  id: serial("id").primaryKey(),
+  
+  // Applicant identity (linked to Firebase user)
+  userId: varchar("user_id").notNull(), // Firebase UID
+  email: varchar("email").notNull(),
+  
+  // Personal Information
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  phoneNumber: varchar("phone_number").notNull(),
+  dateOfBirth: date("date_of_birth").notNull(),
+  nationalId: varchar("national_id"), // Israeli Teudat Zehut or passport
+  
+  // Address
+  streetAddress: text("street_address").notNull(),
+  city: varchar("city").notNull(),
+  postalCode: varchar("postal_code"),
+  countryCode: varchar("country_code", { length: 2 }).default("IL"),
+  
+  // Professional Information
+  serviceTypes: text("service_types").array().notNull(), // Array of service types
+  yearsExperience: integer("years_experience").default(0),
+  certifications: text("certifications").array(), // Pet first aid, grooming certs, etc.
+  biography: text("biography"), // About themselves
+  languages: text("languages").array().default(sql`ARRAY['he']::text[]`),
+  
+  // Service Preferences
+  serviceRadius: integer("service_radius").default(10), // km
+  maxPetsAtOnce: integer("max_pets_at_once").default(3),
+  petTypesAccepted: text("pet_types_accepted").array().default(sql`ARRAY['dog', 'cat']::text[]`),
+  hasOwnVehicle: boolean("has_own_vehicle").default(false),
+  hasHomeSpace: boolean("has_home_space").default(false), // For pet sitting
+  
+  // Emergency Contact
+  emergencyContactName: varchar("emergency_contact_name"),
+  emergencyContactPhone: varchar("emergency_contact_phone"),
+  emergencyContactRelation: varchar("emergency_contact_relation"),
+  
+  // Application Status
+  stage: varchar("stage").notNull().default("application_submitted"),
+  status: varchar("status").notNull().default("pending"), // pending, approved, rejected, withdrawn
+  rejectionReason: text("rejection_reason"),
+  
+  // Interview/Screening
+  interviewScheduledAt: timestamp("interview_scheduled_at"),
+  interviewCompletedAt: timestamp("interview_completed_at"),
+  interviewNotes: text("interview_notes"),
+  interviewScore: integer("interview_score"), // 1-10
+  
+  // Admin Assignment
+  assignedReviewerId: varchar("assigned_reviewer_id"), // Admin UID
+  reviewerNotes: text("reviewer_notes"),
+  
+  // Israeli Privacy Law 2025 Compliance
+  privacyConsentAt: timestamp("privacy_consent_at"),
+  privacyConsentIp: varchar("privacy_consent_ip"),
+  marketingConsentAt: timestamp("marketing_consent_at"),
+  dataRetentionAcknowledgedAt: timestamp("data_retention_acknowledged_at"),
+  
+  // Invitation (on approval)
+  invitationToken: varchar("invitation_token").unique(),
+  invitationSentAt: timestamp("invitation_sent_at"),
+  invitationExpiresAt: timestamp("invitation_expires_at"),
+  onboardingCompletedAt: timestamp("onboarding_completed_at"),
+  
+  // Audit Trail
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow(),
+  stageChangedAt: timestamp("stage_changed_at").defaultNow(),
+  approvedAt: timestamp("approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  
+  // Cryptographic Integrity (Israeli Privacy Law 2025)
+  contentHash: varchar("content_hash"), // SHA-256 of application data
+  auditTrailHash: varchar("audit_trail_hash"), // Chain hash for tamper detection
+}, (table) => [
+  index("idx_provider_applicants_user").on(table.userId),
+  index("idx_provider_applicants_email").on(table.email),
+  index("idx_provider_applicants_stage").on(table.stage),
+  index("idx_provider_applicants_status").on(table.status),
+  index("idx_provider_applicants_reviewer").on(table.assignedReviewerId),
+]);
+
+// Document types for provider verification
+export const providerDocumentTypes = [
+  'national_id',           // Teudat Zehut / Passport
+  'drivers_license',       // For transport services
+  'criminal_background',   // Police clearance certificate
+  'pet_first_aid_cert',    // Pet first aid certification
+  'grooming_cert',         // Professional grooming certification
+  'veterinary_cert',       // Vet technician license
+  'insurance_policy',      // Liability insurance
+  'vehicle_registration',  // For transport providers
+  'vehicle_insurance',     // Vehicle insurance
+  'home_photos',           // For pet sitters - home environment
+  'profile_photo',         // Professional headshot
+  'tax_registration',      // Israeli Osek Morshe / Osek Patur
+  'bank_details',          // For payments
+  'references'             // Professional references
+] as const;
+
+// Provider Documents - Document uploads with verification
+export const providerDocuments = pgTable("provider_documents", {
+  id: serial("id").primaryKey(),
+  applicantId: integer("applicant_id").references(() => providerApplicants.id).notNull(),
+  
+  // Document Details
+  documentType: varchar("document_type").notNull(),
+  fileName: varchar("file_name").notNull(),
+  fileSize: integer("file_size").notNull(), // bytes
+  mimeType: varchar("mime_type").notNull(),
+  
+  // Storage (Google Cloud Storage)
+  storagePath: varchar("storage_path").notNull(), // GCS path
+  storageUrl: text("storage_url"), // Signed URL (temporary)
+  
+  // Verification
+  verificationStatus: varchar("verification_status").notNull().default("pending"), // pending, verified, rejected, expired
+  verifiedAt: timestamp("verified_at"),
+  verifiedByUid: varchar("verified_by_uid"),
+  verificationNotes: text("verification_notes"),
+  rejectionReason: text("rejection_reason"),
+  
+  // Document Validity
+  documentNumber: varchar("document_number"), // ID number, license number, etc.
+  issueDate: date("issue_date"),
+  expiryDate: date("expiry_date"),
+  issuingAuthority: varchar("issuing_authority"),
+  
+  // OCR/AI Extraction (Google Vision API)
+  extractedData: jsonb("extracted_data"), // OCR results
+  ocrConfidenceScore: decimal("ocr_confidence_score", { precision: 5, scale: 4 }),
+  aiVerificationResult: jsonb("ai_verification_result"),
+  
+  // Security
+  fileHash: varchar("file_hash").notNull(), // SHA-256 of file content
+  encryptedAt: timestamp("encrypted_at"),
+  
+  // Audit
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  lastAccessedAt: timestamp("last_accessed_at"),
+  accessCount: integer("access_count").default(0),
+}, (table) => [
+  index("idx_provider_docs_applicant").on(table.applicantId),
+  index("idx_provider_docs_type").on(table.documentType),
+  index("idx_provider_docs_status").on(table.verificationStatus),
+]);
+
+// Background Check Results
+export const providerBackgroundChecks = pgTable("provider_background_checks", {
+  id: serial("id").primaryKey(),
+  applicantId: integer("applicant_id").references(() => providerApplicants.id).notNull(),
+  
+  // Check Type
+  checkType: varchar("check_type").notNull(), // criminal, employment, reference, credit
+  checkProvider: varchar("check_provider").notNull(), // Service provider name
+  
+  // Status
+  status: varchar("status").notNull().default("pending"), // pending, in_progress, completed, failed, expired
+  initiatedAt: timestamp("initiated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at"),
+  
+  // Results
+  resultStatus: varchar("result_status"), // clear, flagged, inconclusive
+  resultSummary: text("result_summary"),
+  flaggedIssues: jsonb("flagged_issues"), // Array of issues found
+  riskScore: integer("risk_score"), // 0-100, lower is better
+  
+  // Raw Response (encrypted)
+  vendorReference: varchar("vendor_reference"), // External reference ID
+  vendorResponse: jsonb("vendor_response"), // Full response from vendor
+  
+  // Admin Review
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedByUid: varchar("reviewed_by_uid"),
+  reviewerDecision: varchar("reviewer_decision"), // accept, reject, request_more_info
+  reviewerNotes: text("reviewer_notes"),
+  
+  // Security
+  responseHash: varchar("response_hash"), // SHA-256 of vendor response
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_bg_checks_applicant").on(table.applicantId),
+  index("idx_bg_checks_status").on(table.status),
+  index("idx_bg_checks_result").on(table.resultStatus),
+]);
+
+// Onboarding Tasks Checklist
+export const providerOnboardingTasks = pgTable("provider_onboarding_tasks", {
+  id: serial("id").primaryKey(),
+  applicantId: integer("applicant_id").references(() => providerApplicants.id).notNull(),
+  
+  // Task Details
+  taskCode: varchar("task_code").notNull(), // unique code like 'UPLOAD_ID', 'COMPLETE_PROFILE'
+  taskName: varchar("task_name").notNull(),
+  taskNameHe: varchar("task_name_he"), // Hebrew translation
+  description: text("description"),
+  descriptionHe: text("description_he"),
+  
+  // Stage Association
+  stage: varchar("stage").notNull(), // Which stage this task belongs to
+  sortOrder: integer("sort_order").default(0),
+  
+  // Requirements
+  isRequired: boolean("is_required").default(true),
+  requiredDocumentType: varchar("required_document_type"), // If task requires doc upload
+  
+  // Status
+  status: varchar("status").notNull().default("pending"), // pending, in_progress, completed, skipped, blocked
+  completedAt: timestamp("completed_at"),
+  completedData: jsonb("completed_data"), // Any data collected
+  
+  // Validation
+  validationRule: text("validation_rule"), // JSON schema or rule definition
+  validationErrors: jsonb("validation_errors"),
+  
+  // Deadline
+  dueDate: timestamp("due_date"),
+  reminderSentAt: timestamp("reminder_sent_at"),
+  overdueNotifiedAt: timestamp("overdue_notified_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_onboard_tasks_applicant").on(table.applicantId),
+  index("idx_onboard_tasks_stage").on(table.stage),
+  index("idx_onboard_tasks_status").on(table.status),
+]);
+
+// Stage Transition Audit Log
+export const providerStageTransitions = pgTable("provider_stage_transitions", {
+  id: serial("id").primaryKey(),
+  applicantId: integer("applicant_id").references(() => providerApplicants.id).notNull(),
+  
+  // Transition Details
+  fromStage: varchar("from_stage"),
+  toStage: varchar("to_stage").notNull(),
+  transitionReason: text("transition_reason"),
+  
+  // Actor
+  triggeredByUid: varchar("triggered_by_uid"), // Who triggered the change
+  triggeredBySystem: boolean("triggered_by_system").default(false), // Auto-triggered
+  
+  // Context
+  metadata: jsonb("metadata"), // Additional context
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  
+  // Cryptographic Chain
+  previousHash: varchar("previous_hash"), // Hash of previous transition
+  transitionHash: varchar("transition_hash"), // SHA-256 of this transition
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_stage_trans_applicant").on(table.applicantId),
+  index("idx_stage_trans_time").on(table.createdAt),
+]);
+
+// Provider Application Types
+export type ProviderApplicant = typeof providerApplicants.$inferSelect;
+export type InsertProviderApplicant = typeof providerApplicants.$inferInsert;
+
+export type ProviderDocument = typeof providerDocuments.$inferSelect;
+export type InsertProviderDocument = typeof providerDocuments.$inferInsert;
+
+export type ProviderBackgroundCheck = typeof providerBackgroundChecks.$inferSelect;
+export type InsertProviderBackgroundCheck = typeof providerBackgroundChecks.$inferInsert;
+
+export type ProviderOnboardingTask = typeof providerOnboardingTasks.$inferSelect;
+export type InsertProviderOnboardingTask = typeof providerOnboardingTasks.$inferInsert;
+
+export type ProviderStageTransition = typeof providerStageTransitions.$inferSelect;
+export type InsertProviderStageTransition = typeof providerStageTransitions.$inferInsert;
+
+// Zod Schemas for Provider Application
+export const insertProviderApplicantSchema = createInsertSchema(providerApplicants).omit({ 
+  id: true, 
+  submittedAt: true, 
+  lastUpdatedAt: true,
+  stageChangedAt: true,
+  contentHash: true,
+  auditTrailHash: true 
+});
+
+export const insertProviderDocumentSchema = createInsertSchema(providerDocuments).omit({ 
+  id: true, 
+  uploadedAt: true,
+  lastAccessedAt: true,
+  accessCount: true 
+});
+
+export const insertProviderBackgroundCheckSchema = createInsertSchema(providerBackgroundChecks).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+
+export const insertProviderOnboardingTaskSchema = createInsertSchema(providerOnboardingTasks).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+
+export const insertProviderStageTransitionSchema = createInsertSchema(providerStageTransitions).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+// Application form validation schema (for frontend)
+export const providerApplicationFormSchema = z.object({
+  // Personal Info
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  phoneNumber: z.string().min(9, "Phone number must be at least 9 digits"),
+  dateOfBirth: z.string().refine((date) => {
+    const age = (new Date().getFullYear() - new Date(date).getFullYear());
+    return age >= 18;
+  }, "You must be at least 18 years old"),
+  nationalId: z.string().optional(),
+  
+  // Address
+  streetAddress: z.string().min(5, "Please enter your full address"),
+  city: z.string().min(2, "City is required"),
+  postalCode: z.string().optional(),
+  
+  // Professional
+  serviceTypes: z.array(z.string()).min(1, "Select at least one service type"),
+  yearsExperience: z.number().min(0).max(50),
+  certifications: z.array(z.string()).optional(),
+  biography: z.string().min(50, "Tell us about yourself (at least 50 characters)").max(2000),
+  languages: z.array(z.string()).min(1, "Select at least one language"),
+  
+  // Service Preferences
+  serviceRadius: z.number().min(1).max(100),
+  maxPetsAtOnce: z.number().min(1).max(20),
+  petTypesAccepted: z.array(z.string()).min(1, "Select at least one pet type"),
+  hasOwnVehicle: z.boolean(),
+  hasHomeSpace: z.boolean(),
+  
+  // Emergency Contact
+  emergencyContactName: z.string().min(2, "Emergency contact name is required"),
+  emergencyContactPhone: z.string().min(9, "Emergency contact phone is required"),
+  emergencyContactRelation: z.string().min(2, "Relationship is required"),
+  
+  // Consents (Israeli Privacy Law 2025)
+  privacyConsent: z.boolean().refine(val => val === true, "You must agree to the privacy policy"),
+  marketingConsent: z.boolean().optional(),
+  dataRetentionAcknowledged: z.boolean().refine(val => val === true, "You must acknowledge the data retention policy"),
+});

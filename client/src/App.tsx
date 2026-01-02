@@ -48,6 +48,7 @@ const Marketplace = lazy(() => import("@/pages/Marketplace"));
 const TalentMarketplace = lazy(() => import("@/pages/PetWashTalentMarketplacePage"));
 const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
+const BecomeProvider = lazy(() => import("@/pages/BecomeProvider"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
@@ -1449,6 +1450,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <PlatformLegalFramework />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/become-provider">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <BecomeProvider />
             </Suspense>
           )}
         </Route>
