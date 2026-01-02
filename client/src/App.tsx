@@ -757,6 +757,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* Walk My Pet™ - Browse Alias (MadPaws-style) */}
+        <Route path="/walk-my-pet/browse">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <WalkMyPet />
+            </Suspense>
+          )}
+        </Route>
+        
         {/* Walk My Pet™ - Walker Detail Profile */}
         <Route path="/walk-my-pet/walkers/:id">
           {() => (
@@ -957,6 +966,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         
         {/* The Sitter Suite™ - Browse/Explore Sitters */}
         <Route path="/sitter-suite/explore">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <SitterSuite />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* The Sitter Suite™ - Browse Alias (MadPaws-style) */}
+        <Route path="/sitter-suite/browse">
           {() => (
             <Suspense fallback={<PageLoader />}>
               <SitterSuite />

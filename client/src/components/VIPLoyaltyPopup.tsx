@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Crown, Sparkles, Dog, MapPin, Heart, Car, Search, Palette, Monitor, Building2, ArrowRight } from 'lucide-react';
+import { X, Crown, Sparkles, Dog, MapPin, Heart, Car, Search, Monitor, Building2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 
@@ -62,14 +62,6 @@ const platforms: Platform[] = [
     tags: ['100% Free', 'AI Detection', 'Community'],
     badge: 'FREE',
     badgeColor: 'bg-green-500',
-  },
-  {
-    id: 'plush',
-    name: 'The Plush Lab™',
-    description: 'AI pet avatar creator - Free for everyone',
-    icon: Palette,
-    gradient: 'from-violet-400 to-purple-500',
-    tags: ['AI Art', 'No Sign-Up', 'Instant'],
   },
   {
     id: 'k9000',
@@ -179,7 +171,7 @@ export function VIPLoyaltyPopup({ isOpen, onClose }: VIPLoyaltyPopupProps) {
                 className="text-center mb-8"
               >
                 <h2 className="text-xl md:text-2xl font-semibold text-black mb-2">
-                  8 Luxury Platforms
+                  7 Luxury Platforms
                 </h2>
                 <p className="text-gray-500">2026 Global Brands</p>
               </motion.div>
@@ -264,7 +256,7 @@ export function VIPLoyaltyPopup({ isOpen, onClose }: VIPLoyaltyPopupProps) {
                 </div>
 
                 <p className="text-sm md:text-base text-white/80 mb-6">
-                  8 Brands • Banking-Level Security • 2026 Technology • Uncompromised Luxury Experience
+                  7 Brands • Banking-Level Security • 2026 Technology • Uncompromised Luxury Experience
                 </p>
 
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto mb-4">
