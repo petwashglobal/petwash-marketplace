@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check, Crown, Gift, Shield, Star, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
+import { Layout } from '@/components/Layout';
 
 export default function Packages() {
   const [, setLocation] = useLocation();
@@ -111,8 +112,9 @@ export default function Packages() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Hero Section - Ultra Luxury */}
+    <Layout>
+      <div className="min-h-screen bg-white">
+        {/* Hero Section - Ultra Luxury */}
       <div className="relative bg-black text-white py-20 overflow-hidden">
                 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -381,8 +383,9 @@ export default function Packages() {
           >
             Get Started
           </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }
