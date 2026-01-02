@@ -788,6 +788,55 @@ export const userRoleAssignments = pgTable("user_role_assignments", {
   index("idx_user_roles_role").on(table.roleId),
 ]);
 
+// =================== INTERNAL INVITATIONS ===================
+// Invitation-only registration for staff, contractors, and franchisees
+
+export const internalInvites = pgTable("internal_invites", {
+  id: serial("id").primaryKey(),
+  
+  // Invitation token
+  token: varchar("token").unique().notNull(), // Unique token for invitation URL
+  
+  // Invitee information
+  email: varchar("email").notNull(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  phone: varchar("phone"),
+  
+  // Role assignment
+  roleCode: varchar("role_code").notNull(), // STAFF, CONTRACTOR, FRANCHISEE, MANAGER, etc.
+  roleId: integer("role_id").references(() => systemRoles.id),
+  department: varchar("department"), // operations, finance, hr, etc.
+  
+  // Entity associations
+  franchiseeId: integer("franchisee_id").references(() => franchisees.id), // For franchisee staff
+  stationIds: jsonb("station_ids"), // Array of station IDs if restricted access
+  
+  // Status tracking
+  status: varchar("status").notNull().default("pending"), // pending, sent, accepted, expired, revoked
+  
+  // Timing
+  expiresAt: timestamp("expires_at").notNull(), // Invitation expiry
+  sentAt: timestamp("sent_at"),
+  acceptedAt: timestamp("accepted_at"),
+  
+  // Firebase UID after acceptance
+  acceptedByUid: varchar("accepted_by_uid"),
+  
+  // Audit trail
+  createdBy: varchar("created_by").notNull(), // Admin email who created
+  createdByUid: varchar("created_by_uid").notNull(), // Admin Firebase UID
+  notes: text("notes"), // Internal notes about the invitation
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_invites_token").on(table.token),
+  index("idx_invites_email").on(table.email),
+  index("idx_invites_status").on(table.status),
+  index("idx_invites_role").on(table.roleCode),
+]);
+
 // =================== SECURE DOCUMENT MANAGEMENT ===================
 
 // Document Categories
@@ -1519,6 +1568,9 @@ export type InsertSystemRole = typeof systemRoles.$inferInsert;
 export type UserRoleAssignment = typeof userRoleAssignments.$inferSelect;
 export type InsertUserRoleAssignment = typeof userRoleAssignments.$inferInsert;
 
+export type InternalInvite = typeof internalInvites.$inferSelect;
+export type InsertInternalInvite = typeof internalInvites.$inferInsert;
+
 export type DocumentCategory = typeof documentCategories.$inferSelect;
 export type InsertDocumentCategory = typeof documentCategories.$inferInsert;
 
@@ -1578,6 +1630,7 @@ export const insertStockTransactionSchema = createInsertSchema(stockTransactions
 export const insertSupplierNotificationSettingSchema = createInsertSchema(supplierNotificationSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSystemRoleSchema = createInsertSchema(systemRoles).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUserRoleAssignmentSchema = createInsertSchema(userRoleAssignments).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertInternalInviteSchema = createInsertSchema(internalInvites).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentCategorySchema = createInsertSchema(documentCategories).omit({ id: true, createdAt: true });
 export const insertSecureDocumentSchema = createInsertSchema(secureDocuments).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentAccessLogSchema = createInsertSchema(documentAccessLog).omit({ id: true, accessedAt: true });
