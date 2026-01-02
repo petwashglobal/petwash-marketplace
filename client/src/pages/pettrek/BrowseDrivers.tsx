@@ -270,11 +270,12 @@ export default function BrowseDrivers() {
             <div className="mt-4 flex justify-center">
               <button
                 onClick={() => setShowWizard(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold shadow-lg hover:from-purple-700 hover:to-indigo-700 transition-all hover:scale-105"
-                data-testid="button-start-wizard"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-bold shadow-xl shadow-amber-500/30 hover:from-amber-600 hover:via-orange-600 hover:to-amber-700 transition-all hover:scale-105"
+                data-testid="button-start-booking-wizard"
               >
+                <Crown className="w-5 h-5" />
+                Book Now / הזמן עכשיו
                 <Sparkles className="w-5 h-5" />
-                חיפוש מודרך / Guided Search
               </button>
             </div>
           </div>

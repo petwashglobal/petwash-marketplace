@@ -327,12 +327,12 @@ export default function WalkMyPet() {
                     {/* Guided Booking Button - Pet Wash™ Luxury Wizard */}
                     <button
                       onClick={() => setShowWizard(true)}
-                      className="w-full h-16 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-bold text-lg flex items-center justify-center gap-3 hover:from-emerald-700 hover:to-teal-700 transition-all shadow-xl hover:shadow-2xl hover:scale-[1.02]"
-                      data-testid="button-start-wizard"
+                      className="w-full h-16 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-bold text-lg flex items-center justify-center gap-3 hover:from-amber-600 hover:via-orange-600 hover:to-amber-700 transition-all shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:scale-[1.02]"
+                      data-testid="button-start-booking-wizard"
                     >
-                      <Sparkles className="w-6 h-6" />
-                      {isHebrew ? 'חיפוש מודרך' : 'Guided Search'}
-                      <Crown className="w-5 h-5" />
+                      <Crown className="w-6 h-6" />
+                      {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
+                      <Sparkles className="w-5 h-5" />
                     </button>
 
                     <div className="text-center text-sm text-gray-500 dark:text-gray-400">
