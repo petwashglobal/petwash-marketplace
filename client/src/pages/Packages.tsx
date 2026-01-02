@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Sparkles, Crown, Zap, Gift, Shield, Star } from "lucide-react";
+import { Check, Crown, Gift, Shield, Star, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function Packages() {
@@ -114,15 +114,10 @@ export default function Packages() {
     <div className="min-h-screen bg-white">
       {/* Hero Section - Ultra Luxury */}
       <div className="relative bg-black text-white py-20 overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)'
-          }}></div>
-        </div>
-        
+                
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 border border-white/30 rounded-full mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 border border-white border-opacity-30 rounded-full mb-8">
               <Crown className="w-4 h-4" />
               <span className="text-sm font-medium tracking-widest uppercase">Exclusive Packages</span>
             </div>
@@ -132,7 +127,7 @@ export default function Packages() {
               <span className="block font-bold">Collections</span>
             </h1>
             
-            <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto font-light">
+            <p className="text-lg md:text-xl text-white opacity-70 max-w-2xl mx-auto font-light">
               Luxury organic pet care packages. Save up to 15% with our curated collections.
             </p>
           </div>
@@ -141,7 +136,7 @@ export default function Packages() {
 
       {/* Packages Grid - Credit Card Style */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
           {packages.map((pkg, index) => {
             const isSelected = selectedPackage === index;
             
@@ -152,7 +147,7 @@ export default function Packages() {
                 className={`
                   relative group cursor-pointer
                   transition-all duration-500 ease-out
-                  ${isSelected ? 'scale-105 z-10' : 'hover:scale-102'}
+                  ${isSelected ? 'scale-105 z-10' : 'hover:scale-[1.02]'}
                 `}
                 data-testid={`package-card-${index}`}
               >
@@ -161,8 +156,8 @@ export default function Packages() {
                   relative overflow-hidden rounded-2xl
                   aspect-[3/4] md:aspect-[2/3]
                   ${pkg.popular 
-                    ? 'bg-black text-white shadow-2xl shadow-black/30' 
-                    : 'bg-white text-black border-2 border-black/10 hover:border-black/30'
+                    ? 'bg-black text-white shadow-2xl' 
+                    : 'bg-white text-black border-2 border-black border-opacity-10 hover:border-opacity-30'
                   }
                   transition-all duration-300
                 `}>
@@ -190,8 +185,8 @@ export default function Packages() {
                     <div className={`
                       inline-flex self-start px-3 py-1 rounded text-xs font-bold tracking-widest mb-4
                       ${pkg.popular 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-black/5 text-black/60'
+                        ? 'bg-white bg-opacity-20 text-white' 
+                        : 'bg-black bg-opacity-5 text-black opacity-60'
                       }
                     `}>
                       {pkg.tier}
@@ -199,7 +194,7 @@ export default function Packages() {
 
                     {/* Package Name */}
                     <h3 className="text-xl font-bold mb-1">{pkg.name}</h3>
-                    <p className={`text-sm mb-6 ${pkg.popular ? 'text-white/60' : 'text-black/50'}`}>
+                    <p className={`text-sm mb-6 ${pkg.popular ? 'text-white opacity-60' : 'text-black opacity-50'}`}>
                       {pkg.nameHebrew}
                     </p>
 
@@ -219,7 +214,7 @@ export default function Packages() {
                         }}>
                           {pkg.washes}
                         </div>
-                        <div className={`text-sm uppercase tracking-widest ${pkg.popular ? 'text-white/50' : 'text-black/40'}`}>
+                        <div className={`text-sm uppercase tracking-widest ${pkg.popular ? 'text-white opacity-50' : 'text-black opacity-40'}`}>
                           {pkg.washes === 1 ? 'Wash' : 'Washes'}
                         </div>
                       </div>
@@ -230,7 +225,7 @@ export default function Packages() {
                       <div className="flex items-end justify-between">
                         <div>
                           {pkg.originalPrice && (
-                            <div className={`text-sm line-through ${pkg.popular ? 'text-white/40' : 'text-black/30'}`}>
+                            <div className={`text-sm line-through ${pkg.popular ? 'text-white opacity-40' : 'text-black opacity-30'}`}>
                               {pkg.originalPrice}
                             </div>
                           )}
@@ -240,7 +235,7 @@ export default function Packages() {
                           <div className={`
                             px-2 py-1 rounded text-xs font-bold
                             ${pkg.popular 
-                              ? 'bg-white/20 text-white' 
+                              ? 'bg-white bg-opacity-20 text-white' 
                               : 'bg-black text-white'
                             }
                           `}>
@@ -254,7 +249,7 @@ export default function Packages() {
                   {/* Hover Effect Overlay */}
                   <div className={`
                     absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300
-                    ${pkg.popular ? 'bg-white/5' : 'bg-black/5'}
+                    ${pkg.popular ? 'bg-white bg-opacity-5' : 'bg-black bg-opacity-5'}
                   `}></div>
                 </div>
 
@@ -269,7 +264,7 @@ export default function Packages() {
                     w-full mt-4 py-4 rounded-xl font-bold text-sm tracking-wider uppercase
                     transition-all duration-300
                     ${pkg.popular
-                      ? 'bg-black text-white hover:bg-black/80'
+                      ? 'bg-black text-white hover:bg-opacity-80'
                       : 'bg-white text-black border-2 border-black hover:bg-black hover:text-white'
                     }
                   `}
@@ -284,7 +279,7 @@ export default function Packages() {
       </div>
 
       {/* Features Section - Minimalist */}
-      <div className="bg-black/5 py-20">
+      <div className="bg-black bg-opacity-5 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
             Every Package Includes
@@ -302,7 +297,7 @@ export default function Packages() {
                   <item.icon className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="font-bold mb-1">{item.title}</h3>
-                <p className="text-sm text-black/60">{item.desc}</p>
+                <p className="text-sm text-black opacity-60">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -328,39 +323,39 @@ export default function Packages() {
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-black/10">
+              <tr className="border-b border-black border-opacity-10">
                 <td className="py-4 px-4">Number of Washes</td>
                 {packages.map((pkg, i) => (
-                  <td key={i} className={`py-4 px-4 text-center font-bold ${pkg.popular ? 'bg-black/5' : ''}`}>
+                  <td key={i} className={`py-4 px-4 text-center font-bold ${pkg.popular ? 'bg-black bg-opacity-5' : ''}`}>
                     {pkg.washes}
                   </td>
                 ))}
               </tr>
-              <tr className="border-b border-black/10">
+              <tr className="border-b border-black border-opacity-10">
                 <td className="py-4 px-4">Discount</td>
                 <td className="py-4 px-4 text-center">—</td>
                 <td className="py-4 px-4 text-center">5%</td>
-                <td className="py-4 px-4 text-center font-bold bg-black/5">10%</td>
+                <td className="py-4 px-4 text-center font-bold bg-black bg-opacity-5">10%</td>
                 <td className="py-4 px-4 text-center">15%</td>
               </tr>
-              <tr className="border-b border-black/10">
+              <tr className="border-b border-black border-opacity-10">
                 <td className="py-4 px-4">Validity</td>
                 <td className="py-4 px-4 text-center">—</td>
                 <td className="py-4 px-4 text-center">3 months</td>
-                <td className="py-4 px-4 text-center font-bold bg-black/5">6 months</td>
+                <td className="py-4 px-4 text-center font-bold bg-black bg-opacity-5">6 months</td>
                 <td className="py-4 px-4 text-center">12 months</td>
               </tr>
-              <tr className="border-b border-black/10">
+              <tr className="border-b border-black border-opacity-10">
                 <td className="py-4 px-4">Loyalty Points</td>
                 <td className="py-4 px-4 text-center"><Check className="w-5 h-5 mx-auto" /></td>
                 <td className="py-4 px-4 text-center"><Check className="w-5 h-5 mx-auto" /></td>
-                <td className="py-4 px-4 text-center font-bold bg-black/5">Bonus</td>
+                <td className="py-4 px-4 text-center font-bold bg-black bg-opacity-5">Bonus</td>
                 <td className="py-4 px-4 text-center font-bold">2x</td>
               </tr>
               <tr>
                 <td className="py-4 px-4">Price</td>
                 {packages.map((pkg, i) => (
-                  <td key={i} className={`py-4 px-4 text-center font-bold text-lg ${pkg.popular ? 'bg-black/5' : ''}`}>
+                  <td key={i} className={`py-4 px-4 text-center font-bold text-lg ${pkg.popular ? 'bg-black bg-opacity-5' : ''}`}>
                     {pkg.price}
                   </td>
                 ))}
@@ -376,12 +371,12 @@ export default function Packages() {
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
             Ready to Experience Luxury Pet Care?
           </h2>
-          <p className="text-lg text-white/70 mb-8">
+          <p className="text-lg text-white opacity-70 mb-8">
             Join thousands of pet owners who trust Pet Wash™ for premium organic grooming.
           </p>
           <button 
             onClick={() => setLocation('/sign-up')}
-            className="px-12 py-4 bg-white text-black font-bold rounded-full hover:bg-white/90 transition-all duration-300"
+            className="px-12 py-4 bg-white text-black font-bold rounded-full hover:bg-opacity-90 transition-all duration-300"
             data-testid="button-get-started"
           >
             Get Started
