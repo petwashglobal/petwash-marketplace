@@ -28,6 +28,7 @@ import { initializeInteractionTracking } from "@/lib/interactionTracker";
 import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
+import { PromoAdPopup } from "@/components/PromoAdPopup";
 
 // CRITICAL: Only import home route components (for instant load)
 import Landing from "@/pages/Landing";
@@ -2055,6 +2056,7 @@ function App() {
             </defs>
           </svg>
           
+          <PromoAdPopup />
           <Toaster />
           <FloatingStack 
             language={currentLanguage}
