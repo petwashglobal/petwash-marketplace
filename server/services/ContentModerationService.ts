@@ -31,7 +31,7 @@ class ContentModerationService {
       logger.warn('[ContentModeration] ⚠️ Gemini API key not found - AI moderation disabled');
     }
 
-    // Multi-language blocklist (Hebrew + English + Arabic + Russian)
+    // Multi-language blocklist (Hebrew + English + Arabic + Russian + French + Spanish)
     this.blocklist = new Map([
       ['he', [
         // Hebrew profanity and offensive terms
@@ -55,6 +55,18 @@ class ContentModerationService {
       ['ru', [
         // Russian profanity (basic set)
         'блять', 'сука', 'пизда', 'хуй', 'дерьмо', 'мудак',
+      ]],
+      ['fr', [
+        // French profanity
+        'merde', 'putain', 'salope', 'connard', 'connasse', 'enculé',
+        'nique', 'bordel', 'foutre', 'pute', 'batard', 'fils de pute',
+        'ta gueule', 'casse-toi', 'va te faire',
+      ]],
+      ['es', [
+        // Spanish profanity
+        'mierda', 'puta', 'puto', 'cabrón', 'pendejo', 'chingar',
+        'joder', 'coño', 'verga', 'culo', 'maricón', 'hijo de puta',
+        'vete a la mierda', 'pinche', 'culero',
       ]],
     ]);
   }

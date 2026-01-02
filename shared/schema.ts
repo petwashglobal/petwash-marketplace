@@ -5491,6 +5491,160 @@ export const insertSocialFriendshipSchema = createInsertSchema(socialFriendships
 export type InsertSocialFriendship = z.infer<typeof insertSocialFriendshipSchema>;
 export type SocialFriendship = typeof socialFriendships.$inferSelect;
 
+// =================== PET AWARENESS DAYS & PROMOTIONAL CAMPAIGNS ===================
+// International pet awareness calendar with multi-language promotional campaigns
+
+export const petAwarenessDays = pgTable("pet_awareness_days", {
+  id: serial("id").primaryKey(),
+  
+  // Event Identification
+  slug: varchar("slug").notNull().unique(), // 'international-dog-day', 'national-cat-day'
+  eventDate: date("event_date").notNull(), // Specific date (e.g., '2026-08-26')
+  recurrenceType: varchar("recurrence_type").default("annual"), // 'annual', 'monthly', 'weekly', 'one_time'
+  
+  // Multi-language Content (JSONB for localized strings)
+  titleLocales: jsonb("title_locales").notNull(), // { "en": "International Dog Day", "he": "יום הכלב הבינלאומי" }
+  descriptionLocales: jsonb("description_locales"), // { "en": "Celebrates all dogs...", "he": "חוגגים את כל הכלבים..." }
+  
+  // Event Metadata
+  petTypes: text("pet_types").array(), // ['dog'], ['cat'], ['dog', 'cat', 'bird']
+  category: varchar("category").notNull(), // 'celebration', 'awareness', 'health', 'adoption', 'memorial'
+  isGlobal: boolean("is_global").default(true), // True for international, false for country-specific
+  targetCountries: text("target_countries").array(), // ['IL', 'US', 'AU'] - null means all countries
+  
+  // Campaign Hook
+  defaultCampaignType: varchar("default_campaign_type"), // 'discount', 'awareness', 'donation', 'social'
+  suggestedDiscountPercent: integer("suggested_discount_percent"), // 10, 20, 30
+  
+  // Display
+  heroImageUrl: varchar("hero_image_url"),
+  iconEmoji: varchar("icon_emoji"), // 🐕, 🐈, 🐾
+  themeColor: varchar("theme_color"), // '#FF6B6B' for styling
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  slugIdx: index("idx_awareness_slug").on(table.slug),
+  dateIdx: index("idx_awareness_date").on(table.eventDate),
+  categoryIdx: index("idx_awareness_category").on(table.category),
+}));
+
+export const promotionalCampaigns = pgTable("promotional_campaigns", {
+  id: serial("id").primaryKey(),
+  
+  // Campaign Basics
+  name: varchar("name").notNull(),
+  slug: varchar("slug").notNull().unique(),
+  awarenessDayId: integer("awareness_day_id").references(() => petAwarenessDays.id),
+  
+  // Status & Lifecycle
+  status: varchar("status").default("draft").notNull(), // 'draft', 'pending_review', 'approved', 'live', 'paused', 'expired', 'cancelled'
+  startAt: timestamp("start_at").notNull(),
+  endAt: timestamp("end_at").notNull(),
+  
+  // Targeting
+  targetSegments: jsonb("target_segments"), // { "loyaltyTiers": ["gold", "platinum"], "petTypes": ["dog"] }
+  targetLocales: text("target_locales").array(), // ['en', 'he', 'ar']
+  targetCountries: text("target_countries").array(), // ['IL', 'US']
+  
+  // Discount Configuration
+  discountType: varchar("discount_type").notNull(), // 'percentage', 'fixed', 'bundle', 'referral', 'bogo'
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(), // 20.00 for 20%, or 50.00 for ₪50
+  discountCurrency: varchar("discount_currency").default("ILS"), // For fixed discounts
+  maxRedemptions: integer("max_redemptions"), // null = unlimited
+  currentRedemptions: integer("current_redemptions").default(0),
+  minPurchaseAmount: decimal("min_purchase_amount", { precision: 10, scale: 2 }),
+  maxDiscountAmount: decimal("max_discount_amount", { precision: 10, scale: 2 }), // Cap for percentage discounts
+  
+  // Promo Code
+  promoCode: varchar("promo_code"), // 'DOGDAY2026'
+  isAutoApply: boolean("is_auto_apply").default(false), // Auto-apply at checkout
+  
+  // Content (Multi-language)
+  contentLocales: jsonb("content_locales").notNull(), // { "en": { "title": "...", "description": "..." }, "he": { ... } }
+  heroAssets: jsonb("hero_assets"), // { "desktop": "url", "mobile": "url" }
+  
+  // Social Boost
+  socialBoostEnabled: boolean("social_boost_enabled").default(false),
+  socialBoostBudget: decimal("social_boost_budget", { precision: 10, scale: 2 }),
+  scheduledPostIds: jsonb("scheduled_post_ids"), // [123, 456] - social post IDs to boost
+  
+  // Approval
+  requiresManualReview: boolean("requires_manual_review").default(true),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  
+  // Creator & Audit
+  createdBy: varchar("created_by").notNull(),
+  approvedBy: varchar("approved_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  slugIdx: index("idx_campaign_slug").on(table.slug),
+  statusIdx: index("idx_campaign_status").on(table.status),
+  startAtIdx: index("idx_campaign_start").on(table.startAt),
+  promoCodeIdx: index("idx_campaign_promo").on(table.promoCode),
+}));
+
+export const campaignRedemptions = pgTable("campaign_redemptions", {
+  id: serial("id").primaryKey(),
+  
+  campaignId: integer("campaign_id").references(() => promotionalCampaigns.id).notNull(),
+  userId: varchar("user_id").notNull(), // Firebase UID
+  userEmail: varchar("user_email"),
+  
+  // Redemption Details
+  bookingId: integer("booking_id"), // If used for a booking
+  orderId: varchar("order_id"), // Generic order reference
+  discountApplied: decimal("discount_applied", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").default("ILS"),
+  
+  // Tracking
+  promoCodeUsed: varchar("promo_code_used"),
+  sourceChannel: varchar("source_channel"), // 'web', 'app', 'social', 'email'
+  
+  // Metadata
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  redeemedAt: timestamp("redeemed_at").defaultNow(),
+}, (table) => ({
+  campaignIdx: index("idx_redemption_campaign").on(table.campaignId),
+  userIdx: index("idx_redemption_user").on(table.userId),
+  dateIdx: index("idx_redemption_date").on(table.redeemedAt),
+}));
+
+// Zod Schemas for Promotional Campaigns
+export const insertPetAwarenessDaySchema = createInsertSchema(petAwarenessDays).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertPetAwarenessDay = z.infer<typeof insertPetAwarenessDaySchema>;
+export type PetAwarenessDay = typeof petAwarenessDays.$inferSelect;
+
+export const insertPromotionalCampaignSchema = createInsertSchema(promotionalCampaigns).omit({
+  id: true,
+  currentRedemptions: true,
+  reviewedBy: true,
+  reviewedAt: true,
+  approvedBy: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertPromotionalCampaign = z.infer<typeof insertPromotionalCampaignSchema>;
+export type PromotionalCampaign = typeof promotionalCampaigns.$inferSelect;
+
+export const insertCampaignRedemptionSchema = createInsertSchema(campaignRedemptions).omit({
+  id: true,
+  redeemedAt: true,
+});
+export type InsertCampaignRedemption = z.infer<typeof insertCampaignRedemptionSchema>;
+export type CampaignRedemption = typeof campaignRedemptions.$inferSelect;
+
 // =================== ISRAELI EXPENSE MANAGEMENT SYSTEM ===================
 
 // Tax Rate History - Regulatory Sync Architecture (2025 FinTech Best Practice)
