@@ -159,23 +159,23 @@ function LuxuryPackageCard({
         {!isFlipped ? (
           <>
             {/* Front of Card */}
-            <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between">
+            <div className="absolute inset-0 p-3 sm:p-4 flex flex-col justify-between">
               {/* Top Row - Logo and Mascot */}
               <div className="flex justify-between items-start">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-6 h-6 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
-                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="white">
+                <div className="flex items-center gap-1">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center flex-shrink-0">
+                    <svg viewBox="0 0 24 24" className="w-3 h-3 sm:w-4 sm:h-4" fill="white">
                       <path d="M12 2C10.5 2 9.3 3.2 9.3 4.7c0 .7.3 1.4.7 1.9-.4.2-.7.4-1 .7-1.4-1-3.3-1.1-4.8-.2C2.7 8 2.2 10 3 11.5c.5.9 1.3 1.5 2.2 1.8-.1.4-.2.9-.2 1.4 0 3.9 3.1 7 7 7s7-3.1 7-7c0-.5-.1-.9-.2-1.4.9-.3 1.7-.9 2.2-1.8.8-1.5.3-3.5-1.2-4.4-1.5-.9-3.4-.8-4.8.2-.3-.3-.6-.5-1-.7.4-.5.7-1.2.7-1.9C14.7 3.2 13.5 2 12 2z"/>
                     </svg>
                   </div>
-                  <span className={`text-sm font-semibold ${colors.text}`}>
-                    PetWash<sup className="text-[8px]">™</sup>
+                  <span className={`text-xs sm:text-sm font-semibold ${colors.text}`}>
+                    PetWash<sup className="text-[6px] sm:text-[8px]">™</sup>
                   </span>
                 </div>
                 
-                {/* Pet Mascot */}
-                <div className="opacity-50">
-                  <svg viewBox="0 0 80 60" className="w-12 h-8" fill="white">
+                {/* Pet Mascot - hidden on very small screens */}
+                <div className="opacity-60 hidden xs:block sm:block">
+                  <svg viewBox="0 0 80 60" className="w-10 h-7 sm:w-12 sm:h-8" fill="white">
                     <path d="M65 10 L65 5 L60 5 L60 10 L55 10 L55 15 L60 15 L65 15 L70 15 L70 10 Z" fillOpacity="0.6"/>
                     <ellipse cx="55" cy="35" rx="10" ry="12" fillOpacity="0.8"/>
                     <circle cx="51" cy="31" r="2" fill="black" fillOpacity="0.5"/>
@@ -186,9 +186,9 @@ function LuxuryPackageCard({
               </div>
               
               {/* Chip and Title */}
-              <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center gap-2 sm:gap-3 mt-1 sm:mt-2">
                 <div 
-                  className="w-10 h-8 rounded-md"
+                  className="w-8 h-6 sm:w-10 sm:h-8 rounded-md flex-shrink-0"
                   style={{ 
                     background: colors.chipBg,
                     boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.3)'
@@ -200,36 +200,36 @@ function LuxuryPackageCard({
                     ))}
                   </div>
                 </div>
-                <div>
-                  <div className={`text-base sm:text-lg font-bold ${colors.text}`}>
+                <div className="min-w-0">
+                  <div className={`text-sm sm:text-base font-bold ${colors.text} truncate`}>
                     {pkg.name}
                   </div>
-                  <div className={`text-xs opacity-70 ${colors.text}`}>PetWash Ltd</div>
+                  <div className={`text-[10px] sm:text-xs opacity-70 ${colors.text}`}>PetWash Ltd</div>
                 </div>
               </div>
               
               {/* Price and Details */}
               <div className="mt-auto">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className={`text-2xl sm:text-3xl font-bold ${colors.text}`}>
+                <div className="flex items-baseline gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                  <span className={`text-xl sm:text-2xl font-bold ${colors.text}`}>
                     ₪{pkg.price}
                   </span>
                   {savings > 0 && (
-                    <span className={`text-sm line-through opacity-50 ${colors.text}`}>
+                    <span className={`text-xs sm:text-sm line-through opacity-50 ${colors.text}`}>
                       ₪{originalPrice}
                     </span>
                   )}
                 </div>
-                <div className={`text-xs opacity-60 ${colors.text}`}>
+                <div className={`text-[10px] sm:text-xs opacity-60 ${colors.text}`}>
                   {pkg.washes} {pkg.washes === 1 ? 'Wash' : 'Washes'} • {pkg.validity}
                 </div>
-                <div className="flex justify-between items-end mt-2">
-                  <div className={`text-[10px] font-mono ${colors.text} opacity-60`}>
+                <div className="flex justify-between items-end mt-1 sm:mt-2">
+                  <div className={`text-[8px] sm:text-[10px] font-mono ${colors.text} opacity-60`}>
                     SN: {serialNumber}
                   </div>
                   {pkg.discount > 0 && (
-                    <div className={`text-xs font-bold ${colors.text} bg-white bg-opacity-20 px-2 py-0.5 rounded`}>
-                      SAVE {pkg.discount}%
+                    <div className={`text-[10px] sm:text-xs font-bold ${colors.text} bg-white bg-opacity-20 px-1.5 sm:px-2 py-0.5 rounded`}>
+                      {pkg.discount}% OFF
                     </div>
                   )}
                 </div>

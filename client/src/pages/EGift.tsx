@@ -100,23 +100,23 @@ function LuxuryGiftCard({
       {!isFlipped ? (
         <>
           {/* Front of Card */}
-          <div className="absolute inset-0 p-6 flex flex-col justify-between">
+          <div className="absolute inset-0 p-4 sm:p-6 flex flex-col justify-between">
             {/* Top Row - Logo and Mascot */}
             <div className="flex justify-between items-start">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="white">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white bg-opacity-30 flex items-center justify-center flex-shrink-0">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 sm:w-5 sm:h-5" fill="white">
                     <path d="M12 2C10.5 2 9.3 3.2 9.3 4.7c0 .7.3 1.4.7 1.9-.4.2-.7.4-1 .7-1.4-1-3.3-1.1-4.8-.2C2.7 8 2.2 10 3 11.5c.5.9 1.3 1.5 2.2 1.8-.1.4-.2.9-.2 1.4 0 3.9 3.1 7 7 7s7-3.1 7-7c0-.5-.1-.9-.2-1.4.9-.3 1.7-.9 2.2-1.8.8-1.5.3-3.5-1.2-4.4-1.5-.9-3.4-.8-4.8.2-.3-.3-.6-.5-1-.7.4-.5.7-1.2.7-1.9C14.7 3.2 13.5 2 12 2z"/>
                   </svg>
                 </div>
-                <span className={`text-lg font-semibold ${colors.text}`} style={{ fontFamily: 'system-ui' }}>
-                  PetWash<sup className="text-xs">™</sup>
+                <span className={`text-sm sm:text-lg font-semibold ${colors.text}`}>
+                  PetWash<sup className="text-[8px] sm:text-xs">™</sup>
                 </span>
               </div>
               
               {/* Pet Mascot Icon */}
               <div className="opacity-60">
-                <svg viewBox="0 0 80 60" className="w-16 h-12" fill="white" fillOpacity="0.9">
+                <svg viewBox="0 0 80 60" className="w-12 h-9 sm:w-16 sm:h-12" fill="white" fillOpacity="0.9">
                   <path d="M65 10 L65 5 L60 5 L60 10 L55 10 L55 15 L60 15 L65 15 L70 15 L70 10 Z" fillOpacity="0.6"/>
                   <ellipse cx="55" cy="35" rx="12" ry="15" fillOpacity="0.8"/>
                   <circle cx="50" cy="30" r="3" fill="black" fillOpacity="0.6"/>
@@ -129,41 +129,41 @@ function LuxuryGiftCard({
             </div>
             
             {/* Chip and Title */}
-            <div className="flex items-center gap-4 mt-4">
+            <div className="flex items-center gap-2 sm:gap-4 mt-2 sm:mt-4">
               <div 
-                className="w-12 h-10 rounded-lg"
+                className="w-10 h-8 sm:w-12 sm:h-10 rounded-lg flex-shrink-0"
                 style={{ 
                   background: colors.chipBg,
                   boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.3)'
                 }}
               >
-                <div className="w-full h-full grid grid-cols-3 grid-rows-3 gap-px p-1">
+                <div className="w-full h-full grid grid-cols-3 grid-rows-3 gap-px p-0.5 sm:p-1">
                   {[...Array(9)].map((_, i) => (
                     <div key={i} className="bg-black bg-opacity-10 rounded-sm"></div>
                   ))}
                 </div>
               </div>
-              <div>
-                <div className={`text-xl font-bold ${colors.text}`}>
+              <div className="min-w-0">
+                <div className={`text-base sm:text-xl font-bold ${colors.text} truncate`}>
                   {washes} {washes === 1 ? 'Wash' : 'Washes'} E-Gift
                 </div>
-                <div className={`text-sm opacity-70 ${colors.text}`}>PetWash Ltd</div>
+                <div className={`text-xs sm:text-sm opacity-70 ${colors.text}`}>PetWash Ltd</div>
               </div>
             </div>
             
             {/* Details Row */}
             <div className="mt-auto">
-              <div className={`text-xs opacity-60 ${colors.text} mb-1`}>
+              <div className={`text-[10px] sm:text-xs opacity-60 ${colors.text} mb-0.5 sm:mb-1`}>
                 Each wash starts at ₪{WASH_PRICE} for single wash
               </div>
-              <div className={`text-xs opacity-60 ${colors.text} mb-2`}>
+              <div className={`text-[10px] sm:text-xs opacity-60 ${colors.text} mb-1 sm:mb-2`}>
                 PACKAGE DISCOUNT: {washes} Washes
               </div>
               <div className="flex justify-between items-end">
-                <div className={`text-xs font-mono ${colors.text} opacity-70`}>
+                <div className={`text-[10px] sm:text-xs font-mono ${colors.text} opacity-70`}>
                   SN: {serialNumber}/{washes}
                 </div>
-                <div className={`text-lg font-bold ${colors.text} uppercase tracking-wider`}>
+                <div className={`text-sm sm:text-lg font-bold ${colors.text} uppercase tracking-wider truncate ml-2`}>
                   {recipientName || 'RECIPIENT'}
                 </div>
               </div>
@@ -173,11 +173,11 @@ function LuxuryGiftCard({
       ) : (
         <>
           {/* Back of Card */}
-          <div className="absolute inset-0 p-6 flex flex-col">
+          <div className="absolute inset-0 p-4 sm:p-6 flex flex-col">
             {/* QR Code Area */}
-            <div className="flex items-start gap-3">
-              <div className="bg-white p-2 rounded-lg">
-                <div className="w-16 h-16 grid grid-cols-5 grid-rows-5 gap-0.5">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <div className="bg-white p-1.5 sm:p-2 rounded-lg flex-shrink-0">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 grid grid-cols-5 grid-rows-5 gap-0.5">
                   {[...Array(25)].map((_, i) => (
                     <div 
                       key={i} 
@@ -186,7 +186,7 @@ function LuxuryGiftCard({
                   ))}
                 </div>
               </div>
-              <div className={`text-xs font-mono ${colors.text} opacity-70 transform -rotate-90 origin-left mt-8`}>
+              <div className={`text-[10px] sm:text-xs font-mono ${colors.text} opacity-70 transform -rotate-90 origin-left mt-6 sm:mt-8`}>
                 SN: {serialNumber}
               </div>
               <div className="flex-1"></div>
