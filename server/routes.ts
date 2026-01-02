@@ -8911,6 +8911,7 @@ self.addEventListener('notificationclick', (event) => {
         loyaltyProgram,
         reminders,
         marketing,
+        pushNotifications,
         acceptedTerms,
         consentTimestamp
       } = req.body;
@@ -8938,6 +8939,7 @@ self.addEventListener('notificationclick', (event) => {
         loyaltyProgram: loyaltyProgram ?? true,
         reminders: reminders ?? true,
         marketing: marketing ?? true,
+        pushNotifications: pushNotifications ?? true,
         acceptedTerms: acceptedTerms ?? true,
         consentTimestamp: consentTimestamp || now,
         loyaltyTier: "New Member",

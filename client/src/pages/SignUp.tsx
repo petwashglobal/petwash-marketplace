@@ -55,6 +55,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     loyaltyProgram: true, // ✅ Pre-ticked by default
     reminders: true, // ✅ Pre-ticked by default
     marketing: true, // ✅ Pre-ticked by default
+    pushNotifications: true, // ✅ Pre-ticked by default - mobile push notifications
     acceptedTerms: true, // ✅ Pre-ticked by default
   });
   
@@ -257,6 +258,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           loyaltyProgram: formData.loyaltyProgram,
           reminders: formData.reminders,
           marketing: formData.marketing,
+          pushNotifications: formData.pushNotifications,
           acceptedTerms: formData.acceptedTerms,
           consentTimestamp
         })
@@ -638,6 +640,19 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 </label>
               </div>
 
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="pushNotifications"
+                  name="pushNotifications"
+                  checked={formData.pushNotifications}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, pushNotifications: !!checked }))}
+                  data-testid="checkbox-pushNotifications"
+                />
+                <label htmlFor="pushNotifications" className="text-sm cursor-pointer">
+                  {t('register.pushNotifications', language)}
+                </label>
+              </div>
+
               <div className="pt-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -700,6 +715,19 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 {t('signUp.alreadyHaveAccount', language)}{' '}
                 <Link href="/signin" className="text-purple-600 hover:text-purple-700 font-medium transition-colors" data-testid="link-signin">
                   {t('signUp.signInLink', language)}
+                </Link>
+              </p>
+            </div>
+
+            {/* Provider/Sitter Application Link */}
+            <div className="text-center text-sm pt-4 border-t border-gray-200">
+              <p className="text-gray-500 mb-2">
+                {t('register.customerSignupNote', language)}
+              </p>
+              <p className="text-gray-600">
+                {t('register.wantToBeSitter', language)}{' '}
+                <Link href="/become-provider" className="text-purple-600 hover:text-purple-700 font-medium transition-colors" data-testid="link-become-provider">
+                  {t('register.applyAsProvider', language)}
                 </Link>
               </p>
             </div>
