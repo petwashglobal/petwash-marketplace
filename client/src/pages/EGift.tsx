@@ -234,13 +234,6 @@ function LuxuryGiftCard({
         </>
       )}
       
-      {/* Metallic Shine Effect */}
-      <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.1) 45%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 55%, transparent 60%)',
-        }}
-      ></div>
     </div>
   );
 }
@@ -392,7 +385,7 @@ export default function EGift() {
                 
                 {/* Card with Flip Toggle */}
                 <div 
-                  className="cursor-pointer perspective-1000"
+                  className="cursor-pointer mx-auto w-full max-w-[320px] sm:max-w-[360px] lg:max-w-[400px]"
                   onClick={() => setIsFlipped(!isFlipped)}
                   data-testid="card-preview"
                 >

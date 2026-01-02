@@ -295,13 +295,6 @@ function LuxuryPackageCard({
           </>
         )}
         
-        {/* Metallic Shine Effect */}
-        <div 
-          className="absolute inset-0 pointer-events-none transition-opacity duration-300 opacity-0 group-hover:opacity-100"
-          style={{
-            background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 45%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.15) 55%, transparent 60%)',
-          }}
-        ></div>
       </div>
     </div>
   );
@@ -366,9 +359,9 @@ export default function Packages() {
             Click any card to see features
           </p>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-6">
             {packages.map((pkg, index) => (
-              <div key={index} className="flex flex-col gap-4">
+              <div key={index} className="flex flex-col gap-4 mx-auto w-full max-w-[280px] sm:max-w-none">
                 <LuxuryPackageCard
                   pkg={pkg}
                   isFlipped={flippedCards[index] || false}
