@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
+import { auth } from "../lib/firebase";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { syncUser } from "@/lib/hubspot";
@@ -235,42 +234,41 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       const consentTimestamp = new Date().toISOString();
       const now = new Date().toISOString();
       
-      logger.debug("Creating Firestore profile");
+      logger.debug("Creating user profile via server API");
       
-      // Create Firestore user profile with complete business data (trim all text inputs)
-      await setDoc(doc(db, "users", user.uid, "profile", "data"), {
-        uid: user.uid,
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        dob: formData.dob,
-        country: formData.country,
-        lang: language,
-        loyaltyProgram: formData.loyaltyProgram,
-        reminders: formData.reminders,
-        marketing: formData.marketing,
-        acceptedTerms: formData.acceptedTerms,
-        consentTimestamp,
-        loyaltyTier: "New Member",
-        washes: 0,
-        giftCardCredits: 0,
-        totalSpent: 0,
-        seniorDiscount: false,
-        disabilityDiscount: false,
-        discounts: {
-          senior: false,
-          disability: false,
-          loyalty: 0,
-          custom: []
+      // Get Firebase ID token for authenticated API call
+      const idToken = await user.getIdToken();
+      
+      // Create user profile via server API (bypasses Firestore security rules)
+      const profileResponse = await fetch('/api/users/create-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
         },
-        verified: false,
-        createdAt: now,
-        updatedAt: now
+        body: JSON.stringify({
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          dob: formData.dob,
+          country: formData.country,
+          language,
+          loyaltyProgram: formData.loyaltyProgram,
+          reminders: formData.reminders,
+          marketing: formData.marketing,
+          acceptedTerms: formData.acceptedTerms,
+          consentTimestamp
+        })
       });
       
-      logger.info("Firestore profile created");
+      if (!profileResponse.ok) {
+        const errorData = await profileResponse.json().catch(() => ({}));
+        logger.error("Profile creation API failed", { status: profileResponse.status, error: errorData });
+        throw new Error(errorData.error || 'Failed to create profile');
+      }
+      
+      logger.info("User profile created via server API");
 
       // Track sign-up in GA4
       trackSignUp('email', user.uid);

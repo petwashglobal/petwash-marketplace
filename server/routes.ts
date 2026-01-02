@@ -8884,6 +8884,86 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // Create User Profile - Server-side profile creation for new signups
+  // This bypasses Firestore security rules using Admin SDK
+  app.post('/api/users/create-profile', async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: 'Authorization required' });
+      }
+      
+      const token = authHeader.split('Bearer ')[1];
+      const { adminAuth, db } = await import('./lib/firebase-admin');
+      
+      // Verify Firebase token
+      const decoded = await adminAuth.verifyIdToken(token);
+      const uid = decoded.uid;
+      
+      const {
+        firstName,
+        lastName,
+        email,
+        phone,
+        dob,
+        country,
+        language,
+        loyaltyProgram,
+        reminders,
+        marketing,
+        acceptedTerms,
+        consentTimestamp
+      } = req.body;
+      
+      // Validate required fields
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({ success: false, error: 'First name, last name, and email required' });
+      }
+      
+      const now = new Date().toISOString();
+      
+      // Create profile using Admin SDK (bypasses security rules)
+      await db.collection('users').doc(uid).collection('profile').doc('data').set({
+        uid,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        name: `${firstName.trim()} ${lastName.trim()}`,
+        email: email.trim(),
+        phone: phone?.trim() || '',
+        dob: dob || '',
+        country: country || 'Israel',
+        lang: language || 'he',
+        loyaltyProgram: loyaltyProgram ?? true,
+        reminders: reminders ?? true,
+        marketing: marketing ?? true,
+        acceptedTerms: acceptedTerms ?? true,
+        consentTimestamp: consentTimestamp || now,
+        loyaltyTier: "New Member",
+        washes: 0,
+        giftCardCredits: 0,
+        totalSpent: 0,
+        seniorDiscount: false,
+        disabilityDiscount: false,
+        discounts: {
+          senior: false,
+          disability: false,
+          loyalty: 0,
+          custom: []
+        },
+        verified: false,
+        createdAt: now,
+        updatedAt: now
+      });
+      
+      logger.info(`User profile created via API for ${uid}`);
+      res.json({ success: true, uid });
+      
+    } catch (error: any) {
+      logger.error('Create profile error', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // Welcome Email Trigger - First sign-in detection
   app.post('/api/welcome-email', async (req, res) => {
     try {
