@@ -79,31 +79,24 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
 - **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
 - **AI Chat Assistant**: Google Dialogflow CX powered by Gemini 2.5 Flash with Kenzo mascot, bilingual Hebrew/English, WCAG 2.1 AA compliant.
-- **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™.
-- **The Plush Lab™**: AI-powered pet avatar creator.
+- **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™ (AI-powered pet avatar creator).
 - **Loyalty Program**: 7-tier luxury progressive system, e-gift cards, wash packages, Apple Wallet integration.
 - **E-Signature**: DocuSeal with Hebrew RTL support; custom free e-signature system for Israeli subcontractor agreements.
-- **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC.
-- **Financial Management**: Automated bookkeeping (Google Vision OCR + Gemini 2.5 Flash), Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
+- **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC, automated bookkeeping, Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
 - **Payment Gateway Architecture**: Nayax Israel is the mandatory and exclusive payment gateway, with 72-hour escrow.
-- **K9000 IoT Integration**: Cloud-based management, real-time status, remote control, AI predictive maintenance, 7-star luxury LED ecosystem (K9000 LED Visual UX System) with smart automation and EventBus integration.
+- **K9000 IoT Integration**: Cloud-based management, real-time status, remote control, AI predictive maintenance, 7-star luxury LED ecosystem.
 - **Passport Verification (KYC)**: Google Vision API-powered passport verification with MRZ parsing.
 - **Security & Compliance**: Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail.
 - **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, booking policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts.
 - **Employee Expense Management System**: Production-ready with Israeli Tax Authority compliance, OCR receipt scanning, and cryptographic audit trail.
 - **Document Management System**: Production-ready with RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
-- **Legal & Compliance Systems**: Comprehensive routes and services for privacy settings, data rights, GDPR, Israeli Privacy Law 2025, e-signature workflows, and contract management.
+- **Legal & Compliance Systems**: Comprehensive routes and services for privacy settings, data rights, GDPR, Israeli Privacy Law 2025, e-signature workflows, and contract management, including a unified compliance brain.
 - **HR & Employee Systems**: Routes and services for employee management, hierarchy, and onboarding, including auto-approval workflows and WhatsApp notifications.
 - **Enterprise Route Infrastructure**: Extensive set of route files covering franchise management, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
 - **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments.
-- **Israeli Contractor Compliance System**: Marketplace broker model preventing employee misclassification, with features like tax verification, National Insurance tracking, commission calculation (Israeli VAT compliant), independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails.
-- **Global Compliance Brain™**: Enterprise-grade unified eligibility engine (`shared/globalCompliance.ts`) integrating all compliance subsystems into a single yes/no decision engine.
-- **Global Contractors Framework 2025**: Unified backend framework for managing contractors, drivers, ratings, identity documents, and compliance evaluation.
-- **Unified Control Panel - Enterprise Orchestration Layer**: RBAC foundation (16 Departments, 11 Roles, 10 Platforms), Logistics & Fleet, Finance & Settlements (automated monthly settlements with Israeli VAT, SHA-256 audit hashing), Israeli CPI Service, Event-Driven Architecture (23 domain event types), Mobile Field Operations, Health & Safety, Inventory Management, Unified Notifications. Includes Israeli Contractor Compliance API with document upload/verification, multi-step onboarding, and Hebrew/English VAT-compliant invoice generation.
-- **Clean Console Mode**: Production UX improvement where `/api/simple-auth/me` and `/api/consent` return HTTP 200 for unauthenticated users instead of 401.
-- **Legal & Compliance Framework 2025**: Production-ready Israeli Privacy Law Amendment 13 compliance system with unified compliance brain (`src/legal/petwash_unified_compliance_2025.ts`), global legal texts (`src/legal/petwash_global_compliance_2025.ts`), frontend UI components (`src/features/legal/LegalFrontend2025.tsx`), and routing integration examples. Includes cookie consent management, DSAR workflows, data retention policies, and subcontractor agreement references. All legal content requires Israeli lawyer approval before production deployment.
-- **Unified Talent Marketplace System 2026**: All-in-one marketplace system (`src/marketplace/petwash_talent_marketplace_system_2026.tsx`) covering 7 platforms (Sitter Suite, Walk My Pet, PetTrek, Wash Hubs, Paw Finder, K9000, Enterprise) with backend API registration, frontend React components, route wrappers, and QA validation. Includes 18 demo contractor profiles and complete integration guides for Express and Wouter.
-- **Pet Sitter Profile Pages**: Airbnb-style luxury profile component (`src/modules/pet-sitter/PetSitterProfilePage.tsx`) with hero gallery, services toggle, reviews, and booking card. MadPaws-inspired design with pure Tailwind CSS and dark luxury theme.
+- **Israeli Contractor Compliance System**: Marketplace broker model preventing employee misclassification, with tax verification, National Insurance tracking, commission calculation, independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails.
+- **Unified Talent Marketplace System 2026**: All-in-one marketplace system (`src/marketplace/petwash_talent_marketplace_system_2026.tsx`) covering 7 platforms (Sitter Suite, Walk My Pet, PetTrek, Wash Hubs, Paw Finder, K9000, Enterprise) with backend API registration, frontend React components, route wrappers, and QA validation.
+- **Pet Sitter Profile Pages**: Airbnb-style luxury profile component (`src/modules/pet-sitter/PetSitterProfilePage.tsx`) with hero gallery, services toggle, reviews, and booking card.
 - **Multi-Platform Marketplace View**: Unified marketplace page (`src/modules/platforms/PetWashTalentMarketplacePage.tsx`) showing contractors across all 7 platforms with color-coded branding, responsive grid layout, and demo profiles.
 
 ## External Dependencies
@@ -124,3 +117,15 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Mapping & Location**: Google Maps API.
 - **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API, Google Dialogflow CX.
 - **Business Management**: Google Business Profile API.
+
+## Recent Changes (January 2026)
+
+### Marketplace & Booking Search API
+- **All 7 service types now working**: pet_sitting, daycare, dog_walking, training, grooming, pet_taxi, k9000_wash
+- **Demo data seeded**: 3 sitters, 3 walkers, 3 trainers, 6 drivers, 3 K9000 stations with proper locations
+- **Route order fixed**: Moved `/api/booking-search` before catch-all `/api` auth middleware for public access
+
+### UI Cleanup
+- **Removed permanent VIP Crown button** from FloatingStack (user requested - no permanent loyalty sidebar element)
+- **Removed VIPLoyaltyPopup** component and associated state
+- FloatingStack now shows only: Accessibility, WhatsApp, AI Chat
