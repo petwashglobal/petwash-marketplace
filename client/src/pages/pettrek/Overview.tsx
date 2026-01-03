@@ -38,36 +38,36 @@ export default function PetTrekOverview() {
     },
     {
       icon: <Sparkles className="h-8 w-8" />,
-      name: t('k9000.products'),
-      description: t('k9000.productsDesc'),
+      name: t('pettrek.groomingAppointments'),
+      description: t('pettrek.groomingAppointmentsDesc'),
       priceFrom: "₪79",
       link: "/pettrek/book?service=grooming"
     },
     {
       icon: <Plane className="h-8 w-8" />,
-      name: "Airport Transfer",
-      description: "Premium pet transport to and from airports",
+      name: t('pettrek.airportTransfer'),
+      description: t('pettrek.airportTransferDesc'),
       priceFrom: "₪249",
       link: "/pettrek/book?service=airport"
     },
     {
       icon: <MapPin className="h-8 w-8" />,
-      name: "Day Care",
-      description: "Daily transport to your pet's daycare facility",
+      name: t('pettrek.dayCare'),
+      description: t('pettrek.dayCareDesc'),
       priceFrom: "₪69",
       link: "/pettrek/book?service=daycare"
     },
     {
       icon: <Heart className="h-8 w-8" />,
-      name: "Emergency Transport",
-      description: "24/7 urgent pet transportation services",
+      name: t('pettrek.emergencyTransport'),
+      description: t('pettrek.emergencyTransportDesc'),
       priceFrom: "₪199",
       link: "/pettrek/book?service=emergency"
     },
     {
       icon: <Calendar className="h-8 w-8" />,
-      name: "Custom Trips",
-      description: "Any destination, any time - we've got you covered",
+      name: t('pettrek.customTrips'),
+      description: t('pettrek.customTripsDesc'),
       priceFrom: "₪99",
       link: "/pettrek/book?service=custom"
     }
@@ -80,7 +80,7 @@ export default function PetTrekOverview() {
       trips: 2847,
       photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
       pricePerKm: "₪8",
-      specialty: "Large Breeds"
+      specialty: t('pettrek.specialtyLargeBreeds')
     },
     {
       name: "David Levi",
@@ -88,7 +88,7 @@ export default function PetTrekOverview() {
       trips: 3156,
       photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
       pricePerKm: "₪7",
-      specialty: "Senior Pets"
+      specialty: t('pettrek.specialtySeniorPets')
     },
     {
       name: "Maya Rosen",
@@ -96,7 +96,7 @@ export default function PetTrekOverview() {
       trips: 1923,
       photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop",
       pricePerKm: "₪9",
-      specialty: "Exotic Pets"
+      specialty: t('pettrek.specialtyExoticPets')
     },
     {
       name: "Avi Klein",
@@ -104,20 +104,20 @@ export default function PetTrekOverview() {
       trips: 2634,
       photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop",
       pricePerKm: "₪8",
-      specialty: "Airport Runs"
+      specialty: t('pettrek.specialtyAirportRuns')
     }
   ];
 
   const safetyFeatures = [
     {
       icon: <Shield className="h-10 w-10" />,
-      title: t('walkMyPet.verifiedWalkers'),
-      description: t('walkMyPet.verifiedWalkersDesc')
+      title: t('pettrek.professionalDrivers'),
+      description: t('pettrek.professionalDriversDesc')
     },
     {
       icon: <Video className="h-10 w-10" />,
-      title: t('walkMyPet.gpsTracking'),
-      description: t('walkMyPet.gpsTrackingDesc')
+      title: t('pettrek.gpsTracking'),
+      description: t('pettrek.gpsTrackingDesc')
     },
     {
       icon: <Thermometer className="h-10 w-10" />,
@@ -126,14 +126,14 @@ export default function PetTrekOverview() {
     },
     {
       icon: <Phone className="h-10 w-10" />,
-      title: "24/7 Support",
-      description: "Round-the-clock customer service and emergency assistance"
+      title: t('pettrek.support247'),
+      description: t('pettrek.support247Desc')
     }
   ];
 
   const trustBadges = [
-    { icon: <Award />, text: t('sitterSuite.fullyInsured') },
-    { icon: <CheckCircle />, text: t('walkMyPet.verifiedWalkers') },
+    { icon: <Award />, text: t('pettrek.fullyInsured') },
+    { icon: <CheckCircle />, text: t('pettrek.professionalDrivers') },
     { icon: <Star />, text: "4.9★" },
     { icon: <Users />, text: "50k+" }
   ];
@@ -177,34 +177,34 @@ export default function PetTrekOverview() {
               <div className="luxury-glass-card luxury-shadow-xl p-8 max-w-3xl mx-auto luxury-animate-scale-in luxury-delay-2">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-700">Pickup Location</label>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">{t('pettrek.pickupLocation')}</label>
                     <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-200">
                       <MapPin className="h-5 w-5 text-purple-600" />
                       <input 
                         type="text" 
-                        placeholder="Enter address"
+                        placeholder={t('pettrek.enterAddress')}
                         className="flex-1 outline-none text-sm"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-700">Destination</label>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">{t('pettrek.destination')}</label>
                     <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-200">
                       <MapPin className="h-5 w-5 text-purple-600" />
                       <input 
                         type="text" 
-                        placeholder="Where to?"
+                        placeholder={t('pettrek.whereTo')}
                         className="flex-1 outline-none text-sm"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-700">When</label>
+                    <label className="block text-sm font-semibold mb-2 text-gray-700">{t('pettrek.when')}</label>
                     <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-200">
                       <Clock className="h-5 w-5 text-purple-600" />
                       <input 
                         type="text" 
-                        placeholder="Now"
+                        placeholder={t('pettrek.now')}
                         className="flex-1 outline-none text-sm"
                       />
                     </div>
@@ -212,7 +212,7 @@ export default function PetTrekOverview() {
                 </div>
                 <Link href="/pettrek/book">
                   <button className="luxury-btn-primary w-full mt-6">
-                    Get Price Estimate
+                    {t('pettrek.getPriceEstimate')}
                     <ArrowRight className="h-5 w-5 ml-2 inline" />
                   </button>
                 </Link>
@@ -225,9 +225,9 @@ export default function PetTrekOverview() {
         <section className="luxury-section luxury-bg-soft">
           <div className="luxury-container">
             <div className="text-center mb-16">
-              <h2 className="luxury-heading-lg mb-4">How PetTrek Works</h2>
+              <h2 className="luxury-heading-lg mb-4">{t('pettrek.howItWorks')}</h2>
               <p className="luxury-text-body max-w-2xl mx-auto">
-                Book professional pet transportation in three simple steps
+                {t('pettrek.howItWorksSubtitle')}
               </p>
             </div>
 
@@ -240,9 +240,9 @@ export default function PetTrekOverview() {
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center mx-auto mb-4">
                   <MapPin className="h-8 w-8 text-purple-700" />
                 </div>
-                <h3 className="luxury-heading-sm mb-3">Choose Your Route</h3>
+                <h3 className="luxury-heading-sm mb-3">{t('pettrek.step1Title')}</h3>
                 <p className="luxury-text-body">
-                  Enter pickup and drop-off locations, select service type and time
+                  {t('pettrek.step1Desc')}
                 </p>
               </div>
 
@@ -259,9 +259,9 @@ export default function PetTrekOverview() {
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center mx-auto mb-4">
                   <Users className="h-8 w-8 text-purple-700" />
                 </div>
-                <h3 className="luxury-heading-sm mb-3">Match with Driver</h3>
+                <h3 className="luxury-heading-sm mb-3">{t('pettrek.step2Title')}</h3>
                 <p className="luxury-text-body">
-                  Get matched with verified, pet-trained drivers in your area
+                  {t('pettrek.step2Desc')}
                 </p>
               </div>
 
@@ -278,9 +278,9 @@ export default function PetTrekOverview() {
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center mx-auto mb-4">
                   <Video className="h-8 w-8 text-purple-700" />
                 </div>
-                <h3 className="luxury-heading-sm mb-3">Track & Relax</h3>
+                <h3 className="luxury-heading-sm mb-3">{t('pettrek.step3Title')}</h3>
                 <p className="luxury-text-body">
-                  Follow your pet's journey in real-time with GPS tracking
+                  {t('pettrek.step3Desc')}
                 </p>
               </div>
             </div>
@@ -291,9 +291,9 @@ export default function PetTrekOverview() {
         <section className="luxury-section">
           <div className="luxury-container">
             <div className="text-center mb-16">
-              <h2 className="luxury-heading-lg mb-4">Our Services</h2>
+              <h2 className="luxury-heading-lg mb-4">{t('pettrek.ourServices')}</h2>
               <p className="luxury-text-body max-w-2xl mx-auto">
-                Professional pet transportation for every occasion
+                {t('pettrek.ourServicesSubtitle')}
               </p>
             </div>
 
@@ -308,7 +308,7 @@ export default function PetTrekOverview() {
                     <p className="luxury-text-body mb-4">{service.description}</p>
                     <div className="flex items-center justify-between">
                       <div className="luxury-badge luxury-badge-gold">
-                        From {service.priceFrom}
+                        {t('pettrek.from')} {service.priceFrom}
                       </div>
                       <ArrowRight className="h-5 w-5 text-purple-600" />
                     </div>
@@ -323,9 +323,9 @@ export default function PetTrekOverview() {
         <section className="luxury-section luxury-bg-soft">
           <div className="luxury-container">
             <div className="text-center mb-16">
-              <h2 className="luxury-heading-lg mb-4">{t('pettrek.professionalDrivers')}</h2>
+              <h2 className="luxury-heading-lg mb-4">{t('pettrek.featuredDrivers')}</h2>
               <p className="luxury-text-body max-w-2xl mx-auto">
-                {t('pettrek.professionalDriversDesc')}
+                {t('pettrek.featuredDriversSubtitle')}
               </p>
             </div>
 
@@ -350,13 +350,13 @@ export default function PetTrekOverview() {
                       <Star className="h-3 w-3 inline fill-current" />
                       {driver.rating}
                     </div>
-                    <span className="luxury-text-small">{driver.trips} trips</span>
+                    <span className="luxury-text-small">{driver.trips} {t('pettrek.trips')}</span>
                   </div>
                   
                   <p className="luxury-text-small mb-4">{driver.specialty}</p>
                   
                   <div className="luxury-text-gradient text-xl font-bold mb-4">
-                    {driver.pricePerKm}/km
+                    {driver.pricePerKm}{t('pettrek.perKm')}
                   </div>
                   
                   <Link href={`/pettrek/book?driver=${driver.name.toLowerCase().replace(' ', '-')}`}>
@@ -374,9 +374,9 @@ export default function PetTrekOverview() {
         <section className="luxury-section">
           <div className="luxury-container">
             <div className="text-center mb-16">
-              <h2 className="luxury-heading-lg mb-4">{t('sitterSuite.safety')}</h2>
+              <h2 className="luxury-heading-lg mb-4">{t('pettrek.safety')}</h2>
               <p className="luxury-text-body max-w-2xl mx-auto">
-                {t('sitterSuite.safetyDesc')}
+                {t('pettrek.safetySubtitle')}
               </p>
             </div>
 
@@ -398,24 +398,24 @@ export default function PetTrekOverview() {
         <section className="luxury-section luxury-bg-soft">
           <div className="luxury-container max-w-4xl">
             <div className="text-center mb-12">
-              <h2 className="luxury-heading-lg mb-4">Transparent Pricing</h2>
-              <p className="luxury-text-body">Simple, fair rates with no hidden fees</p>
+              <h2 className="luxury-heading-lg mb-4">{t('pettrek.pricing')}</h2>
+              <p className="luxury-text-body">{t('pettrek.pricingSubtitle')}</p>
             </div>
 
             <div className="luxury-glass-card luxury-shadow-lg overflow-hidden">
               <div className="bg-gradient-to-r from-purple-500 to-purple-700 p-6 text-white text-center">
-                <h3 className="text-2xl font-bold">Standard Rates</h3>
+                <h3 className="text-2xl font-bold">{t('pettrek.standardRates')}</h3>
               </div>
               
               <div className="p-6">
                 <div className="space-y-4">
                   {[
-                    { service: "Base Fare", price: "₪49", description: "Includes first 5km" },
-                    { service: "Per Kilometer", price: "₪8", description: "After base distance" },
-                    { service: "Wait Time", price: "₪2/min", description: "After 5 free minutes" },
-                    { service: "Airport Premium", price: "+₪99", description: "Terminal pickup/dropoff" },
-                    { service: "After Hours (10PM-6AM)", price: "+30%", description: "Night service surcharge" },
-                    { service: "Multiple Pets", price: "+₪29", description: "Per additional pet" }
+                    { service: t('pettrek.baseFare'), price: "₪49", description: t('pettrek.baseFareDesc') },
+                    { service: t('pettrek.perKilometer'), price: "₪8", description: t('pettrek.perKilometerDesc') },
+                    { service: t('pettrek.waitTime'), price: t('pettrek.priceWaitTime'), description: t('pettrek.waitTimeDesc') },
+                    { service: t('pettrek.airportPremium'), price: "+₪99", description: t('pettrek.airportPremiumDesc') },
+                    { service: t('pettrek.afterHours'), price: "+30%", description: t('pettrek.afterHoursDesc') },
+                    { service: t('pettrek.multiplePets'), price: "+₪29", description: t('pettrek.multiplePetsDesc') }
                   ].map((item, index) => (
                     <div 
                       key={index} 
@@ -434,10 +434,10 @@ export default function PetTrekOverview() {
 
                 <div className="mt-8 p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="luxury-heading-sm">Example: Vet Visit (15km)</span>
+                    <span className="luxury-heading-sm">{t('pettrek.exampleVetVisit')}</span>
                     <span className="luxury-text-gradient text-3xl font-bold">₪129</span>
                   </div>
-                  <p className="luxury-text-small">Base fare ₪49 + 10km × ₪8 = ₪129</p>
+                  <p className="luxury-text-small">{t('pettrek.exampleCalc')}</p>
                 </div>
               </div>
             </div>
@@ -466,16 +466,15 @@ export default function PetTrekOverview() {
         <section className="luxury-bg-primary py-20">
           <div className="luxury-container text-center">
             <h2 className="luxury-heading-xl text-white mb-6">
-              Ready to Book Your Pet's Ride?
+              {t('pettrek.readyToBook')}
             </h2>
             <p className="text-xl text-white/90 max-w-2xl mx-auto mb-10">
-              Join thousands of pet parents who trust PetTrek for safe, 
-              comfortable, and reliable pet transportation.
+              {t('pettrek.readyToBookSubtitle')}
             </p>
             <Link href="/pettrek/book">
               <button className="luxury-btn-primary luxury-shadow-xl bg-white text-purple-700 hover:bg-gray-50">
                 <Car className="h-5 w-5 mr-2 inline" />
-                {t('pettrek.requestRide')}
+                {t('pettrek.bookFirstRide')}
                 <ArrowRight className="h-5 w-5 ml-2 inline" />
               </button>
             </Link>

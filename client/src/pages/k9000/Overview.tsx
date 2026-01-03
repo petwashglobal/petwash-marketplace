@@ -54,14 +54,14 @@ export default function K9000Overview() {
     },
     {
       icon: <Shield className="h-8 w-8 text-indigo-600" />,
-      title: t('sitterSuite.safety'),
-      description: t('pettrek.safetyDesc'),
+      title: t('k9000.safety'),
+      description: t('k9000.safetyDesc'),
       link: "/k9000/safety",
       color: "bg-indigo-50 dark:bg-indigo-950"
     },
     {
       icon: <HelpCircle className="h-8 w-8 text-orange-600" />,
-      title: t('sitterSuite.help'),
+      title: t('k9000.help'),
       description: t('k9000.helpDesc'),
       link: "/k9000/help",
       color: "bg-orange-50 dark:bg-orange-950"
@@ -128,7 +128,7 @@ export default function K9000Overview() {
                       {feature.description}
                     </p>
                     <button className="luxury-btn-outline w-full" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                      {t('walkMyPet.learnMore')}
+                      {t('common.learnMore')}
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </button>
                   </div>

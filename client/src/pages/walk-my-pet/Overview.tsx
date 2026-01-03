@@ -58,7 +58,7 @@ export default function WalkMyPetOverview() {
     },
     {
       icon: <HelpCircle className="h-8 w-8" />,
-      title: t('sitterSuite.help'),
+      title: t('walkMyPet.help'),
       description: t('walkMyPet.helpDesc'),
       link: "/walk-my-pet/help",
     }
@@ -67,7 +67,7 @@ export default function WalkMyPetOverview() {
   const stats = [
     { icon: <CheckCircle className="h-12 w-12 text-white" />, title: t('walkMyPet.verifiedWalkers'), description: t('walkMyPet.verifiedWalkersDesc') },
     { icon: <MapPin className="h-12 w-12 text-white" />, title: t('walkMyPet.gpsTracking'), description: t('walkMyPet.gpsTrackingDesc') },
-    { icon: <Shield className="h-12 w-12 text-white" />, title: t('sitterSuite.fullyInsured'), description: t('walkMyPet.fullyInsuredDesc') },
+    { icon: <Shield className="h-12 w-12 text-white" />, title: t('walkMyPet.fullyInsured'), description: t('walkMyPet.fullyInsuredDesc') },
   ];
 
   return (
