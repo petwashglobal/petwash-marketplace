@@ -12,8 +12,21 @@ import type { Language } from '@/lib/i18n';
 import { useLanguage } from '@/lib/languageStore';
 import { logger } from "@/lib/logger";
 
+interface CreditPackage {
+  id: string;
+  name: string;
+  nameHe?: string;
+  description?: string | null;
+  descriptionHe?: string | null;
+  price: string;
+  washCount?: number;
+  isActive: boolean;
+  createdAt?: any;
+  isCreditGift?: boolean;
+}
+
 interface ExpressCheckoutModalProps {
-  package: WashPackage;
+  package: WashPackage | CreditPackage;
   isOpen: boolean;
   onClose: () => void;
   language: Language;
@@ -169,7 +182,10 @@ export function ExpressCheckoutModal({
               <span className="text-lg font-bold text-gray-900">₪{pkg.price}</span>
             </div>
             <p className="text-sm text-gray-600">
-              {isGiftCard ? t('express.digitalVoucher') : `${pkg.washCount} ${t('express.washes')}`}
+              {isGiftCard 
+                ? (pkg.isCreditGift ? t('express.platformCredit') : t('express.digitalVoucher')) 
+                : (pkg.washCount ? `${pkg.washCount} ${t('express.washes')}` : t('express.platformCredit'))
+              }
             </p>
           </div>
 
