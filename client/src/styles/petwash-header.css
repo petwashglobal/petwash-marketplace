@@ -830,3 +830,30 @@
     max-width: 120px !important;
   }
 }
+
+/* ===========================
+   MOBILE DRAWER LOGO
+   Uses official Pet Wash™ logo image
+   =========================== */
+.pw-logo-link-mobile {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pw-mobile-logo-img {
+  height: 4rem !important;
+  width: auto !important;
+  max-width: 200px !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+.pw-logo-link-mobile:hover .pw-mobile-logo-img {
+  transform: scale(1.05);
+  transition: transform 0.3s ease;
+}

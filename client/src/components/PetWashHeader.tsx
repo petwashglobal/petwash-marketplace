@@ -582,9 +582,20 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
         </div>
 
         <div className="pw-mobile-logo-wrap">
-          <div className="pw-logo-circle pw-logo-circle-mobile">
-            <span className="pw-logo-text">PetWash™</span>
-          </div>
+          <button
+            className="pw-logo-link-mobile"
+            onClick={() => {
+              handleNavigate("/");
+              setIsMobileOpen(false);
+            }}
+            aria-label="Pet Wash home"
+          >
+            <img 
+              src="/brand/petwash-logo-official.png" 
+              alt="PetWash™" 
+              className="pw-mobile-logo-img"
+            />
+          </button>
         </div>
 
         {/* Language + account row */}
