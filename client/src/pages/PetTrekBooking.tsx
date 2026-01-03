@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -392,12 +393,18 @@ export default function PetTrekBooking() {
                       <MapPin className="w-4 h-4 mr-2" />
                       {t('booking.location.detected')}
                     </Button>
-                    <Input
-                      placeholder={t('booking.location.enterAddress')}
+                    <GooglePlacesAutocomplete
                       value={pickupAddress}
-                      onChange={(e) => setPickupAddress(e.target.value)}
-                      data-testid="input-pickup-address"
-                      className="luxury-glass-minimal h-12"
+                      onChange={(value, details) => {
+                        setPickupAddress(value);
+                        if (details?.lat && details?.lng) {
+                          setPickupLat(details.lat.toString());
+                          setPickupLon(details.lng.toString());
+                        }
+                      }}
+                      placeholder={t('booking.location.enterAddress')}
+                      country={['il']}
+                      className="flex-1"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -423,12 +430,18 @@ export default function PetTrekBooking() {
                     <MapPin className="w-4 h-4 text-purple-600" />
                     {t('booking.location.dropoffAddress')} <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    placeholder={t('booking.location.enterAddress')}
+                  <GooglePlacesAutocomplete
                     value={dropoffAddress}
-                    onChange={(e) => setDropoffAddress(e.target.value)}
-                    data-testid="input-dropoff-address"
-                    className="luxury-glass-minimal h-12"
+                    onChange={(value, details) => {
+                      setDropoffAddress(value);
+                      if (details?.lat && details?.lng) {
+                        setDropoffLat(details.lat.toString());
+                        setDropoffLon(details.lng.toString());
+                      }
+                    }}
+                    placeholder={t('booking.location.enterAddress')}
+                    country={['il']}
+                    className="w-full"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <Input

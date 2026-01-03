@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -350,13 +351,18 @@ export default function WalkerBooking() {
                 <div className="space-y-2 luxury-animate-slide-up luxury-delay-5">
                   <Label htmlFor="pickup">{t('booking.location.pickupAddress')}</Label>
                   <div className="flex gap-2">
-                    <Input
-                      id="pickup"
+                    <GooglePlacesAutocomplete
                       value={pickupAddress}
-                      onChange={(e) => setPickupAddress(e.target.value)}
+                      onChange={(value, details) => {
+                        setPickupAddress(value);
+                        if (details?.lat && details?.lng) {
+                          setPickupLat(details.lat.toString());
+                          setPickupLon(details.lng.toString());
+                        }
+                      }}
                       placeholder={t('booking.location.enterAddress')}
-                      className="flex-1 luxury-glass-minimal"
-                      data-testid="input-pickup-address"
+                      country={['il']}
+                      className="flex-1"
                     />
                     <Button 
                       type="button" 
