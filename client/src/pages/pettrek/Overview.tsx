@@ -22,22 +22,24 @@ import {
   Activity
 } from "lucide-react";
 import { useSEO, pageSEO } from "@/lib/seo";
+import { useLanguage } from "@/lib/languageStore";
 
 export default function PetTrekOverview() {
   useSEO(pageSEO.petTrek);
+  const { t } = useLanguage();
   
   const serviceTypes = [
     {
       icon: <Activity className="h-8 w-8" />,
-      name: "Veterinary Visits",
-      description: "Safe, stress-free transport to your vet appointments",
+      name: t('pettrek.vetTransport'),
+      description: t('pettrek.vetTransportDesc'),
       priceFrom: "₪89",
       link: "/pettrek/book?service=vet"
     },
     {
       icon: <Sparkles className="h-8 w-8" />,
-      name: "Grooming Appointments",
-      description: "Drop-off and pickup from your favorite groomer",
+      name: t('k9000.products'),
+      description: t('k9000.productsDesc'),
       priceFrom: "₪79",
       link: "/pettrek/book?service=grooming"
     },
@@ -109,18 +111,18 @@ export default function PetTrekOverview() {
   const safetyFeatures = [
     {
       icon: <Shield className="h-10 w-10" />,
-      title: "Verified Drivers",
-      description: "All drivers undergo comprehensive background checks and pet safety training"
+      title: t('walkMyPet.verifiedWalkers'),
+      description: t('walkMyPet.verifiedWalkersDesc')
     },
     {
       icon: <Video className="h-10 w-10" />,
-      title: "GPS Tracking",
-      description: "Real-time location updates and route monitoring throughout the journey"
+      title: t('walkMyPet.gpsTracking'),
+      description: t('walkMyPet.gpsTrackingDesc')
     },
     {
       icon: <Thermometer className="h-10 w-10" />,
-      title: "Climate Control",
-      description: "Temperature-controlled vehicles for maximum comfort in all seasons"
+      title: t('pettrek.climateControlled'),
+      description: t('pettrek.climateControlledDesc')
     },
     {
       icon: <Phone className="h-10 w-10" />,
@@ -130,10 +132,10 @@ export default function PetTrekOverview() {
   ];
 
   const trustBadges = [
-    { icon: <Award />, text: "Licensed & Insured" },
-    { icon: <CheckCircle />, text: "Verified Drivers" },
-    { icon: <Star />, text: "4.9★ Average Rating" },
-    { icon: <Users />, text: "50k+ Happy Pets" }
+    { icon: <Award />, text: t('sitterSuite.fullyInsured') },
+    { icon: <CheckCircle />, text: t('walkMyPet.verifiedWalkers') },
+    { icon: <Star />, text: "4.9★" },
+    { icon: <Users />, text: "50k+" }
   ];
 
   return (
@@ -145,29 +147,28 @@ export default function PetTrekOverview() {
             <div className="text-center max-w-4xl mx-auto luxury-animate-fade-in">
               <div className="inline-flex items-center gap-2 px-6 py-2 luxury-badge luxury-badge-gold mb-8">
                 <Sparkles className="h-4 w-4" />
-                Premium Pet Transportation
+                {t('pettrek.badge')}
               </div>
               
               <h1 className="luxury-heading-xl mb-6">
-                PetTrek™ Transport
+                {t('pettrek.title')}
               </h1>
               
               <p className="luxury-text-body max-w-2xl mx-auto mb-12">
-                Professional pet transport service with GPS tracking. Vet visits, grooming, 
-                airport transfers, or anywhere your pet needs to go—safe, comfortable, and stress-free.
+                {t('pettrek.subtitle')}
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12 luxury-animate-fade-in luxury-delay-1">
                 <Link href="/pettrek/book">
                   <button className="luxury-btn-primary" data-testid="button-request-ride">
                     <Car className="h-5 w-5 mr-2 inline" />
-                    Request a Ride
+                    {t('pettrek.requestRide')}
                   </button>
                 </Link>
                 <Link href="/pettrek/customer/dashboard">
                   <button className="luxury-btn-secondary" data-testid="button-my-rides">
                     <Calendar className="h-5 w-5 mr-2 inline" />
-                    My Rides
+                    {t('pettrek.myTrips')}
                   </button>
                 </Link>
               </div>
@@ -322,9 +323,9 @@ export default function PetTrekOverview() {
         <section className="luxury-section luxury-bg-soft">
           <div className="luxury-container">
             <div className="text-center mb-16">
-              <h2 className="luxury-heading-lg mb-4">Featured Drivers</h2>
+              <h2 className="luxury-heading-lg mb-4">{t('pettrek.professionalDrivers')}</h2>
               <p className="luxury-text-body max-w-2xl mx-auto">
-                Meet our top-rated pet transport professionals
+                {t('pettrek.professionalDriversDesc')}
               </p>
             </div>
 
@@ -360,7 +361,7 @@ export default function PetTrekOverview() {
                   
                   <Link href={`/pettrek/book?driver=${driver.name.toLowerCase().replace(' ', '-')}`}>
                     <button className="luxury-btn-primary w-full">
-                      Book Now
+                      {t('pettrek.bookNow')}
                     </button>
                   </Link>
                 </div>
@@ -373,9 +374,9 @@ export default function PetTrekOverview() {
         <section className="luxury-section">
           <div className="luxury-container">
             <div className="text-center mb-16">
-              <h2 className="luxury-heading-lg mb-4">Your Pet's Safety First</h2>
+              <h2 className="luxury-heading-lg mb-4">{t('sitterSuite.safety')}</h2>
               <p className="luxury-text-body max-w-2xl mx-auto">
-                Comprehensive safety measures for peace of mind
+                {t('sitterSuite.safetyDesc')}
               </p>
             </div>
 
@@ -474,7 +475,7 @@ export default function PetTrekOverview() {
             <Link href="/pettrek/book">
               <button className="luxury-btn-primary luxury-shadow-xl bg-white text-purple-700 hover:bg-gray-50">
                 <Car className="h-5 w-5 mr-2 inline" />
-                Book Your First Ride
+                {t('pettrek.requestRide')}
                 <ArrowRight className="h-5 w-5 ml-2 inline" />
               </button>
             </Link>

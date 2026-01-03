@@ -16,65 +16,67 @@ import {
   Camera
 } from "lucide-react";
 import { useSEO, pageSEO } from "@/lib/seo";
+import { useLanguage } from "@/lib/languageStore";
 
 export default function SitterSuiteOverview() {
   useSEO(pageSEO.sitterSuite);
+  const { t } = useLanguage();
   
   const features = [
     {
       icon: <Search className="h-8 w-8" />,
-      title: "Find a Sitter",
-      description: "Browse verified pet sitters in your area",
+      title: t('sitterSuite.findSitter'),
+      description: t('sitterSuite.browseVerified'),
       link: "/sitter-suite",
     },
     {
       icon: <Home className="h-8 w-8" />,
-      title: "List Your Home",
-      description: "Become a pet sitter and earn income",
+      title: t('sitterSuite.listHome'),
+      description: t('sitterSuite.listHomeDesc'),
       link: "/sitter-suite/become-sitter",
     },
     {
       icon: <Calendar className="h-8 w-8" />,
-      title: "My Bookings",
-      description: "View and manage your sitting bookings",
+      title: t('sitterSuite.myBookings'),
+      description: t('sitterSuite.myBookingsDesc'),
       link: "/sitter-suite/owner/dashboard",
     },
     {
       icon: <MessageSquare className="h-8 w-8" />,
-      title: "Messages",
-      description: "Chat with sitters and pet owners",
+      title: t('sitterSuite.messages'),
+      description: t('sitterSuite.messagesDesc'),
       link: "/sitter-suite/messages",
     },
     {
       icon: <Star className="h-8 w-8" />,
-      title: "Reviews",
-      description: "Read and write reviews",
+      title: t('sitterSuite.reviews'),
+      description: t('sitterSuite.reviewsDesc'),
       link: "/sitter-suite/reviews",
     },
     {
       icon: <DollarSign className="h-8 w-8" />,
-      title: "Payouts & Earnings",
-      description: "Track your sitter earnings (for sitters)",
+      title: t('sitterSuite.payouts'),
+      description: t('sitterSuite.payoutsDesc'),
       link: "/sitter-suite/sitter/dashboard",
     },
     {
       icon: <Shield className="h-8 w-8" />,
-      title: "Safety & Insurance",
-      description: "Learn about our protection policies",
+      title: t('sitterSuite.safety'),
+      description: t('sitterSuite.safetyDesc'),
       link: "/sitter-suite/safety",
     },
     {
       icon: <HelpCircle className="h-8 w-8" />,
-      title: "Help & Support",
-      description: "Get assistance with The Sitter Suite",
+      title: t('sitterSuite.help'),
+      description: t('sitterSuite.helpDesc'),
       link: "/sitter-suite/help",
     }
   ];
 
   const stats = [
-    { icon: <CheckCircle className="h-12 w-12 text-white" />, title: "Background Checks", description: "All sitters verified" },
-    { icon: <Camera className="h-12 w-12 text-white" />, title: "Daily Photos", description: "Stay connected with your pet" },
-    { icon: <Shield className="h-12 w-12 text-white" />, title: "Fully Insured", description: "Protection included" },
+    { icon: <CheckCircle className="h-12 w-12 text-white" />, title: t('sitterSuite.backgroundChecks'), description: t('sitterSuite.backgroundChecksDesc') },
+    { icon: <Camera className="h-12 w-12 text-white" />, title: t('sitterSuite.dailyPhotos'), description: t('sitterSuite.dailyPhotosDesc') },
+    { icon: <Shield className="h-12 w-12 text-white" />, title: t('sitterSuite.fullyInsured'), description: t('sitterSuite.fullyInsuredDesc') },
   ];
 
   return (
@@ -85,26 +87,25 @@ export default function SitterSuiteOverview() {
           <div className="luxury-services-hero-content">
             <div className="luxury-services-badge luxury-animate-fade-in">
               <Sparkles className="h-4 w-4" />
-              Premium Pet Sitting Marketplace
+              {t('sitterSuite.badge')}
             </div>
             <h1 className="luxury-heading-xl luxury-animate-fade-in luxury-delay-1">
-              The Sitter Suite™
+              {t('sitterSuite.title')}
             </h1>
             <p className="luxury-services-subtitle luxury-animate-fade-in luxury-delay-2">
-              Trusted pet sitting in the comfort of your home or theirs.  
-              Background-checked sitters, daily photo updates, and full insurance.
+              {t('sitterSuite.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8 luxury-animate-fade-in luxury-delay-3">
               <Link href="/sitter-suite">
                 <button className="luxury-btn-primary flex items-center gap-2 px-8" data-testid="button-find-sitter">
                   <Search className="h-5 w-5" />
-                  Find a Sitter
+                  {t('sitterSuite.findSitter')}
                 </button>
               </Link>
               <Link href="/sitter-suite/become-sitter">
                 <button className="luxury-btn-secondary flex items-center gap-2 px-8" data-testid="button-become-sitter">
                   <Home className="h-5 w-5" />
-                  Become a Sitter
+                  {t('sitterSuite.becomeSitter')}
                 </button>
               </Link>
             </div>
@@ -127,7 +128,7 @@ export default function SitterSuiteOverview() {
                     {feature.description}
                   </p>
                   <button className="luxury-btn-ghost w-full flex items-center justify-between text-sm" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                    View
+                    {t('sitterSuite.view')}
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>

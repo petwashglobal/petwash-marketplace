@@ -11,57 +11,67 @@ import {
   HelpCircle, 
   Shield,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Leaf,
+  Clock,
+  Droplet
 } from "lucide-react";
 import { useSEO, pageSEO } from "@/lib/seo";
+import { useLanguage } from "@/lib/languageStore";
 
 export default function K9000Overview() {
-  // Apply SEO metadata
   useSEO(pageSEO.k9000);
+  const { t } = useLanguage();
   
   const features = [
     {
       icon: <MapPin className="h-8 w-8 text-blue-600" />,
-      title: "Find a Station",
-      description: "Locate the nearest K9000 organic wash station",
+      title: t('k9000.findStation'),
+      description: t('k9000.findStationDesc'),
       link: "/k9000/stations",
       color: "bg-blue-50 dark:bg-blue-950"
     },
     {
       icon: <Calendar className="h-8 w-8 text-green-600" />,
-      title: "Book a Wash",
-      description: "Reserve your spot at a K9000 station",
+      title: t('k9000.bookWash'),
+      description: t('k9000.findStationDesc'),
       link: "/k9000/booking",
       color: "bg-green-50 dark:bg-green-950"
     },
     {
       icon: <History className="h-8 w-8 text-purple-600" />,
-      title: "My Wash History",
-      description: "View all your past K9000 wash sessions",
+      title: t('k9000.myWashes'),
+      description: t('k9000.myWashesDesc'),
       link: "/k9000/history",
       color: "bg-purple-50 dark:bg-purple-950"
     },
     {
       icon: <Gift className="h-8 w-8 text-pink-600" />,
-      title: "Loyalty & E-Gifts",
-      description: "Earn rewards and send gift cards",
+      title: t('k9000.packages'),
+      description: t('k9000.packagesDesc'),
       link: "/loyalty",
       color: "bg-pink-50 dark:bg-pink-950"
     },
     {
       icon: <Shield className="h-8 w-8 text-indigo-600" />,
-      title: "Safety Guidelines",
-      description: "Learn how to use K9000 stations safely",
+      title: t('sitterSuite.safety'),
+      description: t('pettrek.safetyDesc'),
       link: "/k9000/safety",
       color: "bg-indigo-50 dark:bg-indigo-950"
     },
     {
       icon: <HelpCircle className="h-8 w-8 text-orange-600" />,
-      title: "Help & Support",
-      description: "Get assistance with K9000 services",
+      title: t('sitterSuite.help'),
+      description: t('k9000.helpDesc'),
       link: "/k9000/help",
       color: "bg-orange-50 dark:bg-orange-950"
     }
+  ];
+
+  const stats = [
+    { icon: <Leaf className="h-12 w-12 text-white" />, title: t('k9000.organic'), description: t('k9000.organicDesc') },
+    { icon: <Clock className="h-12 w-12 text-white" />, title: t('k9000.available247'), description: t('k9000.available247Desc') },
+    { icon: <Droplet className="h-12 w-12 text-white" />, title: t('k9000.ecoFriendly'), description: t('k9000.ecoFriendlyDesc') },
   ];
 
   return (
@@ -74,27 +84,26 @@ export default function K9000Overview() {
               <div className="flex justify-center mb-8">
                 <div className="luxury-badge-primary">
                   <Sparkles className="h-5 w-5" />
-                  Premium Organic Pet Care
+                  {t('k9000.badge')}
                 </div>
               </div>
               <h1 className="luxury-heading-xl mb-6">
-                Pet Wash K9000™
+                {t('k9000.title')}
               </h1>
               <p className="luxury-subtitle-lg max-w-2xl mx-auto mb-10">
-                Self-service organic wash stations with IoT technology.  
-                Premium care for your pets, anywhere, anytime.
+                {t('k9000.subtitle')}
               </p>
               <div className="flex flex-col sm:flex-row gap-5 justify-center">
                 <Link href="/k9000/booking">
                   <button className="luxury-btn-primary luxury-shadow-xl px-10" data-testid="button-book-wash">
                     <Waves className="h-5 w-5 mr-2" />
-                    Book a Wash Now
+                    {t('k9000.bookWash')}
                   </button>
                 </Link>
                 <Link href="/k9000/stations">
                   <button className="luxury-btn-outline px-10" data-testid="button-find-station">
                     <MapPin className="h-5 w-5 mr-2" />
-                    Find Stations
+                    {t('k9000.findStation')}
                   </button>
                 </Link>
               </div>
@@ -119,7 +128,7 @@ export default function K9000Overview() {
                       {feature.description}
                     </p>
                     <button className="luxury-btn-outline w-full" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                      Learn More
+                      {t('walkMyPet.learnMore')}
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </button>
                   </div>
@@ -130,33 +139,22 @@ export default function K9000Overview() {
         </div>
 
         {/* Stats Section */}
-        <div className="py-20 luxury-glass-minimal">
+        <div className="py-16 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 luxury-stagger-fade-in">
-              <div className="text-center" style={{ animationDelay: '0.1s' }}>
-                <div className="text-5xl font-black luxury-gradient-text mb-3">
-                  100% Organic
+            <div className="luxury-grid-3">
+              {stats.map((stat, index) => (
+                <div key={index} className={`text-center luxury-animate-fade-in luxury-delay-${index + 1}`}>
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                    {stat.icon}
+                  </div>
+                  <div className="luxury-heading-md text-white mb-2">
+                    {stat.title}
+                  </div>
+                  <div className="luxury-text-body text-blue-100">
+                    {stat.description}
+                  </div>
                 </div>
-                <div className="luxury-text-body text-lg">
-                  Premium organic shampoos
-                </div>
-              </div>
-              <div className="text-center" style={{ animationDelay: '0.2s' }}>
-                <div className="text-5xl font-black luxury-gradient-text mb-3">
-                  IoT Enabled
-                </div>
-                <div className="luxury-text-body text-lg">
-                  Smart wash technology
-                </div>
-              </div>
-              <div className="text-center" style={{ animationDelay: '0.3s' }}>
-                <div className="text-5xl font-black luxury-gradient-text mb-3">
-                  Self-Service
-                </div>
-                <div className="luxury-text-body text-lg">
-                  Wash on your schedule
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>

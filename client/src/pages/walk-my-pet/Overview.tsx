@@ -14,57 +14,60 @@ import {
   MapPin,
   CheckCircle
 } from "lucide-react";
+import { useLanguage } from "@/lib/languageStore";
 
 export default function WalkMyPetOverview() {
+  const { t } = useLanguage();
+
   const features = [
     {
       icon: <Dog className="h-8 w-8" />,
-      title: "Book a Walk",
-      description: "Find professional dog walkers in your area",
+      title: t('walkMyPet.bookWalk'),
+      description: t('walkMyPet.bookWalkDesc'),
       link: "/walk-my-pet",
     },
     {
       icon: <Calendar className="h-8 w-8" />,
-      title: "Upcoming Walks",
-      description: "View and manage your scheduled walks",
+      title: t('walkMyPet.upcomingWalks'),
+      description: t('walkMyPet.upcomingWalksDesc'),
       link: "/walk-my-pet/owner/dashboard?tab=upcoming",
     },
     {
       icon: <Clock className="h-8 w-8" />,
-      title: "Past Walks",
-      description: "Review your walk history and feedback",
+      title: t('walkMyPet.pastWalks'),
+      description: t('walkMyPet.pastWalksDesc'),
       link: "/walk-my-pet/owner/dashboard?tab=past",
     },
     {
       icon: <Users className="h-8 w-8" />,
-      title: "My Walkers",
-      description: "See your favorite and regular walkers",
+      title: t('walkMyPet.myWalkers'),
+      description: t('walkMyPet.myWalkersDesc'),
       link: "/walk-my-pet/owner/dashboard?tab=walkers",
     },
     {
       icon: <Heart className="h-8 w-8" />,
-      title: "Memberships",
-      description: "Subscribe for unlimited walks and discounts",
+      title: t('walkMyPet.memberships'),
+      description: t('walkMyPet.membershipsDesc'),
       link: "/walk-my-pet/memberships",
     },
     {
       icon: <Shield className="h-8 w-8" />,
-      title: "Safety & Rules",
-      description: "Learn about our safety protocols",
+      title: t('walkMyPet.safetyRules'),
+      description: t('walkMyPet.safetyRulesDesc'),
       link: "/walk-my-pet/safety",
     },
     {
       icon: <HelpCircle className="h-8 w-8" />,
-      title: "Help & Support",
-      description: "Get assistance with Walk My Pet services",
+      title: t('sitterSuite.help'),
+      description: t('walkMyPet.helpDesc'),
       link: "/walk-my-pet/help",
     }
   ];
 
   const stats = [
-    { icon: <CheckCircle className="h-12 w-12 text-white" />, title: "Verified Walkers", description: "Background-checked professionals" },
-    { icon: <MapPin className="h-12 w-12 text-white" />, title: "GPS Tracking", description: "Real-time walk monitoring" },
-    { icon: <Shield className="h-12 w-12 text-white" />, title: "Fully Insured", description: "Complete peace of mind" },
+    { icon: <CheckCircle className="h-12 w-12 text-white" />, title: t('walkMyPet.verifiedWalkers'), description: t('walkMyPet.verifiedWalkersDesc') },
+    { icon: <MapPin className="h-12 w-12 text-white" />, title: t('walkMyPet.gpsTracking'), description: t('walkMyPet.gpsTrackingDesc') },
+    { icon: <Shield className="h-12 w-12 text-white" />, title: t('sitterSuite.fullyInsured'), description: t('walkMyPet.fullyInsuredDesc') },
   ];
 
   return (
@@ -75,26 +78,25 @@ export default function WalkMyPetOverview() {
           <div className="luxury-services-hero-content">
             <div className="luxury-services-badge luxury-animate-fade-in">
               <Sparkles className="h-4 w-4" />
-              Professional Dog Walking
+              {t('walkMyPet.badge')}
             </div>
             <h1 className="luxury-heading-xl luxury-animate-fade-in luxury-delay-1">
-              Walk My Pet™
+              {t('walkMyPet.title')}
             </h1>
             <p className="luxury-services-subtitle luxury-animate-fade-in luxury-delay-2">
-              Connect with trusted, verified dog walkers.  
-              GPS tracking, real-time updates, and insured service.
+              {t('walkMyPet.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8 luxury-animate-fade-in luxury-delay-3">
               <Link href="/walk-my-pet">
                 <button className="luxury-btn-primary flex items-center gap-2 px-8" data-testid="button-book-walker">
                   <Dog className="h-5 w-5" />
-                  Find a Walker
+                  {t('walkMyPet.findWalker')}
                 </button>
               </Link>
               <Link href="/walk-my-pet/owner/dashboard">
                 <button className="luxury-btn-secondary flex items-center gap-2 px-8" data-testid="button-my-walks">
                   <Calendar className="h-5 w-5" />
-                  My Walks
+                  {t('walkMyPet.myWalks')}
                 </button>
               </Link>
             </div>
@@ -117,7 +119,7 @@ export default function WalkMyPetOverview() {
                     {feature.description}
                   </p>
                   <button className="luxury-btn-ghost w-full flex items-center justify-between" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                    Learn More
+                    {t('walkMyPet.learnMore')}
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
