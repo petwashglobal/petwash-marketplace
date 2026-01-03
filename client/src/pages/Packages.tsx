@@ -5,20 +5,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ChevronLeft, Check, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-import roseFrontImg from '@assets/IMG_2004_1767330571971.png';
-import roseBackImg from '@assets/IMG_2005_1767330571971.png';
-import emeraldFrontImg from '@assets/IMG_2001_1767330571971.jpeg';
-import emeraldBackImg from '@assets/IMG_2003_1767330571971.png';
-import goldFrontImg from '@assets/IMG_1996_1767330571971.png';
-import goldBackImg from '@assets/IMG_1997_1767330571971.png';
-import platinumFrontImg from '@assets/IMG_1998_1767330571971.png';
-import platinumBackImg from '@assets/IMG_1999_1767330571971.png';
+import roseFrontImg from '@assets/IMG_2004_1767430326403.png';
+import roseBackImg from '@assets/IMG_2005_1767430326403.png';
+import emeraldBackImg from '@assets/IMG_2003_1767430326404.png';
+import goldFrontImg from '@assets/IMG_1996_1767430326404.png';
+import goldBackImg from '@assets/IMG_1997_1767430326404.png';
+import platinumFrontImg from '@assets/IMG_1998_1767430326404.png';
+import platinumBackImg from '@assets/IMG_1999_1767430326404.png';
 
 const WASH_PRICE = 55;
 
 const cardImages = {
   rose: { front: roseFrontImg, back: roseBackImg },
-  emerald: { front: emeraldFrontImg, back: emeraldBackImg },
+  emerald: { front: emeraldBackImg, back: emeraldBackImg },
   gold: { front: goldFrontImg, back: goldBackImg },
   platinum: { front: platinumFrontImg, back: platinumBackImg }
 };
