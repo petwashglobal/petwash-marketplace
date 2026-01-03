@@ -3,7 +3,7 @@ import { X, Star, Crown, Gift, Award, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/lib/languageStore';
 
-type PopupTemplate = 'fullscreen' | 'split-rewards' | 'split-app' | 'membership-tiers';
+type PopupTemplate = 'fullscreen' | 'split-rewards' | 'split-app' | 'membership-tiers' | 'elite-gold';
 
 interface PromoAdConfig {
   id: string;
@@ -85,6 +85,8 @@ export function PromoAdPopup({
         return <SplitAppTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
       case 'membership-tiers':
         return <MembershipTiersTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
+      case 'elite-gold':
+        return <EliteGoldTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
       default:
         return <FullscreenTemplate config={config} title={title} subtitle={subtitle} ctaText={ctaText} onCta={handleCtaClick} />;
     }
@@ -317,6 +319,102 @@ function MembershipTiersTemplate({ config, title, subtitle, ctaText, onCta }: Te
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function EliteGoldTemplate({ config, title, subtitle, ctaText, onCta }: TemplateProps) {
+  const tiers = [
+    { name: 'Member', active: true },
+    { name: 'Elite', active: false },
+    { name: 'Onyx', active: false },
+  ];
+
+  const services = [
+    { en: 'Boutique Wash', he: 'שטיפת בוטיק' },
+    { en: 'Luxury Stay', he: 'אירוח יוקרתי' },
+    { en: 'Chauffeur', he: 'שירות הסעה' },
+  ];
+
+  return (
+    <div className="w-full h-full min-h-[70vh] md:min-h-[600px] flex flex-col items-center justify-center p-8 text-center bg-white relative overflow-hidden">
+      <div 
+        className="absolute inset-[15px] pointer-events-none opacity-30"
+        style={{ border: '1px solid #C5A059' }}
+      />
+      
+      <div 
+        className="w-20 h-20 rounded-full flex items-center justify-center mb-8 shadow-xl"
+        style={{ 
+          background: 'linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)',
+          boxShadow: '0 10px 30px rgba(170, 119, 28, 0.3)'
+        }}
+      >
+        <Sparkles className="w-10 h-10 text-white drop-shadow" />
+      </div>
+
+      {config.logoUrl ? (
+        <img src={config.logoUrl} alt="" className="h-12 object-contain mb-2" />
+      ) : (
+        <h1 
+          className="text-4xl md:text-5xl font-light mb-2 tracking-tight"
+          style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", color: '#2C2C2C' }}
+        >
+          {title || 'Pet Wash™'}
+        </h1>
+      )}
+      
+      <span 
+        className="text-xs uppercase tracking-[5px] mb-10 block"
+        style={{ color: '#AA771C' }}
+      >
+        {subtitle || 'Private Membership'}
+      </span>
+
+      <div className="flex justify-center gap-4 mb-10">
+        {services.map((s, i) => (
+          <div 
+            key={i}
+            className="px-4 py-2 text-[10px] uppercase tracking-wider border border-gray-200 rounded"
+            style={{ color: '#666' }}
+          >
+            {s.en}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-center gap-6 mb-10">
+        {tiers.map((tier, i) => (
+          <div key={i} className="flex flex-col items-center gap-2">
+            <div 
+              className={`w-2 h-2 rounded-full transition-all ${tier.active ? 'scale-150' : ''}`}
+              style={{ background: tier.active ? '#C5A059' : '#E0E0E0' }}
+            />
+            <span className="text-[10px] uppercase tracking-wider text-gray-400">{tier.name}</span>
+          </div>
+        ))}
+      </div>
+
+      {ctaText && (
+        <button
+          onClick={onCta}
+          className="w-full max-w-xs py-5 text-white font-semibold uppercase tracking-[3px] text-xs transition-all hover:brightness-110 hover:scale-[1.02]"
+          style={{ 
+            background: 'linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)',
+            boxShadow: '0 15px 35px rgba(0,0,0,0.1)'
+          }}
+          data-testid="button-promo-cta"
+        >
+          {ctaText}
+        </button>
+      )}
+
+      <span 
+        className="mt-6 text-[10px] uppercase tracking-[2px] text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
+        onClick={onCta}
+      >
+        Continue to Site →
+      </span>
     </div>
   );
 }
