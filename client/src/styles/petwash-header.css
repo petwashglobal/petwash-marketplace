@@ -26,25 +26,25 @@
   display: flex !important;
   align-items: center;
   justify-content: space-between;
-  height: 5rem;
+  height: 5.5rem;
 }
 
-/* Responsive header height */
+/* Responsive header height - always taller than logo */
 @media (min-width: 640px) {
-  .pw-header-inner {
-    height: 5.5rem;
-  }
-}
-
-@media (min-width: 768px) {
   .pw-header-inner {
     height: 6rem;
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .pw-header-inner {
     height: 6.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .pw-header-inner {
+    height: 7rem;
   }
 }
 
@@ -63,10 +63,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  min-width: 2rem;
-  min-height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
   border-radius: 50%;
   background: #FFFFFF !important;
   background-color: #FFFFFF !important;
@@ -81,8 +81,22 @@
 
 .pw-social-link svg {
   display: block;
-  width: 1rem;
-  height: 1rem;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* Larger social icons on tablet+ */
+@media (min-width: 640px) {
+  .pw-social-link {
+    width: 2rem;
+    height: 2rem;
+    min-width: 2rem;
+    min-height: 2rem;
+  }
+  .pw-social-link svg {
+    width: 1rem;
+    height: 1rem;
+  }
 }
 
 .pw-social-link:hover {
@@ -189,9 +203,9 @@
 
 /* Official PetWash™ logo image - ALWAYS DOMINANT, larger than any text/icons */
 .pw-header-logo-img {
-  height: 4rem !important;
+  height: 5rem !important;
   width: auto !important;
-  max-width: 200px !important;
+  max-width: 220px !important;
   object-fit: contain !important;
   display: block !important;
 }
@@ -199,35 +213,46 @@
 /* Tablet - larger logo */
 @media (min-width: 640px) {
   .pw-header-logo-img {
-    height: 5rem !important;
-    max-width: 240px !important;
+    height: 5.5rem !important;
+    max-width: 260px !important;
   }
 }
 
 /* Desktop - dominant logo */
 @media (min-width: 768px) {
   .pw-header-logo-img {
-    height: 5.5rem !important;
-    max-width: 280px !important;
+    height: 6rem !important;
+    max-width: 300px !important;
   }
 }
 
 /* Large screens - premium dominant logo */
 @media (min-width: 1024px) {
   .pw-header-logo-img {
-    height: 6rem !important;
-    max-width: 320px !important;
+    height: 6.5rem !important;
+    max-width: 360px !important;
   }
 }
 
-/* Landscape orientation - maintain logo prominence */
+/* Mobile landscape - keep logo dominant but fit within shorter viewport */
 @media (orientation: landscape) and (max-height: 500px) {
   .pw-header-logo-img {
-    height: 3.5rem !important;
-    max-width: 180px !important;
+    height: 3rem !important;
+    max-width: 160px !important;
   }
   .pw-header-inner {
     height: 3.5rem !important;
+    padding: 0 0.75rem !important;
+  }
+  .pw-social-link {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    min-width: 1.5rem !important;
+    min-height: 1.5rem !important;
+  }
+  .pw-social-link svg {
+    width: 0.75rem !important;
+    height: 0.75rem !important;
   }
 }
 
