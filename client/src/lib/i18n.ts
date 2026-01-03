@@ -1185,7 +1185,7 @@ export const translations: TranslationStrings = {
   'sitter.services.homeSitting': { en: 'Home Sitting', he: 'שמירה בבית', ar: 'جلسة المنزل', ru: 'Домашний присмотр', fr: 'Garde à domicile', es: 'Cuidado en casa' },
   'sitter.services.daycare': { en: 'Daycare', he: 'מעון יום', ar: 'الرعاية النهارية', ru: 'Дневной уход', fr: 'Garderie', es: 'Guardería' },
   // PetTrek™
-  'pettrek.title': { en: 'Book Pet Transport', he: 'הזמנת הסעת חיות מחמד', ar: 'حجز نقل الحيوانات الأليفة', ru: 'Забронировать транспорт для питомца', fr: 'Réserver le transport d\'animaux', es: 'Reservar transporte de mascotas' },
+  'pettrek.bookingTitle': { en: 'Book Pet Transport', he: 'הזמנת הסעת חיות מחמד', ar: 'حجز نقل الحيوانات الأليفة', ru: 'Забронировать транспорт для питомца', fr: 'Réserver le transport d\'animaux', es: 'Reservar transporte de mascotas' },
   'pettrek.tripRequested': { en: 'Trip Requested!', he: 'נסיעה התבקשה!', ar: 'تم طلب الرحلة!', ru: 'Поездка запрошена!', fr: 'Voyage demandé!', es: '¡Viaje solicitado!' },
   'pettrek.searchingDrivers': { en: 'Trip {{tripId}} is now searching for drivers...', he: 'נסיעה {{tripId}} מחפשת כעת נהגים...', ar: 'الرحلة {{tripId}} تبحث الآن عن السائقين...', ru: 'Поездка {{tripId}} ищет водителей...', fr: 'Le voyage {{tripId}} recherche maintenant des chauffeurs...', es: 'El viaje {{tripId}} está buscando conductores...' },
   'pettrek.fareEstimateFailed': { en: 'Fare Estimation Failed', he: 'הערכת תעריף נכשלה', ar: 'فشل تقدير الأجرة', ru: 'Ошибка оценки стоимости', fr: 'Échec de l\'estimation du tarif', es: 'Error en la estimación de tarifa' },
@@ -2014,12 +2014,7 @@ export const translations: TranslationStrings = {
   'pettrek.perKm': { en: '/km', he: '/ק"מ', ar: '/كم', ru: '/км', fr: '/km', es: '/km' },
   'pettrek.perMin': { en: '/min', he: '/דקה', ar: '/دقيقة', ru: '/мин', fr: '/min', es: '/min' },
   'pettrek.priceWaitTime': { en: '₪2/min', he: '₪2/דקה', ar: '₪2/دقيقة', ru: '₪2/мин', fr: '₪2/min', es: '₪2/min' },
-
-  // Common shared keys
-  'common.fullyInsured': { en: 'Fully Insured', he: 'ביטוח מלא', ar: 'مؤمن بالكامل', ru: 'Полная страховка', fr: 'Entièrement assuré', es: 'Totalmente asegurado' },
-  'common.help': { en: 'Help & Support', he: 'עזרה ותמיכה', ar: 'المساعدة والدعم', ru: 'Помощь и поддержка', fr: 'Aide et support', es: 'Ayuda y soporte' },
   'common.learnMore': { en: 'Learn More', he: 'למד עוד', ar: 'اعرف المزيد', ru: 'Узнать больше', fr: 'En savoir plus', es: 'Saber más' },
-  'common.view': { en: 'View', he: 'צפה', ar: 'عرض', ru: 'Просмотр', fr: 'Voir', es: 'Ver' },
 };
 // Supported languages with English as global default
 export type Language = 'en' | 'he' | 'ar' | 'ru' | 'fr' | 'es';
