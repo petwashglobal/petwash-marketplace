@@ -3,6 +3,7 @@ import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLin
 import { auth } from "../lib/firebase";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
+import { useSEO, pageSEO } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ interface SignInProps {
 }
 
 export default function SignIn({ language, onLanguageChange }: SignInProps) {
+  useSEO(pageSEO.login);
   const { toast } = useToast();
   const [location, navigate] = useLocation();
   const { trackUserAuth, trackEvent } = useAnalytics();
