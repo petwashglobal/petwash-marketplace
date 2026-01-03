@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle, Loader2, Briefcase, DogIcon, Car, GraduationCap, Home } from 'lucide-react';
@@ -326,7 +327,27 @@ export default function StaffApplication() {
                     <FormItem>
                       <FormLabel>Street Address *</FormLabel>
                       <FormControl>
-                        <Input placeholder="123 Main St, Apt 4B" {...field} data-testid="input-address" />
+                        <GooglePlacesAutocomplete
+                          value={field.value}
+                          onChange={(value, details) => {
+                            field.onChange(value);
+                            if (details) {
+                              form.setValue('city', details.city || '');
+                              form.setValue('postalCode', details.postalCode || '');
+                              form.setValue('country', details.country || 'Israel');
+                              form.setValue('state', details.state || '');
+                            }
+                          }}
+                          onPlaceSelected={(place) => {
+                            field.onChange(place.formattedAddress);
+                            form.setValue('city', place.city || '');
+                            form.setValue('postalCode', place.postalCode || '');
+                            form.setValue('country', place.country || 'Israel');
+                            form.setValue('state', place.state || '');
+                          }}
+                          placeholder="Start typing your address..."
+                          country={['il', 'us', 'gb', 'au', 'ca']}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { 
   MapPin, 
   Navigation, 
@@ -39,6 +40,8 @@ export default function BookTrip() {
   const [selectedPetType, setSelectedPetType] = useState<string>('');
   const [selectedServiceType, setSelectedServiceType] = useState<string>('');
   const [selectedDriver, setSelectedDriver] = useState<string>('');
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [dropoffAddress, setDropoffAddress] = useState('');
 
   // Mock driver data
   const drivers: Driver[] = [
@@ -237,35 +240,29 @@ export default function BookTrip() {
                         {/* Location Inputs */}
                         <div className="space-y-4">
                           <div>
-                            <label htmlFor="pickup" className="luxury-heading-sm mb-2 block">
+                            <label className="luxury-heading-sm mb-2 block">
                               {isHebrew ? 'נקודת איסוף' : 'Pickup Location'}
                             </label>
-                            <div className="relative">
-                              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-purple-600" />
-                              <Input
-                                id="pickup"
-                                className="luxury-glass-minimal pl-10"
-                                placeholder={isHebrew ? 'הזן כתובת' : 'Enter address'}
-                                data-testid="input-pickup"
-                                required
-                              />
-                            </div>
+                            <GooglePlacesAutocomplete
+                              value={pickupAddress}
+                              onChange={(value) => setPickupAddress(value)}
+                              placeholder={isHebrew ? 'התחל להקליד כתובת...' : 'Start typing address...'}
+                              country={['il']}
+                              className="w-full"
+                            />
                           </div>
 
                           <div>
-                            <label htmlFor="dropoff" className="luxury-heading-sm mb-2 block">
+                            <label className="luxury-heading-sm mb-2 block">
                               {isHebrew ? 'יעד' : 'Drop-off Location'}
                             </label>
-                            <div className="relative">
-                              <Navigation className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-purple-600" />
-                              <Input
-                                id="dropoff"
-                                className="luxury-glass-minimal pl-10"
-                                placeholder={isHebrew ? 'הזן כתובת' : 'Enter address'}
-                                data-testid="input-dropoff"
-                                required
-                              />
-                            </div>
+                            <GooglePlacesAutocomplete
+                              value={dropoffAddress}
+                              onChange={(value) => setDropoffAddress(value)}
+                              placeholder={isHebrew ? 'התחל להקליד כתובת...' : 'Start typing address...'}
+                              country={['il']}
+                              className="w-full"
+                            />
                           </div>
                         </div>
 
