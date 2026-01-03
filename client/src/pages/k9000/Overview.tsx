@@ -28,7 +28,7 @@ export default function K9000Overview() {
       icon: <MapPin className="h-8 w-8 text-blue-600" />,
       title: t('k9000.findStation'),
       description: t('k9000.findStationDesc'),
-      link: "/k9000/stations",
+      link: "/k9000/explore",
       color: "bg-blue-50 dark:bg-blue-950"
     },
     {
@@ -42,7 +42,7 @@ export default function K9000Overview() {
       icon: <History className="h-8 w-8 text-purple-600" />,
       title: t('k9000.myWashes'),
       description: t('k9000.myWashesDesc'),
-      link: "/k9000/history",
+      link: "/k9000/booking",
       color: "bg-purple-50 dark:bg-purple-950"
     },
     {
@@ -56,14 +56,14 @@ export default function K9000Overview() {
       icon: <Shield className="h-8 w-8 text-indigo-600" />,
       title: t('k9000.safety'),
       description: t('k9000.safetyDesc'),
-      link: "/k9000/safety",
+      link: "/k9000/explore",
       color: "bg-indigo-50 dark:bg-indigo-950"
     },
     {
       icon: <HelpCircle className="h-8 w-8 text-orange-600" />,
       title: t('k9000.help'),
       description: t('k9000.helpDesc'),
-      link: "/k9000/help",
+      link: "/k9000/hub",
       color: "bg-orange-50 dark:bg-orange-950"
     }
   ];
@@ -100,7 +100,7 @@ export default function K9000Overview() {
                     {t('k9000.bookWash')}
                   </button>
                 </Link>
-                <Link href="/k9000/stations">
+                <Link href="/k9000/explore">
                   <button className="luxury-btn-outline px-10" data-testid="button-find-station">
                     <MapPin className="h-5 w-5 mr-2" />
                     {t('k9000.findStation')}

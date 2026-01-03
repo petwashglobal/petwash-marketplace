@@ -24,7 +24,7 @@ export default function WalkMyPetOverview() {
       icon: <Dog className="h-8 w-8" />,
       title: t('walkMyPet.bookWalk'),
       description: t('walkMyPet.bookWalkDesc'),
-      link: "/walk-my-pet",
+      link: "/walk-my-pet/browse",
     },
     {
       icon: <Calendar className="h-8 w-8" />,
@@ -48,19 +48,19 @@ export default function WalkMyPetOverview() {
       icon: <Heart className="h-8 w-8" />,
       title: t('walkMyPet.memberships'),
       description: t('walkMyPet.membershipsDesc'),
-      link: "/walk-my-pet/memberships",
+      link: "/loyalty",
     },
     {
       icon: <Shield className="h-8 w-8" />,
       title: t('walkMyPet.safetyRules'),
       description: t('walkMyPet.safetyRulesDesc'),
-      link: "/walk-my-pet/safety",
+      link: "/walk-my-pet/explore",
     },
     {
       icon: <HelpCircle className="h-8 w-8" />,
       title: t('walkMyPet.help'),
       description: t('walkMyPet.helpDesc'),
-      link: "/walk-my-pet/help",
+      link: "/walk-my-pet/hub",
     }
   ];
 
@@ -87,7 +87,7 @@ export default function WalkMyPetOverview() {
               {t('walkMyPet.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8 luxury-animate-fade-in luxury-delay-3">
-              <Link href="/walk-my-pet">
+              <Link href="/walk-my-pet/browse">
                 <button className="luxury-btn-primary flex items-center gap-2 px-8" data-testid="button-book-walker">
                   <Dog className="h-5 w-5" />
                   {t('walkMyPet.findWalker')}

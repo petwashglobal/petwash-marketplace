@@ -27,13 +27,13 @@ export default function SitterSuiteOverview() {
       icon: <Search className="h-8 w-8" />,
       title: t('sitterSuite.findSitter'),
       description: t('sitterSuite.browseVerified'),
-      link: "/sitter-suite",
+      link: "/sitter-suite/browse",
     },
     {
       icon: <Home className="h-8 w-8" />,
       title: t('sitterSuite.listHome'),
       description: t('sitterSuite.listHomeDesc'),
-      link: "/sitter-suite/become-sitter",
+      link: "/sitter-suite/hub",
     },
     {
       icon: <Calendar className="h-8 w-8" />,
@@ -45,13 +45,13 @@ export default function SitterSuiteOverview() {
       icon: <MessageSquare className="h-8 w-8" />,
       title: t('sitterSuite.messages'),
       description: t('sitterSuite.messagesDesc'),
-      link: "/sitter-suite/messages",
+      link: "/sitter-suite/owner/dashboard",
     },
     {
       icon: <Star className="h-8 w-8" />,
       title: t('sitterSuite.reviews'),
       description: t('sitterSuite.reviewsDesc'),
-      link: "/sitter-suite/reviews",
+      link: "/sitter-suite/browse",
     },
     {
       icon: <DollarSign className="h-8 w-8" />,
@@ -63,13 +63,13 @@ export default function SitterSuiteOverview() {
       icon: <Shield className="h-8 w-8" />,
       title: t('sitterSuite.safety'),
       description: t('sitterSuite.safetyDesc'),
-      link: "/sitter-suite/safety",
+      link: "/sitter-suite/explore",
     },
     {
       icon: <HelpCircle className="h-8 w-8" />,
       title: t('sitterSuite.help'),
       description: t('sitterSuite.helpDesc'),
-      link: "/sitter-suite/help",
+      link: "/sitter-suite/hub",
     }
   ];
 
@@ -96,13 +96,13 @@ export default function SitterSuiteOverview() {
               {t('sitterSuite.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8 luxury-animate-fade-in luxury-delay-3">
-              <Link href="/sitter-suite">
+              <Link href="/sitter-suite/browse">
                 <button className="luxury-btn-primary flex items-center gap-2 px-8" data-testid="button-find-sitter">
                   <Search className="h-5 w-5" />
                   {t('sitterSuite.findSitter')}
                 </button>
               </Link>
-              <Link href="/sitter-suite/become-sitter">
+              <Link href="/sitter-suite/hub">
                 <button className="luxury-btn-secondary flex items-center gap-2 px-8" data-testid="button-become-sitter">
                   <Home className="h-5 w-5" />
                   {t('sitterSuite.becomeSitter')}
