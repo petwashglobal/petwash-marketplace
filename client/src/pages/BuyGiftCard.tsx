@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GooglePlacesAutocomplete } from "@/components/ui/google-places-autocomplete";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Gift, MapPin, Mail, User, Calendar, DollarSign } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -46,19 +46,23 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
 
   const predefinedAmounts = [50, 100, 200, 500, 1000];
 
-  const handleAddressSelect = (addressData: {
-    fullAddress: string;
-    street?: string;
-    city?: string;
-    postcode?: string;
-    country?: string;
-  }) => {
+  const handleAddressChange = (value: string, details?: PlaceDetails) => {
     setFormData(prev => ({
       ...prev,
-      address: addressData.fullAddress,
-      city: addressData.city || prev.city,
-      postcode: addressData.postcode || prev.postcode,
-      country: addressData.country || prev.country,
+      address: value,
+      city: details?.city || prev.city,
+      postcode: details?.postalCode || prev.postcode,
+      country: details?.country || prev.country,
+    }));
+  };
+
+  const handlePlaceSelected = (place: PlaceDetails) => {
+    setFormData(prev => ({
+      ...prev,
+      address: place.formattedAddress,
+      city: place.city || prev.city,
+      postcode: place.postalCode || prev.postcode,
+      country: place.country || prev.country,
     }));
   };
 
@@ -233,10 +237,13 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                 <div>
                   <Label>{t('giftCards.fullAddress', language)} *</Label>
                   <GooglePlacesAutocomplete
-                    onSelect={handleAddressSelect}
+                    value={formData.address}
+                    onChange={handleAddressChange}
+                    onPlaceSelected={handlePlaceSelected}
                     placeholder={t('giftCards.addressPlaceholder', language)}
                     className="w-full"
-                    data-testid="input-address-autocomplete"
+                    country={['il']}
+                    required
                   />
                   {formData.address && (
                     <p className="text-sm text-gray-600 mt-2">

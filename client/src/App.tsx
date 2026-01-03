@@ -1916,7 +1916,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/receipt/:transactionId" component={ReceiptPage} />
         <Route path="/founder-member" component={FounderMember} />
         <Route path="/buy-gift-card">
-          {() => <BuyGiftCard language={language} onLanguageChange={setLanguage} />}
+          {() => <BuyGiftCard language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/claim">
           {() => <ClaimVoucher />}
