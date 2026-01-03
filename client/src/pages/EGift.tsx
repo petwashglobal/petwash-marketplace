@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronLeft, Check, ArrowRight } from 'lucide-react';
+import { ChevronLeft, Check, ArrowRight, Wallet, Gift, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 import roseFrontImg from '@assets/IMG_2004_1767477310445.png';
@@ -16,27 +16,27 @@ import goldBackImg from '@assets/IMG_1997_1767477310445.png';
 import platinumFrontImg from '@assets/IMG_1998_1767477310445.png';
 import platinumBackImg from '@assets/IMG_1999_1767477310445.png';
 
-const WASH_PRICE = 55;
-
 const cardImages = {
-  rose: { front: roseFrontImg, back: roseBackImg, name: 'Rose Pink', washes: 1 },
-  emerald: { front: emeraldFrontImg, back: emeraldBackImg, name: 'Emerald Green', washes: 3 },
-  platinum: { front: platinumFrontImg, back: platinumBackImg, name: 'Platinum Black', washes: 5 },
-  gold: { front: goldFrontImg, back: goldBackImg, name: 'Gold', washes: 10 }
+  rose: { front: roseFrontImg, back: roseBackImg, name: 'Rose Pink' },
+  emerald: { front: emeraldFrontImg, back: emeraldBackImg, name: 'Emerald Green' },
+  platinum: { front: platinumFrontImg, back: platinumBackImg, name: 'Platinum Black' },
+  gold: { front: goldFrontImg, back: goldBackImg, name: 'Gold' }
 };
 
 const platformServices = [
-  { id: 'wash', name: 'Pet Wash™', description: 'Self-service wash stations' },
+  { id: 'wash', name: 'K9000 Wash Hub™', description: 'Self-service wash stations' },
   { id: 'sitter', name: 'Sitter Suite™', description: 'Premium pet sitting' },
   { id: 'walk', name: 'Walk My Pet™', description: 'Professional dog walking' },
-  { id: 'trek', name: 'PetTrek™', description: 'Adventure experiences' }
+  { id: 'trek', name: 'PetTrek™', description: 'Adventure experiences' },
+  { id: 'academy', name: 'Pet Wash Academy™', description: 'Training & education' },
+  { id: 'nayax', name: 'Nayax Pet Wash™', description: 'Hardware payment stations' }
 ];
 
 const giftOptions = [
-  { value: 55, washes: 1, label: '1 Wash', color: 'rose' as const, description: 'Single wash e-gift' },
-  { value: 150, washes: 3, label: '3 Washes', color: 'emerald' as const, description: '₪50 per wash' },
-  { value: 220, washes: 5, label: '5 Washes', color: 'platinum' as const, description: '₪44 per wash' },
-  { value: 440, washes: 10, label: '10 Washes', color: 'gold' as const, description: '₪44 per wash - Best Value' }
+  { value: 100, color: 'rose' as const, label: '₪100 Credit', description: 'Perfect starter gift' },
+  { value: 250, color: 'emerald' as const, label: '₪250 Credit', description: 'Popular choice' },
+  { value: 500, color: 'platinum' as const, label: '₪500 Credit', description: 'Premium gift' },
+  { value: 1000, color: 'gold' as const, label: '₪1,000 Credit', description: 'Ultimate luxury gift' }
 ];
 
 function LuxuryGiftCard({ 
@@ -49,6 +49,9 @@ function LuxuryGiftCard({
   selected?: boolean;
 }) {
   const images = cardImages[option.color];
+  const formattedValue = option.value >= 1000 
+    ? `₪${(option.value / 1000).toFixed(0)},000` 
+    : `₪${option.value}`;
   
   return (
     <button 
@@ -57,23 +60,23 @@ function LuxuryGiftCard({
         selected ? 'ring-4 ring-black ring-offset-2 scale-[1.02]' : 'hover:scale-[1.02]'
       }`}
       onClick={onClick}
-      data-testid={`egift-card-${option.washes}`}
+      data-testid={`egift-card-${option.value}`}
     >
       <div className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-xl">
         <img 
           src={images.front}
-          alt={`${option.washes} Wash E-Gift Card`}
+          alt={`${formattedValue} Credit E-Gift Card`}
           className="w-full h-full object-cover object-center"
           loading="lazy"
         />
       </div>
       <div className="mt-3 text-center">
         <p className="text-xl sm:text-2xl font-bold text-gray-900">
-          {option.washes} {option.washes === 1 ? 'Wash' : 'Washes'}
+          {formattedValue}
         </p>
-        <p className="text-lg font-semibold text-gray-700">₪{option.value}</p>
+        <p className="text-lg font-semibold text-gray-700">Platform Credit</p>
         <p className="text-sm text-gray-600 mt-1">{option.description}</p>
-        {option.washes === 10 && (
+        {option.value === 1000 && (
           <span className="inline-block mt-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-medium">
             Best Value
           </span>
@@ -87,7 +90,7 @@ export default function EGift() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [selectedOption, setSelectedOption] = useState<typeof giftOptions[0] | null>(null);
-  const [selectedServices, setSelectedServices] = useState<string[]>(['wash', 'sitter', 'walk', 'trek']);
+  const [selectedServices, setSelectedServices] = useState<string[]>(['wash', 'sitter', 'walk', 'trek', 'academy', 'nayax']);
   const [step, setStep] = useState<'select' | 'checkout'>('select');
   
   const [formData, setFormData] = useState({
@@ -323,7 +326,8 @@ export default function EGift() {
                 </div>
                 <div className="mt-4 text-center">
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">₪{finalPrice}</p>
-                  <p className="text-gray-600 mt-1">Multi-Service E-Gift Card</p>
+                  <p className="text-gray-600 mt-1">Platform Credit Gift Card</p>
+                  <p className="text-xs text-amber-600 font-medium mt-1">Works at all Pet Wash™ services</p>
                 </div>
               </div>
             </div>
@@ -337,11 +341,15 @@ export default function EGift() {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="container mx-auto px-4 py-8 sm:py-12">
         <div className="text-center mb-8 sm:mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-full mb-4">
+            <Wallet className="w-4 h-4 text-amber-600" />
+            <span className="text-sm font-medium text-amber-800">Platform-Wide Credit</span>
+          </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
-            Luxury E-Gift Cards
+            Gift Card Credit
           </h1>
           <p className="text-gray-600 max-w-2xl mx-auto text-sm sm:text-base">
-            Send the gift of premium pet care. Redeemable across all PetWash™ services.
+            Give the gift of premium pet care credit. Use anywhere across Pet Wash™ platforms - from self-service washes to pet sitting, dog walking, adventures, and more!
           </p>
         </div>
 

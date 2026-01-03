@@ -35,39 +35,43 @@ export function GiftCards({ language }: GiftCardsProps) {
   const vouchers = [
     {
       id: '1',
-      name: "1 Premium Wash",
-      nameHe: "רחיצה פרימיום אחת",
-      washCount: 1,
-      price: '55',
+      name: "₪100 Credit",
+      nameHe: "קרדיט ₪100",
+      price: '100',
       colorVariant: "rose",
-      image: roseFrontImg
+      image: roseFrontImg,
+      description: "Perfect starter gift",
+      descriptionHe: "מתנה מושלמת להתחלה"
     },
     {
       id: '2',
-      name: "3 Premium Washes",
-      nameHe: "3 רחיצות פרימיום",
-      washCount: 3,
-      price: '150',
+      name: "₪250 Credit",
+      nameHe: "קרדיט ₪250",
+      price: '250',
       colorVariant: "emerald",
-      image: emeraldFrontImg
+      image: emeraldFrontImg,
+      description: "Popular choice",
+      descriptionHe: "הבחירה הפופולרית"
     },
     {
       id: '3',
-      name: "5 Premium Washes",
-      nameHe: "5 רחיצות פרימיום",
-      washCount: 5,
-      price: '220',
+      name: "₪500 Credit",
+      nameHe: "קרדיט ₪500",
+      price: '500',
       colorVariant: "platinum",
-      image: platinumFrontImg
+      image: platinumFrontImg,
+      description: "Premium gift",
+      descriptionHe: "מתנה פרימיום"
     },
     {
       id: '4',
-      name: "10 Premium Washes",
-      nameHe: "10 רחיצות פרימיום",
-      washCount: 10,
-      price: '440',
+      name: "₪1,000 Credit",
+      nameHe: "קרדיט ₪1,000",
+      price: '1000',
       colorVariant: "gold",
-      image: goldFrontImg
+      image: goldFrontImg,
+      description: "Ultimate luxury gift",
+      descriptionHe: "מתנת היוקרה האולטימטיבית"
     }
   ];
 
@@ -110,27 +114,27 @@ export function GiftCards({ language }: GiftCardsProps) {
   };
 
   const handlePurchase = (voucher: any) => {
-    logger.debug('Gift card purchase clicked', { voucherName: voucher.name });
+    logger.debug('Gift card credit purchase clicked', { voucherName: voucher.name, creditAmount: voucher.price });
     
-    // Convert to WashPackage format
+    // Convert to package format for checkout modal
     const packageData = {
       id: voucher.id,
       name: voucher.name,
       nameHe: voucher.nameHe,
-      description: null,
-      descriptionHe: null,
+      description: voucher.description,
+      descriptionHe: voucher.descriptionHe,
       price: voucher.price.toString(),
-      washCount: voucher.washCount,
       isActive: true,
       createdAt: null,
+      isCreditGift: true, // Flag to indicate this is a platform credit gift
     };
     
     setSelectedPackage(packageData);
     
-    // ✅ E-Gift cards can be purchased by anyone - no membership required
-    // Gift cards are meant to be given to loved ones, so express checkout is open to all
+    // ✅ E-Gift credits can be purchased by anyone - no membership required
+    // Gift credits are meant to be given to loved ones, so express checkout is open to all
     setIsCheckoutOpen(true);
-    logger.debug('Gift card modal state set to open');
+    logger.debug('Gift card credit modal state set to open');
   };
 
   const handleCloseSignupModal = () => {
@@ -153,8 +157,8 @@ export function GiftCards({ language }: GiftCardsProps) {
         <div className="text-center mb-12 sm:mb-16 lg:mb-20">
           {/* Premium Badge */}
           <div className="inline-flex items-center justify-center p-2 mb-4 sm:mb-6">
-            <span className="px-4 py-2 bg-white rounded-full text-xs sm:text-sm font-semibold text-black border border-black">
-              {language === 'he' ? 'כרטיסי מתנה דיגיטליים' : 'PREMIUM DIGITAL GIFTS'}
+            <span className="px-4 py-2 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-full text-xs sm:text-sm font-semibold text-amber-800">
+              {language === 'he' ? 'קרדיט לכל הפלטפורמות' : 'PLATFORM-WIDE CREDIT'}
             </span>
           </div>
 
@@ -189,8 +193,8 @@ export function GiftCards({ language }: GiftCardsProps) {
                   perspective: '1000px',
                 }}
               >
-                {/* Best Value Badge for 10 washes */}
-                {voucher.washCount === 10 && (
+                {/* Best Value Badge for ₪1000 */}
+                {voucher.price === '1000' && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
                     <div className="px-4 sm:px-6 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs sm:text-sm font-bold rounded-full shadow-lg">
                       {language === 'he' ? 'הכי משתלם' : 'BEST VALUE'}
@@ -213,11 +217,11 @@ export function GiftCards({ language }: GiftCardsProps) {
                   <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
                     {language === 'he' ? voucher.nameHe : voucher.name}
                   </h3>
-                  <p className="text-2xl sm:text-3xl font-bold text-black mb-2">
-                    ₪{voucher.price}
+                  <p className="text-lg font-semibold text-gray-700 mb-1">
+                    {language === 'he' ? 'קרדיט לכל הפלטפורמות' : 'Platform Credit'}
                   </p>
                   <p className="text-sm text-gray-600 mb-4">
-                    {voucher.washCount} {language === 'he' ? 'רחיצות פרימיום' : 'Premium Washes'}
+                    {language === 'he' ? voucher.descriptionHe : voucher.description}
                   </p>
                   
                   {/* Purchase Button */}
