@@ -22,13 +22,17 @@ interface PromoAdConfig {
 }
 
 const DEFAULT_PROMO: PromoAdConfig = {
-  id: 'petwash-promo-2026',
-  template: 'fullscreen',
-  title: '',
-  ctaText: '',
+  id: 'petwash-elite-2026',
+  template: 'elite-gold',
+  title: 'Pet Wash™',
+  titleHe: 'Pet Wash™',
+  subtitle: 'Private Membership',
+  subtitleHe: 'חברות פרטית',
+  ctaText: 'Request Access',
+  ctaTextHe: 'בקש גישה',
   ctaUrl: '/loyalty',
   backgroundColor: 'from-amber-500 via-orange-500 to-amber-600',
-  enabled: false,
+  enabled: true,
 };
 
 interface PromoAdPopupProps {
