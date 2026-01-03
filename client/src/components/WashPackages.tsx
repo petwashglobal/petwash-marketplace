@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Check, Sparkles, Crown, Shield, CreditCard } from 'lucide-react';
+import { Check, Sparkles, Crown, Shield, CreditCard, Star } from 'lucide-react';
 import { ExpressCheckoutModal } from '@/components/ExpressCheckoutModal';
 import { CustomerSignupModal } from '@/components/CustomerSignupModal';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -9,11 +9,22 @@ import { t, type Language } from '@/lib/i18n';
 import { logger } from "@/lib/logger";
 import type { WashPackage } from '@shared/schema';
 
+import roseFrontImg from '@assets/IMG_2004_1767477310445.png';
+import emeraldFrontImg from '@assets/IMG_2002_1767477310445.png';
+import platinumFrontImg from '@assets/IMG_1998_1767477310445.png';
+import goldFrontImg from '@assets/IMG_1996_1767477310445.png';
+
 interface WashPackagesProps {
   language: Language;
 }
 
-// Fallback packages when API fails - OFFICIAL 2025 PRICES (NO DISCOUNTS)
+const CARD_IMAGES: Record<number, string> = {
+  1: roseFrontImg,
+  3: emeraldFrontImg,
+  5: platinumFrontImg,
+  10: goldFrontImg
+};
+
 const FALLBACK_PACKAGES: WashPackage[] = [
   {
     id: '1',
@@ -29,7 +40,7 @@ const FALLBACK_PACKAGES: WashPackage[] = [
     id: '2',
     name: '3-Wash Package',
     description: 'Three premium organic washes',
-    price: '165',
+    price: '150',
     washCount: 3,
     isActive: true,
     createdAt: new Date(),
@@ -39,7 +50,7 @@ const FALLBACK_PACKAGES: WashPackage[] = [
     id: '3',
     name: '5-Wash Package',
     description: 'Five premium organic washes',
-    price: '275',
+    price: '220',
     washCount: 5,
     isActive: true,
     createdAt: new Date(),
@@ -49,7 +60,7 @@ const FALLBACK_PACKAGES: WashPackage[] = [
     id: '4',
     name: '10-Wash Package',
     description: 'Ten premium organic washes - Family Pack',
-    price: '550',
+    price: '440',
     washCount: 10,
     isActive: true,
     createdAt: new Date(),

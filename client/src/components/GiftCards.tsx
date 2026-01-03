@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Gift, Sparkles, Crown, Check } from 'lucide-react';
+import { Gift, Sparkles, Crown, Check, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ExpressCheckoutModal } from './ExpressCheckoutModal';
 import { CustomerSignupModal } from './CustomerSignupModal';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { t, type Language } from '@/lib/i18n';
 import { logger } from "@/lib/logger";
+
+import roseFrontImg from '@assets/IMG_2004_1767477310445.png';
+import emeraldFrontImg from '@assets/IMG_2002_1767477310445.png';
+import platinumFrontImg from '@assets/IMG_1998_1767477310445.png';
+import goldFrontImg from '@assets/IMG_1996_1767477310445.png';
 
 interface GiftCardsProps {
   language: Language;
@@ -18,7 +23,6 @@ export function GiftCards({ language }: GiftCardsProps) {
   const [pendingPurchase, setPendingPurchase] = useState(false);
   const { user } = useFirebaseAuth();
 
-  // ✅ Auto-resume checkout after authentication
   useEffect(() => {
     if (user && pendingPurchase && selectedPackage) {
       logger.debug('User authenticated - auto-opening checkout', { userId: user.uid });
@@ -35,7 +39,8 @@ export function GiftCards({ language }: GiftCardsProps) {
       nameHe: "רחיצה פרימיום אחת",
       washCount: 1,
       price: '55',
-      colorVariant: "white"
+      colorVariant: "rose",
+      image: roseFrontImg
     },
     {
       id: '2',
@@ -43,7 +48,8 @@ export function GiftCards({ language }: GiftCardsProps) {
       nameHe: "3 רחיצות פרימיום",
       washCount: 3,
       price: '150',
-      colorVariant: "white"
+      colorVariant: "emerald",
+      image: emeraldFrontImg
     },
     {
       id: '3',
@@ -51,38 +57,56 @@ export function GiftCards({ language }: GiftCardsProps) {
       nameHe: "5 רחיצות פרימיום",
       washCount: 5,
       price: '220',
-      colorVariant: "black"
+      colorVariant: "platinum",
+      image: platinumFrontImg
+    },
+    {
+      id: '4',
+      name: "10 Premium Washes",
+      nameHe: "10 רחיצות פרימיום",
+      washCount: 10,
+      price: '440',
+      colorVariant: "gold",
+      image: goldFrontImg
     }
   ];
 
-  const getLuxuryTheme = (index: number) => {
-    const themes = [
-      {
-        gradient: '#FFFFFF',
-        badge: 'SIGNATURE',
+  const getLuxuryTheme = (colorVariant: string) => {
+    const themes: Record<string, any> = {
+      rose: {
+        gradient: 'linear-gradient(145deg, #E8A4B5 0%, #D18B9D 50%, #C47388 100%)',
+        badge: 'STARTER',
         icon: Gift,
-        shadowColor: 'rgba(0, 0, 0, 0.1)',
-        textColor: '#000000',
-        border: '1px solid #000000',
-      },
-      {
-        gradient: '#FFFFFF',
-        badge: 'POPULAR',
-        icon: Crown,
-        shadowColor: 'rgba(0, 0, 0, 0.12)',
-        textColor: '#000000',
-        border: '2px solid #000000',
-      },
-      {
-        gradient: '#000000',
-        badge: 'BEST VALUE',
-        icon: Sparkles,
-        shadowColor: 'rgba(0, 0, 0, 0.2)',
+        shadowColor: 'rgba(212, 139, 157, 0.3)',
         textColor: '#FFFFFF',
         border: 'none',
       },
-    ];
-    return themes[index] || themes[0];
+      emerald: {
+        gradient: 'linear-gradient(145deg, #4A7C59 0%, #3D6B4A 50%, #2F5A3B 100%)',
+        badge: 'POPULAR',
+        icon: Crown,
+        shadowColor: 'rgba(74, 124, 89, 0.3)',
+        textColor: '#FFFFFF',
+        border: 'none',
+      },
+      platinum: {
+        gradient: 'linear-gradient(145deg, #1A1A1A 0%, #0D0D0D 50%, #000000 100%)',
+        badge: 'PREMIUM',
+        icon: Sparkles,
+        shadowColor: 'rgba(0, 0, 0, 0.4)',
+        textColor: '#FFFFFF',
+        border: 'none',
+      },
+      gold: {
+        gradient: 'linear-gradient(145deg, #D4AF37 0%, #C5A028 50%, #B8860B 100%)',
+        badge: 'VIP ELITE',
+        icon: Star,
+        shadowColor: 'rgba(212, 175, 55, 0.4)',
+        textColor: '#FFFFFF',
+        border: 'none',
+      },
+    };
+    return themes[colorVariant] || themes.rose;
   };
 
   const handlePurchase = (voucher: any) => {
@@ -150,11 +174,12 @@ export function GiftCards({ language }: GiftCardsProps) {
           </p>
         </div>
 
-        {/* Luxury Gift Cards Grid - Responsive */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto">
-          {vouchers.map((voucher, index) => {
-            const theme = getLuxuryTheme(index);
+        {/* Luxury Gift Cards Grid - Responsive 2x2 on large screens */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-6 max-w-7xl mx-auto">
+          {vouchers.map((voucher) => {
+            const theme = getLuxuryTheme(voucher.colorVariant);
             const IconComponent = theme.icon;
+            const isDark = voucher.colorVariant === 'platinum' || voucher.colorVariant === 'emerald';
             
             return (
               <div
@@ -164,104 +189,45 @@ export function GiftCards({ language }: GiftCardsProps) {
                   perspective: '1000px',
                 }}
               >
-                {/* Recommended Badge - Most Popular */}
-                {voucher.washCount === 3 && (
+                {/* Best Value Badge for 10 washes */}
+                {voucher.washCount === 10 && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                    <div className="px-4 sm:px-6 py-2 bg-black text-white text-xs sm:text-sm font-bold rounded-full shadow-lg">
-                      {language === 'he' ? 'הכי פופולרי' : 'MOST POPULAR'}
+                    <div className="px-4 sm:px-6 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs sm:text-sm font-bold rounded-full shadow-lg">
+                      {language === 'he' ? 'הכי משתלם' : 'BEST VALUE'}
                     </div>
                   </div>
                 )}
 
-                {/* Luxury Card Container */}
-                <div
-                  className="relative overflow-hidden rounded-2xl sm:rounded-3xl transition-all duration-500"
-                  style={{
-                    background: theme.gradient,
-                    border: theme.border,
-                    boxShadow: `0 10px 40px ${theme.shadowColor}`,
-                  }}
-                >
-                  {/* Shine Effect */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                {/* Card Image Display */}
+                <div className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-xl mb-4">
+                  <img 
+                    src={voucher.image}
+                    alt={`${voucher.name} E-Gift Card`}
+                    className="w-full h-full object-cover object-center"
+                    loading="lazy"
+                  />
+                </div>
 
-                  {/* Card Content */}
-                  <div className="relative p-6 sm:p-8 lg:p-10">
-                    {/* Gift Badge */}
-                    <div className="flex items-center justify-between mb-4 sm:mb-6">
-                      <div className="flex items-center gap-2">
-                        <IconComponent className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: theme.textColor }} />
-                        <span className="text-xs sm:text-sm font-bold tracking-wider" style={{ color: theme.textColor }}>
-                          {theme.badge}
-                        </span>
-                      </div>
-                      <div className="px-3 py-1 rounded-full" style={{ background: index === 2 ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)' }}>
-                        <span className="text-xs sm:text-sm font-bold" style={{ color: theme.textColor }}>
-                          {language === 'he' ? 'מתנה' : 'GIFT'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Gift Name */}
-                    <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 sm:mb-3" style={{ color: theme.textColor }}>
-                      {language === 'he' ? voucher.nameHe : voucher.name}
-                    </h3>
-
-                    {/* Price Display */}
-                    <div className="mb-6 sm:mb-8">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-5xl sm:text-6xl lg:text-7xl font-bold" style={{ color: theme.textColor }}>
-                          ₪{voucher.price}
-                        </span>
-                      </div>
-                      <p className="text-base sm:text-lg mt-2" style={{ color: theme.textColor, opacity: 0.8 }}>
-                        {voucher.washCount} {language === 'he' ? 'רחיצות פרימיום' : 'Premium Washes'}
-                      </p>
-                    </div>
-
-                    {/* Features List */}
-                    <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1 p-1 rounded-full" style={{ background: index === 2 ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)' }}>
-                          <Check className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: theme.textColor }} strokeWidth={3} />
-                        </div>
-                        <span className="text-sm sm:text-base leading-relaxed" style={{ color: theme.textColor, opacity: 0.95 }}>
-                          {language === 'he' ? 'טיפול אורגני פרימיום' : 'Premium organic care'}
-                        </span>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1 p-1 rounded-full" style={{ background: index === 2 ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)' }}>
-                          <Check className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: theme.textColor }} strokeWidth={3} />
-                        </div>
-                        <span className="text-sm sm:text-base leading-relaxed" style={{ color: theme.textColor, opacity: 0.95 }}>
-                          {language === 'he' ? 'משלוח מיידי באימייל' : 'Instant email delivery'}
-                        </span>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1 p-1 rounded-full" style={{ background: index === 2 ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)' }}>
-                          <Check className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: theme.textColor }} strokeWidth={3} />
-                        </div>
-                        <span className="text-sm sm:text-base leading-relaxed" style={{ color: theme.textColor, opacity: 0.95 }}>
-                          {language === 'he' ? 'ללא תאריך תפוגה' : 'Never expires'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Purchase Button */}
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => handlePurchase(voucher)}
-                        className="w-full py-3 sm:py-4 px-6 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-                        style={{ 
-                          background: index === 2 ? '#FFFFFF' : '#000000',
-                          color: index === 2 ? '#000000' : '#FFFFFF',
-                        }}
-                        data-testid={`button-gift-purchase-${voucher.id}`}
-                      >
-                        {language === 'he' ? 'רכישה מיידית' : 'Buy Now'}
-                      </button>
-                    </div>
-                  </div>
+                {/* Card Info */}
+                <div className="text-center">
+                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
+                    {language === 'he' ? voucher.nameHe : voucher.name}
+                  </h3>
+                  <p className="text-2xl sm:text-3xl font-bold text-black mb-2">
+                    ₪{voucher.price}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-4">
+                    {voucher.washCount} {language === 'he' ? 'רחיצות פרימיום' : 'Premium Washes'}
+                  </p>
+                  
+                  {/* Purchase Button */}
+                  <button
+                    onClick={() => handlePurchase(voucher)}
+                    className="w-full py-3 px-6 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 bg-black text-white"
+                    data-testid={`button-gift-purchase-${voucher.id}`}
+                  >
+                    {language === 'he' ? 'רכישה מיידית' : 'Buy Now'}
+                  </button>
                 </div>
               </div>
             );

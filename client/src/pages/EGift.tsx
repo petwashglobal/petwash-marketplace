@@ -7,21 +7,22 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ChevronLeft, Check, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-import roseFrontImg from '@assets/IMG_2004_1767430326403.png';
-import roseBackImg from '@assets/IMG_2005_1767430326403.png';
-import emeraldBackImg from '@assets/IMG_2003_1767430326404.png';
-import goldFrontImg from '@assets/IMG_1996_1767430326404.png';
-import goldBackImg from '@assets/IMG_1997_1767430326404.png';
-import platinumFrontImg from '@assets/IMG_1998_1767430326404.png';
-import platinumBackImg from '@assets/IMG_1999_1767430326404.png';
+import roseFrontImg from '@assets/IMG_2004_1767477310445.png';
+import roseBackImg from '@assets/IMG_2005_1767477310445.png';
+import emeraldFrontImg from '@assets/IMG_2002_1767477310445.png';
+import emeraldBackImg from '@assets/IMG_2003_1767477310445.png';
+import goldFrontImg from '@assets/IMG_1996_1767477310445.png';
+import goldBackImg from '@assets/IMG_1997_1767477310445.png';
+import platinumFrontImg from '@assets/IMG_1998_1767477310445.png';
+import platinumBackImg from '@assets/IMG_1999_1767477310445.png';
 
 const WASH_PRICE = 55;
 
 const cardImages = {
-  rose: { front: roseFrontImg, back: roseBackImg, name: 'Rose Pink' },
-  emerald: { front: emeraldBackImg, back: emeraldBackImg, name: 'Emerald Green' },
-  gold: { front: goldFrontImg, back: goldBackImg, name: 'Gold' },
-  platinum: { front: platinumFrontImg, back: platinumBackImg, name: 'Platinum Black' }
+  rose: { front: roseFrontImg, back: roseBackImg, name: 'Rose Pink', washes: 1 },
+  emerald: { front: emeraldFrontImg, back: emeraldBackImg, name: 'Emerald Green', washes: 3 },
+  platinum: { front: platinumFrontImg, back: platinumBackImg, name: 'Platinum Black', washes: 5 },
+  gold: { front: goldFrontImg, back: goldBackImg, name: 'Gold', washes: 10 }
 };
 
 const platformServices = [
@@ -32,10 +33,10 @@ const platformServices = [
 ];
 
 const giftOptions = [
-  { value: 55, label: '₪55', color: 'rose' as const, description: 'Single service credit' },
-  { value: 165, label: '₪165', color: 'emerald' as const, description: '3x value', discount: 5 },
-  { value: 275, label: '₪275', color: 'platinum' as const, description: '5x value', discount: 8 },
-  { value: 550, label: '₪550', color: 'gold' as const, description: '10x value', discount: 12 }
+  { value: 55, washes: 1, label: '1 Wash', color: 'rose' as const, description: 'Single wash e-gift' },
+  { value: 150, washes: 3, label: '3 Washes', color: 'emerald' as const, description: '₪50 per wash' },
+  { value: 220, washes: 5, label: '5 Washes', color: 'platinum' as const, description: '₪44 per wash' },
+  { value: 440, washes: 10, label: '10 Washes', color: 'gold' as const, description: '₪44 per wash - Best Value' }
 ];
 
 function LuxuryGiftCard({ 
@@ -48,9 +49,6 @@ function LuxuryGiftCard({
   selected?: boolean;
 }) {
   const images = cardImages[option.color];
-  const discountedPrice = option.discount 
-    ? Math.round(option.value * (1 - option.discount / 100))
-    : option.value;
   
   return (
     <button 
@@ -59,27 +57,25 @@ function LuxuryGiftCard({
         selected ? 'ring-4 ring-black ring-offset-2 scale-[1.02]' : 'hover:scale-[1.02]'
       }`}
       onClick={onClick}
-      data-testid={`egift-card-${option.value}`}
+      data-testid={`egift-card-${option.washes}`}
     >
       <div className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-xl">
         <img 
           src={images.front}
-          alt={`${option.label} E-Gift Card`}
+          alt={`${option.washes} Wash E-Gift Card`}
           className="w-full h-full object-cover object-center"
           loading="lazy"
         />
       </div>
       <div className="mt-3 text-center">
         <p className="text-xl sm:text-2xl font-bold text-gray-900">
-          {option.discount ? `₪${discountedPrice}` : option.label}
+          {option.washes} {option.washes === 1 ? 'Wash' : 'Washes'}
         </p>
-        {option.discount && (
-          <p className="text-sm text-gray-500 line-through">₪{option.value}</p>
-        )}
+        <p className="text-lg font-semibold text-gray-700">₪{option.value}</p>
         <p className="text-sm text-gray-600 mt-1">{option.description}</p>
-        {option.discount && (
-          <span className="inline-block mt-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs font-medium">
-            Save {option.discount}%
+        {option.washes === 10 && (
+          <span className="inline-block mt-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-medium">
+            Best Value
           </span>
         )}
       </div>
@@ -148,9 +144,7 @@ export default function EGift() {
 
     if (!selectedOption) return;
 
-    const finalPrice = selectedOption.discount 
-      ? Math.round(selectedOption.value * (1 - selectedOption.discount / 100))
-      : selectedOption.value;
+    const finalPrice = selectedOption.value;
 
     try {
       const response = await fetch('/api/multi-service-gift', {
@@ -204,9 +198,7 @@ export default function EGift() {
 
   if (step === 'checkout' && selectedOption) {
     const images = cardImages[selectedOption.color];
-    const finalPrice = selectedOption.discount 
-      ? Math.round(selectedOption.value * (1 - selectedOption.discount / 100))
-      : selectedOption.value;
+    const finalPrice = selectedOption.value;
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -331,9 +323,6 @@ export default function EGift() {
                 </div>
                 <div className="mt-4 text-center">
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">₪{finalPrice}</p>
-                  {selectedOption.discount && (
-                    <p className="text-gray-500 line-through">₪{selectedOption.value}</p>
-                  )}
                   <p className="text-gray-600 mt-1">Multi-Service E-Gift Card</p>
                 </div>
               </div>
