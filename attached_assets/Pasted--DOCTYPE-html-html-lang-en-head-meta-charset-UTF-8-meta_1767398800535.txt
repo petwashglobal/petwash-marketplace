@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Pet Atelier | Elite Platforms</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Montserrat:wght@200;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-metallic: linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C);
+            --pure-white: #FFFFFF;
+            --ivory: #FAF9F6;
+            --charcoal: #1A1A1A;
+            --glass: rgba(255, 255, 255, 0.9);
+        }
+
+        body, html { margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; overflow-x: hidden; background: var(--ivory); }
+
+        /* --- THE ENTRY GATE (FULL SCREEN AD) --- */
+        #entry-gate {
+            position: fixed; inset: 0; background: var(--pure-white); z-index: 10000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 1; transition: transform 1s cubic-bezier(0.85, 0, 0.15, 1), opacity 0.5s;
+        }
+
+        #entry-gate.dismissed { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+
+        .gate-content { text-align: center; width: 85%; max-width: 450px; position: relative; }
+
+        .gold-seal {
+            width: 80px; height: 80px; margin: 0 auto 30px;
+            background: var(--gold-metallic); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 2rem;
+            box-shadow: 0 10px 30px rgba(170, 119, 28, 0.3);
+        }
+
+        .serif-logo { font-family: 'Cormorant Garamond', serif; font-size: 2.8rem; font-weight: 400; margin: 0; color: var(--charcoal); letter-spacing: -1px; }
+        .sub-tag { font-size: 0.7rem; letter-spacing: 5px; text-transform: uppercase; color: #AA771C; margin-bottom: 40px; display: block; }
+
+        .service-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 40px; }
+        .s-pill { border: 1px solid #EEE; padding: 10px; font-size: 0.6rem; border-radius: 5px; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* --- LUXURY FORM --- */
+        .premium-input {
+            width: 100%; padding: 20px; border: none; border-bottom: 1px solid #DDD;
+            font-family: 'Montserrat'; text-align: center; font-size: 1rem; margin-bottom: 20px; outline: none;
+        }
+
+        .gold-button {
+            width: 100%; padding: 20px; background: var(--gold-metallic); border: none;
+            color: white; font-weight: 600; letter-spacing: 3px; cursor: pointer;
+            transition: 0.4s; box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+
+        .gold-button:hover { filter: brightness(1.1); transform: scale(1.02); }
+        .skip-btn { margin-top: 25px; font-size: 0.7rem; color: #999; text-decoration: none; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
+
+        /* --- MAIN PLATFORM SECTION --- */
+        .main-app { padding: 20px; max-width: 600px; margin: 0 auto; }
+        .booking-card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 20px; }
+        h3 { font-family: 'Cormorant Garamond'; font-size: 1.8rem; margin-top: 0; }
+        
+        .calc-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px f6f6f6; font-size: 0.9rem; }
+        .total-box { background: var(--ivory); padding: 20px; border-radius: 10px; margin-top: 20px; border-left: 4px solid #B38728; }
+    </style>
+</head>
+<body>
+
+    <div id="entry-gate">
+        <div class="gate-content">
+            <div class="gold-seal">✨</div>
+            <h1 class="serif-logo">The Pet Atelier</h1>
+            <span class="sub-tag">Private Membership</span>
+
+            <div class="service-grid">
+                <div class="s-pill">Boutique Wash</div>
+                <div class="s-pill">Luxury Stay</div>
+                <div class="s-pill">Chauffeur</div>
+            </div>
+
+            <form id="loyalty-form">
+                <input type="email" class="premium-input" placeholder="PRIVATE EMAIL ADDRESS" required>
+                <button type="submit" class="gold-button">REQUEST ACCESS</button>
+            </form>
+            <div class="skip-btn" onclick="dismissGate()">Continue to Platform</div>
+        </div>
+    </div>
+
+    <div class="main-app">
+        <div class="booking-card">
+            <h3>Elite Booking System</h3>
+            <p style="font-size: 0.8rem; color: #777;">Simulating: 2 Dogs, 1 Cat, 7 Nights + Transport</p>
+            
+            <div id="price-summary">
+                </div>
+
+            <textarea id="contractor-notes" placeholder="Notes for your specialist (e.g. Dietary requirements, pickup instructions...)" 
+                style="width: 100%; height: 80px; margin-top: 20px; border: 1px solid #EEE; padding: 10px; border-radius: 10px; font-family: sans-serif;"></textarea>
+            
+            <button class="gold-button" style="margin-top: 20px; font-size: 0.8rem;" onclick="saveBooking()">Save Progress & Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. GATE LOGIC ---
+        function dismissGate() {
+            document.getElementById('entry-gate').classList.add('dismissed');
+        }
+
+        document.getElementById('loyalty-form').onsubmit = (e) => {
+            e.preventDefault();
+            // Simulate API hit
+            alert("Welcome to the Elite Circle.");
+            dismissGate();
+        };
+
+        // --- 2. ELITE BOOKING & COMMISSION ENGINE ---
+        const PRICING = {
+            dogNight: 65.00,
+            catNight: 40.00,
+            transportBase: 35.00,
+            commissionRate: 0.15 // 15% Platform Fee
+        };
+
+        function runCalculation() {
+            const nights = 7;
+            const dogs = 2;
+            const cats = 1;
+            const hasTransport = true;
+
+            const hostingTotal = (dogs * PRICING.dogNight * nights) + (cats * PRICING.catNight * nights);
+            const transport = hasTransport ? PRICING.transportBase : 0;
+            const gross = hostingTotal + transport;
+            
+            const platformFee = gross * PRICING.commissionRate;
+            const contractorNet = gross - platformFee;
+
+            const summaryHtml = `
+                <div class="calc-row"><span>Dog Hosting (${dogs})</span> <span>$${(dogs * PRICING.dogNight * nights).toFixed(2)}</span></div>
+                <div class="calc-row"><span>Cat Hosting (${cats})</span> <span>$${(cats * PRICING.catNight * nights).toFixed(2)}</span></div>
+                <div class="calc-row"><span>Private Transport</span> <span>$${transport.toFixed(2)}</span></div>
+                <div class="total-box">
+                    <div class="calc-row"><strong>Total Client Price</strong> <strong>$${gross.toFixed(2)}</strong></div>
+                    <div class="calc-row" style="color: #B38728; font-size: 0.7rem;"><span>Contractor Payout (85%)</span> <span>$${contractorNet.toFixed(2)}</span></div>
+                </div>
+            `;
+            document.getElementById('price-summary').innerHTML = summaryHtml;
+        }
+
+        // --- 3. SAVE PROGRESS ---
+        function saveBooking() {
+            const data = {
+                notes: document.getElementById('contractor-notes').value,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('atelier_saved_booking', JSON.stringify(data));
+            alert("Progress saved securely.");
+        }
+
+        window.onload = runCalculation;
+    </script>
+</body>
+</html>
