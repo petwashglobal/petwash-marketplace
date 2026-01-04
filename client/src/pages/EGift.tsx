@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronLeft, Check, ArrowRight, Wallet, Gift, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import PaymentMethods from '@/components/PaymentMethods';
 
 import roseFrontImg from '@assets/IMG_2004_1767477310445.png';
 import roseBackImg from '@assets/IMG_2005_1767477310445.png';
@@ -311,6 +312,10 @@ export default function EGift() {
                   <p className="text-xs text-gray-500 text-center mt-3">
                     Secure checkout • No account required
                   </p>
+                  
+                  <div className="mt-4 sm:mt-6 pt-4 border-t border-gray-100">
+                    <PaymentMethods language="en" size="sm" />
+                  </div>
                 </CardContent>
               </Card>
             </div>
