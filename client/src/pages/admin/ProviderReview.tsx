@@ -133,6 +133,28 @@ export default function ProviderReview() {
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicantDetails | null>(null);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  
+  // Management Approval Checklist (2026 Spec)
+  const [checkIdVerified, setCheckIdVerified] = useState(false);
+  const [checkDocumentsReviewed, setCheckDocumentsReviewed] = useState(false);
+  const [checkDeclarationsComplete, setCheckDeclarationsComplete] = useState(false);
+  const [checkInsuranceValid, setCheckInsuranceValid] = useState(false);
+  const [checkLicenseValid, setCheckLicenseValid] = useState(false);
+  const [checkCertificationsValid, setCheckCertificationsValid] = useState(false);
+  const [checkBackgroundClear, setCheckBackgroundClear] = useState(false);
+  const [checkApprovalNotes, setCheckApprovalNotes] = useState('');
+  
+  // Reset checklist when applicant changes
+  const resetApprovalChecklist = () => {
+    setCheckIdVerified(false);
+    setCheckDocumentsReviewed(false);
+    setCheckDeclarationsComplete(false);
+    setCheckInsuranceValid(false);
+    setCheckLicenseValid(false);
+    setCheckCertificationsValid(false);
+    setCheckBackgroundClear(false);
+    setCheckApprovalNotes('');
+  };
 
   const { data: applicants = [], isLoading } = useQuery<Applicant[]>({
     queryKey: ['/api/provider-applications/admin/list', filterStage],
@@ -578,6 +600,82 @@ export default function ProviderReview() {
                     </div>
                   </div>
 
+                  {/* Management Approval Checklist - 2026 Spec */}
+                  {applicantDetails.stage === 'admin_final_review' && applicantDetails.status === 'pending' && (
+                    <>
+                      <Separator />
+                      <div className="space-y-4">
+                        <h4 className="font-semibold flex items-center gap-2 text-purple-700">
+                          <Shield className="w-5 h-5" />
+                          {isHebrew ? 'רשימת אישור ניהולית' : 'Management Approval Checklist'}
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                          {isHebrew 
+                            ? 'יש לסמן את כל הפריטים לפני אישור המועמד. כל מקרה נבדק לפי הכישורים שלו.'
+                            : 'Check all items before approving. Each case is reviewed on its own merit.'}
+                        </p>
+                        
+                        <div className="grid gap-2 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200">
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                            <input type="checkbox" checked={checkIdVerified} onChange={(e) => setCheckIdVerified(e.target.checked)} className="w-4 h-4" data-testid="check-id-verified" />
+                            <span className="text-sm">{isHebrew ? '✅ זהות אומתה (ת.ז./דרכון)' : '✅ ID Verified (National ID/Passport)'}</span>
+                          </label>
+                          
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                            <input type="checkbox" checked={checkDocumentsReviewed} onChange={(e) => setCheckDocumentsReviewed(e.target.checked)} className="w-4 h-4" data-testid="check-docs-reviewed" />
+                            <span className="text-sm">{isHebrew ? '📄 מסמכים נבדקו וקבילים' : '📄 Documents Reviewed & Acceptable'}</span>
+                          </label>
+                          
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                            <input type="checkbox" checked={checkDeclarationsComplete} onChange={(e) => setCheckDeclarationsComplete(e.target.checked)} className="w-4 h-4" data-testid="check-declarations" />
+                            <span className="text-sm">{isHebrew ? '📋 הצהרות עצמיות הושלמו' : '📋 Self-Declarations Complete'}</span>
+                          </label>
+                          
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                            <input type="checkbox" checked={checkInsuranceValid} onChange={(e) => setCheckInsuranceValid(e.target.checked)} className="w-4 h-4" data-testid="check-insurance" />
+                            <span className="text-sm">{isHebrew ? '🛡️ ביטוח בתוקף (אם נדרש)' : '🛡️ Insurance Valid (if required)'}</span>
+                          </label>
+                          
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                            <input type="checkbox" checked={checkLicenseValid} onChange={(e) => setCheckLicenseValid(e.target.checked)} className="w-4 h-4" data-testid="check-license" />
+                            <span className="text-sm">{isHebrew ? '🚗 רישיון נהיגה בתוקף (לנהגים)' : '🚗 Driving License Valid (for drivers)'}</span>
+                          </label>
+                          
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                            <input type="checkbox" checked={checkCertificationsValid} onChange={(e) => setCheckCertificationsValid(e.target.checked)} className="w-4 h-4" data-testid="check-certs" />
+                            <span className="text-sm">{isHebrew ? '🎓 תעודות הכשרה תקינות (למאמנים)' : '🎓 Training Certifications Valid (for trainers)'}</span>
+                          </label>
+                          
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                            <input type="checkbox" checked={checkBackgroundClear} onChange={(e) => setCheckBackgroundClear(e.target.checked)} className="w-4 h-4" data-testid="check-background" />
+                            <span className="text-sm">{isHebrew ? '🔍 בדיקת רקע תקינה/הצהרה מתאימה' : '🔍 Background Check Clear / Declaration Acceptable'}</span>
+                          </label>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium">
+                            {isHebrew ? 'הערות אישור (אופציונלי)' : 'Approval Notes (Optional)'}
+                          </label>
+                          <Textarea
+                            value={checkApprovalNotes}
+                            onChange={(e) => setCheckApprovalNotes(e.target.value)}
+                            placeholder={isHebrew ? 'הערות נוספות לתיק המועמד...' : 'Additional notes for applicant file...'}
+                            className="mt-1"
+                            rows={2}
+                            data-testid="input-approval-notes"
+                          />
+                        </div>
+                        
+                        {/* Legal Note */}
+                        <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 text-xs text-amber-800 dark:text-amber-300">
+                          {isHebrew 
+                            ? '⚖️ הערה: בהתאם לחוק הישראלי, כל מקרה נבדק לגופו. החלטות מבוססות על מסמכים והצהרות, לא על מידע פלילי ישיר.'
+                            : '⚖️ Note: Per Israeli law, each case is reviewed on its own merit. Decisions are based on documents and declarations, not direct criminal records.'}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
                   {/* Action Buttons */}
                   {applicantDetails.status === 'pending' && (
                     <>
@@ -600,7 +698,16 @@ export default function ProviderReview() {
                             <Button
                               className="flex-1 bg-green-600 hover:bg-green-700"
                               onClick={() => approveMutation.mutate(applicantDetails.id)}
-                              disabled={approveMutation.isPending}
+                              disabled={
+                                approveMutation.isPending ||
+                                !checkIdVerified ||
+                                !checkDocumentsReviewed ||
+                                !checkDeclarationsComplete ||
+                                !checkInsuranceValid ||
+                                !checkLicenseValid ||
+                                !checkCertificationsValid ||
+                                !checkBackgroundClear
+                              }
                               data-testid="button-approve"
                             >
                               <CheckCircle2 className="w-4 h-4 mr-2" />

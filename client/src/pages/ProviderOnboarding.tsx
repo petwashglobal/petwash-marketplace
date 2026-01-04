@@ -33,7 +33,7 @@ export default function ProviderOnboarding() {
   // Form state
   const [step, setStep] = useState(1);
   const [inviteCode, setInviteCode] = useState('');
-  const [providerType, setProviderType] = useState<'walker' | 'sitter' | 'station_operator'>('walker');
+  const [providerType, setProviderType] = useState<'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer'>('walker');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -61,6 +61,29 @@ export default function ProviderOnboarding() {
   // Background check (2026 spec)
   const [residentialHistory, setResidentialHistory] = useState<string[]>(['']);
   const [backgroundCheckConsent, setBackgroundCheckConsent] = useState(false);
+
+  // Role-specific declarations (2026 Legal Compliance)
+  // Driver declarations (PetTrek)
+  const [declarationValidLicense, setDeclarationValidLicense] = useState(false);
+  const [declarationNoSuspension, setDeclarationNoSuspension] = useState(false);
+  const [declarationUnderPointsLimit, setDeclarationUnderPointsLimit] = useState(false);
+  const [declarationNoDrugsAlcohol, setDeclarationNoDrugsAlcohol] = useState(false);
+  const [declarationValidVehicleInsurance, setDeclarationValidVehicleInsurance] = useState(false);
+  const [declarationVehicleInspection, setDeclarationVehicleInspection] = useState(false);
+  
+  // Trainer declarations (Academy)
+  const [declarationTrainingCertification, setDeclarationTrainingCertification] = useState(false);
+  const [declarationAccreditedCourses, setDeclarationAccreditedCourses] = useState(false);
+  const [declarationLiabilityInsurance, setDeclarationLiabilityInsurance] = useState(false);
+  
+  // Sitter/Walker declarations
+  const [declarationPhysicallyFit, setDeclarationPhysicallyFit] = useState(false);
+  const [declarationAnimalExperience, setDeclarationAnimalExperience] = useState(false);
+  const [declarationFirstAidTraining, setDeclarationFirstAidTraining] = useState(false);
+  
+  // Universal declarations (all roles)
+  const [declarationAccurateInfo, setDeclarationAccurateInfo] = useState(false);
+  const [declarationAcceptTerms, setDeclarationAcceptTerms] = useState(false);
 
   // State
   const [loading, setLoading] = useState(false);
@@ -800,7 +823,7 @@ export default function ProviderOnboarding() {
               </div>
             )}
 
-            {/* Step 4: Criminal Background Check (2026 Spec) */}
+            {/* Step 4: Declarations & Background Check (2026 Spec) */}
             {step === 4 && (
               <div className="space-y-6">
                 <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-900/20">
@@ -811,6 +834,132 @@ export default function ProviderOnboarding() {
                     <span className="text-blue-800 dark:text-blue-300">{t.backgroundCheckDescription}</span>
                   </AlertDescription>
                 </Alert>
+
+                {/* Role-Specific Declarations - USA 2025 Compliance */}
+                <div className="luxury-glass-card luxury-shadow-lg border-2 border-purple-400/30 p-6">
+                  <h3 className="luxury-heading-sm text-purple-900 dark:text-purple-200 mb-4 flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    {isHebrew ? 'הצהרות נדרשות' : 'Required Declarations'}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    {isHebrew 
+                      ? 'אנא סמן את כל ההצהרות הרלוונטיות לתפקיד שלך. מסמכים יאומתו ידנית על ידי צוות Pet Wash.'
+                      : 'Please check all declarations relevant to your role. Documents will be manually verified by Pet Wash team.'}
+                  </p>
+
+                  {/* Driver Declarations (PetTrek) */}
+                  {providerType === 'driver' && (
+                    <div className="space-y-3 mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <h4 className="font-semibold text-blue-900 dark:text-blue-200">
+                        🚗 {isHebrew ? 'הצהרות נהג (PetTrek)' : 'Driver Declarations (PetTrek)'}
+                      </h4>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationValidLicense} onChange={(e) => setDeclarationValidLicense(e.target.checked)} className="mt-1" data-testid="checkbox-valid-license" />
+                        <span className="text-sm">{isHebrew ? 'יש לי רישיון נהיגה ישראלי בתוקף' : 'I have a valid Israeli driving license'}</span>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationNoSuspension} onChange={(e) => setDeclarationNoSuspension(e.target.checked)} className="mt-1" data-testid="checkbox-no-suspension" />
+                        <span className="text-sm">{isHebrew ? 'רישיון הנהיגה שלי לא נשלל ולא מותלה' : 'My driving license has not been suspended or revoked'}</span>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationUnderPointsLimit} onChange={(e) => setDeclarationUnderPointsLimit(e.target.checked)} className="mt-1" data-testid="checkbox-points-limit" />
+                        <span className="text-sm">{isHebrew ? 'יש לי פחות מ-12 נקודות ברישיון (לפי חוק)' : 'I have less than 12 points on my license (as per law)'}</span>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationNoDrugsAlcohol} onChange={(e) => setDeclarationNoDrugsAlcohol(e.target.checked)} className="mt-1" data-testid="checkbox-no-drugs" />
+                        <span className="text-sm">{isHebrew ? 'אני מתחייב לא לנהוג תחת השפעת סמים או אלכוהול' : 'I commit to never drive under influence of drugs or alcohol'}</span>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationValidVehicleInsurance} onChange={(e) => setDeclarationValidVehicleInsurance(e.target.checked)} className="mt-1" data-testid="checkbox-vehicle-insurance" />
+                        <span className="text-sm">{isHebrew ? 'יש לי ביטוח רכב תקף (ביטוח חובה + מקיף)' : 'I have valid vehicle insurance (mandatory + comprehensive)'}</span>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationVehicleInspection} onChange={(e) => setDeclarationVehicleInspection(e.target.checked)} className="mt-1" data-testid="checkbox-vehicle-inspection" />
+                        <span className="text-sm">{isHebrew ? 'לרכב שלי יש טסט שנתי בתוקף' : 'My vehicle has a valid annual inspection (טסט)'}</span>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Trainer Declarations (Academy) */}
+                  {providerType === 'trainer' && (
+                    <div className="space-y-3 mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <h4 className="font-semibold text-green-900 dark:text-green-200">
+                        🎓 {isHebrew ? 'הצהרות מאמן (Academy)' : 'Trainer Declarations (Academy)'}
+                      </h4>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationTrainingCertification} onChange={(e) => setDeclarationTrainingCertification(e.target.checked)} className="mt-1" data-testid="checkbox-training-cert" />
+                        <span className="text-sm">{isHebrew ? 'יש לי תעודת אילוף כלבים מוכרת או ניסיון מוכח' : 'I have recognized pet training certification or proven experience'}</span>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationAccreditedCourses} onChange={(e) => setDeclarationAccreditedCourses(e.target.checked)} className="mt-1" data-testid="checkbox-accredited-courses" />
+                        <span className="text-sm">{isHebrew ? 'סיימתי קורסי אילוף מוסמכים' : 'I have completed accredited training courses'}</span>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationLiabilityInsurance} onChange={(e) => setDeclarationLiabilityInsurance(e.target.checked)} className="mt-1" data-testid="checkbox-liability-insurance" />
+                        <span className="text-sm">{isHebrew ? 'יש לי ביטוח אחריות מקצועית' : 'I carry professional liability insurance'}</span>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Sitter/Walker Declarations */}
+                  {(providerType === 'walker' || providerType === 'sitter') && (
+                    <div className="space-y-3 mb-6 p-4 bg-pink-50 dark:bg-pink-900/20 rounded-lg border border-pink-200 dark:border-pink-800">
+                      <h4 className="font-semibold text-pink-900 dark:text-pink-200">
+                        🐕 {isHebrew ? 'הצהרות שמרטף/מטייל' : 'Sitter/Walker Declarations'}
+                      </h4>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationPhysicallyFit} onChange={(e) => setDeclarationPhysicallyFit(e.target.checked)} className="mt-1" data-testid="checkbox-physically-fit" />
+                        <span className="text-sm">{isHebrew ? 'אני כשיר/ה פיזית לטיפול בחיות מחמד' : 'I am physically fit to handle pets'}</span>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationAnimalExperience} onChange={(e) => setDeclarationAnimalExperience(e.target.checked)} className="mt-1" data-testid="checkbox-animal-experience" />
+                        <span className="text-sm">{isHebrew ? 'יש לי ניסיון בטיפול בחיות מחמד' : 'I have experience caring for animals'}</span>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" checked={declarationFirstAidTraining} onChange={(e) => setDeclarationFirstAidTraining(e.target.checked)} className="mt-1" data-testid="checkbox-first-aid" />
+                        <span className="text-sm">{isHebrew ? 'יש לי הכשרה בעזרה ראשונה לחיות מחמד (אופציונלי)' : 'I have pet first aid training (optional)'}</span>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Universal Declarations (All Roles) */}
+                  <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-200">
+                      ✅ {isHebrew ? 'הצהרות כלליות (חובה)' : 'General Declarations (Required)'}
+                    </h4>
+                    
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input type="checkbox" checked={declarationAccurateInfo} onChange={(e) => setDeclarationAccurateInfo(e.target.checked)} className="mt-1" data-testid="checkbox-accurate-info" />
+                      <span className="text-sm">{isHebrew ? 'כל המידע שמסרתי נכון ומדויק' : 'All information I provided is true and accurate'}</span>
+                    </label>
+                    
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input type="checkbox" checked={declarationAcceptTerms} onChange={(e) => setDeclarationAcceptTerms(e.target.checked)} className="mt-1" data-testid="checkbox-accept-terms" />
+                      <span className="text-sm">{isHebrew ? 'אני מסכים/ה לתנאי השימוש ולהסכם קבלן עצמאי' : 'I agree to the Terms of Service and Independent Contractor Agreement'}</span>
+                    </label>
+                  </div>
+
+                  {/* Legal Notice - Israeli Law Compliance */}
+                  <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <p className="text-xs text-amber-800 dark:text-amber-300">
+                      {isHebrew 
+                        ? '⚖️ הערה משפטית: בהתאם לחוק הגנת הפרטיות בישראל, איננו מבקשים מידע על עבר פלילי באופן ישיר. במקום זאת, אנו מסתמכים על הצהרות עצמיות ואימות מסמכים ידני. לפי סעיף 2 לחוק המרשם הפלילי, אין לדרוש גילוי מידע על הרשעות שנמחקו.'
+                        : '⚖️ Legal Notice: In accordance with Israeli Privacy Protection Law, we do not directly request criminal record information. Instead, we rely on self-declarations and manual document verification. Per Section 2 of the Criminal Registry Law, disclosure of expunged convictions cannot be required.'}
+                    </p>
+                  </div>
+                </div>
 
                 <div className="space-y-4">
                   {/* Residential History (10 years) */}
@@ -876,7 +1025,29 @@ export default function ProviderOnboarding() {
                     disabled={
                       loading || 
                       !backgroundCheckConsent || 
-                      residentialHistory.filter(addr => addr.trim()).length === 0
+                      !declarationAccurateInfo ||
+                      !declarationAcceptTerms ||
+                      residentialHistory.filter(addr => addr.trim()).length === 0 ||
+                      // Driver-specific declarations (PetTrek)
+                      (providerType === 'driver' && (
+                        !declarationValidLicense ||
+                        !declarationNoSuspension ||
+                        !declarationUnderPointsLimit ||
+                        !declarationNoDrugsAlcohol ||
+                        !declarationValidVehicleInsurance ||
+                        !declarationVehicleInspection
+                      )) ||
+                      // Trainer-specific declarations (Academy)
+                      (providerType === 'trainer' && (
+                        !declarationTrainingCertification ||
+                        !declarationAccreditedCourses ||
+                        !declarationLiabilityInsurance
+                      )) ||
+                      // Sitter/Walker-specific declarations
+                      ((providerType === 'walker' || providerType === 'sitter') && (
+                        !declarationPhysicallyFit ||
+                        !declarationAnimalExperience
+                      ))
                     }
                     data-testid="button-submit-application"
                   >
