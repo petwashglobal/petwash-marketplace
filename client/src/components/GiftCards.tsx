@@ -1,4 +1,4 @@
-import { Gift, Sparkles, Crown, Star, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'wouter';
 import { t, type Language } from '@/lib/i18n';
 
@@ -13,47 +13,14 @@ interface GiftCardsProps {
 
 export function GiftCards({ language }: GiftCardsProps) {
   const vouchers = [
-    {
-      id: '1',
-      name: "₪100 Credit",
-      nameHe: "קרדיט ₪100",
-      price: '100',
-      colorVariant: "rose",
-      image: roseFrontImg,
-      description: "Perfect starter gift",
-      descriptionHe: "מתנה מושלמת להתחלה"
-    },
-    {
-      id: '2',
-      name: "₪250 Credit",
-      nameHe: "קרדיט ₪250",
-      price: '250',
-      colorVariant: "emerald",
-      image: emeraldFrontImg,
-      description: "Popular choice",
-      descriptionHe: "הבחירה הפופולרית"
-    },
-    {
-      id: '3',
-      name: "₪500 Credit",
-      nameHe: "קרדיט ₪500",
-      price: '500',
-      colorVariant: "platinum",
-      image: platinumFrontImg,
-      description: "Premium gift",
-      descriptionHe: "מתנה פרימיום"
-    },
-    {
-      id: '4',
-      name: "₪1,000 Credit",
-      nameHe: "קרדיט ₪1,000",
-      price: '1000',
-      colorVariant: "gold",
-      image: goldFrontImg,
-      description: "Ultimate luxury gift",
-      descriptionHe: "מתנת היוקרה האולטימטיבית"
-    }
+    { id: '1', value: 100, image: roseFrontImg },
+    { id: '2', value: 250, image: emeraldFrontImg },
+    { id: '3', value: 500, image: platinumFrontImg },
+    { id: '4', value: 1000, image: goldFrontImg }
   ];
+
+  const formatValue = (value: number) => 
+    value >= 1000 ? `₪${(value / 1000).toFixed(0)},000` : `₪${value}`;
 
   return (
     <section 
@@ -61,60 +28,46 @@ export function GiftCards({ language }: GiftCardsProps) {
       className="py-16 sm:py-20 lg:py-24 bg-white relative overflow-hidden"
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-12 sm:mb-16 lg:mb-20">
-          <div className="inline-flex items-center justify-center p-2 mb-4 sm:mb-6">
-            <span className="px-4 py-2 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-full text-xs sm:text-sm font-semibold text-amber-800">
-              {language === 'he' ? 'קרדיט לכל הפלטפורמות' : 'PLATFORM-WIDE CREDIT'}
-            </span>
-          </div>
-
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-black mb-4 sm:mb-6 px-4">
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-black mb-4 px-4">
             {t('giftCards.title', language)}
           </h2>
-          
-          <p className="text-lg sm:text-xl lg:text-2xl text-black max-w-3xl mx-auto leading-relaxed mb-2 sm:mb-4 px-4">
-            {t('giftCards.subtitle', language)}
-          </p>
-          
-          <p className="text-base sm:text-lg text-black max-w-2xl mx-auto italic px-4">
-            {language === 'he' ? 'השתמש בכל פלטפורמות Pet Wash™' : 'Use at all Pet Wash™ platforms'}
+          <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
+            {language === 'he' 
+              ? 'המתנה המושלמת לאוהבי חיות מחמד' 
+              : 'The perfect gift for pet lovers'}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 max-w-6xl mx-auto">
           {vouchers.map((voucher) => (
             <Link
               key={voucher.id}
               href="/egift"
-              className="group relative transform transition-all duration-300 hover:scale-105 block"
-              data-testid={`gift-card-${voucher.price}`}
+              className="group relative block"
+              data-testid={`gift-card-${voucher.value}`}
             >
-              {voucher.price === '1000' && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                  <div className="px-4 sm:px-6 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs sm:text-sm font-bold rounded-full shadow-lg">
+              {voucher.value === 1000 && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+                  <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs font-bold rounded-full shadow-lg whitespace-nowrap">
                     {language === 'he' ? 'הכי משתלם' : 'BEST VALUE'}
-                  </div>
+                  </span>
                 </div>
               )}
 
-              <div className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-xl mb-4">
+              <div className="relative w-full aspect-[1.586/1] rounded-xl overflow-hidden shadow-xl transition-all duration-500 group-hover:shadow-2xl group-hover:scale-[1.03]">
                 <img 
                   src={voucher.image}
-                  alt={`${voucher.name} E-Gift Card`}
-                  className="w-full h-full object-cover object-center"
-                  loading="lazy"
+                  alt={`${formatValue(voucher.value)} E-Gift Card`}
+                  className="w-full h-full object-cover object-center transform transition-transform duration-500 group-hover:scale-105"
+                  style={{ imageRendering: 'high-quality' }}
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </div>
 
-              <div className="text-center">
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
-                  {language === 'he' ? voucher.nameHe : voucher.name}
-                </h3>
-                <p className="text-lg font-semibold text-gray-700 mb-1">
-                  {language === 'he' ? 'קרדיט לכל הפלטפורמות' : 'Platform Credit'}
-                </p>
-                <p className="text-sm text-gray-600 mb-4">
-                  {language === 'he' ? voucher.descriptionHe : voucher.description}
+              <div className="mt-3 text-center">
+                <p className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">
+                  {formatValue(voucher.value)}
                 </p>
               </div>
             </Link>

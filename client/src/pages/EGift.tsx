@@ -57,31 +57,34 @@ function LuxuryGiftCard({
   return (
     <button 
       type="button"
-      className={`relative w-full text-left transition-all duration-300 rounded-2xl ${
-        selected ? 'ring-4 ring-black ring-offset-2 scale-[1.02]' : 'hover:scale-[1.02]'
+      className={`relative w-full text-left transition-all duration-500 rounded-xl group ${
+        selected 
+          ? 'ring-4 ring-black ring-offset-4 scale-[1.03] shadow-2xl' 
+          : 'hover:scale-[1.02] hover:shadow-xl'
       }`}
       onClick={onClick}
       data-testid={`egift-card-${option.value}`}
     >
-      <div className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-xl">
+      {option.value === 1000 && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+          <span className="px-4 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs font-bold rounded-full shadow-lg whitespace-nowrap">
+            BEST VALUE
+          </span>
+        </div>
+      )}
+      <div className="relative w-full aspect-[1.586/1] rounded-xl overflow-hidden shadow-2xl">
         <img 
           src={images.front}
-          alt={`${formattedValue} Credit E-Gift Card`}
-          className="w-full h-full object-cover object-center"
-          loading="lazy"
+          alt={`${formattedValue} E-Gift Card`}
+          className="w-full h-full object-cover object-center transform transition-transform duration-500 group-hover:scale-105"
+          style={{ imageRendering: 'high-quality' }}
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
-      <div className="mt-3 text-center">
-        <p className="text-xl sm:text-2xl font-bold text-gray-900">
+      <div className="mt-4 text-center">
+        <p className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
           {formattedValue}
         </p>
-        <p className="text-lg font-semibold text-gray-700">Platform Credit</p>
-        <p className="text-sm text-gray-600 mt-1">{option.description}</p>
-        {option.value === 1000 && (
-          <span className="inline-block mt-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-medium">
-            Best Value
-          </span>
-        )}
       </div>
     </button>
   );
