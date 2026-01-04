@@ -15,6 +15,7 @@ import { eq, desc, and, sql } from 'drizzle-orm';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
+import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
 
 const router = Router();
 
@@ -264,6 +265,23 @@ router.post('/', async (req: Request, res: Response) => {
       userId,
       serviceTypes: formData.serviceTypes
     });
+    
+    // Send confirmation email
+    try {
+      const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+      await sendProviderEnrollmentConfirmation(
+        formData.email,
+        formData.firstName,
+        formData.lastName,
+        formData.serviceTypes,
+        application.id,
+        language
+      );
+      logger.info('[ProviderApplication] Confirmation email sent', { email: formData.email, applicationId: application.id });
+    } catch (emailError) {
+      logger.error('[ProviderApplication] Failed to send confirmation email', { emailError, applicationId: application.id });
+      // Don't fail the request if email fails
+    }
     
     res.status(201).json({
       success: true,

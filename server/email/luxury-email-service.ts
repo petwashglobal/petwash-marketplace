@@ -267,3 +267,82 @@ export async function sendInvestorLaunchEventEmail(
     html
   });
 }
+
+// ========================================
+// REGISTRATION CONFIRMATION EMAILS
+// ========================================
+
+import {
+  generateNewUserConfirmationEmail,
+  generateLoyaltyEnrollmentEmail,
+  generateProviderEnrollmentEmail
+} from './templates/registration-confirmation-2025';
+
+/**
+ * Send New User Registration Confirmation Email
+ */
+export async function sendNewUserConfirmation(
+  email: string,
+  firstName: string,
+  language: 'he' | 'en' = 'he'
+): Promise<boolean> {
+  const { subject, html } = generateNewUserConfirmationEmail({
+    firstName,
+    email,
+    language
+  });
+
+  logger.info('[Registration Email] Sending new user confirmation', { email, firstName });
+  return sendLuxuryEmail({ to: email, subject, html });
+}
+
+/**
+ * Send Loyalty Program Enrollment Confirmation Email
+ */
+export async function sendLoyaltyEnrollmentConfirmation(
+  email: string,
+  firstName: string,
+  tier: string = 'bronze',
+  points: number = 0,
+  language: 'he' | 'en' = 'he'
+): Promise<boolean> {
+  const { subject, html } = generateLoyaltyEnrollmentEmail({
+    firstName,
+    email,
+    tier,
+    points,
+    language
+  });
+
+  logger.info('[Registration Email] Sending loyalty enrollment confirmation', { email, firstName, tier });
+  return sendLuxuryEmail({ to: email, subject, html });
+}
+
+/**
+ * Send Provider/Subcontractor Enrollment Confirmation Email
+ */
+export async function sendProviderEnrollmentConfirmation(
+  email: string,
+  firstName: string,
+  lastName: string,
+  serviceTypes: string[],
+  applicationId: number,
+  language: 'he' | 'en' = 'he'
+): Promise<boolean> {
+  const { subject, html } = generateProviderEnrollmentEmail({
+    firstName,
+    lastName,
+    email,
+    serviceTypes,
+    applicationId,
+    language
+  });
+
+  logger.info('[Registration Email] Sending provider enrollment confirmation', { 
+    email, 
+    firstName, 
+    applicationId,
+    serviceTypes 
+  });
+  return sendLuxuryEmail({ to: email, subject, html });
+}

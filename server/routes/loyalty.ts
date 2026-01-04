@@ -34,6 +34,7 @@ import { users, loyaltyCampaigns } from '../../shared/schema';
 import type { AuthenticatedRequest } from '../middleware/rbac';
 import { requireAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
+import { sendLoyaltyEnrollmentConfirmation } from '../email/luxury-email-service';
 
 const router = Router();
 
@@ -54,7 +55,7 @@ router.get('/profile', async (req: AuthenticatedRequest, res: Response) => {
       .where(eq(loyaltyProfiles.userId, userId))
       .limit(1);
 
-    // Create profile if doesn't exist
+    // Create profile if doesn't exist (new enrollment)
     if (!profile) {
       [profile] = await db
         .insert(loyaltyProfiles)
@@ -77,6 +78,27 @@ router.get('/profile', async (req: AuthenticatedRequest, res: Response) => {
           prioritySupport: false,
         })
         .returning();
+      
+      // Send loyalty enrollment confirmation email
+      try {
+        const userEmail = req.firebaseUser!.email;
+        const firstName = req.firebaseUser!.displayName?.split(' ')[0] || 'Member';
+        const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+        
+        if (userEmail) {
+          await sendLoyaltyEnrollmentConfirmation(
+            userEmail,
+            firstName,
+            'bronze',
+            0,
+            language
+          );
+          logger.info('[Loyalty] Enrollment confirmation email sent', { userId, email: userEmail });
+        }
+      } catch (emailError) {
+        logger.error('[Loyalty] Failed to send enrollment email', { emailError, userId });
+        // Don't fail the request if email fails
+      }
     }
 
     res.json(profile);
