@@ -118,59 +118,59 @@ export function WashPackages({ language }: WashPackagesProps) {
     return 0; // No discounts per official pricing
   };
 
-  // GUCCI-STYLE MINIMALIST THEMES - Pure Black and White only
+  // LUXURY GRADIENT THEMES - Matching E-Gift Card Style
   const getLuxuryTheme = (index: number) => {
     const themes = [
       {
-        // WHITE - Single Wash
-        gradient: '#FFFFFF',
+        // ROSE/PINK - Single Wash
+        gradient: 'linear-gradient(135deg, #FFB6C1 0%, #FF69B4 50%, #DB7093 100%)',
         textGradient: '#000000',
         badge: 'BASIC',
-        badgeBg: '#FFFFFF',
+        badgeBg: 'rgba(255,255,255,0.9)',
         icon: CreditCard,
-        shadowColor: 'transparent',
-        chipColor: '#000000',
-        textColor: '#000000',
-        accentColor: '#000000',
-        border: '1px solid #000000',
+        shadowColor: 'rgba(255,105,180,0.4)',
+        chipColor: 'linear-gradient(135deg, #FFD700 0%, #DAA520 100%)',
+        textColor: '#FFFFFF',
+        accentColor: '#FFD700',
+        border: 'none',
       },
       {
-        // WHITE WITH BORDER - 3 Washes (Most Popular)
-        gradient: '#FFFFFF',
+        // EMERALD/GREEN - 3 Washes (Most Popular)
+        gradient: 'linear-gradient(135deg, #50C878 0%, #2E8B57 50%, #228B22 100%)',
         textGradient: '#000000',
         badge: 'POPULAR',
-        badgeBg: '#000000',
+        badgeBg: 'rgba(255,255,255,0.9)',
         icon: Crown,
-        shadowColor: 'transparent',
-        chipColor: '#000000',
-        textColor: '#000000',
-        accentColor: '#000000',
-        border: '2px solid #000000',
+        shadowColor: 'rgba(46,139,87,0.4)',
+        chipColor: 'linear-gradient(135deg, #FFD700 0%, #DAA520 100%)',
+        textColor: '#FFFFFF',
+        accentColor: '#FFD700',
+        border: 'none',
       },
       {
-        // WHITE - 5 Washes (Premium)
-        gradient: '#FFFFFF',
-        textGradient: '#000000',
+        // PLATINUM/BLACK - 5 Washes (Premium)
+        gradient: 'linear-gradient(135deg, #4A4A4A 0%, #2D2D2D 50%, #1A1A1A 100%)',
+        textGradient: '#FFFFFF',
         badge: 'PREMIUM',
-        badgeBg: '#FFFFFF',
+        badgeBg: 'rgba(255,255,255,0.9)',
         icon: Sparkles,
-        shadowColor: 'transparent',
-        chipColor: '#000000',
-        textColor: '#000000',
-        accentColor: '#000000',
-        border: '1px solid #000000',
+        shadowColor: 'rgba(0,0,0,0.5)',
+        chipColor: 'linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%)',
+        textColor: '#FFFFFF',
+        accentColor: '#C0C0C0',
+        border: 'none',
       },
       {
-        // BLACK CARD - 10 Washes (Family Pack - Elite)
-        gradient: '#000000',
+        // GOLD - 10 Washes (Family Pack - Elite)
+        gradient: 'linear-gradient(135deg, #FFD700 0%, #DAA520 40%, #B8860B 70%, #8B6914 100%)',
         textGradient: '#FFFFFF',
         badge: 'ELITE',
-        badgeBg: '#FFFFFF',
+        badgeBg: 'rgba(0,0,0,0.8)',
         icon: Shield,
-        shadowColor: 'transparent',
-        chipColor: '#FFFFFF',
-        textColor: '#FFFFFF',
-        accentColor: '#FFFFFF',
+        shadowColor: 'rgba(218,165,32,0.5)',
+        chipColor: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+        textColor: '#1A1A1A',
+        accentColor: '#8B4513',
         border: 'none',
       },
     ];
@@ -232,7 +232,8 @@ export function WashPackages({ language }: WashPackagesProps) {
             
             const theme = getLuxuryTheme(index);
             const IconComponent = theme.icon;
-            const isBlackCard = index === 3;
+            const isGoldCard = index === 3;
+            const isPlatinumCard = index === 2;
             
             return (
               <div
@@ -282,34 +283,34 @@ export function WashPackages({ language }: WashPackagesProps) {
                   <div className="relative p-5 sm:p-6 h-full flex flex-col justify-between">
                     {/* TOP: Badge & Chip */}
                     <div className="flex items-start justify-between">
-                      {/* Card Chip (EMV Chip) */}
+                      {/* Card Chip (EMV Chip) - Gold metallic style */}
                       <div 
-                        className="w-10 h-8 rounded-md border"
+                        className="w-10 h-8 rounded-md"
                         style={{
                           background: theme.chipColor,
-                          borderColor: isBlackCard ? '#FFFFFF' : '#000000',
+                          border: isGoldCard ? '1px solid #8B6914' : '1px solid rgba(255,255,255,0.3)',
                         }}
                       >
                         <div className="w-full h-full grid grid-cols-2 gap-0.5 p-1">
-                          <div className="rounded-sm" style={{ background: isBlackCard ? '#FFFFFF' : '#000000', opacity: 0.3 }}></div>
-                          <div className="rounded-sm" style={{ background: isBlackCard ? '#FFFFFF' : '#000000', opacity: 0.3 }}></div>
-                          <div className="rounded-sm" style={{ background: isBlackCard ? '#FFFFFF' : '#000000', opacity: 0.3 }}></div>
-                          <div className="rounded-sm" style={{ background: isBlackCard ? '#FFFFFF' : '#000000', opacity: 0.3 }}></div>
+                          <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.2)' }}></div>
+                          <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.2)' }}></div>
+                          <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.2)' }}></div>
+                          <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.2)' }}></div>
                         </div>
                       </div>
 
                       {/* Badge */}
                       <div 
-                        className="flex items-center gap-1.5 px-3 py-1 rounded-full"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-md"
                         style={{ background: theme.badgeBg }}
                       >
                         <IconComponent 
                           className="w-4 h-4" 
-                          style={{ color: theme.accentColor }}
+                          style={{ color: isGoldCard ? '#FFD700' : '#000000' }}
                         />
                         <span 
                           className="text-xs font-bold tracking-wider"
-                          style={{ color: theme.accentColor }}
+                          style={{ color: isGoldCard ? '#FFFFFF' : '#000000' }}
                         >
                           {theme.badge}
                         </span>
@@ -379,8 +380,8 @@ export function WashPackages({ language }: WashPackagesProps) {
                         onClick={() => handleExpressCheckout(pkg)}
                         className="w-full py-2.5 px-4 rounded-lg font-bold text-sm shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 mb-3"
                         style={{
-                          background: isBlackCard ? '#FFFFFF' : '#000000',
-                          color: isBlackCard ? '#000000' : '#FFFFFF',
+                          background: isGoldCard ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.95)',
+                          color: isGoldCard ? '#FFD700' : '#000000',
                         }}
                         data-testid={`button-express-checkout-${pkg.id}`}
                       >
@@ -391,9 +392,9 @@ export function WashPackages({ language }: WashPackagesProps) {
                       <div 
                         className="flex items-center justify-between text-xs pt-2 border-t"
                         style={{ 
-                          borderColor: isBlackCard ? '#FFFFFF' : '#000000',
+                          borderColor: 'rgba(255,255,255,0.3)',
                           color: theme.textColor,
-                          opacity: 0.7,
+                          opacity: 0.9,
                         }}
                       >
                         <span className="font-mono tracking-wider">
