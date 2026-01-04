@@ -1,24 +1,42 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Gift } from 'lucide-react';
 import { Link } from 'wouter';
 import { t, type Language } from '@/lib/i18n';
-
-import roseFrontImg from '@assets/IMG_2004_1767477310445.png';
-import emeraldFrontImg from '@assets/IMG_2002_1767477310445.png';
-import platinumFrontImg from '@assets/IMG_1998_1767477310445.png';
-import goldFrontImg from '@assets/IMG_1996_1767477310445.png';
 
 interface GiftCardsProps {
   language: Language;
 }
 
-export function GiftCards({ language }: GiftCardsProps) {
-  const vouchers = [
-    { id: '1', value: 100, image: roseFrontImg },
-    { id: '2', value: 250, image: emeraldFrontImg },
-    { id: '3', value: 500, image: platinumFrontImg },
-    { id: '4', value: 1000, image: goldFrontImg }
-  ];
+const cardStyles = {
+  rose: {
+    gradient: 'linear-gradient(135deg, #FFB6C1 0%, #FF69B4 30%, #DB7093 70%, #C71585 100%)',
+    textColor: '#FFFFFF',
+    accentColor: '#FFF0F5'
+  },
+  emerald: {
+    gradient: 'linear-gradient(135deg, #2E8B57 0%, #228B22 30%, #006400 70%, #004D00 100%)',
+    textColor: '#FFFFFF',
+    accentColor: '#98FB98'
+  },
+  platinum: {
+    gradient: 'linear-gradient(135deg, #2D2D2D 0%, #1A1A1A 30%, #0D0D0D 70%, #000000 100%)',
+    textColor: '#FFFFFF',
+    accentColor: '#C0C0C0'
+  },
+  gold: {
+    gradient: 'linear-gradient(135deg, #FFD700 0%, #DAA520 30%, #B8860B 70%, #8B6914 100%)',
+    textColor: '#1A1A1A',
+    accentColor: '#FFF8DC'
+  }
+};
 
+const vouchers = [
+  { id: '1', value: 100, color: 'rose' as const },
+  { id: '2', value: 250, color: 'emerald' as const },
+  { id: '3', value: 500, color: 'platinum' as const },
+  { id: '4', value: 1000, color: 'gold' as const }
+];
+
+export function GiftCards({ language }: GiftCardsProps) {
   const formatValue = (value: number) => 
     value >= 1000 ? `₪${(value / 1000).toFixed(0)},000` : `₪${value}`;
 
@@ -40,38 +58,61 @@ export function GiftCards({ language }: GiftCardsProps) {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 max-w-6xl mx-auto">
-          {vouchers.map((voucher) => (
-            <Link
-              key={voucher.id}
-              href="/egift"
-              className="group relative block"
-              data-testid={`gift-card-${voucher.value}`}
-            >
-              {voucher.value === 1000 && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
-                  <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs font-bold rounded-full shadow-lg whitespace-nowrap">
-                    {language === 'he' ? 'הכי משתלם' : 'BEST VALUE'}
-                  </span>
+          {vouchers.map((voucher) => {
+            const style = cardStyles[voucher.color];
+            return (
+              <Link
+                key={voucher.id}
+                href="/egift"
+                className="group relative block"
+                data-testid={`gift-card-${voucher.value}`}
+              >
+                {voucher.value === 1000 && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+                    <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs font-bold rounded-full shadow-lg whitespace-nowrap">
+                      {language === 'he' ? 'הכי משתלם' : 'BEST VALUE'}
+                    </span>
+                  </div>
+                )}
+
+                <div 
+                  className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-xl transition-all duration-500 group-hover:shadow-2xl group-hover:scale-[1.03]"
+                  style={{ background: style.gradient }}
+                >
+                  <div className="absolute inset-0 opacity-20">
+                    <div className="absolute top-0 left-0 w-full h-full" style={{
+                      backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 40%)'
+                    }} />
+                  </div>
+                  
+                  <div className="absolute top-3 sm:top-4 left-3 sm:left-4 flex items-center gap-1.5 sm:gap-2">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: style.accentColor }}>
+                      <Gift className="w-3 h-3 sm:w-4 sm:h-4" style={{ color: voucher.color === 'gold' ? '#8B6914' : '#333' }} />
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold tracking-wider" style={{ color: style.textColor }}>
+                      PetWash™
+                    </span>
+                  </div>
+
+                  <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 right-3 sm:right-4">
+                    <p className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight" style={{ color: style.textColor }}>
+                      {formatValue(voucher.value)}
+                    </p>
+                    <p className="text-[10px] sm:text-xs font-medium opacity-80" style={{ color: style.textColor }}>
+                      E-Gift Credit
+                    </p>
+                  </div>
+
+                  <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
+                    <div className="w-8 h-5 sm:w-10 sm:h-6 rounded" style={{ 
+                      background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                    }} />
+                  </div>
                 </div>
-              )}
-
-              <div className="relative w-full aspect-[1.586/1] rounded-xl overflow-hidden shadow-xl transition-all duration-500 group-hover:shadow-2xl group-hover:scale-[1.03]">
-                <img 
-                  src={voucher.image}
-                  alt={`${formatValue(voucher.value)} E-Gift Card`}
-                  className="w-full h-full object-cover object-center transform transition-transform duration-500 group-hover:scale-105"
-                  style={{ imageRendering: 'high-quality' }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </div>
-
-              <div className="mt-3 text-center">
-                <p className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">
-                  {formatValue(voucher.value)}
-                </p>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
 
         <div className="mt-10 text-center">

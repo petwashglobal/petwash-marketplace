@@ -4,40 +4,47 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronLeft, Check, ArrowRight, Wallet, Gift, Sparkles } from 'lucide-react';
+import { ChevronLeft, ArrowRight, Wallet, Gift, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
 
-import roseFrontImg from '@assets/IMG_2004_1767477310445.png';
-import roseBackImg from '@assets/IMG_2005_1767477310445.png';
-import emeraldFrontImg from '@assets/IMG_2002_1767477310445.png';
-import emeraldBackImg from '@assets/IMG_2003_1767477310445.png';
-import goldFrontImg from '@assets/IMG_1996_1767477310445.png';
-import goldBackImg from '@assets/IMG_1997_1767477310445.png';
-import platinumFrontImg from '@assets/IMG_1998_1767477310445.png';
-import platinumBackImg from '@assets/IMG_1999_1767477310445.png';
-
-const cardImages = {
-  rose: { front: roseFrontImg, back: roseBackImg, name: 'Rose Pink' },
-  emerald: { front: emeraldFrontImg, back: emeraldBackImg, name: 'Emerald Green' },
-  platinum: { front: platinumFrontImg, back: platinumBackImg, name: 'Platinum Black' },
-  gold: { front: goldFrontImg, back: goldBackImg, name: 'Gold' }
+const cardStyles = {
+  rose: {
+    gradient: 'linear-gradient(135deg, #FFB6C1 0%, #FF69B4 30%, #DB7093 70%, #C71585 100%)',
+    textColor: '#FFFFFF',
+    accentColor: '#FFF0F5'
+  },
+  emerald: {
+    gradient: 'linear-gradient(135deg, #2E8B57 0%, #228B22 30%, #006400 70%, #004D00 100%)',
+    textColor: '#FFFFFF',
+    accentColor: '#98FB98'
+  },
+  platinum: {
+    gradient: 'linear-gradient(135deg, #2D2D2D 0%, #1A1A1A 30%, #0D0D0D 70%, #000000 100%)',
+    textColor: '#FFFFFF',
+    accentColor: '#C0C0C0'
+  },
+  gold: {
+    gradient: 'linear-gradient(135deg, #FFD700 0%, #DAA520 30%, #B8860B 70%, #8B6914 100%)',
+    textColor: '#1A1A1A',
+    accentColor: '#FFF8DC'
+  }
 };
 
 const platformServices = [
-  { id: 'wash', name: 'K9000 Wash Hub™', description: 'Self-service wash stations' },
-  { id: 'sitter', name: 'Sitter Suite™', description: 'Premium pet sitting' },
-  { id: 'walk', name: 'Walk My Pet™', description: 'Professional dog walking' },
-  { id: 'trek', name: 'PetTrek™', description: 'Adventure experiences' },
-  { id: 'academy', name: 'Pet Wash Academy™', description: 'Training & education' },
-  { id: 'nayax', name: 'Nayax Pet Wash™', description: 'Hardware payment stations' }
+  { id: 'wash', name: 'K9000 Wash Hub™' },
+  { id: 'sitter', name: 'Sitter Suite™' },
+  { id: 'walk', name: 'Walk My Pet™' },
+  { id: 'trek', name: 'PetTrek™' },
+  { id: 'academy', name: 'Pet Wash Academy™' },
+  { id: 'nayax', name: 'Nayax Pet Wash™' }
 ];
 
 const giftOptions = [
-  { value: 100, color: 'rose' as const, label: '₪100 Credit', description: 'Perfect starter gift' },
-  { value: 250, color: 'emerald' as const, label: '₪250 Credit', description: 'Popular choice' },
-  { value: 500, color: 'platinum' as const, label: '₪500 Credit', description: 'Premium gift' },
-  { value: 1000, color: 'gold' as const, label: '₪1,000 Credit', description: 'Ultimate luxury gift' }
+  { value: 100, color: 'rose' as const },
+  { value: 250, color: 'emerald' as const },
+  { value: 500, color: 'platinum' as const },
+  { value: 1000, color: 'gold' as const }
 ];
 
 function LuxuryGiftCard({ 
@@ -49,7 +56,7 @@ function LuxuryGiftCard({
   onClick: () => void;
   selected?: boolean;
 }) {
-  const images = cardImages[option.color];
+  const style = cardStyles[option.color];
   const formattedValue = option.value >= 1000 
     ? `₪${(option.value / 1000).toFixed(0)},000` 
     : `₪${option.value}`;
@@ -57,10 +64,10 @@ function LuxuryGiftCard({
   return (
     <button 
       type="button"
-      className={`relative w-full text-left transition-all duration-500 rounded-xl group ${
+      className={`relative w-full text-left transition-all duration-500 rounded-2xl group ${
         selected 
-          ? 'ring-4 ring-black ring-offset-4 scale-[1.03] shadow-2xl' 
-          : 'hover:scale-[1.02] hover:shadow-xl'
+          ? 'ring-4 ring-black ring-offset-4 scale-[1.03]' 
+          : 'hover:scale-[1.02]'
       }`}
       onClick={onClick}
       data-testid={`egift-card-${option.value}`}
@@ -72,19 +79,40 @@ function LuxuryGiftCard({
           </span>
         </div>
       )}
-      <div className="relative w-full aspect-[1.586/1] rounded-xl overflow-hidden shadow-2xl">
-        <img 
-          src={images.front}
-          alt={`${formattedValue} E-Gift Card`}
-          className="w-full h-full object-cover object-center transform transition-transform duration-500 group-hover:scale-105"
-          style={{ imageRendering: 'high-quality' }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      </div>
-      <div className="mt-4 text-center">
-        <p className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-          {formattedValue}
-        </p>
+      <div 
+        className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-2xl transition-shadow duration-300 group-hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
+        style={{ background: style.gradient }}
+      >
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-0 left-0 w-full h-full" style={{
+            backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 40%)'
+          }} />
+        </div>
+        
+        <div className="absolute top-4 sm:top-6 left-4 sm:left-6 flex items-center gap-2">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: style.accentColor }}>
+            <Gift className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: option.color === 'gold' ? '#8B6914' : style.textColor === '#FFFFFF' ? '#333' : style.textColor }} />
+          </div>
+          <span className="text-sm sm:text-base font-bold tracking-wider" style={{ color: style.textColor }}>
+            PetWash™
+          </span>
+        </div>
+
+        <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6">
+          <p className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-1" style={{ color: style.textColor }}>
+            {formattedValue}
+          </p>
+          <p className="text-xs sm:text-sm font-medium opacity-80" style={{ color: style.textColor }}>
+            E-Gift Credit
+          </p>
+        </div>
+
+        <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
+          <div className="w-10 h-7 sm:w-12 sm:h-8 rounded" style={{ 
+            background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+          }} />
+        </div>
       </div>
     </button>
   );
@@ -204,8 +232,11 @@ export default function EGift() {
   };
 
   if (step === 'checkout' && selectedOption) {
-    const images = cardImages[selectedOption.color];
+    const style = cardStyles[selectedOption.color];
     const finalPrice = selectedOption.value;
+    const formattedValue = finalPrice >= 1000 
+      ? `₪${(finalPrice / 1000).toFixed(0)},000` 
+      : `₪${finalPrice}`;
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -325,17 +356,43 @@ export default function EGift() {
 
             <div className="order-1 lg:order-2">
               <div className="w-full max-w-xs sm:max-w-sm mx-auto lg:sticky lg:top-8">
-                <div className="relative aspect-[1.586/1] rounded-2xl overflow-hidden shadow-2xl">
-                  <img 
-                    src={images.front}
-                    alt="E-Gift Card Preview"
-                    className="w-full h-full object-cover"
-                  />
+                <div 
+                  className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-2xl"
+                  style={{ background: style.gradient }}
+                >
+                  <div className="absolute inset-0 opacity-20">
+                    <div className="absolute top-0 left-0 w-full h-full" style={{
+                      backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 40%)'
+                    }} />
+                  </div>
+                  
+                  <div className="absolute top-5 left-5 flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: style.accentColor }}>
+                      <Gift className="w-5 h-5" style={{ color: selectedOption.color === 'gold' ? '#8B6914' : '#333' }} />
+                    </div>
+                    <span className="text-base font-bold tracking-wider" style={{ color: style.textColor }}>
+                      PetWash™
+                    </span>
+                  </div>
+
+                  <div className="absolute bottom-5 left-5 right-5">
+                    <p className="text-4xl sm:text-5xl font-black tracking-tight mb-1" style={{ color: style.textColor }}>
+                      {formattedValue}
+                    </p>
+                    <p className="text-sm font-medium opacity-80" style={{ color: style.textColor }}>
+                      E-Gift Credit
+                    </p>
+                  </div>
+
+                  <div className="absolute top-5 right-5">
+                    <div className="w-12 h-8 rounded" style={{ 
+                      background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                    }} />
+                  </div>
                 </div>
                 <div className="mt-4 text-center">
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">₪{finalPrice}</p>
-                  <p className="text-gray-600 mt-1">Platform Credit Gift Card</p>
-                  <p className="text-xs text-amber-600 font-medium mt-1">Works at all Pet Wash™ services</p>
+                  <p className="text-xs text-amber-600 font-medium">Works at all Pet Wash™ services</p>
                 </div>
               </div>
             </div>
