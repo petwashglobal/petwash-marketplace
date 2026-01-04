@@ -83,7 +83,15 @@ router.get('/trainers', async (req, res) => {
       specialty,
     });
     
-    res.json(filteredTrainers);
+    // Transform trainers to match frontend interface
+    const transformedTrainers = filteredTrainers.map(t => ({
+      ...t,
+      fullName: `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Trainer',
+      city: t.serviceArea || 'Israel',
+      experienceYears: t.yearsOfExperience || 0,
+    }));
+    
+    res.json(transformedTrainers);
   } catch (error) {
     logger.error('[Academy] Error fetching trainers', error);
     res.status(500).json({ error: 'Failed to fetch trainers' });
@@ -98,14 +106,24 @@ router.get('/trainers/:id', async (req, res) => {
   try {
     const trainerId = parseInt(req.params.id);
     
-    const [trainer] = await db
+    const [trainerData] = await db
       .select()
       .from(trainers)
       .where(eq(trainers.id, trainerId));
     
-    if (!trainer) {
+    if (!trainerData) {
       return res.status(404).json({ error: 'Trainer not found' });
     }
+    
+    // Transform trainer data to match frontend interface
+    const trainer = {
+      ...trainerData,
+      fullName: `${trainerData.firstName || ''} ${trainerData.lastName || ''}`.trim() || 'Trainer',
+      city: trainerData.serviceArea || 'Israel',
+      experienceYears: trainerData.yearsOfExperience || 0,
+      coverPhotoUrl: null,
+      availableDays: trainerData.availabilitySchedule ? [trainerData.availabilitySchedule] : null,
+    };
     
     // Get reviews from unified contractorReviews table
     const reviews = await db
@@ -113,7 +131,7 @@ router.get('/trainers/:id', async (req, res) => {
       .from(contractorReviews)
       .where(
         and(
-          eq(contractorReviews.subjectId, trainer.userId),
+          eq(contractorReviews.subjectId, trainerData.userId),
           eq(contractorReviews.reviewType, 'owner_to_contractor'),
           eq(contractorReviews.isVisible, true)
         )

@@ -165,10 +165,10 @@ export default function TrainerProfile() {
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 rounded-full p-1">
                       <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
                         {trainer.profilePhotoUrl ? (
-                          <AvatarImage src={trainer.profilePhotoUrl} alt={trainer.fullName} />
+                          <AvatarImage src={trainer.profilePhotoUrl} alt={trainer.fullName || 'Trainer'} />
                         ) : (
                           <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-400 to-blue-400 text-white">
-                            {trainer.fullName.charAt(0)}
+                            {trainer.fullName?.charAt(0) || 'T'}
                           </AvatarFallback>
                         )}
                       </Avatar>
