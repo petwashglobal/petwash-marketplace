@@ -52,6 +52,8 @@ export function getFirestore() {
 export const db = getFirestore();
 export const storage = firebaseApp.storage();
 export const auth = firebaseApp.auth();
+// Alias for consistency with some route imports
+export const adminAuth = auth;
 
 // Verify db is exported correctly
 if (!db) {

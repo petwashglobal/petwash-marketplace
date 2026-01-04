@@ -455,6 +455,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/egift">
           {() => <EGift />}
         </Route>
+        <Route path="/e-gift">
+          {() => <EGift />}
+        </Route>
         <Route path="/gift-cards">
           {() => <EGift />}
         </Route>
