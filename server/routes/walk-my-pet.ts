@@ -911,4 +911,101 @@ router.get('/api/walkers/:walkerId/walks', async (req, res) => {
   }
 });
 
+// =================== WALK-MY-PET API (Frontend Compatible) ===================
+
+// Get walker profile by numeric ID with reviews (for WalkerDetail.tsx)
+router.get('/api/walk-my-pet/walkers/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid walker ID' });
+    }
+    
+    const [walker] = await db
+      .select()
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.id, id))
+      .limit(1);
+
+    if (!walker) {
+      return res.status(404).json({ error: 'Walker not found' });
+    }
+
+    // Fetch reviews for this walker
+    const reviews = await db
+      .select()
+      .from(walkerReviews)
+      .where(eq(walkerReviews.walkerId, walker.walkerId))
+      .orderBy(desc(walkerReviews.createdAt))
+      .limit(10);
+
+    // Transform to frontend expected format
+    const walkerForFrontend = {
+      id: walker.id,
+      userId: walker.userId,
+      firstName: walker.firstName || 'Walker',
+      lastName: walker.lastName || '',
+      email: walker.email || '',
+      phone: walker.phone || '',
+      city: walker.city || 'Tel Aviv',
+      bio: walker.bio || '',
+      yearsOfExperience: walker.yearsExperience || 0,
+      pricePerWalkCents: walker.pricePerWalkCents || 5000,
+      profilePictureUrl: walker.profilePhotoUrl,
+      rating: walker.averageRating || '4.9',
+      totalWalks: walker.totalWalks || 0,
+      isActive: walker.isActive !== false,
+      isVerified: walker.verificationStatus === 'verified',
+    };
+
+    const reviewsForFrontend = reviews.map(r => ({
+      id: r.id,
+      customerName: 'Verified Customer',
+      rating: r.overallRating,
+      comment: r.reviewText || '',
+      createdAt: r.createdAt?.toISOString() || new Date().toISOString(),
+      petType: 'Dog',
+    }));
+
+    res.json({ walker: walkerForFrontend, reviews: reviewsForFrontend });
+  } catch (error: any) {
+    console.error('[Walk My Pet] Get walker by ID error:', error);
+    res.status(500).json({ error: 'Failed to fetch walker profile' });
+  }
+});
+
+// List all active walkers (for BrowseWalkers.tsx)
+router.get('/api/walk-my-pet/walkers', async (req, res) => {
+  try {
+    const walkers = await db
+      .select()
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.isActive, true))
+      .orderBy(desc(walkerProfiles.averageRating))
+      .limit(50);
+
+    const walkersForFrontend = walkers.map(w => ({
+      id: w.id,
+      userId: w.userId,
+      firstName: w.firstName || 'Walker',
+      lastName: w.lastName || '',
+      city: w.city || 'Tel Aviv',
+      bio: w.bio || '',
+      yearsOfExperience: w.yearsExperience || 0,
+      pricePerWalkCents: w.pricePerWalkCents || 5000,
+      profilePictureUrl: w.profilePhotoUrl,
+      rating: w.averageRating || '4.9',
+      totalWalks: w.totalWalks || 0,
+      isActive: w.isActive !== false,
+      isVerified: w.verificationStatus === 'verified',
+    }));
+
+    res.json({ walkers: walkersForFrontend });
+  } catch (error: any) {
+    console.error('[Walk My Pet] List walkers error:', error);
+    res.status(500).json({ error: 'Failed to fetch walkers' });
+  }
+});
+
 export default router;
