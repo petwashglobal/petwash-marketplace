@@ -37,7 +37,7 @@ export default function SitterDetail() {
     sitter: any;
     reviews: any[];
   }>({
-    queryKey: ['/api/sitter-suite/sitters', id],
+    queryKey: [`/api/sitter-suite/sitters/${id}`],
   });
 
   // Fetch user's pets

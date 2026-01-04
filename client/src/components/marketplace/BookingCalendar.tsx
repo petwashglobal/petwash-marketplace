@@ -195,3 +195,5 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
     </div>
   );
 }
+
+export default BookingCalendar;

@@ -55,7 +55,7 @@ export default function GroomerDetail() {
     groomer: Groomer;
     reviews: GroomerReview[];
   }>({
-    queryKey: ['/api/groomers', id],
+    queryKey: [`/api/groomers/${id}`],
   });
 
   const groomer = groomerData?.groomer;
