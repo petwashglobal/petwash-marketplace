@@ -110,7 +110,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Email**: SendGrid.
 - **Cloud Storage**: @google-cloud/storage.
 - **Utilities**: qrcode, PassKit, googleapis.
-- **Messaging**: Meta WhatsApp Business API, Google Firebase Cloud Messaging (FCM).
+- **Messaging**: Meta WhatsApp Business API, Google Firebase Cloud Messaging (FCM). *Note: Twilio account activated for SMS/Voice - can be integrated when needed for OTP codes and emergency alerts.*
 - **Banking Integration**: Mizrahi-Tefahot Bank (via aggregator API).
 - **Weather & Environmental Data**: Open-Meteo API, Google Weather API, CurrentUVIndex.com API, Open-Meteo Air Quality API.
 - **E-Signature**: DocuSeal (@docuseal/api).
