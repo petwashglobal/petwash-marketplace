@@ -53,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDevMode, setIsDevMode] = useState(() => {
+    if (!import.meta.env.DEV) return false;
     if (typeof window !== 'undefined') {
       return localStorage.getItem(DEV_USER_KEY) === 'true';
     }
@@ -60,6 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const enableDevMode = () => {
+    if (!import.meta.env.DEV) {
+      logger.warn("Dev mode is only available in development environment");
+      return;
+    }
     localStorage.setItem(DEV_USER_KEY, 'true');
     setIsDevMode(true);
     setUser(createDevUser() as User);
@@ -74,7 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Check if dev mode is enabled
+    if (!import.meta.env.DEV && isDevMode) {
+      disableDevMode();
+      return;
+    }
     if (isDevMode) {
       setUser(createDevUser() as User);
       setLoading(false);
