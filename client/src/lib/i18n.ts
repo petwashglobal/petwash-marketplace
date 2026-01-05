@@ -317,14 +317,14 @@ export const translations: TranslationStrings = {
   'fastSignIn.invalidCode': { en: 'Invalid verification code', he: 'קוד אימות שגוי', ar: 'رمز تحقق غير صحيح', ru: 'Неверный код подтверждения', fr: 'Code de vérification invalide', es: 'Código de verificación inválido' },
   // Customer Signup Modal
   'customerSignup.registrationSuccessful': { en: 'Registration Successful!', he: 'ההרשמה הושלמה בהצלחה!', ar: 'تم التسجيل بنجاح!', ru: 'Регистрация успешна!', fr: 'Inscription réussie!', es: '¡Registro exitoso!' },
-  'customerSignup.welcomeToPetWash': { en: 'Welcome to Pet Wash!', he: 'ברוכים הבאים לפט ווש!', ar: 'مرحبًا بكم في Pet Wash!', ru: 'Добро пожаловать в Pet Wash!', fr: 'Bienvenue chez Pet Wash!', es: '¡Bienvenido a Pet Wash!' },
+  'customerSignup.welcomeToPetWash': { en: 'Welcome to Pet Wash™!', he: 'ברוכים הבאים ל-Pet Wash™!', ar: 'مرحبًا بكم في Pet Wash™!', ru: 'Добро пожаловать в Pet Wash™!', fr: 'Bienvenue chez Pet Wash™!', es: '¡Bienvenido a Pet Wash™!' },
   'customerSignup.registrationFailed': { en: 'Registration Failed', he: 'שגיאה בהרשמה', ar: 'فشل التسجيل', ru: 'Ошибка регистрации', fr: 'Échec de l\'inscription', es: 'Error de registro' },
   'customerSignup.errorOccurred': { en: 'An error occurred', he: 'אירעה שגיאה', ar: 'حدث خطأ', ru: 'Произошла ошибка', fr: 'Une erreur s\'est produite', es: 'Ocurrió un error' },
   'customerSignup.pleaseAcceptTerms': { en: 'Please Accept Terms', he: 'יש לקבל את התנאים', ar: 'يرجى قبول الشروط', ru: 'Примите условия', fr: 'Veuillez accepter les conditions', es: 'Por favor acepta los términos' },
   'customerSignup.mustAcceptTerms': { en: 'You must accept the terms and conditions', he: 'עליך לקבל את התנאים והתקנות', ar: 'يجب عليك قبول الشروط والأحكام', ru: 'Вы должны принять условия и положения', fr: 'Vous devez accepter les termes et conditions', es: 'Debes aceptar los términos y condiciones' },
   'customerSignup.passwordsDontMatch': { en: 'Passwords Don\'t Match', he: 'סיסמאות לא תואמות', ar: 'كلمات المرور غير متطابقة', ru: 'Пароли не совпадают', fr: 'Les mots de passe ne correspondent pas', es: 'Las contraseñas no coinciden' },
   'customerSignup.passwordsMismatch': { en: 'The passwords you entered don\'t match', he: 'הסיסמאות שהוזנו אינן תואמות', ar: 'كلمات المرور التي أدخلتها غير متطابقة', ru: 'Введенные пароли не совпадают', fr: 'Les mots de passe saisis ne correspondent pas', es: 'Las contraseñas ingresadas no coinciden' },
-  'customerSignup.joinPetWash': { en: 'Join Pet Wash™', he: 'הצטרף לפט ווש™', ar: 'انضم إلى Pet Wash™', ru: 'Присоединяйтесь к Pet Wash™', fr: 'Rejoignez Pet Wash™', es: 'Únete a Pet Wash™' },
+  'customerSignup.joinPetWash': { en: 'Join Pet Wash™', he: 'הצטרף ל-Pet Wash™', ar: 'انضم إلى Pet Wash™', ru: 'Присоединяйтесь к Pet Wash™', fr: 'Rejoignez Pet Wash™', es: 'Únete a Pet Wash™' },
   'customerSignup.chooseSignupMethod': { en: 'Choose your preferred signup method', he: 'בחר את דרך ההרשמה המועדפת עליך', ar: 'اختر طريقة التسجيل المفضلة لديك', ru: 'Выберите предпочтительный способ регистрации', fr: 'Choisissez votre méthode d\'inscription préférée', es: 'Elige tu método de registro preferido' },
   'customerSignup.premiumMembership': { en: 'Premium Membership', he: 'חברות פרימיום', ar: 'عضوية مميزة', ru: 'Премиум членство', fr: 'Adhésion premium', es: 'Membresía premium' },
   'customerSignup.continueWithEmail': { en: 'Continue with Email', he: 'הרשמה עם אימייל', ar: 'متابعة بالبريد الإلكتروني', ru: 'Продолжить с Email', fr: 'Continuer avec e-mail', es: 'Continuar con correo' },
@@ -1408,7 +1408,7 @@ export const translations: TranslationStrings = {
   'footer.allRightsReserved': { en: 'All Rights Reserved', he: 'כל הזכויות שמורות', ar: 'جميع الحقوق محفوظة', ru: 'Все права защищены', fr: 'Tous droits réservés', es: 'Todos los derechos reservados' },
   'footer.passkeyEnabled': { en: 'Passkey Enabled', he: 'Passkey זמין', ar: 'Passkey متاح', ru: 'Passkey доступен', fr: 'Passkey activé', es: 'Passkey habilitado' },
   // Apple Style Registration
-  'registration.title': { en: 'Join Pet Wash™ Club', he: 'הצטרפו למועדון פט ווש™', ar: 'انضم إلى نادي Pet Wash™', ru: 'Присоединяйтесь к Pet Wash™ Club', fr: 'Rejoignez le Club Pet Wash™', es: 'Únete al Club Pet Wash™' },
+  'registration.title': { en: 'Join Pet Wash™ Club', he: 'הצטרפו למועדון Pet Wash™', ar: 'انضم إلى نادي Pet Wash™', ru: 'Присоединяйтесь к Pet Wash™ Club', fr: 'Rejoignez le Club Pet Wash™', es: 'Únete al Club Pet Wash™' },
   'registration.close': { en: 'Close', he: 'סגור', ar: 'إغلاق', ru: 'Закрыть', fr: 'Fermer', es: 'Cerrar' },
   'registration.addProfilePic': { en: 'Add profile picture (optional)', he: 'הוסיפו תמונת פרופיל (אופציונלי)', ar: 'أضف صورة الملف الشخصي (اختياري)', ru: 'Добавить фото профиля (необязательно)', fr: 'Ajouter une photo de profil (facultatif)', es: 'Agregar foto de perfil (opcional)' },
   'registration.firstName': { en: 'First Name', he: 'שם פרטי', ar: 'الاسم الأول', ru: 'Имя', fr: 'Prénom', es: 'Nombre' },
@@ -1446,11 +1446,11 @@ export const translations: TranslationStrings = {
   'registration.and': { en: 'and', he: 'ו', ar: 'و', ru: 'и', fr: 'et', es: 'y' },
   'registration.privacyLink': { en: 'Privacy Policy', he: 'מדיניות הפרטיות', ar: 'سياسة الخصوصية', ru: 'Политика конфиденциальности', fr: 'Politique de confidentialité', es: 'Política de privacidad' },
   'registration.creatingAccount': { en: 'Creating Account...', he: 'יוצר חשבון...', ar: 'إنشاء حساب...', ru: 'Создание аккаунта...', fr: 'Création du compte...', es: 'Creando cuenta...' },
-  'registration.joinClub': { en: 'Join Pet Wash™ Club', he: 'הצטרף למועדון פט ווש™', ar: 'انضم إلى نادي Pet Wash™', ru: 'Присоединиться к Pet Wash™ Club', fr: 'Rejoindre le Club Pet Wash™', es: 'Unirse al Club Pet Wash™' },
+  'registration.joinClub': { en: 'Join Pet Wash™ Club', he: 'הצטרף למועדון Pet Wash™', ar: 'انضم إلى نادي Pet Wash™', ru: 'Присоединиться к Pet Wash™ Club', fr: 'Rejoindre le Club Pet Wash™', es: 'Unirse al Club Pet Wash™' },
   'registration.alreadyMember': { en: 'Already a member?', he: 'כבר חבר?', ar: 'هل أنت عضو بالفعل؟', ru: 'Уже являетесь участником?', fr: 'Déjà membre?', es: '¿Ya eres miembro?' },
   'registration.signIn': { en: 'Sign In', he: 'התחבר', ar: 'تسجيل الدخول', ru: 'Войти', fr: 'Se connecter', es: 'Iniciar sesión' },
   'registration.successTitle': { en: 'Registration Successful!', he: 'ההרשמה הושלמה בהצלחה!', ar: 'تم التسجيل بنجاح!', ru: 'Регистрация успешна!', fr: 'Inscription réussie!', es: '¡Registro exitoso!' },
-  'registration.successDescription': { en: 'Welcome to Pet Wash™ Club! Your account has been created.', he: 'ברוכים הבאים למועדון פט ווש™! החשבון שלך נוצר בהצלחה.', ar: 'مرحبًا بك في نادي Pet Wash™! تم إنشاء حسابك.', ru: 'Добро пожаловать в Pet Wash™ Club! Ваш аккаунт создан.', fr: 'Bienvenue au Club Pet Wash™! Votre compte a été créé.', es: '¡Bienvenido al Club Pet Wash™! Tu cuenta ha sido creada.' },
+  'registration.successDescription': { en: 'Welcome to Pet Wash™ Club! Your account has been created.', he: 'ברוכים הבאים למועדון Pet Wash™! החשבון שלך נוצר בהצלחה.', ar: 'مرحبًا بك في نادي Pet Wash™! تم إنشاء حسابك.', ru: 'Добро пожаловать в Pet Wash™ Club! Ваш аккаунт создан.', fr: 'Bienvenue au Club Pet Wash™! Votre compte a été créé.', es: '¡Bienvenido al Club Pet Wash™! Tu cuenta ha sido creada.' },
   'registration.failedTitle': { en: 'Registration Failed', he: 'ההרשמה נכשלה', ar: 'فشل التسجيل', ru: 'Регистрация не удалась', fr: 'Échec de l\'inscription', es: 'Registro fallido' },
   'registration.failedDescription': { en: 'Please try again or contact support.', he: 'אנא נסו שוב או צרו קשר עם התמיכה.', ar: 'يرجى المحاولة مرة أخرى أو الاتصال بالدعم.', ru: 'Пожалуйста, попробуйте еще раз или свяжитесь с поддержкой.', fr: 'Veuillez réessayer ou contacter le support.', es: 'Por favor, inténtalo de nuevo o contacta con soporte.' },
   'registration.missingInfoTitle': { en: 'Missing Information', he: 'חסרים פרטים', ar: 'معلومات مفقودة', ru: 'Информация отсутствует', fr: 'Informations manquantes', es: 'Información faltante' },
@@ -1460,7 +1460,7 @@ export const translations: TranslationStrings = {
   'registration.termsRequiredTitle': { en: 'Terms Required', he: 'נדרש אישור תנאים', ar: 'الشروط مطلوبة', ru: 'Требуется согласие', fr: 'Conditions requises', es: 'Términos requeridos' },
   'registration.termsRequiredDescription': { en: 'Please accept terms and privacy policy', he: 'אנא אשרו את התנאים ומדיניות הפרטיות', ar: 'يرجى قبول الشروط وسياسة الخصوصية', ru: 'Пожалуйста, примите условия и политику конфиденциальности', fr: 'Veuillez accepter les conditions et la politique de confidentialité', es: 'Por favor, acepta los términos y la política de privacidad' },
   // PetWash Divisions
-  'divisions.groupName': { en: 'PetWash Ltd Group', he: 'קבוצת פטוואש בע"מ', ar: 'مجموعة PetWash Ltd', ru: 'Группа PetWash Ltd', fr: 'Groupe PetWash Ltd', es: 'Grupo PetWash Ltd' },
+  'divisions.groupName': { en: 'Pet Wash™ Ltd Group', he: 'קבוצת Pet Wash™ Ltd', ar: 'مجموعة Pet Wash™ Ltd', ru: 'Группа Pet Wash™ Ltd', fr: 'Groupe Pet Wash™ Ltd', es: 'Grupo Pet Wash™ Ltd' },
   'divisions.title': { en: 'Our Unique Services', he: 'השירותים הייחודיים שלנו', ar: 'خدماتنا الفريدة', ru: 'Наши уникальные услуги', fr: 'Nos services uniques', es: 'Nuestros servicios únicos' },
   'divisions.subtitle': { en: 'Four Leading Divisions Providing Comprehensive Premium Care for Your Pets', he: 'ארבע חטיבות מובילות שמספקות טיפול מקיף ופרימיום לחיות המחמד שלך', ar: 'أربعة أقسام رائدة توفر رعاية شاملة ممتازة لحيواناتك الأليفة', ru: 'Четыре ведущих подразделения, обеспечивающих комплексный премиальный уход за вашими питомцами', fr: 'Quatre divisions de premier plan offrant des soins complets et premium pour vos animaux', es: 'Cuatro divisiones líderes que brindan atención premium integral para tus mascotas' },
   'divisions.smartHub.tagline': { en: 'Every Pet Owner\'s Dream - Perfect Organic Wash Process', he: 'חלום כל בעל חיית מחמד - תהליך רחצה אורגני מושלם', ar: 'حلم كل مالك حيوان أليف - عملية غسيل عضوية مثالية', ru: 'Мечта каждого владельца питомца - идеальный органический процесс мытья', fr: 'Le rêve de tout propriétaire d\'animal - Processus de lavage organique parfait', es: 'El sueño de todo dueño de mascota - Proceso de lavado orgánico perfecto' },
@@ -1697,7 +1697,7 @@ export const translations: TranslationStrings = {
   'reports.downloadPDF': { en: 'Download PDF', he: 'הורד PDF', ar: 'تنزيل PDF', ru: 'Скачать PDF', fr: 'Télécharger PDF', es: 'Descargar PDF' },
   // Terms Page
   'terms.backToHome': { en: 'Back to Home', he: 'חזרה לעמוד הבית', ar: 'العودة إلى الصفحة الرئيسية', ru: 'Вернуться на главную', fr: 'Retour à l\'accueil', es: 'Volver al inicio' },
-  'terms.title': { en: 'Terms & Conditions – Pet Wash Ltd', he: 'תנאים והגבלות – פט ווש בע"מ', ar: 'الشروط والأحكام – Pet Wash Ltd', ru: 'Условия использования – Pet Wash Ltd', fr: 'Conditions générales – Pet Wash Ltd', es: 'Términos y condiciones – Pet Wash Ltd' },
+  'terms.title': { en: 'Terms & Conditions – Pet Wash™ Ltd', he: 'תנאים והגבלות – Pet Wash™ Ltd', ar: 'الشروط والأحكام – Pet Wash™ Ltd', ru: 'Условия использования – Pet Wash™ Ltd', fr: 'Conditions générales – Pet Wash™ Ltd', es: 'Términos y condiciones – Pet Wash™ Ltd' },
   'terms.companyNumber': { en: 'Company Number: 517145033', he: 'מספר חברה: 517145033', ar: 'رقم الشركة: 517145033', ru: 'Номер компании: 517145033', fr: 'Numéro de société: 517145033', es: 'Número de empresa: 517145033' },
   'terms.lastUpdated': { en: 'Last Updated', he: 'עודכן לאחרונה', ar: 'آخر تحديث', ru: 'Последнее обновление', fr: 'Dernière mise à jour', es: 'Última actualización' },
   'terms.compliantLaw': { en: 'Compliant with Israeli Consumer Protection Law', he: 'תואם לחוק הגנת הצרכן הישראלי', ar: 'متوافق مع قانون حماية المستهلك الإسرائيلي', ru: 'Соответствует израильскому закону о защите прав потребителей', fr: 'Conforme à la loi israélienne sur la protection des consommateurs', es: 'Conforme con la ley israelí de protección al consumidor' },
@@ -1836,7 +1836,7 @@ export const translations: TranslationStrings = {
   
   // Privacy Policy
   'privacy.backToHome': { en: 'Back to Home', he: 'חזרה לעמוד הבית', ar: 'العودة إلى الصفحة الرئيسية', ru: 'Вернуться на главную', fr: 'Retour à l\'accueil', es: 'Volver al inicio' },
-  'privacy.title': { en: 'Privacy Policy – Pet Wash Ltd', he: 'מדיניות פרטיות – פט ווש בע"מ', ar: 'سياسة الخصوصية – Pet Wash Ltd', ru: 'Политика конфиденциальности – Pet Wash Ltd', fr: 'Politique de confidentialité – Pet Wash Ltd', es: 'Política de privacidad – Pet Wash Ltd' },
+  'privacy.title': { en: 'Privacy Policy – Pet Wash™ Ltd', he: 'מדיניות פרטיות – Pet Wash™ Ltd', ar: 'سياسة الخصوصية – Pet Wash™ Ltd', ru: 'Политика конфиденциальности – Pet Wash™ Ltd', fr: 'Politique de confidentialité – Pet Wash™ Ltd', es: 'Política de privacidad – Pet Wash™ Ltd' },
   'privacy.companyNumber': { en: 'Company Number: 517145033', he: 'מספר חברה: 517145033', ar: 'رقم الشركة: 517145033', ru: 'Номер компании: 517145033', fr: 'Numéro de société: 517145033', es: 'Número de empresa: 517145033' },
   'privacy.effectiveDate': { en: 'Effective Date: 2025', he: 'תאריך תחילה: 2025', ar: 'تاريخ السريان: 2025', ru: 'Дата вступления в силу: 2025', fr: 'Date d\'entrée en vigueur: 2025', es: 'Fecha de vigencia: 2025' },
 
