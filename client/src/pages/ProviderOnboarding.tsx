@@ -7,6 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { DatePicker } from '@/components/ui/date-picker';
+import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import { useToast } from '@/hooks/use-toast';
 import { 
   CheckCircle2, 
@@ -561,29 +565,52 @@ export default function ProviderOnboarding() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="city">{t.city}</Label>
-                    <Input
-                      id="city"
+                    <GooglePlacesAutocomplete
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                      onChange={(value, details) => {
+                        setCity(details?.city || value);
+                        if (details?.country === 'Israel') setCountry('IL');
+                        else if (details?.country === 'United States') setCountry('USA');
+                        else if (details?.country === 'United Kingdom') setCountry('UK');
+                        else if (details?.country === 'Australia') setCountry('AUS');
+                        else if (details?.country === 'Canada') setCountry('CAN');
+                      }}
+                      placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city...'}
+                      country={['il', 'us', 'gb', 'au', 'ca']}
                       className="luxury-glass-minimal"
-                      data-testid="input-city"
                     />
                   </div>
                   <div>
                     <Label htmlFor="country">{t.country}</Label>
-                    <select
-                      id="country"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md luxury-glass-minimal"
-                      data-testid="select-country"
-                    >
-                      <option value="IL">Israel (ישראל)</option>
-                      <option value="USA">USA (ארצות הברית)</option>
-                      <option value="UK">United Kingdom (בריטניה)</option>
-                      <option value="AUS">Australia (אוסטרליה)</option>
-                      <option value="CAN">Canada (קנדה)</option>
-                    </select>
+                    <Select value={country} onValueChange={setCountry}>
+                      <SelectTrigger className="w-full h-12 luxury-glass-minimal" data-testid="select-country">
+                        <SelectValue placeholder={isHebrew ? 'בחר מדינה' : 'Select country'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <ScrollArea className="h-48">
+                          <SelectItem value="IL">Israel (ישראל)</SelectItem>
+                          <SelectItem value="USA">USA (ארצות הברית)</SelectItem>
+                          <SelectItem value="UK">United Kingdom (בריטניה)</SelectItem>
+                          <SelectItem value="AUS">Australia (אוסטרליה)</SelectItem>
+                          <SelectItem value="CAN">Canada (קנדה)</SelectItem>
+                          <SelectItem value="DE">Germany (גרמניה)</SelectItem>
+                          <SelectItem value="FR">France (צרפת)</SelectItem>
+                          <SelectItem value="IT">Italy (איטליה)</SelectItem>
+                          <SelectItem value="ES">Spain (ספרד)</SelectItem>
+                          <SelectItem value="NL">Netherlands (הולנד)</SelectItem>
+                          <SelectItem value="BE">Belgium (בלגיה)</SelectItem>
+                          <SelectItem value="CH">Switzerland (שווייץ)</SelectItem>
+                          <SelectItem value="AT">Austria (אוסטריה)</SelectItem>
+                          <SelectItem value="SE">Sweden (שוודיה)</SelectItem>
+                          <SelectItem value="NO">Norway (נורבגיה)</SelectItem>
+                          <SelectItem value="DK">Denmark (דנמרק)</SelectItem>
+                          <SelectItem value="FI">Finland (פינלנד)</SelectItem>
+                          <SelectItem value="IE">Ireland (אירלנד)</SelectItem>
+                          <SelectItem value="PT">Portugal (פורטוגל)</SelectItem>
+                          <SelectItem value="GR">Greece (יוון)</SelectItem>
+                        </ScrollArea>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -699,13 +726,14 @@ export default function ProviderOnboarding() {
                         
                         <div>
                           <Label htmlFor="insuranceExpiry" className="text-sm">{t.expiryDate}</Label>
-                          <Input
-                            id="insuranceExpiry"
-                            type="date"
+                          <DatePicker
                             value={insuranceExpiry}
-                            onChange={(e) => setInsuranceExpiry(e.target.value)}
+                            onChange={setInsuranceExpiry}
+                            placeholder={isHebrew ? 'בחר תאריך תפוגה' : 'Select expiry date'}
+                            minDate={new Date()}
+                            language={language}
+                            testId="input-insurance-expiry"
                             className="luxury-glass-minimal"
-                            data-testid="input-insurance-expiry"
                           />
                         </div>
                         
@@ -749,13 +777,14 @@ export default function ProviderOnboarding() {
                           </div>
                           <div>
                             <Label htmlFor="petFirstAidExpiry" className="text-sm">{t.expiryDate}</Label>
-                            <Input
-                              id="petFirstAidExpiry"
-                              type="date"
+                            <DatePicker
                               value={petFirstAidExpiry}
-                              onChange={(e) => setPetFirstAidExpiry(e.target.value)}
+                              onChange={setPetFirstAidExpiry}
+                              placeholder={isHebrew ? 'בחר תאריך תפוגה' : 'Select expiry date'}
+                              minDate={new Date()}
+                              language={language}
+                              testId="input-pet-first-aid-expiry"
                               className="luxury-glass-minimal"
-                              data-testid="input-pet-first-aid-expiry"
                             />
                           </div>
                         </div>

@@ -155,6 +155,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                 <span className="text-slate-500">
                   day visit at your home
                 </span>
+              </div>
             )}
           </div>
         </header>
