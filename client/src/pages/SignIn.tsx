@@ -35,7 +35,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const { toast } = useToast();
   const [location, navigate] = useLocation();
   const { trackUserAuth, trackEvent } = useAnalytics();
-  const { user, logout } = useFirebaseAuth();
+  const { user, logout, enableDevMode } = useFirebaseAuth();
   const [loading, setLoading] = useState(false);
   const [magicLinkMode, setMagicLinkMode] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
@@ -776,6 +776,25 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               >
                 <KeyRound className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-[#000000] dark:text-[#FFFFFF]" />
                 {language === 'he' ? 'התחבר עם קוד PIN' : 'Sign in with PIN'}
+              </Button>
+            )}
+
+            {/* Dev Mode Button - For Testing Only */}
+            {import.meta.env.DEV && (
+              <Button
+                onClick={() => {
+                  enableDevMode();
+                  toast({
+                    title: language === 'he' ? 'מצב פיתוח מופעל' : 'Dev Mode Enabled',
+                    description: language === 'he' ? 'משתמש בדיקה מחובר' : 'Test user logged in',
+                  });
+                  setTimeout(() => navigate("/"), 500);
+                }}
+                className="w-full h-14 text-base font-medium bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0"
+                data-testid="button-dev-mode"
+              >
+                <User className="w-5 h-5 mr-3" />
+                {language === 'he' ? '🔧 מצב פיתוח (ללא התחברות)' : '🔧 Dev Mode (Skip Login)'}
               </Button>
             )}
           </motion.div>

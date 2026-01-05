@@ -8,21 +8,79 @@ type AuthContextType = {
   user: User | null; 
   loading: boolean;
   logout: () => Promise<void>;
+  isDevMode: boolean;
+  enableDevMode: () => void;
+  disableDevMode: () => void;
 };
 
 const AuthContext = createContext<AuthContextType>({ 
   user: null, 
   loading: true,
-  logout: async () => {}
+  logout: async () => {},
+  isDevMode: false,
+  enableDevMode: () => {},
+  disableDevMode: () => {}
 });
 
 export const useFirebaseAuth = () => useContext(AuthContext);
 
+const DEV_USER_KEY = 'petwash_dev_mode';
+
+const createDevUser = (): Partial<User> => ({
+  uid: 'dev-user-12345',
+  email: 'dev@petwash.co.il',
+  displayName: 'Dev User (Test Mode)',
+  photoURL: null,
+  emailVerified: true,
+  isAnonymous: false,
+  metadata: {
+    creationTime: new Date().toISOString(),
+    lastSignInTime: new Date().toISOString()
+  } as any,
+  providerData: [],
+  providerId: 'dev',
+  refreshToken: '',
+  tenantId: null,
+  phoneNumber: null,
+  delete: async () => {},
+  getIdToken: async () => 'dev-token',
+  getIdTokenResult: async () => ({ token: 'dev-token', claims: {}, authTime: '', expirationTime: '', issuedAtTime: '', signInProvider: 'dev', signInSecondFactor: null }),
+  reload: async () => {},
+  toJSON: () => ({})
+});
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDevMode, setIsDevMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(DEV_USER_KEY) === 'true';
+    }
+    return false;
+  });
+
+  const enableDevMode = () => {
+    localStorage.setItem(DEV_USER_KEY, 'true');
+    setIsDevMode(true);
+    setUser(createDevUser() as User);
+    logger.info("Dev mode enabled - using test user");
+  };
+
+  const disableDevMode = () => {
+    localStorage.removeItem(DEV_USER_KEY);
+    setIsDevMode(false);
+    setUser(null);
+    logger.info("Dev mode disabled");
+  };
 
   useEffect(() => {
+    // Check if dev mode is enabled
+    if (isDevMode) {
+      setUser(createDevUser() as User);
+      setLoading(false);
+      return;
+    }
+
     // Set explicit Firebase persistence (local = persists even after browser closes)
     setPersistence(auth, browserLocalPersistence).catch((error) => {
       logger.error("Failed to set persistence:", error);
@@ -34,11 +92,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isDevMode]);
 
   const logout = async () => {
     try {
       const userId = user?.uid;
+      
+      // If in dev mode, just disable it
+      if (isDevMode) {
+        disableDevMode();
+        return;
+      }
       
       // Sign out from Firebase
       await signOut(auth);
@@ -60,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, logout, isDevMode, enableDevMode, disableDevMode }}>
       {children}
     </AuthContext.Provider>
   );
