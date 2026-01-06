@@ -84,22 +84,33 @@ function LuxuryPackageCard({
   return (
     <button 
       type="button"
-      className={`relative w-full text-left transition-all duration-300 rounded-2xl ${
-        selected ? 'ring-4 ring-black ring-offset-2 scale-[1.02]' : 'hover:scale-[1.02]'
+      className={`relative w-full text-left transition-all duration-300 ${
+        selected 
+          ? 'ring-3 ring-black/80 ring-offset-2 scale-[1.02]' 
+          : 'hover:scale-[1.01] hover:-translate-y-0.5'
       }`}
       onClick={onClick}
       data-testid={`package-card-${pkg.tier}`}
     >
       {pkg.popular && (
-        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-3 py-0.5 rounded-full text-[10px] sm:text-xs font-bold shadow-lg whitespace-nowrap">
+        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold shadow-md whitespace-nowrap">
           MOST POPULAR
         </div>
       )}
-      <div className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-xl">
+      <div 
+        className="relative w-full aspect-[1.586/1] overflow-hidden"
+        style={{
+          borderRadius: '12px',
+          boxShadow: selected 
+            ? '0 20px 40px -8px rgba(0,0,0,0.3), 0 8px 16px -4px rgba(0,0,0,0.15)'
+            : '0 10px 30px -8px rgba(0,0,0,0.2), 0 4px 12px -2px rgba(0,0,0,0.1)'
+        }}
+      >
         <img 
           src={images.front}
           alt={`${pkg.name} - ${pkg.washes} Wash${pkg.washes > 1 ? 'es' : ''}`}
           className="w-full h-full object-cover object-center"
+          style={{ borderRadius: '12px' }}
           loading="lazy"
         />
       </div>
@@ -214,11 +225,18 @@ export default function Packages() {
 
             <div className="order-1 lg:order-2">
               <div className="w-full max-w-xs sm:max-w-sm mx-auto lg:sticky lg:top-8">
-                <div className="relative aspect-[1.586/1] rounded-2xl overflow-hidden shadow-2xl">
+                <div 
+                  className="relative aspect-[1.586/1] overflow-hidden"
+                  style={{
+                    borderRadius: '12px',
+                    boxShadow: '0 20px 50px -10px rgba(0,0,0,0.3), 0 8px 20px -4px rgba(0,0,0,0.15)'
+                  }}
+                >
                   <img 
                     src={images.front}
                     alt={`${selectedPackage.name} Package`}
                     className="w-full h-full object-cover"
+                    style={{ borderRadius: '12px' }}
                   />
                 </div>
               </div>

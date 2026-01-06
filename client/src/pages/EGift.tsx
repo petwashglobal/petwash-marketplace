@@ -64,53 +64,62 @@ function LuxuryGiftCard({
   return (
     <button 
       type="button"
-      className={`relative w-full text-left transition-all duration-500 rounded-2xl group ${
+      className={`relative w-full text-left transition-all duration-300 group ${
         selected 
-          ? 'ring-4 ring-black ring-offset-4 scale-[1.03]' 
-          : 'hover:scale-[1.02]'
+          ? 'ring-3 ring-black/80 ring-offset-2 scale-[1.02]' 
+          : 'hover:scale-[1.01] hover:-translate-y-0.5'
       }`}
       onClick={onClick}
       data-testid={`egift-card-${option.value}`}
     >
       {option.value === 1000 && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
-          <span className="px-4 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs font-bold rounded-full shadow-lg whitespace-nowrap">
+        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20">
+          <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-[10px] sm:text-xs font-bold rounded-full shadow-md whitespace-nowrap">
             BEST VALUE
           </span>
         </div>
       )}
       <div 
-        className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-2xl transition-shadow duration-300 group-hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
-        style={{ background: style.gradient }}
+        className="relative w-full aspect-[1.586/1] overflow-hidden transition-all duration-300"
+        style={{ 
+          background: style.gradient,
+          borderRadius: '12px',
+          boxShadow: selected 
+            ? '0 20px 40px -8px rgba(0,0,0,0.35), 0 8px 16px -4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)'
+            : '0 10px 30px -8px rgba(0,0,0,0.25), 0 4px 12px -2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)'
+        }}
       >
-        <div className="absolute inset-0 opacity-20">
+        <div className="absolute inset-0 opacity-15">
           <div className="absolute top-0 left-0 w-full h-full" style={{
-            backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 40%)'
+            backgroundImage: 'radial-gradient(circle at 25% 75%, rgba(255,255,255,0.4) 0%, transparent 45%), radial-gradient(circle at 75% 25%, rgba(255,255,255,0.25) 0%, transparent 35%)'
           }} />
         </div>
         
-        <div className="absolute top-4 sm:top-6 left-4 sm:left-6 flex items-center gap-2">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: style.accentColor }}>
-            <Gift className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: option.color === 'gold' ? '#8B6914' : style.textColor === '#FFFFFF' ? '#333' : style.textColor }} />
+        <div className="absolute inset-[1px] rounded-[11px] border border-white/10" />
+        
+        <div className="absolute top-3 sm:top-4 left-3 sm:left-4 flex items-center gap-1.5 sm:gap-2">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: `${style.accentColor}dd` }}>
+            <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: option.color === 'gold' ? '#8B6914' : style.textColor === '#FFFFFF' ? '#333' : style.textColor }} />
           </div>
-          <span className="text-sm sm:text-base font-bold tracking-wider" style={{ color: style.textColor }}>
-            PetWash™
+          <span className="text-xs sm:text-sm font-bold tracking-wide" style={{ color: style.textColor }}>
+            Pet Wash™
           </span>
         </div>
 
-        <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6">
-          <p className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-1" style={{ color: style.textColor }}>
+        <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 right-3 sm:right-4">
+          <p className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-0.5" style={{ color: style.textColor, textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
             {formattedValue}
           </p>
-          <p className="text-xs sm:text-sm font-medium opacity-80" style={{ color: style.textColor }}>
+          <p className="text-[10px] sm:text-xs font-medium opacity-75 tracking-wide uppercase" style={{ color: style.textColor }}>
             E-Gift Credit
           </p>
         </div>
 
-        <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
-          <div className="w-10 h-7 sm:w-12 sm:h-8 rounded" style={{ 
-            background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+        <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
+          <div className="w-8 h-6 sm:w-10 sm:h-7" style={{ 
+            background: 'linear-gradient(145deg, #D4AF37 0%, #F5D76E 25%, #D4AF37 50%, #AA8C2C 100%)',
+            borderRadius: '4px',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3)'
           }} />
         </div>
       </div>
@@ -357,37 +366,44 @@ export default function EGift() {
             <div className="order-1 lg:order-2">
               <div className="w-full max-w-xs sm:max-w-sm mx-auto lg:sticky lg:top-8">
                 <div 
-                  className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-2xl"
-                  style={{ background: style.gradient }}
+                  className="relative w-full aspect-[1.586/1] overflow-hidden"
+                  style={{ 
+                    background: style.gradient,
+                    borderRadius: '12px',
+                    boxShadow: '0 20px 50px -10px rgba(0,0,0,0.35), 0 8px 20px -4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)'
+                  }}
                 >
-                  <div className="absolute inset-0 opacity-20">
+                  <div className="absolute inset-0 opacity-15">
                     <div className="absolute top-0 left-0 w-full h-full" style={{
-                      backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 40%)'
+                      backgroundImage: 'radial-gradient(circle at 25% 75%, rgba(255,255,255,0.4) 0%, transparent 45%), radial-gradient(circle at 75% 25%, rgba(255,255,255,0.25) 0%, transparent 35%)'
                     }} />
                   </div>
                   
-                  <div className="absolute top-5 left-5 flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: style.accentColor }}>
-                      <Gift className="w-5 h-5" style={{ color: selectedOption.color === 'gold' ? '#8B6914' : '#333' }} />
+                  <div className="absolute inset-[1px] rounded-[11px] border border-white/10" />
+                  
+                  <div className="absolute top-4 left-4 flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: `${style.accentColor}dd` }}>
+                      <Gift className="w-4 h-4" style={{ color: selectedOption.color === 'gold' ? '#8B6914' : '#333' }} />
                     </div>
-                    <span className="text-base font-bold tracking-wider" style={{ color: style.textColor }}>
-                      PetWash™
+                    <span className="text-sm font-bold tracking-wide" style={{ color: style.textColor }}>
+                      Pet Wash™
                     </span>
                   </div>
 
-                  <div className="absolute bottom-5 left-5 right-5">
-                    <p className="text-4xl sm:text-5xl font-black tracking-tight mb-1" style={{ color: style.textColor }}>
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <p className="text-3xl sm:text-4xl font-black tracking-tight mb-0.5" style={{ color: style.textColor, textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
                       {formattedValue}
                     </p>
-                    <p className="text-sm font-medium opacity-80" style={{ color: style.textColor }}>
+                    <p className="text-xs font-medium opacity-75 tracking-wide uppercase" style={{ color: style.textColor }}>
                       E-Gift Credit
                     </p>
                   </div>
 
-                  <div className="absolute top-5 right-5">
-                    <div className="w-12 h-8 rounded" style={{ 
-                      background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                  <div className="absolute top-4 right-4">
+                    <div className="w-10 h-7" style={{ 
+                      background: 'linear-gradient(145deg, #D4AF37 0%, #F5D76E 25%, #D4AF37 50%, #AA8C2C 100%)',
+                      borderRadius: '4px',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3)'
                     }} />
                   </div>
                 </div>
