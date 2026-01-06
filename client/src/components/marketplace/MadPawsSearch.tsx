@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
-  Search, MapPin, CalendarDays, Dog, Cat, ChevronDown,
+  Search, MapPin, CalendarDays, Dog, Cat, ChevronDown, ChevronUp,
   Home, Heart, Clock, Route, Car, GraduationCap, Sparkles,
-  Star, Shield, CheckCircle, Users
+  Star, Shield, CheckCircle, Users, Plus, Minus, AlertTriangle
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format, addDays } from "date-fns";
 import { useLanguage } from "@/lib/languageStore";
 
@@ -21,7 +23,40 @@ type ServiceType =
   | 'pet-taxi' 
   | 'training';
 
-type PetType = 'dog' | 'cat' | 'other';
+type PetType = 'dog' | 'cat' | 'fish' | 'bird' | 'rabbit' | 'reptile' | 'other';
+
+interface PetTypeOption {
+  id: PetType;
+  name: string;
+  nameHe: string;
+  emoji: string;
+}
+
+const PET_TYPES: PetTypeOption[] = [
+  { id: 'dog', name: 'Dog', nameHe: 'כלב', emoji: '🐕' },
+  { id: 'cat', name: 'Cat', nameHe: 'חתול', emoji: '🐈' },
+  { id: 'fish', name: 'Fish', nameHe: 'דג', emoji: '🐠' },
+  { id: 'bird', name: 'Bird', nameHe: 'ציפור', emoji: '🦜' },
+  { id: 'rabbit', name: 'Rabbit', nameHe: 'ארנב', emoji: '🐰' },
+  { id: 'reptile', name: 'Reptile', nameHe: 'זוחל', emoji: '🦎' },
+  { id: 'other', name: 'Other', nameHe: 'אחר', emoji: '🐾' },
+];
+
+interface SpecialService {
+  id: string;
+  name: string;
+  nameHe: string;
+  icon: string;
+}
+
+const SPECIAL_SERVICES: SpecialService[] = [
+  { id: 'water-plants', name: 'Water plants', nameHe: 'השקיית צמחים', icon: '🌱' },
+  { id: 'collect-mail', name: 'Collect mail', nameHe: 'איסוף דואר', icon: '📬' },
+  { id: 'take-trash', name: 'Take out trash', nameHe: 'הוצאת זבל', icon: '🗑️' },
+  { id: 'medication', name: 'Give medication', nameHe: 'מתן תרופות', icon: '💊' },
+  { id: 'grooming', name: 'Basic grooming', nameHe: 'טיפוח בסיסי', icon: '✨' },
+  { id: 'playtime', name: 'Extra playtime', nameHe: 'משחק נוסף', icon: '🎾' },
+];
 
 interface ServiceOption {
   id: ServiceType;
@@ -172,8 +207,12 @@ export interface SearchParams {
   location: string;
   service: ServiceType;
   petType: PetType;
+  petCount: number;
   startDate: Date | undefined;
   endDate: Date | undefined;
+  specialServices: string[];
+  specialRequests: string;
+  allergies: string;
 }
 
 export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', theme = 'pink' }: MadPawsSearchProps) {
@@ -189,27 +228,46 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
     platform === 'academy' ? 'training' : 'boarding'
   );
   const [petType, setPetType] = useState<PetType>('dog');
+  const [petCount, setPetCount] = useState(1);
   const [startDate, setStartDate] = useState<Date | undefined>(addDays(new Date(), 1));
   const [endDate, setEndDate] = useState<Date | undefined>(addDays(new Date(), 3));
   const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
+  const [petTypeDropdownOpen, setPetTypeDropdownOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [specialServices, setSpecialServices] = useState<string[]>([]);
+  const [specialRequests, setSpecialRequests] = useState('');
+  const [allergies, setAllergies] = useState('');
 
   const selectedServiceData = SERVICES.find(s => s.id === selectedService);
+  const selectedPetTypeData = PET_TYPES.find(p => p.id === petType);
 
   const handleSearch = () => {
     const params: SearchParams = {
       location,
       service: selectedService,
       petType,
+      petCount,
       startDate,
       endDate,
+      specialServices,
+      specialRequests,
+      allergies,
     };
 
     if (onSearch) {
       onSearch(params);
     } else {
       const route = getRouteForService(selectedService);
-      navigate(`${route}?location=${encodeURIComponent(location)}&pet=${petType}&start=${startDate?.toISOString()}&end=${endDate?.toISOString()}`);
+      navigate(`${route}?location=${encodeURIComponent(location)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString()}&end=${endDate?.toISOString()}`);
     }
+  };
+
+  const toggleSpecialService = (serviceId: string) => {
+    setSpecialServices(prev => 
+      prev.includes(serviceId) 
+        ? prev.filter(s => s !== serviceId)
+        : [...prev, serviceId]
+    );
   };
 
   const getRouteForService = (service: ServiceType): string => {
@@ -320,33 +378,75 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
 
           <div className="lg:col-span-1">
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
-              {isHebrew ? 'סוג חיית מחמד' : 'Pet Type'}
+              {isHebrew ? 'סוג וכמות חיות מחמד' : 'Pet Type & Count'}
             </label>
             <div className="flex gap-2 h-12">
-              <button
-                onClick={() => setPetType('dog')}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-xl border-2 transition-all ${
-                  petType === 'dog'
-                    ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText}`
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                }`}
-                data-testid="button-pet-dog"
-              >
-                <Dog className="h-5 w-5" />
-                <span className="font-medium text-sm">{isHebrew ? 'כלב' : 'Dog'}</span>
-              </button>
-              <button
-                onClick={() => setPetType('cat')}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-xl border-2 transition-all ${
-                  petType === 'cat'
-                    ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText}`
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                }`}
-                data-testid="button-pet-cat"
-              >
-                <Cat className="h-5 w-5" />
-                <span className="font-medium text-sm">{isHebrew ? 'חתול' : 'Cat'}</span>
-              </button>
+              <Popover open={petTypeDropdownOpen} onOpenChange={setPetTypeDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className="flex-1 h-12 px-3 flex items-center justify-between bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
+                    data-testid="dropdown-pet-type"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{selectedPetTypeData?.emoji}</span>
+                      <span className="text-gray-900 font-medium text-sm">
+                        {isHebrew ? selectedPetTypeData?.nameHe : selectedPetTypeData?.name}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="start">
+                  <div className="space-y-1">
+                    {PET_TYPES.map((pet) => {
+                      const isSelected = petType === pet.id;
+                      return (
+                        <button
+                          key={pet.id}
+                          onClick={() => {
+                            setPetType(pet.id);
+                            setPetTypeDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-colors text-left ${
+                            isSelected 
+                              ? `${t.selectedBg} ${t.selectedText}` 
+                              : 'hover:bg-gray-50'
+                          }`}
+                          data-testid={`option-pet-${pet.id}`}
+                        >
+                          <span className="text-lg">{pet.emoji}</span>
+                          <span className={`font-medium text-sm ${isSelected ? '' : 'text-gray-700'}`}>
+                            {isHebrew ? pet.nameHe : pet.name}
+                          </span>
+                          {isSelected && <CheckCircle className={`h-4 w-4 ${t.iconColor} ml-auto`} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <div className="flex items-center gap-1 h-12 px-2 bg-white border border-gray-200 rounded-xl">
+                <button
+                  onClick={() => setPetCount(Math.max(1, petCount - 1))}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  disabled={petCount <= 1}
+                  data-testid="button-pet-minus"
+                >
+                  <Minus className="h-4 w-4 text-gray-500" />
+                </button>
+                <span className="w-6 text-center font-semibold text-gray-900" data-testid="text-pet-count">
+                  {petCount}
+                </span>
+                <button
+                  onClick={() => setPetCount(Math.min(10, petCount + 1))}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  disabled={petCount >= 10}
+                  data-testid="button-pet-plus"
+                >
+                  <Plus className="h-4 w-4 text-gray-500" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -410,6 +510,77 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
             </Button>
           </div>
         </div>
+
+        <button
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="w-full flex items-center justify-center gap-2 mt-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          data-testid="button-toggle-advanced"
+        >
+          {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <span>{isHebrew ? 'אפשרויות נוספות' : 'More Options'}</span>
+        </button>
+
+        {showAdvanced && (
+          <div className="mt-4 pt-4 border-t border-gray-100 space-y-4" data-testid="section-advanced-options">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-2">
+                {isHebrew ? 'שירותים נוספים' : 'Additional Services'}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {SPECIAL_SERVICES.map((service) => {
+                  const isChecked = specialServices.includes(service.id);
+                  return (
+                    <button
+                      key={service.id}
+                      onClick={() => toggleSpecialService(service.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-all ${
+                        isChecked
+                          ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText} border`
+                          : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                      }`}
+                      data-testid={`checkbox-service-${service.id}`}
+                    >
+                      <span>{service.icon}</span>
+                      <span className="font-medium">{isHebrew ? service.nameHe : service.name}</span>
+                      {isChecked && <CheckCircle className="h-4 w-4" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                    <span>{isHebrew ? 'אלרגיות / מצב בריאותי' : 'Allergies / Health Conditions'}</span>
+                  </div>
+                </label>
+                <Input
+                  placeholder={isHebrew ? 'לדוגמה: אלרגיה לחיטה, סוכרת...' : 'e.g., Wheat allergy, diabetes...'}
+                  value={allergies}
+                  onChange={(e) => setAllergies(e.target.value)}
+                  className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                  data-testid="input-allergies"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                  {isHebrew ? 'בקשות מיוחדות' : 'Special Requests'}
+                </label>
+                <Input
+                  placeholder={isHebrew ? 'לדוגמה: צריך טיול ארוך, אוהב לשחק...' : 'e.g., Needs long walks, loves to play...'}
+                  value={specialRequests}
+                  onChange={(e) => setSpecialRequests(e.target.value)}
+                  className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                  data-testid="input-special-requests"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-center gap-4 mt-6 pt-4 border-t border-gray-100">
           <div className="flex items-center gap-2 text-sm text-gray-600">
