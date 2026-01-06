@@ -56,6 +56,56 @@ const SPECIAL_SERVICES: SpecialService[] = [
   { id: 'medication', name: 'Give medication', nameHe: 'מתן תרופות', icon: '💊' },
   { id: 'grooming', name: 'Basic grooming', nameHe: 'טיפוח בסיסי', icon: '✨' },
   { id: 'playtime', name: 'Extra playtime', nameHe: 'משחק נוסף', icon: '🎾' },
+  { id: 'bath', name: 'Bath / Wash', nameHe: 'רחצה', icon: '🛁' },
+  { id: 'nail-trim', name: 'Nail trimming', nameHe: 'גזירת ציפורניים', icon: '✂️' },
+  { id: 'pickup', name: 'Pick-up / Drop-off', nameHe: 'איסוף והחזרה', icon: '🚗' },
+  { id: 'photo-updates', name: 'Photo updates', nameHe: 'עדכוני תמונות', icon: '📸' },
+  { id: 'overnight', name: 'Overnight stay', nameHe: 'לינה', icon: '🌙' },
+  { id: 'training', name: 'Basic training', nameHe: 'אילוף בסיסי', icon: '🎓' },
+];
+
+interface PetSize {
+  id: string;
+  name: string;
+  nameHe: string;
+  weight: string;
+  weightHe: string;
+}
+
+const PET_SIZES: PetSize[] = [
+  { id: 'tiny', name: 'Tiny', nameHe: 'זעיר', weight: '0-5 kg', weightHe: '0-5 ק״ג' },
+  { id: 'small', name: 'Small', nameHe: 'קטן', weight: '5-10 kg', weightHe: '5-10 ק״ג' },
+  { id: 'medium', name: 'Medium', nameHe: 'בינוני', weight: '10-20 kg', weightHe: '10-20 ק״ג' },
+  { id: 'large', name: 'Large', nameHe: 'גדול', weight: '20-40 kg', weightHe: '20-40 ק״ג' },
+  { id: 'giant', name: 'Giant', nameHe: 'ענק', weight: '40+ kg', weightHe: '40+ ק״ג' },
+];
+
+interface EnergyLevel {
+  id: string;
+  name: string;
+  nameHe: string;
+  emoji: string;
+}
+
+const ENERGY_LEVELS: EnergyLevel[] = [
+  { id: 'low', name: 'Low / Calm', nameHe: 'נמוכה / רגוע', emoji: '😴' },
+  { id: 'medium', name: 'Medium', nameHe: 'בינונית', emoji: '🙂' },
+  { id: 'high', name: 'High / Active', nameHe: 'גבוהה / פעיל', emoji: '⚡' },
+  { id: 'very-high', name: 'Very High', nameHe: 'גבוהה מאוד', emoji: '🚀' },
+];
+
+interface SocialLevel {
+  id: string;
+  name: string;
+  nameHe: string;
+}
+
+const SOCIAL_LEVELS: SocialLevel[] = [
+  { id: 'great', name: 'Great', nameHe: 'מצוין' },
+  { id: 'good', name: 'Good with intro', nameHe: 'טוב עם היכרות' },
+  { id: 'nervous', name: 'Nervous / Shy', nameHe: 'עצבני / ביישן' },
+  { id: 'not-tested', name: 'Not tested', nameHe: 'לא נבדק' },
+  { id: 'no', name: 'Not good', nameHe: 'לא טוב' },
 ];
 
 interface ServiceOption {
@@ -213,6 +263,25 @@ export interface SearchParams {
   specialServices: string[];
   specialRequests: string;
   allergies: string;
+  petName: string;
+  petBreed: string;
+  petSize: string;
+  petAge: string;
+  petGender: string;
+  energyLevel: string;
+  isDesexed: boolean;
+  isMicrochipped: boolean;
+  isToiletTrained: boolean;
+  hasSeparationAnxiety: boolean;
+  socialWithDogs: string;
+  socialWithCats: string;
+  socialWithChildren: string;
+  feedingInstructions: string;
+  walkingPreferences: string;
+  vetName: string;
+  vetPhone: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
 }
 
 export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', theme = 'pink' }: MadPawsSearchProps) {
@@ -234,9 +303,30 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
   const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
   const [petTypeDropdownOpen, setPetTypeDropdownOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advancedTab, setAdvancedTab] = useState<'services' | 'profile' | 'behavior' | 'care' | 'emergency'>('services');
   const [specialServices, setSpecialServices] = useState<string[]>([]);
   const [specialRequests, setSpecialRequests] = useState('');
   const [allergies, setAllergies] = useState('');
+  
+  const [petName, setPetName] = useState('');
+  const [petBreed, setPetBreed] = useState('');
+  const [petSize, setPetSize] = useState('medium');
+  const [petAge, setPetAge] = useState('');
+  const [petGender, setPetGender] = useState('');
+  const [energyLevel, setEnergyLevel] = useState('medium');
+  const [isDesexed, setIsDesexed] = useState(false);
+  const [isMicrochipped, setIsMicrochipped] = useState(false);
+  const [isToiletTrained, setIsToiletTrained] = useState(true);
+  const [hasSeparationAnxiety, setHasSeparationAnxiety] = useState(false);
+  const [socialWithDogs, setSocialWithDogs] = useState('great');
+  const [socialWithCats, setSocialWithCats] = useState('not-tested');
+  const [socialWithChildren, setSocialWithChildren] = useState('great');
+  const [feedingInstructions, setFeedingInstructions] = useState('');
+  const [walkingPreferences, setWalkingPreferences] = useState('');
+  const [vetName, setVetName] = useState('');
+  const [vetPhone, setVetPhone] = useState('');
+  const [emergencyContactName, setEmergencyContactName] = useState('');
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
 
   const selectedServiceData = SERVICES.find(s => s.id === selectedService);
   const selectedPetTypeData = PET_TYPES.find(p => p.id === petType);
@@ -252,6 +342,25 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
       specialServices,
       specialRequests,
       allergies,
+      petName,
+      petBreed,
+      petSize,
+      petAge,
+      petGender,
+      energyLevel,
+      isDesexed,
+      isMicrochipped,
+      isToiletTrained,
+      hasSeparationAnxiety,
+      socialWithDogs,
+      socialWithCats,
+      socialWithChildren,
+      feedingInstructions,
+      walkingPreferences,
+      vetName,
+      vetPhone,
+      emergencyContactName,
+      emergencyContactPhone,
     };
 
     if (onSearch) {
@@ -521,64 +630,400 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
         </button>
 
         {showAdvanced && (
-          <div className="mt-4 pt-4 border-t border-gray-100 space-y-4" data-testid="section-advanced-options">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-2">
-                {isHebrew ? 'שירותים נוספים' : 'Additional Services'}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {SPECIAL_SERVICES.map((service) => {
-                  const isChecked = specialServices.includes(service.id);
-                  return (
-                    <button
-                      key={service.id}
-                      onClick={() => toggleSpecialService(service.id)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-all ${
-                        isChecked
-                          ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText} border`
-                          : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
-                      }`}
-                      data-testid={`checkbox-service-${service.id}`}
-                    >
-                      <span>{service.icon}</span>
-                      <span className="font-medium">{isHebrew ? service.nameHe : service.name}</span>
-                      {isChecked && <CheckCircle className="h-4 w-4" />}
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="mt-4 pt-4 border-t border-gray-100" data-testid="section-advanced-options">
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[
+                { id: 'services' as const, name: 'Services', nameHe: 'שירותים', icon: '✨' },
+                { id: 'profile' as const, name: 'Pet Profile', nameHe: 'פרופיל', icon: '🐾' },
+                { id: 'behavior' as const, name: 'Behavior', nameHe: 'התנהגות', icon: '💚' },
+                { id: 'care' as const, name: 'Care & Health', nameHe: 'טיפול ובריאות', icon: '🏥' },
+                { id: 'emergency' as const, name: 'Emergency', nameHe: 'חירום', icon: '🚨' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setAdvancedTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all ${
+                    advancedTab === tab.id
+                      ? `${t.selectedBg} ${t.selectedText}`
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  data-testid={`tab-${tab.id}`}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{isHebrew ? tab.nameHe : tab.name}</span>
+                </button>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                    <span>{isHebrew ? 'אלרגיות / מצב בריאותי' : 'Allergies / Health Conditions'}</span>
+            {advancedTab === 'services' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                    {isHebrew ? 'שירותים נוספים' : 'Additional Services'}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {SPECIAL_SERVICES.map((service) => {
+                      const isChecked = specialServices.includes(service.id);
+                      return (
+                        <button
+                          key={service.id}
+                          onClick={() => toggleSpecialService(service.id)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-all ${
+                            isChecked
+                              ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText} border`
+                              : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                          }`}
+                          data-testid={`checkbox-service-${service.id}`}
+                        >
+                          <span>{service.icon}</span>
+                          <span className="font-medium">{isHebrew ? service.nameHe : service.name}</span>
+                          {isChecked && <CheckCircle className="h-4 w-4" />}
+                        </button>
+                      );
+                    })}
                   </div>
-                </label>
-                <Input
-                  placeholder={isHebrew ? 'לדוגמה: אלרגיה לחיטה, סוכרת...' : 'e.g., Wheat allergy, diabetes...'}
-                  value={allergies}
-                  onChange={(e) => setAllergies(e.target.value)}
-                  className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
-                  data-testid="input-allergies"
-                />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                    {isHebrew ? 'בקשות מיוחדות' : 'Special Requests'}
+                  </label>
+                  <Textarea
+                    placeholder={isHebrew ? 'לדוגמה: צריך טיול ארוך, אוהב לשחק, צריך שקט בלילה...' : 'e.g., Needs long walks, loves to play, needs quiet at night...'}
+                    value={specialRequests}
+                    onChange={(e) => setSpecialRequests(e.target.value)}
+                    className={`border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                    rows={2}
+                    data-testid="input-special-requests"
+                  />
+                </div>
               </div>
+            )}
 
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                  {isHebrew ? 'בקשות מיוחדות' : 'Special Requests'}
-                </label>
-                <Input
-                  placeholder={isHebrew ? 'לדוגמה: צריך טיול ארוך, אוהב לשחק...' : 'e.g., Needs long walks, loves to play...'}
-                  value={specialRequests}
-                  onChange={(e) => setSpecialRequests(e.target.value)}
-                  className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
-                  data-testid="input-special-requests"
-                />
+            {advancedTab === 'profile' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      {isHebrew ? 'שם חיית המחמד' : 'Pet Name'}
+                    </label>
+                    <Input
+                      placeholder={isHebrew ? 'שם' : 'Name'}
+                      value={petName}
+                      onChange={(e) => setPetName(e.target.value)}
+                      className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                      data-testid="input-pet-name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      {isHebrew ? 'גזע' : 'Breed'}
+                    </label>
+                    <Input
+                      placeholder={isHebrew ? 'גזע' : 'Breed'}
+                      value={petBreed}
+                      onChange={(e) => setPetBreed(e.target.value)}
+                      className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                      data-testid="input-pet-breed"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      {isHebrew ? 'גיל' : 'Age'}
+                    </label>
+                    <Input
+                      placeholder={isHebrew ? 'לדוגמה: 3 שנים' : 'e.g., 3 years'}
+                      value={petAge}
+                      onChange={(e) => setPetAge(e.target.value)}
+                      className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                      data-testid="input-pet-age"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      {isHebrew ? 'מין' : 'Gender'}
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPetGender('male')}
+                        className={`flex-1 h-10 rounded-xl text-sm font-medium transition-all ${
+                          petGender === 'male' ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText} border` : 'bg-gray-50 border border-gray-200 text-gray-600'
+                        }`}
+                        data-testid="button-gender-male"
+                      >
+                        {isHebrew ? '♂ זכר' : '♂ Male'}
+                      </button>
+                      <button
+                        onClick={() => setPetGender('female')}
+                        className={`flex-1 h-10 rounded-xl text-sm font-medium transition-all ${
+                          petGender === 'female' ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText} border` : 'bg-gray-50 border border-gray-200 text-gray-600'
+                        }`}
+                        data-testid="button-gender-female"
+                      >
+                        {isHebrew ? '♀ נקבה' : '♀ Female'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      {isHebrew ? 'גודל' : 'Size'}
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {PET_SIZES.map((size) => (
+                        <button
+                          key={size.id}
+                          onClick={() => setPetSize(size.id)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            petSize === size.id
+                              ? `${t.selectedBg} ${t.selectedText}`
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                          data-testid={`button-size-${size.id}`}
+                        >
+                          {isHebrew ? size.nameHe : size.name} ({isHebrew ? size.weightHe : size.weight})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      {isHebrew ? 'רמת אנרגיה' : 'Energy Level'}
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {ENERGY_LEVELS.map((level) => (
+                        <button
+                          key={level.id}
+                          onClick={() => setEnergyLevel(level.id)}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            energyLevel === level.id
+                              ? `${t.selectedBg} ${t.selectedText}`
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                          data-testid={`button-energy-${level.id}`}
+                        >
+                          <span>{level.emoji}</span>
+                          <span>{isHebrew ? level.nameHe : level.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={isDesexed} onCheckedChange={(checked) => setIsDesexed(checked as boolean)} data-testid="checkbox-desexed" />
+                    <span className="text-sm text-gray-700">{isHebrew ? 'מעוקר/מסורס' : 'Desexed'}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={isMicrochipped} onCheckedChange={(checked) => setIsMicrochipped(checked as boolean)} data-testid="checkbox-microchipped" />
+                    <span className="text-sm text-gray-700">{isHebrew ? 'משובב' : 'Microchipped'}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={isToiletTrained} onCheckedChange={(checked) => setIsToiletTrained(checked as boolean)} data-testid="checkbox-toilet-trained" />
+                    <span className="text-sm text-gray-700">{isHebrew ? 'מחונך לצרכים' : 'Toilet Trained'}</span>
+                  </label>
+                </div>
               </div>
-            </div>
+            )}
+
+            {advancedTab === 'behavior' && (
+              <div className="space-y-4">
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={hasSeparationAnxiety} onCheckedChange={(checked) => setHasSeparationAnxiety(checked as boolean)} data-testid="checkbox-separation-anxiety" />
+                    <div>
+                      <span className="text-sm font-medium text-amber-800">{isHebrew ? 'חרדת נטישה' : 'Separation Anxiety'}</span>
+                      <p className="text-xs text-amber-600">{isHebrew ? 'הכלב/חתול מתקשה להישאר לבד' : 'Pet has difficulty being left alone'}</p>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                      🐕 {isHebrew ? 'חברותי עם כלבים' : 'Social with Dogs'}
+                    </label>
+                    <div className="space-y-1">
+                      {SOCIAL_LEVELS.map((level) => (
+                        <button
+                          key={level.id}
+                          onClick={() => setSocialWithDogs(level.id)}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                            socialWithDogs === level.id
+                              ? `${t.selectedBg} ${t.selectedText}`
+                              : 'hover:bg-gray-100 text-gray-600'
+                          }`}
+                          data-testid={`button-social-dogs-${level.id}`}
+                        >
+                          {isHebrew ? level.nameHe : level.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                      🐈 {isHebrew ? 'חברותי עם חתולים' : 'Social with Cats'}
+                    </label>
+                    <div className="space-y-1">
+                      {SOCIAL_LEVELS.map((level) => (
+                        <button
+                          key={level.id}
+                          onClick={() => setSocialWithCats(level.id)}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                            socialWithCats === level.id
+                              ? `${t.selectedBg} ${t.selectedText}`
+                              : 'hover:bg-gray-100 text-gray-600'
+                          }`}
+                          data-testid={`button-social-cats-${level.id}`}
+                        >
+                          {isHebrew ? level.nameHe : level.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                      👶 {isHebrew ? 'חברותי עם ילדים' : 'Social with Children'}
+                    </label>
+                    <div className="space-y-1">
+                      {SOCIAL_LEVELS.map((level) => (
+                        <button
+                          key={level.id}
+                          onClick={() => setSocialWithChildren(level.id)}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                            socialWithChildren === level.id
+                              ? `${t.selectedBg} ${t.selectedText}`
+                              : 'hover:bg-gray-100 text-gray-600'
+                          }`}
+                          data-testid={`button-social-children-${level.id}`}
+                        >
+                          {isHebrew ? level.nameHe : level.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {advancedTab === 'care' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                      <span>{isHebrew ? 'אלרגיות / מצב בריאותי' : 'Allergies / Health Conditions'}</span>
+                    </div>
+                  </label>
+                  <Textarea
+                    placeholder={isHebrew ? 'לדוגמה: אלרגיה לחיטה, סוכרת, בעיות מפרקים...' : 'e.g., Wheat allergy, diabetes, joint problems...'}
+                    value={allergies}
+                    onChange={(e) => setAllergies(e.target.value)}
+                    className={`border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                    rows={2}
+                    data-testid="input-allergies"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      🍽️ {isHebrew ? 'הוראות האכלה' : 'Feeding Instructions'}
+                    </label>
+                    <Textarea
+                      placeholder={isHebrew ? 'סוג מזון, כמות, זמני האכלה...' : 'Food type, quantity, feeding times...'}
+                      value={feedingInstructions}
+                      onChange={(e) => setFeedingInstructions(e.target.value)}
+                      className={`border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                      rows={2}
+                      data-testid="input-feeding"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      🚶 {isHebrew ? 'העדפות טיול' : 'Walking Preferences'}
+                    </label>
+                    <Textarea
+                      placeholder={isHebrew ? 'משך טיול, מסלולים מועדפים, פחדים...' : 'Walk duration, preferred routes, fears...'}
+                      value={walkingPreferences}
+                      onChange={(e) => setWalkingPreferences(e.target.value)}
+                      className={`border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                      rows={2}
+                      data-testid="input-walking"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {advancedTab === 'emergency' && (
+              <div className="space-y-4">
+                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                  <p className="text-xs text-blue-700">
+                    {isHebrew 
+                      ? 'פרטי החירום חיוניים למקרה של בעיה רפואית או מצב חירום. אנא וודאו שאיש הקשר זמין בזמן ששהייתכם מחוץ לבית.'
+                      : 'Emergency details are essential in case of medical issues. Please ensure your contact is available while you\'re away.'
+                    }
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      🏥 {isHebrew ? 'שם הווטרינר' : 'Vet Name'}
+                    </label>
+                    <Input
+                      placeholder={isHebrew ? 'שם המרפאה / הווטרינר' : 'Clinic / Vet name'}
+                      value={vetName}
+                      onChange={(e) => setVetName(e.target.value)}
+                      className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                      data-testid="input-vet-name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      📞 {isHebrew ? 'טלפון הווטרינר' : 'Vet Phone'}
+                    </label>
+                    <Input
+                      placeholder="050-000-0000"
+                      value={vetPhone}
+                      onChange={(e) => setVetPhone(e.target.value)}
+                      className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                      data-testid="input-vet-phone"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      🚨 {isHebrew ? 'איש קשר לחירום' : 'Emergency Contact Name'}
+                    </label>
+                    <Input
+                      placeholder={isHebrew ? 'שם מלא' : 'Full name'}
+                      value={emergencyContactName}
+                      onChange={(e) => setEmergencyContactName(e.target.value)}
+                      className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                      data-testid="input-emergency-name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      📱 {isHebrew ? 'טלפון לחירום' : 'Emergency Phone'}
+                    </label>
+                    <Input
+                      placeholder="050-000-0000"
+                      value={emergencyContactPhone}
+                      onChange={(e) => setEmergencyContactPhone(e.target.value)}
+                      className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
+                      data-testid="input-emergency-phone"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
