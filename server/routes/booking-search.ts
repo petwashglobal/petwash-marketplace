@@ -83,7 +83,11 @@ router.post('/', async (req, res) => {
 
     res.json(result);
   } catch (error: any) {
-    logger.error('[BookingSearch] Search error', { error: error.message });
+    logger.error('[BookingSearch] Search error', { 
+      error: error?.message || String(error),
+      stack: error?.stack,
+      name: error?.name
+    });
     
     if (error.name === 'ZodError') {
       return res.status(400).json({ 
@@ -92,7 +96,7 @@ router.post('/', async (req, res) => {
       });
     }
     
-    res.status(500).json({ error: 'Booking search failed' });
+    res.status(500).json({ error: 'Booking search failed', details: error?.message });
   }
 });
 
@@ -157,77 +161,83 @@ router.get('/cities', async (req, res) => {
  * Search pet sitters
  */
 async function searchSitters(filters: BookingSearchFilters, searchId: string): Promise<BookingSearchResult> {
-  const conditions = [eq(sitterProfiles.isActive, true)];
+  try {
+    const conditions = [eq(sitterProfiles.isActive, true)];
 
-  if (filters.city) {
-    conditions.push(ilike(sitterProfiles.city, `%${filters.city}%`));
+    if (filters.city) {
+      conditions.push(ilike(sitterProfiles.city, `%${filters.city}%`));
+    }
+
+    if (filters.area) {
+      conditions.push(or(
+        ilike(sitterProfiles.city, `%${filters.area}%`),
+        ilike(sitterProfiles.streetAddress, `%${filters.area}%`)
+      )!);
+    }
+
+    if (filters.minRating && filters.minRating > 0) {
+      conditions.push(gte(sitterProfiles.rating, filters.minRating.toString()));
+    }
+
+    if (filters.verifiedOnly) {
+      conditions.push(eq(sitterProfiles.isVerified, true));
+    }
+
+    const orderBy = filters.sortOrder === 'asc' 
+      ? asc(sitterProfiles.rating)
+      : desc(sitterProfiles.rating);
+
+    const results = await db.select()
+      .from(sitterProfiles)
+      .where(and(...conditions))
+      .orderBy(orderBy)
+      .limit(filters.limit || 20)
+      .offset(filters.offset || 0);
+
+    const [countResult] = await db.select({ count: sql`count(*)` })
+      .from(sitterProfiles)
+      .where(and(...conditions));
+
+    const total = Number(countResult?.count || 0);
+
+    const providers = results.map(sitter => {
+      const housePolicies = sitter.housePolicies as { maxPetsAtOnce?: number } | null;
+      return {
+        id: sitter.id,
+        userId: sitter.userId,
+        firstName: sitter.firstName,
+        lastName: sitter.lastName || '',
+        profilePictureUrl: sitter.profilePictureUrl,
+        rating: parseFloat(sitter.rating || '0'),
+        totalReviews: sitter.totalBookings || 0,
+        totalBookings: sitter.totalBookings || 0,
+        pricePerNight: sitter.pricePerDayCents ? Math.round(sitter.pricePerDayCents / 100) : null,
+        pricePerHour: null,
+        city: sitter.city || '',
+        isVerified: sitter.isVerified || false,
+        hasPoliceCheck: sitter.backgroundCheckStatus === 'passed',
+        yearsExperience: sitter.yearsOfExperience || 0,
+        acceptedPetTypes: sitter.specializations || ['dog', 'cat'],
+        maxPets: housePolicies?.maxPetsAtOnce || 1,
+        bio: sitter.bio,
+        badges: buildBadges(sitter),
+        responseTime: sitter.responseTimeMinutes 
+          ? `within ${sitter.responseTimeMinutes} minutes` 
+          : 'within 24 hours',
+        lastActive: sitter.updatedAt,
+      };
+    });
+
+    return {
+      providers,
+      total,
+      filters,
+      searchId,
+    };
+  } catch (error) {
+    logger.error('[BookingSearch] Sitter search error', { error: (error as Error).message });
+    return { providers: [], total: 0, filters, searchId };
   }
-
-  if (filters.area) {
-    conditions.push(or(
-      ilike(sitterProfiles.city, `%${filters.area}%`),
-      ilike(sitterProfiles.address, `%${filters.area}%`)
-    )!);
-  }
-
-  if (filters.minRating && filters.minRating > 0) {
-    conditions.push(gte(sitterProfiles.rating, filters.minRating.toString()));
-  }
-
-  if (filters.verifiedOnly) {
-    conditions.push(eq(sitterProfiles.isVerified, true));
-  }
-
-  if (filters.petCount) {
-    conditions.push(gte(sitterProfiles.maxPets, filters.petCount));
-  }
-
-  const orderBy = filters.sortOrder === 'asc' 
-    ? asc(sitterProfiles.rating)
-    : desc(sitterProfiles.rating);
-
-  const results = await db.select()
-    .from(sitterProfiles)
-    .where(and(...conditions))
-    .orderBy(orderBy)
-    .limit(filters.limit || 20)
-    .offset(filters.offset || 0);
-
-  const [countResult] = await db.select({ count: sql`count(*)` })
-    .from(sitterProfiles)
-    .where(and(...conditions));
-
-  const total = Number(countResult?.count || 0);
-
-  const providers = results.map(sitter => ({
-    id: sitter.id,
-    userId: sitter.userId,
-    firstName: sitter.firstName,
-    lastName: sitter.lastName || '',
-    profilePictureUrl: sitter.profilePictureUrl,
-    rating: parseFloat(sitter.rating || '0'),
-    totalReviews: sitter.reviewCount || 0,
-    totalBookings: sitter.totalBookings || 0,
-    pricePerNight: sitter.dailyRate ? parseInt(sitter.dailyRate) : null,
-    pricePerHour: sitter.hourlyRate ? parseInt(sitter.hourlyRate) : null,
-    city: sitter.city || '',
-    isVerified: sitter.isVerified || false,
-    hasPoliceCheck: sitter.policeCheckVerified || false,
-    yearsExperience: sitter.yearsOfExperience || 0,
-    acceptedPetTypes: sitter.acceptedPetTypes || ['dog', 'cat'],
-    maxPets: sitter.maxPets || 1,
-    bio: sitter.bio,
-    badges: buildBadges(sitter),
-    responseTime: sitter.responseTime || 'within 24 hours',
-    lastActive: sitter.lastActiveAt,
-  }));
-
-  return {
-    providers,
-    total,
-    filters,
-    searchId,
-  };
 }
 
 /**
@@ -558,11 +568,10 @@ function buildBadges(sitter: any): string[] {
   const badges: string[] = [];
   
   if (sitter.isVerified) badges.push('verified');
-  if (sitter.policeCheckVerified) badges.push('police_check');
-  if (sitter.hasYard) badges.push('has_yard');
-  if (sitter.hasFirstAid) badges.push('first_aid');
+  if (sitter.backgroundCheckStatus === 'passed') badges.push('police_check');
+  if (sitter.yardSize && sitter.yardSize !== 'none') badges.push('has_yard');
   if ((sitter.yearsOfExperience || 0) >= 5) badges.push('experienced');
-  if ((sitter.rating || 0) >= 4.8) badges.push('top_rated');
+  if (parseFloat(sitter.rating || '0') >= 4.8) badges.push('top_rated');
   if ((sitter.totalBookings || 0) >= 50) badges.push('trusted');
   
   return badges;
