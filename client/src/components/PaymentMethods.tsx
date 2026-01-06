@@ -1,12 +1,4 @@
 import { Shield, Lock } from 'lucide-react';
-import { 
-  SiVisa, 
-  SiMastercard, 
-  SiAmericanexpress,
-  SiApplepay, 
-  SiGooglepay,
-  SiPaypal
-} from 'react-icons/si';
 import { type Language } from '@/lib/i18n';
 
 interface PaymentMethodsProps {
@@ -15,6 +7,15 @@ interface PaymentMethodsProps {
   compact?: boolean;
 }
 
+const paymentLogos = [
+  { name: 'Visa', src: '/assets/payments/visa-color.svg' },
+  { name: 'Mastercard', src: '/assets/payments/mastercard-color.svg' },
+  { name: 'American Express', src: '/assets/payments/amex-color.svg' },
+  { name: 'Apple Pay', src: '/assets/payments/apple-pay-color.svg' },
+  { name: 'Google Pay', src: '/assets/payments/google-pay-color.svg' },
+  { name: 'Diners Club', src: '/assets/payments/diners-color.svg' },
+];
+
 export default function PaymentMethods({ 
   language = 'en', 
   showNayax = true,
@@ -22,58 +23,20 @@ export default function PaymentMethods({
 }: PaymentMethodsProps) {
   const isHebrew = language === 'he';
 
-  const paymentBrands = [
-    { 
-      name: 'Visa', 
-      icon: SiVisa, 
-      color: '#1A1F71',
-      bg: 'bg-white'
-    },
-    { 
-      name: 'Mastercard', 
-      icon: SiMastercard, 
-      color: '#EB001B',
-      bg: 'bg-white'
-    },
-    { 
-      name: 'Amex', 
-      icon: SiAmericanexpress, 
-      color: '#006FCF',
-      bg: 'bg-white'
-    },
-    { 
-      name: 'Apple Pay', 
-      icon: SiApplepay, 
-      color: '#000000',
-      bg: 'bg-white'
-    },
-    { 
-      name: 'Google Pay', 
-      icon: SiGooglepay, 
-      color: '#4285F4',
-      bg: 'bg-white'
-    },
-    { 
-      name: 'PayPal', 
-      icon: SiPaypal, 
-      color: '#003087',
-      bg: 'bg-white'
-    },
-  ];
-
   if (compact) {
     return (
       <div className="flex items-center justify-center gap-3" data-testid="payment-methods-compact">
-        {paymentBrands.map((brand) => (
+        {paymentLogos.map((logo) => (
           <div
-            key={brand.name}
+            key={logo.name}
             className="p-2 bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            title={brand.name}
-            data-testid={`payment-logo-${brand.name.toLowerCase().replace(' ', '-')}`}
+            data-testid={`payment-logo-${logo.name.toLowerCase().replace(/\s+/g, '-')}`}
           >
-            <brand.icon 
-              className="w-8 h-5" 
-              style={{ color: brand.color }}
+            <img 
+              src={logo.src} 
+              alt={logo.name}
+              className="h-6 w-auto object-contain"
+              loading="lazy"
             />
           </div>
         ))}
@@ -94,16 +57,17 @@ export default function PaymentMethods({
         className="flex flex-wrap items-center justify-center gap-4"
         data-testid="payment-icons-container"
       >
-        {paymentBrands.map((brand) => (
+        {paymentLogos.map((logo) => (
           <div
-            key={brand.name}
-            className="flex items-center justify-center p-3 bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-lg hover:scale-105 transition-all duration-200 min-w-[80px]"
-            title={brand.name}
-            data-testid={`payment-logo-${brand.name.toLowerCase().replace(' ', '-')}`}
+            key={logo.name}
+            className="flex items-center justify-center p-3 bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-lg hover:scale-105 transition-all duration-200"
+            data-testid={`payment-logo-${logo.name.toLowerCase().replace(/\s+/g, '-')}`}
           >
-            <brand.icon 
-              className="w-12 h-8" 
-              style={{ color: brand.color }}
+            <img 
+              src={logo.src} 
+              alt={logo.name}
+              className="h-8 w-auto object-contain"
+              loading="lazy"
             />
           </div>
         ))}
