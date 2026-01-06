@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -7,12 +9,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { 
   Search, MapPin, CalendarDays, Dog, Cat, ChevronDown, ChevronUp,
   Home, Heart, Clock, Route, Car, GraduationCap, Sparkles,
-  Star, Shield, CheckCircle, Users, Plus, Minus, AlertTriangle
+  Star, Shield, CheckCircle, Users, Plus, Minus, AlertTriangle, Loader2
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format, addDays } from "date-fns";
 import { useLanguage } from "@/lib/languageStore";
+import { useToast } from "@/hooks/use-toast";
 
 type ServiceType = 
   | 'boarding' 
@@ -21,25 +24,29 @@ type ServiceType =
   | 'drop-in' 
   | 'dog-walking' 
   | 'pet-taxi' 
-  | 'training';
+  | 'training'
+  | 'grooming';
 
-type PetType = 'dog' | 'cat' | 'fish' | 'bird' | 'rabbit' | 'reptile' | 'other';
+type PetType = 'puppy' | 'dog' | 'cat' | 'bird' | 'rabbit' | 'fish' | 'reptile' | 'other';
 
 interface PetTypeOption {
   id: PetType;
   name: string;
   nameHe: string;
   emoji: string;
+  description: string;
+  descriptionHe: string;
 }
 
 const PET_TYPES: PetTypeOption[] = [
-  { id: 'dog', name: 'Dog', nameHe: 'כלב', emoji: '🐕' },
-  { id: 'cat', name: 'Cat', nameHe: 'חתול', emoji: '🐈' },
-  { id: 'fish', name: 'Fish', nameHe: 'דג', emoji: '🐠' },
-  { id: 'bird', name: 'Bird', nameHe: 'ציפור', emoji: '🦜' },
-  { id: 'rabbit', name: 'Rabbit', nameHe: 'ארנב', emoji: '🐰' },
-  { id: 'reptile', name: 'Reptile', nameHe: 'זוחל', emoji: '🦎' },
-  { id: 'other', name: 'Other', nameHe: 'אחר', emoji: '🐾' },
+  { id: 'puppy', name: 'Puppy', nameHe: 'גור', emoji: '🐶', description: 'Under 6 months', descriptionHe: 'עד 6 חודשים' },
+  { id: 'dog', name: 'Dog', nameHe: 'כלב', emoji: '🐕', description: 'Over 6 months', descriptionHe: 'מעל 6 חודשים' },
+  { id: 'cat', name: 'Cat', nameHe: 'חתול', emoji: '🐈', description: 'Including kittens', descriptionHe: 'כולל גורים' },
+  { id: 'bird', name: 'Bird', nameHe: 'ציפור', emoji: '🦜', description: 'All birds', descriptionHe: 'כל הציפורים' },
+  { id: 'rabbit', name: 'Rabbit', nameHe: 'ארנב', emoji: '🐰', description: 'Bunnies & rabbits', descriptionHe: 'ארנבים וארנבונים' },
+  { id: 'fish', name: 'Fish', nameHe: 'דגים', emoji: '🐠', description: 'Aquarium care', descriptionHe: 'טיפול באקווריום' },
+  { id: 'reptile', name: 'Reptile', nameHe: 'זוחל', emoji: '🦎', description: 'Lizards, snakes', descriptionHe: 'לטאות, נחשים' },
+  { id: 'other', name: 'Other', nameHe: 'אחר', emoji: '🐾', description: 'Small animals', descriptionHe: 'חיות קטנות' },
 ];
 
 interface SpecialService {
@@ -117,11 +124,24 @@ interface ServiceOption {
   descriptionHe: string;
 }
 
+type ServiceCategory = 'overnight' | 'daytime';
+
+interface ServiceCategoryOption {
+  id: ServiceCategory;
+  name: string;
+  nameHe: string;
+}
+
+const SERVICE_CATEGORIES: ServiceCategoryOption[] = [
+  { id: 'overnight', name: 'Overnight services', nameHe: 'שירותי לילה' },
+  { id: 'daytime', name: 'Daytime services', nameHe: 'שירותי יום' },
+];
+
 const SERVICES: ServiceOption[] = [
   { 
     id: 'boarding', 
-    name: 'Boarding', 
-    nameHe: 'לינה בבית המארח',
+    name: 'Hosting', 
+    nameHe: 'אירוח',
     icon: Home,
     description: 'Your pet stays at the sitter\'s home',
     descriptionHe: 'חיית המחמד שלך נשארת בבית השמרטף'
@@ -173,6 +193,14 @@ const SERVICES: ServiceOption[] = [
     icon: GraduationCap,
     description: 'Professional pet training',
     descriptionHe: 'אילוף מקצועי'
+  },
+  { 
+    id: 'grooming', 
+    name: 'Grooming', 
+    nameHe: 'טיפוח',
+    icon: Sparkles,
+    description: 'Professional pet grooming',
+    descriptionHe: 'טיפוח מקצועי'
   },
 ];
 
@@ -246,8 +274,28 @@ const THEMES: Record<string, SearchTheme> = {
   },
 };
 
+export interface BookingSearchResponse {
+  providers: Array<{
+    id: number;
+    userId: string;
+    firstName: string;
+    lastName: string;
+    profilePictureUrl: string | null;
+    rating: number;
+    totalReviews: number;
+    pricePerNight: number | null;
+    pricePerHour: number | null;
+    city: string;
+    isVerified: boolean;
+    bio: string | null;
+    badges: string[];
+  }>;
+  total: number;
+  searchId: string;
+}
+
 interface MadPawsSearchProps {
-  onSearch?: (params: SearchParams) => void;
+  onSearch?: (params: SearchParams, results?: BookingSearchResponse) => void;
   showResults?: boolean;
   platform?: 'sitter-suite' | 'walk-my-pet' | 'pettrek' | 'academy' | 'all';
   theme?: 'pink' | 'emerald' | 'blue' | 'purple' | 'amber';
@@ -327,48 +375,97 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
   const [vetPhone, setVetPhone] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
+  const [requestMeetAndGreet, setRequestMeetAndGreet] = useState(false);
 
+  const { toast } = useToast();
   const selectedServiceData = SERVICES.find(s => s.id === selectedService);
   const selectedPetTypeData = PET_TYPES.find(p => p.id === petType);
 
+  const mapServiceToBackend = (service: ServiceType): string => {
+    const serviceMap: Record<ServiceType, string> = {
+      'boarding': 'pet_sitting',
+      'house-sitting': 'pet_sitting',
+      'daycare': 'daycare',
+      'drop-in': 'pet_sitting',
+      'dog-walking': 'dog_walking',
+      'pet-taxi': 'pet_taxi',
+      'training': 'training',
+      'grooming': 'grooming',
+    };
+    return serviceMap[service];
+  };
+
+  const mapPetTypeToBackend = (pet: PetType): string => {
+    if (pet === 'puppy') return 'dog';
+    return pet;
+  };
+
+  const searchMutation = useMutation({
+    mutationFn: async (searchData: object) => {
+      const response = await apiRequest('POST', '/api/booking-search', searchData);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (onSearch) {
+        onSearch({
+          location,
+          service: selectedService,
+          petType,
+          petCount,
+          startDate,
+          endDate,
+          specialServices,
+          specialRequests,
+          allergies,
+          petName,
+          petBreed,
+          petSize,
+          petAge,
+          petGender,
+          energyLevel,
+          isDesexed,
+          isMicrochipped,
+          isToiletTrained,
+          hasSeparationAnxiety,
+          socialWithDogs,
+          socialWithCats,
+          socialWithChildren,
+          feedingInstructions,
+          walkingPreferences,
+          vetName,
+          vetPhone,
+          emergencyContactName,
+          emergencyContactPhone,
+        }, data);
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: isHebrew ? 'שגיאה בחיפוש' : 'Search Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleSearch = () => {
-    const params: SearchParams = {
-      location,
-      service: selectedService,
-      petType,
+    const backendFilters = {
+      serviceType: mapServiceToBackend(selectedService),
       petCount,
-      startDate,
-      endDate,
-      specialServices,
-      specialRequests,
-      allergies,
-      petName,
-      petBreed,
-      petSize,
-      petAge,
-      petGender,
-      energyLevel,
-      isDesexed,
-      isMicrochipped,
-      isToiletTrained,
-      hasSeparationAnxiety,
-      socialWithDogs,
-      socialWithCats,
-      socialWithChildren,
-      feedingInstructions,
-      walkingPreferences,
-      vetName,
-      vetPhone,
-      emergencyContactName,
-      emergencyContactPhone,
+      petTypes: [mapPetTypeToBackend(petType)],
+      petSizes: petSize ? [petSize] : undefined,
+      city: location || undefined,
+      area: location || undefined,
+      startDate: startDate?.toISOString(),
+      endDate: endDate?.toISOString(),
+      medicationAdmin: specialServices.includes('medication'),
+      specialNeeds: hasSeparationAnxiety,
     };
 
-    if (onSearch) {
-      onSearch(params);
-    } else {
-      const route = getRouteForService(selectedService);
-      navigate(`${route}?location=${encodeURIComponent(location)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString()}&end=${endDate?.toISOString()}`);
-    }
+    searchMutation.mutate(backendFilters);
+
+    const route = getRouteForService(selectedService);
+    navigate(`${route}?location=${encodeURIComponent(location)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString() || ''}&end=${endDate?.toISOString() || ''}`);
   };
 
   const toggleSpecialService = (serviceId: string) => {
@@ -505,7 +602,7 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
                     <ChevronDown className="h-4 w-4 text-gray-400" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-48 p-2" align="start">
+                <PopoverContent className="w-64 p-2" align="start">
                   <div className="space-y-1">
                     {PET_TYPES.map((pet) => {
                       const isSelected = petType === pet.id;
@@ -523,11 +620,16 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
                           }`}
                           data-testid={`option-pet-${pet.id}`}
                         >
-                          <span className="text-lg">{pet.emoji}</span>
-                          <span className={`font-medium text-sm ${isSelected ? '' : 'text-gray-700'}`}>
-                            {isHebrew ? pet.nameHe : pet.name}
-                          </span>
-                          {isSelected && <CheckCircle className={`h-4 w-4 ${t.iconColor} ml-auto`} />}
+                          <span className="text-xl">{pet.emoji}</span>
+                          <div className="flex-1">
+                            <span className={`font-medium text-sm block ${isSelected ? '' : 'text-gray-700'}`}>
+                              {isHebrew ? pet.nameHe : pet.name}
+                            </span>
+                            <span className={`text-xs ${isSelected ? 'opacity-80' : 'text-gray-500'}`}>
+                              {isHebrew ? pet.descriptionHe : pet.description}
+                            </span>
+                          </div>
+                          {isSelected && <CheckCircle className={`h-4 w-4 ${t.iconColor}`} />}
                         </button>
                       );
                     })}
@@ -611,11 +713,19 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
           <div className="lg:col-span-1 flex items-end">
             <Button
               onClick={handleSearch}
-              className={`w-full h-12 bg-gradient-to-r ${t.buttonGradient} text-white rounded-xl font-semibold shadow-lg ${t.buttonShadow} transition-all hover:shadow-xl`}
+              disabled={searchMutation.isPending}
+              className={`w-full h-12 bg-gradient-to-r ${t.buttonGradient} text-white rounded-xl font-semibold shadow-lg ${t.buttonShadow} transition-all hover:shadow-xl disabled:opacity-50`}
               data-testid="button-search"
             >
-              <Search className="h-5 w-5 mr-2" />
-              {isHebrew ? 'חיפוש' : 'Search'}
+              {searchMutation.isPending ? (
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                <Search className="h-5 w-5 mr-2" />
+              )}
+              {searchMutation.isPending 
+                ? (isHebrew ? 'מחפש...' : 'Searching...') 
+                : (isHebrew ? 'חיפוש' : 'Search')
+              }
             </Button>
           </div>
         </div>
@@ -657,6 +767,27 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
 
             {advancedTab === 'services' && (
               <div className="space-y-4">
+                <div className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <Checkbox 
+                      checked={requestMeetAndGreet} 
+                      onCheckedChange={(checked) => setRequestMeetAndGreet(checked as boolean)} 
+                      data-testid="checkbox-meet-greet" 
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-purple-800 flex items-center gap-2">
+                        🤝 {isHebrew ? 'בקש פגישת היכרות' : 'Request Meet & Greet'}
+                      </span>
+                      <p className="text-xs text-purple-600">
+                        {isHebrew 
+                          ? 'פגוש את השמרטף לפני ההזמנה לוודא התאמה'
+                          : 'Meet the sitter before booking to ensure a good fit'
+                        }
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-2">
                     {isHebrew ? 'שירותים נוספים' : 'Additional Services'}
