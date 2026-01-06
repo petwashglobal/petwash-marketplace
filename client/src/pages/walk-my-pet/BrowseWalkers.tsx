@@ -157,6 +157,7 @@ export default function BrowseWalkers() {
               <MadPawsSearch 
                 onSearch={handleSearch} 
                 platform="walk-my-pet"
+                theme="emerald"
               />
             </div>
           </div>
@@ -203,6 +204,7 @@ export default function BrowseWalkers() {
                   priceUnit="hour"
                   priceUnitHe="שעה"
                   verified={walker.verified}
+                  theme="emerald"
                   specialties={[
                     isHebrew ? `${walker.yearsExperience} שנות ניסיון` : `${walker.yearsExperience} years exp.`,
                     isHebrew ? 'GPS בזמן אמת' : 'Live GPS'

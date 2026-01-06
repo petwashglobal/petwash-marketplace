@@ -91,10 +91,69 @@ const SERVICES: ServiceOption[] = [
   },
 ];
 
+export interface SearchTheme {
+  accent: 'pink' | 'emerald' | 'blue' | 'purple' | 'amber';
+  buttonGradient: string;
+  buttonShadow: string;
+  selectedBorder: string;
+  selectedBg: string;
+  selectedText: string;
+  iconColor: string;
+}
+
+const THEMES: Record<string, SearchTheme> = {
+  pink: {
+    accent: 'pink',
+    buttonGradient: 'from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600',
+    buttonShadow: 'shadow-pink-500/25 hover:shadow-pink-500/30',
+    selectedBorder: 'border-pink-500',
+    selectedBg: 'bg-pink-50',
+    selectedText: 'text-pink-700',
+    iconColor: 'text-pink-500',
+  },
+  emerald: {
+    accent: 'emerald',
+    buttonGradient: 'from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600',
+    buttonShadow: 'shadow-emerald-500/25 hover:shadow-emerald-500/30',
+    selectedBorder: 'border-emerald-500',
+    selectedBg: 'bg-emerald-50',
+    selectedText: 'text-emerald-700',
+    iconColor: 'text-emerald-500',
+  },
+  blue: {
+    accent: 'blue',
+    buttonGradient: 'from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600',
+    buttonShadow: 'shadow-blue-500/25 hover:shadow-blue-500/30',
+    selectedBorder: 'border-blue-500',
+    selectedBg: 'bg-blue-50',
+    selectedText: 'text-blue-700',
+    iconColor: 'text-blue-500',
+  },
+  purple: {
+    accent: 'purple',
+    buttonGradient: 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600',
+    buttonShadow: 'shadow-purple-500/25 hover:shadow-purple-500/30',
+    selectedBorder: 'border-purple-500',
+    selectedBg: 'bg-purple-50',
+    selectedText: 'text-purple-700',
+    iconColor: 'text-purple-500',
+  },
+  amber: {
+    accent: 'amber',
+    buttonGradient: 'from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600',
+    buttonShadow: 'shadow-amber-500/25 hover:shadow-amber-500/30',
+    selectedBorder: 'border-amber-500',
+    selectedBg: 'bg-amber-50',
+    selectedText: 'text-amber-700',
+    iconColor: 'text-amber-500',
+  },
+};
+
 interface MadPawsSearchProps {
   onSearch?: (params: SearchParams) => void;
   showResults?: boolean;
   platform?: 'sitter-suite' | 'walk-my-pet' | 'pettrek' | 'academy' | 'all';
+  theme?: 'pink' | 'emerald' | 'blue' | 'purple' | 'amber';
 }
 
 export interface SearchParams {
@@ -105,13 +164,18 @@ export interface SearchParams {
   endDate: Date | undefined;
 }
 
-export function MadPawsSearch({ onSearch, showResults = true, platform = 'all' }: MadPawsSearchProps) {
+export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', theme = 'pink' }: MadPawsSearchProps) {
   const [, navigate] = useLocation();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
+  const t = THEMES[theme] || THEMES.pink;
 
   const [location, setLocation] = useState('');
-  const [selectedService, setSelectedService] = useState<ServiceType>('boarding');
+  const [selectedService, setSelectedService] = useState<ServiceType>(
+    platform === 'walk-my-pet' ? 'dog-walking' : 
+    platform === 'pettrek' ? 'pet-taxi' : 
+    platform === 'academy' ? 'training' : 'boarding'
+  );
   const [petType, setPetType] = useState<PetType>('dog');
   const [startDate, setStartDate] = useState<Date | undefined>(addDays(new Date(), 1));
   const [endDate, setEndDate] = useState<Date | undefined>(addDays(new Date(), 3));
@@ -180,7 +244,7 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all' }
                 placeholder={isHebrew ? 'הזן עיר או כתובת' : 'Enter city or address'}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="pl-10 h-12 border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                className={`pl-10 h-12 border-gray-200 rounded-xl focus:ring-2 focus:ring-${t.accent}-500 focus:border-${t.accent}-500`}
                 data-testid="input-search-location"
               />
             </div>
@@ -197,7 +261,7 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all' }
                   data-testid="dropdown-service-type"
                 >
                   <div className="flex items-center gap-2">
-                    {selectedServiceData && <selectedServiceData.icon className="h-5 w-5 text-pink-500" />}
+                    {selectedServiceData && <selectedServiceData.icon className={`h-5 w-5 ${t.iconColor}`} />}
                     <span className="text-gray-900 font-medium">
                       {isHebrew ? selectedServiceData?.nameHe : selectedServiceData?.name}
                     </span>
@@ -219,21 +283,21 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all' }
                         }}
                         className={`w-full flex items-start gap-3 p-3 rounded-xl transition-colors text-left ${
                           isSelected 
-                            ? 'bg-pink-50 border-2 border-pink-500' 
+                            ? `${t.selectedBg} border-2 ${t.selectedBorder}` 
                             : 'hover:bg-gray-50 border-2 border-transparent'
                         }`}
                         data-testid={`option-service-${service.id}`}
                       >
-                        <Icon className={`h-5 w-5 mt-0.5 ${isSelected ? 'text-pink-500' : 'text-gray-400'}`} />
+                        <Icon className={`h-5 w-5 mt-0.5 ${isSelected ? t.iconColor : 'text-gray-400'}`} />
                         <div>
-                          <div className={`font-medium ${isSelected ? 'text-pink-700' : 'text-gray-900'}`}>
+                          <div className={`font-medium ${isSelected ? t.selectedText : 'text-gray-900'}`}>
                             {isHebrew ? service.nameHe : service.name}
                           </div>
                           <div className="text-xs text-gray-500">
                             {isHebrew ? service.descriptionHe : service.description}
                           </div>
                         </div>
-                        {isSelected && <CheckCircle className="h-5 w-5 text-pink-500 ml-auto" />}
+                        {isSelected && <CheckCircle className={`h-5 w-5 ${t.iconColor} ml-auto`} />}
                       </button>
                     );
                   })}
@@ -251,7 +315,7 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all' }
                 onClick={() => setPetType('dog')}
                 className={`flex-1 flex items-center justify-center gap-2 rounded-xl border-2 transition-all ${
                   petType === 'dog'
-                    ? 'bg-pink-50 border-pink-500 text-pink-700'
+                    ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText}`
                     : 'border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
                 data-testid="button-pet-dog"
@@ -263,7 +327,7 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all' }
                 onClick={() => setPetType('cat')}
                 className={`flex-1 flex items-center justify-center gap-2 rounded-xl border-2 transition-all ${
                   petType === 'cat'
-                    ? 'bg-pink-50 border-pink-500 text-pink-700'
+                    ? `${t.selectedBg} ${t.selectedBorder} ${t.selectedText}`
                     : 'border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
                 data-testid="button-pet-cat"
@@ -326,7 +390,7 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all' }
           <div className="lg:col-span-1 flex items-end">
             <Button
               onClick={handleSearch}
-              className="w-full h-12 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-xl font-semibold shadow-lg shadow-pink-500/25 transition-all hover:shadow-xl hover:shadow-pink-500/30"
+              className={`w-full h-12 bg-gradient-to-r ${t.buttonGradient} text-white rounded-xl font-semibold shadow-lg ${t.buttonShadow} transition-all hover:shadow-xl`}
               data-testid="button-search"
             >
               <Search className="h-5 w-5 mr-2" />
@@ -367,6 +431,7 @@ interface ProviderCardProps {
   distance?: string;
   verified: boolean;
   specialties?: string[];
+  theme?: 'pink' | 'emerald' | 'blue' | 'purple' | 'amber';
   onClick: () => void;
 }
 
@@ -383,10 +448,12 @@ export function MadPawsProviderCard({
   distance,
   verified,
   specialties = [],
+  theme = 'pink',
   onClick,
 }: ProviderCardProps) {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
+  const t = THEMES[theme] || THEMES.pink;
 
   return (
     <div
@@ -403,7 +470,7 @@ export function MadPawsProviderCard({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <div className="w-20 h-20 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-3xl font-medium text-pink-600 shadow-lg">
+            <div className={`w-20 h-20 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-3xl font-medium ${t.selectedText} shadow-lg`}>
               {name.charAt(0)}
             </div>
           </div>
@@ -446,7 +513,7 @@ export function MadPawsProviderCard({
             {specialties.slice(0, 3).map((specialty, idx) => (
               <span 
                 key={idx}
-                className="px-2 py-0.5 bg-pink-50 text-pink-600 text-xs font-medium rounded-full"
+                className={`px-2 py-0.5 ${t.selectedBg} ${t.selectedText} text-xs font-medium rounded-full`}
               >
                 {specialty}
               </span>
@@ -463,7 +530,7 @@ export function MadPawsProviderCard({
           </div>
           <Button
             size="sm"
-            className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-full px-4 shadow-md"
+            className={`bg-gradient-to-r ${t.buttonGradient} text-white rounded-full px-4 shadow-md`}
             onClick={(e) => {
               e.stopPropagation();
               onClick();

@@ -79,6 +79,7 @@ export default function BrowseSitters() {
               <MadPawsSearch 
                 onSearch={handleSearch} 
                 platform="sitter-suite"
+                theme="pink"
               />
             </div>
           </div>
@@ -209,6 +210,7 @@ export default function BrowseSitters() {
                     priceUnit="day"
                     priceUnitHe="יום"
                     verified={sitter.isVerified}
+                    theme="pink"
                     specialties={[
                       isHebrew ? `${sitter.yearsOfExperience} שנות ניסיון` : `${sitter.yearsOfExperience} years exp.`
                     ]}
