@@ -41,6 +41,3 @@ integrations = ["javascript_database:1.0.0", "javascript_auth_all_persistence:1.
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 9005
