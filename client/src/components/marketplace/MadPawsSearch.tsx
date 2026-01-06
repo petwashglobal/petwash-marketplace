@@ -99,6 +99,8 @@ export interface SearchTheme {
   selectedBg: string;
   selectedText: string;
   iconColor: string;
+  focusRing: string;
+  focusBorder: string;
 }
 
 const THEMES: Record<string, SearchTheme> = {
@@ -110,6 +112,8 @@ const THEMES: Record<string, SearchTheme> = {
     selectedBg: 'bg-pink-50',
     selectedText: 'text-pink-700',
     iconColor: 'text-pink-500',
+    focusRing: 'focus:ring-pink-500',
+    focusBorder: 'focus:border-pink-500',
   },
   emerald: {
     accent: 'emerald',
@@ -119,6 +123,8 @@ const THEMES: Record<string, SearchTheme> = {
     selectedBg: 'bg-emerald-50',
     selectedText: 'text-emerald-700',
     iconColor: 'text-emerald-500',
+    focusRing: 'focus:ring-emerald-500',
+    focusBorder: 'focus:border-emerald-500',
   },
   blue: {
     accent: 'blue',
@@ -128,6 +134,8 @@ const THEMES: Record<string, SearchTheme> = {
     selectedBg: 'bg-blue-50',
     selectedText: 'text-blue-700',
     iconColor: 'text-blue-500',
+    focusRing: 'focus:ring-blue-500',
+    focusBorder: 'focus:border-blue-500',
   },
   purple: {
     accent: 'purple',
@@ -137,6 +145,8 @@ const THEMES: Record<string, SearchTheme> = {
     selectedBg: 'bg-purple-50',
     selectedText: 'text-purple-700',
     iconColor: 'text-purple-500',
+    focusRing: 'focus:ring-purple-500',
+    focusBorder: 'focus:border-purple-500',
   },
   amber: {
     accent: 'amber',
@@ -146,6 +156,8 @@ const THEMES: Record<string, SearchTheme> = {
     selectedBg: 'bg-amber-50',
     selectedText: 'text-amber-700',
     iconColor: 'text-amber-500',
+    focusRing: 'focus:ring-amber-500',
+    focusBorder: 'focus:border-amber-500',
   },
 };
 
@@ -244,7 +256,7 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
                 placeholder={isHebrew ? 'הזן עיר או כתובת' : 'Enter city or address'}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className={`pl-10 h-12 border-gray-200 rounded-xl focus:ring-2 focus:ring-${t.accent}-500 focus:border-${t.accent}-500`}
+                className={`pl-10 h-12 border-gray-200 rounded-xl focus:ring-2 ${t.focusRing} ${t.focusBorder}`}
                 data-testid="input-search-location"
               />
             </div>
