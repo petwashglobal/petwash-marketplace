@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
 import { getActivePaymentMethod } from "@/lib/paymentConfig";
+import { GooglePlacesAutocomplete, PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -313,12 +314,12 @@ export default function SitterBookingFlow() {
               <div className="mb-2 text-sm font-semibold text-slate-700">
                 כתובת מלאה
               </div>
-              <input
+              <GooglePlacesAutocomplete
                 value={address}
-                onChange={e => setAddress(e.target.value)}
-                placeholder="רחוב, מספר, עיר, קומה/כניסה"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                data-testid="input-address"
+                onChange={(value) => setAddress(value)}
+                onPlaceSelected={(place: PlaceDetails) => setAddress(place.formattedAddress)}
+                placeholder="הקלד כתובת..."
+                country={['il']}
               />
             </section>
 

@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { GooglePlacesAutocomplete, PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import type { CareerPosition } from '@shared/schema';
 
 const roleIcons: Record<string, any> = {
@@ -787,11 +788,26 @@ export default function Careers() {
               </div>
               <div>
                 <Label htmlFor="address">{isRTL ? 'כתובת' : 'Address'} *</Label>
-                <Input 
-                  id="address"
+                <GooglePlacesAutocomplete
                   value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  data-testid="input-address"
+                  onChange={(value, details) => {
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      address: value,
+                      city: details?.city || prev.city,
+                      country: details?.country || prev.country
+                    }));
+                  }}
+                  onPlaceSelected={(place: PlaceDetails) => {
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      address: place.formattedAddress,
+                      city: place.city || prev.city,
+                      country: place.country || prev.country
+                    }));
+                  }}
+                  placeholder={isRTL ? 'הקלד כתובת...' : 'Start typing your address...'}
+                  country={['il']}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">

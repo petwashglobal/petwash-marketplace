@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { type Language } from '@/lib/i18n';
 import { kenzoAvatarService } from '@/services/KenzoAvatarChatService';
 import { AIChatAssistant } from '@/components/AIChatAssistant';
+import { GooglePlacesAutocomplete, PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import {
   Search,
   Heart,
@@ -350,11 +351,13 @@ export default function PawFinder({ language }: PawFinderProps) {
                       <MapPin className="w-4 h-4 inline mr-1" />
                       {content.location} *
                     </label>
-                    <Input
-                      required
+                    <GooglePlacesAutocomplete
                       value={formData.location}
-                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      placeholder={isHebrew ? "כתובת מדויקת" : "Exact address"}
+                      onChange={(value) => setFormData({ ...formData, location: value })}
+                      onPlaceSelected={(place: PlaceDetails) => setFormData({ ...formData, location: place.formattedAddress })}
+                      placeholder={isHebrew ? "הקלד כתובת..." : "Start typing address..."}
+                      country={['il']}
+                      required
                     />
                   </div>
 

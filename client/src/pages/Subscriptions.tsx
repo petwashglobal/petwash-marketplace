@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Check, Package, Sparkles, Crown, Heart } from "lucide-react";
+import { GooglePlacesAutocomplete, PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { useLocation } from "wouter";
 
 const petProfileSchema = z.object({
@@ -327,7 +328,25 @@ export default function Subscriptions() {
                         <FormItem>
                           <FormLabel>Street Address *</FormLabel>
                           <FormControl>
-                            <Input placeholder="123 Main Street, Apt 4" {...field} data-testid="input-address" />
+                            <GooglePlacesAutocomplete
+                              value={field.value}
+                              onChange={(value, details) => {
+                                field.onChange(value);
+                                if (details?.city) {
+                                  form.setValue('deliveryCity', details.city);
+                                }
+                                if (details?.postalCode) {
+                                  form.setValue('deliveryPostalCode', details.postalCode);
+                                }
+                              }}
+                              onPlaceSelected={(place: PlaceDetails) => {
+                                field.onChange(place.formattedAddress);
+                                if (place.city) form.setValue('deliveryCity', place.city);
+                                if (place.postalCode) form.setValue('deliveryPostalCode', place.postalCode);
+                              }}
+                              placeholder="Start typing your address..."
+                              country={['il']}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
