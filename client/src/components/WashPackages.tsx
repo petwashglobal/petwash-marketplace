@@ -118,68 +118,48 @@ export function WashPackages({ language }: WashPackagesProps) {
     return 0; // No discounts per official pricing
   };
 
-  // LUXURY CRYSTAL CREDIT CARD THEMES
+  // CLEAN BRUSHED METAL CARD THEMES - Matching Reference Images
   const getLuxuryTheme = (index: number) => {
     const themes = [
       {
         // ROSE/PINK - Single Wash
-        gradient: 'linear-gradient(145deg, #FF9EC4 0%, #FF6B9D 25%, #E91E8C 50%, #C71585 75%, #9B1168 100%)',
-        glassOverlay: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.25) 100%)',
-        holographic: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)',
-        textGradient: '#000000',
+        gradient: 'linear-gradient(135deg, #E8A0B5 0%, #D77A9E 20%, #C45D8A 40%, #B24578 60%, #A03366 80%, #8E2255 100%)',
         badge: 'BASIC',
-        badgeBg: 'rgba(255,255,255,0.95)',
+        badgeBg: 'rgba(255,255,255,0.9)',
         icon: CreditCard,
-        shadowColor: 'rgba(199,21,133,0.5)',
-        chipColor: 'linear-gradient(145deg, #D4AF37 0%, #F5D76E 40%, #D4AF37 60%, #AA8C2C 100%)',
+        shadowColor: 'rgba(180,69,120,0.4)',
+        chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
         textColor: '#FFFFFF',
-        accentColor: '#FFD1E3',
-        border: 'none',
       },
       {
         // EMERALD/GREEN - 3 Washes (Most Popular)
-        gradient: 'linear-gradient(145deg, #4ADE80 0%, #22C55E 25%, #16A34A 50%, #15803D 75%, #166534 100%)',
-        glassOverlay: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.2) 100%)',
-        holographic: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)',
-        textGradient: '#000000',
+        gradient: 'linear-gradient(135deg, #7CB342 0%, #689F38 20%, #558B2F 40%, #4A7A28 60%, #3D6B22 80%, #33691E 100%)',
         badge: 'POPULAR',
-        badgeBg: 'rgba(255,255,255,0.95)',
+        badgeBg: 'rgba(255,255,255,0.9)',
         icon: Crown,
-        shadowColor: 'rgba(22,163,74,0.5)',
-        chipColor: 'linear-gradient(145deg, #D4AF37 0%, #F5D76E 40%, #D4AF37 60%, #AA8C2C 100%)',
+        shadowColor: 'rgba(85,139,47,0.4)',
+        chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
         textColor: '#FFFFFF',
-        accentColor: '#BBF7D0',
-        border: 'none',
       },
       {
         // PLATINUM/BLACK - 5 Washes (Premium)
-        gradient: 'linear-gradient(145deg, #6B7280 0%, #4B5563 20%, #374151 40%, #1F2937 60%, #111827 80%, #030712 100%)',
-        glassOverlay: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 40%, rgba(192,192,192,0.15) 70%, rgba(255,255,255,0.2) 100%)',
-        holographic: 'linear-gradient(45deg, transparent 25%, rgba(192,192,192,0.6) 50%, transparent 75%)',
-        textGradient: '#FFFFFF',
+        gradient: 'linear-gradient(135deg, #3A3A3A 0%, #2D2D2D 20%, #1F1F1F 40%, #171717 60%, #0F0F0F 80%, #0A0A0A 100%)',
         badge: 'PREMIUM',
-        badgeBg: 'rgba(255,255,255,0.95)',
+        badgeBg: 'rgba(255,255,255,0.9)',
         icon: Sparkles,
-        shadowColor: 'rgba(0,0,0,0.6)',
-        chipColor: 'linear-gradient(145deg, #E8E8E8 0%, #C0C0C0 40%, #A8A8A8 60%, #808080 100%)',
+        shadowColor: 'rgba(0,0,0,0.5)',
+        chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
         textColor: '#FFFFFF',
-        accentColor: '#E5E7EB',
-        border: 'none',
       },
       {
         // GOLD - 10 Washes (Family Pack - Elite)
-        gradient: 'linear-gradient(145deg, #FCD34D 0%, #F59E0B 20%, #D97706 40%, #B45309 60%, #92400E 80%, #78350F 100%)',
-        glassOverlay: 'linear-gradient(135deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 40%, rgba(255,215,0,0.2) 70%, rgba(255,255,255,0.3) 100%)',
-        holographic: 'linear-gradient(45deg, transparent 25%, rgba(255,255,255,0.6) 50%, transparent 75%)',
-        textGradient: '#FFFFFF',
+        gradient: 'linear-gradient(135deg, #D4B96A 0%, #C9A83A 20%, #BFA02E 40%, #B59628 60%, #A88B22 80%, #9A7F1C 100%)',
         badge: 'ELITE',
-        badgeBg: 'rgba(0,0,0,0.9)',
+        badgeBg: 'rgba(0,0,0,0.85)',
         icon: Shield,
-        shadowColor: 'rgba(217,119,6,0.5)',
-        chipColor: 'linear-gradient(145deg, #FFD700 0%, #FFA500 40%, #FF8C00 60%, #D4AF37 100%)',
-        textColor: '#1C1917',
-        accentColor: '#FEF3C7',
-        border: 'none',
+        shadowColor: 'rgba(201,168,58,0.4)',
+        chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
+        textColor: '#FFFFFF',
       },
     ];
     return themes[index] || themes[0];
@@ -266,184 +246,134 @@ export function WashPackages({ language }: WashPackagesProps) {
                   </div>
                 )}
 
-                {/* PREMIUM CRYSTAL CREDIT CARD CONTAINER */}
+                {/* CLEAN BRUSHED METAL CARD */}
                 <div
-                  className="relative overflow-hidden rounded-2xl transition-all duration-500"
+                  className="relative overflow-hidden transition-all duration-300"
                   style={{
                     background: theme.gradient,
-                    border: theme.border,
-                    boxShadow: `0 20px 50px -12px ${theme.shadowColor}, 0 10px 25px -8px rgba(0,0,0,0.25), inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)`,
+                    borderRadius: '12px',
+                    boxShadow: `0 10px 25px -8px ${theme.shadowColor}, 0 4px 10px -3px rgba(0,0,0,0.1)`,
                     aspectRatio: '1.586/1',
-                    minHeight: '380px',
+                    minHeight: '320px',
                   }}
                 >
-                  {/* Crystal Glass Overlay */}
-                  <div className="absolute inset-0 opacity-60" style={{ background: theme.glassOverlay }} />
-                  
-                  {/* Holographic Shine Effect on Hover */}
+                  {/* Brushed Metal Texture */}
                   <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                    className="absolute inset-0 opacity-20"
                     style={{
-                      background: theme.holographic,
+                      background: 'repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(255,255,255,0.03) 1px, rgba(255,255,255,0.03) 2px)',
                     }}
                   />
                   
-                  {/* Light Reflection */}
-                  <div className="absolute inset-0 opacity-40">
-                    <div className="absolute top-0 left-0 w-full h-full" style={{
-                      backgroundImage: 'radial-gradient(ellipse at 20% 20%, rgba(255,255,255,0.6) 0%, transparent 40%), radial-gradient(ellipse at 80% 80%, rgba(255,255,255,0.2) 0%, transparent 30%)'
+                  {/* Subtle Light Reflection */}
+                  <div className="absolute inset-0 opacity-25">
+                    <div className="absolute top-0 left-0 w-full h-1/2" style={{
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%)'
                     }} />
                   </div>
-                  
-                  {/* Inner Border Glow */}
-                  <div className="absolute inset-[1px] rounded-[15px]" style={{
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    boxShadow: 'inset 0 0 20px rgba(255,255,255,0.1)'
-                  }} />
 
                   {/* Card Content */}
-                  <div className="relative p-5 sm:p-6 h-full flex flex-col justify-between">
-                    {/* TOP: Badge & Chip */}
+                  <div className="relative p-4 sm:p-5 h-full flex flex-col justify-between">
+                    {/* TOP: Brand */}
                     <div className="flex items-start justify-between">
-                      {/* EMV Chip - Premium Gold/Silver Metallic */}
-                      <div 
-                        className="w-12 h-9 rounded-md overflow-hidden"
-                        style={{
-                          background: theme.chipColor,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.2)',
-                        }}
-                      >
-                        <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-[2px] p-1.5">
-                          <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.15)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }} />
-                          <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.15)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }} />
-                          <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.15)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }} />
-                          <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.15)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }} />
-                        </div>
-                      </div>
-
+                      <p className="text-sm sm:text-base font-semibold" style={{ color: theme.textColor }}>
+                        PetWash™
+                      </p>
+                      
                       {/* Badge */}
                       <div 
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-sm"
-                        style={{ 
-                          background: theme.badgeBg,
-                          boxShadow: '0 2px 10px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.5)'
-                        }}
+                        className="flex items-center gap-1 px-2 py-1 rounded-full"
+                        style={{ background: theme.badgeBg }}
                       >
                         <IconComponent 
-                          className="w-4 h-4" 
+                          className="w-3 h-3" 
                           style={{ color: isGoldCard ? '#FFD700' : '#000000' }}
                         />
                         <span 
-                          className="text-xs font-black tracking-wider"
+                          className="text-[10px] font-bold tracking-wide"
                           style={{ color: isGoldCard ? '#FFFFFF' : '#000000' }}
                         >
                           {theme.badge}
                         </span>
                       </div>
                     </div>
-
-                    {/* MIDDLE: Package Name & Price */}
-                    <div className="flex-1 flex flex-col justify-center py-4">
-                      <h3 
-                        className="text-xl sm:text-2xl font-bold mb-2"
-                        style={{ 
-                          color: theme.textColor,
-                          fontFamily: "'Playfair Display', serif",
+                    
+                    {/* EMV Chip & Package Name */}
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-10 h-7 sm:w-11 sm:h-8 rounded-sm overflow-hidden flex-shrink-0"
+                        style={{
+                          background: theme.chipColor,
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
                         }}
                       >
-                        {language === 'he' ? pkg.nameHe : pkg.name}
-                      </h3>
-
-                      {/* Price Display */}
-                      <div className="mb-2">
-                        <span 
-                          className="text-4xl sm:text-5xl font-bold"
-                          style={{ color: theme.textColor }}
-                        >
-                          ₪{pkg.price}
-                        </span>
+                        <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-[1px] p-1">
+                          <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
+                          <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
+                          <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
+                          <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
+                        </div>
                       </div>
                       
-                      {pkg.washCount > 1 && (
-                        <p 
-                          className="text-sm opacity-80"
+                      <div>
+                        <h3 
+                          className="text-base sm:text-lg font-semibold"
                           style={{ color: theme.textColor }}
                         >
-                          ₪{pricePerWash} {t('packages.perWash', language)}
+                          {pkg.washCount} {pkg.washCount === 1 ? 'Wash' : 'Washes'} E-Gift
+                        </h3>
+                        <p 
+                          className="text-xs opacity-80"
+                          style={{ color: theme.textColor }}
+                        >
+                          PetWash Ltd
                         </p>
-                      )}
-
-                      {/* Features */}
-                      <div className="mt-3 space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Check className="w-4 h-4" style={{ color: theme.accentColor }} strokeWidth={3} />
-                          <span className="text-xs" style={{ color: theme.textColor, opacity: 0.9 }}>
-                            {t('packages.feature1', language)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="w-4 h-4" style={{ color: theme.accentColor }} strokeWidth={3} />
-                          <span className="text-xs" style={{ color: theme.textColor, opacity: 0.9 }}>
-                            {t('packages.feature2', language)}
-                          </span>
-                        </div>
-                        {pkg.washCount > 1 && (
-                          <div className="flex items-center gap-2">
-                            <Check className="w-4 h-4" style={{ color: theme.accentColor }} strokeWidth={3} />
-                            <span className="text-xs font-semibold" style={{ color: theme.textColor }}>
-                              {t('packages.noExpiration', language)}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
 
-                    {/* BOTTOM: Card Number & Brand */}
+                    {/* Price & Info */}
                     <div>
-                      {/* Buy Button */}
+                      <p 
+                        className="text-[10px] sm:text-xs opacity-70"
+                        style={{ color: theme.textColor }}
+                      >
+                        Each wash starts at 55 Shekel
+                      </p>
+                      <p 
+                        className="text-sm sm:text-base font-semibold"
+                        style={{ color: theme.textColor }}
+                      >
+                        ₪{pkg.price}
+                      </p>
+                      <p 
+                        className="text-xs font-mono opacity-80"
+                        style={{ color: theme.textColor }}
+                      >
+                        SN: PWL{String(1234567 + index * 111)}/{pkg.washCount}
+                      </p>
+                    </div>
+                    
+                    {/* Bottom: Buy Button & Member */}
+                    <div className="flex items-end justify-between">
                       <button
                         onClick={() => handleExpressCheckout(pkg)}
-                        className="w-full py-2.5 px-4 rounded-lg font-bold text-sm shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 mb-3"
+                        className="px-4 py-2 rounded-lg font-semibold text-xs shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200"
                         style={{
-                          background: isGoldCard ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.95)',
-                          color: isGoldCard ? '#FFD700' : '#000000',
+                          background: 'rgba(255,255,255,0.95)',
+                          color: '#000000',
                         }}
                         data-testid={`button-express-checkout-${pkg.id}`}
                       >
                         {t('packages.buyNow', language)}
                       </button>
-
-                      {/* Card Footer */}
-                      <div 
-                        className="flex items-center justify-between text-xs pt-2 border-t"
-                        style={{ 
-                          borderColor: 'rgba(255,255,255,0.3)',
-                          color: theme.textColor,
-                          opacity: 0.9,
-                        }}
+                      
+                      <p 
+                        className="text-sm font-semibold"
+                        style={{ color: theme.textColor }}
                       >
-                        <span className="font-mono tracking-wider">
-                          •••• {String(1000 + index * 111)}
-                        </span>
-                        <span 
-                          className="font-bold tracking-wide"
-                          style={{ fontFamily: "'Playfair Display', serif" }}
-                        >
-                          PET WASH™
-                        </span>
-                      </div>
+                        MEMBER
+                      </p>
                     </div>
-                  </div>
-
-                  {/* Contactless Icon */}
-                  <div 
-                    className="absolute top-5 right-5 w-6 h-6 opacity-60"
-                    style={{ transform: 'rotate(90deg)' }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke={theme.textColor} strokeWidth="2">
-                      <path d="M8.5 14.5A7.5 7.5 0 0016 7" />
-                      <path d="M5 17.5A12 12 0 0017 5.5" />
-                    </svg>
                   </div>
                 </div>
               </div>

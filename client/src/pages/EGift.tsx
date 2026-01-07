@@ -10,40 +10,28 @@ import PaymentMethods from '@/components/PaymentMethods';
 
 const cardStyles = {
   rose: {
-    gradient: 'linear-gradient(145deg, #FF9EC4 0%, #FF6B9D 25%, #E91E8C 50%, #C71585 75%, #9B1168 100%)',
-    glassOverlay: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.25) 100%)',
-    holographic: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)',
+    gradient: 'linear-gradient(135deg, #E8A0B5 0%, #D77A9E 20%, #C45D8A 40%, #B24578 60%, #A03366 80%, #8E2255 100%)',
     textColor: '#FFFFFF',
-    accentColor: '#FFD1E3',
-    chipColor: 'linear-gradient(145deg, #D4AF37 0%, #F5D76E 40%, #D4AF37 60%, #AA8C2C 100%)',
-    shadowColor: 'rgba(199,21,133,0.5)',
+    chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
+    shadowColor: 'rgba(180,69,120,0.4)',
   },
   emerald: {
-    gradient: 'linear-gradient(145deg, #4ADE80 0%, #22C55E 25%, #16A34A 50%, #15803D 75%, #166534 100%)',
-    glassOverlay: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.2) 100%)',
-    holographic: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)',
+    gradient: 'linear-gradient(135deg, #7CB342 0%, #689F38 20%, #558B2F 40%, #4A7A28 60%, #3D6B22 80%, #33691E 100%)',
     textColor: '#FFFFFF',
-    accentColor: '#BBF7D0',
-    chipColor: 'linear-gradient(145deg, #D4AF37 0%, #F5D76E 40%, #D4AF37 60%, #AA8C2C 100%)',
-    shadowColor: 'rgba(22,163,74,0.5)',
+    chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
+    shadowColor: 'rgba(85,139,47,0.4)',
   },
   platinum: {
-    gradient: 'linear-gradient(145deg, #6B7280 0%, #4B5563 20%, #374151 40%, #1F2937 60%, #111827 80%, #030712 100%)',
-    glassOverlay: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 40%, rgba(192,192,192,0.15) 70%, rgba(255,255,255,0.2) 100%)',
-    holographic: 'linear-gradient(45deg, transparent 25%, rgba(192,192,192,0.6) 50%, transparent 75%)',
+    gradient: 'linear-gradient(135deg, #3A3A3A 0%, #2D2D2D 20%, #1F1F1F 40%, #171717 60%, #0F0F0F 80%, #0A0A0A 100%)',
     textColor: '#FFFFFF',
-    accentColor: '#E5E7EB',
-    chipColor: 'linear-gradient(145deg, #E8E8E8 0%, #C0C0C0 40%, #A8A8A8 60%, #808080 100%)',
-    shadowColor: 'rgba(0,0,0,0.6)',
+    chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
+    shadowColor: 'rgba(0,0,0,0.5)',
   },
   gold: {
-    gradient: 'linear-gradient(145deg, #FCD34D 0%, #F59E0B 20%, #D97706 40%, #B45309 60%, #92400E 80%, #78350F 100%)',
-    glassOverlay: 'linear-gradient(135deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.15) 40%, rgba(255,215,0,0.2) 70%, rgba(255,255,255,0.3) 100%)',
-    holographic: 'linear-gradient(45deg, transparent 25%, rgba(255,255,255,0.6) 50%, transparent 75%)',
-    textColor: '#1C1917',
-    accentColor: '#FEF3C7',
-    chipColor: 'linear-gradient(145deg, #FFD700 0%, #FFA500 40%, #FF8C00 60%, #D4AF37 100%)',
-    shadowColor: 'rgba(217,119,6,0.5)',
+    gradient: 'linear-gradient(135deg, #D4B96A 0%, #C9A83A 20%, #BFA02E 40%, #B59628 60%, #A88B22 80%, #9A7F1C 100%)',
+    textColor: '#FFFFFF',
+    chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
+    shadowColor: 'rgba(201,168,58,0.4)',
   }
 };
 
@@ -80,146 +68,118 @@ function LuxuryGiftCard({
   return (
     <button 
       type="button"
-      className={`relative w-full text-left transition-all duration-500 group ${
+      className={`relative w-full text-left transition-all duration-300 group ${
         selected 
-          ? 'ring-4 ring-black/60 ring-offset-4 scale-[1.03]' 
-          : 'hover:scale-[1.02] hover:-translate-y-1'
+          ? 'scale-[1.02]' 
+          : 'hover:scale-[1.01] hover:-translate-y-0.5'
       }`}
       onClick={onClick}
       data-testid={`egift-card-${option.value}`}
-      style={{ perspective: '1200px' }}
     >
       {option.value === 1000 && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
-          <span className="px-4 py-1.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-black text-[10px] sm:text-xs font-black rounded-full shadow-lg whitespace-nowrap tracking-wider"
-            style={{ boxShadow: '0 4px 15px rgba(251,191,36,0.5), inset 0 1px 0 rgba(255,255,255,0.5)' }}>
-            ✦ BEST VALUE ✦
+          <span className="px-3 py-1 bg-amber-400 text-black text-[10px] sm:text-xs font-bold rounded-full shadow-md whitespace-nowrap">
+            BEST VALUE
           </span>
         </div>
       )}
       
       <div 
-        className="relative w-full aspect-[1.586/1] overflow-hidden transition-all duration-500 group-hover:shadow-2xl"
+        className="relative w-full aspect-[1.586/1] overflow-hidden"
         style={{ 
           background: style.gradient,
-          borderRadius: '16px',
+          borderRadius: '12px',
           boxShadow: selected 
-            ? `0 25px 50px -12px ${style.shadowColor}, 0 12px 25px -8px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.1)`
-            : `0 15px 35px -10px ${style.shadowColor}, 0 8px 20px -6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)`,
-          transform: selected ? 'rotateX(2deg)' : 'rotateX(0deg)',
+            ? `0 20px 40px -10px ${style.shadowColor}, 0 8px 16px -4px rgba(0,0,0,0.15)`
+            : `0 10px 25px -8px ${style.shadowColor}, 0 4px 10px -3px rgba(0,0,0,0.1)`,
         }}
       >
-        {/* Crystal Glass Overlay */}
-        <div className="absolute inset-0 opacity-60" style={{ background: style.glassOverlay }} />
-        
-        {/* Holographic Shine Effect */}
+        {/* Brushed Metal Texture */}
         <div 
-          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+          className="absolute inset-0 opacity-20"
           style={{
-            background: style.holographic,
-            animation: 'shimmer 2s ease-in-out infinite',
+            background: 'repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(255,255,255,0.03) 1px, rgba(255,255,255,0.03) 2px)',
           }}
         />
         
-        {/* Light Reflection */}
-        <div className="absolute inset-0 opacity-40">
-          <div className="absolute top-0 left-0 w-full h-full" style={{
-            backgroundImage: 'radial-gradient(ellipse at 20% 20%, rgba(255,255,255,0.6) 0%, transparent 40%), radial-gradient(ellipse at 80% 80%, rgba(255,255,255,0.2) 0%, transparent 30%)'
+        {/* Subtle Light Reflection */}
+        <div className="absolute inset-0 opacity-25">
+          <div className="absolute top-0 left-0 w-full h-1/2" style={{
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%)'
           }} />
         </div>
         
-        {/* Inner Border Glow */}
-        <div className="absolute inset-[1px] rounded-[15px]" style={{
-          border: '1px solid rgba(255,255,255,0.25)',
-          boxShadow: 'inset 0 0 20px rgba(255,255,255,0.1)'
-        }} />
-        
-        {/* EMV Chip - Realistic Gold/Silver */}
+        {/* PetWash Logo Top */}
         <div className="absolute top-4 sm:top-5 left-4 sm:left-5">
+          <p className="text-base sm:text-lg font-semibold" style={{ color: style.textColor }}>
+            PetWash™
+          </p>
+        </div>
+        
+        {/* EMV Chip */}
+        <div className="absolute top-12 sm:top-14 left-4 sm:left-5">
           <div 
-            className="w-11 h-8 sm:w-12 sm:h-9 rounded-md overflow-hidden"
+            className="w-10 h-7 sm:w-11 sm:h-8 rounded-sm overflow-hidden"
             style={{
               background: style.chipColor,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.2)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
             }}
           >
-            <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-[2px] p-1.5">
-              <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.15)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }} />
-              <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.15)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }} />
-              <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.15)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }} />
-              <div className="rounded-sm" style={{ background: 'rgba(0,0,0,0.15)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }} />
+            <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-[1px] p-1">
+              <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
+              <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
+              <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
+              <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
             </div>
           </div>
         </div>
 
-        {/* Brand Logo */}
-        <div className="absolute top-4 sm:top-5 right-4 sm:right-5 flex items-center gap-2">
-          <div 
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center backdrop-blur-md"
-            style={{ 
-              background: `${style.accentColor}99`,
-              boxShadow: '0 2px 10px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3)'
-            }}
-          >
-            <Gift className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: option.color === 'gold' ? '#78350F' : option.color === 'platinum' ? '#1F2937' : '#FFFFFF' }} />
-          </div>
-        </div>
-
-        {/* Card Number Style Text */}
-        <div className="absolute top-1/2 left-4 sm:left-5 right-4 sm:right-5 -translate-y-1/2">
+        {/* Card Title & Value */}
+        <div className="absolute top-12 sm:top-14 left-16 sm:left-20">
           <p 
-            className="text-sm sm:text-base font-mono tracking-[0.25em] opacity-60 mb-1"
-            style={{ color: style.textColor, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}
+            className="text-lg sm:text-xl font-semibold"
+            style={{ color: style.textColor }}
           >
-            •••• •••• •••• ••••
+            {formattedValue} E-Gift
+          </p>
+          <p 
+            className="text-xs sm:text-sm opacity-80"
+            style={{ color: style.textColor }}
+          >
+            PetWash Ltd
           </p>
         </div>
 
-        {/* Value & Brand */}
+        {/* Bottom Info */}
         <div className="absolute bottom-4 sm:bottom-5 left-4 sm:left-5 right-4 sm:right-5 flex items-end justify-between">
           <div>
             <p 
-              className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight"
-              style={{ 
-                color: style.textColor, 
-                textShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                fontFamily: "'SF Pro Display', 'Inter', system-ui, sans-serif",
-              }}
-            >
-              {formattedValue}
-            </p>
-            <p 
-              className="text-[10px] sm:text-xs font-semibold opacity-80 tracking-widest uppercase mt-0.5"
+              className="text-[10px] sm:text-xs opacity-70"
               style={{ color: style.textColor }}
             >
-              E-GIFT CREDIT
+              E-Gift Credit
+            </p>
+            <p 
+              className="text-xs sm:text-sm font-mono"
+              style={{ color: style.textColor }}
+            >
+              SN: PW{option.value}0001
             </p>
           </div>
           
-          <div className="text-right">
-            <p 
-              className="text-sm sm:text-base font-bold tracking-wider"
-              style={{ 
-                color: style.textColor,
-                textShadow: '0 1px 2px rgba(0,0,0,0.15)',
-              }}
-            >
-              Pet Wash™
-            </p>
-            <p 
-              className="text-[9px] sm:text-[10px] opacity-60 tracking-wide"
-              style={{ color: style.textColor }}
-            >
-              PREMIUM
-            </p>
-          </div>
+          <p 
+            className="text-sm sm:text-base font-semibold"
+            style={{ color: style.textColor }}
+          >
+            MEMBER
+          </p>
         </div>
 
-        {/* Selection Check Mark */}
+        {/* Selection Indicator */}
         {selected && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-xl backdrop-blur-sm">
-              <Check className="w-7 h-7 text-green-600" strokeWidth={3} />
+          <div className="absolute top-3 right-3">
+            <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-md">
+              <Check className="w-4 h-4 text-green-600" strokeWidth={3} />
             </div>
           </div>
         )}
