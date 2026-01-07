@@ -8286,6 +8286,10 @@ self.addEventListener('notificationclick', (event) => {
   const bookingSearchRoutes = (await import('./routes/booking-search')).default;
   app.use('/api/booking-search', apiLimiter, bookingSearchRoutes);
 
+  // MadPaws-style Booking Requests (complete flow: request → meet & greet → payment → service)
+  const bookingRequestsRoutes = (await import('./routes/booking-requests')).default;
+  app.use('/api/booking-requests', apiLimiter, bookingRequestsRoutes);
+
   // Identity Service V2 - Modern OAuth 2.1/OIDC Authentication (P0 PRIORITY)
   app.use('/auth', identityServiceRoutes);
 
