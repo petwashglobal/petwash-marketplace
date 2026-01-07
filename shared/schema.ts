@@ -1,5 +1,6 @@
 import {
   pgTable,
+  pgEnum,
   text,
   varchar,
   timestamp,
@@ -9419,6 +9420,144 @@ export const bookingSearchFiltersSchema = z.object({
 });
 
 export type BookingSearchFilters = z.infer<typeof bookingSearchFiltersSchema>;
+
+// =============================================
+// MADPAWS-STYLE BOOKING REQUESTS TABLE
+// Complete booking flow: request → meet & greet → payment → service → completion
+// =============================================
+
+export const bookingRequestStatusEnum = pgEnum('booking_request_status', [
+  'pending',           // Initial request sent to provider
+  'accepted',          // Provider accepted, awaiting meet & greet
+  'declined',          // Provider declined the request
+  'meet_greet_scheduled', // Meet & Greet date set
+  'meet_greet_completed', // Meet & Greet done, awaiting payment
+  'payment_pending',   // Awaiting payment from owner
+  'confirmed',         // Payment received, booking confirmed
+  'in_progress',       // Service currently happening
+  'completed',         // Service completed, pending review
+  'reviewed',          // Owner left review
+  'cancelled',         // Cancelled by either party
+  'disputed'           // Payment/service dispute
+]);
+
+export const bookingRequests = pgTable("booking_requests", {
+  id: serial("id").primaryKey(),
+  requestId: varchar("request_id", { length: 24 }).notNull().unique(), // Nanoid for public reference
+  
+  // Parties
+  ownerId: varchar("owner_id", { length: 128 }).notNull(), // Pet owner Firebase UID
+  providerId: varchar("provider_id", { length: 128 }).notNull(), // Service provider Firebase UID
+  providerProfileId: integer("provider_profile_id"), // Sitter/Walker profile ID
+  providerType: varchar("provider_type", { length: 32 }).notNull(), // sitter, walker, trainer, driver, k9000
+  
+  // Service details
+  serviceType: varchar("service_type", { length: 32 }).notNull(), // pet_sitting, dog_walking, etc.
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  
+  // Pet information
+  petIds: text("pet_ids").array(), // Array of pet profile IDs
+  petCount: integer("pet_count").notNull().default(1),
+  petDetails: jsonb("pet_details"), // Cached pet info for reference
+  
+  // Pricing
+  dailyRateCents: integer("daily_rate_cents"),
+  hourlyRateCents: integer("hourly_rate_cents"),
+  totalDays: integer("total_days"),
+  totalHours: decimal("total_hours"),
+  subtotalCents: integer("subtotal_cents").notNull(),
+  serviceFeePercent: decimal("service_fee_percent").default("15"), // 15% platform fee
+  serviceFeeCents: integer("service_fee_cents").notNull(),
+  totalCents: integer("total_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("ILS").notNull(),
+  
+  // Status tracking
+  status: bookingRequestStatusEnum("status").default("pending").notNull(),
+  statusHistory: jsonb("status_history").default([]), // [{status, timestamp, note}]
+  
+  // Meet & Greet
+  meetGreetDate: timestamp("meet_greet_date"),
+  meetGreetLocation: text("meet_greet_location"),
+  meetGreetNotes: text("meet_greet_notes"),
+  meetGreetCompletedAt: timestamp("meet_greet_completed_at"),
+  
+  // Messages
+  ownerMessage: text("owner_message"), // Initial request message
+  providerResponse: text("provider_response"),
+  specialRequirements: text("special_requirements"),
+  
+  // Payment
+  paymentMethod: varchar("payment_method", { length: 32 }), // nayax, apple_pay, etc.
+  paymentTransactionId: varchar("payment_transaction_id", { length: 64 }),
+  paymentHeldAt: timestamp("payment_held_at"), // Escrow start
+  paymentReleasedAt: timestamp("payment_released_at"), // Payment to provider
+  
+  // Service tracking
+  serviceStartedAt: timestamp("service_started_at"),
+  serviceCompletedAt: timestamp("service_completed_at"),
+  photoUpdates: jsonb("photo_updates").default([]), // [{url, caption, timestamp}]
+  
+  // Completion & Review
+  ownerConfirmedAt: timestamp("owner_confirmed_at"),
+  ownerRating: decimal("owner_rating"),
+  ownerReview: text("owner_review"),
+  providerRating: decimal("provider_rating"), // Provider rates owner
+  providerReview: text("provider_review"),
+  
+  // Cancellation
+  cancelledAt: timestamp("cancelled_at"),
+  cancelledBy: varchar("cancelled_by", { length: 16 }), // owner, provider, system
+  cancellationReason: text("cancellation_reason"),
+  refundCents: integer("refund_cents"),
+  refundProcessedAt: timestamp("refund_processed_at"),
+  
+  // Metadata
+  searchId: varchar("search_id", { length: 24 }), // Link to original search
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBookingRequestSchema = createInsertSchema(bookingRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type BookingRequest = typeof bookingRequests.$inferSelect;
+export type InsertBookingRequest = z.infer<typeof insertBookingRequestSchema>;
+
+// Schema for creating a new booking request from search results
+export const createBookingRequestSchema = z.object({
+  providerId: z.string(),
+  providerProfileId: z.number().optional(),
+  providerType: z.enum(['sitter', 'walker', 'trainer', 'driver', 'groomer', 'k9000']),
+  serviceType: z.enum(['pet_sitting', 'dog_walking', 'grooming', 'pet_taxi', 'daycare', 'training', 'k9000_wash']),
+  startDate: z.string(), // ISO date
+  endDate: z.string(),
+  petIds: z.array(z.string()).optional(),
+  petCount: z.number().min(1).max(10),
+  message: z.string().optional(),
+  specialRequirements: z.string().optional(),
+  searchId: z.string().optional(),
+});
+
+export type CreateBookingRequest = z.infer<typeof createBookingRequestSchema>;
+
+// Schema for provider response to booking request
+export const providerBookingResponseSchema = z.object({
+  requestId: z.string(),
+  action: z.enum(['accept', 'decline', 'counter']),
+  response: z.string().optional(),
+  meetGreetDate: z.string().optional(), // ISO date for meet & greet
+  meetGreetLocation: z.string().optional(),
+  counterOffer: z.object({
+    dailyRateCents: z.number().optional(),
+    hourlyRateCents: z.number().optional(),
+  }).optional(),
+});
+
+export type ProviderBookingResponse = z.infer<typeof providerBookingResponseSchema>;
 
 export interface BookingSearchResult {
   providers: Array<{
