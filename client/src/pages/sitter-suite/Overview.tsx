@@ -13,14 +13,19 @@ import {
   Sparkles,
   ArrowRight,
   CheckCircle,
-  Camera
+  Camera,
+  Heart,
+  Award,
+  Users,
+  MapPin,
+  Plane
 } from "lucide-react";
 import { useSEO, pageSEO } from "@/lib/seo";
 import { useLanguage } from "@/lib/languageStore";
 
 export default function SitterSuiteOverview() {
   useSEO(pageSEO.sitterSuite);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   const features = [
     {
@@ -154,6 +159,117 @@ export default function SitterSuiteOverview() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* VALUE PROPOSITION SECTION */}
+        <div className="py-16 bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/20 backdrop-blur-sm rounded-full border border-amber-400/30 mb-4" data-testid="badge-first-in-israel">
+                <Plane className="h-4 w-4 text-amber-400" />
+                <span className="text-sm font-bold text-amber-300">
+                  {t('marketplace.firstInIsrael') || (language === 'he' ? 'פעם ראשונה בישראל' : 'First in Israel')}
+                </span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4" data-testid="heading-value-proposition">
+                {t('marketplace.valueProposition') || (language === 'he' ? 'למה לבחור במרקטפלייס של Pet Wash™?' : 'Why Choose Pet Wash™ Marketplace?')}
+              </h2>
+              <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+                {t('marketplace.valuePropositionSubtitle') || (language === 'he' 
+                  ? 'מרקטפלייס השירותים לחיות מחמד הראשון והיוקרתי בישראל עם מקצוענים מאומתים'
+                  : "Israel's first premium pet services marketplace with verified professionals")}
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                { 
+                  icon: Shield, 
+                  title: language === 'he' ? 'כולם מאומתים ועברו בדיקת רקע' : 'All Verified & Background Checked',
+                  desc: language === 'he' 
+                    ? 'כל שמרטף, מטייל כלבים, נהג ומאלף עובר בדיקות רקע יסודיות ואימות זהות לפני שמצטרף לפלטפורמה שלנו.'
+                    : 'Every sitter, dog walker, driver, and trainer passes thorough background checks and identity verification.',
+                  color: 'from-blue-500 to-blue-600'
+                },
+                { 
+                  icon: Heart, 
+                  title: language === 'he' ? 'רק אוהבי חיות' : 'Animal Lovers Only',
+                  desc: language === 'he' 
+                    ? 'אנחנו מעסיקים רק אוהבי חיות אמיתיים שמתייחסים לכל חיית מחמד כמו לבן משפחה שלהם.'
+                    : 'We hire only genuine animal lovers who treat every pet like their own family member.',
+                  color: 'from-pink-500 to-pink-600'
+                },
+                { 
+                  icon: Award, 
+                  title: language === 'he' ? 'הסכמים מחייבים חוקית' : 'Legally Binding Agreements',
+                  desc: language === 'he' 
+                    ? 'כל קבלני המשנה שלנו חתומים על מסמכים מחייבים חוקית שמבטיחים אחריות וסטנדרטים מקצועיים.'
+                    : 'All subcontractors sign legally binding documents ensuring accountability and professional standards.',
+                  color: 'from-amber-500 to-orange-500'
+                },
+                { 
+                  icon: Users, 
+                  title: language === 'he' ? 'שמירה על הבית כלולה' : 'House Sitting Included',
+                  desc: language === 'he' 
+                    ? 'השמרטף שלכם ישמור על הבית, ישקה את העציצים, יאסוף דואר וישמור על הכל מאובטח בזמן שאתם בחופשה.'
+                    : 'Your sitter will watch your home, water plants, collect mail, and keep everything secure.',
+                  color: 'from-green-500 to-emerald-500'
+                },
+                { 
+                  icon: MapPin, 
+                  title: language === 'he' ? 'נותני שירות מהשכונה' : 'Local Neighborhood Providers',
+                  desc: language === 'he' 
+                    ? 'התחברו עם שכנים מהימנים שמחפשים הכנסה נוספת. הם מכירים את האזור ואכפת להם.'
+                    : 'Connect with trusted neighbors looking for extra income. They know the area and they care.',
+                  color: 'from-purple-500 to-purple-600'
+                },
+                { 
+                  icon: Home, 
+                  title: language === 'he' ? 'אירוח בבית של נותן השירות' : "Host at Provider's Home",
+                  desc: language === 'he' 
+                    ? 'מעדיפים שחיית המחמד תשהה במקום אחר? נותני השירות מציעים את ביתם עם 2 טיולים ביום, מים טריים ואוכל.'
+                    : 'Prefer your pet stays elsewhere? Providers offer their homes with 2 daily walks, fresh water, and food.',
+                  color: 'from-cyan-500 to-teal-500'
+                },
+              ].map((item, i) => (
+                <div 
+                  key={i} 
+                  className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-6 hover:bg-white/15 transition-all duration-300"
+                  data-testid={`value-prop-card-${i}`}
+                >
+                  <div className={`w-14 h-14 mb-4 bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center shadow-lg`}>
+                    <item.icon className="w-7 h-7 text-white" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-3">{item.title}</h3>
+                  <p className="text-sm text-gray-300">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Vacation CTA */}
+            <div className="mt-12 bg-gradient-to-r from-pink-600/30 via-purple-600/30 to-pink-600/30 rounded-2xl border-2 border-pink-400/30 p-8">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div className="text-center lg:text-right">
+                  <h3 className="text-2xl font-black text-white mb-2" data-testid="heading-vacation-cta">
+                    {language === 'he' ? '🏖️ צאו לחופשה בשקט!' : '🏖️ Go on Vacation Stress-Free!'}
+                  </h3>
+                  <p className="text-lg text-pink-100">
+                    {language === 'he' 
+                      ? 'השאירו את חיית המחמד שלכם בבית עם שמרטף מקצועי. הם ידאגו לטיולים, אוכל, מים וחוויה מושלמת.'
+                      : "Leave your pet at home with a professional sitter. They'll handle walks, food, water, and a perfect experience."}
+                  </p>
+                </div>
+                <Link href="/sitter-suite/browse">
+                  <button 
+                    className="px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl hover:from-pink-600 hover:to-purple-700 transition-all shadow-lg whitespace-nowrap"
+                    data-testid="button-vacation-cta"
+                  >
+                    {language === 'he' ? 'מצא שמרטף עכשיו' : 'Find a Sitter Now'}
+                  </button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

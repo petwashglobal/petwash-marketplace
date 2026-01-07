@@ -348,6 +348,119 @@ export default function SitterSuite() {
 
         <div className="luxury-divider"></div>
 
+        {/* VALUE PROPOSITION SECTION */}
+        <div className="luxury-section bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900">
+          <div className="luxury-container">
+            <div className="text-center mb-12 luxury-animate-fade-in">
+              <span className="luxury-badge luxury-badge-gold mb-4 inline-flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                {isHebrew ? 'פעם ראשונה בישראל' : 'First in Israel'}
+              </span>
+              <h2 className="luxury-heading-lg mb-4 text-white">
+                {isHebrew ? 'למה לבחור במרקטפלייס של Pet Wash™?' : 'Why Choose Pet Wash™ Marketplace?'}
+              </h2>
+              <p className="luxury-text-body text-gray-300 max-w-3xl mx-auto">
+                {isHebrew 
+                  ? 'מרקטפלייס השירותים לחיות מחמד הראשון והיוקרתי בישראל עם מקצוענים מאומתים'
+                  : "Israel's first premium pet services marketplace with verified professionals"}
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                { 
+                  icon: Shield, 
+                  title: isHebrew ? 'כולם מאומתים ועברו בדיקת רקע' : 'All Verified & Background Checked',
+                  desc: isHebrew 
+                    ? 'כל שמרטף, מטייל כלבים, נהג ומאלף עובר בדיקות רקע יסודיות ואימות זהות לפני שמצטרף לפלטפורמה שלנו.'
+                    : 'Every sitter, dog walker, driver, and trainer passes thorough background checks and identity verification.',
+                  color: 'from-blue-500 to-blue-600'
+                },
+                { 
+                  icon: Heart, 
+                  title: isHebrew ? 'רק אוהבי חיות' : 'Animal Lovers Only',
+                  desc: isHebrew 
+                    ? 'אנחנו מעסיקים רק אוהבי חיות אמיתיים שמתייחסים לכל חיית מחמד כמו לבן משפחה שלהם.'
+                    : 'We hire only genuine animal lovers who treat every pet like their own family member.',
+                  color: 'from-pink-500 to-pink-600'
+                },
+                { 
+                  icon: Award, 
+                  title: isHebrew ? 'הסכמים מחייבים חוקית' : 'Legally Binding Agreements',
+                  desc: isHebrew 
+                    ? 'כל קבלני המשנה שלנו חתומים על מסמכים מחייבים חוקית שמבטיחים אחריות וסטנדרטים מקצועיים.'
+                    : 'All subcontractors sign legally binding documents ensuring accountability and professional standards.',
+                  color: 'from-amber-500 to-orange-500'
+                },
+                { 
+                  icon: Users, 
+                  title: isHebrew ? 'שמירה על הבית כלולה' : 'House Sitting Included',
+                  desc: isHebrew 
+                    ? 'השמרטף שלכם ישמור על הבית, ישקה את העציצים, יאסוף דואר וישמור על הכל מאובטח בזמן שאתם בחופשה.'
+                    : 'Your sitter will watch your home, water plants, collect mail, and keep everything secure.',
+                  color: 'from-green-500 to-emerald-500'
+                },
+                { 
+                  icon: MapPin, 
+                  title: isHebrew ? 'נותני שירות מהשכונה' : 'Local Neighborhood Providers',
+                  desc: isHebrew 
+                    ? 'התחברו עם שכנים מהימנים שמחפשים הכנסה נוספת. הם מכירים את האזור ואכפת להם.'
+                    : 'Connect with trusted neighbors looking for extra income. They know the area and they care.',
+                  color: 'from-purple-500 to-purple-600'
+                },
+                { 
+                  icon: Calendar, 
+                  title: isHebrew ? 'אירוח בבית של נותן השירות' : "Host at Provider's Home",
+                  desc: isHebrew 
+                    ? 'מעדיפים שחיית המחמד תשהה במקום אחר? נותני השירות מציעים את ביתם עם 2 טיולים ביום, מים טריים ואוכל.'
+                    : 'Prefer your pet stays elsewhere? Providers offer their homes with 2 daily walks, fresh water, and food.',
+                  color: 'from-cyan-500 to-teal-500'
+                },
+              ].map((item, i) => (
+                <div 
+                  key={i} 
+                  className={`luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-scale-in luxury-delay-${Math.min(i + 1, 5)}`}
+                  data-testid={`value-prop-card-${i}`}
+                >
+                  <div className={`w-14 h-14 mb-4 bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center luxury-shadow-md`}>
+                    <item.icon className="w-7 h-7 text-white" />
+                  </div>
+                  <h3 className="luxury-heading-sm mb-3 text-white">{item.title}</h3>
+                  <p className="luxury-text-small text-gray-300">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Vacation CTA */}
+            <div className="mt-12 luxury-glass-card luxury-shadow-xl p-8 bg-gradient-to-r from-pink-600/30 via-purple-600/30 to-pink-600/30 border-2 border-pink-400/30 luxury-animate-fade-in">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div className="text-center lg:text-right">
+                  <h3 className="text-2xl font-black text-white mb-2">
+                    {isHebrew ? '🏖️ צאו לחופשה בשקט!' : '🏖️ Go on Vacation Stress-Free!'}
+                  </h3>
+                  <p className="text-lg text-pink-100">
+                    {isHebrew 
+                      ? 'השאירו את חיית המחמד שלכם בבית עם שמרטף מקצועי. הם ידאגו לטיולים, אוכל, מים וחוויה מושלמת.'
+                      : 'Leave your pet at home with a professional sitter. They\'ll handle walks, food, water, and a perfect experience.'}
+                  </p>
+                </div>
+                <button 
+                  className="luxury-btn-primary px-8 py-4 text-lg whitespace-nowrap"
+                  onClick={() => {
+                    const resultsSection = document.getElementById('sitters-results');
+                    resultsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  data-testid="button-vacation-cta"
+                >
+                  {isHebrew ? 'מצא שמרטף עכשיו' : 'Find a Sitter Now'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="luxury-divider"></div>
+
         {/* FEATURED SITTERS SECTION */}
         {featuredSitters && featuredSitters.length > 0 && (
           <div className="luxury-section luxury-bg-soft">
