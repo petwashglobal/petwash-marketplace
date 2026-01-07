@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { GooglePlacesAutocomplete, PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
@@ -509,16 +510,29 @@ export default function BecomeProvider() {
                   </div>
 
                   <div>
-                    <Label className="text-gray-300 font-medium">{isHebrew ? 'כתובת' : 'Street Address'} *</Label>
-                    <Input 
-                      {...form.register('streetAddress')}
-                      placeholder={isHebrew ? 'רחוב דיזנגוף 100' : '100 Dizengoff Street'}
-                      className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
-                      data-testid="input-address"
+                    <GooglePlacesAutocomplete
+                      value={form.watch('streetAddress')}
+                      onChange={(value, details) => {
+                        form.setValue('streetAddress', value);
+                        if (details?.city) {
+                          form.setValue('city', details.city);
+                        }
+                        if (details?.postalCode) {
+                          form.setValue('postalCode', details.postalCode);
+                        }
+                      }}
+                      onPlaceSelected={(place: PlaceDetails) => {
+                        form.setValue('streetAddress', place.formattedAddress);
+                        if (place.city) form.setValue('city', place.city);
+                        if (place.postalCode) form.setValue('postalCode', place.postalCode);
+                      }}
+                      label={isHebrew ? 'כתובת' : 'Street Address'}
+                      placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
+                      required
+                      country={['il']}
+                      error={form.formState.errors.streetAddress?.message}
+                      className="[&_input]:bg-slate-800/50 [&_input]:border-slate-600 [&_input]:text-white [&_input]:placeholder:text-slate-500 [&_input]:focus:border-amber-500 [&_label]:text-gray-300"
                     />
-                    {form.formState.errors.streetAddress && (
-                      <p className="text-red-400 text-sm mt-1">{form.formState.errors.streetAddress.message}</p>
-                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
