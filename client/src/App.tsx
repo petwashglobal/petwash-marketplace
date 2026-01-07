@@ -49,6 +49,7 @@ const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
 const BecomeProvider = lazy(() => import("@/pages/BecomeProvider"));
 const ProviderBookingsDashboard = lazy(() => import("@/pages/ProviderBookingsDashboard"));
+const AccountingDashboard = lazy(() => import("@/pages/AccountingDashboard"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
@@ -1516,6 +1517,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <ProviderBookingsDashboard />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/accounting">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <AccountingDashboard />
             </Suspense>
           )}
         </Route>

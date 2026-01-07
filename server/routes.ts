@@ -104,6 +104,7 @@ import aiPayoutVerificationRoutes from "./routes/ai-payout-verification";
 import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
 import referralRoutes from "./routes/referral";
 import accountingRoutes from "./routes/accounting";
+import accountingExportRoutes from "./routes/accounting-export";
 import adminRoutes from "./routes/admin";
 import pinAuthRoutes from "./routes/pin-auth";
 import aiInsightsRoutes from "./routes/ai-insights";
@@ -8327,6 +8328,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Accounting & Finance
   app.use('/api/accounting', adminLimiter, accountingRoutes);
+  app.use('/api/accounting', adminLimiter, accountingExportRoutes); // Export & AI Bookkeeping
   app.use('/api/bank', adminLimiter, bankRoutes);
   app.use('/api/multi-currency', apiLimiter, multiCurrencyRoutes);
   app.use('/api/pricing', apiLimiter, pricingRoutes);
