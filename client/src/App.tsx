@@ -48,6 +48,7 @@ const TalentMarketplace = lazy(() => import("@/pages/PetWashTalentMarketplacePag
 const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
 const BecomeProvider = lazy(() => import("@/pages/BecomeProvider"));
+const ProviderBookingsDashboard = lazy(() => import("@/pages/ProviderBookingsDashboard"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
@@ -1508,6 +1509,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <ProviderCompliance />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/provider/bookings">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <ProviderBookingsDashboard />
             </Suspense>
           )}
         </Route>
