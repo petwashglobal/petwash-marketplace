@@ -66,6 +66,7 @@ import notificationsRoutes from "./routes/notifications";
 import chatRoutes from "./routes/chat";
 import careersRoutes from "./routes/careers";
 import vatRoutes from "./routes/vat";
+import feesRoutes from "./routes/fees";
 import escrowRoutes from "./routes/escrow";
 import bookingsRoutes from "./routes/bookings";
 import superAppBookingsRoutes from "./routes/super-app-bookings";
@@ -8229,10 +8230,11 @@ self.addEventListener('notificationclick', (event) => {
   // Launch Event Notifications (WhatsApp notifications for Kfar Saba pilot launch)
   app.use(apiLimiter, launchEventRoutes);
   
-  // Notifications, Chat, and VAT Calculator Services
+  // Notifications, Chat, VAT Calculator, and Fee Configuration Services
   app.use('/api/notifications', apiLimiter, notificationsRoutes);
   app.use('/api/chat', apiLimiter, chatRoutes);
   app.use('/api/vat', apiLimiter, vatRoutes);
+  app.use('/api/fees', apiLimiter, feesRoutes);
   
   // Google Dialogflow CX AI Chatbot (Gemini-powered)
   app.post('/api/v1/chat/message', apiLimiter, async (req, res) => {

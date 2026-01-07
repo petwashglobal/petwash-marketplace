@@ -3,19 +3,29 @@ import { contractorEarnings, sitterBookings, walkBookings, pettrekTrips } from '
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { feeConfigService } from './FeeConfigurationService';
 
 /**
- * Financial Payout Ledger Service (2026 Spec)
+ * Financial Payout Ledger Service (2026 MadPaws-Inspired Model)
+ * 
+ * Fee Structure (effective Jan 2026):
+ * - Provider Service Fee: 15% (deducted from provider earnings)
+ *   Applies to: Sitters, Dog Walkers, Drivers (PetTrek), Trainers
+ * - Customer Booking Fee: 2% (charged to customers)
+ * - Nayax Processing Fee: 1% (payment gateway - Nayax Israel)
+ * - Escrow Hold: 72 hours after service completion
  * 
  * Role-specific earnings calculation:
  * - Sitters: Charged by day/hour
  * - Walkers: Charged by GPS time/distance
  * - Drivers: Charged by mileage + tolls
+ * - Trainers: Charged by session
  * 
  * Features:
- * - 72-hour escrow hold
+ * - 72-hour escrow hold (MadPaws model)
+ * - ₪10M+ liability insurance coverage
  * - Automatic VAT calculation (18% Israeli compliance)
- * - Platform fee deduction
+ * - Unified 15% platform fee across all provider types
  * - Tax reporting integration
  */
 
@@ -144,8 +154,9 @@ export async function calculateSitterEarnings(
     // Calculate base amount
     const baseAmount = dayCount * dailyRate + hourCount * hourlyRate;
 
-    // Platform fee: 15% for sitters
-    const platformFeePercent = 15;
+    // Platform fee: 18% for all providers (MadPaws 2026 model)
+    const feeRates = feeConfigService.getFeeRates();
+    const platformFeePercent = feeRates.providerServiceFeePercent;
 
     return await createEarningRecord({
       contractorId,
@@ -182,8 +193,9 @@ export async function calculateWalkerEarnings(
     const distanceComponent = walkDistanceKm * distanceRate;
     const baseAmount = timeComponent + distanceComponent;
 
-    // Platform fee: 12% for walkers
-    const platformFeePercent = 12;
+    // Platform fee: 18% for all providers (MadPaws 2026 model)
+    const feeRates = feeConfigService.getFeeRates();
+    const platformFeePercent = feeRates.providerServiceFeePercent;
 
     return await createEarningRecord({
       contractorId,
@@ -218,8 +230,9 @@ export async function calculateDriverEarnings(
     const distanceAmount = tripDistanceKm * perKmRate;
     const baseAmount = distanceAmount + tollCharges;
 
-    // Platform fee: 10% for drivers (lower due to tolls)
-    const platformFeePercent = 10;
+    // Platform fee: 18% for all providers (MadPaws 2026 model)
+    const feeRates = feeConfigService.getFeeRates();
+    const platformFeePercent = feeRates.providerServiceFeePercent;
 
     return await createEarningRecord({
       contractorId,

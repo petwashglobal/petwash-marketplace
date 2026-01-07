@@ -24,7 +24,9 @@ interface VettingPartners {
 export class SitterGlobalConfig {
   private readonly supportedCountries = ["USA", "ISR", "UK", "AUS", "CAN"];
   private readonly defaultCurrency = "USD";
-  private readonly globalCommissionRate = 0.10; // 10% platform fee (5% hidden broker fee built into sitter rate)
+  private readonly globalCommissionRate = 0.15; // 15% platform fee (MadPaws 2026 model)
+  private readonly customerBookingFeeRate = 0.02; // 2% booking fee charged to customers
+  private readonly nayaxProcessingFeeRate = 0.01; // 1% Nayax Israel payment processing
   
   private readonly vettingPartners: VettingPartners = {
     ISR: "Israeli_ID_Verification_API", // Teudat Zehut scanner
