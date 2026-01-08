@@ -103,6 +103,9 @@ import policeCheckRoutes from "./routes/police-check";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import aiPayoutVerificationRoutes from "./routes/ai-payout-verification";
 import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
+import platformApiRoutes from "./routes/platform-api";
+import { resolvePlatformMiddleware } from "./middleware/platformContext";
+import { auditMiddleware } from "./middleware/auditLogger";
 import referralRoutes from "./routes/referral";
 import accountingRoutes from "./routes/accounting";
 import accountingExportRoutes from "./routes/accounting-export";
@@ -8004,6 +8007,13 @@ self.addEventListener('notificationclick', (event) => {
   // AI Payout Verification - Gemini 2.5 Flash work verification before payouts
   app.use('/api/ai-verification', apiLimiter, aiPayoutVerificationRoutes);
   app.use('/api/israeli-compliance', apiLimiter, israeliCompliance2025Routes);
+  
+  // ========================================================================
+  // 🌐 MULTI-PLATFORM API (Enhanced Production Server Architecture)
+  // Platform-aware booking, listing, and document management
+  // ========================================================================
+  app.use('/api/platform', resolvePlatformMiddleware, auditMiddleware, apiLimiter, platformApiRoutes);
+  logger.info('[Routes] ✅ Multi-platform API routes registered (12-status booking lifecycle, escrow, audit)');
   
   // Employee Management routes
   const employeeRoutes = await import('./routes/employees');
