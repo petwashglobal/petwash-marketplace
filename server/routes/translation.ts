@@ -186,4 +186,69 @@ router.get('/health', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/translate/verify
+ * Verify a translation and suggest improvements using Gemini AI
+ */
+router.post('/verify', async (req, res) => {
+  try {
+    const verifySchema = z.object({
+      englishText: z.string().min(1, 'English text is required'),
+      currentTranslation: z.string(),
+      targetLanguage: z.enum(['he', 'ar', 'ru', 'fr', 'es']),
+      context: z.string().optional(),
+    });
+
+    const validation = verifySchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: validation.error.errors 
+      });
+    }
+
+    const { englishText, currentTranslation, targetLanguage, context } = validation.data;
+
+    const brandContext = context || `Luxury pet care marketplace for Pet Wash™ brand. 
+      Premium/luxury positioning targeting Israeli market. 
+      Use natural, native-speaker phrasing - NOT Google Translate style.
+      Preserve brand names like "Pet Wash™", "K9000™", "The Sitter Suite™", etc.`;
+
+    const result = await translateWithGemini(
+      englishText,
+      targetLanguage,
+      'en',
+      brandContext
+    );
+
+    if (!result.success) {
+      return res.status(500).json({
+        error: 'Verification failed',
+        message: result.error,
+      });
+    }
+
+    const needsUpdate = currentTranslation.trim() !== result.translatedText.trim();
+
+    res.json({
+      success: true,
+      original: englishText,
+      currentTranslation,
+      suggestedTranslation: result.translatedText,
+      needsUpdate,
+      targetLanguage,
+      provider: 'gemini-ai',
+      timestamp: new Date().toISOString(),
+    });
+
+  } catch (error) {
+    logger.error('[Translation API] Verify error:', error);
+    res.status(500).json({ 
+      error: 'Verification failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 export default router;

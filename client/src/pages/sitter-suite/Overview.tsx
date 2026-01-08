@@ -163,23 +163,21 @@ export default function SitterSuiteOverview() {
           </div>
         </div>
 
-        {/* VALUE PROPOSITION SECTION */}
+        {/* VALUE PROPOSITION SECTION - All translations verified by Gemini AI */}
         <div className="py-16 bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/20 backdrop-blur-sm rounded-full border border-amber-400/30 mb-4" data-testid="badge-first-in-israel">
                 <Plane className="h-4 w-4 text-amber-400" />
                 <span className="text-sm font-bold text-amber-300">
-                  {language === 'he' ? 'לראשונה בישראל' : 'First in Israel'}
+                  {t('marketplace.firstInIsrael')}
                 </span>
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4" data-testid="heading-value-proposition">
-                {language === 'he' ? 'למה לבחור ב-Pet Wash™?' : 'Why Choose Pet Wash™ Marketplace?'}
+                {t('marketplace.valueProposition')}
               </h2>
               <p className="text-lg text-gray-300 max-w-3xl mx-auto">
-                {language === 'he' 
-                  ? 'המרקטפלייס הראשון והיוקרתי בישראל לשירותי חיות מחמד עם נותני שירות מאומתים ומקצועיים'
-                  : "Israel's first premium pet services marketplace with verified professionals"}
+                {t('marketplace.valuePropositionSubtitle')}
               </p>
             </div>
 
@@ -187,58 +185,44 @@ export default function SitterSuiteOverview() {
               {[
                 { 
                   icon: Shield, 
-                  title: language === 'he' ? 'מאומתים ועברו בדיקת רקע' : 'All Verified & Background Checked',
-                  desc: language === 'he' 
-                    ? 'כל שמרטף/ית, מטייל/ת כלבים, נהג/ת ומאלף/ת עוברים בדיקות רקע מקיפות ואימות זהות מלא לפני ההצטרפות לפלטפורמה.'
-                    : 'Every sitter, dog walker, driver, and trainer passes thorough background checks and identity verification.',
+                  titleKey: 'marketplace.verifiedBackgroundChecked',
+                  descKey: 'marketplace.verifiedBackgroundCheckedDesc',
                   color: 'from-blue-500 to-blue-600'
                 },
                 { 
                   icon: Heart, 
-                  title: language === 'he' ? 'רק אוהבי בעלי חיים אמיתיים' : 'Animal Lovers Only',
-                  desc: language === 'he' 
-                    ? 'אנחנו מקבלים רק אנשים שבאמת אוהבים בעלי חיים ומתייחסים לכל חיית מחמד כאילו הייתה שלהם.'
-                    : 'We hire only genuine animal lovers who treat every pet like their own family member.',
+                  titleKey: 'marketplace.animalLoversOnly',
+                  descKey: 'marketplace.animalLoversOnlyDesc',
                   color: 'from-pink-500 to-pink-600'
                 },
                 { 
                   icon: Award, 
-                  title: language === 'he' ? 'הסכמים מחייבים משפטית' : 'Legally Binding Agreements',
-                  desc: language === 'he' 
-                    ? 'כל נותני השירות שלנו חותמים על הסכמים משפטיים מחייבים המבטיחים אחריות מלאה וסטנדרטים מקצועיים גבוהים.'
-                    : 'All subcontractors sign legally binding documents ensuring accountability and professional standards.',
+                  titleKey: 'marketplace.legallyBindingAgreements',
+                  descKey: 'marketplace.legallyBindingAgreementsDesc',
                   color: 'from-amber-500 to-orange-500'
                 },
                 { 
                   icon: Users, 
-                  title: language === 'he' ? 'שמירה על הבית בזמן החופשה' : 'House Sitting Included',
-                  desc: language === 'he' 
-                    ? 'השמרטף/ית ידאגו גם לבית: השקיית צמחים, איסוף דואר ושמירה על הכל מסודר ומאובטח בזמן שאתם בחופשה.'
-                    : 'Your sitter will watch your home, water plants, collect mail, and keep everything secure.',
+                  titleKey: 'marketplace.houseSittingIncluded',
+                  descKey: 'marketplace.houseSittingIncludedDesc',
                   color: 'from-green-500 to-emerald-500'
                 },
                 { 
                   icon: MapPin, 
-                  title: language === 'he' ? 'נותני שירות מהשכונה שלכם' : 'Local Neighborhood Providers',
-                  desc: language === 'he' 
-                    ? 'התחברו עם שכנים אמינים שמחפשים הכנסה נוספת. הם מכירים את הסביבה ובאמת אכפת להם מחיית המחמד שלכם.'
-                    : 'Connect with trusted neighbors looking for extra income. They know the area and they care.',
+                  titleKey: 'marketplace.localNeighborhoodProviders',
+                  descKey: 'marketplace.localNeighborhoodProvidersDesc',
                   color: 'from-purple-500 to-purple-600'
                 },
                 { 
                   icon: Home, 
-                  title: language === 'he' ? 'אתם בוחרים היכן' : "You Choose the Location",
-                  desc: language === 'he' 
-                    ? 'אצלכם בבית או אצל השמרטף/ית - הבחירה שלכם! כל האפשרויות כוללות שני טיולים ביום, מים טריים ואוכל.'
-                    : 'At your home or the sitter\'s - your choice! All options include 2 daily walks, fresh water, and food.',
+                  titleKey: 'marketplace.youChooseLocation',
+                  descKey: 'marketplace.youChooseLocationDesc',
                   color: 'from-cyan-500 to-teal-500'
                 },
                 { 
                   icon: Shield, 
-                  title: language === 'he' ? 'ביטוח מקיף לשקט נפשי' : "Full Peace-of-Mind Insurance",
-                  desc: language === 'he' 
-                    ? 'כשהשמרטף/ית נשארים אצלכם בבית, אתם נהנים מכיסוי ביטוחי מקיף של למעלה מ-₪10 מיליון לשקט נפשי מוחלט.'
-                    : 'When a sitter stays at your home, you get full ₪10M+ insurance coverage for complete peace of mind.',
+                  titleKey: 'marketplace.fullInsurance',
+                  descKey: 'marketplace.fullInsuranceDesc',
                   color: 'from-indigo-500 to-blue-600'
                 },
               ].map((item, i) => (
@@ -250,8 +234,8 @@ export default function SitterSuiteOverview() {
                   <div className={`w-14 h-14 mb-4 bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center shadow-lg`}>
                     <item.icon className="w-7 h-7 text-white" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-3">{item.title}</h3>
-                  <p className="text-sm text-gray-300">{item.desc}</p>
+                  <h3 className="text-lg font-bold text-white mb-3">{t(item.titleKey)}</h3>
+                  <p className="text-sm text-gray-300">{t(item.descKey)}</p>
                 </div>
               ))}
             </div>
@@ -261,12 +245,10 @@ export default function SitterSuiteOverview() {
               <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
                 <div className="text-center lg:text-right">
                   <h3 className="text-2xl font-black text-white mb-2" data-testid="heading-vacation-cta">
-                    {language === 'he' ? '🏖️ טסים לחופשה? אנחנו שומרים!' : '🏖️ Go on Vacation Stress-Free!'}
+                    🏖️ {t('marketplace.vacationCta')}
                   </h3>
                   <p className="text-lg text-pink-100">
-                    {language === 'he' 
-                      ? 'השאירו את חיית המחמד שלכם בבית עם שמרטף/ית מקצועי/ת. הם ידאגו לטיולים, לאוכל, למים ולחוויה מושלמת עד שתחזרו.'
-                      : "Leave your pet at home with a professional sitter. They'll handle walks, food, water, and a perfect experience."}
+                    {t('marketplace.vacationCtaDesc')}
                   </p>
                 </div>
                 <Link href="/sitter-suite/browse">
@@ -274,7 +256,7 @@ export default function SitterSuiteOverview() {
                     className="px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl hover:from-pink-600 hover:to-purple-700 transition-all shadow-lg whitespace-nowrap"
                     data-testid="button-vacation-cta"
                   >
-                    {language === 'he' ? 'מצאו שמרטף/ית עכשיו' : 'Find a Sitter Now'}
+                    {t('marketplace.findSitterNow')}
                   </button>
                 </Link>
               </div>
