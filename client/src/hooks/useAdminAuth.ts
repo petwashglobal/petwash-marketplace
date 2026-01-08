@@ -22,11 +22,11 @@ interface AuthMeResponse {
 
 export function useAdminAuth() {
   const { data, isLoading, error, isError } = useQuery<AuthMeResponse>({
-    queryKey: ["/api/auth/me"],
+    queryKey: ["/api/admin/auth/me"],
     retry: false,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      const res = await fetch('/api/admin/auth/me', { credentials: 'include' });
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || 'Authentication failed');

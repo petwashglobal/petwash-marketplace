@@ -2,7 +2,6 @@ import { t, type Language } from '@/lib/i18n';
 import { Link } from 'wouter';
 import { FaWhatsapp } from 'react-icons/fa';
 import { Mail, Shield, Award, Leaf, CheckCircle2 } from 'lucide-react';
-import PaymentMethods from './PaymentMethods';
 
 interface FooterProps {
   language: Language;
@@ -118,17 +117,9 @@ export function Footer({ language }: FooterProps) {
           </div>
         </div>
 
-        {/* Premium Trust & Payment Badges Section - 7-Star Luxury */}
+        {/* Premium Trust Badges Section - 7-Star Luxury */}
         <div className="border-t border-gray-100 pt-8 pb-8">
           <div className="max-w-5xl mx-auto">
-            {/* Payment Methods - Official Card Logos */}
-            <div className="text-center mb-6">
-              <p className="text-xs uppercase tracking-[0.2em] text-gray-400 font-light mb-3">
-                {t('footer.securePayment', language)}
-              </p>
-              <PaymentMethods />
-            </div>
-
             {/* Trust Badges - Minimalist Luxury */}
             <div className="flex flex-wrap items-center justify-center gap-6 text-center">
               {/* SSL Security */}
