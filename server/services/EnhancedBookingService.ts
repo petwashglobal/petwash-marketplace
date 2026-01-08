@@ -107,6 +107,30 @@ export class EnhancedBookingService {
   }
 
   async createBooking(input: BookingCreateInput, platform: PlatformConfig): Promise<typeof bookings.$inferSelect> {
+    if (isNaN(input.startTime.getTime()) || isNaN(input.endTime.getTime())) {
+      throw new Error("Invalid date format for startTime or endTime");
+    }
+
+    if (input.endTime <= input.startTime) {
+      throw new Error("endTime must be after startTime");
+    }
+
+    if (input.providerId) {
+      const [provider] = await db
+        .select()
+        .from(providers)
+        .where(eq(providers.id, input.providerId))
+        .limit(1);
+      
+      if (!provider) {
+        throw new Error("Provider not found");
+      }
+      
+      if (provider.platformId && provider.platformId !== input.platformId) {
+        throw new Error("Provider does not belong to this platform");
+      }
+    }
+
     const bookingNumber = this.generateBookingNumber(input.platformId);
     
     const subtotal = input.items?.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0) || 0;
@@ -114,59 +138,69 @@ export class EnhancedBookingService {
     const platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
     const providerPayout = subtotal - platformFee;
 
-    const [booking] = await db
-      .insert(bookings)
-      .values({
-        bookingNumber,
-        platformId: input.platformId,
-        userId: input.userId,
-        providerId: input.providerId,
-        stationId: input.stationId,
-        pickupLocationId: input.pickupLocationId,
-        dropoffLocationId: input.dropoffLocationId,
-        startTime: input.startTime,
-        endTime: input.endTime,
-        timezone: input.timezone || "Asia/Jerusalem",
-        status: BOOKING_STATUS.DRAFT,
-        paymentStatus: PAYMENT_STATUS.PENDING,
-        subtotal: subtotal.toString(),
-        platformFee: platformFee.toString(),
-        providerPayout: providerPayout.toString(),
-        total: subtotal.toString(),
-        currency: "ILS",
-        serviceType: input.serviceType,
-        serviceDescription: input.serviceDescription,
-        specialRequests: input.specialRequests,
-        platformData: {
-          requiresMeetGreet: platform.features.includes("meet_greet"),
-          escrowEnabled: platform.features.includes("escrow"),
+    return await db.transaction(async (tx) => {
+      const [booking] = await tx
+        .insert(bookings)
+        .values({
+          bookingNumber,
+          platformId: input.platformId,
+          userId: input.userId,
+          providerId: input.providerId,
+          stationId: input.stationId,
+          pickupLocationId: input.pickupLocationId,
+          dropoffLocationId: input.dropoffLocationId,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          timezone: input.timezone || "Asia/Jerusalem",
+          status: BOOKING_STATUS.DRAFT,
+          paymentStatus: PAYMENT_STATUS.PENDING,
+          subtotal: subtotal.toString(),
+          platformFee: platformFee.toString(),
+          providerPayout: providerPayout.toString(),
+          total: subtotal.toString(),
+          currency: "ILS",
+          serviceType: input.serviceType,
+          serviceDescription: input.serviceDescription,
+          specialRequests: input.specialRequests,
+          platformData: {
+            requiresMeetGreet: platform.features.includes("meet_greet"),
+            escrowEnabled: platform.features.includes("escrow"),
+          },
+        })
+        .returning();
+
+      if (input.items?.length) {
+        await tx.insert(bookingItems).values(
+          input.items.map((item) => ({
+            bookingId: booking.id,
+            itemType: item.itemType,
+            name: item.name,
+            nameHe: item.nameHe,
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice.toString(),
+            totalPrice: (item.quantity * item.unitPrice).toString(),
+          }))
+        );
+      }
+
+      const eventId = crypto.randomUUID();
+      await tx.insert(domainEvents).values({
+        eventId,
+        eventType: "booking.created",
+        aggregateType: "booking",
+        aggregateId: booking.id,
+        payload: {
+          platformId: input.platformId,
+          userId: input.userId,
+          providerId: input.providerId,
+          total: subtotal,
         },
-      })
-      .returning();
+        occurredAt: sql`NOW()`,
+      });
 
-    if (input.items?.length) {
-      await db.insert(bookingItems).values(
-        input.items.map((item) => ({
-          bookingId: booking.id,
-          itemType: item.itemType,
-          name: item.name,
-          nameHe: item.nameHe,
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice.toString(),
-          totalPrice: (item.quantity * item.unitPrice).toString(),
-        }))
-      );
-    }
-
-    await this.logEvent("booking.created", "booking", booking.id, {
-      platformId: input.platformId,
-      userId: input.userId,
-      providerId: input.providerId,
-      total: subtotal,
+      return booking;
     });
-
-    return booking;
   }
 
   async getQuote(bookingId: string, platform: PlatformConfig): Promise<BookingQuote | null> {
