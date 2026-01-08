@@ -183,26 +183,32 @@ router.post('/apply', upload.fields([
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-    // Validate required fields
-    if (!inviteCode || !firstName || !lastName || !phoneNumber || !city || !providerType) {
+    // Validate required fields (invite code is OPTIONAL)
+    if (!firstName || !lastName || !phoneNumber || !city || !providerType) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Validate invite code
-    const [code] = await db
-      .select()
-      .from(providerInviteCodes)
-      .where(eq(providerInviteCodes.inviteCode, inviteCode))
-      .limit(1);
+    // Validate invite code IF provided (optional for self-registration)
+    let code = null;
+    let referralBonus = null;
+    
+    if (inviteCode && inviteCode.trim()) {
+      const [foundCode] = await db
+        .select()
+        .from(providerInviteCodes)
+        .where(eq(providerInviteCodes.inviteCode, inviteCode.trim()))
+        .limit(1);
 
-    if (!code || !code.isActive) {
-      return res.status(400).json({ error: 'Invalid or inactive invite code' });
-    }
-
-    if (code.providerType !== providerType) {
-      return res.status(400).json({ 
-        error: `This invite code is for ${code.providerType}, not ${providerType}` 
-      });
+      if (foundCode && foundCode.isActive) {
+        if (foundCode.providerType !== providerType) {
+          return res.status(400).json({ 
+            error: `This invite code is for ${foundCode.providerType}, not ${providerType}` 
+          });
+        }
+        code = foundCode;
+        referralBonus = foundCode.referralBonus;
+      }
+      // If code provided but invalid, just ignore it (allow self-registration)
     }
 
     // Check for existing application
@@ -347,14 +353,16 @@ router.post('/apply', upload.fields([
       status: 'pending',
     }).returning();
 
-    // Increment invite code usage
-    await db
-      .update(providerInviteCodes)
-      .set({ 
-        currentUses: sql`${providerInviteCodes.currentUses} + 1`,
-        updatedAt: new Date()
-      })
-      .where(eq(providerInviteCodes.inviteCode, inviteCode));
+    // Increment invite code usage only if a valid code was used
+    if (code && inviteCode) {
+      await db
+        .update(providerInviteCodes)
+        .set({ 
+          currentUses: sql`${providerInviteCodes.currentUses} + 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(providerInviteCodes.inviteCode, inviteCode));
+    }
 
     logger.info(`[Provider Onboarding] Application submitted: ${applicationId} by ${authenticatedUser.uid}`);
 

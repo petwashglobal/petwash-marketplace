@@ -473,21 +473,36 @@ export default function ProviderOnboarding() {
                   </p>
                 </div>
 
-                <button 
-                  onClick={validateInviteCode} 
-                  className="luxury-btn-primary luxury-shadow-xl w-full py-4"
-                  disabled={validatingCode || !inviteCode}
-                  data-testid="button-validate-code"
-                >
-                  {validatingCode ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin mr-2 inline" />
-                      {t.validating}
-                    </>
-                  ) : (
-                    t.validateCode
-                  )}
-                </button>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={validateInviteCode} 
+                    className="luxury-btn-primary luxury-shadow-xl flex-1 py-4"
+                    disabled={validatingCode || !inviteCode}
+                    data-testid="button-validate-code"
+                  >
+                    {validatingCode ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2 inline" />
+                        {t.validating}
+                      </>
+                    ) : (
+                      t.validateCode
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => setStep(2)} 
+                    className="luxury-btn-outline flex-1 py-4"
+                    data-testid="button-skip-code"
+                  >
+                    {isHebrew ? 'המשך בלי קוד' : 'Continue Without Code'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 text-center mt-2">
+                  {isHebrew 
+                    ? 'אין קוד הזמנה? אפשר להמשיך בלי - נבדוק את הבקשה תוך 48 שעות'
+                    : "Don't have an invite code? You can continue without one - we'll review within 48 hours"
+                  }
+                </p>
 
                 {/* Benefits Section */}
                 <div className="grid md:grid-cols-2 gap-6 mt-8">
@@ -527,6 +542,54 @@ export default function ProviderOnboarding() {
             {/* Step 2: Personal Information */}
             {step === 2 && (
               <div className="space-y-6">
+                {/* Provider Type Selector (shown when no invite code was used) */}
+                {!codeValid && (
+                  <div className="mb-6">
+                    <Label className="luxury-heading-sm mb-3 block">{t.providerTypeTitle}</Label>
+                    <RadioGroup
+                      value={providerType}
+                      onValueChange={(val) => setProviderType(val as typeof providerType)}
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+                    >
+                      <div className={`luxury-glass-card p-4 cursor-pointer transition-all ${providerType === 'walker' ? 'ring-2 ring-black' : ''}`} onClick={() => setProviderType('walker')}>
+                        <RadioGroupItem value="walker" id="walker" className="sr-only" />
+                        <Label htmlFor="walker" className="cursor-pointer block text-center">
+                          <span className="text-2xl mb-2 block">🚶</span>
+                          <span className="font-semibold block">{t.walker}</span>
+                        </Label>
+                      </div>
+                      <div className={`luxury-glass-card p-4 cursor-pointer transition-all ${providerType === 'sitter' ? 'ring-2 ring-black' : ''}`} onClick={() => setProviderType('sitter')}>
+                        <RadioGroupItem value="sitter" id="sitter" className="sr-only" />
+                        <Label htmlFor="sitter" className="cursor-pointer block text-center">
+                          <span className="text-2xl mb-2 block">🏠</span>
+                          <span className="font-semibold block">{t.sitter}</span>
+                        </Label>
+                      </div>
+                      <div className={`luxury-glass-card p-4 cursor-pointer transition-all ${providerType === 'driver' ? 'ring-2 ring-black' : ''}`} onClick={() => setProviderType('driver')}>
+                        <RadioGroupItem value="driver" id="driver" className="sr-only" />
+                        <Label htmlFor="driver" className="cursor-pointer block text-center">
+                          <span className="text-2xl mb-2 block">🚗</span>
+                          <span className="font-semibold block">{isHebrew ? 'נהג PetTrek' : 'PetTrek Driver'}</span>
+                        </Label>
+                      </div>
+                      <div className={`luxury-glass-card p-4 cursor-pointer transition-all ${providerType === 'trainer' ? 'ring-2 ring-black' : ''}`} onClick={() => setProviderType('trainer')}>
+                        <RadioGroupItem value="trainer" id="trainer" className="sr-only" />
+                        <Label htmlFor="trainer" className="cursor-pointer block text-center">
+                          <span className="text-2xl mb-2 block">🎓</span>
+                          <span className="font-semibold block">{isHebrew ? 'מאלף כלבים' : 'Dog Trainer'}</span>
+                        </Label>
+                      </div>
+                      <div className={`luxury-glass-card p-4 cursor-pointer transition-all ${providerType === 'station_operator' ? 'ring-2 ring-black' : ''}`} onClick={() => setProviderType('station_operator')}>
+                        <RadioGroupItem value="station_operator" id="station_operator" className="sr-only" />
+                        <Label htmlFor="station_operator" className="cursor-pointer block text-center">
+                          <span className="text-2xl mb-2 block">🚿</span>
+                          <span className="font-semibold block">{t.stationOperator}</span>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="firstName">{t.firstName}</Label>
