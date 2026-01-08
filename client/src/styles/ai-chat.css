@@ -1,4 +1,5 @@
 /* Premium PetWash AI Chat - Glassmorphism Design */
+/* Z-INDEX: 9100-9199 (above FABs at 9050, below toasts at 9200) */
 
 /* Glass Container */
 .glass-chat-container {
@@ -6,6 +7,7 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 9100; /* Above floating FABs */
 }
 
 /* Glass Header */
