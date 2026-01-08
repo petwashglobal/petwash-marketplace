@@ -227,11 +227,19 @@ export default function SitterSuiteOverview() {
                 },
                 { 
                   icon: Home, 
-                  title: language === 'he' ? 'אירוח בבית של נותן השירות' : "Host at Provider's Home",
+                  title: language === 'he' ? 'אתם בוחרים את המיקום' : "You Choose the Location",
                   desc: language === 'he' 
-                    ? 'מעדיפים שחיית המחמד תשהה במקום אחר? נותני השירות מציעים את ביתם עם 2 טיולים ביום, מים טריים ואוכל.'
-                    : 'Prefer your pet stays elsewhere? Providers offer their homes with 2 daily walks, fresh water, and food.',
+                    ? 'בבית שלכם או בבית השמרטף/ית - הבחירה שלכם! כל האפשרויות כוללות 2 טיולים ביום, מים טריים ואוכל.'
+                    : 'At your home or the sitter\'s - your choice! All options include 2 daily walks, fresh water, and food.',
                   color: 'from-cyan-500 to-teal-500'
+                },
+                { 
+                  icon: Shield, 
+                  title: language === 'he' ? 'ביטוח מלא ומרגיע' : "Full Peace-of-Mind Insurance",
+                  desc: language === 'he' 
+                    ? 'כשהשמרטף/ית נשאר/ת אצלכם בבית, אתם מקבלים כיסוי ביטוחי מלא של ₪10 מיליון+ לשקט נפשי מושלם.'
+                    : 'When a sitter stays at your home, you get full ₪10M+ insurance coverage for complete peace of mind.',
+                  color: 'from-indigo-500 to-blue-600'
                 },
               ].map((item, i) => (
                 <div 
