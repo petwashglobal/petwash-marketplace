@@ -4,23 +4,60 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { providerInviteCodes, providerApplications, insertProviderApplicationSchema } from '@shared/schema';
+import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
 import { biometricVerification } from '../services/BiometricVerificationService';
 import { logger } from '../lib/logger';
+import { isSuperAdmin } from '../middleware/rbac';
 import multer from 'multer';
 
 const router = Router();
 
-// Configure multer for file uploads (memory storage)
+// Allowed MIME types for document uploads
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/jpg', 
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/pdf'
+];
+
+// File size limits by type
+const FILE_SIZE_LIMITS = {
+  selfie: 5 * 1024 * 1024,      // 5MB for selfie photos
+  document: 10 * 1024 * 1024,   // 10MB for documents/IDs
+  certificate: 15 * 1024 * 1024 // 15MB for certificates
+};
+
+// Configure multer for file uploads with validation
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: 15 * 1024 * 1024, // 15MB max (certificates)
   },
+  fileFilter: (req, file, callback) => {
+    // Check MIME type
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype.toLowerCase())) {
+      logger.warn(`[Upload] Rejected file type: ${file.mimetype} for ${file.fieldname}`);
+      return callback(new Error(`Invalid file type: ${file.mimetype}. Allowed: JPEG, PNG, WebP, HEIC, PDF`));
+    }
+    
+    // Check file extension matches MIME type
+    const ext = file.originalname.split('.').pop()?.toLowerCase();
+    const validExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'pdf'];
+    if (!ext || !validExtensions.includes(ext)) {
+      logger.warn(`[Upload] Rejected file extension: ${ext} for ${file.fieldname}`);
+      return callback(new Error(`Invalid file extension. Allowed: ${validExtensions.join(', ')}`));
+    }
+    
+    callback(null, true);
+  }
 });
 
-// Admin authentication middleware
+// Admin authentication middleware - supports super admins and database role assignments
 async function requireAdmin(req: Request, res: Response, next: Function) {
   try {
     const authHeader = req.headers.authorization;
@@ -30,13 +67,54 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
 
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await auth.verifyIdToken(token);
+    const userEmail = decodedToken.email?.toLowerCase();
     
-    if (decodedToken.email !== 'nirhadad1@gmail.com') { // Admin email
-      return res.status(403).json({ error: 'Forbidden - Admin access required' });
+    if (!userEmail) {
+      return res.status(401).json({ error: 'Unauthorized - Email not found in token' });
     }
+    
+    // Check super admin list first (CEO, Directors)
+    if (isSuperAdmin(userEmail)) {
+      req.body.adminUid = decodedToken.uid;
+      req.body.adminEmail = userEmail;
+      return next();
+    }
+    
+    // Check database for admin role assignments
+    const assignments = await db
+      .select({
+        assignment: userRoleAssignments,
+        role: systemRoles
+      })
+      .from(userRoleAssignments)
+      .leftJoin(systemRoles, eq(userRoleAssignments.roleId, systemRoles.id))
+      .where(
+        and(
+          eq(userRoleAssignments.userEmail, userEmail),
+          eq(userRoleAssignments.isActive, true)
+        )
+      )
+      .limit(1);
 
-    req.body.adminUid = decodedToken.uid;
-    next();
+    if (assignments.length > 0 && assignments[0].role) {
+      const role = assignments[0].role;
+      // Check if role has admin-level access (level 5 or higher, or specific permissions)
+      const permissions = role.permissions as string[];
+      const hasAdminAccess = role.accessLevel >= 5 || 
+        permissions.includes('*') || 
+        permissions.includes('admin:providers') ||
+        permissions.includes('admin:applications');
+      
+      if (hasAdminAccess) {
+        req.body.adminUid = decodedToken.uid;
+        req.body.adminEmail = userEmail;
+        req.body.adminRole = role.roleCode;
+        return next();
+      }
+    }
+    
+    logger.warn(`[Provider Onboarding] Admin access denied for: ${userEmail}`);
+    return res.status(403).json({ error: 'Forbidden - Admin access required' });
   } catch (error) {
     logger.error('Admin auth error', error);
     return res.status(401).json({ error: 'Unauthorized - Invalid token' });
