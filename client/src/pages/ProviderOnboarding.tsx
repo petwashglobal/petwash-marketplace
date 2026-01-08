@@ -453,92 +453,48 @@ export default function ProviderOnboarding() {
             {/* Step 1: Application Entry - Google Forms + Invite Code */}
             {step === 1 && (
               <div className="space-y-8">
-                {/* New Applicants - Google Form CTA */}
-                <div className="luxury-glass-card luxury-shadow-lg p-6 border-2 border-purple-400/30 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-black/20">
-                  <div className="text-center mb-6">
-                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mb-4">
-                      <Users className="h-8 w-8 text-white" />
+                {/* New Applicants - Luxury Application Form CTA */}
+                <div className="luxury-glass-card luxury-shadow-lg p-8 border-2 border-black/20 dark:border-white/20 bg-gradient-to-br from-white to-gray-50 dark:from-black/40 dark:to-gray-900/40">
+                  <div className="text-center mb-8">
+                    <div className="mx-auto w-20 h-20 bg-gradient-to-br from-black to-gray-800 dark:from-white dark:to-gray-200 rounded-full flex items-center justify-center mb-5 shadow-2xl">
+                      <Users className="h-10 w-10 text-white dark:text-black" />
                     </div>
-                    <h2 className="luxury-heading-md text-purple-900 dark:text-purple-100">
-                      {isHebrew ? 'רוצה להצטרף לצוות Pet Wash?' : 'Want to Join the Pet Wash Team?'}
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-black via-gray-700 to-black dark:from-white dark:via-gray-200 dark:to-white bg-clip-text text-transparent mb-3">
+                      {isHebrew ? 'הצטרף לצוות Pet Wash™' : 'Join the Pet Wash™ Team'}
                     </h2>
-                    <p className="luxury-text-body mt-2 text-purple-800 dark:text-purple-300">
+                    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-lg mx-auto">
                       {isHebrew 
-                        ? 'מלא את טופס ההרשמה שלנו והצוות ייצור איתך קשר תוך 48 שעות'
-                        : 'Fill out our application form and our team will contact you within 48 hours'
+                        ? 'מלא את טופס הבקשה היוקרתי שלנו והפוך לחלק מפלטפורמת הפרימיום המובילה'
+                        : 'Fill out our premium application form and become part of the leading luxury platform'
                       }
                     </p>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    <a 
-                      href="https://forms.gle/petwash-walker"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
-                      data-testid="link-form-walker"
+                  <Link href="/apply-provider">
+                    <button
+                      className="w-full py-5 px-8 text-xl font-bold bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black rounded-2xl shadow-2xl hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3"
+                      data-testid="button-apply-now"
                     >
-                      <span className="text-3xl block mb-2">🚶</span>
-                      <span className="font-semibold text-sm">{isHebrew ? 'מטייל כלבים' : 'Dog Walker'}</span>
-                    </a>
-                    <a 
-                      href="https://forms.gle/petwash-sitter"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
-                      data-testid="link-form-sitter"
-                    >
-                      <span className="text-3xl block mb-2">🏠</span>
-                      <span className="font-semibold text-sm">{isHebrew ? 'שמרטף' : 'Pet Sitter'}</span>
-                    </a>
-                    <a 
-                      href="https://forms.gle/petwash-driver"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
-                      data-testid="link-form-driver"
-                    >
-                      <span className="text-3xl block mb-2">🚗</span>
-                      <span className="font-semibold text-sm">{isHebrew ? 'נהג PetTrek' : 'PetTrek Driver'}</span>
-                    </a>
-                    <a 
-                      href="https://forms.gle/petwash-groomer"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
-                      data-testid="link-form-groomer"
-                    >
-                      <span className="text-3xl block mb-2">✂️</span>
-                      <span className="font-semibold text-sm">{isHebrew ? 'מטפח' : 'Groomer'}</span>
-                    </a>
-                    <a 
-                      href="https://forms.gle/petwash-trainer"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
-                      data-testid="link-form-trainer"
-                    >
-                      <span className="text-3xl block mb-2">🎓</span>
-                      <span className="font-semibold text-sm">{isHebrew ? 'מאלף' : 'Trainer'}</span>
-                    </a>
-                    <a 
-                      href="https://forms.gle/petwash-station"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
-                      data-testid="link-form-station"
-                    >
-                      <span className="text-3xl block mb-2">🏪</span>
-                      <span className="font-semibold text-sm">{isHebrew ? 'מפעיל תחנה' : 'Station Operator'}</span>
-                    </a>
-                  </div>
+                      <Star className="h-6 w-6" />
+                      {isHebrew ? 'הגש בקשה עכשיו' : 'Apply Now'}
+                      <ArrowRight className="h-6 w-6" />
+                    </button>
+                  </Link>
                   
-                  <p className="text-center text-sm text-purple-600 dark:text-purple-400 mt-4">
-                    {isHebrew 
-                      ? '📝 מלא את הטופס ונחזור אליך בהקדם!'
-                      : '📝 Fill out the form and we\'ll get back to you soon!'
-                    }
-                  </p>
+                  <div className="flex flex-wrap justify-center gap-4 mt-6">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      {isHebrew ? 'תהליך מהיר' : 'Quick Process'}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Shield className="h-4 w-4 text-blue-500" />
+                      {isHebrew ? 'אבטחה מלאה' : 'Fully Secure'}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Clock className="h-4 w-4 text-purple-500" />
+                      {isHebrew ? 'תשובה תוך 48 שעות' : '48h Response'}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Divider */}

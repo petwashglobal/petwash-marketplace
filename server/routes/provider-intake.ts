@@ -234,4 +234,86 @@ router.get('/form-urls/public', async (req, res) => {
   });
 });
 
+/**
+ * POST /api/provider-intake/submit
+ * Public submission endpoint for in-app luxury application form
+ * No auth required - form is public facing
+ */
+const submitApplicationSchema = z.object({
+  firstName: z.string().min(2, 'First name is required'),
+  lastName: z.string().min(2, 'Last name is required'),
+  email: z.string().email('Valid email required'),
+  phoneNumber: z.string().min(9, 'Valid phone number required'),
+  city: z.string().min(2, 'City is required'),
+  providerType: z.string().min(1, 'Provider type is required'),
+  yearsExperience: z.string().optional(),
+  hasOwnTransport: z.boolean().default(false),
+  hasPetFirstAid: z.boolean().default(false),
+  hasInsurance: z.boolean().default(false),
+  availabilityNotes: z.string().optional(),
+  aboutMe: z.string().min(20, 'Please tell us about yourself'),
+  whyJoinPetWash: z.string().min(20, 'Please tell us why you want to join'),
+  referralSource: z.string().optional(),
+  agreeToTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
+  agreeToPrivacy: z.boolean().refine(val => val === true, 'You must agree to the privacy policy'),
+});
+
+router.post('/submit', async (req, res) => {
+  try {
+    const data = submitApplicationSchema.parse(req.body);
+    
+    const intakeId = `INTAKE-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    
+    const [record] = await db
+      .insert(providerIntakeQueue)
+      .values({
+        intakeId,
+        email: data.email.toLowerCase(),
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phoneNumber: data.phoneNumber,
+        providerType: data.providerType,
+        city: data.city,
+        country: 'IL',
+        yearsExperience: data.yearsExperience ? parseInt(data.yearsExperience.split('-')[0]) || 0 : 0,
+        hasOwnTransport: data.hasOwnTransport,
+        hasPetFirstAid: data.hasPetFirstAid,
+        hasInsurance: data.hasInsurance,
+        availabilityNotes: data.availabilityNotes || null,
+        aboutMe: data.aboutMe,
+        whyJoinPetWash: data.whyJoinPetWash,
+        referralSource: data.referralSource || null,
+        status: 'new',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    logger.info('[Provider Intake] New application submitted:', { 
+      intakeId, 
+      email: data.email, 
+      providerType: data.providerType 
+    });
+    
+    res.json({
+      success: true,
+      message: 'Application submitted successfully',
+      intakeId,
+      estimatedReviewTime: '48 business hours'
+    });
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: error.errors 
+      });
+    }
+    logger.error('[Provider Intake] Submit failed:', error);
+    res.status(500).json({ 
+      error: 'Failed to submit application',
+      message: error.message 
+    });
+  }
+});
+
 export default router;

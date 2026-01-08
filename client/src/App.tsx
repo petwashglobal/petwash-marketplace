@@ -235,6 +235,7 @@ const ExecutiveSuiteGuard = lazy(() => import("@/components/ExecutiveSuiteGuard"
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
+const ProviderApplicationForm = lazy(() => import("@/pages/ProviderApplicationForm"));
 const ProviderListings = lazy(() => import("@/pages/ProviderListings"));
 const PlatformShowcase = lazy(() => import("@/pages/PlatformShowcase"));
 const PawFinder = lazy(() => import("@/pages/PawFinder"));
@@ -1489,6 +1490,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <ProviderOnboarding />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/apply-provider">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <ProviderApplicationForm />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/join-team">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <ProviderApplicationForm />
             </Suspense>
           )}
         </Route>
