@@ -27,7 +27,7 @@ import {
   ArrowRight, ArrowLeft, Sparkles, Crown, Send,
   Camera, Upload, User, X
 } from "lucide-react";
-import { useLanguage } from "@/hooks/useLanguage";
+import { useLanguage } from "@/lib/languageStore";
 
 const providerTypes = [
   { id: 'walker', icon: Dog, label: { en: 'Dog Walker', he: 'מטייל כלבים' }, color: 'from-emerald-500 to-teal-600' },
@@ -172,12 +172,9 @@ export default function ProviderApplicationForm() {
         profilePhotoBase64: profilePhoto || undefined,
       };
       
-      const response = await apiRequest('/api/provider-intake/submit', {
-        method: 'POST',
-        body: JSON.stringify(submitData),
-      });
+      const response = await apiRequest('POST', '/api/provider-intake/submit', submitData);
 
-      if (response.ok || response.success) {
+      if (response.ok) {
         setSubmitted(true);
         queryClient.invalidateQueries({ queryKey: ['/api/provider-intake'] });
         toast({
