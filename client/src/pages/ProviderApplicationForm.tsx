@@ -24,7 +24,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Loader2, CheckCircle2, Star, Shield, Heart, 
   Car, Home, Dog, Scissors, GraduationCap, Building,
-  ArrowRight, ArrowLeft, Sparkles, Crown, Send
+  ArrowRight, ArrowLeft, Sparkles, Crown, Send,
+  Camera, Upload, User, X
 } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -67,6 +68,33 @@ export default function ProviderApplicationForm() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+
+  const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          variant: 'destructive',
+          title: isHebrew ? 'קובץ גדול מדי' : 'File Too Large',
+          description: isHebrew ? 'גודל הקובץ המקסימלי הוא 5MB' : 'Maximum file size is 5MB',
+        });
+        return;
+      }
+      setProfilePhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeProfilePhoto = () => {
+    setProfilePhoto(null);
+    setProfilePhotoFile(null);
+  };
 
   const form = useForm<ApplicationForm>({
     resolver: zodResolver(applicationSchema),
@@ -122,6 +150,13 @@ export default function ProviderApplicationForm() {
     successMessage: isHebrew 
       ? 'תודה על הבקשה שלך. הצוות שלנו יבדוק אותה ויצור איתך קשר תוך 48 שעות עסקיות.'
       : 'Thank you for your application. Our team will review it and contact you within 48 business hours.',
+    profilePhoto: isHebrew ? 'תמונת פרופיל ציבורית' : 'Public Profile Photo',
+    profilePhotoDesc: isHebrew 
+      ? 'בחר תמונה שתוצג לציבור בפרופיל שלך (אופציונלי - נפרד מתמונת הזיהוי)'
+      : 'Choose a photo to display publicly on your profile (optional - separate from ID verification)',
+    uploadPhoto: isHebrew ? 'העלה תמונה' : 'Upload Photo',
+    changePhoto: isHebrew ? 'שנה תמונה' : 'Change Photo',
+    removePhoto: isHebrew ? 'הסר' : 'Remove',
   };
 
   const handleTypeSelect = (typeId: string) => {
@@ -593,6 +628,65 @@ export default function ProviderApplicationForm() {
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                       {t.step4Title}
                     </h2>
+                  </div>
+
+                  {/* Profile Photo Upload */}
+                  <div className="luxury-glass-panel p-6 rounded-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Camera className="h-5 w-5 text-purple-500" />
+                      <h3 className="font-bold text-lg">{t.profilePhoto}</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      {t.profilePhotoDesc}
+                    </p>
+                    
+                    <div className="flex items-center gap-6">
+                      {/* Photo Preview */}
+                      <div className="relative">
+                        {profilePhoto ? (
+                          <div className="relative">
+                            <img 
+                              src={profilePhoto} 
+                              alt="Profile preview" 
+                              className="w-28 h-28 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-xl"
+                              data-testid="img-profile-preview"
+                            />
+                            <button
+                              type="button"
+                              onClick={removeProfilePhoto}
+                              className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                              data-testid="button-remove-photo"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-28 h-28 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center border-4 border-white dark:border-gray-800 shadow-xl">
+                            <User className="h-12 w-12 text-gray-400 dark:text-gray-500" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Upload Button */}
+                      <div className="flex-1">
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleProfilePhotoChange}
+                            className="hidden"
+                            data-testid="input-profile-photo"
+                          />
+                          <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl">
+                            <Upload className="h-5 w-5" />
+                            {profilePhoto ? t.changePhoto : t.uploadPhoto}
+                          </div>
+                        </label>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {isHebrew ? 'JPG, PNG או WebP עד 5MB' : 'JPG, PNG, or WebP up to 5MB'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   <FormField

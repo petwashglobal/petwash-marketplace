@@ -221,6 +221,9 @@ const PlatformHub = lazy(() => import("@/pages/PlatformHub"));
 // PetWash HQ - Octopus Control Panel (Luxury 2025 Admin)
 const OctopusControlPanel = lazy(() => import("@/modules/octopus/PetWashOctopusControlPanel"));
 
+// Mobile Management Dashboard - Executive Suite 2026
+const MobileManagementDashboard = lazy(() => import("@/pages/MobileManagementDashboard"));
+
 // K9000 Wash Stations - Self-Service Organic Pet Washing
 const K9000Overview = lazy(() => import("@/pages/k9000/Overview"));
 const K9000BookingFlow = lazy(() => import("@/pages/k9000/BookingFlow"));
@@ -1549,6 +1552,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                 <UnifiedControlPanel />
               </Suspense>
             </ExecutiveSuiteGuard>
+          )}
+        </Route>
+        <Route path="/management">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <MobileManagementDashboard />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/admin/dashboard">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <MobileManagementDashboard />
+            </Suspense>
           )}
         </Route>
         <Route path="/accessibility" component={Accessibility} />
