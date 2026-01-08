@@ -1,0 +1,1184 @@
+/* ============================================================================
+  GIANT ONE-FILE PRODUCTION SERVER (TypeScript)
+  Multi-platform, multi-tenant, search-first architecture with:
+  - Platform selector + platform-aware search
+  - Auth (email+password), sessions (JWT), roles
+  - Admin + Employees control panel APIs
+  - Document upload (one or more), verification workflow
+  - Booking flow primitives (create, quote, confirm, cancel)
+  - Payments abstraction (card provider adapter placeholder)
+  - Audit logs, rate limiting, security headers, CORS, input validation
+  - Storage abstraction (local or cloud via adapter placeholder)
+  - Database abstraction (in-memory for demo, plug adapters for Firestore/Postgres)
+
+  IMPORTANT:
+  - This is a complete runnable backend file.
+  - Replace the DB + payments + storage adapters with your production ones.
+  - Everything is platform-aware: every user, listing, booking belongs to platformId.
+============================================================================ */
+
+import express, { Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import multer from "multer";
+import { z } from "zod";
+
+/* =========================
+   ENV
+========================= */
+
+const env = z
+  .object({
+    NODE_ENV: z.string().default("development"),
+    PORT: z.coerce.number().default(5000),
+
+    APP_BASE_URL: z.string().default("http://localhost:5000"),
+
+    JWT_SECRET: z.string().min(16),
+    JWT_EXPIRES_IN: z.string().default("7d"),
+
+    CORS_ORIGINS: z.string().default("http://localhost:3000"),
+
+    // Storage
+    UPLOADS_DIR: z.string().default("./uploads"),
+    MAX_UPLOAD_MB: z.coerce.number().default(15),
+
+    // Password policy
+    BCRYPT_ROUNDS: z.coerce.number().default(12),
+
+    // Platform detection
+    PLATFORM_HEADER: z.string().default("x-platform-id"),
+  })
+  .parse(process.env);
+
+/* =========================
+   TYPES
+========================= */
+
+type Role = "user" | "employee" | "admin" | "super_admin";
+
+type PlatformFeature =
+  | "marketplace"
+  | "bookings"
+  | "payments"
+  | "docs_verification"
+  | "search"
+  | "reviews"
+  | "chat"
+  | "logistics";
+
+type PlatformConfig = {
+  id: string;
+  title: string;
+  description: string;
+  domains: string[]; // used for host-based resolution
+  features: PlatformFeature[];
+  isActive: boolean;
+};
+
+type User = {
+  id: string;
+  platformId: string;
+  email: string;
+  passwordHash: string;
+  role: Role;
+  displayName: string;
+  createdAt: number;
+  updatedAt: number;
+  flags: {
+    isBanned: boolean;
+    isEmailVerified: boolean;
+  };
+};
+
+type EmployeeProfile = {
+  id: string;
+  platformId: string;
+  userId: string;
+  permissions: string[];
+  locationIds: string[];
+  createdAt: number;
+};
+
+type Listing = {
+  id: string;
+  platformId: string;
+  ownerUserId: string;
+  type: string; // per platform, for search grouping
+  title: string;
+  description: string;
+  tags: string[];
+  location: {
+    country?: string;
+    city?: string;
+    address?: string;
+    lat?: number;
+    lng?: number;
+  };
+  price: {
+    currency: string;
+    amountCents: number;
+    unit: "fixed" | "hour" | "day" | "kg" | "session";
+  };
+  availability?: {
+    // simplified
+    isActive: boolean;
+  };
+  rating?: {
+    avg: number;
+    count: number;
+  };
+  createdAt: number;
+  updatedAt: number;
+};
+
+type BookingStatus = "draft" | "quoted" | "confirmed" | "cancelled" | "completed" | "refunded";
+
+type Booking = {
+  id: string;
+  platformId: string;
+  buyerUserId: string;
+  listingId: string;
+  status: BookingStatus;
+  schedule: {
+    startAt: number;
+    endAt: number;
+    tz?: string;
+  };
+  quote?: {
+    currency: string;
+    subtotalCents: number;
+    feesCents: number;
+    totalCents: number;
+    breakdown: { label: string; amountCents: number }[];
+  };
+  payment?: {
+    provider: string;
+    intentId?: string;
+    status?: "requires_payment" | "paid" | "failed" | "refunded";
+  };
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+type DocumentType = "passport" | "driver_license" | "national_id" | "other";
+
+type DocumentStatus = "uploaded" | "pending_review" | "approved" | "rejected";
+
+type DocumentRecord = {
+  id: string;
+  platformId: string;
+  userId: string;
+  type: DocumentType;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageKey: string;
+  status: DocumentStatus;
+  review?: {
+    reviewedByUserId?: string;
+    reviewedAt?: number;
+    decisionReason?: string;
+  };
+  metadata?: Record<string, any>;
+  createdAt: number;
+  updatedAt: number;
+};
+
+type AuditEvent = {
+  id: string;
+  platformId: string;
+  actorUserId?: string;
+  action: string;
+  target?: { type: string; id: string };
+  ip?: string;
+  ua?: string;
+  meta?: Record<string, any>;
+  createdAt: number;
+};
+
+type ApiErrorShape = {
+  error: {
+    code: string;
+    message: string;
+    requestId: string;
+  };
+};
+
+/* =========================
+   PLATFORM REGISTRY
+   "few platforms on search" requirement:
+   - /api/platforms returns all active platforms for the selector
+   - platform is resolved via header or host domain
+========================= */
+
+const PlatformRegistry: PlatformConfig[] = [
+  {
+    id: "platform-a",
+    title: "Platform A",
+    description: "General marketplace",
+    domains: ["platform-a.localhost", "a.example.com"],
+    features: ["search", "marketplace", "bookings", "payments", "docs_verification", "reviews"],
+    isActive: true,
+  },
+  {
+    id: "platform-b",
+    title: "Platform B",
+    description: "Services and bookings",
+    domains: ["platform-b.localhost", "b.example.com"],
+    features: ["search", "bookings", "payments", "docs_verification"],
+    isActive: true,
+  },
+  {
+    id: "platform-c",
+    title: "Platform C",
+    description: "Logistics style platform",
+    domains: ["platform-c.localhost", "c.example.com"],
+    features: ["search", "logistics", "payments"],
+    isActive: true,
+  },
+];
+
+function getPlatformById(id: string): PlatformConfig | undefined {
+  return PlatformRegistry.find((p) => p.id === id && p.isActive);
+}
+
+function getPlatformByHost(host?: string): PlatformConfig | undefined {
+  if (!host) return undefined;
+  const clean = host.split(":")[0].toLowerCase();
+  return PlatformRegistry.find((p) => p.isActive && p.domains.map((d) => d.toLowerCase()).includes(clean));
+}
+
+/* =========================
+   UTIL
+========================= */
+
+function now(): number {
+  return Date.now();
+}
+
+function uid(prefix = ""): string {
+  const rnd = crypto.randomBytes(16).toString("hex");
+  return prefix ? `${prefix}_${rnd}` : rnd;
+}
+
+function safeJsonError(res: Response, code: string, message: string, requestId: string, status = 400) {
+  const payload: ApiErrorShape = { error: { code, message, requestId } };
+  return res.status(status).json(payload);
+}
+
+/* =========================
+   DB ADAPTER (In-memory)
+   Replace with Firestore/Postgres adapter in production.
+========================= */
+
+class InMemoryDB {
+  users = new Map<string, User>();
+  employeeProfiles = new Map<string, EmployeeProfile>();
+  listings = new Map<string, Listing>();
+  bookings = new Map<string, Booking>();
+  documents = new Map<string, DocumentRecord>();
+  audit = new Map<string, AuditEvent>();
+
+  findUserByEmail(platformId: string, email: string): User | undefined {
+    email = email.toLowerCase();
+    for (const u of this.users.values()) {
+      if (u.platformId === platformId && u.email.toLowerCase() === email) return u;
+    }
+    return undefined;
+  }
+
+  listPlatformsPublic(): Array<Pick<PlatformConfig, "id" | "title" | "description" | "features">> {
+    return PlatformRegistry.filter((p) => p.isActive).map((p) => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      features: p.features,
+    }));
+  }
+}
+
+const db = new InMemoryDB();
+
+/* =========================
+   STORAGE ADAPTER (Local)
+   Replace with cloud bucket adapter in production.
+========================= */
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, env.UPLOADS_DIR),
+    filename: (req, file, cb) => {
+      const ext = (file.originalname.split(".").pop() || "bin").toLowerCase();
+      cb(null, `${uid("doc")}.${ext}`);
+    },
+  }),
+  limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024 },
+});
+
+/* =========================
+   AUTH
+========================= */
+
+type AuthContext = {
+  requestId: string;
+  platform: PlatformConfig;
+  user?: User;
+};
+
+declare global {
+  namespace Express {
+    interface Request {
+      ctx?: AuthContext;
+    }
+  }
+}
+
+function signJwt(payload: { sub: string; platformId: string; role: Role }): string {
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
+}
+
+function verifyJwt(token: string): { sub: string; platformId: string; role: Role } | null {
+  try {
+    return jwt.verify(token, env.JWT_SECRET) as any;
+  } catch {
+    return null;
+  }
+}
+
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const requestId = req.ctx?.requestId || uid("req");
+  const platform = req.ctx?.platform;
+  if (!platform) return safeJsonError(res, "NO_PLATFORM", "Platform not resolved", requestId, 400);
+
+  const authHeader = req.headers.authorization || "";
+  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const token = bearer || (req.cookies?.session as string | undefined) || "";
+
+  if (!token) return safeJsonError(res, "UNAUTHENTICATED", "Missing token", requestId, 401);
+
+  const decoded = verifyJwt(token);
+  if (!decoded) return safeJsonError(res, "UNAUTHENTICATED", "Invalid token", requestId, 401);
+
+  if (decoded.platformId !== platform.id) {
+    return safeJsonError(res, "PLATFORM_MISMATCH", "Token is for a different platform", requestId, 403);
+  }
+
+  const user = db.users.get(decoded.sub);
+  if (!user || user.platformId !== platform.id) {
+    return safeJsonError(res, "UNAUTHENTICATED", "User not found", requestId, 401);
+  }
+  if (user.flags.isBanned) return safeJsonError(res, "FORBIDDEN", "Account disabled", requestId, 403);
+
+  req.ctx = { ...(req.ctx as any), user };
+  next();
+}
+
+function requireRole(roles: Role[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const requestId = req.ctx?.requestId || uid("req");
+    const user = req.ctx?.user;
+    if (!user) return safeJsonError(res, "UNAUTHENTICATED", "Login required", requestId, 401);
+    if (!roles.includes(user.role)) return safeJsonError(res, "FORBIDDEN", "Insufficient role", requestId, 403);
+    next();
+  };
+}
+
+/* =========================
+   AUDIT
+========================= */
+
+function audit(req: Request, action: string, target?: { type: string; id: string }, meta?: Record<string, any>) {
+  const platformId = req.ctx?.platform?.id || "unknown";
+  const ev: AuditEvent = {
+    id: uid("aud"),
+    platformId,
+    actorUserId: req.ctx?.user?.id,
+    action,
+    target,
+    ip: req.ip,
+    ua: req.headers["user-agent"],
+    meta,
+    createdAt: now(),
+  };
+  db.audit.set(ev.id, ev);
+}
+
+/* =========================
+   PLATFORM RESOLUTION MIDDLEWARE
+========================= */
+
+function resolvePlatform(req: Request, res: Response, next: NextFunction) {
+  const requestId = uid("req");
+
+  const headerKey = env.PLATFORM_HEADER.toLowerCase();
+  const headerVal = (req.headers[headerKey] as string | undefined) || "";
+  const byHeader = headerVal ? getPlatformById(headerVal) : undefined;
+
+  const host = req.headers.host;
+  const byHost = getPlatformByHost(host);
+
+  const platform = byHeader || byHost;
+
+  if (!platform) {
+    req.ctx = { requestId, platform: { id: "unknown", title: "Unknown", description: "", domains: [], features: [], isActive: false } as any };
+    return safeJsonError(res, "NO_PLATFORM", `Platform not found. Provide header ${env.PLATFORM_HEADER} or use a mapped domain.`, requestId, 400);
+  }
+
+  req.ctx = { requestId, platform };
+  next();
+}
+
+/* =========================
+   SCHEMAS
+========================= */
+
+const AuthSignupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(128),
+  displayName: z.string().min(1).max(80),
+});
+
+const AuthLoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1).max(128),
+});
+
+const ListingCreateSchema = z.object({
+  type: z.string().min(1).max(50),
+  title: z.string().min(2).max(120),
+  description: z.string().min(2).max(4000),
+  tags: z.array(z.string().min(1).max(40)).max(30).default([]),
+  location: z
+    .object({
+      country: z.string().max(60).optional(),
+      city: z.string().max(80).optional(),
+      address: z.string().max(160).optional(),
+      lat: z.number().min(-90).max(90).optional(),
+      lng: z.number().min(-180).max(180).optional(),
+    })
+    .default({}),
+  price: z.object({
+    currency: z.string().min(3).max(3),
+    amountCents: z.number().int().min(0),
+    unit: z.enum(["fixed", "hour", "day", "kg", "session"]),
+  }),
+});
+
+const SearchSchema = z.object({
+  q: z.string().max(200).optional(),
+  type: z.string().max(50).optional(),
+  tag: z.string().max(40).optional(),
+  city: z.string().max(80).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  cursor: z.string().optional(),
+  platformId: z.string().optional(), // allows cross-platform search if authorized (admin/super_admin)
+});
+
+const BookingCreateSchema = z.object({
+  listingId: z.string().min(1),
+  startAt: z.number().int().min(0),
+  endAt: z.number().int().min(0),
+  tz: z.string().max(64).optional(),
+  notes: z.string().max(2000).optional(),
+});
+
+const BookingQuoteSchema = z.object({
+  bookingId: z.string().min(1),
+});
+
+const BookingConfirmSchema = z.object({
+  bookingId: z.string().min(1),
+  paymentMethod: z.enum(["card"]).default("card"),
+});
+
+const AdminSetUserRoleSchema = z.object({
+  userId: z.string().min(1),
+  role: z.enum(["user", "employee", "admin", "super_admin"]),
+});
+
+const AdminSetUserBanSchema = z.object({
+  userId: z.string().min(1),
+  isBanned: z.boolean(),
+});
+
+const DocUploadMetaSchema = z.object({
+  type: z.enum(["passport", "driver_license", "national_id", "other"]),
+});
+
+/* =========================
+   PAYMENTS ADAPTER (Placeholder)
+   Replace with real provider.
+========================= */
+
+type PaymentIntent = {
+  id: string;
+  amountCents: number;
+  currency: string;
+  status: "requires_payment" | "paid" | "failed";
+};
+
+class PaymentsProvider {
+  async createIntent(opts: { amountCents: number; currency: string; metadata: Record<string, any> }): Promise<PaymentIntent> {
+    // Placeholder intent
+    return {
+      id: uid("pi"),
+      amountCents: opts.amountCents,
+      currency: opts.currency,
+      status: "requires_payment",
+    };
+  }
+
+  async markPaid(intentId: string): Promise<void> {
+    // Placeholder: in real life, webhooks update status.
+    void intentId;
+  }
+}
+
+const payments = new PaymentsProvider();
+
+/* =========================
+   BOOKING PRICING ENGINE (Simple)
+========================= */
+
+function computeBookingQuote(listing: Listing, startAt: number, endAt: number) {
+  const durationMs = Math.max(0, endAt - startAt);
+  const durationHours = Math.max(1, Math.ceil(durationMs / (60 * 60 * 1000)));
+
+  let subtotal = listing.price.amountCents;
+
+  if (listing.price.unit === "hour") {
+    subtotal = listing.price.amountCents * durationHours;
+  }
+
+  const feePct = 0.08; // platform fee example
+  const fees = Math.round(subtotal * feePct);
+  const total = subtotal + fees;
+
+  return {
+    currency: listing.price.currency,
+    subtotalCents: subtotal,
+    feesCents: fees,
+    totalCents: total,
+    breakdown: [
+      { label: "Subtotal", amountCents: subtotal },
+      { label: "Platform fees", amountCents: fees },
+    ],
+  };
+}
+
+/* =========================
+   APP SETUP
+========================= */
+
+const app = express();
+
+app.set("trust proxy", 1);
+
+app.use(helmet());
+app.use(
+  cors({
+    origin: env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean),
+    credentials: true,
+  })
+);
+
+app.use(
+  rateLimit({
+    windowMs: 60_000,
+    limit: 240,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+  })
+);
+
+app.use(express.json({ limit: "2mb" }));
+app.use(cookieParser());
+
+app.use(resolvePlatform);
+
+/* =========================
+   HEALTH
+========================= */
+
+app.get("/health", (req, res) => {
+  res.json({
+    ok: true,
+    env: env.NODE_ENV,
+    platform: req.ctx?.platform?.id,
+    requestId: req.ctx?.requestId,
+    time: new Date().toISOString(),
+  });
+});
+
+/* =========================
+   PLATFORM SELECTOR
+   "few platforms on search"
+========================= */
+
+app.get("/api/platforms", (req, res) => {
+  res.json({ platforms: db.listPlatformsPublic() });
+});
+
+/* =========================
+   AUTH ROUTES
+========================= */
+
+app.post("/api/auth/signup", async (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+
+  const parsed = AuthSignupSchema.safeParse(req.body);
+  if (!parsed.success) return safeJsonError(res, "VALIDATION", parsed.error.message, requestId, 400);
+
+  const { email, password, displayName } = parsed.data;
+
+  if (db.findUserByEmail(platform.id, email)) {
+    return safeJsonError(res, "EMAIL_EXISTS", "Email already registered", requestId, 409);
+  }
+
+  const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS);
+
+  const user: User = {
+    id: uid("usr"),
+    platformId: platform.id,
+    email: email.toLowerCase(),
+    passwordHash,
+    role: "user",
+    displayName,
+    createdAt: now(),
+    updatedAt: now(),
+    flags: { isBanned: false, isEmailVerified: false },
+  };
+
+  db.users.set(user.id, user);
+
+  const token = signJwt({ sub: user.id, platformId: platform.id, role: user.role });
+
+  audit(req, "auth.signup", { type: "user", id: user.id });
+
+  res
+    .cookie("session", token, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
+    .json({
+      token,
+      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, platformId: user.platformId },
+      requestId,
+    });
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+
+  const parsed = AuthLoginSchema.safeParse(req.body);
+  if (!parsed.success) return safeJsonError(res, "VALIDATION", parsed.error.message, requestId, 400);
+
+  const { email, password } = parsed.data;
+  const user = db.findUserByEmail(platform.id, email);
+
+  if (!user) return safeJsonError(res, "INVALID_CREDENTIALS", "Invalid email or password", requestId, 401);
+  if (user.flags.isBanned) return safeJsonError(res, "FORBIDDEN", "Account disabled", requestId, 403);
+
+  const ok = await bcrypt.compare(password, user.passwordHash);
+  if (!ok) return safeJsonError(res, "INVALID_CREDENTIALS", "Invalid email or password", requestId, 401);
+
+  const token = signJwt({ sub: user.id, platformId: platform.id, role: user.role });
+
+  audit(req, "auth.login", { type: "user", id: user.id });
+
+  res
+    .cookie("session", token, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
+    .json({
+      token,
+      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, platformId: user.platformId },
+      requestId,
+    });
+});
+
+app.post("/api/auth/logout", (req, res) => {
+  const requestId = req.ctx!.requestId;
+  audit(req, "auth.logout");
+  res.clearCookie("session").json({ ok: true, requestId });
+});
+
+app.get("/api/auth/me", requireAuth, (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const user = req.ctx!.user!;
+  res.json({
+    user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, platformId: user.platformId },
+    requestId,
+  });
+});
+
+/* =========================
+   LISTINGS
+========================= */
+
+app.post("/api/listings", requireAuth, (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+  const user = req.ctx!.user!;
+
+  if (!platform.features.includes("marketplace")) {
+    return safeJsonError(res, "FEATURE_DISABLED", "Marketplace not enabled for this platform", requestId, 403);
+  }
+
+  const parsed = ListingCreateSchema.safeParse(req.body);
+  if (!parsed.success) return safeJsonError(res, "VALIDATION", parsed.error.message, requestId, 400);
+
+  const listing: Listing = {
+    id: uid("lst"),
+    platformId: platform.id,
+    ownerUserId: user.id,
+    ...parsed.data,
+    availability: { isActive: true },
+    rating: { avg: 0, count: 0 },
+    createdAt: now(),
+    updatedAt: now(),
+  };
+
+  db.listings.set(listing.id, listing);
+  audit(req, "listing.create", { type: "listing", id: listing.id });
+
+  res.status(201).json({ listing, requestId });
+});
+
+app.get("/api/listings/:id", (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+
+  const listing = db.listings.get(req.params.id);
+  if (!listing || listing.platformId !== platform.id) return safeJsonError(res, "NOT_FOUND", "Listing not found", requestId, 404);
+
+  res.json({ listing, requestId });
+});
+
+/* =========================
+   SEARCH
+   - Default search is platform-scoped
+   - Admin/Super admin can search across platforms using ?platformId=all
+========================= */
+
+app.get("/api/search", (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+
+  const parsed = SearchSchema.safeParse(req.query);
+  if (!parsed.success) return safeJsonError(res, "VALIDATION", parsed.error.message, requestId, 400);
+
+  const { q, type, tag, city, limit, platformId } = parsed.data;
+
+  let effectivePlatformIds: string[] = [platform.id];
+
+  // Optional cross-platform search control:
+  // - If platformId is provided and user is admin/super_admin, allow it.
+  const authHeader = req.headers.authorization || "";
+  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const token = bearer || (req.cookies?.session as string | undefined) || "";
+  const decoded = token ? verifyJwt(token) : null;
+  const requester = decoded ? db.users.get(decoded.sub) : undefined;
+
+  if (platformId) {
+    if (!requester || !["admin", "super_admin"].includes(requester.role)) {
+      return safeJsonError(res, "FORBIDDEN", "Cross-platform search requires admin role", requestId, 403);
+    }
+    if (platformId === "all") {
+      effectivePlatformIds = PlatformRegistry.filter((p) => p.isActive).map((p) => p.id);
+    } else {
+      const p = getPlatformById(platformId);
+      if (!p) return safeJsonError(res, "NOT_FOUND", "Platform not found", requestId, 404);
+      effectivePlatformIds = [p.id];
+    }
+  }
+
+  const needle = (q || "").trim().toLowerCase();
+
+  const all = Array.from(db.listings.values()).filter((l) => effectivePlatformIds.includes(l.platformId));
+
+  const filtered = all.filter((l) => {
+    if (type && l.type !== type) return false;
+    if (tag && !l.tags.map((t) => t.toLowerCase()).includes(tag.toLowerCase())) return false;
+    if (city && (l.location.city || "").toLowerCase() !== city.toLowerCase()) return false;
+
+    if (needle) {
+      const hay = `${l.title} ${l.description} ${l.tags.join(" ")} ${(l.location.city || "")}`.toLowerCase();
+      if (!hay.includes(needle)) return false;
+    }
+    return l.availability?.isActive !== false;
+  });
+
+  // naive rank: shorter title match first
+  filtered.sort((a, b) => a.title.length - b.title.length);
+
+  const results = filtered.slice(0, limit);
+
+  res.json({
+    platformScope: effectivePlatformIds,
+    results,
+    count: results.length,
+    requestId,
+  });
+});
+
+/* =========================
+   DOCUMENTS (Upload one or more)
+   - /api/docs/upload supports multiple files
+   - Stored as records with status workflow
+========================= */
+
+app.post(
+  "/api/docs/upload",
+  requireAuth,
+  upload.array("files", 10),
+  (req: Request, res: Response) => {
+    const requestId = req.ctx!.requestId;
+    const platform = req.ctx!.platform;
+    const user = req.ctx!.user!;
+
+    if (!platform.features.includes("docs_verification")) {
+      return safeJsonError(res, "FEATURE_DISABLED", "Docs verification not enabled", requestId, 403);
+    }
+
+    const metaParsed = DocUploadMetaSchema.safeParse(req.body);
+    if (!metaParsed.success) return safeJsonError(res, "VALIDATION", metaParsed.error.message, requestId, 400);
+
+    const files = (req.files as Express.Multer.File[]) || [];
+    if (!files.length) return safeJsonError(res, "NO_FILES", "No files uploaded", requestId, 400);
+
+    const created: DocumentRecord[] = [];
+
+    for (const f of files) {
+      const rec: DocumentRecord = {
+        id: uid("doc"),
+        platformId: platform.id,
+        userId: user.id,
+        type: metaParsed.data.type,
+        originalFileName: f.originalname,
+        mimeType: f.mimetype,
+        sizeBytes: f.size,
+        storageKey: f.filename, // local filename; replace with cloud key if needed
+        status: "pending_review",
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      db.documents.set(rec.id, rec);
+      created.push(rec);
+    }
+
+    audit(req, "docs.upload", undefined, { count: created.length, type: metaParsed.data.type });
+
+    res.status(201).json({ documents: created, requestId });
+  }
+);
+
+app.get("/api/docs/mine", requireAuth, (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+  const user = req.ctx!.user!;
+
+  const docs = Array.from(db.documents.values()).filter((d) => d.platformId === platform.id && d.userId === user.id);
+  res.json({ documents: docs, requestId });
+});
+
+/* =========================
+   ADMIN: USERS, DOC REVIEW, EMPLOYEES
+========================= */
+
+app.get("/api/admin/users", requireAuth, requireRole(["admin", "super_admin"]), (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+
+  const users = Array.from(db.users.values())
+    .filter((u) => u.platformId === platform.id)
+    .map((u) => ({
+      id: u.id,
+      email: u.email,
+      displayName: u.displayName,
+      role: u.role,
+      flags: u.flags,
+      createdAt: u.createdAt,
+    }));
+
+  res.json({ users, requestId });
+});
+
+app.post("/api/admin/users/role", requireAuth, requireRole(["super_admin", "admin"]), (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+  const actor = req.ctx!.user!;
+
+  // Admin cannot create super_admin unless already super_admin
+  const parsed = AdminSetUserRoleSchema.safeParse(req.body);
+  if (!parsed.success) return safeJsonError(res, "VALIDATION", parsed.error.message, requestId, 400);
+
+  const { userId, role } = parsed.data;
+  if (role === "super_admin" && actor.role !== "super_admin") {
+    return safeJsonError(res, "FORBIDDEN", "Only super_admin can assign super_admin", requestId, 403);
+  }
+
+  const user = db.users.get(userId);
+  if (!user || user.platformId !== platform.id) return safeJsonError(res, "NOT_FOUND", "User not found", requestId, 404);
+
+  user.role = role;
+  user.updatedAt = now();
+  db.users.set(user.id, user);
+
+  audit(req, "admin.user.set_role", { type: "user", id: user.id }, { role });
+
+  res.json({ ok: true, user: { id: user.id, role: user.role }, requestId });
+});
+
+app.post("/api/admin/users/ban", requireAuth, requireRole(["admin", "super_admin"]), (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+
+  const parsed = AdminSetUserBanSchema.safeParse(req.body);
+  if (!parsed.success) return safeJsonError(res, "VALIDATION", parsed.error.message, requestId, 400);
+
+  const { userId, isBanned } = parsed.data;
+  const user = db.users.get(userId);
+  if (!user || user.platformId !== platform.id) return safeJsonError(res, "NOT_FOUND", "User not found", requestId, 404);
+
+  user.flags.isBanned = isBanned;
+  user.updatedAt = now();
+  db.users.set(user.id, user);
+
+  audit(req, "admin.user.set_ban", { type: "user", id: user.id }, { isBanned });
+
+  res.json({ ok: true, requestId });
+});
+
+app.get("/api/admin/docs/pending", requireAuth, requireRole(["employee", "admin", "super_admin"]), (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+
+  const docs = Array.from(db.documents.values()).filter((d) => d.platformId === platform.id && d.status === "pending_review");
+  res.json({ documents: docs, requestId });
+});
+
+app.post("/api/admin/docs/:id/approve", requireAuth, requireRole(["employee", "admin", "super_admin"]), (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+  const actor = req.ctx!.user!;
+
+  const doc = db.documents.get(req.params.id);
+  if (!doc || doc.platformId !== platform.id) return safeJsonError(res, "NOT_FOUND", "Document not found", requestId, 404);
+
+  doc.status = "approved";
+  doc.review = { reviewedByUserId: actor.id, reviewedAt: now() };
+  doc.updatedAt = now();
+  db.documents.set(doc.id, doc);
+
+  audit(req, "docs.approve", { type: "document", id: doc.id });
+
+  res.json({ ok: true, document: doc, requestId });
+});
+
+app.post("/api/admin/docs/:id/reject", requireAuth, requireRole(["employee", "admin", "super_admin"]), (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+  const actor = req.ctx!.user!;
+
+  const reason = z.object({ reason: z.string().min(1).max(400) }).safeParse(req.body);
+  if (!reason.success) return safeJsonError(res, "VALIDATION", reason.error.message, requestId, 400);
+
+  const doc = db.documents.get(req.params.id);
+  if (!doc || doc.platformId !== platform.id) return safeJsonError(res, "NOT_FOUND", "Document not found", requestId, 404);
+
+  doc.status = "rejected";
+  doc.review = { reviewedByUserId: actor.id, reviewedAt: now(), decisionReason: reason.data.reason };
+  doc.updatedAt = now();
+  db.documents.set(doc.id, doc);
+
+  audit(req, "docs.reject", { type: "document", id: doc.id }, { reason: reason.data.reason });
+
+  res.json({ ok: true, document: doc, requestId });
+});
+
+/* =========================
+   BOOKINGS
+========================= */
+
+app.post("/api/bookings", requireAuth, (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+  const user = req.ctx!.user!;
+
+  if (!platform.features.includes("bookings")) {
+    return safeJsonError(res, "FEATURE_DISABLED", "Bookings not enabled", requestId, 403);
+  }
+
+  const parsed = BookingCreateSchema.safeParse(req.body);
+  if (!parsed.success) return safeJsonError(res, "VALIDATION", parsed.error.message, requestId, 400);
+
+  const listing = db.listings.get(parsed.data.listingId);
+  if (!listing || listing.platformId !== platform.id) return safeJsonError(res, "NOT_FOUND", "Listing not found", requestId, 404);
+
+  const booking: Booking = {
+    id: uid("bkg"),
+    platformId: platform.id,
+    buyerUserId: user.id,
+    listingId: listing.id,
+    status: "draft",
+    schedule: { startAt: parsed.data.startAt, endAt: parsed.data.endAt, tz: parsed.data.tz },
+    notes: parsed.data.notes,
+    createdAt: now(),
+    updatedAt: now(),
+  };
+
+  db.bookings.set(booking.id, booking);
+  audit(req, "booking.create", { type: "booking", id: booking.id });
+
+  res.status(201).json({ booking, requestId });
+});
+
+app.post("/api/bookings/quote", requireAuth, (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+  const user = req.ctx!.user!;
+
+  const parsed = BookingQuoteSchema.safeParse(req.body);
+  if (!parsed.success) return safeJsonError(res, "VALIDATION", parsed.error.message, requestId, 400);
+
+  const booking = db.bookings.get(parsed.data.bookingId);
+  if (!booking || booking.platformId !== platform.id) return safeJsonError(res, "NOT_FOUND", "Booking not found", requestId, 404);
+  if (booking.buyerUserId !== user.id) return safeJsonError(res, "FORBIDDEN", "Not your booking", requestId, 403);
+
+  const listing = db.listings.get(booking.listingId);
+  if (!listing) return safeJsonError(res, "NOT_FOUND", "Listing not found", requestId, 404);
+
+  const quote = computeBookingQuote(listing, booking.schedule.startAt, booking.schedule.endAt);
+
+  booking.quote = quote;
+  booking.status = "quoted";
+  booking.updatedAt = now();
+  db.bookings.set(booking.id, booking);
+
+  audit(req, "booking.quote", { type: "booking", id: booking.id }, { quote });
+
+  res.json({ booking, requestId });
+});
+
+app.post("/api/bookings/confirm", requireAuth, async (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+  const user = req.ctx!.user!;
+
+  if (!platform.features.includes("payments")) {
+    return safeJsonError(res, "FEATURE_DISABLED", "Payments not enabled", requestId, 403);
+  }
+
+  const parsed = BookingConfirmSchema.safeParse(req.body);
+  if (!parsed.success) return safeJsonError(res, "VALIDATION", parsed.error.message, requestId, 400);
+
+  const booking = db.bookings.get(parsed.data.bookingId);
+  if (!booking || booking.platformId !== platform.id) return safeJsonError(res, "NOT_FOUND", "Booking not found", requestId, 404);
+  if (booking.buyerUserId !== user.id) return safeJsonError(res, "FORBIDDEN", "Not your booking", requestId, 403);
+
+  if (!booking.quote) return safeJsonError(res, "NO_QUOTE", "Quote required before confirm", requestId, 400);
+
+  const intent = await payments.createIntent({
+    amountCents: booking.quote.totalCents,
+    currency: booking.quote.currency,
+    metadata: { bookingId: booking.id, platformId: platform.id, buyerUserId: user.id },
+  });
+
+  booking.payment = { provider: "placeholder", intentId: intent.id, status: intent.status };
+  booking.status = "confirmed";
+  booking.updatedAt = now();
+  db.bookings.set(booking.id, booking);
+
+  audit(req, "booking.confirm", { type: "booking", id: booking.id }, { intentId: intent.id });
+
+  res.json({
+    booking,
+    payment: { intentId: intent.id, status: intent.status, amountCents: intent.amountCents, currency: intent.currency },
+    requestId,
+  });
+});
+
+app.get("/api/bookings/mine", requireAuth, (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+  const user = req.ctx!.user!;
+
+  const bookings = Array.from(db.bookings.values()).filter((b) => b.platformId === platform.id && b.buyerUserId === user.id);
+  res.json({ bookings, requestId });
+});
+
+/* =========================
+   EMPLOYEE PANEL (light)
+========================= */
+
+app.get("/api/employee/overview", requireAuth, requireRole(["employee", "admin", "super_admin"]), (req, res) => {
+  const requestId = req.ctx!.requestId;
+  const platform = req.ctx!.platform;
+
+  const pendingDocs = Array.from(db.documents.values()).filter((d) => d.platformId === platform.id && d.status === "pending_review").length;
+  const bookingsConfirmed = Array.from(db.bookings.values()).filter((b) => b.platformId === platform.id && b.status === "confirmed").length;
+
+  res.json({
+    metrics: { pendingDocs, bookingsConfirmed },
+    requestId,
+  });
+});
+
+/* =========================
+   ERROR HANDLER
+========================= */
+
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  void next;
+  const requestId = req.ctx?.requestId || uid("req");
+  const msg = env.NODE_ENV === "production" ? "Unexpected error" : String(err?.stack || err?.message || err);
+  return safeJsonError(res, "INTERNAL", msg, requestId, 500);
+});
+
+/* =========================
+   BOOT
+========================= */
+
+app.listen(env.PORT, () => {
+  // eslint-disable-next-line no-console
+  console.log(`Server running on port ${env.PORT}`);
+  console.log(`Platform header: ${env.PLATFORM_HEADER}`);
+  console.log(`Health: ${env.APP_BASE_URL}/health`);
+});
+
+/* ============================================================================
+  HOW TO USE (quick):
+  1) Install deps:
+     npm i express helmet cors express-rate-limit cookie-parser bcryptjs jsonwebtoken multer zod
+     npm i -D typescript ts-node @types/express @types/cookie-parser @types/jsonwebtoken @types/multer
+
+  2) Create uploads dir:
+     mkdir -p uploads
+
+  3) Set env:
+     export JWT_SECRET="change_me_to_a_long_random_secret"
+     export CORS_ORIGINS="http://localhost:3000"
+     export PORT=5000
+
+  4) Run:
+     npx ts-node server.ts
+
+  5) Platform selection:
+     - Header: x-platform-id: platform-a
+     - Or host-based mapping if you route domains to this server
+============================================================================ */
