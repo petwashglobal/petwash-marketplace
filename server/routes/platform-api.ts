@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { platformService } from "../services/PlatformService";
 import { enhancedBookingService, BOOKING_STATUS, type BookingStatus } from "../services/EnhancedBookingService";
+import { geminiMatchingService } from "../services/GeminiMatchingService";
 import { requirePlatform, requireFeature, requireBookingAuth, type PlatformFeature } from "../middleware/platformContext";
 import { logAuditEvent } from "../middleware/auditLogger";
 import { z } from "zod";
@@ -427,6 +428,176 @@ router.get("/health", (req: Request, res: Response) => {
     requestId: req.platformCtx?.requestId,
     timestamp: new Date().toISOString(),
   });
+});
+
+// =================== GEMINI AI MATCHING ROUTES ===================
+
+const MatchingRequestSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  city: z.string().optional(),
+  country: z.string().optional(),
+  serviceType: z.enum(['pet_sitting', 'daycare', 'dog_walking', 'training', 'grooming', 'pet_taxi', 'k9000_wash']),
+  petType: z.string().optional(),
+  petSize: z.string().optional(),
+  specialNeeds: z.array(z.string()).optional(),
+  preferredLanguage: z.enum(['en', 'he', 'ar', 'ru', 'fr', 'es']).optional(),
+  scheduledDate: z.string().optional(),
+  scheduledTime: z.string().optional(),
+  notes: z.string().optional(),
+  radiusKm: z.number().min(1).max(100).optional(),
+});
+
+const AISearchSchema = z.object({
+  query: z.string().min(3).max(500),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  preferredLanguage: z.enum(['en', 'he']).optional(),
+});
+
+router.post("/match", async (req: Request, res: Response) => {
+  try {
+    const parsed = MatchingRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: { 
+          code: "VALIDATION_ERROR", 
+          message: "Invalid request body",
+          details: parsed.error.flatten()
+        }
+      });
+    }
+
+    const { latitude, longitude, city, country, radiusKm, ...serviceRequest } = parsed.data;
+
+    const result = await geminiMatchingService.findMatchingProviders(
+      { latitude, longitude, city, country },
+      serviceRequest,
+      radiusKm
+    );
+
+    if (!result.success) {
+      return res.status(500).json({
+        error: { code: "MATCHING_FAILED", message: result.error || "Matching failed" }
+      });
+    }
+
+    logAuditEvent(req, 'provider_matching', 'search', {
+      serviceType: serviceRequest.serviceType,
+      location: { latitude, longitude },
+      resultsCount: result.totalFound
+    });
+
+    res.json({
+      success: true,
+      matches: result.matches,
+      totalFound: result.totalFound,
+      aiRecommendation: result.aiSummary,
+      searchRadius: result.searchRadius,
+      serviceType: result.serviceType,
+    });
+
+  } catch (error) {
+    console.error("[PlatformAPI] Matching error:", error);
+    res.status(500).json({
+      error: { code: "INTERNAL", message: "Provider matching failed" }
+    });
+  }
+});
+
+router.post("/match/search", async (req: Request, res: Response) => {
+  try {
+    const parsed = AISearchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: { 
+          code: "VALIDATION_ERROR", 
+          message: "Invalid request body",
+          details: parsed.error.flatten()
+        }
+      });
+    }
+
+    const { query, latitude, longitude, preferredLanguage } = parsed.data;
+
+    const result = await geminiMatchingService.searchWithAI(
+      query,
+      { latitude, longitude },
+      preferredLanguage || 'en'
+    );
+
+    if (!result.success) {
+      return res.status(500).json({
+        error: { code: "MATCHING_FAILED", message: result.error || "AI search failed" }
+      });
+    }
+
+    logAuditEvent(req, 'provider_matching', 'ai_search', {
+      query,
+      location: { latitude, longitude },
+      detectedService: result.serviceType,
+      resultsCount: result.totalFound
+    });
+
+    res.json({
+      success: true,
+      matches: result.matches,
+      totalFound: result.totalFound,
+      aiRecommendation: result.aiSummary,
+      detectedServiceType: result.serviceType,
+      searchRadius: result.searchRadius,
+    });
+
+  } catch (error) {
+    console.error("[PlatformAPI] AI search error:", error);
+    res.status(500).json({
+      error: { code: "INTERNAL", message: "AI search failed" }
+    });
+  }
+});
+
+router.get("/match/nearest/:serviceType", async (req: Request, res: Response) => {
+  try {
+    const { serviceType } = req.params;
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({
+        error: { code: "VALIDATION_ERROR", message: "lat and lng query params required" }
+      });
+    }
+
+    const validServices = ['pet_sitting', 'daycare', 'dog_walking', 'training', 'grooming', 'pet_taxi', 'k9000_wash'];
+    if (!validServices.includes(serviceType)) {
+      return res.status(400).json({
+        error: { code: "VALIDATION_ERROR", message: `Invalid service type. Valid types: ${validServices.join(', ')}` }
+      });
+    }
+
+    const nearestProvider = await geminiMatchingService.findNearestProvider(
+      { latitude: lat, longitude: lng },
+      serviceType
+    );
+
+    if (!nearestProvider) {
+      return res.status(404).json({
+        error: { code: "NOT_FOUND", message: "No providers found for this service type in your area" }
+      });
+    }
+
+    res.json({
+      success: true,
+      provider: nearestProvider,
+      serviceType,
+    });
+
+  } catch (error) {
+    console.error("[PlatformAPI] Nearest provider error:", error);
+    res.status(500).json({
+      error: { code: "INTERNAL", message: "Failed to find nearest provider" }
+    });
+  }
 });
 
 export default router;
