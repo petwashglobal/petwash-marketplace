@@ -450,33 +450,135 @@ export default function ProviderOnboarding() {
         </div>
 
         <div className="luxury-glass-card luxury-shadow-xl p-8 luxury-animate-fade-in luxury-delay-2">
-            {/* Step 1: Invite Code */}
+            {/* Step 1: Application Entry - Google Forms + Invite Code */}
             {step === 1 && (
-              <div className="space-y-6">
-                <div>
-                  <Label htmlFor="inviteCode" className="luxury-heading-sm">
-                    {t.inviteCodeTitle}
-                  </Label>
-                  <Input
-                    id="inviteCode"
-                    value={inviteCode}
-                    onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                    placeholder={t.inviteCodePlaceholder}
-                    className="mt-2 luxury-glass-minimal"
-                    data-testid="input-invite-code"
-                  />
-                  <p className="text-sm text-gray-500 mt-2">
+              <div className="space-y-8">
+                {/* New Applicants - Google Form CTA */}
+                <div className="luxury-glass-card luxury-shadow-lg p-6 border-2 border-purple-400/30 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-black/20">
+                  <div className="text-center mb-6">
+                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mb-4">
+                      <Users className="h-8 w-8 text-white" />
+                    </div>
+                    <h2 className="luxury-heading-md text-purple-900 dark:text-purple-100">
+                      {isHebrew ? 'רוצה להצטרף לצוות Pet Wash?' : 'Want to Join the Pet Wash Team?'}
+                    </h2>
+                    <p className="luxury-text-body mt-2 text-purple-800 dark:text-purple-300">
+                      {isHebrew 
+                        ? 'מלא את טופס ההרשמה שלנו והצוות ייצור איתך קשר תוך 48 שעות'
+                        : 'Fill out our application form and our team will contact you within 48 hours'
+                      }
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <a 
+                      href="https://forms.gle/petwash-walker"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
+                      data-testid="link-form-walker"
+                    >
+                      <span className="text-3xl block mb-2">🚶</span>
+                      <span className="font-semibold text-sm">{isHebrew ? 'מטייל כלבים' : 'Dog Walker'}</span>
+                    </a>
+                    <a 
+                      href="https://forms.gle/petwash-sitter"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
+                      data-testid="link-form-sitter"
+                    >
+                      <span className="text-3xl block mb-2">🏠</span>
+                      <span className="font-semibold text-sm">{isHebrew ? 'שמרטף' : 'Pet Sitter'}</span>
+                    </a>
+                    <a 
+                      href="https://forms.gle/petwash-driver"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
+                      data-testid="link-form-driver"
+                    >
+                      <span className="text-3xl block mb-2">🚗</span>
+                      <span className="font-semibold text-sm">{isHebrew ? 'נהג PetTrek' : 'PetTrek Driver'}</span>
+                    </a>
+                    <a 
+                      href="https://forms.gle/petwash-groomer"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
+                      data-testid="link-form-groomer"
+                    >
+                      <span className="text-3xl block mb-2">✂️</span>
+                      <span className="font-semibold text-sm">{isHebrew ? 'מטפח' : 'Groomer'}</span>
+                    </a>
+                    <a 
+                      href="https://forms.gle/petwash-trainer"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
+                      data-testid="link-form-trainer"
+                    >
+                      <span className="text-3xl block mb-2">🎓</span>
+                      <span className="font-semibold text-sm">{isHebrew ? 'מאלף' : 'Trainer'}</span>
+                    </a>
+                    <a 
+                      href="https://forms.gle/petwash-station"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="luxury-glass-card p-4 hover:scale-105 transition-transform cursor-pointer text-center"
+                      data-testid="link-form-station"
+                    >
+                      <span className="text-3xl block mb-2">🏪</span>
+                      <span className="font-semibold text-sm">{isHebrew ? 'מפעיל תחנה' : 'Station Operator'}</span>
+                    </a>
+                  </div>
+                  
+                  <p className="text-center text-sm text-purple-600 dark:text-purple-400 mt-4">
                     {isHebrew 
-                      ? 'קבל קוד הזמנה מהצוות שלנו או מחבר שכבר עובד איתנו'
-                      : 'Get an invite code from our team or a friend who already works with us'
+                      ? '📝 מלא את הטופס ונחזור אליך בהקדם!'
+                      : '📝 Fill out the form and we\'ll get back to you soon!'
                     }
                   </p>
                 </div>
 
-                <div className="flex gap-3">
+                {/* Divider */}
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent dark:via-gray-600"></div>
+                  <span className="text-sm text-gray-500 font-medium">
+                    {isHebrew ? 'או' : 'OR'}
+                  </span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent dark:via-gray-600"></div>
+                </div>
+
+                {/* Approved Applicants - Invite Code Entry */}
+                <div className="luxury-glass-card luxury-shadow-md p-6 border-2 border-green-400/30 bg-gradient-to-br from-green-50 to-white dark:from-green-900/20 dark:to-black/20">
+                  <div className="text-center mb-4">
+                    <h3 className="luxury-heading-sm text-green-900 dark:text-green-100 flex items-center justify-center gap-2">
+                      <CheckCircle2 className="h-5 w-5" />
+                      {isHebrew ? 'כבר אושרת? הזן את קוד ההזמנה שלך' : 'Already Approved? Enter Your Invite Code'}
+                    </h3>
+                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                      {isHebrew 
+                        ? 'אם קיבלת קוד הזמנה מהצוות שלנו, הזן אותו כאן להמשך'
+                        : 'If you received an invite code from our team, enter it here to continue'
+                      }
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Input
+                      id="inviteCode"
+                      value={inviteCode}
+                      onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                      placeholder={t.inviteCodePlaceholder}
+                      className="luxury-glass-minimal text-center text-lg font-mono"
+                      data-testid="input-invite-code"
+                    />
+                  </div>
+
                   <button 
                     onClick={validateInviteCode} 
-                    className="luxury-btn-primary luxury-shadow-xl flex-1 py-4"
+                    className="luxury-btn-primary luxury-shadow-xl w-full py-4 mt-4"
                     disabled={validatingCode || !inviteCode}
                     data-testid="button-validate-code"
                   >
@@ -486,26 +588,16 @@ export default function ProviderOnboarding() {
                         {t.validating}
                       </>
                     ) : (
-                      t.validateCode
+                      <>
+                        <ArrowRight className="h-5 w-5 mr-2 inline" />
+                        {isHebrew ? 'המשך עם קוד הזמנה' : 'Continue with Invite Code'}
+                      </>
                     )}
                   </button>
-                  <button 
-                    onClick={() => setStep(2)} 
-                    className="luxury-btn-outline flex-1 py-4"
-                    data-testid="button-skip-code"
-                  >
-                    {isHebrew ? 'המשך בלי קוד' : 'Continue Without Code'}
-                  </button>
                 </div>
-                <p className="text-xs text-gray-400 text-center mt-2">
-                  {isHebrew 
-                    ? 'אין קוד הזמנה? אפשר להמשיך בלי - נבדוק את הבקשה תוך 48 שעות'
-                    : "Don't have an invite code? You can continue without one - we'll review within 48 hours"
-                  }
-                </p>
 
-                {/* Benefits Section */}
-                <div className="grid md:grid-cols-2 gap-6 mt-8">
+                {/* Benefits & Requirements Section */}
+                <div className="grid md:grid-cols-2 gap-6 mt-4">
                   <div className="luxury-glass-card luxury-shadow-md p-6 border-2 border-green-400/20">
                     <h3 className="luxury-heading-sm mb-3 text-green-900 dark:text-green-200 flex items-center gap-2">
                       <Star className="h-5 w-5" />

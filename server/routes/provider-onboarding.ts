@@ -261,33 +261,57 @@ router.post('/apply', upload.fields([
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-    // Validate required fields (invite code is OPTIONAL)
+    // Validate required fields (invite code is NOW REQUIRED)
     if (!firstName || !lastName || !phoneNumber || !city || !providerType) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Validate invite code IF provided (optional for self-registration)
+    // MANAGEMENT-ASSISTED ONBOARDING: Invite code is REQUIRED
+    // Self-registration disabled - applicants must first apply via Google Forms
+    // and receive an invite code from management after approval
+    if (!inviteCode || !inviteCode.trim()) {
+      return res.status(400).json({ 
+        error: 'Invite code required. Please apply via our application form first.',
+        code: 'INVITE_REQUIRED',
+        message: 'Provider registration requires an invite code from our management team. Please submit your application via Google Forms and we will review it within 48 hours.'
+      });
+    }
+
+    // Validate invite code (REQUIRED)
     let code = null;
     let referralBonus = null;
     
-    if (inviteCode && inviteCode.trim()) {
-      const [foundCode] = await db
-        .select()
-        .from(providerInviteCodes)
-        .where(eq(providerInviteCodes.inviteCode, inviteCode.trim()))
-        .limit(1);
+    const [foundCode] = await db
+      .select()
+      .from(providerInviteCodes)
+      .where(eq(providerInviteCodes.inviteCode, inviteCode.trim()))
+      .limit(1);
 
-      if (foundCode && foundCode.isActive) {
-        if (foundCode.providerType !== providerType) {
-          return res.status(400).json({ 
-            error: `This invite code is for ${foundCode.providerType}, not ${providerType}` 
-          });
-        }
-        code = foundCode;
-        referralBonus = foundCode.referralBonus;
-      }
-      // If code provided but invalid, just ignore it (allow self-registration)
+    if (!foundCode) {
+      return res.status(400).json({ 
+        error: 'Invalid invite code',
+        code: 'INVALID_CODE',
+        message: 'This invite code does not exist. Please check the code and try again.'
+      });
     }
+
+    if (!foundCode.isActive) {
+      return res.status(400).json({ 
+        error: 'Invite code expired or inactive',
+        code: 'CODE_INACTIVE',
+        message: 'This invite code is no longer active. Please contact our team for a new code.'
+      });
+    }
+
+    if (foundCode.providerType !== providerType) {
+      return res.status(400).json({ 
+        error: `This invite code is for ${foundCode.providerType}, not ${providerType}`,
+        code: 'TYPE_MISMATCH'
+      });
+    }
+
+    code = foundCode;
+    referralBonus = foundCode.referralBonus;
 
     // Check for existing application
     const existingApp = await db

@@ -4389,6 +4389,85 @@ export const insertProviderApplicationSchema = createInsertSchema(providerApplic
 export type InsertProviderApplication = z.infer<typeof insertProviderApplicationSchema>;
 export type ProviderApplication = typeof providerApplications.$inferSelect;
 
+// =================== PROVIDER INTAKE QUEUE (Google Forms Integration) ===================
+// Management-assisted provider onboarding via Google Forms with manual approval workflow
+
+export const providerIntakeQueue = pgTable("provider_intake_queue", {
+  id: serial("id").primaryKey(),
+  intakeId: varchar("intake_id").unique().notNull(), // INT-YYYY-NNNNNN
+  
+  // Google Forms Sync
+  googleFormResponseId: varchar("google_form_response_id").unique(), // Google Forms response ID
+  googleSheetRowNumber: integer("google_sheet_row_number"), // Row number in source sheet
+  syncedFromSheetId: varchar("synced_from_sheet_id"), // Google Sheet ID
+  syncedAt: timestamp("synced_at"), // When data was pulled from Google Forms
+  
+  // Applicant Info (from Google Form)
+  email: varchar("email").notNull(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  phoneNumber: varchar("phone_number").notNull(),
+  
+  // Provider Type
+  providerType: varchar("provider_type").notNull(), // walker | sitter | station_operator | driver | groomer | trainer
+  
+  // Location
+  city: varchar("city"),
+  country: varchar("country").default("IL"),
+  
+  // Experience & Qualifications (from form)
+  yearsExperience: integer("years_experience"),
+  hasOwnTransport: boolean("has_own_transport").default(false),
+  hasPetFirstAid: boolean("has_pet_first_aid").default(false),
+  hasInsurance: boolean("has_insurance").default(false),
+  
+  // Availability
+  availabilityNotes: text("availability_notes"),
+  preferredWorkingDays: text("preferred_working_days").array(), // ["sunday", "monday", ...]
+  preferredHours: varchar("preferred_hours"), // e.g., "morning", "evening", "flexible"
+  
+  // About
+  aboutMe: text("about_me"), // Free text intro
+  whyJoinPetWash: text("why_join_pet_wash"), // Motivation
+  referralSource: varchar("referral_source"), // facebook, friend, google, etc.
+  
+  // Resume/CV (Google Drive link from form)
+  resumeUrl: varchar("resume_url"),
+  portfolioUrl: varchar("portfolio_url"),
+  linkedInUrl: varchar("linkedin_url"),
+  
+  // Management Review Status
+  status: varchar("status").default("new"), // new | reviewing | approved | rejected | invited | converted
+  reviewedBy: varchar("reviewed_by"), // Admin user ID
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"), // Internal notes from management
+  rejectionReason: text("rejection_reason"),
+  
+  // Invite Generation (after approval)
+  generatedInviteCode: varchar("generated_invite_code").references(() => providerInviteCodes.inviteCode),
+  inviteSentAt: timestamp("invite_sent_at"),
+  inviteSentVia: varchar("invite_sent_via"), // email | whatsapp | sms
+  
+  // Conversion Tracking
+  convertedToApplicationId: varchar("converted_to_application_id").references(() => providerApplications.applicationId),
+  convertedAt: timestamp("converted_at"),
+  
+  // Backup Info
+  backupDriveFileId: varchar("backup_drive_file_id"), // Archived to Google Drive
+  backupSheetRowRef: varchar("backup_sheet_row_ref"), // Reference in backup sheet
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProviderIntakeQueueSchema = createInsertSchema(providerIntakeQueue).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+export type InsertProviderIntakeQueue = z.infer<typeof insertProviderIntakeQueueSchema>;
+export type ProviderIntakeQueue = typeof providerIntakeQueue.$inferSelect;
+
 export const insertWalkBlockchainAuditSchema = createInsertSchema(walkBlockchainAudit).omit({ 
   id: true 
 });

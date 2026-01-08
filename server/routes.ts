@@ -155,6 +155,7 @@ import petsRoutes from "./routes/pets";
 import pricingRoutes from "./routes/pricing";
 import providerOnboardingRoutes from "./routes/provider-onboarding";
 import providerApplicationsRoutes from "./routes/provider-applications";
+import providerIntakeRoutes from "./routes/provider-intake";
 import pushNotificationsRoutes from "./routes/push-notifications";
 import recaptchaRoutes from "./routes/recaptcha";
 import reviewsRoutes from "./routes/reviews";
@@ -8320,6 +8321,9 @@ self.addEventListener('notificationclick', (event) => {
   const providerOnboardingRoutes = (await import('./routes/provider-onboarding')).default;
   app.use('/api/provider-onboarding', apiLimiter, providerOnboardingRoutes);
   app.use('/api/provider-applications', validateFirebaseToken, apiLimiter, providerApplicationsRoutes);
+  
+  // Provider Intake Queue (Google Forms Integration - Management-Assisted Onboarding)
+  app.use('/api/provider-intake', apiLimiter, providerIntakeRoutes);
 
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
   app.use(apiLimiter, esignRoutes);
