@@ -29,13 +29,7 @@ export function useMarketplaceSearch(filters: MarketplaceSearchFilters) {
   return useQuery<MarketplaceSearchResponse>({
     queryKey: ['/api/marketplace/search', filters],
     queryFn: async () => {
-      const response = await apiRequest('/api/marketplace/search', {
-        method: 'POST',
-        body: JSON.stringify(filters),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiRequest('POST', '/api/marketplace/search', filters);
       return response.json();
     },
     enabled: !!filters.platform,
@@ -80,13 +74,7 @@ export function useCreateBooking() {
       petIds?: string[];
       notes?: string;
     }) => {
-      const response = await apiRequest('/api/bookings', {
-        method: 'POST',
-        body: JSON.stringify(bookingData),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiRequest('POST', '/api/bookings', bookingData);
       return response.json();
     },
     onSuccess: () => {
@@ -130,13 +118,7 @@ export function useCancelBooking() {
       bookingId: string;
       reason: string;
     }) => {
-      const response = await apiRequest(`/api/bookings/${bookingId}/cancel`, {
-        method: 'POST',
-        body: JSON.stringify({ reason }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiRequest('POST', `/api/bookings/${bookingId}/cancel`, { reason });
       return response.json();
     },
     onSuccess: () => {
@@ -163,13 +145,7 @@ export function useSubmitReview() {
       comment: string;
       photos?: string[];
     }) => {
-      const response = await apiRequest('/api/reviews', {
-        method: 'POST',
-        body: JSON.stringify(reviewData),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiRequest('POST', '/api/reviews', reviewData);
       return response.json();
     },
     onSuccess: (_, variables) => {

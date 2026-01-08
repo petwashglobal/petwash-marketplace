@@ -22,9 +22,11 @@ import {
   Building, Briefcase, CreditCard, Target, Mail,
   Instagram, Facebook, Calendar, Clock, CheckCircle2,
   AlertCircle, ArrowRight, Search, Filter, RefreshCw,
-  Home, Menu, X, ChevronRight, Sparkles, Crown
+  Home, Menu, X, ChevronRight, Sparkles, Crown,
+  Droplets, Car, Scissors, GraduationCap, Footprints,
+  MapPin, Wifi, WifiOff, Activity, Zap
 } from "lucide-react";
-import { useLanguage } from "@/hooks/useLanguage";
+import { useLanguage } from "@/lib/languageStore";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
@@ -224,6 +226,116 @@ export default function MobileManagementDashboard() {
             <UserPlus className="h-5 w-5 mb-2 opacity-80" />
             <p className="text-2xl font-bold">0</p>
             <p className="text-xs opacity-80">{t.activeLeads}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Platform Status Section */}
+      <div className="px-4 pb-4">
+        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">
+          {isHebrew ? 'סטטוס פלטפורמות' : 'Platform Status'}
+        </h3>
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+          <Link href="/walk-my-pet">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-3 text-center border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer" data-testid="platform-walkers">
+              <div className="w-10 h-10 mx-auto mb-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+                <Footprints className="h-5 w-5 text-white" />
+              </div>
+              <p className="text-xs font-medium">{isHebrew ? 'טיולים' : 'Walkers'}</p>
+              <p className="text-lg font-bold text-emerald-600">3</p>
+            </div>
+          </Link>
+          <Link href="/sitter-suite">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-3 text-center border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer" data-testid="platform-sitters">
+              <div className="w-10 h-10 mx-auto mb-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                <Home className="h-5 w-5 text-white" />
+              </div>
+              <p className="text-xs font-medium">{isHebrew ? 'שמרטפים' : 'Sitters'}</p>
+              <p className="text-lg font-bold text-purple-600">3</p>
+            </div>
+          </Link>
+          <Link href="/pettrek">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-3 text-center border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer" data-testid="platform-drivers">
+              <div className="w-10 h-10 mx-auto mb-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                <Car className="h-5 w-5 text-white" />
+              </div>
+              <p className="text-xs font-medium">{isHebrew ? 'נהגים' : 'Drivers'}</p>
+              <p className="text-lg font-bold text-blue-600">6</p>
+            </div>
+          </Link>
+          <Link href="/groomers">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-3 text-center border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer" data-testid="platform-groomers">
+              <div className="w-10 h-10 mx-auto mb-2 bg-gradient-to-br from-rose-500 to-red-600 rounded-lg flex items-center justify-center">
+                <Scissors className="h-5 w-5 text-white" />
+              </div>
+              <p className="text-xs font-medium">{isHebrew ? 'טיפוח' : 'Groomers'}</p>
+              <p className="text-lg font-bold text-rose-600">0</p>
+            </div>
+          </Link>
+          <Link href="/academy">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-3 text-center border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer" data-testid="platform-trainers">
+              <div className="w-10 h-10 mx-auto mb-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
+                <GraduationCap className="h-5 w-5 text-white" />
+              </div>
+              <p className="text-xs font-medium">{isHebrew ? 'מאלפים' : 'Trainers'}</p>
+              <p className="text-lg font-bold text-cyan-600">3</p>
+            </div>
+          </Link>
+          <Link href="/k9000">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-3 text-center border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer" data-testid="platform-k9000">
+              <div className="w-10 h-10 mx-auto mb-2 bg-gradient-to-br from-slate-600 to-zinc-800 rounded-lg flex items-center justify-center">
+                <Droplets className="h-5 w-5 text-white" />
+              </div>
+              <p className="text-xs font-medium">K9000™</p>
+              <p className="text-lg font-bold text-slate-600">6</p>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* K9000 Station Monitoring */}
+      <div className="px-4 pb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            {isHebrew ? 'תחנות K9000' : 'K9000 Stations'}
+          </h3>
+          <Link href="/admin/stations">
+            <span className="text-xs text-blue-600 hover:text-blue-700 cursor-pointer flex items-center gap-1">
+              {t.viewAll} <ChevronRight className="h-3 w-3" />
+            </span>
+          </Link>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <div className="grid grid-cols-3 divide-x divide-gray-100 dark:divide-gray-700">
+            <div className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Wifi className="h-4 w-4 text-green-500" />
+                <span className="text-2xl font-bold text-green-600">4</span>
+              </div>
+              <p className="text-xs text-gray-500">{isHebrew ? 'מקוון' : 'Online'}</p>
+            </div>
+            <div className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Activity className="h-4 w-4 text-amber-500" />
+                <span className="text-2xl font-bold text-amber-600">1</span>
+              </div>
+              <p className="text-xs text-gray-500">{isHebrew ? 'בשימוש' : 'In Use'}</p>
+            </div>
+            <div className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <WifiOff className="h-4 w-4 text-red-500" />
+                <span className="text-2xl font-bold text-red-600">1</span>
+              </div>
+              <p className="text-xs text-gray-500">{isHebrew ? 'לא מקוון' : 'Offline'}</p>
+            </div>
+          </div>
+          <div className="border-t border-gray-100 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-800/50">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">{isHebrew ? 'תחנה פופולרית:' : 'Top Station:'}</span>
+              <span className="font-medium flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> Tel Aviv Central
+              </span>
+            </div>
           </div>
         </div>
       </div>
