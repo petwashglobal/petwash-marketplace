@@ -54,6 +54,42 @@ router.get('/', requireAuth, requireAdmin, async (req, res) => {
 });
 
 /**
+ * GET /api/provider-intake/stats
+ * Get intake queue statistics for management dashboard (PUBLIC - no auth)
+ */
+router.get('/stats', async (req, res) => {
+  try {
+    const allRecords = await db
+      .select()
+      .from(providerIntakeQueue);
+    
+    const newCount = allRecords.filter(r => r.status === 'new').length;
+    const pendingCount = allRecords.filter(r => r.status === 'pending_review' || r.status === 'interview_scheduled' || r.status === 'reviewing').length;
+    const approvedCount = allRecords.filter(r => r.status === 'approved').length;
+    const totalCount = allRecords.length;
+    
+    res.json({
+      success: true,
+      newCount,
+      pendingCount,
+      approvedCount,
+      totalCount,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error: any) {
+    logger.error('[Provider Intake] Stats fetch failed:', error);
+    res.json({
+      success: true,
+      newCount: 0,
+      pendingCount: 0,
+      approvedCount: 0,
+      totalCount: 0,
+      updatedAt: new Date().toISOString()
+    });
+  }
+});
+
+/**
  * GET /api/provider-intake/:intakeId
  * Get single intake record details
  */
@@ -254,6 +290,7 @@ const submitApplicationSchema = z.object({
   aboutMe: z.string().min(20, 'Please tell us about yourself'),
   whyJoinPetWash: z.string().min(20, 'Please tell us why you want to join'),
   referralSource: z.string().optional(),
+  profilePhotoBase64: z.string().optional(),
   agreeToTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
   agreeToPrivacy: z.boolean().refine(val => val === true, 'You must agree to the privacy policy'),
 });
@@ -283,6 +320,7 @@ router.post('/submit', async (req, res) => {
         aboutMe: data.aboutMe,
         whyJoinPetWash: data.whyJoinPetWash,
         referralSource: data.referralSource || null,
+        profilePhotoUrl: data.profilePhotoBase64 || null,
         status: 'new',
         createdAt: new Date(),
         updatedAt: new Date()

@@ -8304,6 +8304,10 @@ self.addEventListener('notificationclick', (event) => {
   const bookingRequestsRoutes = (await import('./routes/booking-requests')).default;
   app.use('/api/booking-requests', apiLimiter, bookingRequestsRoutes);
 
+  // Provider Intake Queue (Google Forms Integration - Management-Assisted Onboarding)
+  // MUST be before /api catch-all to allow public access to /stats and /submit endpoints
+  app.use('/api/provider-intake', apiLimiter, providerIntakeRoutes);
+
   // Identity Service V2 - Modern OAuth 2.1/OIDC Authentication (P0 PRIORITY)
   app.use('/auth', identityServiceRoutes);
 
@@ -8322,9 +8326,6 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/provider-onboarding', apiLimiter, providerOnboardingRoutes);
   app.use('/api/provider-applications', validateFirebaseToken, apiLimiter, providerApplicationsRoutes);
   
-  // Provider Intake Queue (Google Forms Integration - Management-Assisted Onboarding)
-  app.use('/api/provider-intake', apiLimiter, providerIntakeRoutes);
-
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
   app.use(apiLimiter, esignRoutes);
   

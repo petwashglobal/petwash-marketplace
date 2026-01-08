@@ -71,7 +71,7 @@ export default function ProviderApplicationForm() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
 
-  const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePhotoChange = (e: { target: HTMLInputElement }) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -167,9 +167,14 @@ export default function ProviderApplicationForm() {
   const onSubmit = async (data: ApplicationForm) => {
     setIsSubmitting(true);
     try {
+      const submitData = {
+        ...data,
+        profilePhotoBase64: profilePhoto || undefined,
+      };
+      
       const response = await apiRequest('/api/provider-intake/submit', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(submitData),
       });
 
       if (response.ok || response.success) {

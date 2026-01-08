@@ -4436,6 +4436,9 @@ export const providerIntakeQueue = pgTable("provider_intake_queue", {
   portfolioUrl: varchar("portfolio_url"),
   linkedInUrl: varchar("linkedin_url"),
   
+  // Public Profile Photo (chosen by applicant for their marketplace profile)
+  profilePhotoUrl: text("profile_photo_url"), // Base64 or cloud URL
+  
   // Management Review Status
   status: varchar("status").default("new"), // new | reviewing | approved | rejected | invited | converted
   reviewedBy: varchar("reviewed_by"), // Admin user ID
