@@ -1,7 +1,7 @@
 import { t, type Language } from '@/lib/i18n';
 import { Link } from 'wouter';
 import { FaWhatsapp } from 'react-icons/fa';
-import { Mail, Shield, Award, Leaf, CheckCircle2 } from 'lucide-react';
+import { Mail, Shield, Award, Leaf, CheckCircle2, Lock, Sparkles } from 'lucide-react';
 
 interface FooterProps {
   language: Language;
@@ -117,11 +117,70 @@ export function Footer({ language }: FooterProps) {
           </div>
         </div>
 
-        {/* Premium Trust Badges Section - 7-Star Luxury */}
+        {/* Premium Trust & Payment Section - 7-Star Luxury */}
         <div className="border-t border-gray-100 pt-8 pb-8">
           <div className="max-w-5xl mx-auto">
+            
+            {/* Luxury Payment Methods - Metallic HD */}
+            <div className="mb-8">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Lock className="w-4 h-4 text-amber-600" />
+                <span className="text-xs uppercase tracking-[0.25em] font-bold bg-gradient-to-r from-amber-700 via-yellow-600 to-amber-700 bg-clip-text text-transparent">
+                  {t('footer.securePayment', language)}
+                </span>
+                <Sparkles className="w-4 h-4 text-amber-500" />
+              </div>
+              
+              {/* Metallic Payment Icons Grid */}
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                {[
+                  { name: 'Visa', src: '/assets/payments/visa-2025.svg' },
+                  { name: 'Mastercard', src: '/assets/payments/mastercard-2025.svg' },
+                  { name: 'American Express', src: '/assets/payments/amex-2025.svg' },
+                  { name: 'Apple Pay', src: '/assets/payments/apple-pay-2025.svg' },
+                  { name: 'Google Pay', src: '/assets/payments/google-pay-2025.svg' },
+                  { name: 'Diners Club', src: '/assets/payments/diners-2025.svg' },
+                ].map((logo) => (
+                  <div
+                    key={logo.name}
+                    className="group relative flex items-center justify-center w-16 h-10 sm:w-20 sm:h-12 
+                      bg-gradient-to-br from-slate-50 via-white to-gray-100
+                      rounded-lg sm:rounded-xl 
+                      shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.9)]
+                      border border-gray-200/60
+                      hover:shadow-[0_8px_24px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_0_rgba(255,255,255,1)]
+                      hover:border-amber-300/50
+                      hover:scale-105
+                      transition-all duration-300 ease-out
+                      before:absolute before:inset-0 before:rounded-lg sm:before:rounded-xl
+                      before:bg-gradient-to-b before:from-white/40 before:to-transparent before:pointer-events-none"
+                    data-testid={`payment-logo-${logo.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <img 
+                      src={logo.src} 
+                      alt={logo.name}
+                      className="h-5 sm:h-6 w-auto object-contain drop-shadow-sm group-hover:drop-shadow-md transition-all duration-300"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              {/* Nayax Powered Badge */}
+              <div className="flex items-center justify-center gap-3 mt-4">
+                <div className="h-px w-12 bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
+                <div className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-full shadow-lg">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+                  <span className="text-[10px] sm:text-xs font-bold tracking-wide text-white">
+                    Powered by <span className="bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">Nayax</span> Israel
+                  </span>
+                </div>
+                <div className="h-px w-12 bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
+              </div>
+            </div>
+
             {/* Trust Badges - Minimalist Luxury */}
-            <div className="flex flex-wrap items-center justify-center gap-6 text-center">
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-center">
               {/* SSL Security */}
               <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-green-50 to-emerald-50 rounded-full border border-green-200/50 group hover:border-green-300 transition-all duration-300">
                 <Shield className="w-4 h-4 text-green-600 group-hover:scale-110 transition-transform" />
