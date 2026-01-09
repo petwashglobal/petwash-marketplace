@@ -1485,7 +1485,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/become-provider">
           {() => (
             <Suspense fallback={<PageLoader />}>
-              <BecomeProvider />
+              <ProviderApplicationForm />
             </Suspense>
           )}
         </Route>

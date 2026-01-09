@@ -282,6 +282,11 @@ const submitApplicationSchema = z.object({
   phoneNumber: z.string().min(9, 'Valid phone number required'),
   city: z.string().min(2, 'City is required'),
   providerType: z.string().min(1, 'Provider type is required'),
+  selectedPlatforms: z.array(z.string()).optional().default([]),
+  intendedPricing: z.record(z.object({
+    baseRate: z.number(),
+    additionalPet: z.number()
+  })).optional().default({}),
   yearsExperience: z.string().optional(),
   hasOwnTransport: z.boolean().default(false),
   hasPetFirstAid: z.boolean().default(false),
@@ -293,6 +298,7 @@ const submitApplicationSchema = z.object({
   profilePhotoBase64: z.string().optional(),
   agreeToTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
   agreeToPrivacy: z.boolean().refine(val => val === true, 'You must agree to the privacy policy'),
+  agreeToContractorStatus: z.boolean().optional().default(false),
 });
 
 router.post('/submit', async (req, res) => {
@@ -310,6 +316,8 @@ router.post('/submit', async (req, res) => {
         lastName: data.lastName,
         phoneNumber: data.phoneNumber,
         providerType: data.providerType,
+        selectedPlatforms: data.selectedPlatforms || [],
+        intendedPricing: data.intendedPricing || {},
         city: data.city,
         country: 'IL',
         yearsExperience: data.yearsExperience ? parseInt(data.yearsExperience.split('-')[0]) || 0 : 0,
@@ -330,7 +338,9 @@ router.post('/submit', async (req, res) => {
     logger.info('[Provider Intake] New application submitted:', { 
       intakeId, 
       email: data.email, 
-      providerType: data.providerType 
+      providerType: data.providerType,
+      selectedPlatforms: data.selectedPlatforms,
+      platformCount: data.selectedPlatforms?.length || 0
     });
     
     res.json({

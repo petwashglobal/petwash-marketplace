@@ -4408,8 +4408,14 @@ export const providerIntakeQueue = pgTable("provider_intake_queue", {
   lastName: varchar("last_name").notNull(),
   phoneNumber: varchar("phone_number").notNull(),
   
-  // Provider Type
+  // Provider Type (legacy single type)
   providerType: varchar("provider_type").notNull(), // walker | sitter | station_operator | driver | groomer | trainer
+  
+  // Multi-Platform Selection (MadPaws-style)
+  selectedPlatforms: text("selected_platforms").array().default([]), // ["sitter_suite", "walk_my_pet", ...]
+  
+  // Intended Pricing (provider's desired rates)
+  intendedPricing: jsonb("intended_pricing").default(sql`'{}'::jsonb`), // {platform: {baseRate, multiPetRate, addons}}
   
   // Location
   city: varchar("city"),
@@ -9669,3 +9675,382 @@ export interface BookingSearchResult {
   filters: BookingSearchFilters;
   searchId: string; // For analytics tracking
 }
+
+// =================== MADPAWS-STYLE PROVIDER PRICING (2026) ===================
+// Provider-defined pricing with base rates, multi-pet surcharges, and add-ons
+
+// Platform enum for multi-platform providers
+export const petWashPlatformEnum = pgEnum("pet_wash_platform", [
+  "sitter_suite",    // The Sitter Suite™ - Pet sitting
+  "walk_my_pet",     // Walk My Pet™ - Dog walking
+  "pet_trek",        // PetTrek™ - Pet taxi/transport
+  "groomers",        // Pet grooming services
+  "training_academy",// Pet training services
+  "k9000_wash",      // K9000™ wash stations
+  "plush_lab",       // The Plush Lab™ - Avatar creation
+  "daycare",         // Pet daycare
+  "paw_finder"       // Lost pet services
+]);
+
+// Service types within each platform
+export const serviceTypeEnum = pgEnum("marketplace_service_type", [
+  "pet_sitting",     // Overnight at sitter's home
+  "house_sitting",   // Overnight at owner's home
+  "daycare",         // Day care services
+  "dog_walking",     // Regular walks
+  "drop_in_visit",   // Quick check-in visits
+  "pet_taxi",        // Pet transport
+  "grooming",        // Full grooming
+  "training",        // Training sessions
+  "k9000_wash",      // Self-service wash
+  "avatar_creation"  // AI pet avatar
+]);
+
+// Provider Rate Cards - MadPaws-style flexible pricing
+export const providerRateCards = pgTable("provider_rate_cards", {
+  id: serial("id").primaryKey(),
+  rateCardId: varchar("rate_card_id").unique().notNull(), // RATE-UUID
+  
+  // Provider reference
+  providerId: varchar("provider_id").notNull(), // Firebase UID
+  providerProfileId: integer("provider_profile_id"), // Reference to sitter/walker/driver profile
+  
+  // Platform & Service
+  platform: varchar("platform").notNull(), // sitter_suite, walk_my_pet, etc.
+  serviceType: varchar("service_type").notNull(), // pet_sitting, dog_walking, etc.
+  
+  // Base Rates (provider sets these - in cents/agorot)
+  baseRatePerNightCents: integer("base_rate_per_night_cents"), // For overnight services
+  baseRatePerHourCents: integer("base_rate_per_hour_cents"), // For hourly services
+  baseRatePerVisitCents: integer("base_rate_per_visit_cents"), // For drop-in visits
+  
+  // Multi-Pet Pricing
+  additionalPetSurchargeCents: integer("additional_pet_surcharge_cents").default(0), // Per additional pet
+  maxPets: integer("max_pets").default(3),
+  
+  // Duration Discounts
+  weeklyDiscountPercent: integer("weekly_discount_percent").default(0), // 7+ days
+  monthlyDiscountPercent: integer("monthly_discount_percent").default(0), // 30+ days
+  
+  // Weekend/Holiday Surcharges
+  weekendSurchargePercent: integer("weekend_surcharge_percent").default(0),
+  holidaySurchargePercent: integer("holiday_surcharge_percent").default(0),
+  
+  // Pet Type Pricing (some pets cost more)
+  petTypePricing: jsonb("pet_type_pricing").default(sql`'{}'::jsonb`), // {"cat": 0, "large_dog": 2000, "exotic": 5000}
+  
+  // Available Add-ons for this service
+  enabledAddons: text("enabled_addons").array().default([]), // ["bath", "nail_trim", "medication"]
+  addonPricing: jsonb("addon_pricing").default(sql`'{}'::jsonb`), // {"bath": 5000, "nail_trim": 2500}
+  
+  // Availability
+  isActive: boolean("is_active").default(true),
+  minBookingHours: integer("min_booking_hours").default(1),
+  maxBookingDays: integer("max_booking_days").default(30),
+  
+  // Last Price Update
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Platform Memberships - which platforms a provider is active on
+export const providerPlatformMemberships = pgTable("provider_platform_memberships", {
+  id: serial("id").primaryKey(),
+  membershipId: varchar("membership_id").unique().notNull(), // MEMB-UUID
+  
+  providerId: varchar("provider_id").notNull(), // Firebase UID
+  platform: varchar("platform").notNull(), // sitter_suite, walk_my_pet, etc.
+  
+  // Status
+  status: varchar("status").default("pending"), // pending, active, suspended, inactive
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by"),
+  
+  // Platform-specific verification
+  platformVerificationStatus: varchar("platform_verification_status").default("pending"),
+  platformSpecificDocs: jsonb("platform_specific_docs").default(sql`'{}'::jsonb`),
+  
+  // Performance on this platform
+  totalBookings: integer("total_bookings").default(0),
+  averageRating: decimal("average_rating", { precision: 3, scale: 2 }),
+  responseRate: decimal("response_rate", { precision: 5, scale: 2 }), // Percentage
+  acceptanceRate: decimal("acceptance_rate", { precision: 5, scale: 2 }), // Percentage
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_platform_memberships_provider").on(table.providerId),
+  index("idx_platform_memberships_platform").on(table.platform),
+]);
+
+// Service Add-ons Catalog - predefined add-on services
+export const serviceAddons = pgTable("service_addons", {
+  id: serial("id").primaryKey(),
+  addonId: varchar("addon_id").unique().notNull(), // ADDON-UUID
+  
+  // Basic Info
+  code: varchar("code").unique().notNull(), // bath, nail_trim, medication, etc.
+  nameEn: varchar("name_en").notNull(),
+  nameHe: varchar("name_he").notNull(),
+  descriptionEn: text("description_en"),
+  descriptionHe: text("description_he"),
+  
+  // Applicable platforms
+  applicablePlatforms: text("applicable_platforms").array().default([]),
+  applicableServiceTypes: text("applicable_service_types").array().default([]),
+  
+  // Suggested pricing (providers can override)
+  suggestedPriceCents: integer("suggested_price_cents").default(0),
+  minPriceCents: integer("min_price_cents").default(0),
+  maxPriceCents: integer("max_price_cents"),
+  
+  // Display
+  icon: varchar("icon"), // Lucide icon name
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Provider Availability Calendar
+export const providerAvailability = pgTable("provider_availability", {
+  id: serial("id").primaryKey(),
+  
+  providerId: varchar("provider_id").notNull(),
+  platform: varchar("platform").notNull(),
+  
+  // Date/Time
+  date: date("date").notNull(),
+  timeSlot: varchar("time_slot"), // morning, afternoon, evening, all_day
+  
+  // Availability
+  isAvailable: boolean("is_available").default(true),
+  maxBookings: integer("max_bookings").default(1), // How many bookings can accept
+  currentBookings: integer("current_bookings").default(0),
+  
+  // Special pricing for this date
+  customRateCents: integer("custom_rate_cents"), // Override base rate
+  
+  // Notes
+  notes: text("notes"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_availability_provider_date").on(table.providerId, table.date),
+  index("idx_availability_platform").on(table.platform, table.date),
+]);
+
+// Quote Requests - customer requests quote from provider
+export const quoteRequests = pgTable("quote_requests", {
+  id: serial("id").primaryKey(),
+  quoteId: varchar("quote_id").unique().notNull(), // QUOTE-UUID
+  
+  // Parties
+  customerId: varchar("customer_id").notNull(),
+  providerId: varchar("provider_id").notNull(),
+  
+  // Service Details
+  platform: varchar("platform").notNull(),
+  serviceType: varchar("service_type").notNull(),
+  
+  // Booking Details
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  numberOfNights: integer("number_of_nights"),
+  numberOfHours: integer("number_of_hours"),
+  
+  // Pets
+  petCount: integer("pet_count").default(1),
+  petDetails: jsonb("pet_details").default(sql`'[]'::jsonb`), // [{type, name, breed, size}]
+  
+  // Add-ons requested
+  requestedAddons: text("requested_addons").array().default([]),
+  
+  // Special Requirements
+  specialRequirements: text("special_requirements"),
+  
+  // Quote Calculation (filled by provider or auto-calculated)
+  baseAmountCents: integer("base_amount_cents"),
+  additionalPetsCents: integer("additional_pets_cents"),
+  addonsCents: integer("addons_cents"),
+  surchargeCents: integer("surcharge_cents"), // Weekend/holiday
+  discountCents: integer("discount_cents"), // Duration/promo
+  subtotalCents: integer("subtotal_cents"),
+  platformFeeCents: integer("platform_fee_cents"), // 15% commission
+  taxCents: integer("tax_cents"), // VAT
+  totalCents: integer("total_cents"),
+  providerEarningsCents: integer("provider_earnings_cents"),
+  
+  // Status
+  status: varchar("status").default("pending"), // pending, quoted, accepted, declined, expired
+  quotedAt: timestamp("quoted_at"),
+  expiresAt: timestamp("expires_at"),
+  acceptedAt: timestamp("accepted_at"),
+  declinedAt: timestamp("declined_at"),
+  declineReason: text("decline_reason"),
+  
+  // Provider message
+  providerMessage: text("provider_message"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_quotes_customer").on(table.customerId),
+  index("idx_quotes_provider").on(table.providerId),
+  index("idx_quotes_status").on(table.status),
+]);
+
+// Zod Schemas for new tables
+export const insertProviderRateCardSchema = createInsertSchema(providerRateCards).omit({
+  id: true,
+  createdAt: true,
+  lastUpdatedAt: true,
+});
+export type InsertProviderRateCard = z.infer<typeof insertProviderRateCardSchema>;
+export type ProviderRateCard = typeof providerRateCards.$inferSelect;
+
+export const insertProviderPlatformMembershipSchema = createInsertSchema(providerPlatformMemberships).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertProviderPlatformMembership = z.infer<typeof insertProviderPlatformMembershipSchema>;
+export type ProviderPlatformMembership = typeof providerPlatformMemberships.$inferSelect;
+
+export const insertServiceAddonSchema = createInsertSchema(serviceAddons).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertServiceAddon = z.infer<typeof insertServiceAddonSchema>;
+export type ServiceAddon = typeof serviceAddons.$inferSelect;
+
+export const insertProviderAvailabilitySchema = createInsertSchema(providerAvailability).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertProviderAvailability = z.infer<typeof insertProviderAvailabilitySchema>;
+export type ProviderAvailability = typeof providerAvailability.$inferSelect;
+
+export const insertQuoteRequestSchema = createInsertSchema(quoteRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertQuoteRequest = z.infer<typeof insertQuoteRequestSchema>;
+export type QuoteRequest = typeof quoteRequests.$inferSelect;
+
+// Pet Wash Platform Types
+export type PetWashPlatform = 
+  | "sitter_suite"
+  | "walk_my_pet"
+  | "pet_trek"
+  | "groomers"
+  | "training_academy"
+  | "k9000_wash"
+  | "plush_lab"
+  | "daycare"
+  | "paw_finder";
+
+export const PETWASH_PLATFORMS: Record<PetWashPlatform, {
+  nameEn: string;
+  nameHe: string;
+  icon: string;
+  color: string;
+  description: { en: string; he: string };
+}> = {
+  sitter_suite: {
+    nameEn: "The Sitter Suite™",
+    nameHe: "סוויטת השמרטף™",
+    icon: "Home",
+    color: "from-rose-500 to-pink-600",
+    description: {
+      en: "Overnight pet sitting in a loving home",
+      he: "שמירה על חיות מחמד בבית אוהב"
+    }
+  },
+  walk_my_pet: {
+    nameEn: "Walk My Pet™",
+    nameHe: "טייל את הכלב שלי™",
+    icon: "Dog",
+    color: "from-emerald-500 to-teal-600",
+    description: {
+      en: "Professional dog walking services",
+      he: "שירותי טיול כלבים מקצועיים"
+    }
+  },
+  pet_trek: {
+    nameEn: "PetTrek™",
+    nameHe: "פטטרק™",
+    icon: "Car",
+    color: "from-blue-500 to-indigo-600",
+    description: {
+      en: "Safe pet transportation",
+      he: "הסעות חיות מחמד בטוחות"
+    }
+  },
+  groomers: {
+    nameEn: "Groomers",
+    nameHe: "מטפחים",
+    icon: "Scissors",
+    color: "from-purple-500 to-violet-600",
+    description: {
+      en: "Professional pet grooming",
+      he: "טיפוח חיות מחמד מקצועי"
+    }
+  },
+  training_academy: {
+    nameEn: "Training Academy",
+    nameHe: "אקדמיית אילוף",
+    icon: "GraduationCap",
+    color: "from-amber-500 to-orange-600",
+    description: {
+      en: "Expert pet training",
+      he: "אילוף חיות מחמד מקצועי"
+    }
+  },
+  k9000_wash: {
+    nameEn: "K9000™ Wash",
+    nameHe: "K9000™ שטיפה",
+    icon: "Droplets",
+    color: "from-cyan-500 to-sky-600",
+    description: {
+      en: "Self-service pet wash stations",
+      he: "תחנות שטיפה בשירות עצמי"
+    }
+  },
+  plush_lab: {
+    nameEn: "The Plush Lab™",
+    nameHe: "מעבדת הפלאש™",
+    icon: "Sparkles",
+    color: "from-pink-500 to-fuchsia-600",
+    description: {
+      en: "AI-powered pet avatar creation",
+      he: "יצירת אווטר בינה מלאכותית"
+    }
+  },
+  daycare: {
+    nameEn: "Pet Daycare",
+    nameHe: "מעון יום לחיות",
+    icon: "Sun",
+    color: "from-yellow-500 to-amber-600",
+    description: {
+      en: "Day care for your furry friends",
+      he: "מעון יום לחברים הפרוותיים"
+    }
+  },
+  paw_finder: {
+    nameEn: "Paw Finder",
+    nameHe: "מוצא כפות",
+    icon: "Search",
+    color: "from-red-500 to-rose-600",
+    description: {
+      en: "Lost pet recovery services",
+      he: "שירותי איתור חיות אבודות"
+    }
+  }
+};
+
+// Commission rate (15% like MadPaws for legacy providers)
+export const PETWASH_COMMISSION_RATE = 0.15;

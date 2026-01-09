@@ -1,11 +1,11 @@
 /**
- * Pet Wash™ Provider Application Form - Luxury 2026 Edition
+ * Pet Wash™ Provider Application Form - MadPaws-Style 2026 Edition
  * 
- * Glamorous, high-end application form with:
- * - Premium Gucci-inspired black/white aesthetic
- * - Luxury glassmorphism effects
- * - Elegant typography and animations
- * - E-signature integration ready
+ * Premium marketplace application form with:
+ * - Multi-platform selection (like MadPaws but for 9 platforms)
+ * - Provider-defined pricing wizard
+ * - Luxury Gucci-inspired black/white aesthetic
+ * - Comprehensive legal acknowledgements
  * - Mobile-first responsive design
  */
 
@@ -17,7 +17,6 @@ import { useLocation, Link } from "wouter";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -25,17 +24,79 @@ import {
   Loader2, CheckCircle2, Star, Shield, Heart, 
   Car, Home, Dog, Scissors, GraduationCap, Building,
   ArrowRight, ArrowLeft, Sparkles, Crown, Send,
-  Camera, Upload, User, X
+  Camera, Upload, User, X, Droplets, Sun, Search,
+  Check, DollarSign, Calendar, Info
 } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
 
-const providerTypes = [
-  { id: 'walker', icon: Dog, label: { en: 'Dog Walker', he: 'מטייל כלבים' }, color: 'from-emerald-500 to-teal-600' },
-  { id: 'sitter', icon: Home, label: { en: 'Pet Sitter', he: 'שמרטף' }, color: 'from-purple-500 to-pink-600' },
-  { id: 'driver', icon: Car, label: { en: 'PetTrek Driver', he: 'נהג PetTrek' }, color: 'from-blue-500 to-indigo-600' },
-  { id: 'groomer', icon: Scissors, label: { en: 'Groomer', he: 'מטפח' }, color: 'from-amber-500 to-orange-600' },
-  { id: 'trainer', icon: GraduationCap, label: { en: 'Trainer', he: 'מאלף' }, color: 'from-rose-500 to-red-600' },
-  { id: 'station_operator', icon: Building, label: { en: 'Station Operator', he: 'מפעיל תחנה' }, color: 'from-slate-500 to-zinc-600' },
+// MadPaws-style platforms with flexible pricing
+const PLATFORMS = [
+  { 
+    id: 'sitter_suite', 
+    icon: Home, 
+    nameEn: 'The Sitter Suite™', 
+    nameHe: 'סוויטת השמרטף™',
+    descEn: 'Overnight pet sitting in a loving home',
+    descHe: 'שמירה על חיות מחמד בבית אוהב',
+    color: 'from-rose-500 to-pink-600',
+    priceType: 'nightly',
+    suggestedRate: 15000, // 150 ILS in agorot
+  },
+  { 
+    id: 'walk_my_pet', 
+    icon: Dog, 
+    nameEn: 'Walk My Pet™', 
+    nameHe: 'טייל את הכלב שלי™',
+    descEn: 'Professional dog walking services',
+    descHe: 'שירותי טיול כלבים מקצועיים',
+    color: 'from-emerald-500 to-teal-600',
+    priceType: 'hourly',
+    suggestedRate: 5000, // 50 ILS
+  },
+  { 
+    id: 'pet_trek', 
+    icon: Car, 
+    nameEn: 'PetTrek™', 
+    nameHe: 'פטטרק™',
+    descEn: 'Safe pet transportation',
+    descHe: 'הסעות חיות מחמד בטוחות',
+    color: 'from-blue-500 to-indigo-600',
+    priceType: 'trip',
+    suggestedRate: 8000, // 80 ILS
+  },
+  { 
+    id: 'groomers', 
+    icon: Scissors, 
+    nameEn: 'Groomers', 
+    nameHe: 'מטפחים',
+    descEn: 'Professional pet grooming',
+    descHe: 'טיפוח חיות מחמד מקצועי',
+    color: 'from-purple-500 to-violet-600',
+    priceType: 'session',
+    suggestedRate: 12000, // 120 ILS
+  },
+  { 
+    id: 'training_academy', 
+    icon: GraduationCap, 
+    nameEn: 'Training Academy', 
+    nameHe: 'אקדמיית אילוף',
+    descEn: 'Expert pet training',
+    descHe: 'אילוף חיות מחמד מקצועי',
+    color: 'from-amber-500 to-orange-600',
+    priceType: 'session',
+    suggestedRate: 20000, // 200 ILS
+  },
+  { 
+    id: 'daycare', 
+    icon: Sun, 
+    nameEn: 'Pet Daycare', 
+    nameHe: 'מעון יום לחיות',
+    descEn: 'Day care for your furry friends',
+    descHe: 'מעון יום לחברים הפרוותיים',
+    color: 'from-yellow-500 to-amber-600',
+    priceType: 'daily',
+    suggestedRate: 10000, // 100 ILS
+  },
 ] as const;
 
 const applicationSchema = z.object({
@@ -44,7 +105,7 @@ const applicationSchema = z.object({
   email: z.string().email({ message: "Valid email required" }),
   phoneNumber: z.string().min(9, { message: "Valid phone number required" }),
   city: z.string().min(2, { message: "City is required" }),
-  providerType: z.string().min(1, { message: "Please select a service type" }),
+  selectedPlatforms: z.array(z.string()).min(1, { message: "Select at least one platform" }),
   yearsExperience: z.string().optional(),
   hasOwnTransport: z.boolean().default(false),
   hasPetFirstAid: z.boolean().default(false),
@@ -53,8 +114,9 @@ const applicationSchema = z.object({
   aboutMe: z.string().min(20, { message: "Please tell us about yourself (min 20 characters)" }),
   whyJoinPetWash: z.string().min(20, { message: "Please tell us why you want to join (min 20 characters)" }),
   referralSource: z.string().optional(),
-  agreeToTerms: z.boolean().refine(val => val === true, { message: "You must agree to the terms" }),
-  agreeToPrivacy: z.boolean().refine(val => val === true, { message: "You must agree to the privacy policy" }),
+  agreeToTerms: z.boolean().refine(val => val === true, { message: "Required" }),
+  agreeToPrivacy: z.boolean().refine(val => val === true, { message: "Required" }),
+  agreeToContractorStatus: z.boolean().refine(val => val === true, { message: "Required" }),
 });
 
 type ApplicationForm = z.infer<typeof applicationSchema>;
@@ -65,11 +127,11 @@ export default function ProviderApplicationForm() {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
   const [step, setStep] = useState(1);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [pricing, setPricing] = useState<Record<string, { baseRate: number; additionalPet: number }>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
 
   const handleProfilePhotoChange = (e: { target: HTMLInputElement }) => {
     const file = e.target.files?.[0];
@@ -82,18 +144,10 @@ export default function ProviderApplicationForm() {
         });
         return;
       }
-      setProfilePhotoFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePhoto(reader.result as string);
-      };
+      reader.onloadend = () => setProfilePhoto(reader.result as string);
       reader.readAsDataURL(file);
     }
-  };
-
-  const removeProfilePhoto = () => {
-    setProfilePhoto(null);
-    setProfilePhotoFile(null);
   };
 
   const form = useForm<ApplicationForm>({
@@ -104,7 +158,7 @@ export default function ProviderApplicationForm() {
       email: "",
       phoneNumber: "",
       city: "",
-      providerType: "",
+      selectedPlatforms: [],
       yearsExperience: "",
       hasOwnTransport: false,
       hasPetFirstAid: false,
@@ -115,18 +169,22 @@ export default function ProviderApplicationForm() {
       referralSource: "",
       agreeToTerms: false,
       agreeToPrivacy: false,
+      agreeToContractorStatus: false,
     },
   });
 
   const t = {
-    title: isHebrew ? 'הצטרף למשפחת Pet Wash™' : 'Join the Pet Wash™ Family',
+    title: isHebrew ? 'הפוך לספק שירות' : 'Become a Provider',
     subtitle: isHebrew 
-      ? 'הפוך לחלק מפלטפורמת הפרימיום המובילה לשירותי חיות מחמד'
-      : 'Become part of the leading premium pet services platform',
-    step1Title: isHebrew ? 'בחר את השירות שלך' : 'Choose Your Service',
-    step2Title: isHebrew ? 'פרטים אישיים' : 'Personal Details',
-    step3Title: isHebrew ? 'ניסיון והכשרות' : 'Experience & Qualifications',
-    step4Title: isHebrew ? 'ספר לנו על עצמך' : 'Tell Us About Yourself',
+      ? 'הצטרף לפלטפורמה המובילה לשירותי חיות מחמד בישראל והרוויח בזמן שלך'
+      : 'Join the leading pet services platform in Israel and earn on your schedule',
+    step1Title: isHebrew ? 'בחר את הפלטפורמות שלך' : 'Choose Your Platforms',
+    step1Desc: isHebrew ? 'בחר אחד או יותר שירותים שתרצה להציע' : 'Select one or more services you\'d like to offer',
+    step2Title: isHebrew ? 'קבע את המחירים שלך' : 'Set Your Prices',
+    step2Desc: isHebrew ? 'אתה שולט במחירים - קבע תעריפים תחרותיים' : 'You\'re in control - set competitive rates',
+    step3Title: isHebrew ? 'פרטים אישיים' : 'Personal Details',
+    step4Title: isHebrew ? 'ניסיון ופרופיל' : 'Experience & Profile',
+    step5Title: isHebrew ? 'הסכמים משפטיים' : 'Legal Agreements',
     firstName: isHebrew ? 'שם פרטי' : 'First Name',
     lastName: isHebrew ? 'שם משפחה' : 'Last Name',
     email: isHebrew ? 'אימייל' : 'Email',
@@ -134,42 +192,94 @@ export default function ProviderApplicationForm() {
     city: isHebrew ? 'עיר' : 'City',
     experience: isHebrew ? 'שנות ניסיון' : 'Years of Experience',
     hasTransport: isHebrew ? 'יש לי רכב' : 'I have my own vehicle',
-    hasFirstAid: isHebrew ? 'יש לי תעודת עזרה ראשונה לבעלי חיים' : 'I have pet first aid certification',
-    hasInsurance: isHebrew ? 'יש לי ביטוח אחריות' : 'I have liability insurance',
+    hasFirstAid: isHebrew ? 'תעודת עזרה ראשונה לבעלי חיים' : 'Pet first aid certification',
+    hasInsurance: isHebrew ? 'ביטוח אחריות' : 'Liability insurance',
     availability: isHebrew ? 'זמינות ושעות העדפה' : 'Availability & Preferred Hours',
-    aboutMe: isHebrew ? 'ספר/י לנו על עצמך' : 'Tell us about yourself',
-    whyJoin: isHebrew ? 'למה אתה רוצה להצטרף ל-Pet Wash?' : 'Why do you want to join Pet Wash?',
+    aboutMe: isHebrew ? 'ספר/י על עצמך' : 'Tell us about yourself',
+    aboutMeHint: isHebrew ? 'ספר על הניסיון שלך עם חיות מחמד ולמה אתה אוהב לעבוד איתן' : 'Share your experience with pets and why you love working with them',
+    whyJoin: isHebrew ? 'למה Pet Wash?' : 'Why Pet Wash?',
+    whyJoinHint: isHebrew ? 'מה מושך אותך להצטרף לפלטפורמה שלנו?' : 'What attracts you to joining our platform?',
     referral: isHebrew ? 'איך שמעת עלינו?' : 'How did you hear about us?',
     terms: isHebrew ? 'אני מסכים/ה לתנאי השימוש' : 'I agree to the Terms of Service',
-    privacy: isHebrew ? 'אני מסכים/ה למדיניות הפרטיות' : 'I agree to the Privacy Policy',
+    privacy: isHebrew ? 'אני מסכים/ה למדיניות הפרטיות ושמירת הנתונים' : 'I agree to the Privacy Policy and Data Retention',
+    contractor: isHebrew 
+      ? 'אני מבין/ה שאני קבלן עצמאי ולא עובד של Pet Wash™' 
+      : 'I understand I am an independent contractor, not an employee of Pet Wash™',
     next: isHebrew ? 'המשך' : 'Continue',
     back: isHebrew ? 'חזרה' : 'Back',
-    submit: isHebrew ? 'שלח בקשה' : 'Submit Application',
+    submit: isHebrew ? 'הגש בקשה' : 'Submit Application',
     submitting: isHebrew ? 'שולח...' : 'Submitting...',
-    successTitle: isHebrew ? 'הבקשה נשלחה בהצלחה!' : 'Application Submitted Successfully!',
+    successTitle: isHebrew ? 'הבקשה התקבלה!' : 'Application Received!',
     successMessage: isHebrew 
-      ? 'תודה על הבקשה שלך. הצוות שלנו יבדוק אותה ויצור איתך קשר תוך 48 שעות עסקיות.'
-      : 'Thank you for your application. Our team will review it and contact you within 48 business hours.',
-    profilePhoto: isHebrew ? 'תמונת פרופיל ציבורית' : 'Public Profile Photo',
-    profilePhotoDesc: isHebrew 
-      ? 'בחר תמונה שתוצג לציבור בפרופיל שלך (אופציונלי - נפרד מתמונת הזיהוי)'
-      : 'Choose a photo to display publicly on your profile (optional - separate from ID verification)',
+      ? 'תודה! הצוות שלנו יבדוק את הבקשה ויצור קשר תוך 48 שעות עסקיות.'
+      : 'Thank you! Our team will review your application and contact you within 48 business hours.',
+    profilePhoto: isHebrew ? 'תמונת פרופיל' : 'Profile Photo',
     uploadPhoto: isHebrew ? 'העלה תמונה' : 'Upload Photo',
-    changePhoto: isHebrew ? 'שנה תמונה' : 'Change Photo',
-    removePhoto: isHebrew ? 'הסר' : 'Remove',
+    baseRate: isHebrew ? 'תעריף בסיס' : 'Base Rate',
+    perNight: isHebrew ? 'ללילה' : 'per night',
+    perHour: isHebrew ? 'לשעה' : 'per hour',
+    perTrip: isHebrew ? 'לנסיעה' : 'per trip',
+    perSession: isHebrew ? 'למפגש' : 'per session',
+    perDay: isHebrew ? 'ליום' : 'per day',
+    additionalPet: isHebrew ? 'תוספת לחיה נוספת' : 'Additional pet surcharge',
+    suggested: isHebrew ? 'מומלץ' : 'Suggested',
+    commission: isHebrew ? '15% עמלת פלטפורמה' : '15% platform commission',
+    youEarn: isHebrew ? 'אתה מרוויח' : 'You earn',
   };
 
-  const handleTypeSelect = (typeId: string) => {
-    setSelectedType(typeId);
-    form.setValue('providerType', typeId);
+  const handlePlatformToggle = (platformId: string) => {
+    const newPlatforms = selectedPlatforms.includes(platformId)
+      ? selectedPlatforms.filter(p => p !== platformId)
+      : [...selectedPlatforms, platformId];
+    setSelectedPlatforms(newPlatforms);
+    form.setValue('selectedPlatforms', newPlatforms);
+    
+    // Initialize pricing for new platform
+    if (!pricing[platformId]) {
+      const platform = PLATFORMS.find(p => p.id === platformId);
+      if (platform) {
+        setPricing(prev => ({
+          ...prev,
+          [platformId]: { baseRate: platform.suggestedRate, additionalPet: 2500 }
+        }));
+      }
+    }
+  };
+
+  const updatePricing = (platformId: string, field: 'baseRate' | 'additionalPet', value: number) => {
+    setPricing(prev => ({
+      ...prev,
+      [platformId]: { ...prev[platformId], [field]: value }
+    }));
+  };
+
+  const formatCurrency = (agorot: number) => {
+    return `₪${(agorot / 100).toFixed(0)}`;
+  };
+
+  const getPriceLabel = (priceType: string) => {
+    switch (priceType) {
+      case 'nightly': return t.perNight;
+      case 'hourly': return t.perHour;
+      case 'trip': return t.perTrip;
+      case 'session': return t.perSession;
+      case 'daily': return t.perDay;
+      default: return '';
+    }
   };
 
   const onSubmit = async (data: ApplicationForm) => {
     console.log('[ProviderApplication] Form submit triggered with data:', data);
     setIsSubmitting(true);
     try {
+      // Convert first selected platform to legacy providerType
+      const legacyType = selectedPlatforms[0]?.replace('_suite', '').replace('_my_pet', '').replace('_academy', '') || 'sitter';
+      
       const submitData = {
         ...data,
+        providerType: legacyType,
+        selectedPlatforms,
+        intendedPricing: pricing,
         profilePhotoBase64: profilePhoto || undefined,
       };
       
@@ -200,69 +310,69 @@ export default function ProviderApplicationForm() {
     }
   };
 
+  // Success Screen
   if (submitted) {
     return (
-      <div className={`min-h-screen luxury-bg-mesh py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
-        <div className="max-w-2xl mx-auto luxury-animate-fade-in">
-          <div className="luxury-glass-card luxury-shadow-2xl border-2 border-green-500/30 p-10">
-            <div className="text-center">
-              <div className="mx-auto w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mb-6 luxury-animate-scale-in">
-                <CheckCircle2 className="h-14 w-14 text-white" />
-              </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-4">
-                {t.successTitle}
-              </h2>
-              <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-                {t.successMessage}
-              </p>
-              
-              <div className="luxury-glass-panel p-6 mb-8">
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <Crown className="h-6 w-6 text-amber-500" />
-                  <span className="font-semibold text-lg">
-                    {isHebrew ? 'מה הלאה?' : 'What\'s Next?'}
-                  </span>
-                </div>
-                <ul className="space-y-3 text-left">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>{isHebrew ? 'הצוות שלנו יבדוק את הבקשה' : 'Our team will review your application'}</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>{isHebrew ? 'תקבל קוד הזמנה אישי באימייל' : 'You\'ll receive a personal invite code by email'}</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>{isHebrew ? 'תשלים את תהליך ההצטרפות עם אימות זהות' : 'Complete onboarding with identity verification'}</span>
-                  </li>
-                </ul>
-              </div>
-
-              <Link href="/">
-                <button className="luxury-btn-primary luxury-shadow-xl px-10 py-4 text-lg" data-testid="button-back-home">
-                  {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
-                </button>
-              </Link>
+      <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 p-10 text-center">
+            <div className="mx-auto w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mb-6 animate-bounce">
+              <CheckCircle2 className="h-14 w-14 text-white" />
             </div>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              {t.successTitle}
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
+              {t.successMessage}
+            </p>
+            
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 mb-8">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Crown className="h-6 w-6 text-amber-500" />
+                <span className="font-semibold text-lg text-gray-900 dark:text-white">
+                  {isHebrew ? 'מה הלאה?' : 'What\'s Next?'}
+                </span>
+              </div>
+              <ol className={`text-${isHebrew ? 'right' : 'left'} space-y-3 text-gray-600 dark:text-gray-300`}>
+                <li className="flex items-start gap-3">
+                  <span className="bg-black text-white dark:bg-white dark:text-black w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                  <span>{isHebrew ? 'הצוות שלנו יבדוק את הבקשה' : 'Our team will review your application'}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="bg-black text-white dark:bg-white dark:text-black w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                  <span>{isHebrew ? 'נשלח לך הזמנה להמשיך את תהליך ההרשמה' : 'We\'ll send you an invitation to complete onboarding'}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="bg-black text-white dark:bg-white dark:text-black w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                  <span>{isHebrew ? 'אחרי אישור - תתחיל לקבל הזמנות!' : 'After approval - start receiving bookings!'}</span>
+                </li>
+              </ol>
+            </div>
+            
+            <Link href="/" className="inline-flex items-center gap-2 bg-black text-white dark:bg-white dark:text-black px-8 py-3 rounded-full font-semibold hover:opacity-90 transition-opacity">
+              {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
+              <ArrowRight className={`h-5 w-5 ${isHebrew ? 'rotate-180' : ''}`} />
+            </Link>
           </div>
         </div>
       </div>
     );
   }
 
+  const totalSteps = 5;
+  const progress = (step / totalSteps) * 100;
+
   return (
-    <div className={`min-h-screen luxury-bg-mesh py-8 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black py-8 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
       <div className="max-w-4xl mx-auto">
-        {/* Luxury Header */}
-        <div className="text-center mb-10 luxury-animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 mb-4">
-            <Sparkles className="h-4 w-4 text-amber-500" />
-            <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
-              {isHebrew ? 'הצטרף לצוות הפרימיום' : 'Join the Premium Team'}
-            </span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-black via-gray-700 to-black dark:from-white dark:via-gray-200 dark:to-white bg-clip-text text-transparent mb-4">
+        
+        {/* Header */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-4">
+            <ArrowLeft className={`h-4 w-4 ${isHebrew ? 'rotate-180' : ''}`} />
+            {isHebrew ? 'חזרה' : 'Back'}
+          </Link>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-3">
             {t.title}
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
@@ -270,32 +380,33 @@ export default function ProviderApplicationForm() {
           </p>
         </div>
 
-        {/* Progress Steps - Premium Design */}
-        <div className="flex items-center justify-center gap-2 mb-10 luxury-animate-slide-up">
-          {[1, 2, 3, 4].map((s) => (
-            <div key={s} className="flex items-center">
-              <div 
-                className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${
-                  step >= s 
-                    ? 'bg-gradient-to-br from-black to-gray-800 text-white dark:from-white dark:to-gray-200 dark:text-black shadow-lg' 
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
-                }`}
-              >
-                {step > s ? <CheckCircle2 className="h-6 w-6" /> : s}
+        {/* Progress Bar */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <div key={s} className="flex items-center">
+                <div 
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+                    step >= s 
+                      ? 'bg-black text-white dark:bg-white dark:text-black' 
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
+                  }`}
+                >
+                  {step > s ? <Check className="h-5 w-5" /> : s}
+                </div>
               </div>
-              {s < 4 && (
-                <div className={`w-16 h-1 mx-1 rounded-full transition-all duration-300 ${
-                  step > s 
-                    ? 'bg-gradient-to-r from-black to-gray-700 dark:from-white dark:to-gray-300' 
-                    : 'bg-gray-200 dark:bg-gray-700'
-                }`} />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
+          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-black dark:bg-white transition-all duration-500"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
 
         {/* Form Card */}
-        <div className="luxury-glass-card luxury-shadow-2xl p-8 md:p-10 luxury-animate-fade-in border border-white/20 dark:border-white/10">
+        <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-800 p-6 md:p-10">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
               console.error('[ProviderApplication] Form validation errors:', errors);
@@ -305,90 +416,172 @@ export default function ProviderApplicationForm() {
                 description: isHebrew ? 'אנא מלא את כל השדות הנדרשים' : 'Please fill in all required fields',
               });
             })}>
-              {/* Step 1: Service Type Selection */}
+              
+              {/* Step 1: Platform Selection */}
               {step === 1 && (
-                <div className="space-y-8">
+                <div className="space-y-6">
                   <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                       {t.step1Title}
                     </h2>
                     <p className="text-gray-500">
-                      {isHebrew ? 'בחר את סוג השירות שתרצה להציע' : 'Select the type of service you\'d like to offer'}
+                      {t.step1Desc}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {providerTypes.map((type) => {
-                      const Icon = type.icon;
-                      const isSelected = selectedType === type.id;
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {PLATFORMS.map((platform) => {
+                      const Icon = platform.icon;
+                      const isSelected = selectedPlatforms.includes(platform.id);
                       return (
                         <button
-                          key={type.id}
+                          key={platform.id}
                           type="button"
-                          onClick={() => handleTypeSelect(type.id)}
-                          className={`group relative p-6 rounded-2xl transition-all duration-300 ${
+                          onClick={() => handlePlatformToggle(platform.id)}
+                          className={`relative p-6 rounded-2xl border-2 transition-all duration-300 text-${isHebrew ? 'right' : 'left'} ${
                             isSelected 
-                              ? `bg-gradient-to-br ${type.color} text-white shadow-2xl scale-105` 
-                              : 'luxury-glass-card hover:scale-102 hover:shadow-xl'
+                              ? `border-black dark:border-white bg-gradient-to-br ${platform.color} text-white shadow-xl scale-[1.02]` 
+                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-lg'
                           }`}
-                          data-testid={`button-select-${type.id}`}
+                          data-testid={`platform-${platform.id}`}
                         >
-                          <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-all ${
-                            isSelected 
-                              ? 'bg-white/20' 
-                              : `bg-gradient-to-br ${type.color} text-white`
-                          }`}>
-                            <Icon className="h-8 w-8" />
-                          </div>
-                          <span className={`font-bold text-lg block ${isSelected ? 'text-white' : 'text-gray-800 dark:text-white'}`}>
-                            {type.label[isHebrew ? 'he' : 'en']}
-                          </span>
                           {isSelected && (
-                            <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <div className="absolute top-3 right-3">
+                              <Check className="h-6 w-6" />
                             </div>
                           )}
+                          <Icon className={`h-10 w-10 mb-3 ${isSelected ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`} />
+                          <h3 className={`font-bold text-lg ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                            {isHebrew ? platform.nameHe : platform.nameEn}
+                          </h3>
+                          <p className={`text-sm mt-1 ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                            {isHebrew ? platform.descHe : platform.descEn}
+                          </p>
+                          <div className={`mt-3 text-sm ${isSelected ? 'text-white/90' : 'text-gray-400'}`}>
+                            {t.suggested}: {formatCurrency(platform.suggestedRate)} {getPriceLabel(platform.priceType)}
+                          </div>
                         </button>
                       );
                     })}
                   </div>
 
-                  <div className="flex justify-end pt-6">
-                    <button
-                      type="button"
-                      onClick={() => selectedType && setStep(2)}
-                      disabled={!selectedType}
-                      className="luxury-btn-primary luxury-shadow-xl px-8 py-4 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      data-testid="button-next-step1"
-                    >
-                      {t.next}
-                      <ArrowRight className="h-5 w-5" />
-                    </button>
-                  </div>
+                  {selectedPlatforms.length === 0 && (
+                    <p className="text-center text-amber-600 dark:text-amber-400 text-sm">
+                      {isHebrew ? 'בחר לפחות פלטפורמה אחת להמשך' : 'Select at least one platform to continue'}
+                    </p>
+                  )}
                 </div>
               )}
 
-              {/* Step 2: Personal Information */}
+              {/* Step 2: Pricing Wizard */}
               {step === 2 && (
                 <div className="space-y-6">
                   <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                       {t.step2Title}
                     </h2>
+                    <p className="text-gray-500">
+                      {t.step2Desc}
+                    </p>
+                    <div className="flex items-center justify-center gap-2 mt-3 text-sm text-gray-400">
+                      <Info className="h-4 w-4" />
+                      <span>{t.commission}</span>
+                    </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-6">
+                    {selectedPlatforms.map((platformId) => {
+                      const platform = PLATFORMS.find(p => p.id === platformId);
+                      if (!platform) return null;
+                      const Icon = platform.icon;
+                      const currentPricing = pricing[platformId] || { baseRate: platform.suggestedRate, additionalPet: 2500 };
+                      const providerEarnings = Math.round(currentPricing.baseRate * 0.85);
+                      
+                      return (
+                        <div 
+                          key={platformId}
+                          className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6"
+                        >
+                          <div className="flex items-center gap-3 mb-6">
+                            <div className={`p-3 rounded-xl bg-gradient-to-br ${platform.color}`}>
+                              <Icon className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-gray-900 dark:text-white">
+                                {isHebrew ? platform.nameHe : platform.nameEn}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                {isHebrew ? platform.descHe : platform.descEn}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {t.baseRate} ({getPriceLabel(platform.priceType)})
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₪</span>
+                                <input
+                                  type="number"
+                                  value={currentPricing.baseRate / 100}
+                                  onChange={(e) => updatePricing(platformId, 'baseRate', Math.round(parseFloat(e.target.value) * 100))}
+                                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-black dark:focus:ring-white"
+                                  min={0}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between mt-2 text-sm">
+                                <span className="text-gray-500">{t.youEarn}:</span>
+                                <span className="font-bold text-green-600 dark:text-green-400">
+                                  {formatCurrency(providerEarnings)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {t.additionalPet}
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₪</span>
+                                <input
+                                  type="number"
+                                  value={currentPricing.additionalPet / 100}
+                                  onChange={(e) => updatePricing(platformId, 'additionalPet', Math.round(parseFloat(e.target.value) * 100))}
+                                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-black dark:focus:ring-white"
+                                  min={0}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Personal Details */}
+              {step === 3 && (
+                <div className="space-y-6">
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                      {t.step3Title}
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-base font-semibold">{t.firstName}</FormLabel>
+                          <FormLabel className="text-gray-700 dark:text-gray-300">{t.firstName} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
-                              className="h-14 text-lg luxury-glass-minimal border-2 focus:border-black dark:focus:border-white transition-colors" 
-                              placeholder={isHebrew ? 'הזן שם פרטי' : 'Enter first name'}
+                              className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
                               data-testid="input-firstName"
                             />
                           </FormControl>
@@ -402,12 +595,11 @@ export default function ProviderApplicationForm() {
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-base font-semibold">{t.lastName}</FormLabel>
+                          <FormLabel className="text-gray-700 dark:text-gray-300">{t.lastName} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
-                              className="h-14 text-lg luxury-glass-minimal border-2 focus:border-black dark:focus:border-white transition-colors" 
-                              placeholder={isHebrew ? 'הזן שם משפחה' : 'Enter last name'}
+                              className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
                               data-testid="input-lastName"
                             />
                           </FormControl>
@@ -421,13 +613,12 @@ export default function ProviderApplicationForm() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-base font-semibold">{t.email}</FormLabel>
+                          <FormLabel className="text-gray-700 dark:text-gray-300">{t.email} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               type="email"
-                              className="h-14 text-lg luxury-glass-minimal border-2 focus:border-black dark:focus:border-white transition-colors" 
-                              placeholder={isHebrew ? 'your@email.com' : 'your@email.com'}
+                              className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
                               data-testid="input-email"
                             />
                           </FormControl>
@@ -441,13 +632,12 @@ export default function ProviderApplicationForm() {
                       name="phoneNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-base font-semibold">{t.phone}</FormLabel>
+                          <FormLabel className="text-gray-700 dark:text-gray-300">{t.phone} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               type="tel"
-                              className="h-14 text-lg luxury-glass-minimal border-2 focus:border-black dark:focus:border-white transition-colors" 
-                              placeholder={isHebrew ? '050-123-4567' : '+972-50-123-4567'}
+                              className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
                               data-testid="input-phone"
                             />
                           </FormControl>
@@ -461,12 +651,11 @@ export default function ProviderApplicationForm() {
                       name="city"
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel className="text-base font-semibold">{t.city}</FormLabel>
+                          <FormLabel className="text-gray-700 dark:text-gray-300">{t.city} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
-                              className="h-14 text-lg luxury-glass-minimal border-2 focus:border-black dark:focus:border-white transition-colors" 
-                              placeholder={isHebrew ? 'תל אביב' : 'Tel Aviv'}
+                              className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
                               data-testid="input-city"
                             />
                           </FormControl>
@@ -476,166 +665,50 @@ export default function ProviderApplicationForm() {
                     />
                   </div>
 
-                  <div className="flex justify-between pt-6">
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="luxury-btn-secondary px-8 py-4 flex items-center gap-2"
-                      data-testid="button-back-step2"
-                    >
-                      <ArrowLeft className="h-5 w-5" />
-                      {t.back}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStep(3)}
-                      className="luxury-btn-primary luxury-shadow-xl px-8 py-4 flex items-center gap-2"
-                      data-testid="button-next-step2"
-                    >
-                      {t.next}
-                      <ArrowRight className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3: Experience & Qualifications */}
-              {step === 3 && (
-                <div className="space-y-6">
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                      {t.step3Title}
-                    </h2>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="yearsExperience"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-semibold">{t.experience}</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-14 text-lg luxury-glass-minimal border-2" data-testid="select-experience">
-                              <SelectValue placeholder={isHebrew ? 'בחר' : 'Select'} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="0-1">{isHebrew ? 'פחות משנה' : 'Less than 1 year'}</SelectItem>
-                            <SelectItem value="1-3">{isHebrew ? '1-3 שנים' : '1-3 years'}</SelectItem>
-                            <SelectItem value="3-5">{isHebrew ? '3-5 שנים' : '3-5 years'}</SelectItem>
-                            <SelectItem value="5+">{isHebrew ? '5+ שנים' : '5+ years'}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid gap-4 p-6 luxury-glass-panel rounded-xl">
-                    <h3 className="font-bold text-lg flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-green-600" />
-                      {isHebrew ? 'הכשרות ותעודות' : 'Certifications & Qualifications'}
-                    </h3>
-                    
-                    <FormField
-                      control={form.control}
-                      name="hasOwnTransport"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center gap-3 space-y-0">
-                          <FormControl>
-                            <Checkbox 
-                              checked={field.value} 
-                              onCheckedChange={field.onChange}
-                              className="h-6 w-6"
-                              data-testid="checkbox-transport"
-                            />
-                          </FormControl>
-                          <FormLabel className="text-base cursor-pointer">{t.hasTransport}</FormLabel>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="hasPetFirstAid"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center gap-3 space-y-0">
-                          <FormControl>
-                            <Checkbox 
-                              checked={field.value} 
-                              onCheckedChange={field.onChange}
-                              className="h-6 w-6"
-                              data-testid="checkbox-firstaid"
-                            />
-                          </FormControl>
-                          <FormLabel className="text-base cursor-pointer">{t.hasFirstAid}</FormLabel>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="hasInsurance"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center gap-3 space-y-0">
-                          <FormControl>
-                            <Checkbox 
-                              checked={field.value} 
-                              onCheckedChange={field.onChange}
-                              className="h-6 w-6"
-                              data-testid="checkbox-insurance"
-                            />
-                          </FormControl>
-                          <FormLabel className="text-base cursor-pointer">{t.hasInsurance}</FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="availabilityNotes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-semibold">{t.availability}</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            {...field} 
-                            className="min-h-24 text-lg luxury-glass-minimal border-2 focus:border-black dark:focus:border-white transition-colors" 
-                            placeholder={isHebrew ? 'לדוגמה: זמין בימי ראשון-חמישי, 8:00-18:00' : 'e.g., Available Sunday-Thursday, 8:00-18:00'}
-                            data-testid="input-availability"
+                  {/* Profile Photo */}
+                  <div className="pt-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                      {t.profilePhoto}
+                    </label>
+                    <div className="flex items-center gap-4">
+                      {profilePhoto ? (
+                        <div className="relative">
+                          <img 
+                            src={profilePhoto} 
+                            alt="Profile" 
+                            className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700"
                           />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex justify-between pt-6">
-                    <button
-                      type="button"
-                      onClick={() => setStep(2)}
-                      className="luxury-btn-secondary px-8 py-4 flex items-center gap-2"
-                      data-testid="button-back-step3"
-                    >
-                      <ArrowLeft className="h-5 w-5" />
-                      {t.back}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStep(4)}
-                      className="luxury-btn-primary luxury-shadow-xl px-8 py-4 flex items-center gap-2"
-                      data-testid="button-next-step3"
-                    >
-                      {t.next}
-                      <ArrowRight className="h-5 w-5" />
-                    </button>
+                          <button
+                            type="button"
+                            onClick={() => setProfilePhoto(null)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600">
+                          <User className="h-10 w-10 text-gray-400" />
+                        </div>
+                      )}
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfilePhotoChange}
+                          className="hidden"
+                        />
+                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                          <Camera className="h-4 w-4" />
+                          {profilePhoto ? (isHebrew ? 'שנה תמונה' : 'Change') : t.uploadPhoto}
+                        </span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Step 4: About & Submit */}
+              {/* Step 4: Experience & Profile */}
               {step === 4 && (
                 <div className="space-y-6">
                   <div className="text-center mb-8">
@@ -644,82 +717,113 @@ export default function ProviderApplicationForm() {
                     </h2>
                   </div>
 
-                  {/* Profile Photo Upload */}
-                  <div className="luxury-glass-panel p-6 rounded-xl">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Camera className="h-5 w-5 text-purple-500" />
-                      <h3 className="font-bold text-lg">{t.profilePhoto}</h3>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      {t.profilePhotoDesc}
-                    </p>
-                    
-                    <div className="flex items-center gap-6">
-                      {/* Photo Preview */}
-                      <div className="relative">
-                        {profilePhoto ? (
-                          <div className="relative">
-                            <img 
-                              src={profilePhoto} 
-                              alt="Profile preview" 
-                              className="w-28 h-28 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-xl"
-                              data-testid="img-profile-preview"
-                            />
-                            <button
-                              type="button"
-                              onClick={removeProfilePhoto}
-                              className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
-                              data-testid="button-remove-photo"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="w-28 h-28 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center border-4 border-white dark:border-gray-800 shadow-xl">
-                            <User className="h-12 w-12 text-gray-400 dark:text-gray-500" />
-                          </div>
+                  {/* Qualifications */}
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+                      {isHebrew ? 'הכשרות והסמכות' : 'Qualifications & Certifications'}
+                    </h3>
+                    <div className="space-y-3">
+                      <FormField
+                        control={form.control}
+                        name="hasOwnTransport"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-3">
+                            <FormControl>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                                className="h-5 w-5"
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0 text-gray-700 dark:text-gray-300 cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <Car className="h-4 w-4" />
+                                {t.hasTransport}
+                              </div>
+                            </FormLabel>
+                          </FormItem>
                         )}
-                      </div>
-                      
-                      {/* Upload Button */}
-                      <div className="flex-1">
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={handleProfilePhotoChange}
-                            className="hidden"
-                            data-testid="input-profile-photo"
-                          />
-                          <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl">
-                            <Upload className="h-5 w-5" />
-                            {profilePhoto ? t.changePhoto : t.uploadPhoto}
-                          </div>
-                        </label>
-                        <p className="text-xs text-gray-500 mt-2">
-                          {isHebrew ? 'JPG, PNG או WebP עד 5MB' : 'JPG, PNG, or WebP up to 5MB'}
-                        </p>
-                      </div>
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="hasPetFirstAid"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-3">
+                            <FormControl>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                                className="h-5 w-5"
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0 text-gray-700 dark:text-gray-300 cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <Heart className="h-4 w-4" />
+                                {t.hasFirstAid}
+                              </div>
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="hasInsurance"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center gap-3">
+                            <FormControl>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                                className="h-5 w-5"
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0 text-gray-700 dark:text-gray-300 cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <Shield className="h-4 w-4" />
+                                {t.hasInsurance}
+                              </div>
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="yearsExperience"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700 dark:text-gray-300">{t.experience}</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            type="number"
+                            min={0}
+                            max={50}
+                            className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
                     name="aboutMe"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-semibold flex items-center gap-2">
-                          <Heart className="h-5 w-5 text-pink-500" />
-                          {t.aboutMe}
-                        </FormLabel>
+                        <FormLabel className="text-gray-700 dark:text-gray-300">{t.aboutMe} *</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
-                            className="min-h-32 text-lg luxury-glass-minimal border-2 focus:border-black dark:focus:border-white transition-colors" 
-                            placeholder={isHebrew 
-                              ? 'ספר/י לנו על הניסיון שלך עם בעלי חיים, למה את/ה אוהב/ת אותם...' 
-                              : 'Tell us about your experience with animals, why you love them...'}
-                            data-testid="input-aboutMe"
+                            rows={4}
+                            placeholder={t.aboutMeHint}
+                            className="rounded-xl border-gray-300 dark:border-gray-600 resize-none"
+                            data-testid="textarea-aboutMe"
                           />
                         </FormControl>
                         <FormMessage />
@@ -732,18 +836,14 @@ export default function ProviderApplicationForm() {
                     name="whyJoinPetWash"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-semibold flex items-center gap-2">
-                          <Star className="h-5 w-5 text-amber-500" />
-                          {t.whyJoin}
-                        </FormLabel>
+                        <FormLabel className="text-gray-700 dark:text-gray-300">{t.whyJoin} *</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
-                            className="min-h-32 text-lg luxury-glass-minimal border-2 focus:border-black dark:focus:border-white transition-colors" 
-                            placeholder={isHebrew 
-                              ? 'מה מושך אותך בפלטפורמה שלנו? מה אתה מקווה להשיג...' 
-                              : 'What attracts you to our platform? What do you hope to achieve...'}
-                            data-testid="input-whyJoin"
+                            rows={3}
+                            placeholder={t.whyJoinHint}
+                            className="rounded-xl border-gray-300 dark:border-gray-600 resize-none"
+                            data-testid="textarea-whyJoin"
                           />
                         </FormControl>
                         <FormMessage />
@@ -753,92 +853,181 @@ export default function ProviderApplicationForm() {
 
                   <FormField
                     control={form.control}
-                    name="referralSource"
+                    name="availabilityNotes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-semibold">{t.referral}</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-14 text-lg luxury-glass-minimal border-2" data-testid="select-referral">
-                              <SelectValue placeholder={isHebrew ? 'בחר' : 'Select'} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="google">{isHebrew ? 'גוגל' : 'Google'}</SelectItem>
-                            <SelectItem value="facebook">{isHebrew ? 'פייסבוק' : 'Facebook'}</SelectItem>
-                            <SelectItem value="instagram">{isHebrew ? 'אינסטגרם' : 'Instagram'}</SelectItem>
-                            <SelectItem value="friend">{isHebrew ? 'חבר/ה' : 'Friend'}</SelectItem>
-                            <SelectItem value="other">{isHebrew ? 'אחר' : 'Other'}</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormLabel className="text-gray-700 dark:text-gray-300">{t.availability}</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            {...field} 
+                            rows={2}
+                            className="rounded-xl border-gray-300 dark:border-gray-600 resize-none"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
+              )}
 
-                  {/* Terms & Privacy */}
-                  <div className="p-6 luxury-glass-panel rounded-xl space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="agreeToTerms"
-                      render={({ field }) => (
-                        <FormItem className="flex items-start gap-3 space-y-0">
-                          <FormControl>
-                            <Checkbox 
-                              checked={field.value} 
-                              onCheckedChange={field.onChange}
-                              className="h-6 w-6 mt-0.5"
-                              data-testid="checkbox-terms"
-                            />
-                          </FormControl>
-                          <div>
-                            <FormLabel className="text-base cursor-pointer">
-                              {t.terms}
-                            </FormLabel>
-                            <FormMessage />
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="agreeToPrivacy"
-                      render={({ field }) => (
-                        <FormItem className="flex items-start gap-3 space-y-0">
-                          <FormControl>
-                            <Checkbox 
-                              checked={field.value} 
-                              onCheckedChange={field.onChange}
-                              className="h-6 w-6 mt-0.5"
-                              data-testid="checkbox-privacy"
-                            />
-                          </FormControl>
-                          <div>
-                            <FormLabel className="text-base cursor-pointer">
-                              {t.privacy}
-                            </FormLabel>
-                            <FormMessage />
-                          </div>
-                        </FormItem>
-                      )}
-                    />
+              {/* Step 5: Legal Agreements */}
+              {step === 5 && (
+                <div className="space-y-6">
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                      {t.step5Title}
+                    </h2>
+                    <p className="text-gray-500">
+                      {isHebrew ? 'אנא קרא ואשר את ההסכמים הבאים' : 'Please read and accept the following agreements'}
+                    </p>
                   </div>
 
-                  <div className="flex justify-between pt-6">
+                  <div className="space-y-4">
+                    {/* Terms of Service */}
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6">
+                      <FormField
+                        control={form.control}
+                        name="agreeToTerms"
+                        render={({ field }) => (
+                          <FormItem className="flex items-start gap-3">
+                            <FormControl>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                                className="h-5 w-5 mt-1"
+                                data-testid="checkbox-terms"
+                              />
+                            </FormControl>
+                            <div className="flex-1">
+                              <FormLabel className="!mt-0 text-gray-900 dark:text-white font-medium cursor-pointer">
+                                {t.terms} *
+                              </FormLabel>
+                              <p className="text-sm text-gray-500 mt-1">
+                                <Link href="/legal/terms" className="text-blue-600 dark:text-blue-400 hover:underline">
+                                  {isHebrew ? 'צפה בתנאי השימוש המלאים' : 'View full Terms of Service'}
+                                </Link>
+                              </p>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Privacy Policy */}
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6">
+                      <FormField
+                        control={form.control}
+                        name="agreeToPrivacy"
+                        render={({ field }) => (
+                          <FormItem className="flex items-start gap-3">
+                            <FormControl>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                                className="h-5 w-5 mt-1"
+                                data-testid="checkbox-privacy"
+                              />
+                            </FormControl>
+                            <div className="flex-1">
+                              <FormLabel className="!mt-0 text-gray-900 dark:text-white font-medium cursor-pointer">
+                                {t.privacy} *
+                              </FormLabel>
+                              <p className="text-sm text-gray-500 mt-1">
+                                <Link href="/legal/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">
+                                  {isHebrew ? 'צפה במדיניות הפרטיות המלאה' : 'View full Privacy Policy'}
+                                </Link>
+                              </p>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Independent Contractor Status */}
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6">
+                      <FormField
+                        control={form.control}
+                        name="agreeToContractorStatus"
+                        render={({ field }) => (
+                          <FormItem className="flex items-start gap-3">
+                            <FormControl>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                                className="h-5 w-5 mt-1"
+                                data-testid="checkbox-contractor"
+                              />
+                            </FormControl>
+                            <div className="flex-1">
+                              <FormLabel className="!mt-0 text-amber-900 dark:text-amber-100 font-medium cursor-pointer">
+                                {t.contractor} *
+                              </FormLabel>
+                              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                                {isHebrew 
+                                  ? 'כספק שירותים עצמאי, אתה אחראי על המיסים, הביטוח והרישיונות שלך.'
+                                  : 'As an independent service provider, you are responsible for your own taxes, insurance, and licenses.'}
+                              </p>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Disclaimer */}
+                  <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-4 text-sm text-gray-600 dark:text-gray-400">
+                    <p>
+                      {isHebrew 
+                        ? 'Pet Wash™ משמש כפלטפורמת תיווך בין בעלי חיות מחמד לספקי שירות עצמאיים. Pet Wash™ אינה מעסיקה את הספקים ואינה אחראית ישירות לשירותים הניתנים.'
+                        : 'Pet Wash™ acts as a marketplace connecting pet owners with independent service providers. Pet Wash™ does not employ providers and is not directly responsible for services rendered.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation Buttons */}
+              <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-200 dark:border-gray-700">
+                {step > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setStep(step - 1)}
+                    className="flex items-center gap-2 px-6 py-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  >
+                    <ArrowLeft className={`h-5 w-5 ${isHebrew ? 'rotate-180' : ''}`} />
+                    {t.back}
+                  </button>
+                )}
+                
+                <div className={step === 1 ? 'ml-auto' : ''}>
+                  {step < 5 ? (
                     <button
                       type="button"
-                      onClick={() => setStep(3)}
-                      className="luxury-btn-secondary px-8 py-4 flex items-center gap-2"
-                      data-testid="button-back-step4"
+                      onClick={() => {
+                        if (step === 1 && selectedPlatforms.length === 0) {
+                          toast({
+                            variant: 'destructive',
+                            title: isHebrew ? 'נדרשת בחירה' : 'Selection Required',
+                            description: isHebrew ? 'בחר לפחות פלטפורמה אחת' : 'Select at least one platform',
+                          });
+                          return;
+                        }
+                        setStep(step + 1);
+                      }}
+                      className="flex items-center gap-2 px-8 py-3 bg-black text-white dark:bg-white dark:text-black rounded-full font-semibold hover:opacity-90 transition-opacity"
+                      data-testid="button-next"
                     >
-                      <ArrowLeft className="h-5 w-5" />
-                      {t.back}
+                      {t.next}
+                      <ArrowRight className={`h-5 w-5 ${isHebrew ? 'rotate-180' : ''}`} />
                     </button>
+                  ) : (
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="luxury-btn-primary luxury-shadow-xl px-10 py-4 flex items-center gap-2 text-lg"
+                      className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                       data-testid="button-submit"
                     >
                       {isSubmitting ? (
@@ -853,26 +1042,28 @@ export default function ProviderApplicationForm() {
                         </>
                       )}
                     </button>
-                  </div>
+                  )}
                 </div>
-              )}
+              </div>
             </form>
           </Form>
         </div>
 
         {/* Trust Badges */}
-        <div className="flex flex-wrap justify-center gap-6 mt-10 luxury-animate-fade-in">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-sm">
-            <Shield className="h-5 w-5 text-green-600" />
-            <span className="text-sm font-medium">{isHebrew ? 'אבטחה מלאה' : 'Fully Secure'}</span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-sm">
-            <Star className="h-5 w-5 text-amber-500" />
-            <span className="text-sm font-medium">{isHebrew ? 'פלטפורמה מובילה' : 'Leading Platform'}</span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-sm">
-            <Heart className="h-5 w-5 text-pink-500" />
-            <span className="text-sm font-medium">{isHebrew ? 'אוהבי חיות אמיתיים' : 'True Pet Lovers'}</span>
+        <div className="mt-8 text-center">
+          <div className="flex items-center justify-center gap-6 text-gray-400">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              <span className="text-sm">{isHebrew ? 'מאובטח' : 'Secure'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5" />
+              <span className="text-sm">{isHebrew ? 'מאומת' : 'Verified'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Heart className="h-5 w-5" />
+              <span className="text-sm">{isHebrew ? 'אמין' : 'Trusted'}</span>
+            </div>
           </div>
         </div>
       </div>
