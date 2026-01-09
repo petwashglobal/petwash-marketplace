@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/accordion';
 import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
+import { LuxuryHeroSearch } from '@/components/marketplace/LuxuryHeroSearch';
 
 type PetType = 'puppy' | 'dog' | 'cat' | 'other' | null;
 type ServiceType = 'boarding' | 'sitting' | 'daycare' | 'walking' | 'transport' | 'training' | 'wash' | null;
@@ -273,6 +274,15 @@ export default function PlatformHub() {
             </div>
             
           </div>
+        </section>
+
+        {/* Luxury Hero Search - MadPaws Style */}
+        <section className="bg-gradient-to-b from-white to-gray-50/50 py-16 px-6">
+          <LuxuryHeroSearch 
+            variant="hero" 
+            showTitle={true}
+            className=""
+          />
         </section>
 
         {/* Pet Type Selector - Fashion Grid */}
