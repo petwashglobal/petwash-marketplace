@@ -310,49 +310,64 @@ export default function ProviderApplicationForm() {
     }
   };
 
-  // Success Screen
+  // Success Screen - Luxury Dark Theme
   if (submitted) {
     return (
-      <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 p-10 text-center">
-            <div className="mx-auto w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mb-6 animate-bounce">
-              <CheckCircle2 className="h-14 w-14 text-white" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              {t.successTitle}
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-              {t.successMessage}
-            </p>
-            
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 mb-8">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <Crown className="h-6 w-6 text-amber-500" />
-                <span className="font-semibold text-lg text-gray-900 dark:text-white">
-                  {isHebrew ? 'מה הלאה?' : 'What\'s Next?'}
-                </span>
+      <div className={`min-h-screen relative overflow-hidden ${isHebrew ? 'rtl' : 'ltr'}`}>
+        {/* Luxury Dark Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900" />
+        <div className="absolute inset-0 opacity-40" style={{
+          backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(52, 211, 153, 0.25) 0%, transparent 50%), radial-gradient(circle at 70% 70%, rgba(16, 185, 129, 0.2) 0%, transparent 50%)'
+        }} />
+        
+        <div className="relative z-10 py-12 px-4">
+          <div className="max-w-2xl mx-auto">
+            <div 
+              className="rounded-3xl p-10 text-center backdrop-blur-xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)'
+              }}
+            >
+              <div className="mx-auto w-24 h-24 bg-gradient-to-br from-emerald-400 to-green-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-emerald-500/30">
+                <CheckCircle2 className="h-14 w-14 text-white" />
               </div>
-              <ol className={`text-${isHebrew ? 'right' : 'left'} space-y-3 text-gray-600 dark:text-gray-300`}>
-                <li className="flex items-start gap-3">
-                  <span className="bg-black text-white dark:bg-white dark:text-black w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
-                  <span>{isHebrew ? 'הצוות שלנו יבדוק את הבקשה' : 'Our team will review your application'}</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="bg-black text-white dark:bg-white dark:text-black w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
-                  <span>{isHebrew ? 'נשלח לך הזמנה להמשיך את תהליך ההרשמה' : 'We\'ll send you an invitation to complete onboarding'}</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="bg-black text-white dark:bg-white dark:text-black w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
-                  <span>{isHebrew ? 'אחרי אישור - תתחיל לקבל הזמנות!' : 'After approval - start receiving bookings!'}</span>
-                </li>
-              </ol>
+              <h2 className="text-3xl font-bold text-white mb-4">
+                {t.successTitle}
+              </h2>
+              <p className="text-lg text-gray-300 mb-8">
+                {t.successMessage}
+              </p>
+              
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-white/10">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <Crown className="h-6 w-6 text-amber-400" />
+                  <span className="font-semibold text-lg text-white">
+                    {isHebrew ? 'מה הלאה?' : 'What\'s Next?'}
+                  </span>
+                </div>
+                <ol className={`text-${isHebrew ? 'right' : 'left'} space-y-3 text-gray-300`}>
+                  <li className="flex items-start gap-3">
+                    <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                    <span>{isHebrew ? 'הצוות שלנו יבדוק את הבקשה' : 'Our team will review your application'}</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                    <span>{isHebrew ? 'נשלח לך הזמנה להמשיך את תהליך ההרשמה' : 'We\'ll send you an invitation to complete onboarding'}</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                    <span>{isHebrew ? 'אחרי אישור - תתחיל לקבל הזמנות!' : 'After approval - start receiving bookings!'}</span>
+                  </li>
+                </ol>
+              </div>
+              
+              <Link href="/" className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-8 py-4 rounded-2xl font-semibold shadow-xl shadow-amber-500/25 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]">
+                {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
+                <ArrowRight className={`h-5 w-5 ${isHebrew ? 'rotate-180' : ''}`} />
+              </Link>
             </div>
-            
-            <Link href="/" className="inline-flex items-center gap-2 bg-black text-white dark:bg-white dark:text-black px-8 py-3 rounded-full font-semibold hover:opacity-90 transition-opacity">
-              {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
-              <ArrowRight className={`h-5 w-5 ${isHebrew ? 'rotate-180' : ''}`} />
-            </Link>
           </div>
         </div>
       </div>
@@ -363,50 +378,88 @@ export default function ProviderApplicationForm() {
   const progress = (step / totalSteps) * 100;
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black py-8 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
-      <div className="max-w-4xl mx-auto">
+    <div className={`min-h-screen relative overflow-hidden ${isHebrew ? 'rtl' : 'ltr'}`}>
+      {/* Luxury Dark Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-950/50 to-slate-900" />
+      <div className="absolute inset-0 opacity-30" style={{
+        backgroundImage: 'radial-gradient(circle at 20% 30%, rgba(168, 85, 247, 0.2) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(245, 158, 11, 0.15) 0%, transparent 50%)'
+      }} />
+      
+      <div className="relative z-10 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
         
-        {/* Header */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-4">
-            <ArrowLeft className={`h-4 w-4 ${isHebrew ? 'rotate-180' : ''}`} />
-            {isHebrew ? 'חזרה' : 'Back'}
-          </Link>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-3">
-            {t.title}
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            {t.subtitle}
-          </p>
-        </div>
+          {/* Header */}
+          <div className="text-center mb-10">
+            <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6">
+              <ArrowLeft className={`h-4 w-4 ${isHebrew ? 'rotate-180' : ''}`} />
+              {isHebrew ? 'חזרה' : 'Back'}
+            </Link>
+            
+            {/* Luxury Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 mb-6">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span className="text-amber-300 text-sm font-medium">
+                {isHebrew ? 'הצטרף לצוות המובחר' : 'Join Our Elite Team'}
+              </span>
+            </div>
+            
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
+              {isHebrew ? 'הפוך לספק ' : 'Become a '}
+              <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
+                Pet Wash™
+              </span>
+            </h1>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              {t.subtitle}
+            </p>
+          </div>
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <div key={s} className="flex items-center">
-                <div 
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
-                    step >= s 
-                      ? 'bg-black text-white dark:bg-white dark:text-black' 
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
-                  }`}
-                >
-                  {step > s ? <Check className="h-5 w-5" /> : s}
+          {/* Luxury Progress Steps */}
+          <div className="mb-10">
+            <div className="flex items-center justify-between max-w-3xl mx-auto px-4">
+              {[1, 2, 3, 4, 5].map((s, index) => (
+                <div key={s} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div 
+                      className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold transition-all duration-300 ${
+                        step > s 
+                          ? 'bg-gradient-to-br from-emerald-400 to-green-600 shadow-lg shadow-emerald-500/30'
+                          : step === s 
+                            ? 'bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-500/30'
+                            : 'bg-slate-700/50 border border-slate-600 text-slate-400'
+                      }`}
+                    >
+                      {step > s ? <Check className="h-6 w-6 text-white" /> : <span className={step === s ? 'text-white' : ''}>{s}</span>}
+                    </div>
+                  </div>
+                  
+                  {/* Connector Line */}
+                  {index < 4 && (
+                    <div className={`w-8 sm:w-16 lg:w-24 h-0.5 mx-2 sm:mx-4 transition-all duration-300 ${
+                      step > s 
+                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' 
+                        : 'bg-slate-700'
+                    }`} />
+                  )}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            
+            {/* Progress Text */}
+            <p className="text-center text-amber-400 mt-6 font-medium">
+              {isHebrew ? `שלב ${step} מתוך 5` : `Step ${step} of 5`}
+            </p>
           </div>
-          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-black dark:bg-white transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
 
-        {/* Form Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-800 p-6 md:p-10">
+          {/* Luxury Glass Form Card */}
+          <div 
+            className="rounded-3xl p-6 md:p-10 backdrop-blur-xl"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)'
+            }}
+          >
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
               console.error('[ProviderApplication] Form validation errors:', errors);
@@ -420,13 +473,16 @@ export default function ProviderApplicationForm() {
               {/* Step 1: Platform Selection */}
               {step === 1 && (
                 <div className="space-y-6">
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                      {t.step1Title}
-                    </h2>
-                    <p className="text-gray-500">
-                      {t.step1Desc}
-                    </p>
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                      <Home className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">
+                        {t.step1Title}
+                      </h2>
+                      <p className="text-gray-400 text-sm">{t.step1Desc}</p>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -438,26 +494,26 @@ export default function ProviderApplicationForm() {
                           key={platform.id}
                           type="button"
                           onClick={() => handlePlatformToggle(platform.id)}
-                          className={`relative p-6 rounded-2xl border-2 transition-all duration-300 text-${isHebrew ? 'right' : 'left'} ${
+                          className={`relative p-6 rounded-2xl border transition-all duration-300 text-${isHebrew ? 'right' : 'left'} ${
                             isSelected 
-                              ? `border-black dark:border-white bg-gradient-to-br ${platform.color} text-white shadow-xl scale-[1.02]` 
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-lg'
+                              ? `border-amber-500/50 bg-gradient-to-br ${platform.color} text-white shadow-xl shadow-amber-500/20 scale-[1.02]` 
+                              : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10 hover:shadow-lg backdrop-blur-sm'
                           }`}
                           data-testid={`platform-${platform.id}`}
                         >
                           {isSelected && (
                             <div className="absolute top-3 right-3">
-                              <Check className="h-6 w-6" />
+                              <Check className="h-6 w-6 text-white" />
                             </div>
                           )}
-                          <Icon className={`h-10 w-10 mb-3 ${isSelected ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`} />
-                          <h3 className={`font-bold text-lg ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                          <Icon className={`h-10 w-10 mb-3 ${isSelected ? 'text-white' : 'text-gray-300'}`} />
+                          <h3 className={`font-bold text-lg ${isSelected ? 'text-white' : 'text-white'}`}>
                             {isHebrew ? platform.nameHe : platform.nameEn}
                           </h3>
-                          <p className={`text-sm mt-1 ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                          <p className={`text-sm mt-1 ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
                             {isHebrew ? platform.descHe : platform.descEn}
                           </p>
-                          <div className={`mt-3 text-sm ${isSelected ? 'text-white/90' : 'text-gray-400'}`}>
+                          <div className={`mt-3 text-sm ${isSelected ? 'text-white/90' : 'text-amber-400'}`}>
                             {t.suggested}: {formatCurrency(platform.suggestedRate)} {getPriceLabel(platform.priceType)}
                           </div>
                         </button>
@@ -466,7 +522,7 @@ export default function ProviderApplicationForm() {
                   </div>
 
                   {selectedPlatforms.length === 0 && (
-                    <p className="text-center text-amber-600 dark:text-amber-400 text-sm">
+                    <p className="text-center text-amber-400 text-sm">
                       {isHebrew ? 'בחר לפחות פלטפורמה אחת להמשך' : 'Select at least one platform to continue'}
                     </p>
                   )}
@@ -476,17 +532,21 @@ export default function ProviderApplicationForm() {
               {/* Step 2: Pricing Wizard */}
               {step === 2 && (
                 <div className="space-y-6">
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                      {t.step2Title}
-                    </h2>
-                    <p className="text-gray-500">
-                      {t.step2Desc}
-                    </p>
-                    <div className="flex items-center justify-center gap-2 mt-3 text-sm text-gray-400">
-                      <Info className="h-4 w-4" />
-                      <span>{t.commission}</span>
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                      <DollarSign className="w-6 h-6 text-white" />
                     </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">
+                        {t.step2Title}
+                      </h2>
+                      <p className="text-gray-400 text-sm">{t.step2Desc}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 mb-4">
+                    <Info className="h-4 w-4 text-amber-400" />
+                    <span className="text-amber-300 text-sm">{t.commission}</span>
                   </div>
 
                   <div className="space-y-6">
@@ -500,17 +560,17 @@ export default function ProviderApplicationForm() {
                       return (
                         <div 
                           key={platformId}
-                          className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6"
+                          className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
                         >
                           <div className="flex items-center gap-3 mb-6">
-                            <div className={`p-3 rounded-xl bg-gradient-to-br ${platform.color}`}>
+                            <div className={`p-3 rounded-xl bg-gradient-to-br ${platform.color} shadow-lg`}>
                               <Icon className="h-6 w-6 text-white" />
                             </div>
                             <div>
-                              <h3 className="font-bold text-gray-900 dark:text-white">
+                              <h3 className="font-bold text-white">
                                 {isHebrew ? platform.nameHe : platform.nameEn}
                               </h3>
-                              <p className="text-sm text-gray-500">
+                              <p className="text-sm text-gray-400">
                                 {isHebrew ? platform.descHe : platform.descEn}
                               </p>
                             </div>
@@ -518,38 +578,38 @@ export default function ProviderApplicationForm() {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
                                 {t.baseRate} ({getPriceLabel(platform.priceType)})
                               </label>
                               <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₪</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₪</span>
                                 <input
                                   type="number"
                                   value={currentPricing.baseRate / 100}
                                   onChange={(e) => updatePricing(platformId, 'baseRate', Math.round(parseFloat(e.target.value) * 100))}
-                                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-black dark:focus:ring-white"
+                                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-white/10 bg-slate-800/50 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20"
                                   min={0}
                                 />
                               </div>
                               <div className="flex items-center justify-between mt-2 text-sm">
                                 <span className="text-gray-500">{t.youEarn}:</span>
-                                <span className="font-bold text-green-600 dark:text-green-400">
+                                <span className="font-bold text-emerald-400">
                                   {formatCurrency(providerEarnings)}
                                 </span>
                               </div>
                             </div>
 
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              <label className="block text-sm font-medium text-gray-300 mb-2">
                                 {t.additionalPet}
                               </label>
                               <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₪</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₪</span>
                                 <input
                                   type="number"
                                   value={currentPricing.additionalPet / 100}
                                   onChange={(e) => updatePricing(platformId, 'additionalPet', Math.round(parseFloat(e.target.value) * 100))}
-                                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-black dark:focus:ring-white"
+                                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-white/10 bg-slate-800/50 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20"
                                   min={0}
                                 />
                               </div>
@@ -565,10 +625,16 @@ export default function ProviderApplicationForm() {
               {/* Step 3: Personal Details */}
               {step === 3 && (
                 <div className="space-y-6">
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                      {t.step3Title}
-                    </h2>
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                      <User className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">
+                        {t.step3Title}
+                      </h2>
+                      <p className="text-gray-400 text-sm">{isHebrew ? 'ספר לנו קצת על עצמך' : 'Tell us a bit about yourself'}</p>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -577,15 +643,15 @@ export default function ProviderApplicationForm() {
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700 dark:text-gray-300">{t.firstName} *</FormLabel>
+                          <FormLabel className="text-gray-300 font-medium">{t.firstName} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
-                              className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
+                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                               data-testid="input-firstName"
                             />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-red-400" />
                         </FormItem>
                       )}
                     />
@@ -595,15 +661,15 @@ export default function ProviderApplicationForm() {
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700 dark:text-gray-300">{t.lastName} *</FormLabel>
+                          <FormLabel className="text-gray-300 font-medium">{t.lastName} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
-                              className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
+                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                               data-testid="input-lastName"
                             />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-red-400" />
                         </FormItem>
                       )}
                     />
@@ -613,16 +679,16 @@ export default function ProviderApplicationForm() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700 dark:text-gray-300">{t.email} *</FormLabel>
+                          <FormLabel className="text-gray-300 font-medium">{t.email} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               type="email"
-                              className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
+                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                               data-testid="input-email"
                             />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-red-400" />
                         </FormItem>
                       )}
                     />
@@ -632,16 +698,16 @@ export default function ProviderApplicationForm() {
                       name="phoneNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700 dark:text-gray-300">{t.phone} *</FormLabel>
+                          <FormLabel className="text-gray-300 font-medium">{t.phone} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               type="tel"
-                              className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
+                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                               data-testid="input-phone"
                             />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-red-400" />
                         </FormItem>
                       )}
                     />
@@ -651,23 +717,23 @@ export default function ProviderApplicationForm() {
                       name="city"
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel className="text-gray-700 dark:text-gray-300">{t.city} *</FormLabel>
+                          <FormLabel className="text-gray-300 font-medium">{t.city} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
-                              className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
+                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                               data-testid="input-city"
                             />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-red-400" />
                         </FormItem>
                       )}
                     />
                   </div>
 
-                  {/* Profile Photo */}
+                  {/* Profile Photo - Luxury Style */}
                   <div className="pt-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    <label className="block text-sm font-medium text-gray-300 mb-3">
                       {t.profilePhoto}
                     </label>
                     <div className="flex items-center gap-4">
@@ -676,19 +742,19 @@ export default function ProviderApplicationForm() {
                           <img 
                             src={profilePhoto} 
                             alt="Profile" 
-                            className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700"
+                            className="w-24 h-24 rounded-2xl object-cover border-2 border-amber-500/50 shadow-lg shadow-amber-500/20"
                           />
                           <button
                             type="button"
                             onClick={() => setProfilePhoto(null)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 shadow-lg"
                           >
                             <X className="h-4 w-4" />
                           </button>
                         </div>
                       ) : (
-                        <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600">
-                          <User className="h-10 w-10 text-gray-400" />
+                        <div className="w-24 h-24 rounded-2xl bg-slate-800/50 flex items-center justify-center border-2 border-dashed border-slate-600">
+                          <User className="h-10 w-10 text-slate-500" />
                         </div>
                       )}
                       <label className="cursor-pointer">
@@ -698,8 +764,8 @@ export default function ProviderApplicationForm() {
                           onChange={handleProfilePhotoChange}
                           className="hidden"
                         />
-                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                          <Camera className="h-4 w-4" />
+                        <span className="inline-flex items-center gap-2 px-5 py-3 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all duration-300">
+                          <Camera className="h-4 w-4 text-amber-400" />
                           {profilePhoto ? (isHebrew ? 'שנה תמונה' : 'Change') : t.uploadPhoto}
                         </span>
                       </label>
@@ -711,33 +777,40 @@ export default function ProviderApplicationForm() {
               {/* Step 4: Experience & Profile */}
               {step === 4 && (
                 <div className="space-y-6">
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                      {t.step4Title}
-                    </h2>
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-400 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                      <Star className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">
+                        {t.step4Title}
+                      </h2>
+                      <p className="text-gray-400 text-sm">{isHebrew ? 'ספר על הניסיון שלך' : 'Share your experience'}</p>
+                    </div>
                   </div>
 
-                  {/* Qualifications */}
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+                  {/* Qualifications - Luxury Glass Card */}
+                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                    <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                      <Crown className="h-5 w-5 text-amber-400" />
                       {isHebrew ? 'הכשרות והסמכות' : 'Qualifications & Certifications'}
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <FormField
                         control={form.control}
                         name="hasOwnTransport"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-3">
+                          <FormItem className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                             <FormControl>
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5"
+                                className="h-5 w-5 border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                               />
                             </FormControl>
-                            <FormLabel className="!mt-0 text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <FormLabel className="!mt-0 text-gray-300 cursor-pointer">
                               <div className="flex items-center gap-2">
-                                <Car className="h-4 w-4" />
+                                <Car className="h-4 w-4 text-blue-400" />
                                 {t.hasTransport}
                               </div>
                             </FormLabel>
@@ -749,17 +822,17 @@ export default function ProviderApplicationForm() {
                         control={form.control}
                         name="hasPetFirstAid"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-3">
+                          <FormItem className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                             <FormControl>
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5"
+                                className="h-5 w-5 border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                               />
                             </FormControl>
-                            <FormLabel className="!mt-0 text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <FormLabel className="!mt-0 text-gray-300 cursor-pointer">
                               <div className="flex items-center gap-2">
-                                <Heart className="h-4 w-4" />
+                                <Heart className="h-4 w-4 text-pink-400" />
                                 {t.hasFirstAid}
                               </div>
                             </FormLabel>
@@ -771,17 +844,17 @@ export default function ProviderApplicationForm() {
                         control={form.control}
                         name="hasInsurance"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-3">
+                          <FormItem className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                             <FormControl>
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5"
+                                className="h-5 w-5 border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                               />
                             </FormControl>
-                            <FormLabel className="!mt-0 text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <FormLabel className="!mt-0 text-gray-300 cursor-pointer">
                               <div className="flex items-center gap-2">
-                                <Shield className="h-4 w-4" />
+                                <Shield className="h-4 w-4 text-emerald-400" />
                                 {t.hasInsurance}
                               </div>
                             </FormLabel>
@@ -796,17 +869,17 @@ export default function ProviderApplicationForm() {
                     name="yearsExperience"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700 dark:text-gray-300">{t.experience}</FormLabel>
+                        <FormLabel className="text-gray-300 font-medium">{t.experience}</FormLabel>
                         <FormControl>
                           <Input 
                             {...field} 
                             type="number"
                             min={0}
                             max={50}
-                            className="py-3 rounded-xl border-gray-300 dark:border-gray-600"
+                            className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-red-400" />
                       </FormItem>
                     )}
                   />
@@ -816,17 +889,17 @@ export default function ProviderApplicationForm() {
                     name="aboutMe"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700 dark:text-gray-300">{t.aboutMe} *</FormLabel>
+                        <FormLabel className="text-gray-300 font-medium">{t.aboutMe} *</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
                             rows={4}
                             placeholder={t.aboutMeHint}
-                            className="rounded-xl border-gray-300 dark:border-gray-600 resize-none"
+                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl resize-none"
                             data-testid="textarea-aboutMe"
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-red-400" />
                       </FormItem>
                     )}
                   />
@@ -836,17 +909,17 @@ export default function ProviderApplicationForm() {
                     name="whyJoinPetWash"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700 dark:text-gray-300">{t.whyJoin} *</FormLabel>
+                        <FormLabel className="text-gray-300 font-medium">{t.whyJoin} *</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
                             rows={3}
                             placeholder={t.whyJoinHint}
-                            className="rounded-xl border-gray-300 dark:border-gray-600 resize-none"
+                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl resize-none"
                             data-testid="textarea-whyJoin"
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-red-400" />
                       </FormItem>
                     )}
                   />
@@ -856,15 +929,15 @@ export default function ProviderApplicationForm() {
                     name="availabilityNotes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700 dark:text-gray-300">{t.availability}</FormLabel>
+                        <FormLabel className="text-gray-300 font-medium">{t.availability}</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
                             rows={2}
-                            className="rounded-xl border-gray-300 dark:border-gray-600 resize-none"
+                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl resize-none"
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-red-400" />
                       </FormItem>
                     )}
                   />
@@ -874,18 +947,23 @@ export default function ProviderApplicationForm() {
               {/* Step 5: Legal Agreements */}
               {step === 5 && (
                 <div className="space-y-6">
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                      {t.step5Title}
-                    </h2>
-                    <p className="text-gray-500">
-                      {isHebrew ? 'אנא קרא ואשר את ההסכמים הבאים' : 'Please read and accept the following agreements'}
-                    </p>
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-400 to-red-600 flex items-center justify-center shadow-lg shadow-rose-500/30">
+                      <Shield className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">
+                        {t.step5Title}
+                      </h2>
+                      <p className="text-gray-400 text-sm">
+                        {isHebrew ? 'אנא קרא ואשר את ההסכמים הבאים' : 'Please read and accept the following agreements'}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
                     {/* Terms of Service */}
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6">
+                    <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
                       <FormField
                         control={form.control}
                         name="agreeToTerms"
@@ -895,28 +973,28 @@ export default function ProviderApplicationForm() {
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5 mt-1"
+                                className="h-5 w-5 mt-1 border-slate-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                                 data-testid="checkbox-terms"
                               />
                             </FormControl>
                             <div className="flex-1">
-                              <FormLabel className="!mt-0 text-gray-900 dark:text-white font-medium cursor-pointer">
+                              <FormLabel className="!mt-0 text-white font-medium cursor-pointer">
                                 {t.terms} *
                               </FormLabel>
-                              <p className="text-sm text-gray-500 mt-1">
-                                <Link href="/legal/terms" className="text-blue-600 dark:text-blue-400 hover:underline">
+                              <p className="text-sm text-gray-400 mt-1">
+                                <Link href="/legal/terms" className="text-amber-400 hover:text-amber-300 hover:underline">
                                   {isHebrew ? 'צפה בתנאי השימוש המלאים' : 'View full Terms of Service'}
                                 </Link>
                               </p>
                             </div>
-                            <FormMessage />
+                            <FormMessage className="text-red-400" />
                           </FormItem>
                         )}
                       />
                     </div>
 
                     {/* Privacy Policy */}
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6">
+                    <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
                       <FormField
                         control={form.control}
                         name="agreeToPrivacy"
@@ -926,28 +1004,28 @@ export default function ProviderApplicationForm() {
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5 mt-1"
+                                className="h-5 w-5 mt-1 border-slate-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                                 data-testid="checkbox-privacy"
                               />
                             </FormControl>
                             <div className="flex-1">
-                              <FormLabel className="!mt-0 text-gray-900 dark:text-white font-medium cursor-pointer">
+                              <FormLabel className="!mt-0 text-white font-medium cursor-pointer">
                                 {t.privacy} *
                               </FormLabel>
-                              <p className="text-sm text-gray-500 mt-1">
-                                <Link href="/legal/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">
+                              <p className="text-sm text-gray-400 mt-1">
+                                <Link href="/legal/privacy" className="text-amber-400 hover:text-amber-300 hover:underline">
                                   {isHebrew ? 'צפה במדיניות הפרטיות המלאה' : 'View full Privacy Policy'}
                                 </Link>
                               </p>
                             </div>
-                            <FormMessage />
+                            <FormMessage className="text-red-400" />
                           </FormItem>
                         )}
                       />
                     </div>
 
                     {/* Independent Contractor Status */}
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6">
+                    <div className="bg-amber-500/10 backdrop-blur-sm rounded-2xl p-6 border border-amber-500/30">
                       <FormField
                         control={form.control}
                         name="agreeToContractorStatus"
@@ -957,21 +1035,21 @@ export default function ProviderApplicationForm() {
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5 mt-1"
+                                className="h-5 w-5 mt-1 border-amber-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                                 data-testid="checkbox-contractor"
                               />
                             </FormControl>
                             <div className="flex-1">
-                              <FormLabel className="!mt-0 text-amber-900 dark:text-amber-100 font-medium cursor-pointer">
+                              <FormLabel className="!mt-0 text-amber-200 font-medium cursor-pointer">
                                 {t.contractor} *
                               </FormLabel>
-                              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                              <p className="text-sm text-amber-300/80 mt-1">
                                 {isHebrew 
                                   ? 'כספק שירותים עצמאי, אתה אחראי על המיסים, הביטוח והרישיונות שלך.'
                                   : 'As an independent service provider, you are responsible for your own taxes, insurance, and licenses.'}
                               </p>
                             </div>
-                            <FormMessage />
+                            <FormMessage className="text-red-400" />
                           </FormItem>
                         )}
                       />
@@ -979,7 +1057,7 @@ export default function ProviderApplicationForm() {
                   </div>
 
                   {/* Disclaimer */}
-                  <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-4 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 text-sm text-gray-400 border border-white/5">
                     <p>
                       {isHebrew 
                         ? 'Pet Wash™ משמש כפלטפורמת תיווך בין בעלי חיות מחמד לספקי שירות עצמאיים. Pet Wash™ אינה מעסיקה את הספקים ואינה אחראית ישירות לשירותים הניתנים.'
@@ -989,13 +1067,13 @@ export default function ProviderApplicationForm() {
                 </div>
               )}
 
-              {/* Navigation Buttons */}
-              <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-200 dark:border-gray-700">
+              {/* Luxury Navigation Buttons */}
+              <div className="flex items-center justify-between mt-10 pt-6 border-t border-white/10">
                 {step > 1 && (
                   <button
                     type="button"
                     onClick={() => setStep(step - 1)}
-                    className="flex items-center gap-2 px-6 py-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    className="flex items-center gap-2 px-6 py-3 text-gray-400 hover:text-white transition-colors rounded-xl hover:bg-white/5"
                   >
                     <ArrowLeft className={`h-5 w-5 ${isHebrew ? 'rotate-180' : ''}`} />
                     {t.back}
@@ -1017,7 +1095,7 @@ export default function ProviderApplicationForm() {
                         }
                         setStep(step + 1);
                       }}
-                      className="flex items-center gap-2 px-8 py-3 bg-black text-white dark:bg-white dark:text-black rounded-full font-semibold hover:opacity-90 transition-opacity"
+                      className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl font-semibold shadow-xl shadow-amber-500/25 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]"
                       data-testid="button-next"
                     >
                       {t.next}
@@ -1027,7 +1105,7 @@ export default function ProviderApplicationForm() {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                      className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-2xl font-semibold shadow-xl shadow-emerald-500/25 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
                       data-testid="button-submit"
                     >
                       {isSubmitting ? (
@@ -1049,22 +1127,23 @@ export default function ProviderApplicationForm() {
           </Form>
         </div>
 
-        {/* Trust Badges */}
-        <div className="mt-8 text-center">
-          <div className="flex items-center justify-center gap-6 text-gray-400">
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              <span className="text-sm">{isHebrew ? 'מאובטח' : 'Secure'}</span>
+        {/* Luxury Trust Badges */}
+        <div className="mt-10 text-center">
+          <div className="inline-flex items-center justify-center gap-8 px-6 py-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+            <div className="flex items-center gap-2 text-gray-300">
+              <Shield className="h-5 w-5 text-emerald-400" />
+              <span className="text-sm font-medium">{isHebrew ? 'מאובטח' : 'Secure'}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Star className="h-5 w-5" />
-              <span className="text-sm">{isHebrew ? 'מאומת' : 'Verified'}</span>
+            <div className="flex items-center gap-2 text-gray-300">
+              <Star className="h-5 w-5 text-amber-400" />
+              <span className="text-sm font-medium">{isHebrew ? 'מאומת' : 'Verified'}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Heart className="h-5 w-5" />
-              <span className="text-sm">{isHebrew ? 'אמין' : 'Trusted'}</span>
+            <div className="flex items-center gap-2 text-gray-300">
+              <Heart className="h-5 w-5 text-pink-400" />
+              <span className="text-sm font-medium">{isHebrew ? 'אמין' : 'Trusted'}</span>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
