@@ -31,7 +31,9 @@ router.post('/quote', async (req, res) => {
       endDate, 
       petCount = 1, 
       addons = [],
-      customerId
+      customerId,
+      slotId,
+      lockToken
     } = req.body;
 
     // Also check header for authenticated user
@@ -48,8 +50,38 @@ router.post('/quote', async (req, res) => {
       userId
     );
 
+    // Persist the quote to database and generate a quoteId
+    const quoteId = `QUOTE-${nanoid(12)}`;
+    
+    await db.insert(quoteRequests).values({
+      quoteId,
+      customerId: userId || 'anonymous',
+      providerId: String(providerId),
+      platform,
+      serviceType: serviceType || 'standard',
+      startDate: new Date(startDate).toISOString().split('T')[0],
+      endDate: new Date(endDate).toISOString().split('T')[0],
+      petCount,
+      baseAmountCents: quote.baseAmountCents,
+      additionalPetsCents: quote.additionalPetsCents,
+      weekendSurchargeCents: quote.weekendSurchargeCents,
+      durationDiscountCents: quote.durationDiscountCents,
+      comboDiscountCents: quote.comboDiscountCents,
+      loyaltyDiscountCents: quote.loyaltyDiscountCents,
+      platformFeeCents: quote.platformFeeCents,
+      vatCents: quote.vatCents,
+      totalCents: quote.totalCents,
+      providerEarningsCents: quote.providerEarningsCents,
+      status: 'pending',
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minute expiry
+    });
+
+    logger.info('[MarketplaceBookings] Quote created', { quoteId, userId, providerId, totalCents: quote.totalCents });
+
     res.json({ 
       success: true, 
+      quoteId,
       quote,
       breakdown: {
         baseAmount: (quote.baseAmountCents / 100).toFixed(2),
@@ -115,6 +147,169 @@ router.post('/create', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Create error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/:quoteId/checkout', async (req, res) => {
+  try {
+    const { quoteId } = req.params;
+    const userId = req.headers['x-user-id'] as string;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Authentication required' 
+      });
+    }
+
+    const { slotId, lockToken, petIds, specialInstructions } = req.body;
+
+    // Validate required fields
+    if (!slotId || !lockToken) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing slot reservation details' 
+      });
+    }
+
+    // Fetch the quote to verify it exists and get pricing data
+    // Query by quoteId field (the QUOTE-xxx string), not the serial id
+    const [quote] = await db.select()
+      .from(quoteRequests)
+      .where(eq(quoteRequests.quoteId, quoteId))
+      .limit(1);
+
+    if (!quote) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Quote not found or expired' 
+      });
+    }
+
+    // Check if quote is expired (quotes expire after 15 minutes)
+    const quoteAge = Date.now() - new Date(quote.createdAt!).getTime();
+    const QUOTE_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+    if (quoteAge > QUOTE_EXPIRY_MS) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Quote expired. Please request a new quote.' 
+      });
+    }
+
+    // Verify slot lock is still valid
+    const [slot] = await db.select()
+      .from(providerAvailability)
+      .where(eq(providerAvailability.id, slotId))
+      .limit(1);
+
+    if (!slot) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Time slot not found' 
+      });
+    }
+
+    // Verify slot belongs to the quoted provider
+    if (slot.providerId && String(slot.providerId) !== String(quote.providerId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Slot does not match the quoted provider' 
+      });
+    }
+
+    // Check if slot lock token matches and hasn't expired
+    if (slot.lockToken !== lockToken) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Slot reservation expired. Please select a new time.' 
+      });
+    }
+
+    if (slot.lockExpiresAt && new Date(slot.lockExpiresAt) < new Date()) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Slot reservation expired. Please select a new time.' 
+      });
+    }
+
+    // Create the booking using the booking lifecycle service
+    const bookingId = nanoid(16);
+    const booking = await bookingLifecycleService.createBooking({
+      customerId: userId,
+      providerId: quote.providerId!,
+      providerProfileId: slot.profileId ? String(slot.profileId) : quote.providerId!,
+      platformId: quote.platform as any,
+      serviceType: quote.serviceType || 'standard',
+      startTime: new Date(slot.startTime!),
+      endTime: new Date(slot.endTime!),
+      petIds: petIds || [],
+      selectedAddons: [],
+      specialRequests: specialInstructions || '',
+      quoteId
+    });
+
+    // Mark the slot as booked (remove lock, mark confirmed)
+    await db.update(providerAvailability)
+      .set({ 
+        status: 'confirmed',
+        lockToken: null,
+        lockExpiresAt: null,
+        bookedBy: userId
+      })
+      .where(eq(providerAvailability.id, slotId));
+
+    // Create escrow record for 72-hour hold
+    const escrowId = nanoid(16);
+    const releaseEligibleAt = new Date();
+    releaseEligibleAt.setHours(releaseEligibleAt.getHours() + 72); // 72-hour escrow
+
+    await db.insert(escrowHoldings).values({
+      id: escrowId,
+      bookingId: booking.booking?.id || bookingId,
+      grossAmountCents: quote.totalCents || 0,
+      platformFeeCents: quote.platformFeeCents || 0,
+      vatCents: quote.vatCents || 0,
+      netProviderAmountCents: quote.providerEarningsCents || 0,
+      status: 'pending_payment',
+      releaseEligibleAt,
+      createdAt: new Date()
+    });
+
+    // In production, we would generate a Nayax payment URL here
+    // For now, return demo mode response
+    const isNayaxConfigured = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;
+    
+    if (isNayaxConfigured) {
+      // TODO: Generate real Nayax payment URL
+      // const paymentUrl = await nayaxService.createPaymentSession({
+      //   amountCents: quote.totalCents,
+      //   bookingId,
+      //   returnUrl: `${process.env.APP_URL}/bookings/${bookingId}/success`,
+      //   cancelUrl: `${process.env.APP_URL}/bookings/${bookingId}/cancel`
+      // });
+      return res.json({
+        success: true,
+        bookingId: booking.booking?.id || bookingId,
+        paymentUrl: `/payment/nayax/${bookingId}` // Placeholder
+      });
+    }
+
+    // Demo mode - booking created without payment
+    logger.info('[MarketplaceBookings] Checkout completed (demo mode)', { 
+      bookingId: booking.booking?.id,
+      quoteId,
+      userId 
+    });
+
+    res.json({ 
+      success: true, 
+      bookingId: booking.booking?.id || bookingId,
+      message: 'Booking created successfully (demo mode - payment skipped)'
+    });
+
+  } catch (error: any) {
+    logger.error('[MarketplaceBookings] Checkout error', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
 });

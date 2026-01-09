@@ -20,7 +20,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { useProviderDetails } from '@/services/marketplace';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Calendar as CalendarIcon, Clock, Check, ChevronLeft, ChevronRight,
   Dog, MapPin, Star, DollarSign, CreditCard, Shield, Lock
@@ -58,6 +59,26 @@ export default function MarketplaceBookingFlow() {
   const [lockSecondsLeft, setLockSecondsLeft] = useState<number>(0);
   const [selectedSlotStart, setSelectedSlotStart] = useState<Date | null>(null);
   const [selectedSlotEnd, setSelectedSlotEnd] = useState<Date | null>(null);
+
+  // Quote state (fetched from backend)
+  const [quoteId, setQuoteId] = useState<string | null>(null);
+  const [quoteData, setQuoteData] = useState<{
+    baseAmountCents: number;
+    additionalPetsCents: number;
+    addonsCents: number;
+    weekendSurchargeCents: number;
+    durationDiscountCents: number;
+    comboDiscountCents: number;
+    loyaltyDiscountCents: number;
+    subtotalCents: number;
+    platformFeeCents: number;
+    vatCents: number;
+    totalCents: number;
+    providerEarningsCents: number;
+    appliedDiscounts: string[];
+    loyaltyInfo?: { tierName: string; discountPercent: number };
+  } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch provider details
   const { data: providerData, isLoading: providerLoading } = useProviderDetails(platform!, id!);
@@ -166,14 +187,89 @@ export default function MarketplaceBookingFlow() {
     '18:00', '19:00', '20:00'
   ];
 
-  const handleNextStep = () => {
+  // Quote mutation - fetches pricing from backend
+  const quoteMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/marketplace-bookings/quote', {
+        platform,
+        providerId: Number(id),
+        startDate: selectedSlotStart?.toISOString() || selectedDate?.toISOString(),
+        endDate: selectedSlotEnd?.toISOString() || selectedDate?.toISOString(),
+        petIds: selectedPetId ? [selectedPetId] : [],
+        serviceType: selectedService,
+        addons: [],
+        slotId: selectedSlotId,
+        lockToken,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.quoteId && data.quote) {
+        setQuoteId(data.quoteId);
+        setQuoteData(data.quote);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: isHebrew ? 'שגיאה בחישוב מחיר' : 'Pricing Error',
+        description: error.message || (isHebrew ? 'לא ניתן לחשב מחיר' : 'Could not calculate pricing'),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Checkout mutation - creates booking and redirects to payment
+  const checkoutMutation = useMutation({
+    mutationFn: async () => {
+      if (!quoteId) throw new Error('No quote available');
+      const response = await apiRequest('POST', `/api/marketplace-bookings/${quoteId}/checkout`, {
+        slotId: selectedSlotId,
+        lockToken,
+        petIds: selectedPetId ? [selectedPetId] : [],
+        specialInstructions,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.paymentUrl) {
+        // Redirect to Nayax payment page
+        window.location.href = data.paymentUrl;
+      } else if (data.bookingId) {
+        // Booking created successfully (for free quotes or demo mode)
+        toast({
+          title: isHebrew ? 'ההזמנה נוצרה!' : 'Booking Created!',
+          description: isHebrew ? 'ההזמנה שלך אושרה' : 'Your booking has been confirmed',
+        });
+        navigate(`/bookings/${data.bookingId}`);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: isHebrew ? 'שגיאה בהזמנה' : 'Booking Error',
+        description: error.message || (isHebrew ? 'לא ניתן ליצור הזמנה' : 'Could not create booking'),
+        variant: 'destructive',
+      });
+      setIsSubmitting(false);
+    },
+  });
+
+  const handleNextStep = async () => {
     if (currentStep < steps.length) {
+      // When moving from Step 3 (pet selection) to Step 4 (review), fetch quote
+      if (currentStep === 3 && selectedPetId && lockToken) {
+        quoteMutation.mutate();
+      }
       setCurrentStep(currentStep + 1);
     }
   };
 
   const handlePrevStep = () => {
     if (currentStep > 1) {
+      // Clear quote data when going back from Step 4
+      if (currentStep === 4) {
+        setQuoteId(null);
+        setQuoteData(null);
+      }
       setCurrentStep(currentStep - 1);
     }
   };
@@ -189,7 +285,7 @@ export default function MarketplaceBookingFlow() {
       return;
     }
 
-    if (!selectedDate || !selectedTime || !selectedPetId) {
+    if (!quoteId || !selectedPetId) {
       toast({
         title: isHebrew ? 'פרטים חסרים' : 'Missing Details',
         description: isHebrew ? 'אנא מלא את כל השדות' : 'Please complete all fields',
@@ -198,22 +294,19 @@ export default function MarketplaceBookingFlow() {
       return;
     }
 
-    // TODO: Create booking and proceed to Nayax payment
-    toast({
-      title: isHebrew ? 'מעבר לתשלום...' : 'Proceeding to Payment...',
-      description: isHebrew ? 'מעביר אותך לNayax' : 'Redirecting to Nayax',
-    });
+    // Check if lock expired
+    if (lockSecondsLeft <= 0) {
+      toast({
+        title: isHebrew ? 'פג תוקף ההזמנה' : 'Reservation Expired',
+        description: isHebrew ? 'אנא בחר זמן חדש' : 'Please select a new time',
+        variant: 'destructive',
+      });
+      setCurrentStep(2);
+      return;
+    }
 
-    // Navigate to payment (will be implemented with Nayax integration)
-    console.log('Booking data:', {
-      platform,
-      providerId: id,
-      date: selectedDate,
-      time: selectedTime,
-      petId: selectedPetId,
-      totalCents,
-      specialInstructions,
-    });
+    setIsSubmitting(true);
+    checkoutMutation.mutate();
   };
 
   if (providerLoading) {
@@ -546,36 +639,71 @@ export default function MarketplaceBookingFlow() {
                   {/* Pricing Breakdown */}
                   <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-6 rounded-2xl border-2 border-purple-200 dark:border-purple-800 mb-6">
                     <h3 className="font-semibold mb-4">{isHebrew ? 'פירוט מחיר' : 'Price Breakdown'}</h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-gray-700 dark:text-gray-300">
-                        <span>{isHebrew ? 'מחיר בסיס' : 'Base Price'}</span>
-                        <span data-testid="price-base">₪{(basePriceCents / 100).toFixed(2)}</span>
+                    
+                    {quoteMutation.isPending ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                        <span className="ml-2 text-gray-600 dark:text-gray-400">
+                          {isHebrew ? 'מחשב מחיר...' : 'Calculating pricing...'}
+                        </span>
                       </div>
-                      <div className="flex justify-between text-gray-700 dark:text-gray-300">
-                        <span>{isHebrew ? 'עמלת פלטפורמה (10%)' : 'Platform Fee (10%)'}</span>
-                        <span data-testid="price-platform-fee">₪{(platformFeeCents / 100).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-700 dark:text-gray-300">
-                        <span>{isHebrew ? 'מע״מ (18%)' : 'VAT (18%)'}</span>
-                        <span data-testid="price-vat">₪{(vatCents / 100).toFixed(2)}</span>
-                      </div>
-                      <div className="border-t-2 border-purple-300 dark:border-purple-700 pt-2 mt-2">
-                        <div className="flex justify-between text-lg font-bold">
-                          <span>{isHebrew ? 'סה"כ' : 'Total'}</span>
-                          <span className="text-purple-600" data-testid="price-total">₪{(totalCents / 100).toFixed(2)}</span>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                          <span>{isHebrew ? 'מחיר בסיס' : 'Base Price'}</span>
+                          <span data-testid="price-base">₪{((quoteData?.baseAmountCents || basePriceCents) / 100).toFixed(2)}</span>
+                        </div>
+                        
+                        {/* Show discounts if any applied */}
+                        {quoteData?.loyaltyDiscountCents && quoteData.loyaltyDiscountCents > 0 && (
+                          <div className="flex justify-between text-green-600">
+                            <span>{isHebrew ? 'הנחת נאמנות' : 'Loyalty Discount'} ({quoteData.loyaltyInfo?.tierName || ''})</span>
+                            <span data-testid="price-loyalty-discount">-₪{(quoteData.loyaltyDiscountCents / 100).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {quoteData?.weekendSurchargeCents && quoteData.weekendSurchargeCents > 0 && (
+                          <div className="flex justify-between text-amber-600">
+                            <span>{isHebrew ? 'תוספת סוף שבוע' : 'Weekend Surcharge'}</span>
+                            <span data-testid="price-weekend-surcharge">+₪{(quoteData.weekendSurchargeCents / 100).toFixed(2)}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                          <span>{isHebrew ? 'עמלת פלטפורמה (10%)' : 'Platform Fee (10%)'}</span>
+                          <span data-testid="price-platform-fee">₪{((quoteData?.platformFeeCents || platformFeeCents) / 100).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                          <span>{isHebrew ? 'מע״מ (18%)' : 'VAT (18%)'}</span>
+                          <span data-testid="price-vat">₪{((quoteData?.vatCents || vatCents) / 100).toFixed(2)}</span>
+                        </div>
+                        <div className="border-t-2 border-purple-300 dark:border-purple-700 pt-2 mt-2">
+                          <div className="flex justify-between text-lg font-bold">
+                            <span>{isHebrew ? 'סה"כ' : 'Total'}</span>
+                            <span className="text-purple-600" data-testid="price-total">₪{((quoteData?.totalCents || totalCents) / 100).toFixed(2)}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Payment Button */}
                   <div className="space-y-4">
+                    {/* Lock expiry warning */}
+                    {lockSecondsLeft > 0 && lockSecondsLeft <= 60 && (
+                      <div className="p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-lg text-center">
+                        <span className="text-amber-800 dark:text-amber-200 font-medium">
+                          {isHebrew ? 'ההזמנה תפוג בעוד ' : 'Reservation expires in '}{formatCountdown()}
+                        </span>
+                      </div>
+                    )}
+                    
                     <div className="flex gap-4">
                       <Button
                         variant="outline"
                         onClick={handlePrevStep}
                         className="flex-1"
                         data-testid="button-prev-step"
+                        disabled={isSubmitting || checkoutMutation.isPending}
                       >
                         <ChevronLeft className="w-4 h-4 mr-2" />
                         {isHebrew ? 'אחורה' : 'Back'}
@@ -584,9 +712,19 @@ export default function MarketplaceBookingFlow() {
                         onClick={handleSubmitBooking}
                         className="flex-1 luxury-btn-primary luxury-shadow-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                         data-testid="button-proceed-payment"
+                        disabled={isSubmitting || checkoutMutation.isPending || quoteMutation.isPending || lockSecondsLeft <= 0}
                       >
-                        <CreditCard className="w-5 h-5 mr-2" />
-                        {isHebrew ? 'המשך לתשלום (Nayax)' : 'Proceed to Payment (Nayax)'}
+                        {(isSubmitting || checkoutMutation.isPending) ? (
+                          <>
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                            {isHebrew ? 'מעבד...' : 'Processing...'}
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="w-5 h-5 mr-2" />
+                            {isHebrew ? 'המשך לתשלום (Nayax)' : 'Proceed to Payment (Nayax)'}
+                          </>
+                        )}
                       </Button>
                     </div>
 
