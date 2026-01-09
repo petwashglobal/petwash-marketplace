@@ -1568,6 +1568,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </Suspense>
           )}
         </Route>
+        <Route path="/octopus-brain">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <MobileManagementDashboard />
+            </Suspense>
+          )}
+        </Route>
         <Route path="/accessibility" component={Accessibility} />
         <Route path="/accessibility-statement" component={AccessibilityStatement} />
         
