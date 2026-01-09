@@ -14,7 +14,7 @@
 1. Stay on the same page (Sign-in providers)
 2. Click on **"Google"** in the list
 3. Toggle **Enable** to ON
-4. Enter **Project support email**: `info@petwash.co.il`
+4. Enter **Project support email**: `Support@PetWash.co.il`
 5. Click **Save**
 
 ## Step 3: Authorize Your Domains

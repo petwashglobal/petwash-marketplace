@@ -274,7 +274,7 @@ Pet Wash intellectual property is protected in:
 **Subject:** License Request  
 
 ### **General Information:**
-**Email:** info@petwash.co.il  
+**Email:** Support@PetWash.co.il  
 **Website:** https://petwash.co.il  
 
 ---
