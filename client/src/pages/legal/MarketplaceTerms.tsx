@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarketplaceLegalContent } from "@/components/legal/MarketplaceLegalContent";
 import { InsuranceAndProtection } from "@/components/legal/InsuranceAndProtection";
 import { ProviderIncomeOpportunity } from "@/components/legal/ProviderIncomeOpportunity";
+import { ComprehensiveLegalTerms } from "@/components/legal/ComprehensiveLegalTerms";
 import { 
   FileText, 
   UserCheck, 
@@ -17,7 +18,8 @@ import {
   ArrowRight,
   Heart,
   TrendingUp,
-  BadgeCheck
+  BadgeCheck,
+  Scale
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,12 @@ export default function MarketplaceTerms() {
       label: isHebrew ? "ביטוח והגנות" : "Insurance & Protection", 
       icon: Shield,
       description: isHebrew ? "כיסוי ביטוחי מלא, תהליך תביעות, הגנות" : "Full insurance coverage, claims process, protections"
+    },
+    { 
+      id: "legal", 
+      label: isHebrew ? "תנאים משפטיים" : "Legal Terms", 
+      icon: Scale,
+      description: isHebrew ? "שיפוי, כוח עליון, דין חל, בוררות, פרטיות" : "Indemnification, force majeure, governing law, arbitration, privacy"
     },
     { 
       id: "provider", 
@@ -130,6 +138,10 @@ export default function MarketplaceTerms() {
             <InsuranceAndProtection variant="full" />
           </TabsContent>
 
+          <TabsContent value="legal">
+            <ComprehensiveLegalTerms section="all" />
+          </TabsContent>
+
           <TabsContent value="provider">
             <div className="space-y-8">
               <InsuranceAndProtection variant="provider" />
@@ -140,8 +152,9 @@ export default function MarketplaceTerms() {
           <TabsContent value="customer">
             <div className="space-y-8">
               <InsuranceAndProtection variant="customer" />
+              <ComprehensiveLegalTerms section="consumer-rights" />
+              <ComprehensiveLegalTerms section="escrow-structure" />
               <MarketplaceLegalContent section="customer-terms" />
-              <MarketplaceLegalContent section="escrow-policy" />
               <MarketplaceLegalContent section="cancellation-policy" />
             </div>
           </TabsContent>
