@@ -165,6 +165,7 @@ export default function ProviderApplicationForm() {
   };
 
   const onSubmit = async (data: ApplicationForm) => {
+    console.log('[ProviderApplication] Form submit triggered with data:', data);
     setIsSubmitting(true);
     try {
       const submitData = {
@@ -172,9 +173,12 @@ export default function ProviderApplicationForm() {
         profilePhotoBase64: profilePhoto || undefined,
       };
       
+      console.log('[ProviderApplication] Sending API request...');
       const response = await apiRequest('POST', '/api/provider-intake/submit', submitData);
+      const result = await response.json();
+      console.log('[ProviderApplication] API response:', result);
 
-      if (response.ok) {
+      if (result.success) {
         setSubmitted(true);
         queryClient.invalidateQueries({ queryKey: ['/api/provider-intake'] });
         toast({
@@ -182,9 +186,10 @@ export default function ProviderApplicationForm() {
           description: t.successMessage,
         });
       } else {
-        throw new Error(response.error || 'Submission failed');
+        throw new Error(result.error || 'Submission failed');
       }
     } catch (error: any) {
+      console.error('[ProviderApplication] Submission error:', error);
       toast({
         variant: 'destructive',
         title: isHebrew ? 'שגיאה' : 'Error',
@@ -292,7 +297,14 @@ export default function ProviderApplicationForm() {
         {/* Form Card */}
         <div className="luxury-glass-card luxury-shadow-2xl p-8 md:p-10 luxury-animate-fade-in border border-white/20 dark:border-white/10">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              console.error('[ProviderApplication] Form validation errors:', errors);
+              toast({
+                variant: 'destructive',
+                title: isHebrew ? 'שגיאה בטופס' : 'Form Error',
+                description: isHebrew ? 'אנא מלא את כל השדות הנדרשים' : 'Please fill in all required fields',
+              });
+            })}>
               {/* Step 1: Service Type Selection */}
               {step === 1 && (
                 <div className="space-y-8">
