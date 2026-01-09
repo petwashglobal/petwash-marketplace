@@ -272,6 +272,7 @@ const EGiftPolicy = lazy(() => import("@/pages/legal/EGiftPolicy"));
 const LoyaltyTermsPage = lazy(() => import("@/pages/legal/LoyaltyTerms"));
 const CookiesPolicy = lazy(() => import("@/pages/legal/Cookies"));
 const AccessibilityStatementPage = lazy(() => import("@/pages/legal/AccessibilityStatement"));
+const MarketplaceTerms = lazy(() => import("@/pages/legal/MarketplaceTerms"));
 
 // Walk My Pet™ Pages
 const TrackWalk = lazy(() => import("@/pages/walks/TrackWalk"));
@@ -552,6 +553,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/legal/accessibility">
           {() => <AccessibilityStatementPage />}
+        </Route>
+        <Route path="/legal/marketplace-terms">
+          {() => <MarketplaceTerms />}
         </Route>
         
         {/* Protected route - ID Verification */}
