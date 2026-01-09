@@ -164,31 +164,44 @@ export default function MarketplaceTerms() {
           </TabsContent>
 
           <TabsContent value="all-terms">
-            <div className="mb-6">
-              <div className="flex flex-wrap justify-center gap-2">
-                {legalSubTabs.map((tab) => (
-                  <Button
-                    key={tab.id}
-                    variant="outline"
-                    size="sm"
-                    className="border-white/20 text-white/70 hover:bg-white/10"
-                    onClick={() => {
-                      const element = document.getElementById(tab.id);
-                      element?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                  >
-                    <tab.icon className="w-3 h-3 mr-1" />
-                    {tab.label}
-                  </Button>
-                ))}
+            <div className="space-y-12">
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-6 text-center">
+                  {isHebrew ? "תנאים משפטיים מלאים" : "Comprehensive Legal Terms"}
+                </h3>
+                <ComprehensiveLegalTerms section="all" />
               </div>
-            </div>
-            <div className="space-y-8">
-              {legalSubTabs.map((tab) => (
-                <div key={tab.id} id={tab.id}>
-                  <MarketplaceLegalContent section={tab.id as any} />
+              <div>
+                <h3 className="text-xl font-semibold text-white mb-6 text-center">
+                  {isHebrew ? "תנאי שירות הפלטפורמה" : "Platform Service Terms"}
+                </h3>
+                <div className="mb-6">
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {legalSubTabs.map((tab) => (
+                      <Button
+                        key={tab.id}
+                        variant="outline"
+                        size="sm"
+                        className="border-white/20 text-white/70 hover:bg-white/10"
+                        onClick={() => {
+                          const element = document.getElementById(tab.id);
+                          element?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                      >
+                        <tab.icon className="w-3 h-3 mr-1" />
+                        {tab.label}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              ))}
+                <div className="space-y-8">
+                  {legalSubTabs.map((tab) => (
+                    <div key={tab.id} id={tab.id}>
+                      <MarketplaceLegalContent section={tab.id as any} />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
