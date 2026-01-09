@@ -1,0 +1,411 @@
+import { db } from '../db';
+import { 
+  bookings, 
+  bookingPets, 
+  bookingItems,
+  bookingStatusHistory,
+  escrowHoldings,
+  providerRateCards,
+  providerAvailability,
+  quoteRequests,
+  BOOKING_STATUS_TRANSITIONS,
+  type BookingLifecycleStatus,
+  PETWASH_COMMISSION_RATE
+} from '@shared/schema';
+import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
+import { logger } from '../lib/logger';
+
+const VAT_RATE = 0.18;
+const ESCROW_HOURS = 72;
+
+export interface QuoteCalculation {
+  baseAmountCents: number;
+  additionalPetsCents: number;
+  addonsCents: number;
+  weekendSurchargeCents: number;
+  holidaySurchargeCents: number;
+  durationDiscountCents: number;
+  subtotalCents: number;
+  platformFeeCents: number;
+  vatCents: number;
+  totalCents: number;
+  providerEarningsCents: number;
+}
+
+export interface CreateBookingInput {
+  customerId: string;
+  providerId: string;
+  providerProfileId?: number;
+  platformId: string;
+  serviceType: string;
+  startTime: Date;
+  endTime: Date;
+  petIds: number[];
+  selectedAddons?: string[];
+  specialRequests?: string;
+  quoteId?: string;
+}
+
+class BookingLifecycleService {
+  async calculateQuote(
+    providerId: string,
+    platform: string,
+    serviceType: string,
+    startDate: Date,
+    endDate: Date,
+    petCount: number = 1,
+    addons: string[] = []
+  ): Promise<QuoteCalculation> {
+    const rateCard = await db.select()
+      .from(providerRateCards)
+      .where(and(
+        eq(providerRateCards.providerId, providerId),
+        eq(providerRateCards.platform, platform),
+        eq(providerRateCards.serviceType, serviceType),
+        eq(providerRateCards.isActive, true)
+      ))
+      .limit(1);
+
+    if (!rateCard.length) {
+      throw new Error(`No rate card found for provider ${providerId} on ${platform}`);
+    }
+
+    const card = rateCard[0];
+    const nights = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const hours = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60));
+
+    let baseAmountCents = 0;
+    if (card.baseRatePerNightCents && nights > 0) {
+      baseAmountCents = card.baseRatePerNightCents * nights;
+    } else if (card.baseRatePerHourCents && hours > 0) {
+      baseAmountCents = card.baseRatePerHourCents * hours;
+    } else if (card.baseRatePerVisitCents) {
+      baseAmountCents = card.baseRatePerVisitCents;
+    }
+
+    const additionalPetsCents = petCount > 1 
+      ? (petCount - 1) * (card.additionalPetSurchargeCents || 0)
+      : 0;
+
+    let addonsCents = 0;
+    const addonPricing = card.addonPricing as Record<string, number> || {};
+    for (const addon of addons) {
+      if (addonPricing[addon]) {
+        addonsCents += addonPricing[addon];
+      }
+    }
+
+    const startDay = startDate.getDay();
+    const isWeekend = startDay === 5 || startDay === 6;
+    const weekendSurchargeCents = isWeekend && card.weekendSurchargePercent
+      ? Math.round(baseAmountCents * (card.weekendSurchargePercent / 100))
+      : 0;
+
+    const holidaySurchargeCents = 0;
+
+    let durationDiscountCents = 0;
+    if (nights >= 30 && card.monthlyDiscountPercent) {
+      durationDiscountCents = Math.round(baseAmountCents * (card.monthlyDiscountPercent / 100));
+    } else if (nights >= 7 && card.weeklyDiscountPercent) {
+      durationDiscountCents = Math.round(baseAmountCents * (card.weeklyDiscountPercent / 100));
+    }
+
+    const subtotalCents = baseAmountCents + additionalPetsCents + addonsCents + 
+                          weekendSurchargeCents + holidaySurchargeCents - durationDiscountCents;
+    
+    const platformFeeCents = Math.round(subtotalCents * PETWASH_COMMISSION_RATE);
+    const vatCents = Math.round(platformFeeCents * VAT_RATE);
+    const totalCents = subtotalCents + vatCents;
+    const providerEarningsCents = subtotalCents - platformFeeCents;
+
+    return {
+      baseAmountCents,
+      additionalPetsCents,
+      addonsCents,
+      weekendSurchargeCents,
+      holidaySurchargeCents,
+      durationDiscountCents,
+      subtotalCents,
+      platformFeeCents,
+      vatCents,
+      totalCents,
+      providerEarningsCents
+    };
+  }
+
+  async createBooking(input: CreateBookingInput): Promise<{ bookingId: string; bookingNumber: string }> {
+    const bookingId = nanoid(16);
+    const bookingNumber = `PW-${Date.now().toString(36).toUpperCase()}-${nanoid(4).toUpperCase()}`;
+
+    const quote = await this.calculateQuote(
+      input.providerId,
+      input.platformId,
+      input.serviceType,
+      input.startTime,
+      input.endTime,
+      input.petIds.length,
+      input.selectedAddons
+    );
+
+    await db.insert(bookings).values({
+      id: bookingId,
+      bookingNumber,
+      platformId: input.platformId,
+      userId: input.customerId,
+      providerId: input.providerProfileId,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      serviceType: input.serviceType,
+      subtotal: (quote.subtotalCents / 100).toFixed(2),
+      platformFee: (quote.platformFeeCents / 100).toFixed(2),
+      providerPayout: (quote.providerEarningsCents / 100).toFixed(2),
+      total: (quote.totalCents / 100).toFixed(2),
+      status: 'inquiry',
+      paymentStatus: 'pending',
+      specialRequests: input.specialRequests,
+      currency: 'ILS',
+    });
+
+    for (const petId of input.petIds) {
+      await db.insert(bookingPets).values({
+        bookingId,
+        petId,
+      });
+    }
+
+    if (input.selectedAddons?.length) {
+      for (const addon of input.selectedAddons) {
+        await db.insert(bookingItems).values({
+          bookingId,
+          itemType: 'addon',
+          name: addon,
+          quantity: 1,
+          unitPrice: '0',
+          totalPrice: '0',
+        });
+      }
+    }
+
+    await this.recordStatusChange(bookingId, null, 'inquiry', input.customerId, 'customer', 'Booking created');
+
+    logger.info('[BookingLifecycle] Booking created', { bookingId, bookingNumber });
+
+    return { bookingId, bookingNumber };
+  }
+
+  async transitionStatus(
+    bookingId: string,
+    newStatus: BookingLifecycleStatus,
+    actorUserId: string,
+    actorRole: 'customer' | 'provider' | 'system' | 'admin',
+    reason?: string
+  ): Promise<void> {
+    const [booking] = await db.select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (!booking) {
+      throw new Error(`Booking ${bookingId} not found`);
+    }
+
+    const currentStatus = booking.status as BookingLifecycleStatus;
+    const allowedTransitions = BOOKING_STATUS_TRANSITIONS[currentStatus] || [];
+
+    if (!allowedTransitions.includes(newStatus)) {
+      throw new Error(`Invalid transition from ${currentStatus} to ${newStatus}`);
+    }
+
+    await db.update(bookings)
+      .set({ 
+        status: newStatus,
+        updatedAt: new Date(),
+        ...(newStatus === 'provider_confirmed' && { confirmedAt: new Date() }),
+        ...(newStatus === 'in_progress' && { startedAt: new Date() }),
+        ...(newStatus === 'completed' && { completedAt: new Date() }),
+        ...(newStatus === 'cancelled' && { 
+          cancelledAt: new Date(), 
+          cancelledBy: actorUserId,
+          cancellationReason: reason 
+        }),
+      })
+      .where(eq(bookings.id, bookingId));
+
+    await this.recordStatusChange(bookingId, currentStatus, newStatus, actorUserId, actorRole, reason);
+
+    if (newStatus === 'deposit_received') {
+      await this.createEscrowHolding(bookingId);
+    }
+
+    if (newStatus === 'completed') {
+      await this.scheduleEscrowRelease(bookingId);
+    }
+
+    logger.info('[BookingLifecycle] Status transitioned', { 
+      bookingId, 
+      from: currentStatus, 
+      to: newStatus 
+    });
+  }
+
+  private async recordStatusChange(
+    bookingId: string,
+    fromStatus: string | null,
+    toStatus: string,
+    userId: string,
+    role: string,
+    reason?: string
+  ): Promise<void> {
+    await db.insert(bookingStatusHistory).values({
+      bookingId,
+      fromStatus,
+      toStatus,
+      changedByUserId: userId,
+      changedByRole: role,
+      reason,
+    });
+  }
+
+  private async createEscrowHolding(bookingId: string): Promise<void> {
+    const [booking] = await db.select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (!booking) return;
+
+    const grossAmountCents = Math.round(parseFloat(booking.total) * 100);
+    const platformFeeCents = Math.round(parseFloat(booking.platformFee || '0') * 100);
+    const vatCents = Math.round(platformFeeCents * VAT_RATE);
+    const netProviderAmountCents = grossAmountCents - platformFeeCents - vatCents;
+
+    await db.insert(escrowHoldings).values({
+      escrowId: `ESC-${nanoid(12)}`,
+      bookingId,
+      customerId: booking.userId,
+      providerId: String(booking.providerId || ''),
+      grossAmountCents,
+      platformFeeCents,
+      vatCents,
+      netProviderAmountCents,
+      status: 'held',
+      capturedAt: new Date(),
+    });
+
+    logger.info('[BookingLifecycle] Escrow holding created', { bookingId, grossAmountCents });
+  }
+
+  private async scheduleEscrowRelease(bookingId: string): Promise<void> {
+    const releaseTime = new Date(Date.now() + ESCROW_HOURS * 60 * 60 * 1000);
+
+    await db.update(escrowHoldings)
+      .set({
+        serviceCompletedAt: new Date(),
+        releaseEligibleAt: releaseTime,
+        status: 'releasing',
+        updatedAt: new Date(),
+      })
+      .where(eq(escrowHoldings.bookingId, bookingId));
+
+    logger.info('[BookingLifecycle] Escrow release scheduled', { 
+      bookingId, 
+      releaseEligibleAt: releaseTime 
+    });
+  }
+
+  async getBookingWithHistory(bookingId: string) {
+    const [booking] = await db.select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (!booking) return null;
+
+    const history = await db.select()
+      .from(bookingStatusHistory)
+      .where(eq(bookingStatusHistory.bookingId, bookingId))
+      .orderBy(desc(bookingStatusHistory.changedAt));
+
+    const pets = await db.select()
+      .from(bookingPets)
+      .where(eq(bookingPets.bookingId, bookingId));
+
+    const items = await db.select()
+      .from(bookingItems)
+      .where(eq(bookingItems.bookingId, bookingId));
+
+    const [escrow] = await db.select()
+      .from(escrowHoldings)
+      .where(eq(escrowHoldings.bookingId, bookingId))
+      .limit(1);
+
+    return {
+      ...booking,
+      statusHistory: history,
+      pets,
+      items,
+      escrow,
+    };
+  }
+
+  async getUserBookings(userId: string, role: 'customer' | 'provider', limit = 50) {
+    const field = role === 'customer' ? bookings.userId : sql`${bookings.providerId}::text`;
+    
+    return db.select()
+      .from(bookings)
+      .where(eq(role === 'customer' ? bookings.userId : sql`${bookings.providerId}::text`, userId))
+      .orderBy(desc(bookings.createdAt))
+      .limit(limit);
+  }
+
+  async processEscrowReleases(): Promise<number> {
+    const now = new Date();
+    
+    const eligibleEscrows = await db.select()
+      .from(escrowHoldings)
+      .where(and(
+        eq(escrowHoldings.status, 'releasing'),
+        lte(escrowHoldings.releaseEligibleAt, now)
+      ));
+
+    let releasedCount = 0;
+
+    for (const escrow of eligibleEscrows) {
+      try {
+        await db.update(escrowHoldings)
+          .set({
+            status: 'released',
+            releasedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(escrowHoldings.id, escrow.id));
+
+        await db.update(bookings)
+          .set({
+            payoutStatus: 'completed',
+            payoutDate: now,
+            updatedAt: now,
+          })
+          .where(eq(bookings.id, escrow.bookingId));
+
+        releasedCount++;
+        logger.info('[BookingLifecycle] Escrow released', { 
+          escrowId: escrow.escrowId,
+          bookingId: escrow.bookingId,
+          amountCents: escrow.netProviderAmountCents 
+        });
+      } catch (error) {
+        logger.error('[BookingLifecycle] Escrow release failed', { 
+          escrowId: escrow.escrowId, 
+          error 
+        });
+      }
+    }
+
+    return releasedCount;
+  }
+}
+
+export const bookingLifecycleService = new BookingLifecycleService();
+export default bookingLifecycleService;

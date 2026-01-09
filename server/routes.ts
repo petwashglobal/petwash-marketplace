@@ -8305,6 +8305,10 @@ self.addEventListener('notificationclick', (event) => {
   const bookingRequestsRoutes = (await import('./routes/booking-requests')).default;
   app.use('/api/booking-requests', apiLimiter, bookingRequestsRoutes);
 
+  // MadPaws-style Marketplace Bookings (PostgreSQL - 12-status lifecycle, escrow, quotes)
+  const marketplaceBookingsRoutes = (await import('./routes/marketplace-bookings')).default;
+  app.use('/api/marketplace-bookings', apiLimiter, marketplaceBookingsRoutes);
+
   // Dynamic Pricing Engine - MadPaws-style quote calculation with multi-pet surcharges
   app.use('/api/pricing', apiLimiter, pricingApiRoutes);
 

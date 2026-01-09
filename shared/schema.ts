@@ -10054,3 +10054,147 @@ export const PETWASH_PLATFORMS: Record<PetWashPlatform, {
 
 // Commission rate (15% like MadPaws for legacy providers)
 export const PETWASH_COMMISSION_RATE = 0.15;
+
+// =================== MADPAWS 12-STATUS BOOKING LIFECYCLE ===================
+// Complete booking lifecycle with status history tracking
+
+export const bookingLifecycleStatusEnum = pgEnum("booking_lifecycle_status", [
+  "inquiry",              // Customer sends initial inquiry
+  "quote_sent",           // Provider sends quote
+  "quote_expired",        // Quote not accepted in time
+  "deposit_pending",      // Awaiting payment
+  "deposit_received",     // Payment captured, funds in escrow
+  "owner_confirmed",      // Owner confirmed booking
+  "provider_confirmed",   // Provider accepted booking
+  "in_progress",          // Service is being delivered
+  "owner_completion_review",    // Owner reviewing completion
+  "provider_completion_review", // Provider marking complete
+  "completed",            // Both parties confirmed, escrow releasing
+  "cancelled",            // Booking cancelled
+  "refunded",             // Funds refunded
+  "disputed"              // Under dispute
+]);
+
+// Booking Status History - audit trail for all status changes
+export const bookingStatusHistory = pgTable("booking_status_history", {
+  id: serial("id").primaryKey(),
+  
+  bookingId: varchar("booking_id").notNull(),
+  
+  // Status transition
+  fromStatus: varchar("from_status"),
+  toStatus: varchar("to_status").notNull(),
+  
+  // Actor
+  changedByUserId: varchar("changed_by_user_id").notNull(),
+  changedByRole: varchar("changed_by_role").notNull(), // customer, provider, system, admin
+  
+  // Reason
+  reason: text("reason"),
+  metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+  
+  // Timestamps
+  changedAt: timestamp("changed_at").defaultNow(),
+}, (table) => [
+  index("idx_booking_status_history_booking").on(table.bookingId),
+  index("idx_booking_status_history_date").on(table.changedAt),
+]);
+
+// Escrow Holdings - tracks 72-hour escrow lifecycle
+export const escrowHoldings = pgTable("escrow_holdings", {
+  id: serial("id").primaryKey(),
+  escrowId: varchar("escrow_id").unique().notNull(),
+  
+  // References
+  bookingId: varchar("booking_id").notNull(),
+  customerId: varchar("customer_id").notNull(),
+  providerId: varchar("provider_id").notNull(),
+  
+  // Amounts (in cents/agorot)
+  grossAmountCents: integer("gross_amount_cents").notNull(),
+  platformFeeCents: integer("platform_fee_cents").notNull(),
+  vatCents: integer("vat_cents").notNull(),
+  netProviderAmountCents: integer("net_provider_amount_cents").notNull(),
+  
+  // Status
+  status: varchar("status").default("pending"), // pending, held, releasing, released, refunded, disputed
+  
+  // Escrow Lifecycle Timestamps
+  capturedAt: timestamp("captured_at"), // When payment captured
+  serviceCompletedAt: timestamp("service_completed_at"), // When service marked complete
+  releaseEligibleAt: timestamp("release_eligible_at"), // 72 hours after completion
+  releasedAt: timestamp("released_at"), // When funds released to provider
+  
+  // Refund info
+  refundRequestedAt: timestamp("refund_requested_at"),
+  refundProcessedAt: timestamp("refund_processed_at"),
+  refundAmountCents: integer("refund_amount_cents"),
+  refundReason: text("refund_reason"),
+  
+  // Dispute info
+  disputeOpenedAt: timestamp("dispute_opened_at"),
+  disputeResolvedAt: timestamp("dispute_resolved_at"),
+  disputeResolution: varchar("dispute_resolution"), // customer_favor, provider_favor, split
+  
+  // Payment gateway references
+  paymentIntentId: varchar("payment_intent_id"),
+  payoutTransferId: varchar("payout_transfer_id"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_escrow_booking").on(table.bookingId),
+  index("idx_escrow_status").on(table.status),
+  index("idx_escrow_release_eligible").on(table.releaseEligibleAt),
+]);
+
+// Zod schemas for new tables
+export const insertBookingStatusHistorySchema = createInsertSchema(bookingStatusHistory).omit({
+  id: true,
+  changedAt: true,
+});
+export type InsertBookingStatusHistory = z.infer<typeof insertBookingStatusHistorySchema>;
+export type BookingStatusHistory = typeof bookingStatusHistory.$inferSelect;
+
+export const insertEscrowHoldingSchema = createInsertSchema(escrowHoldings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertEscrowHolding = z.infer<typeof insertEscrowHoldingSchema>;
+export type EscrowHolding = typeof escrowHoldings.$inferSelect;
+
+// MadPaws-style booking lifecycle type
+export type BookingLifecycleStatus = 
+  | "inquiry"
+  | "quote_sent"
+  | "quote_expired"
+  | "deposit_pending"
+  | "deposit_received"
+  | "owner_confirmed"
+  | "provider_confirmed"
+  | "in_progress"
+  | "owner_completion_review"
+  | "provider_completion_review"
+  | "completed"
+  | "cancelled"
+  | "refunded"
+  | "disputed";
+
+// Valid status transitions
+export const BOOKING_STATUS_TRANSITIONS: Record<BookingLifecycleStatus, BookingLifecycleStatus[]> = {
+  inquiry: ["quote_sent", "cancelled"],
+  quote_sent: ["quote_expired", "deposit_pending", "cancelled"],
+  quote_expired: ["quote_sent"], // Can re-quote
+  deposit_pending: ["deposit_received", "cancelled"],
+  deposit_received: ["owner_confirmed", "cancelled", "refunded"],
+  owner_confirmed: ["provider_confirmed", "cancelled", "refunded"],
+  provider_confirmed: ["in_progress", "cancelled", "refunded"],
+  in_progress: ["owner_completion_review", "provider_completion_review", "disputed"],
+  owner_completion_review: ["completed", "disputed"],
+  provider_completion_review: ["completed", "disputed"],
+  completed: [], // Terminal state (escrow releases automatically)
+  cancelled: ["refunded"],
+  refunded: [], // Terminal state
+  disputed: ["completed", "refunded"], // Admin resolution
+};

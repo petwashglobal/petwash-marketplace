@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is an enterprise platform for the pet care industry, integrating IoT wash stations, pet sitting, walking, and avatar creation. It provides a global, scalable ecosystem for premium pet care services, targeting the luxury pet market. The platform features shared infrastructure for authentication, payments, AI services, compliance, and franchise management, a 7-Star Loyalty System, robust security, and a Unified Control Panel for enterprise orchestration. The business vision is to become the leading global provider of luxury pet care services, with initial operations focused on the Israeli market.
+Pet Wash™ is an enterprise platform for the pet care industry, providing a global, scalable ecosystem for luxury pet care services. It integrates IoT wash stations, pet sitting, walking, and avatar creation. The platform features shared infrastructure for authentication, payments, AI services, compliance, and franchise management, a 7-Star Loyalty System, robust security, and a Unified Control Panel. The business vision is to become the leading global provider of luxury pet care services, with initial operations focused on the Israeli market.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -24,7 +24,6 @@ HOMEPAGE CONTENT GUARD - CRITICAL:
 - **Hebrew Hero Text**: "מהפכה בטיפוח ושטיפת חיות המחמד בשירות עצמי" (title), "מהיר, קל, 24/7" (subtitle), "שמפו אורגני 100% עם שמן עץ התה האוסטרלי. דוחה מזיקים, אנטיבקטריאלי ומרגיע לחבר הטוב ביותר שלך." (description)
 - **Implementation**: All homepage text rendered via `client/src/lib/i18n.ts` translation keys
 - **Rule**: NEVER change these exact Hebrew phrases without explicit user approval - they are final creative direction, not suggestions
-- **Git History**: Original text preserved in commits 7830068 and 2af014e - never revert to later "luxury branding" versions without permission
 
 LANGUAGE STRATEGY FOR ISRAELI MARKET:
 - **Primary Language**: Messages, notifications, and communications to Israeli users and local partners should be MAINLY in Hebrew
@@ -37,9 +36,7 @@ LANGUAGE COMPLIANCE RULE:
 - **English ONLY** can mix other languages minimally for branding/PR/luxury positioning
 - **Hebrew, Arabic, Russian, French, Spanish**: Must be 100% pure translations - NO English words except brand names (Pet Wash™, K9000™, etc.)
 - **Rationale**: Israeli users deserve full Hebrew experience. English can show off globally, but Hebrew/other languages must respect native speakers
-- **Violation Examples**: Hebrew page with "Sign In" button, Arabic page with "Dashboard" heading, Russian page with "Loading..." text
 - **Correct Approach**: Use t() function for all UI text, only brand names stay in English
-- **Documentation**: See docs/LANGUAGE_COMPLIANCE_RULES.md for full guidelines
 
 FRANCHISE MARKETING CRITICAL RULE:
 - **Franchise Success Stories**: MUST ONLY feature international clients from Canada, USA, Australia, England - NEVER Israel
@@ -87,7 +84,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **K9000 IoT Integration**: Cloud-based management, real-time status, remote control, AI predictive maintenance, 7-star luxury LED ecosystem.
 - **Passport Verification (KYC)**: Google Vision API-powered passport verification with MRZ parsing.
 - **Security & Compliance**: Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail.
-- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, booking policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts.
+- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, booking policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts. Includes a 12-status booking lifecycle, pricing calculation engine, and audit trail.
 - **Employee Expense Management System**: Production-ready with Israeli Tax Authority compliance, OCR receipt scanning, and cryptographic audit trail.
 - **Document Management System**: Production-ready with RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
 - **Legal & Compliance Systems**: Comprehensive routes and services for privacy settings, data rights, GDPR, Israeli Privacy Law 2025, e-signature workflows, and contract management, including a unified compliance brain.
@@ -110,22 +107,10 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Email**: SendGrid.
 - **Cloud Storage**: @google-cloud/storage.
 - **Utilities**: qrcode, PassKit, googleapis.
-- **Messaging**: Meta WhatsApp Business API, Google Firebase Cloud Messaging (FCM). *Note: Twilio account activated for SMS/Voice - can be integrated when needed for OTP codes and emergency alerts.*
+- **Messaging**: Meta WhatsApp Business API, Google Firebase Cloud Messaging (FCM).
 - **Banking Integration**: Mizrahi-Tefahot Bank (via aggregator API).
 - **Weather & Environmental Data**: Open-Meteo API, Google Weather API, CurrentUVIndex.com API, Open-Meteo Air Quality API.
 - **E-Signature**: DocuSeal (@docuseal/api).
 - **Mapping & Location**: Google Maps API.
 - **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API, Google Dialogflow CX.
 - **Business Management**: Google Business Profile API.
-
-## Recent Changes (January 2026)
-
-### Marketplace & Booking Search API
-- **All 7 service types now working**: pet_sitting, daycare, dog_walking, training, grooming, pet_taxi, k9000_wash
-- **Demo data seeded**: 3 sitters, 3 walkers, 3 trainers, 6 drivers, 3 K9000 stations with proper locations
-- **Route order fixed**: Moved `/api/booking-search` before catch-all `/api` auth middleware for public access
-
-### UI Cleanup
-- **Removed permanent VIP Crown button** from FloatingStack (user requested - no permanent loyalty sidebar element)
-- **Removed VIPLoyaltyPopup** component and associated state
-- FloatingStack now shows only: Accessibility, WhatsApp, AI Chat
