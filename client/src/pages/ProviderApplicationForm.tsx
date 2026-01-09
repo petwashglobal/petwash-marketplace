@@ -25,7 +25,7 @@ import {
   Car, Home, Dog, Scissors, GraduationCap, Building,
   ArrowRight, ArrowLeft, Sparkles, Crown, Send,
   Camera, Upload, User, X, Droplets, Sun, Search,
-  Check, DollarSign, Calendar, Info
+  Check, DollarSign, Calendar, Info, MapPin
 } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
@@ -105,7 +105,10 @@ const applicationSchema = z.object({
   lastName: z.string().min(2, { message: "Last name is required" }),
   email: z.string().email({ message: "Valid email required" }),
   phoneNumber: z.string().min(9, { message: "Valid phone number required" }),
+  streetAddress: z.string().min(3, { message: "Street address is required" }),
   city: z.string().min(2, { message: "City is required" }),
+  postalCode: z.string().optional(),
+  country: z.string().default("Israel"),
   selectedPlatforms: z.array(z.string()).min(1, { message: "Select at least one platform" }),
   yearsExperience: z.string().optional(),
   hasOwnTransport: z.boolean().default(false),
@@ -158,7 +161,10 @@ export default function ProviderApplicationForm() {
       lastName: "",
       email: "",
       phoneNumber: "",
+      streetAddress: "",
       city: "",
+      postalCode: "",
+      country: "Israel",
       selectedPlatforms: [],
       yearsExperience: "",
       hasOwnTransport: false,
@@ -190,7 +196,12 @@ export default function ProviderApplicationForm() {
     lastName: isHebrew ? 'שם משפחה' : 'Last Name',
     email: isHebrew ? 'אימייל' : 'Email',
     phone: isHebrew ? 'טלפון' : 'Phone',
+    streetAddress: isHebrew ? 'כתובת רחוב' : 'Street Address',
     city: isHebrew ? 'עיר' : 'City',
+    postalCode: isHebrew ? 'מיקוד' : 'Postal Code',
+    country: isHebrew ? 'מדינה' : 'Country',
+    addressSection: isHebrew ? 'כתובת' : 'Address',
+    addressHint: isHebrew ? 'הקלד כתובת והמערכת תמלא אוטומטית את כל השדות' : 'Start typing and the system will auto-fill all fields',
     experience: isHebrew ? 'שנות ניסיון' : 'Years of Experience',
     hasTransport: isHebrew ? 'יש לי רכב' : 'I have my own vehicle',
     hasFirstAid: isHebrew ? 'תעודת עזרה ראשונה לבעלי חיים' : 'Pet first aid certification',
@@ -713,31 +724,105 @@ export default function ProviderApplicationForm() {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormControl>
-                            <GooglePlacesAutocomplete
-                              value={field.value}
-                              onChange={(value, details) => {
-                                field.onChange(details?.city || value);
-                              }}
-                              onPlaceSelected={(place: PlaceDetails) => {
-                                if (place.city) field.onChange(place.city);
-                              }}
-                              label={t.city}
-                              placeholder={isHebrew ? 'הקלד עיר או כתובת...' : 'Start typing your city or address...'}
-                              required
-                              country={['il']}
-                              error={form.formState.errors.city?.message}
-                              className="[&_label]:text-gray-300 [&_label]:font-medium [&_input]:h-12 [&_input]:bg-slate-800/50 [&_input]:border-slate-600 [&_input]:text-white [&_input]:placeholder:text-slate-500 [&_input]:focus:border-amber-500 [&_input]:focus:ring-amber-500/20 [&_input]:rounded-xl"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                    {/* Address Section with Google Places Auto-Fill */}
+                    <div className="md:col-span-2 space-y-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MapPin className="w-5 h-5 text-amber-400" />
+                        <span className="text-gray-300 font-medium">{t.addressSection} *</span>
+                      </div>
+                      <p className="text-sm text-gray-500 mb-3">{t.addressHint}</p>
+                      
+                      {/* Street Address with Google Places Autocomplete */}
+                      <FormField
+                        control={form.control}
+                        name="streetAddress"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <GooglePlacesAutocomplete
+                                value={field.value}
+                                onChange={(value, details) => {
+                                  // Set street address from formatted address or the street
+                                  const streetValue = details?.street 
+                                    ? `${details.street}${details.streetNumber ? ' ' + details.streetNumber : ''}`
+                                    : value;
+                                  field.onChange(streetValue);
+                                }}
+                                onPlaceSelected={(place: PlaceDetails) => {
+                                  // Auto-fill all address fields from Google Places
+                                  const streetValue = place.street 
+                                    ? `${place.street}${place.streetNumber ? ' ' + place.streetNumber : ''}`
+                                    : place.formattedAddress;
+                                  field.onChange(streetValue);
+                                  
+                                  // Auto-fill city
+                                  if (place.city) {
+                                    form.setValue('city', place.city);
+                                  }
+                                  
+                                  // Auto-fill postal code
+                                  if (place.postalCode) {
+                                    form.setValue('postalCode', place.postalCode);
+                                  }
+                                  
+                                  // Auto-fill country
+                                  if (place.country) {
+                                    form.setValue('country', place.country);
+                                  }
+                                }}
+                                label={t.streetAddress}
+                                placeholder={isHebrew ? 'הקלד כתובת מלאה...' : 'Start typing your full address...'}
+                                required
+                                country={['il']}
+                                error={form.formState.errors.streetAddress?.message}
+                                className="[&_label]:text-gray-300 [&_label]:font-medium [&_input]:h-12 [&_input]:bg-slate-800/50 [&_input]:border-slate-600 [&_input]:text-white [&_input]:placeholder:text-slate-500 [&_input]:focus:border-amber-500 [&_input]:focus:ring-amber-500/20 [&_input]:rounded-xl"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* City and Postal Code Row */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="city"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-300 font-medium">{t.city} *</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                                  placeholder={isHebrew ? 'עיר' : 'City'}
+                                  data-testid="input-city"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-red-400" />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="postalCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-300 font-medium">{t.postalCode}</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                                  placeholder={isHebrew ? 'מיקוד' : 'Postal Code'}
+                                  data-testid="input-postal-code"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-red-400" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Profile Photo - Luxury Style */}
