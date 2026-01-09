@@ -11,6 +11,7 @@ import {
   pets,
   sitterProfiles,
   walkerProfiles,
+  users,
   BOOKING_STATUS_TRANSITIONS,
   type BookingLifecycleStatus
 } from '@shared/schema';
@@ -18,6 +19,7 @@ import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 import bookingLifecycleService from '../services/BookingLifecycleService';
+import { EmailService } from '../emailService';
 
 const router = Router();
 
@@ -234,8 +236,7 @@ router.post('/:quoteId/checkout', async (req, res) => {
     }
 
     // Create the booking using the booking lifecycle service
-    const bookingId = nanoid(16);
-    const booking = await bookingLifecycleService.createBooking({
+    const bookingResult = await bookingLifecycleService.createBooking({
       customerId: userId,
       providerId: quote.providerId!,
       providerProfileId: slot.profileId ? String(slot.profileId) : quote.providerId!,
@@ -248,6 +249,10 @@ router.post('/:quoteId/checkout', async (req, res) => {
       specialRequests: specialInstructions || '',
       quoteId
     });
+    
+    // Use the bookingId returned by the service (the actual persisted ID)
+    const bookingId = bookingResult.bookingId;
+    const bookingNumber = bookingResult.bookingNumber;
 
     // Mark the slot as booked (remove lock, mark confirmed)
     await db.update(providerAvailability)
@@ -266,7 +271,7 @@ router.post('/:quoteId/checkout', async (req, res) => {
 
     await db.insert(escrowHoldings).values({
       id: escrowId,
-      bookingId: booking.booking?.id || bookingId,
+      bookingId,
       grossAmountCents: quote.totalCents || 0,
       platformFeeCents: quote.platformFeeCents || 0,
       vatCents: quote.vatCents || 0,
@@ -275,6 +280,78 @@ router.post('/:quoteId/checkout', async (req, res) => {
       releaseEligibleAt,
       createdAt: new Date()
     });
+
+    // Generate invoice number: INV-YYYYMMDD-XXXX
+    const now = new Date();
+    const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const invoiceNumber = `INV-${datePart}-${nanoid(6).toUpperCase()}`;
+
+    // Look up customer and provider details for email
+    const [customer] = await db.select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    // Try to get provider name from sitter or walker profiles
+    let providerName = 'Your Service Provider';
+    const [sitterProfile] = await db.select()
+      .from(sitterProfiles)
+      .where(eq(sitterProfiles.userId, quote.providerId!))
+      .limit(1);
+    if (sitterProfile?.displayName) {
+      providerName = sitterProfile.displayName;
+    } else {
+      const [walkerProfile] = await db.select()
+        .from(walkerProfiles)
+        .where(eq(walkerProfiles.userId, quote.providerId!))
+        .limit(1);
+      if (walkerProfile?.displayName) {
+        providerName = walkerProfile.displayName;
+      }
+    }
+
+    // Platform name mapping
+    const platformNames: Record<string, string> = {
+      sitter_suite: 'The Sitter Suite™',
+      walk_my_pet: 'Walk My Pet™',
+      pet_trek: 'PetTrek™',
+      grooming: 'Premium Grooming',
+      training_academy: 'Training Academy',
+      daycare: 'Pet Daycare',
+      k9000: 'K9000™ Self-Wash'
+    };
+    const platformName = platformNames[quote.platform || ''] || quote.platform || 'Pet Wash™ Service';
+
+    // Persist invoice number to booking record (in platformData JSON field)
+    await db.update(bookings)
+      .set({ 
+        platformData: sql`COALESCE(platform_data, '{}'::jsonb) || ${JSON.stringify({ invoiceNumber, invoiceGeneratedAt: new Date().toISOString() })}::jsonb`
+      })
+      .where(eq(bookings.id, bookingId));
+    
+    logger.info('[MarketplaceBookings] Invoice number persisted', { bookingId, invoiceNumber });
+
+    // Send booking confirmation email (async, don't block response)
+    if (customer?.email) {
+      const customerName = customer.displayName || customer.firstName || customer.email.split('@')[0];
+      EmailService.sendBookingConfirmation({
+        email: customer.email,
+        customerName,
+        bookingId,
+        invoiceNumber,
+        platformName,
+        serviceType: quote.serviceType || 'Standard Service',
+        providerName,
+        startDate: new Date(slot.startTime!),
+        endDate: new Date(slot.endTime!),
+        totalAmountCents: quote.totalCents || 0,
+        loyaltyDiscountCents: quote.loyaltyDiscountCents || 0,
+        escrowReleaseDate: releaseEligibleAt,
+        language: 'he' // Default to Hebrew for Israeli market
+      }).catch(err => {
+        logger.error('[MarketplaceBookings] Failed to send confirmation email', { error: err.message });
+      });
+    }
 
     // In production, we would generate a Nayax payment URL here
     // For now, return demo mode response
@@ -290,21 +367,27 @@ router.post('/:quoteId/checkout', async (req, res) => {
       // });
       return res.json({
         success: true,
-        bookingId: booking.booking?.id || bookingId,
+        bookingId,
+        bookingNumber,
+        invoiceNumber,
         paymentUrl: `/payment/nayax/${bookingId}` // Placeholder
       });
     }
 
     // Demo mode - booking created without payment
     logger.info('[MarketplaceBookings] Checkout completed (demo mode)', { 
-      bookingId: booking.booking?.id,
+      bookingId,
+      bookingNumber,
       quoteId,
-      userId 
+      userId,
+      invoiceNumber
     });
 
     res.json({ 
       success: true, 
-      bookingId: booking.booking?.id || bookingId,
+      bookingId,
+      bookingNumber,
+      invoiceNumber,
       message: 'Booking created successfully (demo mode - payment skipped)'
     });
 

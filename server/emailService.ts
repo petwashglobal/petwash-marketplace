@@ -3104,4 +3104,208 @@ export class EmailService {
       return false;
     }
   }
+
+  /**
+   * Send marketplace booking confirmation email with invoice number
+   * Bilingual Hebrew/English luxury email for pet service bookings
+   */
+  static async sendBookingConfirmation(params: {
+    email: string;
+    customerName: string;
+    bookingId: string;
+    invoiceNumber: string;
+    platformName: string;
+    serviceType: string;
+    providerName: string;
+    startDate: Date;
+    endDate: Date;
+    totalAmountCents: number;
+    loyaltyDiscountCents?: number;
+    escrowReleaseDate: Date;
+    language?: 'he' | 'en';
+  }): Promise<boolean> {
+    const {
+      email,
+      customerName,
+      bookingId,
+      invoiceNumber,
+      platformName,
+      serviceType,
+      providerName,
+      startDate,
+      endDate,
+      totalAmountCents,
+      loyaltyDiscountCents = 0,
+      escrowReleaseDate,
+      language = 'he'
+    } = params;
+
+    const isHebrew = language === 'he';
+
+    if (!process.env.SENDGRID_API_KEY) {
+      logger.info('[BookingConfirmation] SendGrid not configured - would send:', { invoiceNumber, email });
+      return true;
+    }
+
+    try {
+      // Check consent (transactional emails always allowed)
+      const hasConsent = await this.checkEmailConsent(email, 'transactional');
+      if (!hasConsent) {
+        logger.info(`[BookingConfirmation] Email consent check failed: ${email}`);
+        return false;
+      }
+
+      // Rate limiting
+      if (!this.checkRateLimit(email)) {
+        logger.info(`[BookingConfirmation] Rate limit exceeded: ${email}`);
+        return false;
+      }
+
+      const formatDate = (d: Date) => new Intl.DateTimeFormat(isHebrew ? 'he-IL' : 'en-IL', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Jerusalem'
+      }).format(d);
+
+      const totalFormatted = (totalAmountCents / 100).toFixed(2);
+      const discountFormatted = loyaltyDiscountCents > 0 ? (loyaltyDiscountCents / 100).toFixed(2) : null;
+
+      const t = {
+        subject: isHebrew ? `אישור הזמנה ${invoiceNumber} - Pet Wash™` : `Booking Confirmation ${invoiceNumber} - Pet Wash™`,
+        greeting: isHebrew ? `שלום ${customerName}` : `Hello ${customerName}`,
+        thankYou: isHebrew ? 'תודה על ההזמנה שלך!' : 'Thank you for your booking!',
+        bookingDetails: isHebrew ? 'פרטי ההזמנה' : 'Booking Details',
+        invoiceLabel: isHebrew ? 'מספר חשבונית' : 'Invoice Number',
+        bookingLabel: isHebrew ? 'מספר הזמנה' : 'Booking Number',
+        serviceLabel: isHebrew ? 'שירות' : 'Service',
+        platformLabel: isHebrew ? 'פלטפורמה' : 'Platform',
+        providerLabel: isHebrew ? 'נותן/ת השירות' : 'Service Provider',
+        dateLabel: isHebrew ? 'תאריך ושעה' : 'Date & Time',
+        totalLabel: isHebrew ? 'סה"כ לתשלום' : 'Total Amount',
+        loyaltyLabel: isHebrew ? 'הנחת נאמנות' : 'Loyalty Discount',
+        escrowNote: isHebrew 
+          ? `התשלום שלך מוחזק בנאמנות ויועבר לנותן השירות ב-${formatDate(escrowReleaseDate)} לאחר השלמת השירות בהצלחה.`
+          : `Your payment is held in escrow and will be released to the provider on ${formatDate(escrowReleaseDate)} after successful service completion.`,
+        contactUs: isHebrew ? 'לשאלות ובירורים' : 'Questions?',
+        contactEmail: 'Support@PetWash.co.il',
+        footer: isHebrew ? 'Pet Wash™ - טיפוח יוקרתי לחיות מחמד' : 'Pet Wash™ - Premium Pet Care'
+      };
+
+      const htmlContent = `
+<!DOCTYPE html>
+<html dir="${isHebrew ? 'rtl' : 'ltr'}" lang="${language}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${t.subject}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #0a0a0a;">
+    <div style="max-width: 600px; margin: 0 auto; background: #111827;">
+        
+        <!-- Header with Logo -->
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 40px 30px; text-align: center; border-bottom: 1px solid rgba(212, 175, 55, 0.3);">
+            <h1 style="color: #d4af37; font-size: 28px; margin: 0; font-weight: 300; letter-spacing: 2px;">Pet Wash™</h1>
+            <p style="color: #94a3b8; font-size: 14px; margin: 10px 0 0 0; text-transform: uppercase; letter-spacing: 1px;">Premium Pet Care</p>
+        </div>
+        
+        <!-- Success Banner -->
+        <div style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); padding: 25px 30px; text-align: center;">
+            <div style="font-size: 40px; margin-bottom: 10px;">✓</div>
+            <h2 style="color: white; font-size: 22px; margin: 0; font-weight: 500;">${t.thankYou}</h2>
+        </div>
+        
+        <!-- Content -->
+        <div style="padding: 40px 30px; background: #1a1a2e;">
+            <p style="color: #e2e8f0; font-size: 18px; margin: 0 0 30px 0;">${t.greeting},</p>
+            
+            <!-- Booking Details Card -->
+            <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 16px; padding: 30px; margin-bottom: 25px;">
+                <h3 style="color: #d4af37; font-size: 18px; margin: 0 0 25px 0; border-bottom: 1px solid rgba(212, 175, 55, 0.2); padding-bottom: 15px;">
+                    ${t.bookingDetails}
+                </h3>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.invoiceLabel}</td>
+                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; font-weight: 600; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${invoiceNumber}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.bookingLabel}</td>
+                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${bookingId}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.platformLabel}</td>
+                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${platformName}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.serviceLabel}</td>
+                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${serviceType}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.providerLabel}</td>
+                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${providerName}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.dateLabel}</td>
+                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${formatDate(startDate)}</td>
+                    </tr>
+                    ${discountFormatted ? `
+                    <tr>
+                        <td style="color: #10b981; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.loyaltyLabel}</td>
+                        <td style="color: #10b981; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">-₪${discountFormatted}</td>
+                    </tr>
+                    ` : ''}
+                    <tr>
+                        <td style="color: #d4af37; padding: 16px 0; font-size: 16px; font-weight: 600;">${t.totalLabel}</td>
+                        <td style="color: #d4af37; padding: 16px 0; font-size: 20px; font-weight: 700; text-align: ${isHebrew ? 'left' : 'right'};">₪${totalFormatted}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- Escrow Notice -->
+            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+                <p style="color: #93c5fd; font-size: 14px; margin: 0; line-height: 1.7;">
+                    🔒 ${t.escrowNote}
+                </p>
+            </div>
+            
+            <!-- Contact -->
+            <p style="color: #94a3b8; font-size: 14px; text-align: center; margin: 30px 0 0 0;">
+                ${t.contactUs}: <a href="mailto:${t.contactEmail}" style="color: #d4af37; text-decoration: none;">${t.contactEmail}</a>
+            </p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background: #0a0a0a; padding: 30px; text-align: center; border-top: 1px solid rgba(212, 175, 55, 0.2);">
+            <p style="color: #64748b; font-size: 12px; margin: 0;">${t.footer}</p>
+            <p style="color: #475569; font-size: 11px; margin: 10px 0 0 0;">© 2025 Pet Wash™ All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+      const msg = {
+        to: email,
+        from: { email: this.FROM_EMAIL, name: 'Pet Wash™' },
+        subject: t.subject,
+        html: this.sanitizeEmailContent(htmlContent),
+        headers: {
+          'List-Unsubscribe': `<${this.UNSUBSCRIBE_URL}?token=${this.generateUnsubscribeToken(email)}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+        }
+      };
+
+      await mailService.send(msg);
+      logger.info(`[BookingConfirmation] Sent to ${email}`, { invoiceNumber, bookingId });
+      return true;
+
+    } catch (error) {
+      logger.error('[BookingConfirmation] Failed to send', error);
+      return false;
+    }
+  }
 }
