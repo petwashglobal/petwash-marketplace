@@ -107,6 +107,7 @@ import platformApiRoutes from "./routes/platform-api";
 import { resolvePlatformMiddleware } from "./middleware/platformContext";
 import { auditMiddleware } from "./middleware/auditLogger";
 import referralRoutes from "./routes/referral";
+import pricingApiRoutes from "./routes/pricing-api";
 import accountingRoutes from "./routes/accounting";
 import accountingExportRoutes from "./routes/accounting-export";
 import adminRoutes from "./routes/admin";
@@ -8303,6 +8304,9 @@ self.addEventListener('notificationclick', (event) => {
   // MadPaws-style Booking Requests (complete flow: request → meet & greet → payment → service)
   const bookingRequestsRoutes = (await import('./routes/booking-requests')).default;
   app.use('/api/booking-requests', apiLimiter, bookingRequestsRoutes);
+
+  // Dynamic Pricing Engine - MadPaws-style quote calculation with multi-pet surcharges
+  app.use('/api/pricing', apiLimiter, pricingApiRoutes);
 
   // Provider Intake Queue (Google Forms Integration - Management-Assisted Onboarding)
   // MUST be before /api catch-all to allow public access to /stats and /submit endpoints
