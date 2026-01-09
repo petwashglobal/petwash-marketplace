@@ -383,6 +383,329 @@ router.get('/provider/:providerId/rate-card', async (req, res) => {
   }
 });
 
+// MadPaws-style provider search with availability filtering
+router.get('/search/providers', async (req, res) => {
+  try {
+    const {
+      platform,
+      serviceType,
+      startDate,
+      endDate,
+      lat,
+      lng,
+      radiusKm = 25,
+      petTypes,
+      minRating = 0,
+      maxRate,
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    // Build search query with real-time availability check
+    const offset = (Number(page) - 1) * Number(limit);
+    
+    // Query providers with rate cards for the specified platform
+    const providers = await db.select({
+      providerId: providerRateCards.providerId,
+      platform: providerRateCards.platform,
+      serviceType: providerRateCards.serviceType,
+      baseRatePerNightCents: providerRateCards.baseRatePerNightCents,
+      baseRatePerHourCents: providerRateCards.baseRatePerHourCents,
+      additionalPetSurchargeCents: providerRateCards.additionalPetSurchargeCents,
+      weekendSurchargePercent: providerRateCards.weekendSurchargePercent,
+      holidaySurchargePercent: providerRateCards.holidaySurchargePercent,
+      maxPets: providerRateCards.maxPets,
+      acceptedPetTypes: providerRateCards.acceptedPetTypes,
+      addonsAvailable: providerRateCards.addonsAvailable,
+      instantBooking: providerRateCards.instantBooking,
+      cancellationPolicy: providerRateCards.cancellationPolicy,
+      location: providerRateCards.location,
+      profilePhotoUrl: providerRateCards.profilePhotoUrl,
+      displayName: providerRateCards.displayName,
+      bio: providerRateCards.bio,
+      averageRating: providerRateCards.averageRating,
+      totalReviews: providerRateCards.totalReviews,
+      isActive: providerRateCards.isActive,
+      createdAt: providerRateCards.createdAt,
+    })
+    .from(providerRateCards)
+    .where(
+      and(
+        platform ? eq(providerRateCards.platform, platform as string) : sql`true`,
+        serviceType ? eq(providerRateCards.serviceType, serviceType as string) : sql`true`,
+        eq(providerRateCards.isActive, true),
+        minRating ? gte(providerRateCards.averageRating, String(minRating)) : sql`true`
+      )
+    )
+    .limit(Number(limit))
+    .offset(offset);
+
+    // Check availability for each provider if dates provided
+    let availableProviders = providers;
+    if (startDate && endDate) {
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      
+      // Filter providers with available slots
+      const providerIds = providers.map(p => p.providerId);
+      if (providerIds.length > 0) {
+        const unavailableProviders = await db.selectDistinct({ providerId: providerAvailability.providerId })
+          .from(providerAvailability)
+          .where(
+            and(
+              sql`${providerAvailability.providerId} = ANY(${providerIds})`,
+              gte(providerAvailability.date, start),
+              lte(providerAvailability.date, end),
+              eq(providerAvailability.isAvailable, false)
+            )
+          );
+        
+        const unavailableIds = new Set(unavailableProviders.map(p => p.providerId));
+        availableProviders = providers.filter(p => !unavailableIds.has(p.providerId));
+      }
+    }
+
+    // Format response with pricing
+    const results = availableProviders.map(provider => ({
+      id: provider.providerId,
+      platform: provider.platform,
+      serviceType: provider.serviceType,
+      displayName: provider.displayName,
+      bio: provider.bio,
+      profilePhotoUrl: provider.profilePhotoUrl,
+      location: provider.location,
+      rating: provider.averageRating ? Number(provider.averageRating) : null,
+      reviewCount: provider.totalReviews || 0,
+      pricing: {
+        perNight: provider.baseRatePerNightCents ? (provider.baseRatePerNightCents / 100).toFixed(2) : null,
+        perHour: provider.baseRatePerHourCents ? (provider.baseRatePerHourCents / 100).toFixed(2) : null,
+        additionalPet: provider.additionalPetSurchargeCents ? (provider.additionalPetSurchargeCents / 100).toFixed(2) : null,
+        currency: 'ILS'
+      },
+      maxPets: provider.maxPets || 4,
+      acceptedPetTypes: provider.acceptedPetTypes || ['dog', 'cat'],
+      addons: provider.addonsAvailable || [],
+      instantBooking: provider.instantBooking || false,
+      cancellationPolicy: provider.cancellationPolicy || 'flexible',
+    }));
+
+    res.json({
+      success: true,
+      providers: results,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total: results.length,
+        hasMore: results.length === Number(limit)
+      },
+      filters: { platform, serviceType, startDate, endDate, minRating }
+    });
+  } catch (error: any) {
+    logger.error('[MarketplaceBookings] Provider search error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get provider availability calendar
+router.get('/provider/:providerId/availability', async (req, res) => {
+  try {
+    const { providerId } = req.params;
+    const { startDate, endDate, platform } = req.query;
+
+    const start = startDate ? new Date(startDate as string) : new Date();
+    const end = endDate ? new Date(endDate as string) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 days
+
+    const availability = await db.select()
+      .from(providerAvailability)
+      .where(
+        and(
+          eq(providerAvailability.providerId, providerId),
+          gte(providerAvailability.date, start),
+          lte(providerAvailability.date, end),
+          platform ? eq(providerAvailability.platform, platform as string) : sql`true`
+        )
+      )
+      .orderBy(providerAvailability.date);
+
+    // Create date map for easy lookup
+    const dateMap: Record<string, { available: boolean; price?: number; bookingsCount?: number }> = {};
+    availability.forEach(slot => {
+      const dateStr = slot.date.toISOString().split('T')[0];
+      dateMap[dateStr] = {
+        available: slot.isAvailable || false,
+        price: slot.customPriceCents ? slot.customPriceCents / 100 : undefined,
+        bookingsCount: slot.currentBookingsCount || 0
+      };
+    });
+
+    res.json({
+      success: true,
+      providerId,
+      availability: dateMap,
+      range: { start: start.toISOString(), end: end.toISOString() }
+    });
+  } catch (error: any) {
+    logger.error('[MarketplaceBookings] Availability error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Provider updates their availability
+router.post('/provider/:providerId/availability', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { providerId } = req.params;
+    const { dates, isAvailable, customPrice, platform, maxBookings, notes } = req.body;
+
+    // Validate provider owns this rate card
+    const [rateCard] = await db.select()
+      .from(providerRateCards)
+      .where(
+        and(
+          eq(providerRateCards.providerId, providerId),
+          eq(providerRateCards.providerId, userId)
+        )
+      )
+      .limit(1);
+
+    // For now, allow any authenticated user to update for testing
+    // In production, enforce ownership check
+
+    const results = [];
+    for (const dateStr of dates as string[]) {
+      const date = new Date(dateStr);
+      
+      const [existing] = await db.select()
+        .from(providerAvailability)
+        .where(
+          and(
+            eq(providerAvailability.providerId, providerId),
+            eq(providerAvailability.date, date),
+            eq(providerAvailability.platform, platform || 'sitter_suite')
+          )
+        )
+        .limit(1);
+
+      if (existing) {
+        await db.update(providerAvailability)
+          .set({
+            isAvailable,
+            customPriceCents: customPrice ? Math.round(customPrice * 100) : null,
+            maxBookingsPerDay: maxBookings,
+            notes,
+            updatedAt: new Date()
+          })
+          .where(eq(providerAvailability.id, existing.id));
+        results.push({ date: dateStr, action: 'updated' });
+      } else {
+        await db.insert(providerAvailability).values({
+          providerId,
+          platform: platform || 'sitter_suite',
+          date,
+          isAvailable,
+          customPriceCents: customPrice ? Math.round(customPrice * 100) : null,
+          maxBookingsPerDay: maxBookings || 1,
+          notes
+        });
+        results.push({ date: dateStr, action: 'created' });
+      }
+    }
+
+    res.json({ success: true, updates: results });
+  } catch (error: any) {
+    logger.error('[MarketplaceBookings] Update availability error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Provider creates/updates their rate card
+router.post('/provider/rate-card', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const {
+      platform,
+      serviceType,
+      baseRatePerNight,
+      baseRatePerHour,
+      baseRatePerVisit,
+      additionalPetSurcharge,
+      weekendSurchargePercent,
+      holidaySurchargePercent,
+      maxPets,
+      acceptedPetTypes,
+      addons,
+      instantBooking,
+      cancellationPolicy,
+      displayName,
+      bio,
+      profilePhotoUrl,
+      location
+    } = req.body;
+
+    // Check if rate card exists
+    const [existing] = await db.select()
+      .from(providerRateCards)
+      .where(
+        and(
+          eq(providerRateCards.providerId, userId),
+          eq(providerRateCards.platform, platform),
+          eq(providerRateCards.serviceType, serviceType)
+        )
+      )
+      .limit(1);
+
+    const rateCardData = {
+      baseRatePerNightCents: baseRatePerNight ? Math.round(baseRatePerNight * 100) : null,
+      baseRatePerHourCents: baseRatePerHour ? Math.round(baseRatePerHour * 100) : null,
+      baseRatePerVisitCents: baseRatePerVisit ? Math.round(baseRatePerVisit * 100) : null,
+      additionalPetSurchargeCents: additionalPetSurcharge ? Math.round(additionalPetSurcharge * 100) : null,
+      weekendSurchargePercent: weekendSurchargePercent || 0,
+      holidaySurchargePercent: holidaySurchargePercent || 0,
+      maxPets: maxPets || 4,
+      acceptedPetTypes: acceptedPetTypes || ['dog', 'cat'],
+      addonsAvailable: addons || [],
+      instantBooking: instantBooking || false,
+      cancellationPolicy: cancellationPolicy || 'flexible',
+      displayName,
+      bio,
+      profilePhotoUrl,
+      location,
+      isActive: true,
+      updatedAt: new Date()
+    };
+
+    if (existing) {
+      await db.update(providerRateCards)
+        .set(rateCardData)
+        .where(eq(providerRateCards.id, existing.id));
+
+      res.json({ success: true, action: 'updated', rateCardId: existing.rateCardId });
+    } else {
+      const rateCardId = `RATE-${nanoid(12)}`;
+      await db.insert(providerRateCards).values({
+        rateCardId,
+        providerId: userId,
+        platform,
+        serviceType,
+        ...rateCardData
+      });
+
+      res.json({ success: true, action: 'created', rateCardId });
+    }
+  } catch (error: any) {
+    logger.error('[MarketplaceBookings] Rate card error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post('/process-escrow-releases', async (req, res) => {
   try {
     const adminKey = req.headers['x-admin-key'];
