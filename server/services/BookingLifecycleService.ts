@@ -19,6 +19,32 @@ import { logger } from '../lib/logger';
 const VAT_RATE = 0.18;
 const ESCROW_HOURS = 72;
 
+// Loyalty tier thresholds and discounts
+const LOYALTY_TIERS = {
+  bronze: { minBookings: 3, minRating: 4.0, discountPercent: 3 },
+  silver: { minBookings: 10, minRating: 4.2, discountPercent: 5 },
+  gold: { minBookings: 25, minRating: 4.5, discountPercent: 8 },
+  platinum: { minBookings: 50, minRating: 4.7, discountPercent: 10 },
+  diamond: { minBookings: 100, minRating: 4.8, discountPercent: 15 },
+};
+
+// Multi-pet + long-stay combo discount
+const COMBO_DISCOUNTS = {
+  // pets >= 2 AND nights >= 7 = 5% extra
+  multiPetWeekly: { minPets: 2, minNights: 7, discountPercent: 5 },
+  // pets >= 3 AND nights >= 14 = 10% extra
+  multiPetBiweekly: { minPets: 3, minNights: 14, discountPercent: 10 },
+  // pets >= 2 AND nights >= 30 = 12% extra
+  multiPetMonthly: { minPets: 2, minNights: 30, discountPercent: 12 },
+};
+
+export interface LoyaltyInfo {
+  tier: string;
+  completedBookings: number;
+  averageRating: number;
+  discountPercent: number;
+}
+
 export interface QuoteCalculation {
   baseAmountCents: number;
   additionalPetsCents: number;
@@ -26,11 +52,15 @@ export interface QuoteCalculation {
   weekendSurchargeCents: number;
   holidaySurchargeCents: number;
   durationDiscountCents: number;
+  comboDiscountCents: number;
+  loyaltyDiscountCents: number;
   subtotalCents: number;
   platformFeeCents: number;
   vatCents: number;
   totalCents: number;
   providerEarningsCents: number;
+  appliedDiscounts: string[];
+  loyaltyInfo?: LoyaltyInfo;
 }
 
 export interface CreateBookingInput {
@@ -48,6 +78,53 @@ export interface CreateBookingInput {
 }
 
 class BookingLifecycleService {
+  private async getCustomerLoyaltyInfo(customerId?: string): Promise<LoyaltyInfo | null> {
+    if (!customerId) return null;
+
+    try {
+      const result = await db.select({
+        completedCount: sql<number>`COUNT(*) FILTER (WHERE status = 'completed')`,
+        avgRating: sql<number>`AVG(customer_rating)`,
+      })
+      .from(bookings)
+      .where(eq(bookings.userId, customerId));
+
+      const completedBookings = Number(result[0]?.completedCount) || 0;
+      const averageRating = Number(result[0]?.avgRating) || 0;
+
+      // Determine tier (highest matching)
+      let tier = 'none';
+      let discountPercent = 0;
+
+      for (const [tierName, thresholds] of Object.entries(LOYALTY_TIERS).reverse()) {
+        if (completedBookings >= thresholds.minBookings && averageRating >= thresholds.minRating) {
+          tier = tierName;
+          discountPercent = thresholds.discountPercent;
+          break;
+        }
+      }
+
+      return { tier, completedBookings, averageRating, discountPercent };
+    } catch (error) {
+      logger.warn('[BookingLifecycle] Could not fetch loyalty info', { customerId, error });
+      return null;
+    }
+  }
+
+  private calculateComboDiscount(petCount: number, nights: number): { discountPercent: number; discountName: string | null } {
+    // Check for combo discounts (multi-pet + long-stay)
+    if (petCount >= COMBO_DISCOUNTS.multiPetMonthly.minPets && nights >= COMBO_DISCOUNTS.multiPetMonthly.minNights) {
+      return { discountPercent: COMBO_DISCOUNTS.multiPetMonthly.discountPercent, discountName: 'Multi-pet monthly package (12% off)' };
+    }
+    if (petCount >= COMBO_DISCOUNTS.multiPetBiweekly.minPets && nights >= COMBO_DISCOUNTS.multiPetBiweekly.minNights) {
+      return { discountPercent: COMBO_DISCOUNTS.multiPetBiweekly.discountPercent, discountName: 'Multi-pet bi-weekly package (10% off)' };
+    }
+    if (petCount >= COMBO_DISCOUNTS.multiPetWeekly.minPets && nights >= COMBO_DISCOUNTS.multiPetWeekly.minNights) {
+      return { discountPercent: COMBO_DISCOUNTS.multiPetWeekly.discountPercent, discountName: 'Multi-pet weekly package (5% off)' };
+    }
+    return { discountPercent: 0, discountName: null };
+  }
+
   async calculateQuote(
     providerId: string,
     platform: string,
@@ -55,7 +132,8 @@ class BookingLifecycleService {
     startDate: Date,
     endDate: Date,
     petCount: number = 1,
-    addons: string[] = []
+    addons: string[] = [],
+    customerId?: string
   ): Promise<QuoteCalculation> {
     const rateCard = await db.select()
       .from(providerRateCards)
@@ -103,16 +181,39 @@ class BookingLifecycleService {
       : 0;
 
     const holidaySurchargeCents = 0;
+    const appliedDiscounts: string[] = [];
 
+    // Duration discount (provider-defined)
     let durationDiscountCents = 0;
     if (nights >= 30 && card.monthlyDiscountPercent) {
       durationDiscountCents = Math.round(baseAmountCents * (card.monthlyDiscountPercent / 100));
+      appliedDiscounts.push(`Monthly stay discount (${card.monthlyDiscountPercent}% off)`);
     } else if (nights >= 7 && card.weeklyDiscountPercent) {
       durationDiscountCents = Math.round(baseAmountCents * (card.weeklyDiscountPercent / 100));
+      appliedDiscounts.push(`Weekly stay discount (${card.weeklyDiscountPercent}% off)`);
     }
 
-    const subtotalCents = baseAmountCents + additionalPetsCents + addonsCents + 
-                          weekendSurchargeCents + holidaySurchargeCents - durationDiscountCents;
+    // Combo discount (multi-pet + long-stay)
+    const combo = this.calculateComboDiscount(petCount, nights);
+    const preComboTotal = baseAmountCents + additionalPetsCents + addonsCents + weekendSurchargeCents - durationDiscountCents;
+    const comboDiscountCents = combo.discountPercent > 0 
+      ? Math.round(preComboTotal * (combo.discountPercent / 100))
+      : 0;
+    if (combo.discountName) {
+      appliedDiscounts.push(combo.discountName);
+    }
+
+    // Loyalty discount (based on customer history)
+    const loyaltyInfo = await this.getCustomerLoyaltyInfo(customerId);
+    const postComboTotal = preComboTotal - comboDiscountCents;
+    const loyaltyDiscountCents = loyaltyInfo && loyaltyInfo.discountPercent > 0
+      ? Math.round(postComboTotal * (loyaltyInfo.discountPercent / 100))
+      : 0;
+    if (loyaltyInfo && loyaltyInfo.tier !== 'none') {
+      appliedDiscounts.push(`${loyaltyInfo.tier.charAt(0).toUpperCase() + loyaltyInfo.tier.slice(1)} member bonus (${loyaltyInfo.discountPercent}% off)`);
+    }
+
+    const subtotalCents = postComboTotal - loyaltyDiscountCents;
     
     const platformFeeCents = Math.round(subtotalCents * PETWASH_COMMISSION_RATE);
     const vatCents = Math.round(platformFeeCents * VAT_RATE);
@@ -126,11 +227,15 @@ class BookingLifecycleService {
       weekendSurchargeCents,
       holidaySurchargeCents,
       durationDiscountCents,
+      comboDiscountCents,
+      loyaltyDiscountCents,
       subtotalCents,
       platformFeeCents,
       vatCents,
       totalCents,
-      providerEarningsCents
+      providerEarningsCents,
+      appliedDiscounts,
+      loyaltyInfo: loyaltyInfo || undefined
     };
   }
 

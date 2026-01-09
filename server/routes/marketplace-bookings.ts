@@ -27,8 +27,12 @@ router.post('/quote', async (req, res) => {
       startDate, 
       endDate, 
       petCount = 1, 
-      addons = [] 
+      addons = [],
+      customerId
     } = req.body;
+
+    // Also check header for authenticated user
+    const userId = customerId || req.headers['x-user-id'] as string;
 
     const quote = await bookingLifecycleService.calculateQuote(
       providerId,
@@ -37,7 +41,8 @@ router.post('/quote', async (req, res) => {
       new Date(startDate),
       new Date(endDate),
       petCount,
-      addons
+      addons,
+      userId
     );
 
     res.json({ 
@@ -49,12 +54,16 @@ router.post('/quote', async (req, res) => {
         addons: (quote.addonsCents / 100).toFixed(2),
         weekendSurcharge: (quote.weekendSurchargeCents / 100).toFixed(2),
         durationDiscount: (quote.durationDiscountCents / 100).toFixed(2),
+        comboDiscount: (quote.comboDiscountCents / 100).toFixed(2),
+        loyaltyDiscount: (quote.loyaltyDiscountCents / 100).toFixed(2),
         subtotal: (quote.subtotalCents / 100).toFixed(2),
         platformFee: (quote.platformFeeCents / 100).toFixed(2),
         vat: (quote.vatCents / 100).toFixed(2),
         total: (quote.totalCents / 100).toFixed(2),
         providerEarnings: (quote.providerEarningsCents / 100).toFixed(2),
-      }
+      },
+      appliedDiscounts: quote.appliedDiscounts,
+      loyaltyInfo: quote.loyaltyInfo
     });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Quote error', { error: error.message });
