@@ -58,16 +58,29 @@ export function GooglePlacesAutocomplete({
     // Load Google Maps Script
     const loadScript = () => {
       if (window.google && window.google.maps) {
+        console.log('[Google Places] ✅ Google Maps already loaded');
         setScriptLoaded(true);
         return;
       }
 
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+      if (!apiKey) {
+        console.error('[Google Places] ❌ VITE_GOOGLE_MAPS_API_KEY not configured');
+        return;
+      }
+      
+      console.log('[Google Places] Loading Google Maps script...');
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}&libraries=places&language=en`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=en`;
       script.async = true;
       script.defer = true;
-      script.onload = () => setScriptLoaded(true);
-      script.onerror = () => console.error('[Google Places] Failed to load Google Maps script');
+      script.onload = () => {
+        console.log('[Google Places] ✅ Google Maps script loaded successfully');
+        setScriptLoaded(true);
+      };
+      script.onerror = (e) => {
+        console.error('[Google Places] ❌ Failed to load Google Maps script', e);
+      };
       document.head.appendChild(script);
     };
 

@@ -28,6 +28,7 @@ import {
   Check, DollarSign, Calendar, Info
 } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
 // MadPaws-style platforms with flexible pricing
 const PLATFORMS = [
@@ -717,15 +718,23 @@ export default function ProviderApplicationForm() {
                       name="city"
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel className="text-gray-300 font-medium">{t.city} *</FormLabel>
                           <FormControl>
-                            <Input 
-                              {...field} 
-                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
-                              data-testid="input-city"
+                            <GooglePlacesAutocomplete
+                              value={field.value}
+                              onChange={(value, details) => {
+                                field.onChange(details?.city || value);
+                              }}
+                              onPlaceSelected={(place: PlaceDetails) => {
+                                if (place.city) field.onChange(place.city);
+                              }}
+                              label={t.city}
+                              placeholder={isHebrew ? 'הקלד עיר או כתובת...' : 'Start typing your city or address...'}
+                              required
+                              country={['il']}
+                              error={form.formState.errors.city?.message}
+                              className="[&_label]:text-gray-300 [&_label]:font-medium [&_input]:h-12 [&_input]:bg-slate-800/50 [&_input]:border-slate-600 [&_input]:text-white [&_input]:placeholder:text-slate-500 [&_input]:focus:border-amber-500 [&_input]:focus:ring-amber-500/20 [&_input]:rounded-xl"
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
                         </FormItem>
                       )}
                     />
