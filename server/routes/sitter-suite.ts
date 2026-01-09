@@ -81,10 +81,13 @@ router.get('/sitters', async (req, res) => {
 
 /**
  * GET /api/sitter-suite/sitters/:id - Get sitter profile
+ * Supports both numeric ID (internal) and string userId (Firebase UID / provider ID)
  */
 router.get('/sitters/:id', async (req, res) => {
   try {
-    const sitterId = parseInt(req.params.id);
+    const idParam = req.params.id;
+    const numericId = parseInt(idParam);
+    const isNumeric = !isNaN(numericId) && String(numericId) === idParam;
     
     // SELECT only the columns that exist in our simplified schema
     const [sitter] = await db
@@ -107,7 +110,7 @@ router.get('/sitters/:id', async (req, res) => {
         createdAt: sitterProfiles.createdAt,
       })
       .from(sitterProfiles)
-      .where(eq(sitterProfiles.id, sitterId));
+      .where(isNumeric ? eq(sitterProfiles.id, numericId) : eq(sitterProfiles.userId, idParam));
     
     if (!sitter) {
       return res.status(404).json({ error: 'Sitter not found' });
@@ -123,7 +126,7 @@ router.get('/sitters/:id', async (req, res) => {
         createdAt: sitterReviews.createdAt,
       })
       .from(sitterReviews)
-      .where(eq(sitterReviews.sitterId, sitterId))
+      .where(eq(sitterReviews.sitterId, sitter.id))
       .orderBy(desc(sitterReviews.createdAt))
       .limit(10);
     

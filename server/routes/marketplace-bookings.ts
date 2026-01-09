@@ -6,12 +6,15 @@ import {
   bookingStatusHistory,
   escrowHoldings,
   providerRateCards,
+  providerAvailability,
   quoteRequests,
   pets,
+  sitterProfiles,
+  walkerProfiles,
   BOOKING_STATUS_TRANSITIONS,
   type BookingLifecycleStatus
 } from '@shared/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 import bookingLifecycleService from '../services/BookingLifecycleService';
@@ -391,69 +394,44 @@ router.get('/search/providers', async (req, res) => {
       serviceType,
       startDate,
       endDate,
-      lat,
-      lng,
-      radiusKm = 25,
-      petTypes,
       minRating = 0,
-      maxRate,
       page = 1,
       limit = 20
     } = req.query;
 
-    // Build search query with real-time availability check
     const offset = (Number(page) - 1) * Number(limit);
+    const platformStr = platform as string;
     
-    // Query providers with rate cards for the specified platform
-    const providers = await db.select({
-      providerId: providerRateCards.providerId,
-      platform: providerRateCards.platform,
-      serviceType: providerRateCards.serviceType,
-      baseRatePerNightCents: providerRateCards.baseRatePerNightCents,
-      baseRatePerHourCents: providerRateCards.baseRatePerHourCents,
-      additionalPetSurchargeCents: providerRateCards.additionalPetSurchargeCents,
-      weekendSurchargePercent: providerRateCards.weekendSurchargePercent,
-      holidaySurchargePercent: providerRateCards.holidaySurchargePercent,
-      maxPets: providerRateCards.maxPets,
-      acceptedPetTypes: providerRateCards.acceptedPetTypes,
-      addonsAvailable: providerRateCards.addonsAvailable,
-      instantBooking: providerRateCards.instantBooking,
-      cancellationPolicy: providerRateCards.cancellationPolicy,
-      location: providerRateCards.location,
-      profilePhotoUrl: providerRateCards.profilePhotoUrl,
-      displayName: providerRateCards.displayName,
-      bio: providerRateCards.bio,
-      averageRating: providerRateCards.averageRating,
-      totalReviews: providerRateCards.totalReviews,
-      isActive: providerRateCards.isActive,
-      createdAt: providerRateCards.createdAt,
-    })
-    .from(providerRateCards)
-    .where(
-      and(
-        platform ? eq(providerRateCards.platform, platform as string) : sql`true`,
-        serviceType ? eq(providerRateCards.serviceType, serviceType as string) : sql`true`,
-        eq(providerRateCards.isActive, true),
-        minRating ? gte(providerRateCards.averageRating, String(minRating)) : sql`true`
-      )
-    )
-    .limit(Number(limit))
-    .offset(offset);
+    // Build query with filters
+    let whereConditions = [eq(providerRateCards.isActive, true)];
+    if (platform) {
+      whereConditions.push(eq(providerRateCards.platform, platformStr));
+    }
+    if (serviceType) {
+      whereConditions.push(eq(providerRateCards.serviceType, serviceType as string));
+    }
 
-    // Check availability for each provider if dates provided
-    let availableProviders = providers;
+    // Fetch rate cards
+    const rateCards = await db.select()
+      .from(providerRateCards)
+      .where(and(...whereConditions))
+      .limit(Number(limit))
+      .offset(offset);
+
+    // Filter by availability if dates provided
+    let availableRateCards = rateCards;
     if (startDate && endDate) {
       const start = new Date(startDate as string);
       const end = new Date(endDate as string);
+      const providerIds = rateCards.map(rc => rc.providerId);
       
-      // Filter providers with available slots
-      const providerIds = providers.map(p => p.providerId);
       if (providerIds.length > 0) {
+        // Find providers unavailable during requested dates
         const unavailableProviders = await db.selectDistinct({ providerId: providerAvailability.providerId })
           .from(providerAvailability)
           .where(
             and(
-              sql`${providerAvailability.providerId} = ANY(${providerIds})`,
+              sql`${providerAvailability.providerId} IN (${sql.join(providerIds.map(id => sql`${id}`), sql`, `)})`,
               gte(providerAvailability.date, start),
               lte(providerAvailability.date, end),
               eq(providerAvailability.isAvailable, false)
@@ -461,48 +439,112 @@ router.get('/search/providers', async (req, res) => {
           );
         
         const unavailableIds = new Set(unavailableProviders.map(p => p.providerId));
-        availableProviders = providers.filter(p => !unavailableIds.has(p.providerId));
+        availableRateCards = rateCards.filter(rc => !unavailableIds.has(rc.providerId));
       }
     }
 
-    // Format response with pricing
-    const results = availableProviders.map(provider => ({
-      id: provider.providerId,
-      platform: provider.platform,
-      serviceType: provider.serviceType,
-      displayName: provider.displayName,
-      bio: provider.bio,
-      profilePhotoUrl: provider.profilePhotoUrl,
-      location: provider.location,
-      rating: provider.averageRating ? Number(provider.averageRating) : null,
-      reviewCount: provider.totalReviews || 0,
-      pricing: {
-        perNight: provider.baseRatePerNightCents ? (provider.baseRatePerNightCents / 100).toFixed(2) : null,
-        perHour: provider.baseRatePerHourCents ? (provider.baseRatePerHourCents / 100).toFixed(2) : null,
-        additionalPet: provider.additionalPetSurchargeCents ? (provider.additionalPetSurchargeCents / 100).toFixed(2) : null,
-        currency: 'ILS'
-      },
-      maxPets: provider.maxPets || 4,
-      acceptedPetTypes: provider.acceptedPetTypes || ['dog', 'cat'],
-      addons: provider.addonsAvailable || [],
-      instantBooking: provider.instantBooking || false,
-      cancellationPolicy: provider.cancellationPolicy || 'flexible',
-    }));
+    // Enrich with profile data based on platform
+    const providerIds = availableRateCards.map(rc => rc.providerId);
+    let profileMap = new Map<string, { displayName: string; bio: string | null; profilePhotoUrl: string | null; city: string | null; rating: number | null; reviewCount: number }>();
+    
+    if (providerIds.length > 0) {
+      if (platformStr === 'sitter_suite') {
+        const profiles = await db.select({
+          userId: sitterProfiles.userId,
+          firstName: sitterProfiles.firstName,
+          lastName: sitterProfiles.lastName,
+          bio: sitterProfiles.bio,
+          profilePhotoUrl: sitterProfiles.profilePictureUrl,
+          city: sitterProfiles.city,
+          rating: sitterProfiles.rating,
+          totalBookings: sitterProfiles.totalBookings,
+        })
+        .from(sitterProfiles)
+        .where(sql`${sitterProfiles.userId} IN (${sql.join(providerIds.map(id => sql`${id}`), sql`, `)})`);
+        
+        profiles.forEach(p => {
+          profileMap.set(p.userId, {
+            displayName: `${p.firstName} ${p.lastName}`,
+            bio: p.bio,
+            profilePhotoUrl: p.profilePhotoUrl,
+            city: p.city,
+            rating: p.rating ? parseFloat(p.rating) : null,
+            reviewCount: p.totalBookings || 0,
+          });
+        });
+      } else if (platformStr === 'walk_my_pet') {
+        const profiles = await db.select({
+          walkerId: walkerProfiles.walkerId,
+          firstName: walkerProfiles.firstName,
+          lastName: walkerProfiles.lastName,
+          bio: walkerProfiles.bio,
+          profilePhotoUrl: walkerProfiles.profilePictureUrl,
+          city: walkerProfiles.city,
+          rating: walkerProfiles.rating,
+          totalWalks: walkerProfiles.totalWalks,
+        })
+        .from(walkerProfiles)
+        .where(sql`${walkerProfiles.walkerId} IN (${sql.join(providerIds.map(id => sql`${id}`), sql`, `)})`);
+        
+        profiles.forEach(p => {
+          profileMap.set(p.walkerId, {
+            displayName: `${p.firstName} ${p.lastName}`,
+            bio: p.bio,
+            profilePhotoUrl: p.profilePhotoUrl,
+            city: p.city,
+            rating: p.rating ? parseFloat(p.rating) : null,
+            reviewCount: p.totalWalks || 0,
+          });
+        });
+      }
+    }
+
+    // Format response using actual rate card values enriched with profile data
+    const results = availableRateCards.map(provider => {
+      const profile = profileMap.get(provider.providerId);
+      return {
+        id: provider.providerId,
+        platform: provider.platform,
+        serviceType: provider.serviceType,
+        displayName: profile?.displayName || `Provider ${provider.providerId.slice(-4)}`,
+        bio: profile?.bio || null,
+        profilePhotoUrl: profile?.profilePhotoUrl || null,
+        location: profile?.city || null,
+        rating: profile?.rating || null,
+        reviewCount: profile?.reviewCount || 0,
+        pricing: {
+          perNight: provider.baseRatePerNightCents ? (provider.baseRatePerNightCents / 100).toFixed(2) : null,
+          perHour: provider.baseRatePerHourCents ? (provider.baseRatePerHourCents / 100).toFixed(2) : null,
+          additionalPet: provider.additionalPetSurchargeCents ? (provider.additionalPetSurchargeCents / 100).toFixed(2) : null,
+          currency: 'ILS'
+        },
+        maxPets: provider.maxPets || 4,
+        acceptedPetTypes: provider.enabledAddons || ['dog', 'cat'],
+        addons: provider.enabledAddons || [],
+        instantBooking: provider.minBookingHours === 0,
+        cancellationPolicy: 'flexible',
+      };
+    });
+
+    // Filter by minimum rating if specified
+    const filteredResults = Number(minRating) > 0 
+      ? results.filter(r => (r.rating || 0) >= Number(minRating))
+      : results;
 
     res.json({
       success: true,
-      providers: results,
+      providers: filteredResults,
       pagination: {
         page: Number(page),
         limit: Number(limit),
-        total: results.length,
-        hasMore: results.length === Number(limit)
+        total: filteredResults.length,
+        hasMore: filteredResults.length === Number(limit)
       },
       filters: { platform, serviceType, startDate, endDate, minRating }
     });
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Provider search error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    logger.error('[MarketplaceBookings] Provider search error', { error: error?.message || String(error) });
+    res.status(500).json({ success: false, error: error?.message || 'Search failed' });
   }
 });
 

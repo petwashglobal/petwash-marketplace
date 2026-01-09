@@ -95,6 +95,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Unified Talent Marketplace System 2026**: All-in-one marketplace system (`src/marketplace/petwash_talent_marketplace_system_2026.tsx`) covering 7 platforms (Sitter Suite, Walk My Pet, PetTrek, Wash Hubs, Paw Finder, K9000, Enterprise) with backend API registration, frontend React components, route wrappers, and QA validation.
 - **Pet Sitter Profile Pages**: Airbnb-style luxury profile component (`src/modules/pet-sitter/PetSitterProfilePage.tsx`) with hero gallery, services toggle, reviews, and booking card.
 - **Multi-Platform Marketplace View**: Unified marketplace page (`src/modules/platforms/PetWashTalentMarketplacePage.tsx`) showing contractors across all 7 platforms with color-coded branding, responsive grid layout, and demo profiles.
+- **MadPaws-Style Provider Search**: API at `/api/marketplace-bookings/search/providers` with real-time availability filtering (by date range), platform/service type filtering, rating filters, profile enrichment from sitterProfiles/walkerProfiles tables, and proper pagination. Frontend at `/sitter-suite/browse` displays provider cards with Hebrew names, bios, locations, and pricing.
 
 ## External Dependencies
 - **Database & ORM**: @neondatabase/serverless (PostgreSQL), drizzle-orm.

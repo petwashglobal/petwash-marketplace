@@ -7,24 +7,40 @@ import { useLocation } from "wouter";
 import { useSEO, pageSEO } from "@/lib/seo";
 import { useLanguage } from "@/lib/languageStore";
 import { MadPawsSearch, MadPawsProviderCard, MadPawsEmptyState, type SearchParams } from "@/components/marketplace/MadPawsSearch";
+import { format } from "date-fns";
 
-interface Sitter {
-  id: number;
-  userId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  city: string;
+interface Provider {
+  id: string;
+  platform: string;
+  serviceType: string;
+  displayName: string;
   bio: string;
-  yearsOfExperience: number;
-  pricePerDayCents: number;
-  profilePictureUrl: string | null;
-  rating: string;
-  totalBookings: number;
-  isActive: boolean;
-  isVerified: boolean;
-  createdAt: string;
+  profilePhotoUrl: string;
+  location: string;
+  rating: number | null;
+  reviewCount: number;
+  pricing: {
+    perNight: string | null;
+    perHour: string | null;
+    additionalPet: string | null;
+    currency: string;
+  };
+  maxPets: number;
+  acceptedPetTypes: string[];
+  addons: string[];
+  instantBooking: boolean;
+  cancellationPolicy: string;
+}
+
+interface SearchResponse {
+  success: boolean;
+  providers: Provider[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+  };
 }
 
 export default function BrowseSitters() {
@@ -34,14 +50,33 @@ export default function BrowseSitters() {
   const isHebrew = language === 'he';
   const [searchParams, setSearchParams] = useState<SearchParams | null>(null);
 
-  const { data, isLoading } = useQuery<Sitter[]>({
-    queryKey: ["/api/sitter-suite/sitters", searchParams?.location],
+  // Build query string for API
+  const buildQueryString = () => {
+    const params = new URLSearchParams();
+    params.set('platform', 'sitter_suite');
+    if (searchParams?.service) params.set('serviceType', searchParams.service);
+    if (searchParams?.startDate) params.set('startDate', format(searchParams.startDate, 'yyyy-MM-dd'));
+    if (searchParams?.endDate) params.set('endDate', format(searchParams.endDate, 'yyyy-MM-dd'));
+    if (searchParams?.petType) params.set('petTypes', searchParams.petType);
+    return params.toString();
+  };
+
+  const { data, isLoading, refetch } = useQuery<SearchResponse>({
+    queryKey: ["/api/marketplace-bookings/search/providers", searchParams],
+    queryFn: async () => {
+      const queryString = buildQueryString();
+      const response = await fetch(`/api/marketplace-bookings/search/providers?${queryString}`);
+      if (!response.ok) throw new Error('Failed to fetch providers');
+      return response.json();
+    },
+    enabled: true, // Always fetch to show available providers
   });
 
-  const sitters = data || [];
+  const providers = data?.providers || [];
 
   const handleSearch = (params: SearchParams) => {
     setSearchParams(params);
+    refetch();
   };
 
   return (
@@ -92,8 +127,8 @@ export default function BrowseSitters() {
                 {isHebrew ? 'שמרטפים זמינים' : 'Available Sitters'}
               </h2>
               <p className="text-gray-500 mt-1">
-                {sitters.length > 0 
-                  ? (isHebrew ? `${sitters.length} שמרטפים נמצאו` : `${sitters.length} sitters found`)
+                {providers.length > 0 
+                  ? (isHebrew ? `${providers.length} שמרטפים נמצאו` : `${providers.length} sitters found`)
                   : (isHebrew ? 'חפשו לפי מיקום ותאריכים' : 'Search by location and dates')
                 }
               </p>
@@ -111,7 +146,7 @@ export default function BrowseSitters() {
                 {isHebrew ? 'מחפשים שמרטפים מדהימים...' : 'Finding amazing sitters...'}
               </p>
             </div>
-          ) : sitters.length === 0 ? (
+          ) : providers.length === 0 ? (
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
               <div className="text-center py-12">
                 <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center">
@@ -193,35 +228,32 @@ export default function BrowseSitters() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {sitters.map((sitter) => {
-                const ratingNum = parseFloat(sitter.rating);
-                const priceInShekels = sitter.pricePerDayCents / 100;
+              {providers.map((provider) => {
+                const pricePerNight = provider.pricing.perNight ? parseFloat(provider.pricing.perNight) : 0;
                 
                 return (
                   <MadPawsProviderCard
-                    key={sitter.id}
-                    id={sitter.id}
-                    name={`${sitter.firstName} ${sitter.lastName}`}
-                    photo={sitter.profilePictureUrl}
-                    location={sitter.city}
-                    rating={ratingNum}
-                    reviewCount={sitter.totalBookings}
-                    price={priceInShekels}
-                    priceUnit="day"
-                    priceUnitHe="יום"
-                    verified={sitter.isVerified}
+                    key={provider.id}
+                    id={provider.id}
+                    name={provider.displayName || 'Provider'}
+                    photo={provider.profilePhotoUrl}
+                    location={provider.location || ''}
+                    rating={provider.rating || 0}
+                    reviewCount={provider.reviewCount}
+                    price={pricePerNight}
+                    priceUnit="night"
+                    priceUnitHe="לילה"
+                    verified={true}
                     theme="pink"
-                    specialties={[
-                      isHebrew ? `${sitter.yearsOfExperience} שנות ניסיון` : `${sitter.yearsOfExperience} years exp.`
-                    ]}
-                    onClick={() => setLocation(`/sitter-suite/sitters/${sitter.id}`)}
+                    specialties={provider.acceptedPetTypes?.slice(0, 2).map(t => t === 'dog' ? (isHebrew ? 'כלבים' : 'Dogs') : t === 'cat' ? (isHebrew ? 'חתולים' : 'Cats') : t) || []}
+                    onClick={() => setLocation(`/sitter-suite/sitters/${provider.id}`)}
                   />
                 );
               })}
             </div>
           )}
 
-          {sitters.length > 0 && (
+          {providers.length > 0 && (
             <div className="text-center mt-12">
               <Button 
                 variant="outline" 
