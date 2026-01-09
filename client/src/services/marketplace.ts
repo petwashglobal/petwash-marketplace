@@ -49,7 +49,7 @@ export function useProviderDetails(
   id: string | number
 ) {
   return useQuery<{ provider: MarketplaceProvider }>({
-    queryKey: ['/api/marketplace/provider', platform, id],
+    queryKey: [`/api/marketplace/provider/${platform}/${id}`],
     enabled: !!platform && !!id,
     staleTime: 1000 * 60 * 10, // Cache for 10 minutes
   });
@@ -151,7 +151,7 @@ export function useSubmitReview() {
     onSuccess: (_, variables) => {
       // Invalidate provider details cache to show new review
       queryClient.invalidateQueries({
-        queryKey: ['/api/marketplace/provider', variables.platform, variables.providerId],
+        queryKey: [`/api/marketplace/provider/${variables.platform}/${variables.providerId}`],
       });
       // Invalidate reviews cache
       queryClient.invalidateQueries({ queryKey: ['/api/reviews'] });
@@ -171,7 +171,7 @@ export function useProviderReviews(
   providerId: number | string
 ) {
   return useQuery({
-    queryKey: ['/api/reviews', platform, providerId],
+    queryKey: [`/api/reviews/${platform}/${providerId}`],
     enabled: !!platform && !!providerId,
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
@@ -185,7 +185,7 @@ export function useProviderReviews(
  */
 export function useProviderEarnings(providerId: number) {
   return useQuery({
-    queryKey: ['/api/providers/earnings', providerId],
+    queryKey: [`/api/providers/earnings/${providerId}`],
     enabled: !!providerId,
     staleTime: 1000 * 60 * 1, // Cache for 1 minute (earnings should be fresh)
   });
