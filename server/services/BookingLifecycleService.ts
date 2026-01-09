@@ -150,6 +150,23 @@ class BookingLifecycleService {
     }
 
     const card = rateCard[0];
+    
+    // Validate dates
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error('Invalid date format provided');
+    }
+    if (endDate <= startDate) {
+      throw new Error('End date must be after start date');
+    }
+    
+    // Validate pet count
+    if (petCount < 1) {
+      throw new Error('At least 1 pet is required');
+    }
+    if (petCount > 10) {
+      throw new Error('Maximum 10 pets per booking');
+    }
+
     const nights = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     const hours = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60));
 
