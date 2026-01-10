@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import type { MarketplacePlatformId } from '@shared/schema';
 import { BookingCalendar } from '@/components/marketplace/BookingCalendar';
+import { CreditWalletCard } from '@/components/wallet/CreditWalletCard';
 
 interface BookingStep {
   id: number;
@@ -685,6 +686,18 @@ export default function MarketplaceBookingFlow() {
                       </div>
                     )}
                   </div>
+
+                  {/* Credit Wallet Integration */}
+                  {user && quoteData && (
+                    <div className="mb-6">
+                      <CreditWalletCard
+                        userId={user.uid}
+                        platform={platform as 'walker' | 'sitter' | 'pettrek' | 'k9000' | 'plush_lab'}
+                        transactionAmountCents={quoteData.totalCents}
+                        compact={false}
+                      />
+                    </div>
+                  )}
 
                   {/* Payment Button */}
                   <div className="space-y-4">

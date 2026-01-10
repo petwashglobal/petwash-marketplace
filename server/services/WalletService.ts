@@ -13,7 +13,7 @@ import {
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import crypto from 'crypto';
-import { logger } from '../logger';
+import { logger } from '../lib/logger';
 
 const WALLET_SECRET = process.env.WALLET_LINK_SECRET || 'petwash-wallet-secret-2025';
 

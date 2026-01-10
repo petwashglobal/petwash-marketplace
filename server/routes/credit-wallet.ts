@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { walletService } from '../services/WalletService';
-import { logger } from '../logger';
+import { logger } from '../lib/logger';
 import { z } from 'zod';
 
 const router = Router();
