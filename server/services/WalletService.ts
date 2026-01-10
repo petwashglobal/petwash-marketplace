@@ -247,7 +247,218 @@ class WalletService {
     };
   }
 
-  async confirmRedemption(sessionId: string, paymentConfirmed: boolean = false): Promise<boolean> {
+  async confirmRedemption(sessionId: string, paymentConfirmed: boolean = false, idempotencyKey?: string): Promise<boolean> {
+    // Use raw SQL transaction with row-level locking to prevent race conditions
+    const result = await db.execute(sql`
+      WITH session_check AS (
+        SELECT * FROM redemption_sessions 
+        WHERE session_id = ${sessionId}
+        FOR UPDATE NOWAIT
+      )
+      SELECT * FROM session_check
+    `).catch(() => null);
+
+    if (!result || result.rows.length === 0) {
+      throw new Error('Redemption session not found or locked by another process');
+    }
+
+    const session = result.rows[0] as any;
+
+    // IDEMPOTENCY: Already completed sessions return success
+    if (session.status === 'completed') {
+      logger.info('[Wallet] Idempotent confirmation - already completed', { sessionId });
+      return true;
+    }
+
+    if (session.status === 'expired' || session.status === 'cancelled') {
+      throw new Error(`Session is ${session.status}`);
+    }
+
+    // Check expiry
+    if (new Date(session.expires_at) < new Date()) {
+      await db.update(redemptionSessions)
+        .set({ status: 'expired', updatedAt: new Date() })
+        .where(eq(redemptionSessions.sessionId, sessionId));
+      throw new Error('Session expired');
+    }
+
+    // Cash payment validation
+    if ((session.cash_due_cents || 0) > 0 && !paymentConfirmed) {
+      throw new Error('Cash payment required but not confirmed');
+    }
+
+    // Get wallet with row lock for atomic balance updates
+    const walletResult = await db.execute(sql`
+      SELECT * FROM wallet_accounts 
+      WHERE wallet_id = ${session.wallet_id}
+      FOR UPDATE
+    `);
+
+    if (walletResult.rows.length === 0) {
+      throw new Error('Wallet not found');
+    }
+
+    const wallet = walletResult.rows[0] as any;
+
+    // RE-VALIDATE BALANCES: Ensure sufficient credits haven't changed since preview
+    const egiftRequired = session.egift_applied_cents || 0;
+    const washRequired = session.wash_packages_applied || 0;
+    const loyaltyCentsRequired = session.loyalty_points_applied || 0;
+    const promoRequired = session.promo_applied_cents || 0;
+
+    const egiftAvailable = wallet.egift_balance_cents || 0;
+    const washAvailable = wallet.wash_package_credits || 0;
+    const loyaltyPointsAvailable = wallet.loyalty_points_balance || 0;
+    const promoAvailable = wallet.promo_balance_cents || 0;
+
+    // Convert loyalty cents to points for comparison
+    const loyaltyPointsRequired = Math.ceil(loyaltyCentsRequired / 10);
+
+    // NEGATIVE BALANCE PREVENTION: Check each credit type
+    if (egiftRequired > egiftAvailable) {
+      logger.warn('[Wallet] Insufficient e-gift balance', { 
+        sessionId, required: egiftRequired, available: egiftAvailable 
+      });
+      throw new Error(`Insufficient e-gift balance: need ${egiftRequired}, have ${egiftAvailable}`);
+    }
+    if (washRequired > washAvailable) {
+      logger.warn('[Wallet] Insufficient wash package credits', { 
+        sessionId, required: washRequired, available: washAvailable 
+      });
+      throw new Error(`Insufficient wash packages: need ${washRequired}, have ${washAvailable}`);
+    }
+    if (loyaltyPointsRequired > loyaltyPointsAvailable) {
+      logger.warn('[Wallet] Insufficient loyalty points', { 
+        sessionId, required: loyaltyPointsRequired, available: loyaltyPointsAvailable 
+      });
+      throw new Error(`Insufficient loyalty points: need ${loyaltyPointsRequired}, have ${loyaltyPointsAvailable}`);
+    }
+    if (promoRequired > promoAvailable) {
+      logger.warn('[Wallet] Insufficient promo balance', { 
+        sessionId, required: promoRequired, available: promoAvailable 
+      });
+      throw new Error(`Insufficient promo balance: need ${promoRequired}, have ${promoAvailable}`);
+    }
+
+    // Calculate new balances
+    const newEgiftBalance = egiftAvailable - egiftRequired;
+    const newWashBalance = washAvailable - washRequired;
+    const newLoyaltyBalance = loyaltyPointsAvailable - loyaltyPointsRequired;
+    const newPromoBalance = Math.max(0, promoAvailable - promoRequired);
+
+    // Create transaction records for audit trail
+    const transactions: any[] = [];
+    const now = new Date();
+
+    if (egiftRequired > 0) {
+      transactions.push({
+        transactionId: `TXN-${nanoid(12).toUpperCase()}`,
+        walletId: session.wallet_id,
+        creditType: 'egift',
+        transactionType: 'redeem',
+        amountCents: -egiftRequired,
+        balanceAfterCents: newEgiftBalance,
+        redemptionSessionId: sessionId,
+        platform: session.platform,
+        bookingId: session.booking_id,
+        description: `E-gift redeemed for ${session.platform} service`,
+        initiatedBy: 'system',
+      });
+    }
+
+    if (washRequired > 0) {
+      transactions.push({
+        transactionId: `TXN-${nanoid(12).toUpperCase()}`,
+        walletId: session.wallet_id,
+        creditType: 'wash_package',
+        transactionType: 'redeem',
+        amountUnits: -washRequired,
+        balanceAfterUnits: newWashBalance,
+        redemptionSessionId: sessionId,
+        platform: session.platform,
+        bookingId: session.booking_id,
+        description: `Wash package redeemed at ${session.station_id || 'station'}`,
+        initiatedBy: 'system',
+      });
+    }
+
+    if (loyaltyPointsRequired > 0) {
+      transactions.push({
+        transactionId: `TXN-${nanoid(12).toUpperCase()}`,
+        walletId: session.wallet_id,
+        creditType: 'loyalty_points',
+        transactionType: 'redeem',
+        amountUnits: -loyaltyPointsRequired,
+        balanceAfterUnits: newLoyaltyBalance,
+        redemptionSessionId: sessionId,
+        platform: session.platform,
+        bookingId: session.booking_id,
+        description: `Loyalty points redeemed (${loyaltyCentsRequired} agorot value)`,
+        initiatedBy: 'system',
+      });
+    }
+
+    if (promoRequired > 0) {
+      transactions.push({
+        transactionId: `TXN-${nanoid(12).toUpperCase()}`,
+        walletId: session.wallet_id,
+        creditType: 'promo_credit',
+        transactionType: 'redeem',
+        amountCents: -promoRequired,
+        balanceAfterCents: newPromoBalance,
+        redemptionSessionId: sessionId,
+        platform: session.platform,
+        bookingId: session.booking_id,
+        description: `Promo credit redeemed for ${session.platform} service`,
+        initiatedBy: 'system',
+      });
+    }
+
+    // Insert all transactions atomically
+    if (transactions.length > 0) {
+      await db.insert(creditTransactions).values(transactions);
+    }
+
+    // Update wallet balances atomically
+    await db.update(walletAccounts)
+      .set({
+        egiftBalanceCents: newEgiftBalance,
+        washPackageCredits: newWashBalance,
+        loyaltyPointsBalance: newLoyaltyBalance,
+        promoBalanceCents: newPromoBalance,
+        updatedAt: now,
+        lastActivityAt: now,
+      })
+      .where(eq(walletAccounts.walletId, session.wallet_id));
+
+    // Mark session as completed
+    await db.update(redemptionSessions)
+      .set({ 
+        status: 'completed', 
+        completedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(redemptionSessions.sessionId, sessionId));
+
+    logger.info('[Wallet] Redemption confirmed with balance validation', { 
+      sessionId, 
+      walletId: session.wallet_id,
+      creditsDeducted: {
+        egift: egiftRequired,
+        washPackages: washRequired,
+        loyaltyPoints: loyaltyPointsRequired,
+        promo: promoRequired,
+      }
+    });
+
+    return true;
+  }
+
+  async refundRedemption(
+    sessionId: string, 
+    reason: string,
+    initiatedBy: string = 'system'
+  ): Promise<boolean> {
     const [session] = await db.select()
       .from(redemptionSessions)
       .where(eq(redemptionSessions.sessionId, sessionId))
@@ -257,23 +468,8 @@ class WalletService {
       throw new Error('Redemption session not found');
     }
 
-    if (session.status === 'completed') {
-      return true;
-    }
-
-    if (session.status === 'expired' || session.status === 'cancelled') {
-      throw new Error(`Session is ${session.status}`);
-    }
-
-    if (new Date(session.expiresAt) < new Date()) {
-      await db.update(redemptionSessions)
-        .set({ status: 'expired', updatedAt: new Date() })
-        .where(eq(redemptionSessions.sessionId, sessionId));
-      throw new Error('Session expired');
-    }
-
-    if ((session.cashDueCents || 0) > 0 && !paymentConfirmed) {
-      throw new Error('Cash payment required but not confirmed');
+    if (session.status !== 'completed') {
+      throw new Error(`Cannot refund session with status: ${session.status}`);
     }
 
     const [wallet] = await db.select()
@@ -285,98 +481,143 @@ class WalletService {
       throw new Error('Wallet not found');
     }
 
-    const updates: Partial<typeof walletAccounts.$inferInsert> = {
-      updatedAt: new Date(),
-      lastActivityAt: new Date(),
-    };
+    const now = new Date();
+    const refundTransactions: any[] = [];
 
+    // Restore e-gift
     if ((session.egiftAppliedCents || 0) > 0) {
-      updates.egiftBalanceCents = (wallet.egiftBalanceCents || 0) - (session.egiftAppliedCents || 0);
-      
-      await db.insert(creditTransactions).values({
+      const newBalance = (wallet.egiftBalanceCents || 0) + (session.egiftAppliedCents || 0);
+      refundTransactions.push({
         transactionId: `TXN-${nanoid(12).toUpperCase()}`,
         walletId: session.walletId,
         creditType: 'egift',
-        transactionType: 'redeem',
-        amountCents: -(session.egiftAppliedCents || 0),
-        balanceAfterCents: updates.egiftBalanceCents,
+        transactionType: 'refund',
+        amountCents: session.egiftAppliedCents,
+        balanceAfterCents: newBalance,
         redemptionSessionId: sessionId,
         platform: session.platform,
         bookingId: session.bookingId,
-        description: `E-gift redeemed for ${session.platform} service`,
-        initiatedBy: 'system',
+        description: `E-gift refunded: ${reason}`,
+        initiatedBy,
       });
+      await db.update(walletAccounts)
+        .set({ egiftBalanceCents: newBalance, updatedAt: now })
+        .where(eq(walletAccounts.walletId, session.walletId));
     }
 
+    // Restore wash packages
     if ((session.washPackagesApplied || 0) > 0) {
-      updates.washPackageCredits = (wallet.washPackageCredits || 0) - (session.washPackagesApplied || 0);
-      
-      await db.insert(creditTransactions).values({
+      const newBalance = (wallet.washPackageCredits || 0) + (session.washPackagesApplied || 0);
+      refundTransactions.push({
         transactionId: `TXN-${nanoid(12).toUpperCase()}`,
         walletId: session.walletId,
         creditType: 'wash_package',
-        transactionType: 'redeem',
-        amountUnits: -(session.washPackagesApplied || 0),
-        balanceAfterUnits: updates.washPackageCredits,
+        transactionType: 'refund',
+        amountUnits: session.washPackagesApplied,
+        balanceAfterUnits: newBalance,
         redemptionSessionId: sessionId,
         platform: session.platform,
         bookingId: session.bookingId,
-        description: `Wash package redeemed at ${session.stationId || 'station'}`,
-        initiatedBy: 'system',
+        description: `Wash package refunded: ${reason}`,
+        initiatedBy,
       });
+      await db.update(walletAccounts)
+        .set({ washPackageCredits: newBalance, updatedAt: now })
+        .where(eq(walletAccounts.walletId, session.walletId));
     }
 
+    // Restore loyalty points
     if ((session.loyaltyPointsApplied || 0) > 0) {
-      // loyaltyPointsApplied is in cents, convert back to points (1 point = 10 cents)
-      const pointsToDeduct = Math.ceil((session.loyaltyPointsApplied || 0) / 10);
-      updates.loyaltyPointsBalance = (wallet.loyaltyPointsBalance || 0) - pointsToDeduct;
-      
-      await db.insert(creditTransactions).values({
+      const pointsToRestore = Math.ceil((session.loyaltyPointsApplied || 0) / 10);
+      const newBalance = (wallet.loyaltyPointsBalance || 0) + pointsToRestore;
+      refundTransactions.push({
         transactionId: `TXN-${nanoid(12).toUpperCase()}`,
         walletId: session.walletId,
         creditType: 'loyalty_points',
-        transactionType: 'redeem',
-        amountUnits: -pointsToDeduct,
-        balanceAfterUnits: updates.loyaltyPointsBalance,
+        transactionType: 'refund',
+        amountUnits: pointsToRestore,
+        balanceAfterUnits: newBalance,
         redemptionSessionId: sessionId,
         platform: session.platform,
         bookingId: session.bookingId,
-        description: `Loyalty points redeemed (${session.loyaltyPointsApplied} ILS value)`,
-        initiatedBy: 'system',
+        description: `Loyalty points refunded: ${reason}`,
+        initiatedBy,
       });
+      await db.update(walletAccounts)
+        .set({ loyaltyPointsBalance: newBalance, updatedAt: now })
+        .where(eq(walletAccounts.walletId, session.walletId));
     }
 
+    // Restore promo credits
     if ((session.promoAppliedCents || 0) > 0) {
-      updates.promoBalanceCents = Math.max(0, (wallet.promoBalanceCents || 0) - (session.promoAppliedCents || 0));
-      
-      await db.insert(creditTransactions).values({
+      const newBalance = (wallet.promoBalanceCents || 0) + (session.promoAppliedCents || 0);
+      refundTransactions.push({
         transactionId: `TXN-${nanoid(12).toUpperCase()}`,
         walletId: session.walletId,
         creditType: 'promo_credit',
-        transactionType: 'redeem',
-        amountCents: -(session.promoAppliedCents || 0),
-        balanceAfterCents: updates.promoBalanceCents,
+        transactionType: 'refund',
+        amountCents: session.promoAppliedCents,
+        balanceAfterCents: newBalance,
         redemptionSessionId: sessionId,
         platform: session.platform,
         bookingId: session.bookingId,
-        description: `Promo credit redeemed for ${session.platform} service`,
-        initiatedBy: 'system',
+        description: `Promo credit refunded: ${reason}`,
+        initiatedBy,
       });
+      await db.update(walletAccounts)
+        .set({ promoBalanceCents: newBalance, updatedAt: now })
+        .where(eq(walletAccounts.walletId, session.walletId));
     }
 
-    await db.update(walletAccounts)
-      .set(updates)
-      .where(eq(walletAccounts.walletId, session.walletId));
+    // Insert refund transaction records
+    if (refundTransactions.length > 0) {
+      await db.insert(creditTransactions).values(refundTransactions);
+    }
+
+    // Update session status to refunded
+    await db.update(redemptionSessions)
+      .set({ 
+        status: 'refunded' as any,
+        updatedAt: now,
+      })
+      .where(eq(redemptionSessions.sessionId, sessionId));
+
+    logger.info('[Wallet] Redemption refunded', { 
+      sessionId, 
+      walletId: session.walletId, 
+      reason,
+      creditsRestored: refundTransactions.length,
+    });
+
+    return true;
+  }
+
+  async cancelSession(sessionId: string): Promise<boolean> {
+    const [session] = await db.select()
+      .from(redemptionSessions)
+      .where(eq(redemptionSessions.sessionId, sessionId))
+      .limit(1);
+
+    if (!session) {
+      throw new Error('Redemption session not found');
+    }
+
+    if (session.status === 'completed') {
+      throw new Error('Cannot cancel completed session - use refund instead');
+    }
+
+    if (session.status === 'cancelled' || session.status === 'expired') {
+      return true; // Already cancelled/expired
+    }
 
     await db.update(redemptionSessions)
       .set({ 
-        status: 'completed', 
-        completedAt: new Date(),
+        status: 'cancelled',
         updatedAt: new Date(),
       })
       .where(eq(redemptionSessions.sessionId, sessionId));
 
-    logger.info('[Wallet] Redemption confirmed', { sessionId, walletId: session.walletId });
+    logger.info('[Wallet] Session cancelled', { sessionId });
     return true;
   }
 

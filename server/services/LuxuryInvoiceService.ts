@@ -35,6 +35,17 @@ interface LineItem {
   operationCode?: string; // קוד פעולה
 }
 
+interface CreditBreakdown {
+  egiftCents: number;
+  washPackages: number;
+  loyaltyPointsCents: number;
+  promoCents: number;
+  referralCents: number;
+  totalCreditsAppliedCents: number;
+  cashPaidCents: number;
+  redemptionSessionId?: string;
+}
+
 interface InvoiceData {
   invoiceNumber: string;
   invoiceDate: string;
@@ -47,6 +58,9 @@ interface InvoiceData {
   notesHe?: string;
   paymentMethod?: string;
   transactionId?: string;
+  creditBreakdown?: CreditBreakdown;
+  bookingId?: string;
+  platform?: 'walker' | 'sitter' | 'pettrek' | 'k9000' | 'plush_lab';
 }
 
 const COMPANY_DETAILS: CompanyDetails = {
@@ -517,10 +531,55 @@ class LuxuryInvoiceService {
         ` : ''}
       </div>
       
+      ${data.creditBreakdown && data.creditBreakdown.totalCreditsAppliedCents > 0 ? `
+      <div class="credit-breakdown" style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 12px; border-right: 4px solid #10b981;">
+        <div style="font-weight: bold; color: #047857; margin-bottom: 10px; font-size: 1.1em;">
+          💳 פירוט זיכויים ששימשו לתשלום
+        </div>
+        ${data.creditBreakdown.egiftCents > 0 ? `
+        <div class="total-row" style="display: flex; justify-content: space-between; padding: 5px 0;">
+          <span>🎁 כרטיס מתנה:</span>
+          <span style="color: #059669;">-₪${(data.creditBreakdown.egiftCents / 100).toFixed(2)}</span>
+        </div>` : ''}
+        ${data.creditBreakdown.washPackages > 0 ? `
+        <div class="total-row" style="display: flex; justify-content: space-between; padding: 5px 0;">
+          <span>🚿 חבילות שטיפה:</span>
+          <span style="color: #059669;">${data.creditBreakdown.washPackages} חבילות</span>
+        </div>` : ''}
+        ${data.creditBreakdown.loyaltyPointsCents > 0 ? `
+        <div class="total-row" style="display: flex; justify-content: space-between; padding: 5px 0;">
+          <span>⭐ נקודות נאמנות:</span>
+          <span style="color: #059669;">-₪${(data.creditBreakdown.loyaltyPointsCents / 100).toFixed(2)}</span>
+        </div>` : ''}
+        ${data.creditBreakdown.promoCents > 0 ? `
+        <div class="total-row" style="display: flex; justify-content: space-between; padding: 5px 0;">
+          <span>🏷️ זיכוי מבצע:</span>
+          <span style="color: #059669;">-₪${(data.creditBreakdown.promoCents / 100).toFixed(2)}</span>
+        </div>` : ''}
+        ${data.creditBreakdown.referralCents > 0 ? `
+        <div class="total-row" style="display: flex; justify-content: space-between; padding: 5px 0;">
+          <span>👥 זיכוי הפניות:</span>
+          <span style="color: #059669;">-₪${(data.creditBreakdown.referralCents / 100).toFixed(2)}</span>
+        </div>` : ''}
+        <div style="border-top: 1px solid #10b981; margin-top: 10px; padding-top: 10px; font-weight: bold;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>סה"כ זיכויים:</span>
+            <span style="color: #059669;">-₪${(data.creditBreakdown.totalCreditsAppliedCents / 100).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+      
       <div class="grand-total">
         <span class="grand-total-label">סה"כ לתשלום:</span>
-        <span class="grand-total-value">₪${totals.total.toFixed(2)}</span>
+        <span class="grand-total-value">₪${data.creditBreakdown ? (data.creditBreakdown.cashPaidCents / 100).toFixed(2) : totals.total.toFixed(2)}</span>
       </div>
+      
+      ${data.creditBreakdown && data.creditBreakdown.totalCreditsAppliedCents > 0 ? `
+      <div style="text-align: center; margin-top: 10px; padding: 8px; background: #ecfdf5; border-radius: 8px; color: #047857; font-size: 0.9em;">
+        💰 חסכת ₪${(data.creditBreakdown.totalCreditsAppliedCents / 100).toFixed(2)} בהזמנה זו באמצעות זיכויים!
+      </div>
+      ` : ''}
       
       ${data.notesHe || data.notes ? `
       <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border-right: 4px solid #667eea;">
