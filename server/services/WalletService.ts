@@ -89,7 +89,8 @@ class WalletService {
   async getWalletSummary(userId: string): Promise<WalletSummary> {
     const wallet = await this.getOrCreateWallet(userId);
     
-    const loyaltyPointsValueCents = Math.floor((wallet.loyaltyPointsBalance || 0) / 10);
+    // 1 loyalty point = 0.1 ILS = 10 agorot/cents
+    const loyaltyPointsValueCents = (wallet.loyaltyPointsBalance || 0) * 10;
     
     return {
       walletId: wallet.walletId,
@@ -143,10 +144,12 @@ class WalletService {
       }
 
       if (remainingAmount > 0 && (wallet.loyaltyPointsBalance || 0) > 0) {
+        // Max 20% of transaction can be covered by loyalty points
         const maxLoyaltyDiscount = Math.floor(requestedAmountCents * 0.2);
-        const loyaltyValueAvailable = Math.floor((wallet.loyaltyPointsBalance || 0) / 10);
+        // 1 loyalty point = 0.1 ILS = 10 agorot/cents
+        const loyaltyValueAvailableCents = (wallet.loyaltyPointsBalance || 0) * 10;
         loyaltyPointsApplicable = Math.min(
-          Math.min(loyaltyValueAvailable, remainingAmount),
+          Math.min(loyaltyValueAvailableCents, remainingAmount),
           maxLoyaltyDiscount
         );
         remainingAmount -= loyaltyPointsApplicable;
@@ -324,7 +327,8 @@ class WalletService {
     }
 
     if ((session.loyaltyPointsApplied || 0) > 0) {
-      const pointsToDeduct = (session.loyaltyPointsApplied || 0) * 10;
+      // loyaltyPointsApplied is in cents, convert back to points (1 point = 10 cents)
+      const pointsToDeduct = Math.ceil((session.loyaltyPointsApplied || 0) / 10);
       updates.loyaltyPointsBalance = (wallet.loyaltyPointsBalance || 0) - pointsToDeduct;
       
       await db.insert(creditTransactions).values({

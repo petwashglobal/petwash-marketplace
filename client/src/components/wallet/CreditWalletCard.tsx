@@ -113,6 +113,13 @@ export function CreditWalletCard({
 
   const { data: previewData, isLoading: previewLoading } = useQuery<{ success: boolean; preview: CreditPreview }>({
     queryKey: ['/api/credit-wallet/preview', platform, transactionAmountCents],
+    queryFn: async () => {
+      const res = await apiRequest('POST', '/api/credit-wallet/preview', {
+        requestedAmountCents: transactionAmountCents,
+        platform,
+      });
+      return res.json();
+    },
     enabled: !!platform && !!transactionAmountCents && (transactionAmountCents > 0),
     staleTime: 10000,
   });
@@ -228,7 +235,7 @@ export function CreditWalletCard({
               icon={<Star className="w-4 h-4" />}
               label="Loyalty Points"
               value={`${wallet.loyaltyPointsBalance.toLocaleString()} pts`}
-              subtitle={`≈ ${formatCurrency(Math.floor(wallet.loyaltyPointsBalance / 10))}`}
+              subtitle={`≈ ${formatCurrency(wallet.loyaltyPointsBalance * 10)}`}
               color="text-amber-400"
             />
             <CreditItem

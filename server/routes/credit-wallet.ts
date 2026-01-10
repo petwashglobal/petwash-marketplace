@@ -133,11 +133,19 @@ router.get('/transactions', async (req, res) => {
 
 router.post('/credits/add', async (req, res) => {
   try {
+    // SECURITY: Only admin can add credits to wallets
     const adminId = req.headers['x-admin-id'] as string;
-    const userId = req.body.userId;
+    const isInternalRequest = req.headers['x-internal-service'] === 'petwash-backend';
     
-    if (!adminId && !userId) {
-      return res.status(401).json({ success: false, error: 'Admin or user ID required' });
+    if (!adminId && !isInternalRequest) {
+      logger.warn('[Credit Wallet] Unauthorized credit add attempt', { 
+        ip: req.ip, 
+        body: req.body 
+      });
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Admin authorization required to add credits' 
+      });
     }
 
     const parsed = addCreditsSchema.safeParse(req.body);
@@ -146,7 +154,11 @@ router.post('/credits/add', async (req, res) => {
     }
 
     const { creditType, amount, sourceType, sourceId, description } = parsed.data;
-    const targetUserId = userId || (req.headers['x-user-id'] as string);
+    const targetUserId = req.body.userId;
+    
+    if (!targetUserId) {
+      return res.status(400).json({ success: false, error: 'Target userId required' });
+    }
     
     await walletService.addCredits(
       targetUserId,
@@ -156,6 +168,13 @@ router.post('/credits/add', async (req, res) => {
       sourceId,
       description
     );
+    
+    logger.info('[Credit Wallet] Credits added by admin', { 
+      adminId: adminId || 'internal-service',
+      targetUserId,
+      creditType,
+      amount 
+    });
     
     res.json({ success: true, message: 'Credits added successfully' });
   } catch (error: any) {
