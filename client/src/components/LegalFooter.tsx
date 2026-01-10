@@ -63,7 +63,7 @@ export function LegalFooter({ language }: LegalFooterProps) {
 ### 7. פרטי קשר
 לשאלות בנושא פרטיות: privacy@petwash.co.il
 
-PetWash Ltd • רח' החושן 2, כפר סבא • מס' ח.פ: 516472319
+פט וואש בע"מ • רחוב עוזי חיטמן 2, ראש העין • מס' ח.פ: 517145033
       `,
     },
     en: {
@@ -108,7 +108,7 @@ The website uses Cookies to improve user experience, analytics (Google Analytics
 ### 7. Contact
 For privacy questions: privacy@petwash.co.il
 
-PetWash Ltd • 2 HaChoshen St, Kfar Saba • Company ID: 516472319
+PetWash Ltd • 2 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
       `,
     },
   };
@@ -154,9 +154,9 @@ PetWash Ltd לא תהיה אחראית לנזקים עקיפים או תוצאת
 אנו שומרים את הזכות לשנות תנאים אלה בכל עת. שינויים יכנסו לתוקף מיידית עם פרסומם באתר.
 
 ### 8. סמכות שיפוט
-תנאים אלה כפופים לחוקי מדינת ישראל. סמכות השיפוט הבלעדית נתונה לבתי המשפט בכפר סבא.
+תנאים אלה כפופים לחוקי מדינת ישראל. סמכות השיפוט הבלעדית נתונה לבתי המשפט בראש העין או ברמלה.
 
-PetWash Ltd • רח' החושן 2, כפר סבא • מס' ח.פ: 516472319
+פט וואש בע"מ • רחוב עוזי חיטמן 2, ראש העין • מס' ח.פ: 517145033
       `,
     },
     en: {
@@ -199,9 +199,9 @@ All website content is property of PetWash Ltd and protected by copyright.
 We reserve the right to modify these terms at any time. Changes take effect immediately upon posting.
 
 ### 8. Jurisdiction
-These terms are governed by Israeli law. Exclusive jurisdiction lies with the courts of Kfar Saba.
+These terms are governed by Israeli law. Exclusive jurisdiction lies with the courts of Rosh HaAyin or Ramla.
 
-PetWash Ltd • 2 HaChoshen St, Kfar Saba • Company ID: 516472319
+PetWash Ltd • 2 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
       `,
     },
   };
@@ -249,7 +249,7 @@ PetWash Ltd • 2 HaChoshen St, Kfar Saba • Company ID: 516472319
 
 **שימו לב:** שירותי PetWash™ מיועדים לשטיפה וטיפול בסיסי בחיות מחמד בלבד. למקרי חירום וטרינריים, פנו לוטרינר בהקדם.
 
-PetWash Ltd • רח' החושן 2, כפר סבא • מס' ח.פ: 516472319  
+פט וואש בע"מ • רחוב עוזי חיטמן 2, ראש העין • מס' ח.פ: 517145033  
 טלפון תמיכה: 1-700-700-PET (738)
       `,
     },
@@ -295,7 +295,7 @@ Use of PetWash™ services is at the user's sole risk.
 
 **Note:** PetWash™ services are intended for basic pet washing and care only. For veterinary emergencies, contact a veterinarian immediately.
 
-PetWash Ltd • 2 HaChoshen St, Kfar Saba • Company ID: 516472319  
+PetWash Ltd • 2 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033  
 Support Phone: 1-700-700-PET (738)
       `,
     },
