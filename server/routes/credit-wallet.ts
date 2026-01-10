@@ -312,4 +312,167 @@ router.post('/nayax/acknowledge', async (req, res) => {
   }
 });
 
+const adminInjectSchema = z.object({
+  targetUserId: z.string().min(1),
+  creditType: z.enum(['egift', 'wash_package', 'loyalty_points', 'promo_credit', 'referral_credit']),
+  amount: z.number().min(1),
+  reason: z.string().min(10),
+  expiresAt: z.string().datetime().optional(),
+  ticketId: z.string().optional(),
+  approvalReference: z.string().optional(),
+});
+
+router.post('/admin/inject', async (req, res) => {
+  try {
+    const adminUserId = req.headers['x-admin-id'] as string;
+    const adminEmail = req.headers['x-admin-email'] as string;
+    const adminRole = req.headers['x-admin-role'] as string;
+
+    if (!adminUserId || !adminEmail) {
+      return res.status(401).json({ success: false, error: 'Admin authentication required' });
+    }
+
+    if (!['super_admin', 'head_office_admin', 'finance_admin'].includes(adminRole || '')) {
+      logger.warn('[Credit Wallet] Unauthorized admin injection attempt', { 
+        adminUserId, 
+        adminEmail, 
+        adminRole 
+      });
+      return res.status(403).json({ success: false, error: 'Insufficient permissions for credit injection' });
+    }
+
+    const parsed = adminInjectSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: parsed.error.message });
+    }
+
+    const { targetUserId, creditType, amount, reason, expiresAt, ticketId, approvalReference } = parsed.data;
+
+    const result = await walletService.adminInjectCredits({
+      adminUserId,
+      adminEmail,
+      targetUserId,
+      creditType,
+      amount,
+      reason,
+      expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      ticketId,
+      approvalReference,
+      ipAddress: req.ip || req.headers['x-forwarded-for'] as string,
+      userAgent: req.headers['user-agent'],
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Credits injected successfully',
+      transactionId: result.transactionId,
+      auditId: result.auditId,
+    });
+  } catch (error: any) {
+    logger.error('[Credit Wallet] Admin inject error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/admin/injection-history/:userId', async (req, res) => {
+  try {
+    const adminUserId = req.headers['x-admin-id'] as string;
+    const adminRole = req.headers['x-admin-role'] as string;
+
+    if (!adminUserId) {
+      return res.status(401).json({ success: false, error: 'Admin authentication required' });
+    }
+
+    if (!['super_admin', 'head_office_admin', 'finance_admin'].includes(adminRole || '')) {
+      return res.status(403).json({ success: false, error: 'Insufficient permissions' });
+    }
+
+    const { userId } = req.params;
+    const history = await walletService.getAdminInjectionHistory(userId);
+
+    res.json({ success: true, injections: history });
+  } catch (error: any) {
+    logger.error('[Credit Wallet] Admin injection history error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/expiring-credits', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    const daysAhead = parseInt(req.query.days as string) || 30;
+    const result = await walletService.getExpiringCredits(userId, daysAhead);
+
+    res.json({ 
+      success: true, 
+      expiringCredits: result.expiringCredits,
+      totalExpiringCents: result.totalExpiringCents,
+      daysAhead
+    });
+  } catch (error: any) {
+    logger.error('[Credit Wallet] Get expiring credits error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/admin/process-expired-credits', async (req, res) => {
+  try {
+    const cronSecret = req.headers['x-cron-secret'] as string;
+    const adminUserId = req.headers['x-admin-id'] as string;
+    const adminRole = req.headers['x-admin-role'] as string;
+
+    const expectedCronSecret = process.env.CRON_SECRET || 'petwash-cron-2025';
+    
+    if (cronSecret !== expectedCronSecret && 
+        !['super_admin', 'head_office_admin'].includes(adminRole || '')) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const result = await walletService.processExpiredCredits();
+
+    logger.info('[Credit Wallet] Expired credits processed', { 
+      triggeredBy: adminUserId || 'cron',
+      ...result 
+    });
+
+    res.json({ 
+      success: true, 
+      message: `Processed ${result.processed} expired credit entries`,
+      ...result
+    });
+  } catch (error: any) {
+    logger.error('[Credit Wallet] Process expired credits error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/admin/dormant-wallets', async (req, res) => {
+  try {
+    const adminUserId = req.headers['x-admin-id'] as string;
+    const adminRole = req.headers['x-admin-role'] as string;
+
+    if (!adminUserId) {
+      return res.status(401).json({ success: false, error: 'Admin authentication required' });
+    }
+
+    if (!['super_admin', 'head_office_admin', 'finance_admin'].includes(adminRole || '')) {
+      return res.status(403).json({ success: false, error: 'Insufficient permissions' });
+    }
+
+    const result = await walletService.checkDormantWallets();
+
+    res.json({ 
+      success: true, 
+      ...result
+    });
+  } catch (error: any) {
+    logger.error('[Credit Wallet] Dormant wallets check error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

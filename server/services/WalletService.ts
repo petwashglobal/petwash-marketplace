@@ -750,6 +750,429 @@ class WalletService {
 
     return true;
   }
+
+  /**
+   * Admin credit injection with comprehensive audit trail
+   * Only callable by admin users with proper authorization
+   */
+  async adminInjectCredits(params: {
+    adminUserId: string;
+    adminEmail: string;
+    targetUserId: string;
+    creditType: 'egift' | 'wash_package' | 'loyalty_points' | 'promo_credit' | 'referral_credit';
+    amount: number;
+    reason: string;
+    expiresAt?: Date;
+    ticketId?: string;
+    approvalReference?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<{ success: boolean; transactionId: string; auditId: string }> {
+    const {
+      adminUserId,
+      adminEmail,
+      targetUserId,
+      creditType,
+      amount,
+      reason,
+      expiresAt,
+      ticketId,
+      approvalReference,
+      ipAddress,
+      userAgent,
+    } = params;
+
+    if (amount <= 0) {
+      throw new Error('Credit injection amount must be positive');
+    }
+
+    if (!reason || reason.length < 10) {
+      throw new Error('Credit injection requires a detailed reason (minimum 10 characters)');
+    }
+
+    const wallet = await this.getOrCreateWallet(targetUserId);
+    const transactionId = `ADM-INJ-${nanoid(12).toUpperCase()}`;
+    const auditId = `AUD-${nanoid(12).toUpperCase()}`;
+    const now = new Date();
+
+    const updates: Partial<typeof walletAccounts.$inferInsert> = {
+      updatedAt: now,
+      lastActivityAt: now,
+    };
+
+    let balanceBefore = 0;
+    let balanceAfter = 0;
+    let isUnits = false;
+
+    switch (creditType) {
+      case 'egift':
+        balanceBefore = wallet.egiftBalanceCents || 0;
+        updates.egiftBalanceCents = balanceBefore + amount;
+        balanceAfter = updates.egiftBalanceCents;
+        break;
+      case 'wash_package':
+        balanceBefore = wallet.washPackageCredits || 0;
+        updates.washPackageCredits = balanceBefore + amount;
+        balanceAfter = updates.washPackageCredits;
+        isUnits = true;
+        break;
+      case 'loyalty_points':
+        balanceBefore = wallet.loyaltyPointsBalance || 0;
+        updates.loyaltyPointsBalance = balanceBefore + amount;
+        updates.tierPointsThisYear = (wallet.tierPointsThisYear || 0) + amount;
+        balanceAfter = updates.loyaltyPointsBalance;
+        isUnits = true;
+        break;
+      case 'promo_credit':
+        balanceBefore = wallet.promoBalanceCents || 0;
+        updates.promoBalanceCents = balanceBefore + amount;
+        balanceAfter = updates.promoBalanceCents;
+        break;
+      case 'referral_credit':
+        balanceBefore = wallet.referralBalanceCents || 0;
+        updates.referralBalanceCents = balanceBefore + amount;
+        balanceAfter = updates.referralBalanceCents;
+        break;
+    }
+
+    // Update wallet balance
+    await db.update(walletAccounts)
+      .set(updates)
+      .where(eq(walletAccounts.walletId, wallet.walletId));
+
+    // Create credit transaction with admin injection marker
+    await db.insert(creditTransactions).values({
+      transactionId,
+      walletId: wallet.walletId,
+      creditType,
+      transactionType: 'issue',
+      amountCents: isUnits ? undefined : amount,
+      amountUnits: isUnits ? amount : undefined,
+      balanceAfterCents: isUnits ? undefined : balanceAfter,
+      balanceAfterUnits: isUnits ? balanceAfter : undefined,
+      sourceType: 'admin_injection',
+      sourceId: auditId,
+      description: `Admin credit injection: ${reason}`,
+      initiatedBy: adminUserId,
+      expiresAt: expiresAt,
+    });
+
+    // Log comprehensive audit trail
+    const auditDetails = {
+      auditId,
+      transactionId,
+      action: 'admin_credit_injection',
+      timestamp: now.toISOString(),
+      admin: {
+        userId: adminUserId,
+        email: adminEmail,
+        ipAddress: ipAddress || 'unknown',
+        userAgent: userAgent || 'unknown',
+      },
+      target: {
+        userId: targetUserId,
+        walletId: wallet.walletId,
+      },
+      creditDetails: {
+        creditType,
+        amount,
+        isUnits,
+        balanceBefore,
+        balanceAfter,
+        expiresAt: expiresAt?.toISOString() || null,
+      },
+      metadata: {
+        reason,
+        ticketId: ticketId || null,
+        approvalReference: approvalReference || null,
+      },
+      verification: {
+        checksum: this.generateAuditChecksum({
+          auditId,
+          adminUserId,
+          targetUserId,
+          creditType,
+          amount,
+          timestamp: now.toISOString(),
+        }),
+      },
+    };
+
+    logger.warn('[ADMIN AUDIT] Credit injection performed', auditDetails);
+
+    // Also log to console for backup visibility
+    console.log(`[ADMIN CREDIT INJECTION AUDIT]
+=======================================================
+Audit ID: ${auditId}
+Transaction ID: ${transactionId}
+Timestamp: ${now.toISOString()}
+Admin: ${adminEmail} (${adminUserId})
+Target User: ${targetUserId}
+Credit Type: ${creditType}
+Amount: ${amount} ${isUnits ? 'units' : 'cents'}
+Balance: ${balanceBefore} → ${balanceAfter}
+Reason: ${reason}
+Ticket ID: ${ticketId || 'N/A'}
+Approval Reference: ${approvalReference || 'N/A'}
+IP Address: ${ipAddress || 'unknown'}
+=======================================================`);
+
+    return {
+      success: true,
+      transactionId,
+      auditId,
+    };
+  }
+
+  /**
+   * Generate SHA-256 checksum for audit record integrity verification
+   */
+  private generateAuditChecksum(data: Record<string, any>): string {
+    const crypto = require('crypto');
+    const canonicalString = JSON.stringify(data, Object.keys(data).sort());
+    return crypto.createHash('sha256').update(canonicalString).digest('hex').substring(0, 16);
+  }
+
+  /**
+   * Get admin credit injection history for a specific wallet
+   */
+  async getAdminInjectionHistory(userId: string): Promise<CreditTransaction[]> {
+    const wallet = await this.getOrCreateWallet(userId);
+    
+    return await db.select()
+      .from(creditTransactions)
+      .where(and(
+        eq(creditTransactions.walletId, wallet.walletId),
+        eq(creditTransactions.sourceType, 'admin_injection')
+      ))
+      .orderBy(desc(creditTransactions.createdAt));
+  }
+
+  /**
+   * Process expired credits for all wallets
+   * Should be called by a scheduled job (e.g., daily cron)
+   * Calculates residual balance using net usage (redeem - refund) to maintain ledger integrity
+   * Tracks running balances to ensure accurate balanceAfterCents on consecutive expirations
+   */
+  async processExpiredCredits(): Promise<{ processed: number; expiredAmount: number }> {
+    const now = new Date();
+    let processed = 0;
+    let expiredAmount = 0;
+
+    const expiredTransactions = await db.select()
+      .from(creditTransactions)
+      .where(and(
+        sql`${creditTransactions.expiresAt} IS NOT NULL`,
+        sql`${creditTransactions.expiresAt} < ${now}`,
+        eq(creditTransactions.transactionType, 'issue')
+      ));
+
+    const walletRunningBalances = new Map<string, { 
+      egift: number; 
+      promo: number; 
+      referral: number;
+      loaded: boolean;
+    }>();
+
+    for (const txn of expiredTransactions) {
+      const hasBeenExpired = await db.select()
+        .from(creditTransactions)
+        .where(and(
+          eq(creditTransactions.sourceId, txn.transactionId),
+          eq(creditTransactions.transactionType, 'expire')
+        ))
+        .limit(1);
+
+      if (hasBeenExpired.length > 0) continue;
+
+      const originalAmount = txn.amountCents || 0;
+      
+      const netUsageResult = await db.select({
+        totalRedeemed: sql<number>`COALESCE(SUM(CASE WHEN ${creditTransactions.transactionType} = 'redeem' THEN ABS(${creditTransactions.amountCents}) ELSE 0 END), 0)`,
+        totalRefunded: sql<number>`COALESCE(SUM(CASE WHEN ${creditTransactions.transactionType} = 'refund' THEN ${creditTransactions.amountCents} ELSE 0 END), 0)`,
+        totalReleased: sql<number>`COALESCE(SUM(CASE WHEN ${creditTransactions.transactionType} = 'release' THEN ${creditTransactions.amountCents} ELSE 0 END), 0)`
+      })
+        .from(creditTransactions)
+        .where(and(
+          eq(creditTransactions.walletId, txn.walletId),
+          eq(creditTransactions.creditType, txn.creditType),
+          sql`${creditTransactions.transactionType} IN ('redeem', 'refund', 'release')`,
+          sql`${creditTransactions.createdAt} >= ${txn.createdAt}`,
+          sql`${creditTransactions.createdAt} <= ${txn.expiresAt}`
+        ));
+
+      const totalRedeemed = Number(netUsageResult[0]?.totalRedeemed || 0);
+      const totalRefunded = Number(netUsageResult[0]?.totalRefunded || 0);
+      const totalReleased = Number(netUsageResult[0]?.totalReleased || 0);
+      const netUsed = totalRedeemed - totalRefunded - totalReleased;
+      const residualAmount = Math.max(0, originalAmount - netUsed);
+      
+      if (residualAmount === 0) {
+        logger.info('[Wallet] Skipping fully-redeemed expired credit', { 
+          transactionId: txn.transactionId, 
+          originalAmount, 
+          netUsed 
+        });
+        continue;
+      }
+
+      let runningBalance = walletRunningBalances.get(txn.walletId);
+      if (!runningBalance || !runningBalance.loaded) {
+        const wallet = await db.select()
+          .from(walletAccounts)
+          .where(eq(walletAccounts.walletId, txn.walletId))
+          .limit(1);
+
+        if (wallet.length === 0) continue;
+
+        runningBalance = {
+          egift: wallet[0].egiftBalanceCents || 0,
+          promo: wallet[0].promoBalanceCents || 0,
+          referral: wallet[0].referralBalanceCents || 0,
+          loaded: true,
+        };
+        walletRunningBalances.set(txn.walletId, runningBalance);
+      }
+
+      let balanceAfter = 0;
+      switch (txn.creditType) {
+        case 'egift':
+          runningBalance.egift = Math.max(0, runningBalance.egift - residualAmount);
+          balanceAfter = runningBalance.egift;
+          break;
+        case 'promo_credit':
+          runningBalance.promo = Math.max(0, runningBalance.promo - residualAmount);
+          balanceAfter = runningBalance.promo;
+          break;
+        case 'referral_credit':
+          runningBalance.referral = Math.max(0, runningBalance.referral - residualAmount);
+          balanceAfter = runningBalance.referral;
+          break;
+      }
+
+      await db.insert(creditTransactions).values({
+        transactionId: `EXP-${nanoid(12).toUpperCase()}`,
+        walletId: txn.walletId,
+        creditType: txn.creditType,
+        transactionType: 'expire',
+        amountCents: -residualAmount,
+        balanceAfterCents: balanceAfter,
+        sourceType: 'expiry_job',
+        sourceId: txn.transactionId,
+        description: `Credit expired (original: ₪${(originalAmount/100).toFixed(2)}, net used: ₪${(netUsed/100).toFixed(2)}, expired: ₪${(residualAmount/100).toFixed(2)})`,
+        initiatedBy: 'system',
+      });
+
+      processed++;
+      expiredAmount += residualAmount;
+    }
+
+    for (const [walletId, runningBalance] of walletRunningBalances.entries()) {
+      if (!runningBalance.loaded) continue;
+
+      const originalWallet = await db.select()
+        .from(walletAccounts)
+        .where(eq(walletAccounts.walletId, walletId))
+        .limit(1);
+
+      if (originalWallet.length === 0) continue;
+
+      const currentEgift = originalWallet[0].egiftBalanceCents || 0;
+      const currentPromo = originalWallet[0].promoBalanceCents || 0;
+      const currentReferral = originalWallet[0].referralBalanceCents || 0;
+
+      const egiftExpired = currentEgift - runningBalance.egift;
+      const promoExpired = currentPromo - runningBalance.promo;
+      const referralExpired = currentReferral - runningBalance.referral;
+
+      await db.execute(sql`
+        UPDATE wallet_accounts 
+        SET 
+          egift_balance_cents = GREATEST(0, egift_balance_cents - ${egiftExpired}),
+          promo_balance_cents = GREATEST(0, promo_balance_cents - ${promoExpired}),
+          referral_balance_cents = GREATEST(0, referral_balance_cents - ${referralExpired}),
+          updated_at = ${now}
+        WHERE wallet_id = ${walletId}
+      `);
+    }
+
+    logger.info('[Wallet] Expired credits processed', { processed, expiredAmount });
+    return { processed, expiredAmount };
+  }
+
+  /**
+   * Check for dormant wallets and apply policies
+   * Wallets with no activity for 12+ months may trigger warning notifications
+   */
+  async checkDormantWallets(): Promise<{ dormantCount: number; atRiskCredits: number }> {
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+    const dormantWallets = await db.select()
+      .from(walletAccounts)
+      .where(and(
+        sql`${walletAccounts.lastActivityAt} < ${twelveMonthsAgo}`,
+        eq(walletAccounts.isActive, true),
+        sql`(${walletAccounts.egiftBalanceCents} > 0 OR ${walletAccounts.promoBalanceCents} > 0 OR ${walletAccounts.referralBalanceCents} > 0)`
+      ));
+
+    let atRiskCredits = 0;
+    for (const wallet of dormantWallets) {
+      atRiskCredits += (wallet.egiftBalanceCents || 0) + 
+                       (wallet.promoBalanceCents || 0) + 
+                       (wallet.referralBalanceCents || 0);
+    }
+
+    logger.info('[Wallet] Dormant wallet check', { 
+      dormantCount: dormantWallets.length, 
+      atRiskCredits,
+      threshold: '12 months' 
+    });
+
+    return { 
+      dormantCount: dormantWallets.length, 
+      atRiskCredits 
+    };
+  }
+
+  /**
+   * Get credits expiring soon for a user (warning for UI)
+   */
+  async getExpiringCredits(userId: string, daysAhead: number = 30): Promise<{
+    expiringCredits: Array<{
+      creditType: string;
+      amountCents: number;
+      expiresAt: Date;
+      description: string | null;
+    }>;
+    totalExpiringCents: number;
+  }> {
+    const wallet = await this.getOrCreateWallet(userId);
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+
+    const expiringTxns = await db.select()
+      .from(creditTransactions)
+      .where(and(
+        eq(creditTransactions.walletId, wallet.walletId),
+        eq(creditTransactions.transactionType, 'issue'),
+        sql`${creditTransactions.expiresAt} IS NOT NULL`,
+        sql`${creditTransactions.expiresAt} > NOW()`,
+        sql`${creditTransactions.expiresAt} <= ${futureDate}`
+      ))
+      .orderBy(creditTransactions.expiresAt);
+
+    const expiringCredits = expiringTxns.map(txn => ({
+      creditType: txn.creditType,
+      amountCents: txn.amountCents || 0,
+      expiresAt: new Date(txn.expiresAt!),
+      description: txn.description,
+    }));
+
+    const totalExpiringCents = expiringCredits.reduce((sum, c) => sum + c.amountCents, 0);
+
+    return { expiringCredits, totalExpiringCents };
+  }
 }
 
 export const walletService = new WalletService();
