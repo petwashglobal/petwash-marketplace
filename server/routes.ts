@@ -8073,6 +8073,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/wallet', apiLimiter, walletRoutes);
   app.use('/api/google-wallet', apiLimiter, googleWalletRoutes);
   
+  // Credit Wallet & E-Gift Redemption (Unified credits across all platforms)
+  const creditWalletRoutes = await import('./routes/credit-wallet');
+  app.use('/api/credit-wallet', apiLimiter, creditWalletRoutes.default);
+  logger.info('[Routes] ✅ Credit Wallet routes registered (e-gift, wash packages, loyalty points)');
+  
   // Spotify Integration (Profile, Now Playing)
   app.use('/api/spotify', apiLimiter, spotifyRoutes);
   

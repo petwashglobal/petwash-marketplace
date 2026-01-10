@@ -10198,3 +10198,193 @@ export const BOOKING_STATUS_TRANSITIONS: Record<BookingLifecycleStatus, BookingL
   refunded: [], // Terminal state
   disputed: ["completed", "refunded"], // Admin resolution
 };
+
+// =================== UNIFIED WALLET & CREDIT SYSTEM ===================
+// Supports e-gift cards, wash packages, loyalty points across all platforms
+// Pet Walker, Pet Sitter, PetTrek, K9000 hardware stations via Nayax
+
+// Credit types enum
+export const CreditType = pgEnum("credit_type", [
+  "egift",           // E-gift card balance
+  "wash_package",    // Prepaid wash package credits
+  "loyalty_points",  // Loyalty program points
+  "promo_credit",    // Promotional credits
+  "referral_credit"  // Referral bonus credits
+]);
+
+// Platforms where credits can be redeemed
+export const RedeemablePlatform = pgEnum("redeemable_platform", [
+  "walker",      // Walk My Pet™
+  "sitter",      // Sitter Suite™
+  "pettrek",     // PetTrek™ Transport
+  "k9000",       // K9000™ Hardware Wash Station
+  "plush_lab",   // The Plush Lab™
+  "all"          // Universal credits
+]);
+
+// User Wallet Account - unified credit wallet per user
+export const walletAccounts = pgTable("wallet_accounts", {
+  id: serial("id").primaryKey(),
+  walletId: varchar("wallet_id", { length: 50 }).unique().notNull(), // WALLET-XXXXX
+  userId: varchar("user_id").notNull(),
+  
+  // Aggregate balances (cached for performance, recalculated from transactions)
+  egiftBalanceCents: integer("egift_balance_cents").default(0).notNull(),
+  washPackageCredits: integer("wash_package_credits").default(0).notNull(), // Number of wash sessions
+  loyaltyPointsBalance: integer("loyalty_points_balance").default(0).notNull(),
+  promoBalanceCents: integer("promo_balance_cents").default(0).notNull(),
+  referralBalanceCents: integer("referral_balance_cents").default(0).notNull(),
+  
+  // Tier info (7-star loyalty)
+  loyaltyTier: varchar("loyalty_tier", { length: 50 }).default("bronze"), // bronze, silver, gold, platinum, diamond, elite, vip
+  tierPointsThisYear: integer("tier_points_this_year").default(0),
+  
+  // Settings
+  preferredCurrency: varchar("preferred_currency", { length: 3 }).default("ILS"),
+  autoApplyCredits: boolean("auto_apply_credits").default(true),
+  
+  // Status
+  isActive: boolean("is_active").default(true).notNull(),
+  lastActivityAt: timestamp("last_activity_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_wallet_user").on(table.userId),
+  index("idx_wallet_tier").on(table.loyaltyTier),
+]);
+
+// Credit Transactions - immutable ledger of all credit movements
+export const creditTransactions = pgTable("credit_transactions", {
+  id: serial("id").primaryKey(),
+  transactionId: varchar("transaction_id", { length: 50 }).unique().notNull(), // TXN-XXXXX
+  walletId: varchar("wallet_id").notNull(),
+  
+  // Transaction type
+  creditType: varchar("credit_type").notNull(), // egift, wash_package, loyalty_points, promo_credit, referral_credit
+  transactionType: varchar("transaction_type").notNull(), // issue, hold, redeem, release, refund, expire, adjust
+  
+  // Amounts (positive = credit, negative = debit)
+  amountCents: integer("amount_cents"), // For monetary credits
+  amountUnits: integer("amount_units"), // For package credits (wash sessions, etc.)
+  
+  // Running balance after this transaction
+  balanceAfterCents: integer("balance_after_cents"),
+  balanceAfterUnits: integer("balance_after_units"),
+  
+  // Source/Destination
+  sourceType: varchar("source_type"), // purchase, gift, promo, referral, admin
+  sourceId: varchar("source_id"), // Order ID, promo code, etc.
+  redemptionSessionId: varchar("redemption_session_id"), // Links to redemption session
+  
+  // Platform & Service
+  platform: varchar("platform"), // walker, sitter, pettrek, k9000, plush_lab
+  serviceType: varchar("service_type"),
+  bookingId: varchar("booking_id"),
+  
+  // Metadata
+  description: text("description"),
+  metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+  
+  // Actor
+  initiatedBy: varchar("initiated_by"), // user, system, admin
+  initiatedByUserId: varchar("initiated_by_user_id"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // For promotional credits
+}, (table) => [
+  index("idx_credit_txn_wallet").on(table.walletId),
+  index("idx_credit_txn_type").on(table.transactionType),
+  index("idx_credit_txn_created").on(table.createdAt),
+  index("idx_credit_txn_booking").on(table.bookingId),
+]);
+
+// Redemption Sessions - tracks mobile/hardware redemption flows
+export const redemptionSessions = pgTable("redemption_sessions", {
+  id: serial("id").primaryKey(),
+  sessionId: varchar("session_id", { length: 50 }).unique().notNull(), // REDEEM-XXXXX
+  walletId: varchar("wallet_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  
+  // Session type
+  sessionType: varchar("session_type").notNull(), // mobile_booking, hardware_qr, hardware_nfc
+  
+  // What's being redeemed
+  platform: varchar("platform").notNull(), // walker, sitter, pettrek, k9000
+  serviceType: varchar("service_type"), // hourly, daily, per_trip, per_wash
+  
+  // Pricing breakdown (in cents/agorot)
+  requestedAmountCents: integer("requested_amount_cents").notNull(),
+  
+  // Credit application
+  egiftAppliedCents: integer("egift_applied_cents").default(0),
+  washPackagesApplied: integer("wash_packages_applied").default(0),
+  loyaltyPointsApplied: integer("loyalty_points_applied").default(0),
+  promoAppliedCents: integer("promo_applied_cents").default(0),
+  totalCreditsAppliedCents: integer("total_credits_applied_cents").default(0),
+  
+  // Residual payment
+  cashDueCents: integer("cash_due_cents").default(0),
+  paymentMethod: varchar("payment_method"), // nayax, credit_card, apple_pay, google_pay
+  paymentStatus: varchar("payment_status").default("pending"), // pending, processing, completed, failed
+  
+  // Hardware station info (for K9000)
+  stationId: varchar("station_id"),
+  terminalId: varchar("terminal_id"),
+  
+  // QR/Token for hardware redemption
+  redemptionCode: varchar("redemption_code", { length: 20 }), // 6-digit code for manual entry
+  redemptionQrData: text("redemption_qr_data"), // Encrypted QR payload
+  codeHmac: varchar("code_hmac", { length: 128 }), // HMAC signature for validation
+  
+  // Session lifecycle
+  status: varchar("status").default("pending").notNull(), // pending, code_generated, scanned, acknowledged, completed, expired, cancelled
+  
+  // Timing
+  expiresAt: timestamp("expires_at").notNull(), // Sessions expire quickly (5-10 min)
+  scannedAt: timestamp("scanned_at"),
+  acknowledgedAt: timestamp("acknowledged_at"), // Hardware confirmed
+  completedAt: timestamp("completed_at"),
+  
+  // Linked booking
+  bookingId: varchar("booking_id"),
+  
+  // Audit
+  deviceInfo: jsonb("device_info").default(sql`'{}'::jsonb`), // Device type, OS, app version
+  locationInfo: jsonb("location_info").default(sql`'{}'::jsonb`), // Lat/lng, station location
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_redeem_session_wallet").on(table.walletId),
+  index("idx_redeem_session_user").on(table.userId),
+  index("idx_redeem_session_status").on(table.status),
+  index("idx_redeem_session_code").on(table.redemptionCode),
+  index("idx_redeem_session_station").on(table.stationId),
+  index("idx_redeem_session_expires").on(table.expiresAt),
+]);
+
+// Zod schemas for wallet system
+export const insertWalletAccountSchema = createInsertSchema(walletAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertWalletAccount = z.infer<typeof insertWalletAccountSchema>;
+export type WalletAccount = typeof walletAccounts.$inferSelect;
+
+export const insertCreditTransactionSchema = createInsertSchema(creditTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertCreditTransaction = z.infer<typeof insertCreditTransactionSchema>;
+export type CreditTransaction = typeof creditTransactions.$inferSelect;
+
+export const insertRedemptionSessionSchema = createInsertSchema(redemptionSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertRedemptionSession = z.infer<typeof insertRedemptionSessionSchema>;
+export type RedemptionSession = typeof redemptionSessions.$inferSelect;
