@@ -1,0 +1,598 @@
+/**
+ * 🌟 PET WASH™ ULTRA-LUXURY DARK DESIGN SYSTEM 2025
+ * Fashion Brand Level - Gucci/Chanel/Dior Dark Mode
+ * 
+ * Core Principles:
+ * - Espresso Noir palette (#0a0a0f to #1a1825)
+ * - Platinum/Silver highlights
+ * - Deep glassmorphism with luminous borders
+ * - Premium typography with optical sizing
+ * - Perfect consistency across ALL device sizes
+ */
+
+/* ===========================
+   ESPRESSO NOIR COLOR PALETTE
+   =========================== */
+
+:root {
+  --luxury-noir-900: #0a0a0f;
+  --luxury-noir-800: #0f0f15;
+  --luxury-noir-700: #15151d;
+  --luxury-noir-600: #1a1825;
+  --luxury-noir-500: #252330;
+  --luxury-noir-400: #32303f;
+  --luxury-noir-300: #4a4860;
+  --luxury-noir-200: #6b6880;
+  --luxury-noir-100: #9590a8;
+  
+  --luxury-platinum: #e8e6f0;
+  --luxury-silver: #c0bdd0;
+  --luxury-gold-accent: #d4af37;
+  --luxury-rose-accent: #b76e79;
+  
+  --luxury-gradient-noir: linear-gradient(135deg, #0a0a0f 0%, #15151d 50%, #1a1825 100%);
+  --luxury-gradient-deep: linear-gradient(180deg, #0a0a0f 0%, #0f0f15 100%);
+  --luxury-gradient-platinum: linear-gradient(135deg, #e8e6f0 0%, #c0bdd0 50%, #e8e6f0 100%);
+  
+  --luxury-glow-platinum: 0 0 40px rgba(232, 230, 240, 0.15);
+  --luxury-glow-gold: 0 0 30px rgba(212, 175, 55, 0.2);
+  --luxury-glow-rose: 0 0 30px rgba(183, 110, 121, 0.15);
+  
+  --luxury-glass-dark: rgba(15, 15, 21, 0.85);
+  --luxury-glass-border: rgba(232, 230, 240, 0.08);
+  --luxury-glass-shine: rgba(232, 230, 240, 0.03);
+}
+
+/* ===========================
+   DARK LUXURY BACKGROUNDS
+   =========================== */
+
+.luxury-dark-bg {
+  background: var(--luxury-gradient-noir);
+  min-height: 100vh;
+}
+
+.luxury-dark-mesh {
+  background: 
+    radial-gradient(ellipse at 20% 0%, rgba(100, 80, 140, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(80, 60, 120, 0.06) 0%, transparent 50%),
+    linear-gradient(180deg, #0a0a0f 0%, #0f0f15 50%, #15151d 100%);
+  min-height: 100vh;
+}
+
+.luxury-dark-gradient {
+  background: linear-gradient(135deg, 
+    rgba(10, 10, 15, 0.98) 0%,
+    rgba(15, 15, 21, 0.95) 25%,
+    rgba(21, 21, 29, 0.92) 50%,
+    rgba(26, 24, 37, 0.95) 75%,
+    rgba(15, 15, 21, 0.98) 100%
+  );
+}
+
+/* ===========================
+   DARK GLASSMORPHISM CARDS
+   =========================== */
+
+.luxury-dark-card {
+  background: rgba(15, 15, 21, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(232, 230, 240, 0.06);
+  border-radius: 24px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(232, 230, 240, 0.03);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-dark-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%,
+    rgba(232, 230, 240, 0.1) 20%,
+    rgba(232, 230, 240, 0.2) 50%,
+    rgba(232, 230, 240, 0.1) 80%,
+    transparent 100%
+  );
+}
+
+.luxury-dark-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(232, 230, 240, 0.12);
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(232, 230, 240, 0.05),
+    var(--luxury-glow-platinum);
+}
+
+.luxury-dark-panel {
+  background: rgba(21, 21, 29, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(232, 230, 240, 0.04);
+  border-radius: 20px;
+  box-shadow: 
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(232, 230, 240, 0.02);
+}
+
+.luxury-dark-surface {
+  background: rgba(26, 24, 37, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(232, 230, 240, 0.03);
+  border-radius: 16px;
+}
+
+/* ===========================
+   RADIANT HERO CARD (WALLET)
+   =========================== */
+
+.luxury-wallet-hero {
+  background: linear-gradient(135deg, 
+    rgba(15, 15, 21, 0.9) 0%,
+    rgba(25, 23, 35, 0.85) 50%,
+    rgba(20, 18, 28, 0.9) 100%
+  );
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(232, 230, 240, 0.08);
+  border-radius: 28px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(232, 230, 240, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-wallet-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%,
+    rgba(232, 230, 240, 0.15) 25%,
+    rgba(212, 175, 55, 0.3) 50%,
+    rgba(232, 230, 240, 0.15) 75%,
+    transparent 100%
+  );
+}
+
+.luxury-wallet-hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent 0%,
+    rgba(232, 230, 240, 0.02) 25%,
+    rgba(232, 230, 240, 0.05) 50%,
+    rgba(232, 230, 240, 0.02) 75%,
+    transparent 100%
+  );
+  animation: luxury-shimmer-dark 8s ease-in-out infinite;
+}
+
+@keyframes luxury-shimmer-dark {
+  0%, 100% { transform: translateX(-25%); }
+  50% { transform: translateX(25%); }
+}
+
+/* ===========================
+   TIER GRADIENT STRIPS
+   =========================== */
+
+.luxury-tier-bronze {
+  background: linear-gradient(135deg, #8B4513 0%, #CD853F 50%, #8B4513 100%);
+}
+
+.luxury-tier-silver {
+  background: linear-gradient(135deg, #C0C0C0 0%, #E8E8E8 30%, #A8A8A8 50%, #E0E0E0 70%, #C0C0C0 100%);
+}
+
+.luxury-tier-gold {
+  background: linear-gradient(135deg, #B8860B 0%, #FFD700 25%, #DAA520 50%, #FFD700 75%, #B8860B 100%);
+}
+
+.luxury-tier-platinum {
+  background: linear-gradient(135deg, #E5E4E2 0%, #FFFFFF 30%, #D8D8D8 50%, #F5F5F5 70%, #E5E4E2 100%);
+}
+
+.luxury-tier-diamond {
+  background: linear-gradient(135deg, #B9F2FF 0%, #E0FFFF 25%, #87CEEB 50%, #E0FFFF 75%, #B9F2FF 100%);
+}
+
+.luxury-tier-black {
+  background: linear-gradient(135deg, #1a1a1a 0%, #3a3a3a 30%, #0a0a0a 50%, #2a2a2a 70%, #1a1a1a 100%);
+}
+
+.luxury-tier-royal {
+  background: linear-gradient(135deg, #4B0082 0%, #8B008B 25%, #6A0DAD 50%, #9932CC 75%, #4B0082 100%);
+}
+
+/* ===========================
+   DARK TYPOGRAPHY
+   =========================== */
+
+.luxury-dark-heading-xl {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--luxury-platinum);
+  font-family: 'Playfair Display', 'Cormorant Garamond', serif;
+}
+
+.luxury-dark-heading-lg {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--luxury-platinum);
+  font-family: 'Playfair Display', 'Cormorant Garamond', serif;
+}
+
+.luxury-dark-heading-md {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(232, 230, 240, 0.95);
+  font-family: 'Playfair Display', 'Cormorant Garamond', serif;
+}
+
+.luxury-dark-heading-sm {
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: rgba(232, 230, 240, 0.9);
+  font-family: 'Inter', sans-serif;
+}
+
+.luxury-dark-text-body {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: rgba(192, 189, 208, 0.85);
+  font-family: 'Inter', sans-serif;
+}
+
+.luxury-dark-text-small {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: rgba(149, 144, 168, 0.8);
+  font-family: 'Inter', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.luxury-dark-text-gradient {
+  background: linear-gradient(135deg, #e8e6f0 0%, #c0bdd0 50%, #e8e6f0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.luxury-dark-text-gold {
+  background: linear-gradient(135deg, #d4af37 0%, #f0d860 50%, #d4af37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===========================
+   DARK BUTTONS
+   =========================== */
+
+.luxury-dark-btn-primary {
+  background: linear-gradient(135deg, 
+    rgba(232, 230, 240, 0.15) 0%, 
+    rgba(192, 189, 208, 0.1) 50%,
+    rgba(232, 230, 240, 0.15) 100%
+  );
+  color: var(--luxury-platinum);
+  padding: 14px 32px;
+  border-radius: 14px;
+  font-weight: 500;
+  font-size: 15px;
+  border: 1px solid rgba(232, 230, 240, 0.15);
+  cursor: pointer;
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(232, 230, 240, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.luxury-dark-btn-primary:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, 
+    rgba(232, 230, 240, 0.2) 0%, 
+    rgba(192, 189, 208, 0.15) 50%,
+    rgba(232, 230, 240, 0.2) 100%
+  );
+  border-color: rgba(232, 230, 240, 0.25);
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(232, 230, 240, 0.15),
+    var(--luxury-glow-platinum);
+}
+
+.luxury-dark-btn-gold {
+  background: linear-gradient(135deg, 
+    rgba(212, 175, 55, 0.2) 0%, 
+    rgba(240, 216, 96, 0.15) 50%,
+    rgba(212, 175, 55, 0.2) 100%
+  );
+  color: #f0d860;
+  padding: 14px 32px;
+  border-radius: 14px;
+  font-weight: 500;
+  font-size: 15px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  cursor: pointer;
+  box-shadow: 
+    0 4px 16px rgba(212, 175, 55, 0.15),
+    inset 0 1px 0 rgba(240, 216, 96, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.luxury-dark-btn-gold:hover {
+  transform: translateY(-2px);
+  border-color: rgba(212, 175, 55, 0.5);
+  box-shadow: 
+    0 8px 24px rgba(212, 175, 55, 0.25),
+    inset 0 1px 0 rgba(240, 216, 96, 0.15),
+    var(--luxury-glow-gold);
+}
+
+.luxury-dark-btn-ghost {
+  background: transparent;
+  color: var(--luxury-silver);
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.luxury-dark-btn-ghost:hover {
+  background: rgba(232, 230, 240, 0.05);
+  border-color: rgba(232, 230, 240, 0.1);
+}
+
+/* ===========================
+   DARK BADGES
+   =========================== */
+
+.luxury-dark-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(232, 230, 240, 0.08);
+  color: var(--luxury-platinum);
+  border: 1px solid rgba(232, 230, 240, 0.1);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: 'Inter', sans-serif;
+}
+
+.luxury-dark-badge-gold {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(240, 216, 96, 0.1) 100%);
+  color: #f0d860;
+  border-color: rgba(212, 175, 55, 0.25);
+}
+
+.luxury-dark-badge-success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+/* ===========================
+   CREDIT ITEM CARDS
+   =========================== */
+
+.luxury-credit-item {
+  background: rgba(26, 24, 37, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(232, 230, 240, 0.04);
+  border-radius: 16px;
+  padding: 1.25rem;
+  transition: all 0.3s ease;
+}
+
+.luxury-credit-item:hover {
+  background: rgba(32, 30, 45, 0.5);
+  border-color: rgba(232, 230, 240, 0.08);
+  transform: translateY(-2px);
+}
+
+/* ===========================
+   STAT DISPLAY
+   =========================== */
+
+.luxury-stat-value {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-family: 'Playfair Display', serif;
+}
+
+.luxury-stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(149, 144, 168, 0.7);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ===========================
+   RESPONSIVE GRID SYSTEM
+   =========================== */
+
+.luxury-dark-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.luxury-dark-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+}
+
+.luxury-dark-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .luxury-dark-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .luxury-dark-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .luxury-dark-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .luxury-dark-grid-4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .luxury-dark-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ===========================
+   DIVIDERS & SEPARATORS
+   =========================== */
+
+.luxury-dark-divider {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(232, 230, 240, 0.1) 20%,
+    rgba(232, 230, 240, 0.15) 50%,
+    rgba(232, 230, 240, 0.1) 80%,
+    transparent 100%
+  );
+  margin: 1.5rem 0;
+}
+
+.luxury-dark-divider-vertical {
+  width: 1px;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(232, 230, 240, 0.1) 20%,
+    rgba(232, 230, 240, 0.15) 50%,
+    rgba(232, 230, 240, 0.1) 80%,
+    transparent 100%
+  );
+}
+
+/* ===========================
+   DARK ANIMATIONS
+   =========================== */
+
+@keyframes luxury-pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.2);
+  }
+}
+
+.luxury-dark-pulse {
+  animation: luxury-pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes luxury-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.luxury-dark-float {
+  animation: luxury-float 4s ease-in-out infinite;
+}
+
+/* ===========================
+   QR CODE CONTAINER
+   =========================== */
+
+.luxury-qr-container {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(248, 248, 252, 0.98) 100%
+  );
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ===========================
+   SCROLLBAR STYLING
+   =========================== */
+
+.luxury-dark-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.luxury-dark-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 15, 21, 0.5);
+}
+
+.luxury-dark-scroll::-webkit-scrollbar-thumb {
+  background: rgba(232, 230, 240, 0.15);
+  border-radius: 3px;
+}
+
+.luxury-dark-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 230, 240, 0.25);
+}

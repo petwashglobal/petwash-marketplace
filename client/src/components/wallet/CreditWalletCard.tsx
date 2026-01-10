@@ -1,9 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { 
   Wallet, 
   Gift, 
@@ -12,7 +9,9 @@ import {
   Users, 
   QrCode,
   ChevronRight,
-  Loader2
+  Loader2,
+  Crown,
+  Gem
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -63,24 +62,54 @@ interface RedemptionResult {
   cashDueCents: number;
 }
 
-const tierColors: Record<string, string> = {
-  bronze: 'from-amber-700 to-amber-900',
-  silver: 'from-slate-400 to-slate-600',
-  gold: 'from-yellow-400 to-amber-500',
-  platinum: 'from-slate-200 to-slate-400',
-  diamond: 'from-cyan-300 to-blue-400',
-  black: 'from-slate-900 to-black',
-  royal: 'from-purple-600 to-indigo-800',
-};
-
-const tierLabels: Record<string, string> = {
-  bronze: 'Bronze',
-  silver: 'Silver',
-  gold: 'Gold',
-  platinum: 'Platinum',
-  diamond: 'Diamond',
-  black: 'Black Card',
-  royal: 'Royal Elite',
+const tierConfig: Record<string, { 
+  gradient: string; 
+  label: string; 
+  icon: typeof Crown;
+  glow: string;
+}> = {
+  bronze: { 
+    gradient: 'luxury-tier-bronze', 
+    label: 'Bronze',
+    icon: Star,
+    glow: 'rgba(205, 133, 63, 0.3)'
+  },
+  silver: { 
+    gradient: 'luxury-tier-silver', 
+    label: 'Silver',
+    icon: Star,
+    glow: 'rgba(192, 192, 192, 0.3)'
+  },
+  gold: { 
+    gradient: 'luxury-tier-gold', 
+    label: 'Gold',
+    icon: Crown,
+    glow: 'rgba(255, 215, 0, 0.3)'
+  },
+  platinum: { 
+    gradient: 'luxury-tier-platinum', 
+    label: 'Platinum',
+    icon: Crown,
+    glow: 'rgba(229, 228, 226, 0.3)'
+  },
+  diamond: { 
+    gradient: 'luxury-tier-diamond', 
+    label: 'Diamond',
+    icon: Gem,
+    glow: 'rgba(185, 242, 255, 0.3)'
+  },
+  black: { 
+    gradient: 'luxury-tier-black', 
+    label: 'Black Card',
+    icon: Crown,
+    glow: 'rgba(60, 60, 60, 0.5)'
+  },
+  royal: { 
+    gradient: 'luxury-tier-royal', 
+    label: 'Royal Elite',
+    icon: Crown,
+    glow: 'rgba(153, 50, 204, 0.3)'
+  },
 };
 
 function formatCurrency(cents: number): string {
@@ -149,11 +178,12 @@ export function CreditWalletCard({
 
   if (isLoading) {
     return (
-      <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
-        <CardContent className="p-6 flex items-center justify-center min-h-[200px]">
-          <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
-        </CardContent>
-      </Card>
+      <div className="luxury-wallet-hero p-8 flex items-center justify-center min-h-[280px]">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-[#d4af37] mx-auto mb-4" />
+          <p className="luxury-dark-text-small">Loading wallet...</p>
+        </div>
+      </div>
     );
   }
 
@@ -162,113 +192,127 @@ export function CreditWalletCard({
   }
 
   const tier = wallet.loyaltyTier || 'bronze';
-  const tierGradient = tierColors[tier] || tierColors.bronze;
+  const tierInfo = tierConfig[tier] || tierConfig.bronze;
+  const TierIcon = tierInfo.icon;
 
   if (compact) {
     return (
-      <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 overflow-hidden">
-        <div className={cn('h-1 bg-gradient-to-r', tierGradient)} />
-        <CardContent className="p-4">
+      <div className="luxury-dark-card overflow-hidden">
+        <div className={cn('h-1', tierInfo.gradient)} />
+        <div className="p-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={cn('p-2 rounded-xl bg-gradient-to-br', tierGradient)}>
-                <Wallet className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[rgba(212,175,55,0.2)] to-[rgba(212,175,55,0.1)] flex items-center justify-center">
+                <Wallet className="w-6 h-6 text-[#d4af37]" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Available Credits</p>
-                <p className="text-xl font-bold text-white">
+                <p className="luxury-dark-text-small mb-1">Available Credits</p>
+                <p className="luxury-stat-value luxury-dark-text-gold text-2xl">
                   {formatCurrency(wallet.totalCreditsValueCents)}
                 </p>
               </div>
             </div>
-            <Badge className={cn('bg-gradient-to-r text-white border-0', tierGradient)}>
-              {tierLabels[tier]}
-            </Badge>
+            <div className={cn('luxury-dark-badge-gold flex items-center gap-2')}>
+              <TierIcon className="w-3.5 h-3.5" />
+              <span>{tierInfo.label}</span>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
     <>
-      <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 overflow-hidden">
-        <div className={cn('h-2 bg-gradient-to-r', tierGradient)} />
+      <div className="luxury-wallet-hero" style={{ boxShadow: `0 0 60px ${tierInfo.glow}` }}>
+        <div className={cn('h-1.5 rounded-t-[28px]', tierInfo.gradient)} />
         
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-white flex items-center gap-2">
-              <Wallet className="w-5 h-5 text-amber-400" />
-              Pet Wash™ Wallet
-            </CardTitle>
-            <Badge className={cn('bg-gradient-to-r text-white border-0 px-3', tierGradient)}>
-              <Star className="w-3 h-3 mr-1" />
-              {tierLabels[tier]}
-            </Badge>
+        <div className="p-6 sm:p-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[rgba(212,175,55,0.25)] to-[rgba(212,175,55,0.1)] flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-[#d4af37]" />
+              </div>
+              <div>
+                <h3 className="luxury-dark-heading-sm text-lg">Pet Wash™ Wallet</h3>
+                <p className="luxury-dark-text-small text-xs mt-0.5">Premium Credits</p>
+              </div>
+            </div>
+            <div 
+              className={cn('luxury-dark-badge-gold flex items-center gap-2 py-2 px-4')}
+              style={{ boxShadow: `0 0 20px ${tierInfo.glow}` }}
+            >
+              <TierIcon className="w-4 h-4" />
+              <span className="font-semibold tracking-wider">{tierInfo.label}</span>
+            </div>
           </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          <div className="text-center py-4">
-            <p className="text-sm text-slate-400 mb-1">Total Credit Value</p>
-            <p className="text-4xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
+          
+          <div className="text-center py-6 sm:py-8">
+            <p className="luxury-dark-text-small text-xs mb-3">Total Credit Value</p>
+            <p className="luxury-stat-value luxury-dark-text-gold text-4xl sm:text-5xl lg:text-6xl">
               {formatCurrency(wallet.totalCreditsValueCents)}
             </p>
           </div>
 
-          <Separator className="bg-slate-700" />
+          <div className="luxury-dark-divider" />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="luxury-dark-grid-2 gap-3 sm:gap-4">
             <CreditItem
-              icon={<Gift className="w-4 h-4" />}
+              icon={<Gift className="w-4 h-4 sm:w-5 sm:h-5" />}
               label="E-Gift Balance"
               value={formatCurrency(wallet.egiftBalanceCents)}
-              color="text-pink-400"
+              color="from-pink-500/20 to-rose-500/10"
+              iconColor="text-pink-400"
             />
             <CreditItem
-              icon={<Sparkles className="w-4 h-4" />}
+              icon={<Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />}
               label="Wash Packages"
               value={`${wallet.washPackageCredits} washes`}
-              color="text-cyan-400"
+              color="from-cyan-500/20 to-blue-500/10"
+              iconColor="text-cyan-400"
             />
             <CreditItem
-              icon={<Star className="w-4 h-4" />}
+              icon={<Star className="w-4 h-4 sm:w-5 sm:h-5" />}
               label="Loyalty Points"
               value={`${wallet.loyaltyPointsBalance.toLocaleString()} pts`}
               subtitle={`≈ ${formatCurrency(wallet.loyaltyPointsBalance * 10)}`}
-              color="text-amber-400"
+              color="from-amber-500/20 to-yellow-500/10"
+              iconColor="text-amber-400"
             />
             <CreditItem
-              icon={<Users className="w-4 h-4" />}
+              icon={<Users className="w-4 h-4 sm:w-5 sm:h-5" />}
               label="Referral Credit"
               value={formatCurrency(wallet.referralBalanceCents)}
-              color="text-green-400"
+              color="from-emerald-500/20 to-green-500/10"
+              iconColor="text-emerald-400"
             />
           </div>
 
           {preview && transactionAmountCents && transactionAmountCents > 0 && (
             <>
-              <Separator className="bg-slate-700" />
-              <div className="bg-slate-800/50 rounded-xl p-4 space-y-3">
+              <div className="luxury-dark-divider" />
+              <div className="luxury-dark-surface p-5 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-400">Transaction Total</span>
-                  <span className="text-white font-medium">
+                  <span className="luxury-dark-text-small">Transaction Total</span>
+                  <span className="luxury-dark-heading-sm">
                     {formatCurrency(transactionAmountCents)}
                   </span>
                 </div>
                 
                 {preview.totalCreditsApplicableCents > 0 && (
-                  <div className="flex items-center justify-between text-green-400">
-                    <span className="text-sm">Credits Applied</span>
-                    <span className="font-medium">
+                  <div className="flex items-center justify-between">
+                    <span className="luxury-dark-text-small text-emerald-400">Credits Applied</span>
+                    <span className="luxury-dark-heading-sm text-emerald-400">
                       -{formatCurrency(preview.totalCreditsApplicableCents)}
                     </span>
                   </div>
                 )}
                 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-700">
-                  <span className="text-white font-medium">You Pay</span>
-                  <span className="text-xl font-bold text-white">
+                <div className="luxury-dark-divider !my-3" />
+                
+                <div className="flex items-center justify-between">
+                  <span className="luxury-dark-heading-sm">You Pay</span>
+                  <span className="luxury-stat-value luxury-dark-text-gradient text-2xl sm:text-3xl">
                     {formatCurrency(preview.cashDueCents)}
                   </span>
                 </div>
@@ -277,82 +321,82 @@ export function CreditWalletCard({
                   <Button
                     onClick={() => createRedemption.mutate()}
                     disabled={createRedemption.isPending}
-                    className={cn(
-                      'w-full mt-2 bg-gradient-to-r text-white',
-                      tierGradient
-                    )}
+                    className="w-full mt-4 luxury-dark-btn-gold h-14 text-base font-semibold"
                   >
                     {createRedemption.isPending ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     ) : (
-                      <QrCode className="w-4 h-4 mr-2" />
+                      <QrCode className="w-5 h-5 mr-2" />
                     )}
                     Apply Credits
-                    <ChevronRight className="w-4 h-4 ml-2" />
+                    <ChevronRight className="w-5 h-5 ml-2" />
                   </Button>
                 )}
               </div>
             </>
           )}
 
-          <div className="pt-2">
-            <p className="text-xs text-slate-500 text-center">
+          <div className="mt-6 text-center">
+            <p className="luxury-dark-text-small text-xs">
               {wallet.tierPointsThisYear.toLocaleString()} points earned this year
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center">Redemption Code</DialogTitle>
-            <DialogDescription className="text-center text-slate-400">
-              Show this code at the K9000 station or use it during checkout
-            </DialogDescription>
-          </DialogHeader>
-          
-          {activeRedemption && (
-            <div className="flex flex-col items-center gap-4 py-4">
-              <div className="bg-white p-4 rounded-2xl">
-                <QRCode 
-                  value={activeRedemption.qrData} 
-                  size={180}
-                  level="H"
-                />
-              </div>
-              
-              <div className="text-center">
-                <p className="text-sm text-slate-400 mb-1">Manual Code</p>
-                <p className="text-3xl font-mono font-bold tracking-wider text-amber-400">
-                  {activeRedemption.redemptionCode}
+        <DialogContent className="luxury-dark-card border-0 max-w-sm p-0 overflow-hidden">
+          <div className="luxury-tier-gold h-1" />
+          <div className="p-6">
+            <DialogHeader className="text-center mb-6">
+              <DialogTitle className="luxury-dark-heading-md">Redemption Code</DialogTitle>
+              <DialogDescription className="luxury-dark-text-body">
+                Show this code at the K9000 station or use it during checkout
+              </DialogDescription>
+            </DialogHeader>
+            
+            {activeRedemption && (
+              <div className="flex flex-col items-center gap-6">
+                <div className="luxury-qr-container">
+                  <QRCode 
+                    value={activeRedemption.qrData} 
+                    size={180}
+                    level="H"
+                  />
+                </div>
+                
+                <div className="text-center">
+                  <p className="luxury-dark-text-small mb-2">Manual Code</p>
+                  <p className="text-3xl font-mono font-bold tracking-[0.25em] luxury-dark-text-gold">
+                    {activeRedemption.redemptionCode}
+                  </p>
+                </div>
+
+                <div className="w-full luxury-dark-surface p-5 space-y-3">
+                  <div className="flex justify-between">
+                    <span className="luxury-dark-text-small">Credits Applied</span>
+                    <span className="luxury-dark-heading-sm text-emerald-400">
+                      {formatCurrency(
+                        activeRedemption.creditsApplied.egiftCents +
+                        activeRedemption.creditsApplied.promoCents +
+                        activeRedemption.creditsApplied.loyaltyPoints
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="luxury-dark-text-small">Amount Due</span>
+                    <span className="luxury-dark-heading-sm">
+                      {formatCurrency(activeRedemption.cashDueCents)}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="luxury-dark-text-small text-xs opacity-60">
+                  Expires in 10 minutes
                 </p>
               </div>
-
-              <div className="w-full bg-slate-800/50 rounded-xl p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Credits Applied</span>
-                  <span className="text-green-400 font-medium">
-                    {formatCurrency(
-                      activeRedemption.creditsApplied.egiftCents +
-                      activeRedemption.creditsApplied.promoCents +
-                      activeRedemption.creditsApplied.loyaltyPoints
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Amount Due</span>
-                  <span className="text-white font-medium">
-                    {formatCurrency(activeRedemption.cashDueCents)}
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-xs text-slate-500 text-center">
-                Expires in 10 minutes
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>
@@ -365,18 +409,19 @@ interface CreditItemProps {
   value: string;
   subtitle?: string;
   color: string;
+  iconColor: string;
 }
 
-function CreditItem({ icon, label, value, subtitle, color }: CreditItemProps) {
+function CreditItem({ icon, label, value, subtitle, color, iconColor }: CreditItemProps) {
   return (
-    <div className="bg-slate-800/30 rounded-xl p-3">
-      <div className={cn('flex items-center gap-2 mb-1', color)}>
-        {icon}
-        <span className="text-xs text-slate-400">{label}</span>
+    <div className="luxury-credit-item">
+      <div className={cn('w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br flex items-center justify-center mb-3', color)}>
+        <div className={iconColor}>{icon}</div>
       </div>
-      <p className="text-white font-semibold">{value}</p>
+      <p className="luxury-dark-text-small text-[10px] sm:text-xs mb-1">{label}</p>
+      <p className="luxury-dark-heading-sm text-base sm:text-lg">{value}</p>
       {subtitle && (
-        <p className="text-xs text-slate-500">{subtitle}</p>
+        <p className="luxury-dark-text-small text-[10px] mt-0.5 opacity-60">{subtitle}</p>
       )}
     </div>
   );

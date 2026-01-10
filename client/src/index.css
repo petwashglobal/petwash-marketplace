@@ -20,6 +20,9 @@
 /* 7-Star Luxury Design System 2025 - Apple/Tesla/Chanel Level */
 @import './styles/luxury-system-2025.css';
 
+/* Ultra-Luxury Dark Design System 2025 - Fashion Brand Level */
+@import './styles/luxury-dark-2025.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
