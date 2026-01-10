@@ -7,6 +7,17 @@
 import admin from "firebase-admin";
 import NotificationService from "./NotificationService";
 
+export interface CreditPaymentBreakdown {
+  egiftCents: number;
+  washPackages: number;
+  loyaltyPointsCents: number;
+  promoCents: number;
+  referralCents: number;
+  totalCreditsAppliedCents: number;
+  cashPaidCents: number;
+  redemptionSessionId?: string;
+}
+
 export interface EscrowPayment {
   id: string;
   bookingId: string;
@@ -21,6 +32,9 @@ export interface EscrowPayment {
   refundedAt?: Date;
   nayaxTransactionId?: string;
   metadata?: any;
+  creditBreakdown?: CreditPaymentBreakdown;
+  platformCommissionCents?: number;
+  providerPayoutCents?: number;
 }
 
 class EscrowService {
@@ -33,11 +47,17 @@ class EscrowService {
     providerId: string,
     amount: number,
     nayaxTransactionId?: string,
-    metadata?: any
+    metadata?: any,
+    creditBreakdown?: CreditPaymentBreakdown,
+    platformCommissionPercent: number = 15
   ): Promise<EscrowPayment> {
     const escrowRef = this.db.collection("escrow_payments").doc();
     const holdUntil = new Date();
     holdUntil.setHours(holdUntil.getHours() + this.HOLD_DURATION_HOURS);
+
+    const amountCents = Math.round(amount * 100);
+    const platformCommissionCents = Math.round(amountCents * (platformCommissionPercent / 100));
+    const providerPayoutCents = amountCents - platformCommissionCents;
 
     const escrow: EscrowPayment = {
       id: escrowRef.id,
@@ -51,6 +71,9 @@ class EscrowService {
       createdAt: new Date(),
       nayaxTransactionId,
       metadata,
+      creditBreakdown,
+      platformCommissionCents,
+      providerPayoutCents,
     };
 
     await escrowRef.set(escrow);
@@ -93,33 +116,50 @@ class EscrowService {
       throw new Error(`Cannot release escrow with status: ${escrow.status}`);
     }
 
+    const providerPayout = escrow.providerPayoutCents 
+      ? (escrow.providerPayoutCents / 100).toFixed(2) 
+      : escrow.amount.toFixed(2);
+
     await escrowRef.update({
       status: "released",
       releasedAt: new Date(),
       releasedBy,
     });
 
+    let paymentSourceDetails = '';
+    if (escrow.creditBreakdown && escrow.creditBreakdown.totalCreditsAppliedCents > 0) {
+      const creditAmt = (escrow.creditBreakdown.totalCreditsAppliedCents / 100).toFixed(2);
+      const cashAmt = (escrow.creditBreakdown.cashPaidCents / 100).toFixed(2);
+      paymentSourceDetails = ` (₪${creditAmt} credits + ₪${cashAmt} cash)`;
+    }
+
     await NotificationService.sendNotification({
       userId: escrow.providerId,
       type: "payment",
       title: "Payment Released 💰",
-      message: `₪${escrow.amount.toFixed(2)} has been released from escrow and transferred to your account.`,
+      message: `₪${providerPayout} has been released from escrow and transferred to your account.`,
       priority: "high",
       channel: "all",
-      data: { escrowId, bookingId: escrow.bookingId },
+      data: { 
+        escrowId, 
+        bookingId: escrow.bookingId,
+        payoutAmount: escrow.providerPayoutCents,
+        commissionAmount: escrow.platformCommissionCents,
+        creditBreakdown: escrow.creditBreakdown,
+      },
     });
 
     await NotificationService.sendNotification({
       userId: escrow.customerId,
       type: "payment",
       title: "Payment Completed ✅",
-      message: `Service confirmed. Payment of ₪${escrow.amount.toFixed(2)} released to provider.`,
+      message: `Service confirmed. Payment of ₪${escrow.amount.toFixed(2)}${paymentSourceDetails} released to provider.`,
       priority: "normal",
       channel: "push",
       data: { escrowId, bookingId: escrow.bookingId },
     });
 
-    console.log(`[Escrow] Payment released: ${escrowId} - ₪${escrow.amount.toFixed(2)}`);
+    console.log(`[Escrow] Payment released: ${escrowId} - Provider payout: ₪${providerPayout}, Commission: ₪${((escrow.platformCommissionCents || 0) / 100).toFixed(2)}`);
   }
 
   async refundEscrowPayment(escrowId: string, reason: string, refundedBy: string): Promise<void> {
