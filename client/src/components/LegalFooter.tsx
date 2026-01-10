@@ -63,7 +63,7 @@ export function LegalFooter({ language }: LegalFooterProps) {
 ### 7. פרטי קשר
 לשאלות בנושא פרטיות: privacy@petwash.co.il
 
-פט וואש בע"מ • רחוב עוזי חיטמן 2, ראש העין • מס' ח.פ: 517145033
+פט וואש בע"מ • רחוב עוזי חיטמן 8, ראש העין • מס' ח.פ: 517145033
       `,
     },
     en: {
@@ -108,7 +108,7 @@ The website uses Cookies to improve user experience, analytics (Google Analytics
 ### 7. Contact
 For privacy questions: privacy@petwash.co.il
 
-PetWash Ltd • 2 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
+PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
       `,
     },
   };
@@ -156,7 +156,7 @@ PetWash Ltd לא תהיה אחראית לנזקים עקיפים או תוצאת
 ### 8. סמכות שיפוט
 תנאים אלה כפופים לחוקי מדינת ישראל. סמכות השיפוט הבלעדית נתונה לבתי המשפט בראש העין או ברמלה.
 
-פט וואש בע"מ • רחוב עוזי חיטמן 2, ראש העין • מס' ח.פ: 517145033
+פט וואש בע"מ • רחוב עוזי חיטמן 8, ראש העין • מס' ח.פ: 517145033
       `,
     },
     en: {
@@ -201,7 +201,7 @@ We reserve the right to modify these terms at any time. Changes take effect imme
 ### 8. Jurisdiction
 These terms are governed by Israeli law. Exclusive jurisdiction lies with the courts of Rosh HaAyin or Ramla.
 
-PetWash Ltd • 2 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
+PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
       `,
     },
   };
@@ -249,7 +249,7 @@ PetWash Ltd • 2 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
 
 **שימו לב:** שירותי PetWash™ מיועדים לשטיפה וטיפול בסיסי בחיות מחמד בלבד. למקרי חירום וטרינריים, פנו לוטרינר בהקדם.
 
-פט וואש בע"מ • רחוב עוזי חיטמן 2, ראש העין • מס' ח.פ: 517145033  
+פט וואש בע"מ • רחוב עוזי חיטמן 8, ראש העין • מס' ח.פ: 517145033  
 טלפון תמיכה: 1-700-700-PET (738)
       `,
     },
@@ -295,7 +295,7 @@ Use of PetWash™ services is at the user's sole risk.
 
 **Note:** PetWash™ services are intended for basic pet washing and care only. For veterinary emergencies, contact a veterinarian immediately.
 
-PetWash Ltd • 2 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033  
+PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033  
 Support Phone: 1-700-700-PET (738)
       `,
     },
