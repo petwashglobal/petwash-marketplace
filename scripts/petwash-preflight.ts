@@ -69,6 +69,7 @@ const APPROVED_LUXURY_CSS = [
   'ai-chat.css',
   'NewHumanAvatar.css',
   'luxury-system-2025.css', // Centralized luxury design system - architect approved
+  'luxury-dark-2025.css', // Ultra-luxury dark theme 2025 - architect approved
 ];
 
 async function scanDirectory(dir: string, results: string[] = [], depth = 0): Promise<string[]> {
