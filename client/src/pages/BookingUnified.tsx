@@ -26,25 +26,25 @@ export default function BookingUnified() {
     {
       icon: Home,
       name: "Pet Sitter",
-      href: "/sitter-suite/booking",
+      href: "/sitter-suite/browse",
       desc: "Find trusted sitters",
     },
     {
       icon: Dog,
       name: "Dog Walker",
-      href: "/walk-my-pet/booking",
+      href: "/walk-my-pet/explore",
       desc: "Book professional walks",
     },
     {
       icon: RouteIcon,
       name: "Pet Transport",
-      href: "/pettrek/booking",
+      href: "/pettrek/book",
       desc: "Safe pet transportation",
     },
     {
       icon: GraduationCap,
       name: "Training",
-      href: "/academy/booking",
+      href: "/academy",
       desc: "Professional pet training",
     },
   ];
