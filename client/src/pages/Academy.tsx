@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { GlassCard } from '@/components/LuxuryWidgets';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
+import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { 
   Star, MapPin, Heart, Search, Filter, Shield, CheckCircle2, 
   Award, TrendingUp, Users, Clock, ThumbsUp, Sparkles,
@@ -548,6 +549,9 @@ export default function Academy() {
               ))}
             </div>
           )}
+
+          {/* Become a Trainer - Provider Registration */}
+          <ProviderRegistrationBanner variant="section" platform="trainer" className="mt-16" />
         </section>
       </div>
     </Layout>

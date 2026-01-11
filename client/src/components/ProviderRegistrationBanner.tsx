@@ -63,16 +63,19 @@ export default function ProviderRegistrationBanner({
     platform !== "all" ? platform : ""
   );
   const [formData, setFormData] = useState({
-    fullName: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     city: "",
     experience: "",
-    motivation: "",
+    aboutMe: "",
+    whyJoinPetWash: "",
     hasVehicle: false,
     hasPetExperience: false,
     hasFirstAid: false,
     agreeToTerms: false,
+    agreeToPrivacy: false,
   });
   const [documents, setDocuments] = useState<{
     id?: File;
@@ -150,10 +153,64 @@ export default function ProviderRegistrationBanner({
   };
 
   const handleSubmit = async () => {
-    if (!formData.agreeToTerms) {
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
       toast({
-        title: isRTL ? "נדרשת הסכמה לתנאים" : "Terms Agreement Required",
-        description: isRTL ? "יש לאשר את תנאי השימוש" : "Please agree to the terms of service",
+        title: isRTL ? "שם מלא נדרש" : "Full Name Required",
+        description: isRTL ? "אנא הזינו שם פרטי ומשפחה" : "Please enter first and last name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toast({
+        title: isRTL ? "אימייל לא תקין" : "Invalid Email",
+        description: isRTL ? "אנא הזינו כתובת אימייל תקינה" : "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.phone.trim() || formData.phone.replace(/\D/g, '').length < 9) {
+      toast({
+        title: isRTL ? "מספר טלפון לא תקין" : "Invalid Phone Number",
+        description: isRTL ? "אנא הזינו מספר טלפון תקין" : "Please enter a valid phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.city.trim()) {
+      toast({
+        title: isRTL ? "עיר מגורים נדרשת" : "City Required",
+        description: isRTL ? "אנא הזינו את עיר מגוריכם" : "Please enter your city",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.aboutMe.trim() || formData.aboutMe.length < 20) {
+      toast({
+        title: isRTL ? "ספרו על עצמכם" : "Tell Us About Yourself",
+        description: isRTL ? "אנא כתבו לפחות 20 תווים" : "Please write at least 20 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.whyJoinPetWash.trim() || formData.whyJoinPetWash.length < 20) {
+      toast({
+        title: isRTL ? "למה אתם רוצים להצטרף?" : "Why Do You Want to Join?",
+        description: isRTL ? "אנא כתבו לפחות 20 תווים" : "Please write at least 20 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.agreeToTerms || !formData.agreeToPrivacy) {
+      toast({
+        title: isRTL ? "נדרשת הסכמה לתנאים" : "Agreement Required",
+        description: isRTL ? "יש לאשר את תנאי השימוש ומדיניות הפרטיות" : "Please agree to the terms and privacy policy",
         variant: "destructive",
       });
       return;
@@ -171,28 +228,36 @@ export default function ProviderRegistrationBanner({
     setIsSubmitting(true);
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append("providerType", selectedType);
-      formDataToSend.append("fullName", formData.fullName);
-      formDataToSend.append("email", formData.email);
-      formDataToSend.append("phone", formData.phone);
-      formDataToSend.append("city", formData.city);
-      formDataToSend.append("experience", formData.experience);
-      formDataToSend.append("motivation", formData.motivation);
-      formDataToSend.append("hasVehicle", String(formData.hasVehicle));
-      formDataToSend.append("hasPetExperience", String(formData.hasPetExperience));
-      formDataToSend.append("hasFirstAid", String(formData.hasFirstAid));
-      
-      if (documents.id) formDataToSend.append("idDocument", documents.id);
-      if (documents.certificate) formDataToSend.append("certificate", documents.certificate);
-      if (documents.insurance) formDataToSend.append("insurance", documents.insurance);
+      const submitData = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phoneNumber: formData.phone.trim(),
+        city: formData.city.trim(),
+        providerType: selectedType,
+        selectedPlatforms: [selectedType],
+        yearsExperience: formData.experience || "0",
+        hasOwnTransport: formData.hasVehicle,
+        hasPetFirstAid: formData.hasFirstAid,
+        hasInsurance: false,
+        aboutMe: formData.aboutMe.trim(),
+        whyJoinPetWash: formData.whyJoinPetWash.trim(),
+        agreeToTerms: formData.agreeToTerms,
+        agreeToPrivacy: formData.agreeToPrivacy,
+        agreeToContractorStatus: true,
+      };
 
-      const response = await fetch("/api/provider-intake/apply", {
+      const response = await fetch("/api/provider-intake/submit", {
         method: "POST",
-        body: formDataToSend,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(submitData),
       });
 
-      if (response.ok) {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         toast({
           title: isRTL ? "הבקשה נשלחה בהצלחה! 🎉" : "Application Submitted! 🎉",
           description: isRTL 
@@ -201,25 +266,28 @@ export default function ProviderRegistrationBanner({
         });
         setIsFormOpen(false);
         setFormData({
-          fullName: "",
+          firstName: "",
+          lastName: "",
           email: "",
           phone: "",
           city: "",
           experience: "",
-          motivation: "",
+          aboutMe: "",
+          whyJoinPetWash: "",
           hasVehicle: false,
           hasPetExperience: false,
           hasFirstAid: false,
           agreeToTerms: false,
+          agreeToPrivacy: false,
         });
         setDocuments({});
       } else {
-        throw new Error("Failed to submit");
+        throw new Error(result.error || "Failed to submit");
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: isRTL ? "שגיאה בשליחה" : "Submission Error",
-        description: isRTL ? "אנא נסו שוב מאוחר יותר" : "Please try again later",
+        description: error.message || (isRTL ? "אנא נסו שוב מאוחר יותר" : "Please try again later"),
         variant: "destructive",
       });
     } finally {
@@ -532,15 +600,28 @@ function ApplicationForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-gray-300">{isRTL ? "שם מלא *" : "Full Name *"}</Label>
+            <Label className="text-gray-300">{isRTL ? "שם פרטי *" : "First Name *"}</Label>
             <Input
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+              value={formData.firstName}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
               className="bg-gray-800 border-gray-700 text-white mt-1"
-              placeholder={isRTL ? "הזינו שם מלא" : "Enter full name"}
+              placeholder={isRTL ? "הזינו שם פרטי" : "Enter first name"}
               required
             />
           </div>
+          <div>
+            <Label className="text-gray-300">{isRTL ? "שם משפחה *" : "Last Name *"}</Label>
+            <Input
+              value={formData.lastName}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              className="bg-gray-800 border-gray-700 text-white mt-1"
+              placeholder={isRTL ? "הזינו שם משפחה" : "Enter last name"}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="text-gray-300">{isRTL ? "עיר מגורים *" : "City *"}</Label>
             <Input
@@ -549,6 +630,15 @@ function ApplicationForm({
               className="bg-gray-800 border-gray-700 text-white mt-1"
               placeholder={isRTL ? "הזינו עיר" : "Enter city"}
               required
+            />
+          </div>
+          <div>
+            <Label className="text-gray-300">{isRTL ? "שנות ניסיון" : "Years of Experience"}</Label>
+            <Input
+              value={formData.experience}
+              onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+              className="bg-gray-800 border-gray-700 text-white mt-1"
+              placeholder={isRTL ? "לדוגמה: 2-5" : "e.g., 2-5"}
             />
           </div>
         </div>
@@ -579,23 +669,23 @@ function ApplicationForm({
         </div>
 
         <div>
-          <Label className="text-gray-300">{isRTL ? "ניסיון קודם" : "Previous Experience"}</Label>
+          <Label className="text-gray-300">{isRTL ? "ספרו על עצמכם *" : "About Yourself *"}</Label>
           <Textarea
-            value={formData.experience}
-            onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+            value={formData.aboutMe}
+            onChange={(e) => setFormData({ ...formData, aboutMe: e.target.value })}
             className="bg-gray-800 border-gray-700 text-white mt-1"
-            placeholder={isRTL ? "ספרו על הניסיון שלכם עם חיות מחמד..." : "Tell us about your experience with pets..."}
+            placeholder={isRTL ? "ספרו על עצמכם ועל הניסיון שלכם עם חיות מחמד (לפחות 20 תווים)..." : "Tell us about yourself and your experience with pets (at least 20 characters)..."}
             rows={3}
           />
         </div>
 
         <div>
-          <Label className="text-gray-300">{isRTL ? "למה אתם רוצים להצטרף?" : "Why do you want to join?"}</Label>
+          <Label className="text-gray-300">{isRTL ? "למה אתם רוצים להצטרף? *" : "Why do you want to join Pet Wash? *"}</Label>
           <Textarea
-            value={formData.motivation}
-            onChange={(e) => setFormData({ ...formData, motivation: e.target.value })}
+            value={formData.whyJoinPetWash}
+            onChange={(e) => setFormData({ ...formData, whyJoinPetWash: e.target.value })}
             className="bg-gray-800 border-gray-700 text-white mt-1"
-            placeholder={isRTL ? "מה מושך אתכם בעבודה עם חיות מחמד?" : "What attracts you to working with pets?"}
+            placeholder={isRTL ? "מה מושך אתכם בעבודה עם חיות מחמד? (לפחות 20 תווים)" : "What attracts you to working with pets? (at least 20 characters)"}
             rows={2}
           />
         </div>
@@ -727,8 +817,8 @@ function ApplicationForm({
         <div className="flex items-start gap-3 p-4 rounded-xl bg-purple-500/10 border border-purple-500/30">
           <Checkbox
             id="agreeToTerms"
-            checked={formData.agreeToTerms}
-            onCheckedChange={(checked) => setFormData({ ...formData, agreeToTerms: checked })}
+            checked={formData.agreeToTerms && formData.agreeToPrivacy}
+            onCheckedChange={(checked) => setFormData({ ...formData, agreeToTerms: !!checked, agreeToPrivacy: !!checked })}
             className="border-purple-500 mt-1"
           />
           <label htmlFor="agreeToTerms" className="text-gray-300 text-sm cursor-pointer">
