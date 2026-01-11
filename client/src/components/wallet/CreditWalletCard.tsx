@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface WalletSummary {
   walletId: string;
@@ -358,7 +358,7 @@ export function CreditWalletCard({
             {activeRedemption && (
               <div className="flex flex-col items-center gap-6">
                 <div className="luxury-qr-container">
-                  <QRCode 
+                  <QRCodeSVG 
                     value={activeRedemption.qrData} 
                     size={180}
                     level="H"
