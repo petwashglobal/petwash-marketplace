@@ -117,6 +117,7 @@ const FranchiseMarketing = lazy(() => import("@/pages/franchise/FranchiseMarketi
 const AdminInbox = lazy(() => import("@/pages/AdminInbox"));
 const WalletDownload = lazy(() => import("@/pages/WalletDownload"));
 const MyWallet = lazy(() => import("@/pages/MyWallet"));
+const MyAccount = lazy(() => import("@/pages/MyAccount"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
 const AdminUsers = lazy(() => import("@/pages/AdminUsers"));
 const AdminTeamInvitations = lazy(() => import("@/pages/AdminTeamInvitations"));
@@ -1463,6 +1464,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/locations">{() => <Locations />}</Route>
         <Route path="/wallet">{() => <WalletDownload />}</Route>
         <Route path="/my-wallet">{() => <MyWallet />}</Route>
+        <Route path="/my-account">{() => <MyAccount />}</Route>
         <Route path="/packages">{() => <Packages />}</Route>
         
         {/* Hebrew routes - חבילות */}

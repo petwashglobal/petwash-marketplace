@@ -112,6 +112,7 @@ import accountingRoutes from "./routes/accounting";
 import accountingExportRoutes from "./routes/accounting-export";
 import adminRoutes from "./routes/admin";
 import pinAuthRoutes from "./routes/pin-auth";
+import userProfileRoutes from "./routes/user-profile";
 import aiInsightsRoutes from "./routes/ai-insights";
 import analyticsRoutes from "./routes/analytics";
 import auditRoutes from "./routes/audit";
@@ -8130,6 +8131,7 @@ self.addEventListener('notificationclick', (event) => {
 
   // 🔐 PIN Authentication - December 2025 Edition (4-6 digit PIN, device binding, rate limiting)
   app.use('/api/pin-auth', apiLimiter, pinAuthRoutes);
+  app.use('/api/user', apiLimiter, userProfileRoutes);
 
   // 🔐 Mobile Biometric Authentication - NIST SP 800-63B AAL2 Compliant (Passkeys, Health Data)
   app.use('/api/mobile/biometric', apiLimiter, mobileBiometricRoutes);
