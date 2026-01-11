@@ -23,12 +23,29 @@ import {
   ChevronRight,
   Loader2,
   Crown,
+  Wallet,
+  QrCode,
+  Gift,
+  Star,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
 import { PersonalizedGreeting } from '@/components/PersonalizedGreeting';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
+
+interface WalletSummary {
+  walletId: string;
+  userId: string;
+  egiftBalanceCents: number;
+  washPackageCredits: number;
+  loyaltyPointsBalance: number;
+  promoBalanceCents: number;
+  referralBalanceCents: number;
+  totalCreditsValueCents: number;
+  loyaltyTier: string;
+  tierPointsThisYear: number;
+}
 
 const DashboardWidget = ({ 
   title, 
@@ -108,10 +125,23 @@ const NextAppointmentWidget = ({ booking }: { booking: any }) => {
   );
 };
 
+const tierLabels: Record<string, { en: string; he: string }> = {
+  bronze: { en: 'Bronze', he: 'ברונזה' },
+  silver: { en: 'Silver', he: 'כסף' },
+  gold: { en: 'Gold', he: 'זהב' },
+  platinum: { en: 'Platinum', he: 'פלטינום' },
+  diamond: { en: 'Diamond', he: 'יהלום' },
+  emerald: { en: 'Emerald', he: 'אמרלד' },
+  royal: { en: 'Royal', he: 'מלכותי' },
+};
+
 const LoyaltyWidget = ({ points, status, maxPoints = 1000 }: { points: number; status: string; maxPoints?: number; }) => {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
-  const progress = (points / maxPoints) * 100;
+  const [, setLocation] = useLocation();
+  const progress = Math.min((points / maxPoints) * 100, 100);
+  const tierKey = status.toLowerCase();
+  const tierLabel = tierLabels[tierKey] || tierLabels.bronze;
 
   return (
     <div className="space-y-5">
@@ -121,7 +151,7 @@ const LoyaltyWidget = ({ points, status, maxPoints = 1000 }: { points: number; s
           <p className="luxury-dark-text-small text-xs mt-1">{isHebrew ? 'נקודות נוכחיות' : 'Current Points'}</p>
           <div className="luxury-dark-badge-gold mt-3 inline-flex items-center gap-1.5">
             <Trophy className="w-3.5 h-3.5" />
-            <span>{status} {isHebrew ? 'חבר' : 'Member'}</span>
+            <span>{isHebrew ? tierLabel.he : tierLabel.en} {isHebrew ? 'חבר' : 'Member'}</span>
           </div>
         </div>
         <div className="relative w-20 h-20">
@@ -150,6 +180,88 @@ const LoyaltyWidget = ({ points, status, maxPoints = 1000 }: { points: number; s
       </div>
       <div className="h-2 bg-[rgba(232,230,240,0.08)] rounded-full overflow-hidden">
         <div className="h-full bg-gradient-to-r from-[#d4af37] to-[#f0d860] rounded-full transition-all" style={{ width: `${progress}%` }} />
+      </div>
+      <button 
+        onClick={() => setLocation('/loyalty/dashboard')}
+        className="w-full luxury-dark-btn-gold py-3 flex items-center justify-center gap-2"
+      >
+        <Star className="w-4 h-4" />
+        {isHebrew ? 'צפה בתוכנית הנאמנות' : 'View Loyalty Program'}
+      </button>
+    </div>
+  );
+};
+
+const WalletQuickWidget = ({ wallet }: { wallet: WalletSummary | null }) => {
+  const { language } = useLanguage();
+  const isHebrew = language === 'he';
+  const [, setLocation] = useLocation();
+
+  const formatCurrency = (cents: number) => `₪${(cents / 100).toFixed(0)}`;
+
+  if (!wallet) {
+    return (
+      <div className="text-center py-6">
+        <Wallet className="w-10 h-10 mx-auto mb-3 text-[rgba(149,144,168,0.5)]" />
+        <p className="luxury-dark-text-body">{isHebrew ? 'טוען ארנק...' : 'Loading wallet...'}</p>
+      </div>
+    );
+  }
+
+  const tierBadges: Record<string, string> = {
+    bronze: '🥉',
+    silver: '🥈', 
+    gold: '🥇',
+    platinum: '💎',
+    diamond: '💠',
+    emerald: '💚',
+    royal: '👑'
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center p-4 rounded-2xl bg-gradient-to-br from-[rgba(212,175,55,0.15)] to-[rgba(212,175,55,0.05)]">
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <span className="text-lg">{tierBadges[wallet.loyaltyTier?.toLowerCase()] || '⭐'}</span>
+          <span className="luxury-dark-text-small text-xs uppercase tracking-wider">{wallet.loyaltyTier || 'Bronze'}</span>
+        </div>
+        <p className="luxury-stat-value luxury-dark-text-gold text-3xl">{formatCurrency(wallet.totalCreditsValueCents)}</p>
+        <p className="luxury-dark-text-small text-xs mt-1">{isHebrew ? 'סה"כ קרדיט' : 'Total Credits'}</p>
+      </div>
+      
+      <div className="grid grid-cols-3 gap-2">
+        <div className="p-2.5 rounded-xl bg-[rgba(232,230,240,0.03)] text-center">
+          <Gift className="w-4 h-4 mx-auto mb-1 text-pink-400" />
+          <p className="text-white font-medium text-sm">{formatCurrency(wallet.egiftBalanceCents)}</p>
+          <p className="luxury-dark-text-small text-[10px]">{isHebrew ? 'מתנות' : 'E-Gift'}</p>
+        </div>
+        <div className="p-2.5 rounded-xl bg-[rgba(232,230,240,0.03)] text-center">
+          <Sparkles className="w-4 h-4 mx-auto mb-1 text-cyan-400" />
+          <p className="text-white font-medium text-sm">{wallet.washPackageCredits}</p>
+          <p className="luxury-dark-text-small text-[10px]">{isHebrew ? 'שטיפות' : 'Washes'}</p>
+        </div>
+        <div className="p-2.5 rounded-xl bg-[rgba(232,230,240,0.03)] text-center">
+          <Star className="w-4 h-4 mx-auto mb-1 text-amber-400" />
+          <p className="text-white font-medium text-sm">{wallet.loyaltyPointsBalance?.toLocaleString() || 0}</p>
+          <p className="luxury-dark-text-small text-[10px]">{isHebrew ? 'נקודות' : 'Points'}</p>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <button 
+          onClick={() => setLocation('/my-wallet')}
+          className="flex-1 luxury-dark-btn-ghost py-2.5 text-sm flex items-center justify-center gap-2 border border-[rgba(232,230,240,0.1)]"
+        >
+          <Wallet className="w-4 h-4" />
+          {isHebrew ? 'הארנק שלי' : 'My Wallet'}
+        </button>
+        <button 
+          onClick={() => setLocation('/stations')}
+          className="flex-1 luxury-dark-btn-gold py-2.5 text-sm flex items-center justify-center gap-2"
+        >
+          <QrCode className="w-4 h-4" />
+          {isHebrew ? 'מימוש' : 'Redeem'}
+        </button>
       </div>
     </div>
   );
@@ -354,6 +466,12 @@ export default function Dashboard() {
     enabled: !!firebaseUser,
   });
 
+  const { data: walletData } = useQuery<{ success: boolean; wallet: WalletSummary }>({
+    queryKey: ['/api/credit-wallet/summary'],
+    enabled: !!firebaseUser,
+  });
+
+  const wallet = walletData?.wallet || null;
   const userProfile = profileData?.user;
   const userName = userProfile?.firstName || firebaseUser?.displayName?.split(' ')[0] || 'User';
 
@@ -433,15 +551,29 @@ export default function Dashboard() {
               <DashboardWidget
                 title={isHebrew ? 'סטטוס נאמנות' : 'Loyalty Status'}
                 icon={Crown}
-                onAction={() => console.log('View benefits')}
                 accentColor="from-amber-500/25 to-yellow-500/15"
                 iconColor="text-amber-400"
               >
-                <LoyaltyWidget points={400} status="Silver" maxPoints={1000} />
+                <LoyaltyWidget 
+                  points={wallet?.loyaltyPointsBalance || 0} 
+                  status={wallet?.loyaltyTier || 'bronze'} 
+                  maxPoints={wallet?.tierPointsThisYear ? wallet.tierPointsThisYear + 500 : 1000} 
+                />
               </DashboardWidget>
             </div>
 
             <div className="luxury-animate-slide-up luxury-delay-5">
+              <DashboardWidget
+                title={isHebrew ? 'הארנק שלי' : 'My Wallet'}
+                icon={Wallet}
+                accentColor="from-pink-500/25 to-rose-500/15"
+                iconColor="text-pink-400"
+              >
+                <WalletQuickWidget wallet={wallet} />
+              </DashboardWidget>
+            </div>
+
+            <div className="luxury-animate-slide-up luxury-delay-6">
               <DashboardWidget
                 title={isHebrew ? 'תמונת מצב בריאותית' : 'Pet Health Snapshot'}
                 icon={Activity}
@@ -453,7 +585,7 @@ export default function Dashboard() {
               </DashboardWidget>
             </div>
 
-            <div className="luxury-animate-slide-up luxury-delay-6">
+            <div className="luxury-animate-slide-up luxury-delay-7">
               <DashboardWidget
                 title={isHebrew ? 'לוח חיסונים' : 'Vaccine Calendar'}
                 icon={Syringe}

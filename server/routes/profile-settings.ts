@@ -436,4 +436,71 @@ router.get('/settings/change-history', async (req, res) => {
   }
 });
 
+router.post('/settings/phone/confirm-verification', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const uid = decodedToken.uid;
+
+    const firebaseUser = await admin.auth().getUser(uid);
+    
+    if (!firebaseUser.phoneNumber) {
+      return res.status(400).json({ error: 'No phone number linked to account' });
+    }
+
+    await db.update(users).set({ 
+      phone: firebaseUser.phoneNumber,
+      updatedAt: new Date()
+    }).where(eq(users.id, uid));
+
+    const firestore = admin.firestore();
+    await firestore.collection('phone_verification_audit').add({
+      userId: uid,
+      phone: firebaseUser.phoneNumber,
+      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown',
+    });
+
+    logger.info('[ProfileSettings] Phone verified for user:', uid, 'phone:', firebaseUser.phoneNumber);
+
+    res.json({
+      success: true,
+      phone: firebaseUser.phoneNumber,
+      verified: true,
+    });
+  } catch (error: any) {
+    logger.error('[ProfileSettings] Phone verification confirm error:', error);
+    res.status(500).json({ error: 'Failed to confirm phone verification' });
+  }
+});
+
+router.get('/settings/phone/status', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const uid = decodedToken.uid;
+
+    const firebaseUser = await admin.auth().getUser(uid);
+    
+    res.json({
+      phone: firebaseUser.phoneNumber || null,
+      verified: !!firebaseUser.phoneNumber,
+    });
+  } catch (error: any) {
+    logger.error('[ProfileSettings] Phone status error:', error);
+    res.status(500).json({ error: 'Failed to get phone status' });
+  }
+});
+
 export default router;

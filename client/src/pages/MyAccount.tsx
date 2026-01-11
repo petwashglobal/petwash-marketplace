@@ -41,8 +41,11 @@ import {
   Download,
   Ban,
   Globe,
-  KeyRound
+  KeyRound,
+  QrCode,
+  Award
 } from 'lucide-react';
+import { useLocation } from 'wouter';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,6 +74,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { usePhoneVerification } from '@/hooks/usePhoneVerification';
 import '@/styles/luxury-dark-2025.css';
 
 interface WalletSummary {
@@ -191,6 +195,36 @@ function formatCurrency(cents: number): string {
   return `₪${(cents / 100).toFixed(2)}`;
 }
 
+function WalletActionButton({ 
+  icon: Icon, 
+  label, 
+  href, 
+  color 
+}: { 
+  icon: typeof Wallet; 
+  label: string; 
+  href: string; 
+  color: string;
+}) {
+  const [, setLocation] = useLocation();
+  
+  return (
+    <button 
+      onClick={() => setLocation(href)}
+      className="luxury-glass-card p-4 rounded-2xl border border-white/10 text-center hover:scale-105 transition-all duration-300 group"
+    >
+      <div className={cn(
+        "w-12 h-12 mx-auto mb-3 rounded-xl flex items-center justify-center",
+        "bg-gradient-to-br", color, "group-hover:shadow-lg group-hover:shadow-current/20 transition-shadow"
+      )}>
+        <Icon className="w-6 h-6 text-white" />
+      </div>
+      <p className="text-sm font-medium text-white group-hover:text-amber-300 transition-colors">{label}</p>
+      <ChevronRight className="w-4 h-4 mx-auto mt-2 text-slate-500 group-hover:text-amber-400 transition-colors" />
+    </button>
+  );
+}
+
 export default function MyAccount() {
   const { user } = useFirebaseAuth();
   const { language } = useLanguage();
@@ -215,6 +249,11 @@ export default function MyAccount() {
   });
   const [freezeReason, setFreezeReason] = useState<string>('');
   const [freezeDuration, setFreezeDuration] = useState<number | undefined>(undefined);
+  
+  const [showPhoneVerifyDialog, setShowPhoneVerifyDialog] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
+  const phoneVerification = usePhoneVerification();
 
   const { data: walletData, isLoading: walletLoading } = useQuery<{ success: boolean; wallet: WalletSummary }>({
     queryKey: ['/api/credit-wallet/summary'],
@@ -401,6 +440,51 @@ export default function MyAccount() {
     },
   });
 
+  const { data: phoneStatus, refetch: refetchPhoneStatus } = useQuery<{ phone: string | null; verified: boolean }>({
+    queryKey: ['/api/user/settings/phone/status'],
+    enabled: !!user,
+  });
+
+  const confirmPhoneVerificationMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/user/settings/phone/confirm-verification', {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setShowPhoneVerifyDialog(false);
+      setPhoneNumber('');
+      setPhoneVerificationCode('');
+      phoneVerification.reset();
+      refetchPhoneStatus();
+      queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
+      toast({
+        title: isHebrew ? 'הטלפון אומת' : 'Phone Verified',
+        description: data.phone,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: error?.message || (isHebrew ? 'אימות הטלפון נכשל' : 'Phone verification failed'),
+      });
+    },
+  });
+
+  const handleSendPhoneCode = async () => {
+    if (!phoneNumber) return;
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+972${phoneNumber.replace(/^0/, '')}`;
+    await phoneVerification.sendVerificationCode(formattedPhone);
+  };
+
+  const handleVerifyPhoneCode = async () => {
+    if (!phoneVerificationCode) return;
+    const success = await phoneVerification.verifyCode(phoneVerificationCode);
+    if (success) {
+      confirmPhoneVerificationMutation.mutate();
+    }
+  };
+
   const wallet = walletData?.wallet;
   const tier = wallet?.loyaltyTier?.toLowerCase() || 'bronze';
   const tierInfo = tierConfig[tier] || tierConfig.bronze;
@@ -562,6 +646,33 @@ export default function MyAccount() {
                 <p className="text-xs text-slate-400 mt-1">{item.label}</p>
               </div>
             ))}
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <WalletActionButton 
+              icon={Wallet}
+              label={isHebrew ? 'הארנק שלי' : 'My Wallet'}
+              href="/my-wallet"
+              color="from-amber-500 to-yellow-600"
+            />
+            <WalletActionButton 
+              icon={QrCode}
+              label={isHebrew ? 'מימוש בתחנה' : 'Redeem at Station'}
+              href="/stations"
+              color="from-emerald-500 to-green-600"
+            />
+            <WalletActionButton 
+              icon={Award}
+              label={isHebrew ? 'תוכנית נאמנות' : 'Loyalty Program'}
+              href="/loyalty/dashboard"
+              color="from-purple-500 to-violet-600"
+            />
+            <WalletActionButton 
+              icon={Gift}
+              label={isHebrew ? 'קנה כרטיס מתנה' : 'Buy Gift Card'}
+              href="/buy-gift-card"
+              color="from-pink-500 to-rose-600"
+            />
           </div>
 
           <Tabs defaultValue="profile" className="w-full">
@@ -801,6 +912,60 @@ export default function MyAccount() {
                           {isHebrew 
                             ? 'שינוי כתובת אימייל דורש אימות קוד חד-פעמי לאימייל החדש. זה מגן על חשבונך מפני גישה לא מורשית.'
                             : 'Changing your email requires verification via a one-time code sent to the new email. This protects your account from unauthorized access.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Phone Verification Section */}
+              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
+                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center">
+                    <Phone className="w-5 h-5 text-white" />
+                  </div>
+                  {isHebrew ? 'מספר טלפון' : 'Phone Number'}
+                </h3>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5">
+                    <div className="flex-1">
+                      <p className="text-white font-medium">
+                        {phoneStatus?.phone || profile?.phone || (isHebrew ? 'לא הוגדר' : 'Not set')}
+                      </p>
+                      <p className={cn("text-sm", phoneStatus?.verified ? "text-green-400" : "text-slate-400")}>
+                        {phoneStatus?.verified 
+                          ? (isHebrew ? 'מאומת ✓' : 'Verified ✓')
+                          : (isHebrew ? 'לא מאומת' : 'Not verified')
+                        }
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+                      onClick={() => setShowPhoneVerifyDialog(true)}
+                    >
+                      <Phone className="w-4 h-4 mr-2" />
+                      {phoneStatus?.verified 
+                        ? (isHebrew ? 'שנה' : 'Change')
+                        : (isHebrew ? 'אמת' : 'Verify')
+                      }
+                    </Button>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                    <div className="flex items-start gap-3">
+                      <Shield className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-cyan-400 text-sm font-medium">
+                          {isHebrew ? 'אימות טלפון עם Google' : 'Google Phone Verification'}
+                        </p>
+                        <p className="text-slate-400 text-sm mt-1">
+                          {isHebrew 
+                            ? 'קוד אימות יישלח ב-SMS למספר הטלפון שלך. אימות זה מוגן על ידי Firebase Authentication של Google.'
+                            : 'A verification code will be sent via SMS to your phone. This is powered by Google Firebase Authentication.'}
                         </p>
                       </div>
                     </div>
@@ -1462,6 +1627,147 @@ export default function MyAccount() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Phone Verification Dialog */}
+            <Dialog open={showPhoneVerifyDialog} onOpenChange={(open) => {
+              setShowPhoneVerifyDialog(open);
+              if (!open) {
+                setPhoneNumber('');
+                setPhoneVerificationCode('');
+                phoneVerification.reset();
+              }
+            }}>
+              <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-semibold flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center">
+                      <Phone className="w-5 h-5 text-white" />
+                    </div>
+                    {isHebrew ? 'אימות מספר טלפון' : 'Verify Phone Number'}
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-400">
+                    {isHebrew 
+                      ? 'קוד אימות יישלח אליך ב-SMS דרך Firebase של Google.'
+                      : 'A verification code will be sent via SMS through Google Firebase.'}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                  {phoneVerification.step === 'idle' || phoneVerification.step === 'sending' || phoneVerification.step === 'error' ? (
+                    <>
+                      <div>
+                        <Label className="text-slate-300 mb-2 block">
+                          {isHebrew ? 'מספר טלפון' : 'Phone Number'}
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="tel"
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            placeholder={isHebrew ? '050-123-4567' : '+972-50-123-4567'}
+                            className="bg-white/5 border-white/10 text-white flex-1"
+                            dir="ltr"
+                          />
+                        </div>
+                        <p className="text-slate-500 text-xs mt-2">
+                          {isHebrew 
+                            ? 'הזן מספר טלפון בפורמט ישראלי (לדוגמה: 0501234567)'
+                            : 'Enter phone number in Israeli format (e.g., 0501234567)'}
+                        </p>
+                      </div>
+
+                      {phoneVerification.error && (
+                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                          <p className="text-red-400 text-sm">{phoneVerification.error}</p>
+                        </div>
+                      )}
+
+                      <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                        <div className="flex items-start gap-3">
+                          <Shield className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-slate-400 text-sm">
+                            {isHebrew 
+                              ? 'אימות טלפון מאובטח על ידי Google Firebase Authentication עם הגנת reCAPTCHA.'
+                              : 'Phone verification is secured by Google Firebase Authentication with reCAPTCHA protection.'}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-center mb-4">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center">
+                          <KeyRound className="w-8 h-8 text-white" />
+                        </div>
+                        <p className="text-slate-400">
+                          {isHebrew ? 'קוד אימות נשלח ב-SMS אל:' : 'Verification code sent via SMS to:'}
+                        </p>
+                        <p className="text-white font-medium">{phoneNumber}</p>
+                      </div>
+
+                      <div>
+                        <Label className="text-slate-300 mb-2 block">
+                          {isHebrew ? 'קוד אימות (6 ספרות)' : 'Verification Code (6 digits)'}
+                        </Label>
+                        <Input
+                          type="text"
+                          maxLength={6}
+                          value={phoneVerificationCode}
+                          onChange={(e) => setPhoneVerificationCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="000000"
+                          className="bg-white/5 border-white/10 text-white text-center text-2xl font-mono tracking-widest"
+                          dir="ltr"
+                        />
+                      </div>
+
+                      {phoneVerification.error && (
+                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                          <p className="text-red-400 text-sm">{phoneVerification.error}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <DialogFooter className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowPhoneVerifyDialog(false);
+                      setPhoneNumber('');
+                      setPhoneVerificationCode('');
+                      phoneVerification.reset();
+                    }}
+                    className="border-white/10 text-slate-300 hover:bg-white/5"
+                  >
+                    {isHebrew ? 'ביטול' : 'Cancel'}
+                  </Button>
+                  
+                  {phoneVerification.step === 'idle' || phoneVerification.step === 'sending' || phoneVerification.step === 'error' ? (
+                    <Button
+                      onClick={handleSendPhoneCode}
+                      disabled={!phoneNumber || phoneNumber.length < 9 || phoneVerification.isSending}
+                      className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white"
+                    >
+                      {phoneVerification.isSending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      {isHebrew ? 'שלח קוד SMS' : 'Send SMS Code'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleVerifyPhoneCode}
+                      disabled={phoneVerificationCode.length !== 6 || confirmPhoneVerificationMutation.isPending}
+                      className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white"
+                    >
+                      {confirmPhoneVerificationMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      {isHebrew ? 'אמת טלפון' : 'Verify Phone'}
+                    </Button>
+                  )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* reCAPTCHA container for Firebase phone auth */}
+            <div id="recaptcha-container-phone" />
           </Tabs>
 
         </div>
