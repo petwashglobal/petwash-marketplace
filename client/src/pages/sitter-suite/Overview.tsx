@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
+import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
 import { 
   Home, 
   Search, 
@@ -261,6 +262,9 @@ export default function SitterSuiteOverview() {
                 </Link>
               </div>
             </div>
+
+            {/* Become a Sitter - Provider Registration */}
+            <ProviderRegistrationBanner variant="section" platform="sitter" className="mt-16" />
           </div>
         </div>
       </div>

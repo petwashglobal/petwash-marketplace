@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
+import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
 import { 
   Dog, 
   Calendar, 
@@ -148,6 +149,9 @@ export default function WalkMyPetOverview() {
             </div>
           </div>
         </div>
+
+        {/* Become a Walker - Provider Registration */}
+        <ProviderRegistrationBanner variant="section" platform="walker" />
       </div>
     </Layout>
   );

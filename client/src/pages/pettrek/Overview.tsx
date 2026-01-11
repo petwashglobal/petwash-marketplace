@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
+import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
 import { 
   Car, 
   Calendar, 
@@ -480,6 +481,9 @@ export default function PetTrekOverview() {
             </Link>
           </div>
         </section>
+
+        {/* Become a Driver - Provider Registration */}
+        <ProviderRegistrationBanner variant="section" platform="driver" />
       </div>
     </Layout>
   );

@@ -6,6 +6,7 @@ import { Layout } from '@/components/Layout';
 import { LegalFooter } from '@/components/LegalFooter';
 import { PetWashDivisions } from '@/components/PetWashDivisions';
 import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/components/LuxuryThemeWrapper';
+import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 
@@ -411,6 +412,9 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
         {/* PetWash Ltd Group - Our Unique Services */}
         <PetWashDivisions language={language} />
+
+        {/* Provider Registration - Join Our Team */}
+        <ProviderRegistrationBanner variant="hero" platform="all" />
 
         {/* Legal Footer Section */}
         <LegalFooter language={language} />
