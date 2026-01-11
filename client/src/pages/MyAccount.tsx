@@ -34,8 +34,40 @@ import {
   Dog,
   Settings,
   CreditCard,
-  Loader2
+  Loader2,
+  Snowflake,
+  Trash2,
+  AlertTriangle,
+  Download,
+  Ban
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import '@/styles/luxury-dark-2025.css';
 
@@ -165,6 +197,18 @@ export default function MyAccount() {
   
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
+  
+  // Account management state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showFreezeDialog, setShowFreezeDialog] = useState(false);
+  const [deleteConfirmPhrase, setDeleteConfirmPhrase] = useState('');
+  const [deleteAcknowledgements, setDeleteAcknowledgements] = useState({
+    credits: false,
+    data: false,
+    egift: false,
+  });
+  const [freezeReason, setFreezeReason] = useState<string>('');
+  const [freezeDuration, setFreezeDuration] = useState<number | undefined>(undefined);
 
   const { data: walletData, isLoading: walletLoading } = useQuery<{ success: boolean; wallet: WalletSummary }>({
     queryKey: ['/api/credit-wallet/summary'],
@@ -187,6 +231,108 @@ export default function MyAccount() {
       toast({
         title: isHebrew ? 'הפרופיל עודכן' : 'Profile Updated',
         description: isHebrew ? 'השינויים נשמרו בהצלחה' : 'Your changes have been saved',
+      });
+    },
+  });
+
+  const { data: accountStatus } = useQuery<{
+    status: string;
+    frozenAt?: string;
+    scheduledDeletionDate?: string;
+    egiftTransferPolicy: { transferable: boolean; reason: string };
+  }>({
+    queryKey: ['/api/account/status'],
+    enabled: !!user,
+  });
+
+  const freezeAccountMutation = useMutation({
+    mutationFn: async (data: { reason: string; freezeDurationDays?: number }) => {
+      const res = await apiRequest('POST', '/api/account/freeze', data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/account/status'] });
+      setShowFreezeDialog(false);
+      toast({
+        title: isHebrew ? 'החשבון הוקפא' : 'Account Frozen',
+        description: isHebrew ? 'החשבון שלך הוקפא זמנית. כל הזכויות שלך נשמרות.' : 'Your account is temporarily frozen. All credits are preserved.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: isHebrew ? 'לא ניתן להקפיא את החשבון' : 'Failed to freeze account',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const unfreezeAccountMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/account/unfreeze', {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/account/status'] });
+      toast({
+        title: isHebrew ? 'החשבון הופעל מחדש' : 'Account Reactivated',
+        description: isHebrew ? 'ברוכים השבים! החשבון שלך פעיל שוב.' : 'Welcome back! Your account is active again.',
+      });
+    },
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: async (data: { confirmPhrase: string; acknowledgeCreditsLoss: boolean; acknowledgeDataLoss: boolean; acknowledgeEgiftForfeiture: boolean }) => {
+      const res = await apiRequest('POST', '/api/account/delete-request', data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setShowDeleteDialog(false);
+      toast({
+        title: isHebrew ? 'בקשת מחיקה נשלחה' : 'Deletion Requested',
+        description: isHebrew 
+          ? `החשבון שלך יימחק ב-${new Date(data.scheduledDeletionDate).toLocaleDateString('he-IL')}. ניתן לבטל תוך 30 יום.`
+          : `Your account will be deleted on ${new Date(data.scheduledDeletionDate).toLocaleDateString()}. You can cancel within 30 days.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: isHebrew ? 'לא ניתן לעבד את הבקשה' : 'Failed to process request',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const cancelDeletionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/account/cancel-deletion', {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/account/status'] });
+      toast({
+        title: isHebrew ? 'המחיקה בוטלה' : 'Deletion Cancelled',
+        description: isHebrew ? 'החשבון שלך שוחזר במלואו.' : 'Your account has been fully restored.',
+      });
+    },
+  });
+
+  const exportDataMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('GET', '/api/account/export', {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `petwash-data-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      toast({
+        title: isHebrew ? 'הנתונים יורדו' : 'Data Exported',
+        description: isHebrew ? 'הנתונים שלך הורדו בהצלחה.' : 'Your data has been downloaded.',
       });
     },
   });
@@ -548,7 +694,7 @@ export default function MyAccount() {
               </div>
             </TabsContent>
 
-            <TabsContent value="security" className="mt-6">
+            <TabsContent value="security" className="mt-6 space-y-6">
               <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
                 <h3 className="text-xl font-semibold text-white mb-6">
                   {isHebrew ? 'אבטחה והתחברות' : 'Security & Login'}
@@ -602,9 +748,384 @@ export default function MyAccount() {
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
                   </a>
+
+                  <button
+                    onClick={() => exportDataMutation.mutate()}
+                    disabled={exportDataMutation.isPending}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group w-full"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-600 flex items-center justify-center">
+                        <Download className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="text-start">
+                        <p className="text-white font-medium">{isHebrew ? 'הורד את הנתונים שלי' : 'Download My Data'}</p>
+                        <p className="text-slate-400 text-sm">{isHebrew ? 'ייצוא כל המידע (GDPR)' : 'Export all your data (GDPR)'}</p>
+                      </div>
+                    </div>
+                    {exportDataMutation.isPending ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                    ) : (
+                      <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* E-Gift Policy Notice */}
+              <div className="luxury-glass-card rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-900/10 to-transparent p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center flex-shrink-0">
+                    <Ban className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-amber-400 font-semibold mb-1">
+                      {isHebrew ? 'מדיניות כרטיסי מתנה' : 'E-Gift Card Policy'}
+                    </h4>
+                    <p className="text-slate-400 text-sm">
+                      {isHebrew 
+                        ? 'כרטיסי המתנה שלך קשורים לחשבון שלך באופן קבוע ולא ניתנים להעברה לאחרים. במקרה של מחיקת חשבון, יתרת כרטיסי המתנה תפקע.'
+                        : 'Your e-gift cards are permanently tied to your account and cannot be transferred to others. In case of account deletion, e-gift balances will be forfeited.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Management - Freeze & Delete */}
+              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
+                <h3 className="text-xl font-semibold text-white mb-6">
+                  {isHebrew ? 'ניהול חשבון' : 'Account Management'}
+                </h3>
+
+                {/* Account Status Banner */}
+                {accountStatus?.status === 'frozen' && (
+                  <div className="mb-6 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Snowflake className="w-6 h-6 text-blue-400" />
+                      <span className="text-blue-400 font-semibold">
+                        {isHebrew ? 'החשבון מוקפא' : 'Account Frozen'}
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-sm mb-4">
+                      {isHebrew 
+                        ? 'החשבון שלך מוקפא זמנית. כל הזכויות והנקודות שלך נשמרות.'
+                        : 'Your account is temporarily frozen. All your credits and points are preserved.'}
+                    </p>
+                    <Button
+                      onClick={() => unfreezeAccountMutation.mutate()}
+                      disabled={unfreezeAccountMutation.isPending}
+                      className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white"
+                    >
+                      {unfreezeAccountMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      {isHebrew ? 'הפעל מחדש את החשבון' : 'Reactivate Account'}
+                    </Button>
+                  </div>
+                )}
+
+                {accountStatus?.status === 'pending_deletion' && (
+                  <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20">
+                    <div className="flex items-center gap-3 mb-3">
+                      <AlertTriangle className="w-6 h-6 text-red-400" />
+                      <span className="text-red-400 font-semibold">
+                        {isHebrew ? 'החשבון ממתין למחיקה' : 'Account Pending Deletion'}
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-sm mb-2">
+                      {isHebrew 
+                        ? `החשבון שלך מתוזמן למחיקה. תוכל לבטל את הבקשה עד תום תקופת החסד.`
+                        : `Your account is scheduled for deletion. You can cancel within the grace period.`}
+                    </p>
+                    <Button
+                      onClick={() => cancelDeletionMutation.mutate()}
+                      disabled={cancelDeletionMutation.isPending}
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white"
+                    >
+                      {cancelDeletionMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      {isHebrew ? 'בטל מחיקה ושחזר חשבון' : 'Cancel Deletion & Restore'}
+                    </Button>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  {/* Freeze Account */}
+                  <button
+                    onClick={() => setShowFreezeDialog(true)}
+                    disabled={accountStatus?.status === 'frozen' || accountStatus?.status === 'pending_deletion'}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-blue-500/10 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center">
+                        <Snowflake className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="text-start">
+                        <p className="text-white font-medium">{isHebrew ? 'הקפא את החשבון' : 'Freeze Account'}</p>
+                        <p className="text-slate-400 text-sm">
+                          {isHebrew 
+                            ? 'השהה את החשבון באופן זמני - כל הזכויות נשמרות'
+                            : 'Temporarily suspend your account - all credits preserved'}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                  </button>
+
+                  {/* Delete Account */}
+                  <button
+                    onClick={() => setShowDeleteDialog(true)}
+                    disabled={accountStatus?.status === 'pending_deletion'}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-red-500/10 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 flex items-center justify-center">
+                        <Trash2 className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="text-start">
+                        <p className="text-red-400 font-medium">{isHebrew ? 'מחק את החשבון' : 'Delete Account'}</p>
+                        <p className="text-slate-400 text-sm">
+                          {isHebrew 
+                            ? 'מחיקה לצמיתות עם תקופת חסד של 30 יום'
+                            : 'Permanent deletion with 30-day grace period'}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-red-400 transition-colors" />
+                  </button>
                 </div>
               </div>
             </TabsContent>
+
+            {/* Freeze Account Dialog */}
+            <Dialog open={showFreezeDialog} onOpenChange={setShowFreezeDialog}>
+              <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-3 text-xl">
+                    <Snowflake className="w-6 h-6 text-blue-400" />
+                    {isHebrew ? 'הקפא את החשבון' : 'Freeze Account'}
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-400">
+                    {isHebrew 
+                      ? 'השהיית החשבון שומרת על כל הנתונים, הזכויות והנקודות שלך. לא תוכל לבצע הזמנות חדשות עד להפשרה.'
+                      : 'Freezing preserves all your data, credits and points. You won\'t be able to make new bookings until unfrozen.'}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">
+                      {isHebrew ? 'סיבה להקפאה' : 'Reason for freezing'}
+                    </Label>
+                    <Select value={freezeReason} onValueChange={setFreezeReason}>
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                        <SelectValue placeholder={isHebrew ? 'בחר סיבה' : 'Select reason'} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-white/10">
+                        <SelectItem value="vacation">{isHebrew ? 'חופשה' : 'Vacation'}</SelectItem>
+                        <SelectItem value="financial">{isHebrew ? 'סיבות כלכליות' : 'Financial reasons'}</SelectItem>
+                        <SelectItem value="temporary_break">{isHebrew ? 'הפסקה זמנית' : 'Temporary break'}</SelectItem>
+                        <SelectItem value="other">{isHebrew ? 'אחר' : 'Other'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">
+                      {isHebrew ? 'משך ההקפאה (אופציונלי)' : 'Freeze duration (optional)'}
+                    </Label>
+                    <Select 
+                      value={freezeDuration?.toString() || ''} 
+                      onValueChange={(v) => setFreezeDuration(v ? parseInt(v) : undefined)}
+                    >
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                        <SelectValue placeholder={isHebrew ? 'ללא הגבלה' : 'Indefinite'} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-white/10">
+                        <SelectItem value="">{isHebrew ? 'ללא הגבלה' : 'Indefinite'}</SelectItem>
+                        <SelectItem value="7">{isHebrew ? 'שבוע אחד' : '1 week'}</SelectItem>
+                        <SelectItem value="30">{isHebrew ? 'חודש אחד' : '1 month'}</SelectItem>
+                        <SelectItem value="90">{isHebrew ? '3 חודשים' : '3 months'}</SelectItem>
+                        <SelectItem value="180">{isHebrew ? '6 חודשים' : '6 months'}</SelectItem>
+                        <SelectItem value="365">{isHebrew ? 'שנה' : '1 year'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                    <p className="text-blue-400 text-sm font-medium mb-2">
+                      {isHebrew ? 'מה נשמר:' : 'What\'s preserved:'}
+                    </p>
+                    <ul className="text-slate-400 text-sm space-y-1">
+                      <li>• {isHebrew ? 'כל יתרות כרטיסי המתנה' : 'All e-gift card balances'}</li>
+                      <li>• {isHebrew ? 'נקודות נאמנות ודרגה' : 'Loyalty points & tier'}</li>
+                      <li>• {isHebrew ? 'חבילות שטיפה' : 'Wash packages'}</li>
+                      <li>• {isHebrew ? 'היסטוריית הזמנות' : 'Booking history'}</li>
+                      <li>• {isHebrew ? 'פרופילי חיות מחמד' : 'Pet profiles'}</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <DialogFooter className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowFreezeDialog(false)}
+                    className="border-white/10 text-slate-300 hover:bg-white/5"
+                  >
+                    {isHebrew ? 'ביטול' : 'Cancel'}
+                  </Button>
+                  <Button
+                    onClick={() => freezeAccountMutation.mutate({ 
+                      reason: freezeReason || 'other',
+                      freezeDurationDays: freezeDuration,
+                    })}
+                    disabled={!freezeReason || freezeAccountMutation.isPending}
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white"
+                  >
+                    {freezeAccountMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                    {isHebrew ? 'הקפא חשבון' : 'Freeze Account'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Delete Account Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-3 text-xl text-red-400">
+                    <AlertTriangle className="w-6 h-6" />
+                    {isHebrew ? 'מחיקת חשבון' : 'Delete Account'}
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-400">
+                    {isHebrew 
+                      ? 'פעולה זו תמחק את החשבון שלך לצמיתות לאחר תקופת חסד של 30 יום. תוכל לבטל בכל עת במהלך תקופה זו.'
+                      : 'This will permanently delete your account after a 30-day grace period. You can cancel anytime during this period.'}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                  <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                    <p className="text-red-400 text-sm font-medium mb-2">
+                      {isHebrew ? 'מה יימחק לצמיתות:' : 'What will be permanently deleted:'}
+                    </p>
+                    <ul className="text-slate-400 text-sm space-y-1">
+                      <li className="flex items-center gap-2">
+                        <X className="w-4 h-4 text-red-400" />
+                        {isHebrew ? 'כל יתרות כרטיסי המתנה (לא ניתנים להעברה!)' : 'All e-gift balances (non-transferable!)'}
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <X className="w-4 h-4 text-red-400" />
+                        {isHebrew ? 'נקודות נאמנות ודרגה' : 'Loyalty points & tier'}
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <X className="w-4 h-4 text-red-400" />
+                        {isHebrew ? 'חבילות שטיפה שלא נוצלו' : 'Unused wash packages'}
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <X className="w-4 h-4 text-red-400" />
+                        {isHebrew ? 'קופונים והנחות' : 'Coupons & discounts'}
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <X className="w-4 h-4 text-red-400" />
+                        {isHebrew ? 'כל המידע האישי' : 'All personal information'}
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-slate-300 text-sm font-medium">
+                      {isHebrew ? 'אשר שאתה מבין:' : 'Confirm you understand:'}
+                    </p>
+                    
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <Checkbox 
+                        checked={deleteAcknowledgements.credits}
+                        onCheckedChange={(checked) => setDeleteAcknowledgements(prev => ({ ...prev, credits: !!checked }))}
+                        className="mt-0.5 border-white/20 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                      />
+                      <span className="text-slate-400 text-sm">
+                        {isHebrew 
+                          ? 'אני מבין/ה שכל הזכויות, הנקודות וחבילות השטיפה יאבדו לצמיתות.'
+                          : 'I understand all credits, points and wash packages will be permanently lost.'}
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <Checkbox 
+                        checked={deleteAcknowledgements.egift}
+                        onCheckedChange={(checked) => setDeleteAcknowledgements(prev => ({ ...prev, egift: !!checked }))}
+                        className="mt-0.5 border-white/20 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                      />
+                      <span className="text-slate-400 text-sm">
+                        {isHebrew 
+                          ? 'אני מבין/ה שכרטיסי מתנה אינם ניתנים להעברה ויפקעו עם מחיקת החשבון.'
+                          : 'I understand e-gift cards are non-transferable and will be forfeited upon deletion.'}
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <Checkbox 
+                        checked={deleteAcknowledgements.data}
+                        onCheckedChange={(checked) => setDeleteAcknowledgements(prev => ({ ...prev, data: !!checked }))}
+                        className="mt-0.5 border-white/20 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                      />
+                      <span className="text-slate-400 text-sm">
+                        {isHebrew 
+                          ? 'אני מבין/ה שכל המידע שלי יימחק לצמיתות ולא ניתן יהיה לשחזר אותו.'
+                          : 'I understand all my data will be permanently deleted and cannot be recovered.'}
+                      </span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">
+                      {isHebrew ? 'הקלד "DELETE MY ACCOUNT" לאישור:' : 'Type "DELETE MY ACCOUNT" to confirm:'}
+                    </Label>
+                    <Input
+                      value={deleteConfirmPhrase}
+                      onChange={(e) => setDeleteConfirmPhrase(e.target.value)}
+                      placeholder="DELETE MY ACCOUNT"
+                      className="bg-white/5 border-white/10 text-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowDeleteDialog(false);
+                      setDeleteConfirmPhrase('');
+                      setDeleteAcknowledgements({ credits: false, data: false, egift: false });
+                    }}
+                    className="border-white/10 text-slate-300 hover:bg-white/5"
+                  >
+                    {isHebrew ? 'ביטול' : 'Cancel'}
+                  </Button>
+                  <Button
+                    onClick={() => deleteAccountMutation.mutate({
+                      confirmPhrase: deleteConfirmPhrase,
+                      acknowledgeCreditsLoss: deleteAcknowledgements.credits,
+                      acknowledgeDataLoss: deleteAcknowledgements.data,
+                      acknowledgeEgiftForfeiture: deleteAcknowledgements.egift,
+                    })}
+                    disabled={
+                      deleteConfirmPhrase !== 'DELETE MY ACCOUNT' ||
+                      !deleteAcknowledgements.credits ||
+                      !deleteAcknowledgements.data ||
+                      !deleteAcknowledgements.egift ||
+                      deleteAccountMutation.isPending
+                    }
+                    className="bg-gradient-to-r from-red-600 to-rose-600 text-white disabled:opacity-50"
+                  >
+                    {deleteAccountMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                    {isHebrew ? 'מחק את החשבון שלי' : 'Delete My Account'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </Tabs>
 
         </div>
