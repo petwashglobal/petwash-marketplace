@@ -114,6 +114,7 @@ import adminRoutes from "./routes/admin";
 import pinAuthRoutes from "./routes/pin-auth";
 import userProfileRoutes from "./routes/user-profile";
 import accountManagementRoutes from "./routes/account-management";
+import profileSettingsRoutes from "./routes/profile-settings";
 import aiInsightsRoutes from "./routes/ai-insights";
 import analyticsRoutes from "./routes/analytics";
 import auditRoutes from "./routes/audit";
@@ -8134,6 +8135,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/pin-auth', apiLimiter, pinAuthRoutes);
   app.use('/api/user', apiLimiter, userProfileRoutes);
   app.use('/api/account', apiLimiter, accountManagementRoutes);
+  app.use('/api/user', apiLimiter, profileSettingsRoutes);
 
   // 🔐 Mobile Biometric Authentication - NIST SP 800-63B AAL2 Compliant (Passkeys, Health Data)
   app.use('/api/mobile/biometric', apiLimiter, mobileBiometricRoutes);

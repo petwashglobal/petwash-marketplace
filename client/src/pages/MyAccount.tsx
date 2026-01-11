@@ -39,7 +39,9 @@ import {
   Trash2,
   AlertTriangle,
   Download,
-  Ban
+  Ban,
+  Globe,
+  KeyRound
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -201,6 +203,10 @@ export default function MyAccount() {
   // Account management state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showFreezeDialog, setShowFreezeDialog] = useState(false);
+  const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailVerificationCode, setEmailVerificationCode] = useState('');
+  const [emailChangeStep, setEmailChangeStep] = useState<'request' | 'verify'>('request');
   const [deleteConfirmPhrase, setDeleteConfirmPhrase] = useState('');
   const [deleteAcknowledgements, setDeleteAcknowledgements] = useState({
     credits: false,
@@ -333,6 +339,64 @@ export default function MyAccount() {
       toast({
         title: isHebrew ? 'הנתונים יורדו' : 'Data Exported',
         description: isHebrew ? 'הנתונים שלך הורדו בהצלחה.' : 'Your data has been downloaded.',
+      });
+    },
+  });
+
+  const requestEmailChangeMutation = useMutation({
+    mutationFn: async (data: { newEmail: string }) => {
+      const res = await apiRequest('POST', '/api/user/settings/email/request-change', data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setEmailChangeStep('verify');
+      toast({
+        title: isHebrew ? 'קוד אימות נשלח' : 'Verification Code Sent',
+        description: isHebrew ? 'בדוק את תיבת הדואר החדשה שלך.' : 'Check your new email inbox.',
+      });
+    },
+    onError: (error: any) => {
+      const isReauthRequired = error?.code === 'REAUTH_REQUIRED';
+      toast({
+        variant: 'destructive',
+        title: isReauthRequired 
+          ? (isHebrew ? 'נדרש אימות מחדש' : 'Re-authentication Required')
+          : (isHebrew ? 'שגיאה' : 'Error'),
+        description: isReauthRequired
+          ? (isHebrew ? 'אנא התנתק והתחבר מחדש לפני שינוי האימייל.' : 'Please sign out and sign in again before changing your email.')
+          : (error?.message || (isHebrew ? 'לא ניתן לשלוח קוד אימות' : 'Failed to send verification code')),
+      });
+      if (isReauthRequired) {
+        setShowEmailChangeDialog(false);
+      }
+    },
+  });
+
+  const confirmEmailChangeMutation = useMutation({
+    mutationFn: async (data: { verificationCode: string }) => {
+      const res = await apiRequest('POST', '/api/user/settings/email/confirm-change', data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setShowEmailChangeDialog(false);
+      setNewEmail('');
+      setEmailVerificationCode('');
+      setEmailChangeStep('request');
+      queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings/profile'] });
+      if (firebaseUser) {
+        firebaseUser.reload();
+      }
+      toast({
+        title: isHebrew ? 'האימייל עודכן' : 'Email Updated',
+        description: data.newEmail,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: error?.message || (isHebrew ? 'קוד אימות שגוי' : 'Invalid verification code'),
       });
     },
   });
@@ -501,13 +565,20 @@ export default function MyAccount() {
           </div>
 
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="w-full bg-black/40 border border-white/10 rounded-2xl p-1 grid grid-cols-3">
+            <TabsList className="w-full bg-black/40 border border-white/10 rounded-2xl p-1 grid grid-cols-4">
               <TabsTrigger 
                 value="profile" 
                 className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white"
               >
                 <User className="w-4 h-4 mr-2" />
                 {isHebrew ? 'פרופיל' : 'Profile'}
+              </TabsTrigger>
+              <TabsTrigger 
+                value="preferences"
+                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                {isHebrew ? 'העדפות' : 'Preferences'}
               </TabsTrigger>
               <TabsTrigger 
                 value="notifications"
@@ -647,6 +718,142 @@ export default function MyAccount() {
                     )}
                   </div>
                 </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="preferences" className="mt-6 space-y-6">
+              {/* Language Settings */}
+              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
+                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+                    <Globe className="w-5 h-5 text-white" />
+                  </div>
+                  {isHebrew ? 'שפה ואזור' : 'Language & Region'}
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">
+                      {isHebrew ? 'שפת ממשק' : 'Interface Language'}
+                    </Label>
+                    <Select 
+                      value={editedProfile?.preferredLanguage || profile?.preferredLanguage || 'he'} 
+                      onValueChange={(value) => {
+                        setEditedProfile((prev: any) => ({ ...prev, preferredLanguage: value }));
+                        updateProfileMutation.mutate({ preferredLanguage: value });
+                      }}
+                    >
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white w-full md:w-64">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-white/10">
+                        <SelectItem value="he">עברית (Hebrew)</SelectItem>
+                        <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="ar">العربية (Arabic)</SelectItem>
+                        <SelectItem value="ru">Русский (Russian)</SelectItem>
+                        <SelectItem value="fr">Français (French)</SelectItem>
+                        <SelectItem value="es">Español (Spanish)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Change Section */}
+              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
+                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-violet-600 flex items-center justify-center">
+                    <Mail className="w-5 h-5 text-white" />
+                  </div>
+                  {isHebrew ? 'כתובת אימייל' : 'Email Address'}
+                </h3>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5">
+                    <div className="flex-1">
+                      <p className="text-white font-medium">{profile?.email || firebaseUser?.email}</p>
+                      <p className="text-slate-400 text-sm">
+                        {profile?.emailVerified 
+                          ? (isHebrew ? 'מאומת ✓' : 'Verified ✓')
+                          : (isHebrew ? 'לא מאומת' : 'Not verified')
+                        }
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                      onClick={() => setShowEmailChangeDialog(true)}
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      {isHebrew ? 'שנה' : 'Change'}
+                    </Button>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-amber-400 text-sm font-medium">
+                          {isHebrew ? 'אבטחת זהות' : 'Identity Security'}
+                        </p>
+                        <p className="text-slate-400 text-sm mt-1">
+                          {isHebrew 
+                            ? 'שינוי כתובת אימייל דורש אימות קוד חד-פעמי לאימייל החדש. זה מגן על חשבונך מפני גישה לא מורשית.'
+                            : 'Changing your email requires verification via a one-time code sent to the new email. This protects your account from unauthorized access.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Settings */}
+              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
+                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-white" />
+                  </div>
+                  {isHebrew ? 'כתובת' : 'Address'}
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">
+                      {isHebrew ? 'רחוב וכתובת' : 'Street Address'}
+                    </Label>
+                    <Input
+                      value={editedProfile?.address || ''}
+                      onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, address: e.target.value }))}
+                      placeholder={isHebrew ? 'רחוב, מספר בית, דירה' : 'Street, building, apt'}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-slate-300 mb-2 block">
+                      {isHebrew ? 'עיר' : 'City'}
+                    </Label>
+                    <Input
+                      value={editedProfile?.city || ''}
+                      onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, city: e.target.value }))}
+                      placeholder={isHebrew ? 'שם העיר' : 'City name'}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleSaveProfile}
+                  disabled={updateProfileMutation.isPending}
+                  className="mt-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white"
+                >
+                  {updateProfileMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  {isHebrew ? 'שמור כתובת' : 'Save Address'}
+                </Button>
               </div>
             </TabsContent>
 
@@ -1123,6 +1330,135 @@ export default function MyAccount() {
                     {deleteAccountMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                     {isHebrew ? 'מחק את החשבון שלי' : 'Delete My Account'}
                   </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Email Change Dialog */}
+            <Dialog open={showEmailChangeDialog} onOpenChange={(open) => {
+              setShowEmailChangeDialog(open);
+              if (!open) {
+                setNewEmail('');
+                setEmailVerificationCode('');
+                setEmailChangeStep('request');
+              }
+            }}>
+              <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-3 text-xl">
+                    <Mail className="w-6 h-6 text-purple-400" />
+                    {isHebrew ? 'שינוי כתובת אימייל' : 'Change Email Address'}
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-400">
+                    {emailChangeStep === 'request'
+                      ? (isHebrew 
+                          ? 'הזן את כתובת האימייל החדשה. נשלח קוד אימות לאימייל החדש.'
+                          : 'Enter your new email address. We\'ll send a verification code to the new email.')
+                      : (isHebrew
+                          ? 'הזן את קוד האימות שנשלח לאימייל החדש שלך.'
+                          : 'Enter the verification code sent to your new email.')}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                  {emailChangeStep === 'request' ? (
+                    <>
+                      <div>
+                        <Label className="text-slate-300 mb-2 block">
+                          {isHebrew ? 'אימייל נוכחי' : 'Current Email'}
+                        </Label>
+                        <Input
+                          value={profile?.email || firebaseUser?.email || ''}
+                          disabled
+                          className="bg-white/5 border-white/10 text-slate-400"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-slate-300 mb-2 block">
+                          {isHebrew ? 'אימייל חדש' : 'New Email'}
+                        </Label>
+                        <Input
+                          type="email"
+                          value={newEmail}
+                          onChange={(e) => setNewEmail(e.target.value)}
+                          placeholder={isHebrew ? 'הזן אימייל חדש' : 'Enter new email'}
+                          className="bg-white/5 border-white/10 text-white"
+                        />
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                        <div className="flex items-start gap-3">
+                          <Shield className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-slate-400 text-sm">
+                            {isHebrew 
+                              ? 'לאחר שינוי האימייל, תצטרך להתחבר מחדש עם הכתובת החדשה.'
+                              : 'After changing your email, you\'ll need to sign in again with the new address.'}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-center mb-4">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-600 to-violet-600 flex items-center justify-center">
+                          <KeyRound className="w-8 h-8 text-white" />
+                        </div>
+                        <p className="text-slate-400">
+                          {isHebrew ? 'קוד אימות נשלח אל:' : 'Verification code sent to:'}
+                        </p>
+                        <p className="text-white font-medium">{newEmail}</p>
+                      </div>
+
+                      <div>
+                        <Label className="text-slate-300 mb-2 block">
+                          {isHebrew ? 'קוד אימות (6 ספרות)' : 'Verification Code (6 digits)'}
+                        </Label>
+                        <Input
+                          type="text"
+                          maxLength={6}
+                          value={emailVerificationCode}
+                          onChange={(e) => setEmailVerificationCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="000000"
+                          className="bg-white/5 border-white/10 text-white text-center text-2xl font-mono tracking-widest"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <DialogFooter className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowEmailChangeDialog(false);
+                      setNewEmail('');
+                      setEmailVerificationCode('');
+                      setEmailChangeStep('request');
+                    }}
+                    className="border-white/10 text-slate-300 hover:bg-white/5"
+                  >
+                    {isHebrew ? 'ביטול' : 'Cancel'}
+                  </Button>
+                  
+                  {emailChangeStep === 'request' ? (
+                    <Button
+                      onClick={() => requestEmailChangeMutation.mutate({ newEmail })}
+                      disabled={!newEmail || !newEmail.includes('@') || requestEmailChangeMutation.isPending}
+                      className="bg-gradient-to-r from-purple-600 to-violet-600 text-white"
+                    >
+                      {requestEmailChangeMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      {isHebrew ? 'שלח קוד אימות' : 'Send Verification Code'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => confirmEmailChangeMutation.mutate({ verificationCode: emailVerificationCode })}
+                      disabled={emailVerificationCode.length !== 6 || confirmEmailChangeMutation.isPending}
+                      className="bg-gradient-to-r from-purple-600 to-violet-600 text-white"
+                    >
+                      {confirmEmailChangeMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      {isHebrew ? 'אשר שינוי' : 'Confirm Change'}
+                    </Button>
+                  )}
                 </DialogFooter>
               </DialogContent>
             </Dialog>
