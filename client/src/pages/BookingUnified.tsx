@@ -58,7 +58,7 @@ export default function BookingUnified() {
             <Sparkles className="w-4 h-4" />
             Unified Booking System
           </div>
-          <Calendar className="w-16 h-16 text-purple-600 mx-auto mb-6 opacity-0 luxury-animate-scale-in luxury-delay-2" />
+          <Calendar className="w-16 h-16 text-[#0a2540] mx-auto mb-6 opacity-0 luxury-animate-scale-in luxury-delay-2" />
           <h1 className="luxury-heading-xl mb-6 opacity-0 luxury-animate-slide-up luxury-delay-3">
             Smart Booking
           </h1>
@@ -78,7 +78,7 @@ export default function BookingUnified() {
                 onClick={() => setLocation(service.href)}
               >
                 <div className="flex flex-col gap-6">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center luxury-shadow-lg">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#0a2540] to-[#1a365d] flex items-center justify-center luxury-shadow-lg">
                     <Icon className="w-8 h-8 text-white" />
                   </div>
                   <div>
@@ -100,8 +100,8 @@ export default function BookingUnified() {
         {/* Features */}
         <div className="luxury-grid-3 gap-8">
           <div className="luxury-glass-card luxury-shadow-xl p-8 text-center opacity-0 luxury-animate-fade-in luxury-delay-8">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900 dark:to-pink-900 flex items-center justify-center mx-auto mb-6">
-              <Clock className="w-8 h-8 text-purple-600" />
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e8f0fe] to-[#d1e3ff] dark:from-[#0a2540] dark:to-[#1a365d] flex items-center justify-center mx-auto mb-6">
+              <Clock className="w-8 h-8 text-[#0a2540] dark:text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-3">Instant Confirmation</h3>
             <p className="luxury-text-small">
@@ -110,8 +110,8 @@ export default function BookingUnified() {
           </div>
 
           <div className="luxury-glass-card luxury-shadow-xl p-8 text-center opacity-0 luxury-animate-fade-in luxury-delay-9">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900 dark:to-pink-900 flex items-center justify-center mx-auto mb-6">
-              <CreditCard className="w-8 h-8 text-purple-600" />
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e8f0fe] to-[#d1e3ff] dark:from-[#0a2540] dark:to-[#1a365d] flex items-center justify-center mx-auto mb-6">
+              <CreditCard className="w-8 h-8 text-[#0a2540] dark:text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-3">Secure Payments</h3>
             <p className="luxury-text-small">
@@ -120,8 +120,8 @@ export default function BookingUnified() {
           </div>
 
           <div className="luxury-glass-card luxury-shadow-xl p-8 text-center opacity-0 luxury-animate-fade-in luxury-delay-10">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900 dark:to-pink-900 flex items-center justify-center mx-auto mb-6">
-              <Calendar className="w-8 h-8 text-purple-600" />
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e8f0fe] to-[#d1e3ff] dark:from-[#0a2540] dark:to-[#1a365d] flex items-center justify-center mx-auto mb-6">
+              <Calendar className="w-8 h-8 text-[#0a2540] dark:text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-3">Flexible Scheduling</h3>
             <p className="luxury-text-small">

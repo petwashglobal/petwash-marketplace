@@ -103,14 +103,14 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
       name: 'The Sitter Suite™',
       nameHe: 'The Sitter Suite™',
       icon: Heart,
-      gradient: 'from-pink-500 via-rose-500 to-red-500',
+      gradient: 'from-rose-700 via-rose-600 to-rose-800',
       description: 'Pet sitting marketplace with AI matching',
       descriptionHe: 'שוק שמרטפות עם התאמה AI',
       features: ['AI Match', 'Split Pay', '24/7 Support'],
       featuresHe: ['התאמה AI', 'תשלום מפוצל', 'תמיכה 24/7'],
       path: '/the-sitter-suite',
       badge: 'AI Triage',
-      shimmer: 'bg-gradient-to-r from-pink-200/0 via-white/80 to-pink-200/0',
+      shimmer: 'bg-gradient-to-r from-rose-200/0 via-white/80 to-rose-200/0',
     },
     {
       id: 'pettrek',
@@ -208,7 +208,7 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl animate-pulse" />
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-            <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-pink-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+            <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-rose-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
           </div>
           
           {/* Close Button */}

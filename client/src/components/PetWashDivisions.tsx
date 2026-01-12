@@ -38,9 +38,9 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.sitterSuite.tagline', language),
       description: t('divisions.sitterSuite.description', language),
       icon: Heart,
-      gradient: 'from-pink-400 via-rose-500 to-purple-600',
-      glowColor: 'rgba(236, 72, 153, 0.4)',
-      accentColor: '#ec4899',
+      gradient: 'from-rose-700 via-rose-600 to-rose-800',
+      glowColor: 'rgba(159, 18, 57, 0.4)',
+      accentColor: '#9f1239',
       link: '/sitter-suite',
       features: [
         t('divisions.sitterSuite.feature1', language),
@@ -95,7 +95,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       {/* Animated Gradient Orbs */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-br from-amber-500/20 to-orange-600/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-1/2 -right-40 w-80 h-80 bg-gradient-to-br from-purple-500/15 to-pink-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 -right-40 w-80 h-80 bg-gradient-to-br from-rose-700/15 to-rose-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-gradient-to-br from-blue-500/15 to-cyan-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
       
