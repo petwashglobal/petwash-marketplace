@@ -13,7 +13,7 @@ if (!admin.apps.length) {
       firebaseApp = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         projectId: 'signinpetwash',
-        storageBucket: 'signinpetwash.appspot.com'
+        storageBucket: 'signinpetwash.firebasestorage.app'
       });
       console.log('✅ Firebase Admin SDK initialized with service account');
     } catch (error) {
@@ -21,14 +21,14 @@ if (!admin.apps.length) {
       // Fallback to default initialization
       firebaseApp = admin.initializeApp({
         projectId: 'signinpetwash',
-        storageBucket: 'signinpetwash.appspot.com'
+        storageBucket: 'signinpetwash.firebasestorage.app'
       });
       console.log('⚠️ Firebase Admin SDK initialized without credentials');
     }
   } else {
     firebaseApp = admin.initializeApp({
       projectId: 'signinpetwash',
-      storageBucket: 'signinpetwash.appspot.com'
+      storageBucket: 'signinpetwash.firebasestorage.app'
     });
     console.log('⚠️ Firebase Admin SDK initialized without service account key');
   }

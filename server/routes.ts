@@ -2332,7 +2332,7 @@ self.addEventListener('notificationclick', (event) => {
           },
           storage: {
             available: !!storage,
-            bucket: storage.bucket().name || 'signinpetwash.appspot.com',
+            bucket: storage.bucket().name || 'signinpetwash.firebasestorage.app',
           },
         },
         api: {
