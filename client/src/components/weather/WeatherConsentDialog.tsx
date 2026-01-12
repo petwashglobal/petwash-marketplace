@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CloudRain, Wind, AlertTriangle, Thermometer, Sun, CloudSun, Droplets } from 'lucide-react';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage } from '@/lib/languageStore';
 
 interface WeatherData {
   temperature: number;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Key, Lock, Shield, Thermometer, Bowl, Droplets, AlertCircle, Save } from "lucide-react";
+import { ChevronDown, ChevronUp, Key, Lock, Shield, Thermometer, UtensilsCrossed, Droplets, AlertCircle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -133,7 +133,7 @@ export function OwnerInstructionsForm({ value, onChange, className = "" }: Owner
             </div>
             <div>
               <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700">
-                <Bowl className="h-3.5 w-3.5" />
+                <UtensilsCrossed className="h-3.5 w-3.5" />
                 מיקום אוכל
               </Label>
               <Input
