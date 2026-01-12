@@ -59,7 +59,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               <p className="luxury-services-subtitle">
                 {t('hero.subtitle', language)}
               </p>
-              <p className="text-base sm:text-lg text-black max-w-2xl lg:max-w-3xl mx-auto mb-8 sm:mb-12">
+              <p className="text-base sm:text-lg text-[#444] font-light max-w-2xl lg:max-w-3xl mx-auto mb-10 sm:mb-14 leading-relaxed">
                 {t('hero.description', language)}
               </p>
               
@@ -68,22 +68,22 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                   onClick={() => {
                     document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="bg-black text-white hover:shadow-2xl hover:scale-105 transition-all duration-300 px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg font-medium shadow-lg"
+                  className="bg-[#111] text-white hover:bg-black transition-all duration-500 px-8 py-4 text-sm uppercase tracking-[0.15em] font-light"
                 >
                   {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
                 </Button>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
                   <button 
                     onClick={() => setLocation('/signup')}
-                    className="btn-gucci-black px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg font-medium w-full sm:w-auto shadow-lg rounded-lg hover:shadow-2xl hover:scale-105 transition-all duration-300"
+                    className="bg-[#111] text-white px-10 py-4 text-sm uppercase tracking-[0.2em] font-light hover:bg-black transition-all duration-500 w-full sm:w-auto"
                     data-testid="button-signup-hero"
                   >
                     {t('hero.getStarted', language)}
                   </button>
                   <button 
                     onClick={() => setLocation('/signin')}
-                    className="btn-gucci-white px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg font-medium w-full sm:w-auto rounded-lg hover:bg-white hover:shadow-2xl hover:scale-105 transition-all duration-300"
+                    className="bg-transparent text-[#111] border border-[#111] px-10 py-4 text-sm uppercase tracking-[0.2em] font-light hover:bg-[#111] hover:text-white transition-all duration-500 w-full sm:w-auto"
                     data-testid="button-login-hero"
                   >
                     {t('landing.login', language)}
@@ -106,69 +106,76 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </section>
 
 
-        {/* Technology Section */}
-        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
-          <div className="max-w-6xl mx-auto text-center">
-            <div className="p-8 bg-white rounded-2xl border border-black shadow-xl">
-              <h2 className="text-xl sm:text-2xl font-bold text-black mb-3 sm:mb-4">
-                {t('technology.title', language)}
-              </h2>
-              <p className="text-base sm:text-lg text-black mb-0 max-w-2xl lg:max-w-3xl mx-auto">
-                {t('technology.description', language)}
-              </p>
-            </div>
+        {/* Technology Section - Pure White Luxury */}
+        <section className="py-16 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
+          <div className="max-w-5xl mx-auto text-center">
+            <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-light text-[#111] mb-4 tracking-tight">
+              {t('technology.title', language)}
+            </h2>
+            <div className="w-16 h-px bg-[#e6e6e6] mx-auto mb-6" />
+            <p className="text-base sm:text-lg text-[#444] font-light max-w-2xl lg:max-w-3xl mx-auto leading-relaxed">
+              {t('technology.description', language)}
+            </p>
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
+        {/* Features Section - Couture Minimal Grid */}
+        <section className="py-16 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
               {features.map((feature, index) => (
-                <div key={index} className="p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                  <h3 className="text-base font-semibold text-black mb-3">
+                <div key={index} className="text-center group">
+                  <h3 className="font-serif text-lg font-medium text-[#111] mb-3 tracking-tight">
                     {feature.title}
                   </h3>
-                  <p className="text-sm text-black">
+                  <p className="text-sm text-[#666] font-light leading-relaxed">
                     {feature.description}
                   </p>
+                  <div className="w-8 h-px bg-[#e6e6e6] mx-auto mt-4 group-hover:w-16 group-hover:bg-[#111] transition-all duration-500" />
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Organic Promise Section */}
-        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
-          <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-black mb-4 sm:mb-6">
-              {t('organic.title', language)}
-            </h2>
-            <p className="text-base sm:text-lg text-black mb-8 sm:mb-12 max-w-2xl lg:max-w-3xl mx-auto">
-              {t('organic.subtitle', language)}
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-black mb-3">
+        {/* Organic Promise Section - Luxury Editorial */}
+        <section className="py-20 px-4 sm:py-28 sm:px-6 lg:px-8 bg-white">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <span className="text-xs uppercase tracking-[0.3em] text-[#888] font-medium">Pet Wash™ Promise</span>
+              <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-light text-[#111] mt-4 mb-4 tracking-tight">
+                {t('organic.title', language)}
+              </h2>
+              <div className="w-24 h-px bg-[#e6e6e6] mx-auto mb-6" />
+              <p className="text-base text-[#555] font-light max-w-2xl mx-auto leading-relaxed">
+                {t('organic.subtitle', language)}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-16">
+              <div className="text-center group">
+                <div className="w-px h-12 bg-[#e6e6e6] mx-auto mb-6" />
+                <h3 className="font-serif text-lg font-medium text-[#111] mb-3 tracking-tight">
                   {t('organic.biodegradable', language)}
                 </h3>
-                <p className="text-sm text-black">
+                <p className="text-sm text-[#666] font-light leading-relaxed">
                   {t('organic.biodegradableDesc', language)}
                 </p>
               </div>
-              <div className="text-center p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-black mb-3">
+              <div className="text-center group">
+                <div className="w-px h-12 bg-[#e6e6e6] mx-auto mb-6" />
+                <h3 className="font-serif text-lg font-medium text-[#111] mb-3 tracking-tight">
                   {t('organic.teaTreeBenefits', language)}
                 </h3>
-                <p className="text-sm text-black">
+                <p className="text-sm text-[#666] font-light leading-relaxed">
                   {t('organic.teaTreeDesc', language)}
                 </p>
               </div>
-              <div className="text-center p-6 bg-white rounded-xl border border-black shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 duration-300">
-                <h3 className="text-base font-semibold text-black mb-3">
+              <div className="text-center group">
+                <div className="w-px h-12 bg-[#e6e6e6] mx-auto mb-6" />
+                <h3 className="font-serif text-lg font-medium text-[#111] mb-3 tracking-tight">
                   {t('organic.ecoFriendly', language)}
                 </h3>
-                <p className="text-sm text-black">
+                <p className="text-sm text-[#666] font-light leading-relaxed">
                   {t('organic.ecoDesc', language)}
                 </p>
               </div>
@@ -184,14 +191,15 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Gift Cards Section */}
         <GiftCards language={language} />
 
-        {/* Payment Methods Accepted Section - 2025 Luxury Full-Color Icons */}
-        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
+        {/* Payment Methods Accepted Section - Pure White Luxury */}
+        <section className="py-16 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-10">
-              <h2 className="text-2xl sm:text-3xl font-bold text-black mb-3">
+            <div className="text-center mb-12">
+              <span className="text-xs uppercase tracking-[0.3em] text-[#888] font-medium mb-4 block">Secure Payments</span>
+              <h2 className="font-serif text-2xl sm:text-3xl font-light text-[#111] mb-3 tracking-tight">
                 {t('payment.title', language)}
               </h2>
-              <p className="text-base sm:text-lg text-black">
+              <p className="text-base text-[#555] font-light">
                 {t('payment.subtitle', language)}
               </p>
             </div>
@@ -255,15 +263,17 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               </div>
             </div>
             
-            {/* Trust Badge */}
-            <div className="mt-8 text-center">
-              <div className="inline-flex items-center gap-2 px-6 py-3 bg-white rounded-full border border-black">
-                <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
+            {/* Trust Badge - Luxury Minimal */}
+            <div className="mt-12 text-center">
+              <div className="inline-flex items-center gap-3 px-8 py-4">
+                <div className="w-px h-4 bg-[#e6e6e6]" />
+                <svg className="w-4 h-4 text-[#888]" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                <span className="text-sm font-semibold text-black">
+                <span className="text-xs uppercase tracking-[0.15em] text-[#666] font-light">
                   {t('payment.secureCheckout', language)}
                 </span>
+                <div className="w-px h-4 bg-[#e6e6e6]" />
               </div>
             </div>
           </div>

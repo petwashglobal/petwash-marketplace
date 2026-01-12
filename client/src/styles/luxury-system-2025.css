@@ -1,18 +1,59 @@
 /**
  * 🌟 PET WASH™ 7-STAR LUXURY DESIGN SYSTEM 2025
- * Apple/Tesla/Chanel inspired premium UI
+ * Louis Vuitton / Chanel / Gucci / Prada Level UI
  * 
+ * DUAL THEME SYSTEM:
+ * ==================
+ * 1. PURE WHITE COUTURE (Homepage & Public Pages)
+ *    - Background: #FFFFFF pure white
+ *    - Text: #111 charcoal, #444 secondary, #666 tertiary
+ *    - Borders: #e6e6e6 hairline (1px)
+ *    - Shadows: 0 20px 40px rgba(0,0,0,0.08)
+ *    - Typography: Cormorant Garamond / Playfair Display serif
+ *    - Logo: Dark version
+ *
+ * 2. ESPRESSO NOIR (Authenticated Dashboards)
+ *    - Background: #0a0a0a to #121212 matte black layers
+ *    - Text: #ffffff, rgba(255,255,255,0.85) secondary
+ *    - Accent: rgba(212, 175, 55) gold for CTAs/highlights
+ *    - Borders: rgba(255,255,255,0.1) subtle
+ *    - Logo: White/inverted version
+ *
  * Core Principles:
- * - Pure white backgrounds ONLY
- * - PURE BLACK accents (#000000) - GUCCI STYLE
- * - NO gold, NO emerald, NO purple - BLACK/WHITE ONLY
- * - Premium spacing & typography (Gucci/Cormorant Garamond)
- * - Smooth animations
- * - Minimalist luxury aesthetic
+ * - 12pt spacing system (24/36/48/72)
+ * - 400-600ms smooth transitions
+ * - Generous negative space
+ * - Asymmetric grids
+ * - No emoji badges - monoline icons only
  */
 
 /* ===========================
-   LUXURY GRADIENT BACKGROUNDS - BLACK/WHITE ONLY
+   CONTEXT-AWARE LOGO UTILITIES
+   =========================== */
+
+.logo-dark-context {
+  filter: none;
+}
+
+.logo-light-context,
+.espresso-noir .pw-header-logo-img,
+.espresso-noir .pw-mobile-logo-img,
+[data-theme="dark"] .pw-header-logo-img,
+[data-theme="dark"] .pw-mobile-logo-img {
+  filter: brightness(0) invert(1);
+}
+
+/* Force dark logo on pure white sections */
+.pure-white-context .pw-header-logo-img,
+.pure-white-context .pw-mobile-logo-img,
+[data-theme="light"] .pw-header-logo-img,
+[data-theme="light"] .pw-mobile-logo-img {
+  filter: none;
+}
+
+/* ===========================
+   LUXURY GRADIENT BACKGROUNDS
+   Pure White Couture (public) | Espresso Noir (authenticated)
    =========================== */
 
 .luxury-bg-primary {
@@ -40,7 +81,8 @@
 }
 
 /* ===========================
-   BLACK/WHITE ICON BADGES (2025 GUCCI STYLE)
+   ICON BADGES - COUTURE STYLE
+   (Charcoal/black for white pages, gold accents for dark dashboards)
    =========================== */
 
 .luxury-icon-gold {
@@ -610,12 +652,12 @@
 
 /* ===========================
    LUXURY SERVICES HERO
-   (Special hero section for service pages)
+   Pure White Couture - Fashion House Level
    =========================== */
 
 .luxury-services-hero {
   position: relative;
-  padding: 8rem 0 6rem;
+  padding: 6rem 1.5rem 4rem;
   background: #FFFFFF;
   overflow: hidden;
 }
@@ -628,39 +670,42 @@
   position: relative;
   z-index: 1;
   text-align: center;
-  max-width: 900px;
+  max-width: 800px;
   margin: 0 auto;
+  padding: 0 1rem;
 }
 
 .luxury-services-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #FFFFFF;
-  border: 1px solid #000000;
-  border-radius: 100px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #000000;
+  padding: 0.5rem 1.25rem;
+  background: transparent;
+  border: none;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: #888;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.3em;
   margin-bottom: 1.5rem;
 }
 
 .luxury-services-title {
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  color: #000000;
-  margin-bottom: 1.5rem;
+  font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 300;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #111;
+  margin-bottom: 1rem;
 }
 
 .luxury-services-subtitle {
-  font-size: clamp(1.125rem, 2vw, 1.375rem);
-  line-height: 1.6;
-  color: #4a5568;
-  max-width: 700px;
-  margin: 0 auto;
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  font-weight: 300;
+  line-height: 1.4;
+  color: #111;
+  max-width: 600px;
+  margin: 0 auto 0.5rem;
+  letter-spacing: -0.01em;
 }
