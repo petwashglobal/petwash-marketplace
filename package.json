@@ -75,7 +75,6 @@
     "@types/supertest": "^6.0.3",
     "@vitest/ui": "^4.0.3",
     "bcrypt": "^6.0.0",
-    "caniuse-lite": "^1.0.30001751",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
