@@ -130,16 +130,16 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-lg mx-auto bg-gradient-to-br from-slate-50 via-white to-blue-50 rounded-3xl border-0 shadow-2xl backdrop-blur-sm overflow-hidden sm:max-w-md md:max-w-lg" style={{ zIndex: 1000 }}>
           {/* Luxury Background Pattern */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-transparent to-purple-600/5" style={{ pointerEvents: 'none' }}></div>
-          <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-xl" style={{ pointerEvents: 'none' }}></div>
-          <div className="absolute bottom-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-400/20 to-transparent rounded-full blur-xl" style={{ pointerEvents: 'none' }}></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0a2540]/5 via-transparent to-[#1a365d]/5" style={{ pointerEvents: 'none' }}></div>
+          <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-[#0a2540]/20 to-transparent rounded-full blur-xl" style={{ pointerEvents: 'none' }}></div>
+          <div className="absolute bottom-0 right-0 w-24 h-24 bg-gradient-to-br from-amber-400/20 to-transparent rounded-full blur-xl" style={{ pointerEvents: 'none' }}></div>
           
           <div className="relative z-10">
             <DialogHeader className="text-center pb-8 pt-6">
               {/* Premium Icon with Glow Effect */}
               <div className="flex justify-center mb-6">
                 <div className="relative">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 rounded-full flex items-center justify-center shadow-2xl">
+                  <div className="w-20 h-20 bg-gradient-to-br from-[#0a2540] via-[#1a365d] to-[#0a2540] rounded-full flex items-center justify-center shadow-2xl">
                     <Crown className="h-10 w-10 text-white drop-shadow-lg" />
                   </div>
                   <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
@@ -148,7 +148,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                 </div>
               </div>
               
-              <DialogTitle className="text-3xl font-bold bg-gradient-to-r from-blue-900 via-purple-900 to-blue-900 bg-clip-text text-transparent mb-2">
+              <DialogTitle className="text-3xl font-bold bg-gradient-to-r from-[#0a2540] via-[#1a365d] to-[#0a2540] bg-clip-text text-transparent mb-2">
                 {t('customerSignup.joinPetWash', language)}
               </DialogTitle>
               <DialogDescription className="sr-only">
@@ -274,16 +274,16 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl mx-auto bg-gradient-to-br from-slate-50 via-white to-blue-50 rounded-3xl border-0 shadow-2xl max-h-[95vh] overflow-y-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
         {/* Luxury Background Effects */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/3 via-transparent to-purple-600/3 rounded-3xl"></div>
-        <div className="absolute top-0 left-0 w-40 h-40 bg-gradient-to-br from-blue-400/10 to-transparent rounded-full blur-2xl"></div>
-        <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/10 to-transparent rounded-full blur-xl"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a2540]/3 via-transparent to-[#1a365d]/3 rounded-3xl"></div>
+        <div className="absolute top-0 left-0 w-40 h-40 bg-gradient-to-br from-[#0a2540]/10 to-transparent rounded-full blur-2xl"></div>
+        <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-400/10 to-transparent rounded-full blur-xl"></div>
         
         <div className="relative z-10">
           <DialogHeader className="text-center pb-8 pt-6">
             {/* Premium Header with Glow */}
             <div className="flex justify-center mb-6">
               <div className="relative">
-                <div className="w-24 h-24 bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 rounded-full flex items-center justify-center shadow-2xl">
+                <div className="w-24 h-24 bg-gradient-to-br from-[#0a2540] via-[#1a365d] to-[#0a2540] rounded-full flex items-center justify-center shadow-2xl">
                   <User className="h-12 w-12 text-white drop-shadow-lg" />
                 </div>
                 <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center animate-pulse">
@@ -292,7 +292,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
               </div>
             </div>
             
-            <DialogTitle className="text-4xl font-bold bg-gradient-to-r from-blue-900 via-purple-900 to-blue-900 bg-clip-text text-transparent mb-3">
+            <DialogTitle className="text-4xl font-bold bg-gradient-to-r from-[#0a2540] via-[#1a365d] to-[#0a2540] bg-clip-text text-transparent mb-3">
               {t('customerSignup.createPremiumAccount', language)}
             </DialogTitle>
             <DialogDescription className="sr-only">
@@ -322,13 +322,13 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Premium Personal Information Card */}
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 h-2"></div>
+            <div className="bg-gradient-to-r from-[#0a2540] to-[#1a365d] h-2"></div>
             <CardContent className="p-8">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#0a2540] to-[#1a365d] rounded-full flex items-center justify-center">
                   <User className="h-5 w-5 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-purple-900 bg-clip-text text-transparent">
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-[#0a2540] to-[#1a365d] bg-clip-text text-transparent">
                   {t('customerSignup.personalInformation', language)}
                 </h3>
               </div>
@@ -536,7 +536,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
             <Button
               type="submit"
               disabled={signupMutation.isPending}
-              className="w-full h-16 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 hover:from-blue-700 hover:via-purple-700 hover:to-blue-800 text-white rounded-2xl text-xl font-bold shadow-2xl transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3"
+              className="w-full h-16 bg-gradient-to-r from-[#0a2540] via-[#1a365d] to-[#0a2540] hover:from-[#081c30] hover:via-[#152d4d] hover:to-[#081c30] text-white rounded-2xl text-xl font-bold shadow-2xl transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3"
             >
               {signupMutation.isPending ? (
                 <>

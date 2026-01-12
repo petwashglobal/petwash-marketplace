@@ -54,7 +54,7 @@ export function OAuthConsentDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[480px] p-0 gap-0 overflow-hidden" dir={language === "he" || language === "ar" ? "rtl" : "ltr"}>
         {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-8">
+        <div className="bg-gradient-to-r from-[#0a2540] to-[#1a365d] text-white px-6 py-8">
           <div className="flex items-center justify-center mb-4">
             <img 
               src="/brand/petwash-logo-official.png" 
@@ -77,7 +77,7 @@ export function OAuthConsentDialog({
           {/* User info if available */}
           {userEmail && (
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0a2540] to-[#1a365d] flex items-center justify-center text-white font-semibold">
                 {userEmail[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -144,7 +144,7 @@ export function OAuthConsentDialog({
           </Button>
           <Button
             onClick={onAccept}
-            className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+            className="flex-1 bg-gradient-to-r from-[#0a2540] to-[#1a365d] hover:from-[#081c30] hover:to-[#152d4d] text-white"
             data-testid="button-accept-consent"
           >
             {t('oauth.allowContinue', language)}

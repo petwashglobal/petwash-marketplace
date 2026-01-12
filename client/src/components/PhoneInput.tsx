@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Language } from '@/lib/i18n';
@@ -71,6 +71,26 @@ const countryCodes: CountryCode[] = [
   { code: '+886', country: 'Taiwan', flag: '🇹🇼' },
 ];
 
+function parsePhoneValue(fullNumber: string, defaultCode: string): { code: string; number: string } {
+  if (!fullNumber) {
+    return { code: defaultCode, number: '' };
+  }
+  
+  const sortedCodes = [...countryCodes].sort((a, b) => b.code.length - a.code.length);
+  for (const cc of sortedCodes) {
+    if (fullNumber.startsWith(cc.code)) {
+      return { code: cc.code, number: fullNumber.slice(cc.code.length) };
+    }
+  }
+  
+  const match = fullNumber.match(/^\+(\d{1,4})/);
+  if (match) {
+    return { code: '+' + match[1], number: fullNumber.slice(match[0].length) };
+  }
+  
+  return { code: defaultCode, number: fullNumber.replace(/^\+/, '') };
+}
+
 interface PhoneInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -81,18 +101,16 @@ interface PhoneInputProps {
 }
 
 export function PhoneInput({ value, onChange, onBlur, language, error, defaultCountryCode = '+972' }: PhoneInputProps) {
-  const [selectedCode, setSelectedCode] = useState(defaultCountryCode);
+  const parsed = useMemo(() => parsePhoneValue(value, defaultCountryCode), [value, defaultCountryCode]);
   
-  const extractPhoneNumber = (fullNumber: string): string => {
-    for (const cc of countryCodes) {
-      if (fullNumber.startsWith(cc.code)) {
-        return fullNumber.slice(cc.code.length);
-      }
-    }
-    return fullNumber.replace(/^\+\d+/, '');
-  };
+  const [selectedCode, setSelectedCode] = useState(parsed.code);
+  const [localNumber, setLocalNumber] = useState(parsed.number);
 
-  const [localNumber, setLocalNumber] = useState(() => extractPhoneNumber(value));
+  useEffect(() => {
+    const newParsed = parsePhoneValue(value, defaultCountryCode);
+    setSelectedCode(newParsed.code);
+    setLocalNumber(newParsed.number);
+  }, [value, defaultCountryCode]);
 
   const handleCodeChange = (newCode: string) => {
     setSelectedCode(newCode);
