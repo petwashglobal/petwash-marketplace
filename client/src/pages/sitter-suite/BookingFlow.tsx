@@ -100,6 +100,19 @@ export default function SitterBookingFlow() {
           vatAmount: pricing.vatOnCommission,
           totalAmount: pricing.totalCharged
         },
+        ownerInstructions: ownerInstructions.shareWithProvider ? {
+          gateCode: ownerInstructions.gateCode,
+          doorCode: ownerInstructions.doorCode,
+          alarmCode: ownerInstructions.alarmCode,
+          alarmInstructions: ownerInstructions.alarmInstructions,
+          airconLocation: ownerInstructions.airconLocation,
+          foodLocation: ownerInstructions.foodLocation,
+          waterLocation: ownerInstructions.waterLocation,
+          medicationInstructions: ownerInstructions.medicationInstructions,
+          emergencyContact: ownerInstructions.emergencyContact,
+          vetContact: ownerInstructions.vetContact,
+          additionalNotes: ownerInstructions.additionalNotes,
+        } : null,
         platformData: {
           sitterName: `${sitter.firstName} ${sitter.lastName}`,
           hours,

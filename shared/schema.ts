@@ -3379,8 +3379,32 @@ export const sitterProfiles = pgTable("sitter_profiles", {
   yardSize: varchar("yard_size"), // none | small | medium | large
   homePhotos: text("home_photos").array(), // URLs to home environment photos
   
-  // Pricing & Services
-  pricePerDayCents: integer("price_per_day_cents").notNull(), // Base price in cents
+  // Pricing & Services - Flexible Provider Pricing
+  pricePerDayCents: integer("price_per_day_cents").notNull(), // Base price in cents (full 24h day)
+  pricePerHourCents: integer("price_per_hour_cents"), // Hourly rate (optional)
+  minimumHours: integer("minimum_hours").default(2), // Minimum booking hours
+  minimumDays: integer("minimum_days").default(1), // Minimum booking days for overnight
+  
+  // Package Pricing (day/night bundles)
+  pricingPackages: jsonb("pricing_packages").$type<Array<{
+    id: string; // Unique package ID
+    name: string; // "יום שלם", "לילה שלם", "סוף שבוע"
+    nameEn?: string; // "Full Day", "Overnight", "Weekend"
+    durationHours: number; // Duration in hours (24 = full day, 12 = half day, etc.)
+    priceCents: number; // Package price in cents
+    description?: string; // Package details
+    isPopular?: boolean; // Highlight as popular option
+  }>>(),
+  
+  // Extra Services (add-ons with additional fees)
+  extraServices: jsonb("extra_services").$type<Array<{
+    id: string;
+    name: string; // "הזנת תרופות", "טיפול מיוחד", "לינה בחדר נפרד"
+    nameEn?: string;
+    priceCents: number; // Additional fee
+    description?: string;
+  }>>(),
+  
   serviceTypes: text("service_types").array(), // ["boarding", "daycare", "drop_in", "walking"]
   
   // Availability Calendar (Like Airbnb calendar)
@@ -3897,9 +3921,30 @@ export const walkerProfiles = pgTable("walker_profiles", {
   hasFirstAidKit: boolean("has_first_aid_kit").default(false),
   hasCarTransport: boolean("has_car_transport").default(false),
   
-  // Pricing
+  // Pricing - Flexible Provider Pricing
   baseHourlyRate: decimal("base_hourly_rate", { precision: 10, scale: 2 }).notNull(), // Walker sets their rate
+  minimumMinutes: integer("minimum_minutes").default(30), // Minimum walk duration
   currency: varchar("currency").default("ILS"), // ILS, USD, GBP, AUD, CAD
+  
+  // Package Pricing (bundle walks)
+  walkPackages: jsonb("walk_packages").$type<Array<{
+    id: string;
+    name: string; // "טיול קצר", "טיול ארוך", "חבילה שבועית"
+    nameEn?: string;
+    durationMinutes: number;
+    priceCents: number;
+    description?: string;
+    isPopular?: boolean;
+  }>>(),
+  
+  // Extra Services (add-ons)
+  extraServices: jsonb("extra_services").$type<Array<{
+    id: string;
+    name: string; // "אימון בסיסי", "משחקים בפארק", "צילומים"
+    nameEn?: string;
+    priceCents: number;
+    description?: string;
+  }>>(),
   
   // Availability
   isAvailable: boolean("is_available").default(true),
