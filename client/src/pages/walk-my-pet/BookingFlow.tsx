@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Shield, PawPrint, Clock, Check, Users, Handshake } from "lucide-react";
@@ -32,6 +32,24 @@ export default function WalkBookingFlow() {
 
   // Check if weather consent is needed for the selected date
   const { data: weatherCheck } = useWeatherConsent(selectedDate);
+
+  // Simulate provider acceptance for two-way matching
+  // In production, this would be replaced by real-time WebSocket/polling for provider response
+  useEffect(() => {
+    if (step === 'pending_match' && bookingId) {
+      // Simulate provider accepting the job after 3-5 seconds
+      const acceptanceDelay = 3000 + Math.random() * 2000;
+      const timer = setTimeout(() => {
+        setStep('confirmation');
+        toast({
+          title: "יש התאמה! 🎉",
+          description: "המוליך/ה אישר/ה את הבקשה. ההזמנה מאושרת!",
+        });
+      }, acceptanceDelay);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [step, bookingId, toast]);
 
   // Fetch walker data from real API
   const { data: providersData, isLoading: walkerLoading, error: walkerError } = useQuery({

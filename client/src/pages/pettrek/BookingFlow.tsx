@@ -161,6 +161,15 @@ export default function PetTrekBookingFlow() {
         </div>
       </div>
 
+      {/* 24/7 Availability Banner */}
+      <div className="max-w-3xl mx-auto px-4 pt-4">
+        <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-xl p-3 border border-amber-200/50 text-center">
+          <p className="text-sm text-amber-800 font-medium">
+            🚗 הסעות VIP 24/7 כל השנה · למעט יום כיפור
+          </p>
+        </div>
+      </div>
+
       {/* Progress Stepper */}
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="flex items-center justify-center gap-2 mb-8 luxury-fade-in">
