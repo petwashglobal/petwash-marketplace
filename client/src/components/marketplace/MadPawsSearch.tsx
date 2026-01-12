@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -294,6 +294,101 @@ export interface BookingSearchResponse {
   searchId: string;
 }
 
+function GooglePlacesLocationInput({
+  value,
+  onChange,
+  placeholder,
+  focusRing,
+  focusBorder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  focusRing: string;
+  focusBorder: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+
+  useEffect(() => {
+    if (window.google && window.google.maps) {
+      setScriptLoaded(true);
+      return;
+    }
+
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+    if (!apiKey) {
+      console.warn('[MadPaws Search] VITE_GOOGLE_MAPS_API_KEY not configured');
+      return;
+    }
+
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => setScriptLoaded(true));
+      if ((window as any).google?.maps) setScriptLoaded(true);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=he`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setScriptLoaded(true);
+    document.head.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!scriptLoaded || !inputRef.current || autocompleteRef.current) return;
+
+    try {
+      autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
+        types: ['(cities)'],
+        componentRestrictions: { country: 'il' },
+        fields: ['address_components', 'formatted_address', 'geometry', 'name'],
+      });
+
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current?.getPlace();
+        if (!place) return;
+        
+        let cityName = place.name || '';
+        place.address_components?.forEach((component) => {
+          if (component.types.includes('locality')) {
+            cityName = component.long_name;
+          }
+        });
+        
+        onChange(cityName);
+      });
+    } catch (error) {
+      console.error('[MadPaws Search] Google Places init error:', error);
+    }
+
+    return () => {
+      if (autocompleteRef.current) {
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      }
+    };
+  }, [scriptLoaded, onChange]);
+
+  return (
+    <div className="relative">
+      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none z-10" />
+      <Input
+        ref={inputRef}
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`pl-10 h-12 border-gray-200 rounded-xl focus:ring-2 ${focusRing} ${focusBorder}`}
+        data-testid="input-search-location"
+        autoComplete="off"
+      />
+    </div>
+  );
+}
+
 interface MadPawsSearchProps {
   onSearch?: (params: SearchParams, results?: BookingSearchResponse) => void;
   showResults?: boolean;
@@ -513,17 +608,13 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
               {isHebrew ? 'מיקום' : 'Location'}
             </label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input
-                type="text"
-                placeholder={isHebrew ? 'הזן עיר או כתובת' : 'Enter city or address'}
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className={`pl-10 h-12 border-gray-200 rounded-xl focus:ring-2 ${t.focusRing} ${t.focusBorder}`}
-                data-testid="input-search-location"
-              />
-            </div>
+            <GooglePlacesLocationInput
+              value={location}
+              onChange={setLocation}
+              placeholder={isHebrew ? 'הזן עיר או כתובת' : 'Enter city or address'}
+              focusRing={t.focusRing}
+              focusBorder={t.focusBorder}
+            />
           </div>
 
           <div className="lg:col-span-1 relative">

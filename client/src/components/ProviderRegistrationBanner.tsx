@@ -37,8 +37,10 @@ import {
   ArrowRight,
   FileText,
   Wallet,
+  MapPin,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
 type ProviderType = "sitter" | "walker" | "driver" | "trainer";
 
@@ -621,17 +623,27 @@ function ApplicationForm({
           </div>
         </div>
 
+        <div>
+          <Label className="text-gray-300 mb-2 block flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-cyan-400" />
+            {isRTL ? "אזור פעילות / עיר מגורים *" : "Service Area / City *"}
+          </Label>
+          <GooglePlacesAutocomplete
+            value={formData.city}
+            onChange={(value, details) => {
+              const cityName = details?.city || value;
+              setFormData({ ...formData, city: cityName });
+            }}
+            placeholder={isRTL ? "התחילו להקליד עיר או כתובת..." : "Start typing city or address..."}
+            country={['il']}
+            className="[&_input]:bg-gray-800 [&_input]:border-gray-700 [&_input]:text-white [&_input]:placeholder:text-gray-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            {isRTL ? "הקלידו לקבלת הצעות אוטומטיות מ-Google" : "Type to get Google autocomplete suggestions"}
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-gray-300">{isRTL ? "עיר מגורים *" : "City *"}</Label>
-            <Input
-              value={formData.city}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              className="bg-gray-800 border-gray-700 text-white mt-1"
-              placeholder={isRTL ? "הזינו עיר" : "Enter city"}
-              required
-            />
-          </div>
           <div>
             <Label className="text-gray-300">{isRTL ? "שנות ניסיון" : "Years of Experience"}</Label>
             <Input
@@ -640,6 +652,11 @@ function ApplicationForm({
               className="bg-gray-800 border-gray-700 text-white mt-1"
               placeholder={isRTL ? "לדוגמה: 2-5" : "e.g., 2-5"}
             />
+          </div>
+          <div className="flex items-end">
+            <p className="text-xs text-gray-400 pb-2">
+              {isRTL ? "אזור הפעילות שלכם ישפיע על הזמנות שתקבלו" : "Your service area affects the bookings you receive"}
+            </p>
           </div>
         </div>
 
