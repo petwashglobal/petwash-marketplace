@@ -14,7 +14,7 @@
  * Uses: Google Gemini 2.5 Flash for intelligent monitoring and auto-fixing
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { 
@@ -56,8 +56,7 @@ interface AutoFixResult {
 }
 
 class GeminiWatchdogService {
-  private genAI: GoogleGenerativeAI | null = null;
-  private model: any = null;
+  private genAI: GoogleGenAI | null = null;
   private isRunning = false;
   private logBuffer: LogEntry[] = [];
   private userStruggles: Map<string, UserStruggle> = new Map();
@@ -66,16 +65,7 @@ class GeminiWatchdogService {
 
   constructor() {
     if (GEMINI_API_KEY) {
-      this.genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      this.model = this.genAI.getGenerativeModel({ 
-        model: 'gemini-2.0-flash-exp',
-        generationConfig: {
-          temperature: 0.3, // Lower temperature for more deterministic analysis
-          topP: 0.8,
-          topK: 40,
-          maxOutputTokens: 2048,
-        }
-      });
+      this.genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
       logger.info('[Gemini Watchdog] ✅ Gemini 2.5 Flash initialized');
     } else {
       logger.warn('[Gemini Watchdog] ⚠️ GEMINI_API_KEY not configured - watchdog disabled');
@@ -83,10 +73,28 @@ class GeminiWatchdogService {
   }
 
   /**
+   * Helper method to generate content using new API format
+   */
+  private async generateContent(prompt: string): Promise<string> {
+    if (!this.genAI) throw new Error('Gemini AI not initialized');
+    const response = await this.genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    });
+    if (response.candidates && response.candidates[0]?.content?.parts) {
+      return response.candidates[0].content.parts
+        .filter((p: any) => p.text)
+        .map((p: any) => p.text)
+        .join('');
+    }
+    return '';
+  }
+
+  /**
    * Start the Gemini Watchdog service
    */
   async start() {
-    if (!this.model) {
+    if (!this.genAI) {
       logger.warn('[Gemini Watchdog] Cannot start - Gemini API key not configured');
       return;
     }
@@ -136,7 +144,7 @@ class GeminiWatchdogService {
    * Analyze logs batch with Gemini AI
    */
   private async analyzeLogsBatch() {
-    if (!this.model || this.logBuffer.length === 0) return;
+    if (!this.genAI || this.logBuffer.length === 0) return;
 
     const batch = this.logBuffer.splice(0, this.BUFFER_SIZE);
     
@@ -158,9 +166,8 @@ Respond in JSON format:
   "userImpact": {"affectedUsers": number, "severity": "high|medium|low", "description": "..."}
 }`;
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const analysis = JSON.parse(response.text());
+      const responseText = await this.generateContent(prompt);
+      const analysis = JSON.parse(responseText);
 
       // Store critical issues
       for (const issue of analysis.criticalIssues || []) {
@@ -196,7 +203,7 @@ Respond in JSON format:
    * Analyze error immediately (critical path)
    */
   private async analyzeErrorImmediate(entry: LogEntry) {
-    if (!this.model) return;
+    if (!this.genAI) return;
 
     try {
       const prompt = `URGENT: Error detected on Pet Wash™ platform.
@@ -221,9 +228,8 @@ Respond in JSON:
   "immediateAction": "..."
 }`;
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const analysis = JSON.parse(response.text());
+      const responseText = await this.generateContent(prompt);
+      const analysis = JSON.parse(responseText);
 
       if (analysis.userImpact === 'critical' || analysis.userImpact === 'high') {
         logger.error(`[Gemini Watchdog] 🚨 CRITICAL USER IMPACT: ${entry.message}`);
@@ -330,7 +336,7 @@ Respond in JSON:
    * Analyze user struggle with Gemini
    */
   private async analyzeUserStruggle(struggle: UserStruggle) {
-    if (!this.model) return;
+    if (!this.genAI) return;
 
     try {
       const prompt = `User is struggling on Pet Wash™ platform:
@@ -353,9 +359,8 @@ Respond in JSON:
   "urgency": "critical|high|medium|low"
 }`;
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const analysis = JSON.parse(response.text());
+      const responseText = await this.generateContent(prompt);
+      const analysis = JSON.parse(responseText);
 
       // Store user struggle
       await db.insert(watchdogUserStruggles).values({
@@ -424,7 +429,7 @@ Respond in JSON:
    * Analyze checkout failure
    */
   private async analyzeCheckoutFailure(params: any) {
-    if (!this.model) return;
+    if (!this.genAI) return;
 
     try {
       const prompt = `Checkout FAILED on Pet Wash™:
@@ -447,9 +452,8 @@ Respond in JSON:
   "preventionTip": "..."
 }`;
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const analysis = JSON.parse(response.text());
+      const responseText = await this.generateContent(prompt);
+      const analysis = JSON.parse(responseText);
 
       logger.error(`[Gemini Watchdog] 💳 CHECKOUT FAILURE: ${analysis.cause}`);
 
@@ -514,7 +518,7 @@ Respond in JSON:
    * Analyze registration failure
    */
   private async analyzeRegistrationFailure(params: any) {
-    if (!this.model) return;
+    if (!this.genAI) return;
 
     try {
       const prompt = `Registration FAILED on Pet Wash™:
@@ -535,9 +539,8 @@ Respond in JSON:
   "autoFixPossible": boolean
 }`;
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const analysis = JSON.parse(response.text());
+      const responseText = await this.generateContent(prompt);
+      const analysis = JSON.parse(responseText);
 
       logger.warn(`[Gemini Watchdog] 📝 REGISTRATION FAILURE: ${analysis.cause}`);
 
@@ -577,7 +580,7 @@ Respond in JSON:
     suggestedFix: string;
     service: string;
   }) {
-    if (!this.model) return;
+    if (!this.genAI) return;
 
     try {
       logger.info(`[Gemini Watchdog] 🔧 Attempting auto-fix: ${params.description}`);
@@ -604,9 +607,8 @@ Respond in JSON:
   "risks": "..."
 }`;
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const fix = JSON.parse(response.text());
+      const responseText = await this.generateContent(prompt);
+      const fix = JSON.parse(responseText);
 
       // Store auto-fix attempt
       const [autoFix] = await db.insert(watchdogAutoFixes).values({
@@ -725,7 +727,7 @@ Respond in JSON:
 
     return {
       isRunning: this.isRunning,
-      geminiConfigured: !!this.model,
+      geminiConfigured: !!this.genAI,
       openIssues: Number(issuesCount?.count || 0),
       activeStruggles: Number(strugglesCount?.count || 0),
       successfulAutoFixes: Number(autoFixesCount?.count || 0),

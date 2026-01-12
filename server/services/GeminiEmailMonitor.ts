@@ -5,13 +5,13 @@
  */
 
 import { logger } from '../lib/logger';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-let genAI: GoogleGenerativeAI | null = null;
+let genAI: GoogleGenAI | null = null;
 
 if (GEMINI_API_KEY) {
-  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 }
 
 interface EmailValidationResult {

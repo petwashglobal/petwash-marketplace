@@ -20,7 +20,6 @@
     "@google-cloud/translate": "^9.2.1",
     "@google-cloud/vision": "^5.3.4",
     "@google/genai": "^1.28.0",
-    "@google/generative-ai": "^0.24.1",
     "@googlemaps/google-maps-services-js": "^3.4.2",
     "@hookform/resolvers": "^3.10.0",
     "@hubspot/api-client": "^13.4.0",

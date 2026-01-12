@@ -22,7 +22,7 @@ import {
   type InsertReviewModeration,
   type ReviewModerationRule,
 } from "@shared/schema-compliance";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { createHash } from "crypto";
 
 /**
@@ -54,12 +54,12 @@ export interface ReviewSubmission {
  * Review Moderation Service
  */
 export class ReviewModerationService {
-  private geminiAI: GoogleGenerativeAI | null = null;
+  private geminiAI: GoogleGenAI | null = null;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
-      this.geminiAI = new GoogleGenerativeAI(apiKey);
+      this.geminiAI = new GoogleGenAI({ apiKey });
     } else {
       console.warn("GEMINI_API_KEY not set - AI moderation will be limited to keyword matching");
     }

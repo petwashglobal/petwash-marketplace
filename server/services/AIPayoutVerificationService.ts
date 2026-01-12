@@ -13,7 +13,7 @@
  * Integration: Runs before ProviderPayoutService releases escrow
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { db } from '../db';
 import { 
   superAppPayouts, 
@@ -27,7 +27,7 @@ import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export interface WorkEvidence {
   bookingId: string;

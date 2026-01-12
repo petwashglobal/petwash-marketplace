@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { logger } from '../lib/logger';
 import type { SupportedLanguage } from '../lib/weatherTranslations';
 import { 
@@ -14,7 +14,7 @@ if (!GEMINI_API_KEY) {
   logger.warn('[SmartWeatherAdvisor] GEMINI_API_KEY not configured - smart advice disabled');
 }
 
-const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const genAI = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
 // Language name mapping for Gemini prompts
 const LANGUAGE_MAP: Record<SupportedLanguage, string> = {

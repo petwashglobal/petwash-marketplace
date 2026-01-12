@@ -2,7 +2,7 @@ import { storage } from '../storage';
 import { domainEvents } from '@shared/schema';
 import { db } from '../db';
 import crypto from 'crypto';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 export type PlatformService = 'wash' | 'sitter' | 'walk' | 'trek' | 'all';
 

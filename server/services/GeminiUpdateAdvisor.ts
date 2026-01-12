@@ -19,7 +19,7 @@
  * Created: November 10, 2025
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { logger } from '../lib/logger';
 import { EmailService } from '../emailService';
 import { db } from '../lib/firebase-admin';
@@ -45,8 +45,7 @@ interface UpdateAdvisory {
 }
 
 export class GeminiUpdateAdvisor {
-  private static genAI: GoogleGenerativeAI;
-  private static model: any;
+  private static genAI: GoogleGenAI;
   private static isInitialized = false;
 
   /**
@@ -62,7 +61,7 @@ export class GeminiUpdateAdvisor {
         return;
       }
 
-      this.genAI = new GoogleGenerativeAI(apiKey);
+      this.genAI = new GoogleGenAI({ apiKey });
       this.model = this.genAI.getGenerativeModel({ 
         model: 'gemini-2.0-flash-exp',
         generationConfig: {

@@ -7,7 +7,7 @@
  */
 
 import { google } from 'googleapis';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { db } from '../db';
 import { bookingRequests } from '@shared/schema';
 import { eq, gte, and, isNotNull } from 'drizzle-orm';
@@ -18,7 +18,7 @@ const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const ACCOUNTING_SPREADSHEET_ID = process.env.ACCOUNTING_SPREADSHEET_ID;
 
-const ai = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
 // Sheet names for accounting
 const ACCOUNTING_SHEETS = {
