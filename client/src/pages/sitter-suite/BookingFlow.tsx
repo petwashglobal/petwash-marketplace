@@ -79,26 +79,18 @@ export default function SitterBookingFlow() {
     try {
       setIsSubmitting(true);
 
-      const startTime = new Date(selectedDate);
-      const endTime = new Date(startTime);
-      endTime.setHours(endTime.getHours() + hours);
+      const startDate = new Date(selectedDate);
+      const endDate = new Date(startDate);
+      endDate.setHours(endDate.getHours() + hours);
 
       const payload = {
-        platform: "sitter-suite",
-        providerId: sitter.id,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        petIds: selectedPetIds,
+        sitterId: sitter.id,
+        petId: selectedPetIds[0],
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        specialInstructions: notes || '',
         address,
-        notes,
-        items: [
-          {
-            itemType: 'service',
-            name: 'Pet Sitting Service',
-            nameHe: 'שירותי שמרטפות',
-            unitPrice: pricing.totalCharged
-          }
-        ],
+        petIds: selectedPetIds,
         pricing: {
           currency: "ILS",
           baseAmount: pricing.baseAmount,

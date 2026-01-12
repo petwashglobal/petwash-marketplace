@@ -79,24 +79,23 @@ export default function WalkBookingFlow() {
     try {
       setIsSubmitting(true);
 
-      const startTime = new Date(selectedDate);
-      const endTime = new Date(startTime);
-      endTime.setMinutes(endTime.getMinutes() + duration);
+      const scheduledDate = selectedDate.toISOString().split('T')[0];
+      const scheduledStartTime = selectedDate.toTimeString().slice(0, 5);
 
       const payload = {
-        providerId: walkerIdNumber,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        petIds: selectedPetIds,
+        walkerId: walker.walkerId || `WALKER-${walkerIdNumber}`,
+        scheduledDate,
+        scheduledStartTime,
+        durationMinutes: duration,
+        pickupLatitude: walker.latitude || 32.0853,
+        pickupLongitude: walker.longitude || 34.7818,
+        pickupAddress: walker.serviceArea || 'Tel Aviv, Israel',
+        petName: 'My Pet',
+        petBreed: 'Mixed',
+        petWeight: 15,
+        petSpecialNeeds: notes || '',
         notes,
-        items: [
-          {
-            itemType: 'service',
-            name: 'Dog Walking Service',
-            nameHe: 'שירות הליכה עם הכלב',
-            unitPrice: pricing.totalCharged
-          }
-        ],
+        petIds: selectedPetIds,
         pricing: {
           currency: "ILS",
           baseAmount: pricing.baseAmount,
@@ -113,7 +112,7 @@ export default function WalkBookingFlow() {
         }
       };
 
-      const booking = await apiRequest(`/api/platforms/walk_my_pet/bookings`, {
+      const booking = await apiRequest(`/api/walks/book`, {
         method: "POST",
         body: JSON.stringify(payload),
       });

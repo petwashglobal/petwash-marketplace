@@ -10,6 +10,7 @@ import { useSEO, pageSEO } from "@/lib/seo";
 import { useLanguage } from "@/lib/languageStore";
 import { MadPawsSearch, MadPawsProviderCard, type SearchParams } from "@/components/marketplace/MadPawsSearch";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
+import { PetWalkWeatherAdvisor, CompactWeatherWidget } from "@/components/weather/CompactWeatherWidget";
 
 interface Walker {
   id: number;
@@ -165,8 +166,10 @@ export default function BrowseWalkers() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
-          <div className="flex items-center justify-between mb-8">
-            <div>
+          <PetWalkWeatherAdvisor className="mb-6" />
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+            <div className="flex-1">
               <h2 className="text-2xl font-semibold text-gray-900">
                 {isHebrew ? 'מטיילים זמינים' : 'Available Walkers'}
               </h2>
@@ -177,10 +180,15 @@ export default function BrowseWalkers() {
                 }
               </p>
             </div>
-            <Button variant="outline" className="gap-2 rounded-full" data-testid="button-map-view">
-              <MapPin className="h-4 w-4" />
-              {isHebrew ? 'תצוגת מפה' : 'Map View'}
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:block">
+                <CompactWeatherWidget variant="compact" className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10" />
+              </div>
+              <Button variant="outline" className="gap-2 rounded-full" data-testid="button-map-view">
+                <MapPin className="h-4 w-4" />
+                {isHebrew ? 'תצוגת מפה' : 'Map View'}
+              </Button>
+            </div>
           </div>
 
           {isLoading ? (
