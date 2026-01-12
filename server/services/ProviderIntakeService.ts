@@ -49,7 +49,15 @@ export class ProviderIntakeService {
   
   private async initializeGoogleClients() {
     try {
+      const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+      if (!serviceAccountKey) {
+        logger.warn('[ProviderIntake] FIREBASE_SERVICE_ACCOUNT_KEY not configured - Google Sheets sync disabled');
+        return;
+      }
+      
+      const credentials = JSON.parse(serviceAccountKey);
       const auth = new google.auth.GoogleAuth({
+        credentials,
         scopes: [
           'https://www.googleapis.com/auth/spreadsheets.readonly',
           'https://www.googleapis.com/auth/drive.readonly'
