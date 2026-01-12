@@ -104,8 +104,8 @@ const NextAppointmentWidget = ({ booking }: { booking: any }) => {
   return (
     <div className="space-y-5">
       <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/25 to-blue-500/15 flex items-center justify-center">
-          <Dog className="w-7 h-7 text-purple-400" />
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0a2540]/40 to-[#1a365d]/25 flex items-center justify-center">
+          <Dog className="w-7 h-7 text-[#4a9eff]" />
         </div>
         <div className="flex-1">
           <p className="luxury-dark-heading-sm text-lg mb-1">{booking.service}</p>
@@ -208,21 +208,29 @@ const WalletQuickWidget = ({ wallet }: { wallet: WalletSummary | null }) => {
     );
   }
 
-  const tierBadges: Record<string, string> = {
-    bronze: '🥉',
-    silver: '🥈', 
-    gold: '🥇',
-    platinum: '💎',
-    diamond: '💠',
-    emerald: '💚',
-    royal: '👑'
+  const TierBadgeIcon = ({ tier }: { tier: string }) => {
+    const tierStyles: Record<string, { bg: string; icon: string }> = {
+      bronze: { bg: 'from-amber-700/40 to-amber-800/30', icon: 'text-amber-500' },
+      silver: { bg: 'from-gray-400/40 to-gray-500/30', icon: 'text-gray-300' },
+      gold: { bg: 'from-yellow-500/40 to-amber-500/30', icon: 'text-yellow-400' },
+      platinum: { bg: 'from-slate-400/40 to-slate-500/30', icon: 'text-slate-200' },
+      diamond: { bg: 'from-cyan-400/40 to-blue-500/30', icon: 'text-cyan-300' },
+      emerald: { bg: 'from-emerald-500/40 to-green-600/30', icon: 'text-emerald-400' },
+      royal: { bg: 'from-amber-500/40 to-yellow-500/30', icon: 'text-amber-300' },
+    };
+    const style = tierStyles[tier.toLowerCase()] || tierStyles.bronze;
+    return (
+      <div className={`w-6 h-6 rounded-md bg-gradient-to-br ${style.bg} flex items-center justify-center`}>
+        <Crown className={`w-3.5 h-3.5 ${style.icon}`} />
+      </div>
+    );
   };
 
   return (
     <div className="space-y-4">
       <div className="text-center p-4 rounded-2xl bg-gradient-to-br from-[rgba(212,175,55,0.15)] to-[rgba(212,175,55,0.05)]">
         <div className="flex items-center justify-center gap-2 mb-1">
-          <span className="text-lg">{tierBadges[wallet.loyaltyTier?.toLowerCase()] || '⭐'}</span>
+          <TierBadgeIcon tier={wallet.loyaltyTier || 'bronze'} />
           <span className="luxury-dark-text-small text-xs uppercase tracking-wider">{wallet.loyaltyTier || 'Bronze'}</span>
         </div>
         <p className="luxury-stat-value luxury-dark-text-gold text-3xl">{formatCurrency(wallet.totalCreditsValueCents)}</p>
@@ -273,8 +281,8 @@ const QuickBookWidget = () => {
 
   return (
     <div className="flex items-center gap-4 luxury-dark-surface p-5 rounded-xl border-l-2 border-l-[#d4af37]">
-      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/25 to-cyan-500/15 flex items-center justify-center">
-        <Dog className="w-7 h-7 text-purple-400" />
+      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0a2540]/40 to-[#1a365d]/25 flex items-center justify-center">
+        <Dog className="w-7 h-7 text-[#4a9eff]" />
       </div>
       <div className="flex-1">
         <p className="luxury-dark-heading-sm text-base mb-1">{isHebrew ? 'מוכן לשטיפה נוספת?' : 'Ready for another wash?'}</p>
@@ -403,8 +411,8 @@ const PrivateInboxWidget = () => {
 
       <div className="flex items-center justify-between luxury-credit-item">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500/25 to-blue-500/15 flex items-center justify-center">
-            <Mail className="w-5 h-5 text-purple-400" />
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#0a2540]/40 to-[#1a365d]/25 flex items-center justify-center">
+            <Mail className="w-5 h-5 text-[#4a9eff]" />
           </div>
           <div>
             <p className="luxury-dark-heading-sm text-sm">{isHebrew ? 'הודעות שלא נקראו' : 'Unread Messages'}</p>

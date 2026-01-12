@@ -330,8 +330,8 @@ export default function MyWallet() {
           <h2 className="luxury-dark-heading-md mb-6">Quick Actions</h2>
           <div className="luxury-dark-grid-4">
             <button onClick={() => setLocation('/buy-gift-card')} className="luxury-dark-card p-6 rounded-2xl text-center transition-all duration-300 hover:scale-[1.02]" data-testid="action-buy-gift-card">
-              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center">
-                <Gift className="w-7 h-7 text-purple-400" />
+              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-rose-700/30 to-rose-600/20 flex items-center justify-center">
+                <Gift className="w-7 h-7 text-rose-400" />
               </div>
               <div className="luxury-dark-heading-sm text-base">Buy Gift Card</div>
             </button>
@@ -362,11 +362,11 @@ export default function MyWallet() {
             <div className="luxury-dark-grid-3">
               {giftCards.slice(0, 3).map((card: any, index: number) => (
                 <div key={card.id} className="luxury-dark-card overflow-hidden" data-testid={`gift-card-${index}`}>
-                  <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500" />
+                  <div className="h-1 bg-gradient-to-r from-[#0a2540] via-[#1a365d] to-[#0a2540]" />
                   <div className="p-5 space-y-4">
                     <div className="flex items-start justify-between">
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500/25 to-pink-500/15 flex items-center justify-center">
-                        <Gift className="w-5 h-5 text-pink-400" />
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#0a2540]/40 to-[#1a365d]/25 flex items-center justify-center">
+                        <Gift className="w-5 h-5 text-[#4a9eff]" />
                       </div>
                       <span className={cn('luxury-dark-badge', card.status === 'active' && 'luxury-dark-badge-success')}>{card.status}</span>
                     </div>
@@ -494,8 +494,8 @@ export default function MyWallet() {
               ].map((method, index) => (
                 <div key={index} className="luxury-credit-item flex items-center justify-between" data-testid={`payment-method-${index}`}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/25 to-purple-500/15 flex items-center justify-center">
-                      <CreditCard className="w-6 h-6 text-blue-400" />
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0a2540]/40 to-[#1a365d]/25 flex items-center justify-center">
+                      <CreditCard className="w-6 h-6 text-[#4a9eff]" />
                     </div>
                     <div>
                       <div className="luxury-dark-heading-sm text-base">{method.type.toUpperCase()} •••• {method.last4}</div>
@@ -556,63 +556,7 @@ export default function MyWallet() {
           </div>
         </div>
 
-        {isIOS && (
-          <div className="luxury-animate-slide-up luxury-delay-7">
-            <div className="luxury-wallet-hero">
-              <div className="h-1.5 rounded-t-[28px] bg-gradient-to-r from-gray-700 via-gray-500 to-gray-700" />
-              <div className="p-6 sm:p-8 space-y-6">
-                <div className="text-center space-y-3">
-                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-gray-600/40 to-gray-800/60 flex items-center justify-center">
-                    <Apple className="w-10 h-10 text-[#e8e6f0]" />
-                  </div>
-                  <h2 className="luxury-dark-heading-md">Add to Apple Wallet</h2>
-                  <p className="luxury-dark-text-body">Get instant access to your loyalty and business cards</p>
-                </div>
-                <div className="luxury-dark-grid-2">
-                  <Button onClick={handleDownloadVIPCard} disabled={isDownloadingVIP} className="luxury-dark-btn-primary h-14" data-testid="download-vip-wallet">
-                    {isDownloadingVIP ? (
-                      <>
-                        <Zap className="w-5 h-5 mr-2 animate-pulse" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-5 h-5 mr-2" />
-                        VIP Card
-                      </>
-                    )}
-                  </Button>
-                  <Button onClick={handleDownloadBusinessCard} disabled={isDownloadingBusiness} className="luxury-dark-btn-ghost h-14 border border-[rgba(232,230,240,0.15)]" data-testid="download-business-wallet">
-                    {isDownloadingBusiness ? (
-                      <>
-                        <Zap className="w-5 h-5 mr-2 animate-pulse" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <Smartphone className="w-5 h-5 mr-2" />
-                        Business Card
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <Button onClick={handleEmailCards} disabled={isEmailingCards} className="luxury-dark-btn-ghost w-full h-12 border border-[rgba(232,230,240,0.1)]" data-testid="email-wallet-links">
-                  {isEmailingCards ? (
-                    <>
-                      <Mail className="w-5 h-5 mr-2 animate-pulse" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="w-5 h-5 mr-2" />
-                      Email Direct Links
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Apple/Google Wallet integration hidden - coming soon */}
       </div>
 
       <WalletConsentDialog
