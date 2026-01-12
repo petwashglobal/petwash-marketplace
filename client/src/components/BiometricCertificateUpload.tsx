@@ -21,7 +21,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { Camera, Upload, CheckCircle2, XCircle, AlertCircle, FileText, User } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage } from '@/lib/languageStore';
 import { useQuery } from '@tanstack/react-query';
 
 interface UploadedFile {
