@@ -37,7 +37,7 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gradient-to-b from-[#0a0a0a] via-[#121212] to-[#0a0a0a]">
         {/* Luxury Hero Section */}
         <section className="luxury-services-hero">
           <div className="luxury-services-hero-content">

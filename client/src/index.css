@@ -1550,14 +1550,15 @@ html[lang="en"] *,
 
 /* Luxury Tab Navigation */
 .luxury-tab-navigation {
-  background: rgba(255, 255, 255, 0.9);
-  border-top: 1px solid rgba(226, 232, 240, 0.8);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.98) 0%, rgba(18, 18, 18, 0.95) 100%);
+  border-top: 1px solid rgba(212, 175, 55, 0.1);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
   position: sticky;
   top: 0;
   z-index: 40;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
 }
 
 .luxury-tab-container {
@@ -1566,7 +1567,7 @@ html[lang="en"] *,
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0 1.5rem;
+  padding: 0.5rem 1.5rem;
 }
 
 .luxury-tab-button {
@@ -1574,14 +1575,14 @@ html[lang="en"] *,
   align-items: center;
   gap: 0.5rem;
   padding: 1rem 1.5rem;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
-  color: #6B7280;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border-radius: 0.5rem;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border-radius: 0.75rem;
   margin: 0 0.25rem;
   position: relative;
   overflow: hidden;
@@ -1594,9 +1595,14 @@ html[lang="en"] *,
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s ease;
+}
+
+.luxury-tab-button:hover {
+  color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(212, 175, 55, 0.2);
 }
 
 .luxury-tab-button:hover::before {
@@ -1604,9 +1610,10 @@ html[lang="en"] *,
 }
 
 .luxury-tab-button.active {
-  color: #3B82F6;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0.1) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.15);
 }
 
 .luxury-tab-button.active::before {
@@ -1614,28 +1621,43 @@ html[lang="en"] *,
 }
 
 .luxury-tab-icon {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   position: relative;
   z-index: 1;
+  filter: drop-shadow(0 2px 4px rgba(212, 175, 55, 0.2));
 }
 
 .luxury-tab-label {
   position: relative;
   z-index: 1;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  font-weight: 600;
 }
 
 /* Luxury Content Panels */
 .luxury-tab-content {
-  background: white;
+  background: linear-gradient(180deg, #0a0a0a 0%, #121212 50%, #0a0a0a 100%);
   min-height: 60vh;
+  position: relative;
+}
+
+.luxury-tab-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse at 20% 30%, rgba(212, 175, 55, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(212, 175, 55, 0.02) 0%, transparent 50%);
+  pointer-events: none;
 }
 
 .luxury-content-panel {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 3rem 1.5rem;
+  padding: 4rem 1.5rem;
+  position: relative;
+  z-index: 1;
 }
 
 .luxury-content-header {
@@ -1644,11 +1666,13 @@ html[lang="en"] *,
 }
 
 .luxury-content-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1F2937;
+  font-size: 2.25rem;
+  font-weight: 600;
+  color: #ffffff;
   margin-bottom: 1rem;
-  background: linear-gradient(135deg, #1F2937 0%, #374151 100%);
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #ffffff 0%, rgba(212, 175, 55, 0.9) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1656,7 +1680,7 @@ html[lang="en"] *,
 
 .luxury-content-subtitle {
   font-size: 1.125rem;
-  color: #6B7280;
+  color: rgba(255, 255, 255, 0.65);
   line-height: 1.7;
   max-width: 700px;
   margin: 0 auto;
@@ -1711,37 +1735,46 @@ html[lang="en"] *,
 }
 
 .luxury-feature-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  background: linear-gradient(145deg, rgba(20, 20, 20, 0.95) 0%, rgba(10, 10, 10, 0.98) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  overflow: hidden;
 }
 
 .luxury-feature-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 
+    0 30px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(212, 175, 55, 0.4),
+    0 0 40px rgba(212, 175, 55, 0.08);
+  border-color: rgba(212, 175, 55, 0.4);
 }
 
 .luxury-feature-icon {
-  font-size: 1.5rem;
-  margin-bottom: 0.75rem;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 4px 8px rgba(212, 175, 55, 0.3));
 }
 
 .luxury-feature-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #1F2937;
-  margin-bottom: 0.5rem;
+  color: #ffffff;
+  margin-bottom: 0.75rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .luxury-feature-desc {
-  color: #6B7280;
-  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
   line-height: 1.6;
 }
 
@@ -1754,40 +1787,58 @@ html[lang="en"] *,
 }
 
 .luxury-product-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 1rem;
-  padding: 2rem;
+  background: linear-gradient(145deg, rgba(18, 18, 18, 0.96) 0%, rgba(8, 8, 8, 0.99) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 1.5rem;
+  padding: 2.5rem;
   text-align: center;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-product-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at top, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .luxury-product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
+  transform: translateY(-10px) scale(1.03);
+  box-shadow: 
+    0 40px 80px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(212, 175, 55, 0.35),
+    0 0 80px rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.4);
 }
 
 .luxury-product-icon {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
+  font-size: 3rem;
+  margin-bottom: 1.25rem;
   display: block;
+  filter: drop-shadow(0 6px 12px rgba(212, 175, 55, 0.25));
 }
 
 .luxury-product-title {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 600;
-  color: #1F2937;
+  color: #ffffff;
   margin-bottom: 0.75rem;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.01em;
 }
 
 .luxury-product-desc {
-  color: #6B7280;
-  font-size: 0.875rem;
-  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
+  line-height: 1.7;
 }
 
 /* Hamburger Menu Language-Specific Fixes */
@@ -2344,15 +2395,19 @@ html[lang="en"] *,
 
 .luxury-features-title {
   font-size: 2.5rem;
-  font-weight: 300;
-  color: #000;
+  font-weight: 600;
+  color: #ffffff;
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #ffffff 0%, rgba(212, 175, 55, 0.9) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .luxury-features-subtitle {
   font-size: 1.125rem;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 300;
   max-width: 600px;
   margin: 0 auto;
@@ -2366,23 +2421,36 @@ html[lang="en"] *,
 }
 
 .luxury-feature-card {
-  background: white;
+  background: linear-gradient(145deg, rgba(20, 20, 20, 0.95) 0%, rgba(10, 10, 10, 0.98) 100%);
   border-radius: 1.5rem;
   padding: 2.5rem;
   text-align: center;
   box-shadow: 
-    0 10px 30px rgba(0, 0, 0, 0.08),
-    0 0 0 1px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+    0 25px 50px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(212, 175, 55, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.luxury-feature-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(212, 175, 55, 0.03) 50%, transparent 60%);
+  pointer-events: none;
 }
 
 .luxury-feature-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-8px) scale(1.02);
   box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(0, 0, 0, 0.08);
+    0 35px 70px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(212, 175, 55, 0.3),
+    0 0 60px rgba(212, 175, 55, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .luxury-feature-card::before {
@@ -2391,10 +2459,10 @@ html[lang="en"] *,
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: linear-gradient(135deg, #000000 0%, #333333 100%);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.8), transparent);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.5s ease;
 }
 
 .luxury-feature-card:hover::before {
@@ -2442,14 +2510,15 @@ html[lang="en"] *,
 .luxury-feature-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #000;
+  color: #ffffff;
   margin-bottom: 1rem;
   letter-spacing: -0.01em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 .luxury-feature-description {
   font-size: 0.95rem;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
   line-height: 1.6;
   font-weight: 300;
 }
