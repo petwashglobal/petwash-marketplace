@@ -10490,9 +10490,9 @@ export const conversationMessages = pgTable("conversation_messages", {
   
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
-  index("idx_message_conversation").on(table.conversationId),
-  index("idx_message_sender").on(table.senderId),
-  index("idx_message_suspicious").on(table.containsSuspiciousContent),
+  index("idx_conv_msg_conversation").on(table.conversationId),
+  index("idx_conv_msg_sender").on(table.senderId),
+  index("idx_conv_msg_suspicious").on(table.containsSuspiciousContent),
 ]);
 
 // Zod schemas for wallet system
