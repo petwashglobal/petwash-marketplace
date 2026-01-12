@@ -3396,6 +3396,18 @@ export const sitterProfiles = pgTable("sitter_profiles", {
     isPopular?: boolean; // Highlight as popular option
   }>>(),
   
+  // Duration-Based Discount Tiers (longer = cheaper)
+  discountTiers: jsonb("discount_tiers").$type<{
+    weeklyDiscountPercent: number; // e.g., 10 = 10% off for 7+ days
+    biweeklyDiscountPercent: number; // e.g., 15 = 15% off for 14+ days
+    monthlyDiscountPercent: number; // e.g., 25 = 25% off for 30+ days
+    customTiers?: Array<{
+      minDays: number;
+      discountPercent: number;
+      label?: string; // "הנחת שבוע", "חבילת חודש"
+    }>;
+  }>(),
+  
   // Extra Services (add-ons with additional fees)
   extraServices: jsonb("extra_services").$type<Array<{
     id: string;
@@ -3404,6 +3416,17 @@ export const sitterProfiles = pgTable("sitter_profiles", {
     priceCents: number; // Additional fee
     description?: string;
   }>>(),
+  
+  // Provider Verification Level (Bronze/Silver/Gold)
+  verificationLevel: varchar("verification_level").default("pending"), // pending | bronze | silver | gold
+  verificationBadges: text("verification_badges").array(), // ["identity_verified", "background_checked", "insurance_active"]
+  
+  // Insurance & Liability
+  hasLiabilityInsurance: boolean("has_liability_insurance").default(false),
+  insurancePolicyNumber: varchar("insurance_policy_number"),
+  insuranceProvider: varchar("insurance_provider"), // Harel, Menora, Clal, etc.
+  insuranceExpiryDate: date("insurance_expiry_date"),
+  maxCoverageAmountCents: integer("max_coverage_amount_cents"), // Policy limit
   
   serviceTypes: text("service_types").array(), // ["boarding", "daycare", "drop_in", "walking"]
   
@@ -10410,6 +10433,68 @@ export const redemptionSessions = pgTable("redemption_sessions", {
   index("idx_redeem_session_expires").on(table.expiresAt),
 ]);
 
+// =================== IN-APP MESSAGING SYSTEM ===================
+// Secure platform messaging - NO external contact exchange allowed
+// Anti-bypass detection for phone numbers, emails, social media
+
+export const bookingConversations = pgTable("booking_conversations", {
+  id: serial("id").primaryKey(),
+  conversationId: varchar("conversation_id", { length: 50 }).unique().notNull(),
+  
+  // Participants
+  bookingId: varchar("booking_id"), // Optional - can exist before booking
+  customerId: varchar("customer_id").notNull(),
+  providerId: varchar("provider_id").notNull(),
+  platformId: varchar("platform_id").notNull(), // sitter_suite, walk_my_pet, pet_trek
+  
+  // Status
+  status: varchar("status").default("active"), // active, archived, blocked
+  lastMessageAt: timestamp("last_message_at"),
+  
+  // Anti-bypass flags
+  bypassAttemptCount: integer("bypass_attempt_count").default(0),
+  bypassWarningIssued: boolean("bypass_warning_issued").default(false),
+  bypassSuspended: boolean("bypass_suspended").default(false),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_conversation_customer").on(table.customerId),
+  index("idx_conversation_provider").on(table.providerId),
+  index("idx_conversation_booking").on(table.bookingId),
+]);
+
+export const conversationMessages = pgTable("conversation_messages", {
+  id: serial("id").primaryKey(),
+  messageId: varchar("message_id", { length: 50 }).unique().notNull(),
+  conversationId: varchar("conversation_id").notNull(),
+  
+  // Sender
+  senderId: varchar("sender_id").notNull(),
+  senderRole: varchar("sender_role").notNull(), // customer, provider, system
+  
+  // Content
+  messageType: varchar("message_type").default("text"), // text, image, booking_request, system
+  content: text("content").notNull(),
+  
+  // Anti-bypass detection
+  containsSuspiciousContent: boolean("contains_suspicious_content").default(false),
+  suspiciousPatterns: text("suspicious_patterns").array(), // phone_number, email, whatsapp, telegram
+  redactedContent: text("redacted_content"), // Content with sensitive info masked
+  
+  // Status
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  isDeleted: boolean("is_deleted").default(false),
+  deletedAt: timestamp("deleted_at"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_message_conversation").on(table.conversationId),
+  index("idx_message_sender").on(table.senderId),
+  index("idx_message_suspicious").on(table.containsSuspiciousContent),
+]);
+
 // Zod schemas for wallet system
 export const insertWalletAccountSchema = createInsertSchema(walletAccounts).omit({
   id: true,
@@ -10433,3 +10518,19 @@ export const insertRedemptionSessionSchema = createInsertSchema(redemptionSessio
 });
 export type InsertRedemptionSession = z.infer<typeof insertRedemptionSessionSchema>;
 export type RedemptionSession = typeof redemptionSessions.$inferSelect;
+
+// Zod schemas for messaging system
+export const insertBookingConversationSchema = createInsertSchema(bookingConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBookingConversation = z.infer<typeof insertBookingConversationSchema>;
+export type BookingConversation = typeof bookingConversations.$inferSelect;
+
+export const insertConversationMessageSchema = createInsertSchema(conversationMessages).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
+export type ConversationMessage = typeof conversationMessages.$inferSelect;
