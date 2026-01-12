@@ -66,7 +66,7 @@ export function TierUpgradeModal({ open, onClose, newTier, language }: TierUpgra
                   ) : i % 3 === 1 ? (
                     <Star className="h-4 w-4 text-blue-400" />
                   ) : (
-                    <Crown className="h-3 w-3 text-purple-400" />
+                    <Crown className="h-3 w-3 text-amber-400" />
                   )}
                 </motion.div>
               ))}
@@ -82,7 +82,9 @@ export function TierUpgradeModal({ open, onClose, newTier, language }: TierUpgra
               transition={{ type: 'spring', duration: 0.6 }}
               className="flex flex-col items-center gap-4 mb-4"
             >
-              <div className="text-6xl">{tierConfig.badge}</div>
+              <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-amber-500/40 to-yellow-500/30 flex items-center justify-center">
+                <Crown className="w-10 h-10 text-amber-400" />
+              </div>
               <div>
                 <div className="text-2xl font-bold mb-2">{t('tierModal.congratulations', language)}</div>
                 <div className="text-lg text-gray-600">
@@ -118,7 +120,7 @@ export function TierUpgradeModal({ open, onClose, newTier, language }: TierUpgra
           {/* New Perks */}
           <div>
             <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-500" />
+              <Sparkles className="h-5 w-5 text-[#0a2540]" />
               {t('tierModal.newPerks', language)}
             </h4>
             <ul className="space-y-2">
@@ -147,7 +149,7 @@ export function TierUpgradeModal({ open, onClose, newTier, language }: TierUpgra
               {t('tierModal.close', language)}
             </Button>
             <Button
-              className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              className="flex-1 bg-gradient-to-r from-[#0a2540] to-[#1a365d] hover:from-[#081c30] hover:to-[#152d4d]"
               onClick={() => {
                 onClose();
                 window.location.href = '/loyalty';

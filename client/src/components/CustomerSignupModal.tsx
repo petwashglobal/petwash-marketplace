@@ -114,9 +114,16 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
   };
 
   const countries = [
-    'Israel', 'United States', 'United Kingdom', 'Canada', 'Australia', 
-    'Germany', 'France', 'Italy', 'Spain', 'Netherlands', 'Sweden', 'Norway'
-  ];
+    'Israel', 'United States', 'United Kingdom', 'Canada', 'Australia',
+    'Germany', 'France', 'Italy', 'Spain', 'Netherlands', 'Sweden', 'Norway',
+    'Belgium', 'Switzerland', 'Austria', 'Denmark', 'Finland', 'Ireland',
+    'Portugal', 'Greece', 'Poland', 'Czech Republic', 'Hungary', 'Romania',
+    'Bulgaria', 'Croatia', 'Slovakia', 'Slovenia', 'Estonia', 'Latvia', 'Lithuania',
+    'New Zealand', 'South Africa', 'Singapore', 'Hong Kong', 'Japan', 'South Korea',
+    'India', 'Brazil', 'Mexico', 'Argentina', 'Chile', 'Colombia', 'Peru',
+    'United Arab Emirates', 'Saudi Arabia', 'Qatar', 'Kuwait', 'Bahrain', 'Oman',
+    'Turkey', 'Russia', 'Ukraine', 'Thailand', 'Vietnam', 'Philippines', 'Malaysia', 'Indonesia'
+  ].sort();
 
   if (step === 'method') {
     return (
