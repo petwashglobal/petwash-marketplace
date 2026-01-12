@@ -174,6 +174,7 @@ import syntheticRoutes from "./routes/synthetic";
 import walkPaymentFlowRoutes from "./routes/walk-payment-flow";
 import walletTelemetryRoutes from "./routes/wallet-telemetry";
 import weatherTestRoutes from "./routes/weather-test";
+import productionMonitorRoutes from "./routes/production-monitor";
 import { publicAuthRouter } from "./routes/publicAuthRoutes";
 // SSL certificate endpoints removed - handled by Replit platform
 import { 
@@ -8412,6 +8413,9 @@ self.addEventListener('notificationclick', (event) => {
   // Testing & Development
   app.use('/api/gmail-test', adminLimiter, gmailTestRoutes);
   app.use('/api/weather-test', adminLimiter, weatherTestRoutes);
+  
+  // Production Website Monitoring (Gemini AI-powered)
+  app.use('/api/production-monitor', adminLimiter, productionMonitorRoutes);
 
   // Platform Status Monitor - Real-time health checks for all 7 platforms
   // SECURITY FIX: Added requireAdmin middleware (was RBAC bypass vulnerability)
