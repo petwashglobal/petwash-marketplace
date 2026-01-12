@@ -276,7 +276,7 @@ export default function MyWallet() {
               </div>
               <div className="luxury-dark-badge-gold flex items-center gap-2 py-2 px-4">
                 <TierIcon className="w-4 h-4" />
-                <span className="font-semibold tracking-wider">{tierConfig.badge} {tierProgress.currentTier.toUpperCase()}</span>
+                <span className="font-semibold tracking-wider">{tierProgress.currentTier.toUpperCase()}</span>
               </div>
             </div>
 
@@ -455,7 +455,7 @@ export default function MyWallet() {
                 <div className="text-center">
                   <div className="luxury-dark-badge-gold text-base px-5 py-2.5 flex items-center gap-2">
                     <TierIcon className="w-4 h-4" />
-                    {tierConfig.badge} {tierProgress.currentTier.toUpperCase()}
+                    {tierProgress.currentTier.toUpperCase()}
                   </div>
                   <p className="luxury-dark-text-small mt-2 text-xs">
                     {tierProgress.nextTier ? `${tierProgress.washesUntilNext} washes to ${tierProgress.nextTier}` : 'Max Tier!'}
@@ -563,14 +563,16 @@ export default function MyWallet() {
         isOpen={showVIPConsent}
         onClose={() => setShowVIPConsent(false)}
         onAccept={handleVIPConsentAccepted}
-        cardType="vip"
+        passType="vip"
+        platform="apple"
       />
 
       <WalletConsentDialog
         isOpen={showBusinessConsent}
         onClose={() => setShowBusinessConsent(false)}
         onAccept={handleBusinessConsentAccepted}
-        cardType="business"
+        passType="business"
+        platform="apple"
       />
     </div>
   );
