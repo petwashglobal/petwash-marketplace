@@ -1,15 +1,16 @@
 import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Shield, PawPrint, Clock, Check } from "lucide-react";
+import { ChevronLeft, Shield, PawPrint, Clock, Check, Users, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
 import { getActivePaymentMethod } from "@/lib/paymentConfig";
+import { WeatherConsentDialog, useWeatherConsent } from "@/components/weather/WeatherConsentDialog";
 
-type BookingStep = "details" | "summary" | "confirmation";
+type BookingStep = "details" | "summary" | "weather_consent" | "pending_match" | "confirmation";
 
 export default function WalkBookingFlow() {
   const { walkerId } = useParams();
@@ -25,6 +26,12 @@ export default function WalkBookingFlow() {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [showWeatherConsent, setShowWeatherConsent] = useState(false);
+  const [weatherConsentAccepted, setWeatherConsentAccepted] = useState(false);
+  const [weatherConditions, setWeatherConditions] = useState<string[]>([]);
+
+  // Check if weather consent is needed for the selected date
+  const { data: weatherCheck } = useWeatherConsent(selectedDate);
 
   // Fetch walker data from real API
   const { data: providersData, isLoading: walkerLoading, error: walkerError } = useQuery({
@@ -70,7 +77,27 @@ export default function WalkBookingFlow() {
       });
       return;
     }
+    
+    // Check if weather consent is needed for adverse conditions
+    if (weatherCheck?.needsConsent && !weatherConsentAccepted) {
+      setShowWeatherConsent(true);
+      return;
+    }
+    
     setStep("summary");
+  }
+  
+  function handleWeatherConsent(accepted: boolean, conditions: string[]) {
+    if (accepted) {
+      setWeatherConsentAccepted(true);
+      setWeatherConditions(conditions);
+      setStep("summary");
+    } else {
+      toast({
+        title: "הזמנה בוטלה",
+        description: "ניתן לבחור תאריך אחר עם תנאי מזג אוויר טובים יותר",
+      });
+    }
   }
 
   async function handleConfirmBooking() {
@@ -109,7 +136,17 @@ export default function WalkBookingFlow() {
           duration,
           paymentMethod: getActivePaymentMethod(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
+        },
+        // Two-way matching: requires provider approval
+        requiresProviderApproval: true,
+        // Weather consent data (if applicable)
+        weatherConsent: weatherConsentAccepted ? {
+          customerAccepted: true,
+          acceptedAt: new Date().toISOString(),
+          conditions: weatherConditions,
+          adverseWeather: weatherCheck?.weather?.isAdverse || false,
+          adverseReason: weatherCheck?.weather?.adverseReason || null
+        } : null
       };
 
       const booking = await apiRequest(`/api/walks/book`, {
@@ -118,11 +155,13 @@ export default function WalkBookingFlow() {
       });
 
       setBookingId(booking.id || booking.bookingNumber || 'pending');
-      setStep("confirmation");
+      
+      // Show pending match step for two-way consent (like Uber/Tinder matching)
+      setStep("pending_match");
 
       toast({
-        title: "הזמנה נקלטה בהצלחה! 🐾",
-        description: "המוליך/ה יקבל/תקבל הודעה. התשלום יתואם לאחר ההזמנה.",
+        title: "בקשת הליכה נשלחה! 🐾",
+        description: "ממתינים לאישור המוליך/ה. תקבל/י התראה כשיהיה התאמה.",
       });
     } catch (error: any) {
       toast({
@@ -190,20 +229,44 @@ export default function WalkBookingFlow() {
         </div>
       </div>
 
+      {/* 24/7 Availability Banner */}
+      <div className="max-w-3xl mx-auto px-4 pt-4">
+        <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 rounded-xl p-3 border border-emerald-200/50 text-center">
+          <p className="text-sm text-emerald-800 font-medium">
+            🐾 שירות 24/7 כל השנה · למעט יום כיפור
+          </p>
+        </div>
+      </div>
+
       {/* Progress Stepper */}
       <div className="max-w-3xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-center gap-2 mb-8 luxury-fade-in">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'details' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : step === 'summary' || step === 'confirmation' ? 'luxury-gradient-border bg-white text-purple-600' : 'bg-slate-200 text-slate-500'}`}>
+        <div className="flex items-center justify-center gap-1 sm:gap-2 mb-8 luxury-fade-in">
+          {/* Step 1: Details */}
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'details' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white luxury-shadow-lg' : ['summary', 'pending_match', 'confirmation'].includes(step) ? 'luxury-gradient-border bg-white text-blue-600' : 'bg-slate-200 text-slate-500'}`}>
             1
           </div>
-          <div className={`h-1 w-16 rounded-full ${step === 'summary' || step === 'confirmation' ? 'luxury-bg-primary' : 'bg-slate-200'}`}></div>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'summary' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : step === 'confirmation' ? 'luxury-gradient-border bg-white text-purple-600' : 'bg-slate-200 text-slate-500'}`}>
+          <div className={`h-1 w-8 sm:w-12 rounded-full ${['summary', 'pending_match', 'confirmation'].includes(step) ? 'bg-blue-500' : 'bg-slate-200'}`}></div>
+          {/* Step 2: Summary */}
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'summary' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white luxury-shadow-lg' : ['pending_match', 'confirmation'].includes(step) ? 'luxury-gradient-border bg-white text-blue-600' : 'bg-slate-200 text-slate-500'}`}>
             2
           </div>
-          <div className={`h-1 w-16 rounded-full ${step === 'confirmation' ? 'luxury-bg-primary' : 'bg-slate-200'}`}></div>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'confirmation' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-slate-200 text-slate-500'}`}>
+          <div className={`h-1 w-8 sm:w-12 rounded-full ${['pending_match', 'confirmation'].includes(step) ? 'bg-amber-500' : 'bg-slate-200'}`}></div>
+          {/* Step 3: Matching */}
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'pending_match' ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white luxury-shadow-lg animate-pulse' : step === 'confirmation' ? 'luxury-gradient-border bg-white text-amber-600' : 'bg-slate-200 text-slate-500'}`}>
             3
           </div>
+          <div className={`h-1 w-8 sm:w-12 rounded-full ${step === 'confirmation' ? 'bg-emerald-500' : 'bg-slate-200'}`}></div>
+          {/* Step 4: Confirmed */}
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'confirmation' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white luxury-shadow-lg' : 'bg-slate-200 text-slate-500'}`}>
+            4
+          </div>
+        </div>
+        {/* Step Labels */}
+        <div className="flex items-center justify-center gap-6 text-xs text-slate-500">
+          <span className={step === 'details' ? 'text-blue-600 font-medium' : ''}>פרטים</span>
+          <span className={step === 'summary' ? 'text-blue-600 font-medium' : ''}>סיכום</span>
+          <span className={step === 'pending_match' ? 'text-amber-600 font-medium' : ''}>התאמה</span>
+          <span className={step === 'confirmation' ? 'text-emerald-600 font-medium' : ''}>אישור</span>
         </div>
       </div>
 
@@ -417,18 +480,73 @@ export default function WalkBookingFlow() {
           </>
         )}
 
-        {/* Step 3: Confirmation */}
+        {/* Step 3: Pending Match (Two-Way Consent - Like Uber/Tinder) */}
+        {step === "pending_match" && (
+          <div className="text-center py-12 luxury-fade-in">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl animate-pulse">
+              <Handshake className="h-12 w-12 text-white" />
+            </div>
+            <h2 className="luxury-heading-lg mb-4">ממתינים להתאמה...</h2>
+            <p className="luxury-text-body max-w-md mx-auto mb-3">
+              הבקשה נשלחה ל{walker?.businessName || walker?.displayName || 'המוליך/ה'}
+            </p>
+            <p className="luxury-text-small max-w-md mx-auto mb-4">
+              מספר בקשה: {bookingId || "בבדיקה"}
+            </p>
+            
+            {/* Matching Animation */}
+            <div className="flex items-center justify-center gap-4 my-8">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center border-2 border-blue-300">
+                <Users className="h-8 w-8 text-blue-600" />
+              </div>
+              <div className="flex gap-1">
+                <div className="w-3 h-3 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-3 h-3 rounded-full bg-amber-500 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-3 h-3 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center border-2 border-emerald-300">
+                <PawPrint className="h-8 w-8 text-emerald-600" />
+              </div>
+            </div>
+            
+            <div className="luxury-glass-card p-4 max-w-sm mx-auto mb-6">
+              <p className="luxury-text-small text-amber-700">
+                כמו Uber - שני הצדדים צריכים לאשר. המוליך/ה יקבל/תקבל התראה ויוכל/תוכל לאשר או לסרב. 
+                תקבל/י עדכון בהודעה כשיהיה התאמה!
+              </p>
+            </div>
+            
+            {weatherConsentAccepted && (
+              <div className="luxury-glass-card p-3 max-w-sm mx-auto mb-6 border border-amber-200 bg-amber-50/50">
+                <p className="luxury-text-small text-amber-800 flex items-center justify-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  הסכמה לתנאי מזג אוויר נרשמה
+                </p>
+              </div>
+            )}
+            
+            <Button
+              className="luxury-btn-primary luxury-shadow-xl px-12"
+              onClick={() => setLocation("/dashboard")}
+              data-testid="button-dashboard"
+            >
+              חזרה ללוח הבקרה
+            </Button>
+          </div>
+        )}
+
+        {/* Step 4: Confirmation (After Match) */}
         {step === "confirmation" && (
           <div className="text-center py-12 luxury-fade-in">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
               <Check className="h-12 w-12 text-white" />
             </div>
-            <h2 className="luxury-heading-lg mb-4">ההזמנה נקלטה בהצלחה!</h2>
+            <h2 className="luxury-heading-lg mb-4">יש התאמה! 🎉</h2>
             <p className="luxury-text-body max-w-md mx-auto mb-3">
-              המוליך/ה יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
+              {walker?.businessName || walker?.displayName || 'המוליך/ה'} אישר/ה את ההזמנה!
             </p>
             <p className="luxury-text-small max-w-md mx-auto mb-8">
-              פרטי התשלום ומעקב GPS ישלחו בהודעה נפרדת.
+              מספר הזמנה: {bookingId || "בבדיקה"} · פרטי התשלום ומעקב GPS ישלחו בהודעה נפרדת.
             </p>
             <Button
               className="luxury-btn-primary luxury-shadow-xl px-12"
@@ -440,6 +558,15 @@ export default function WalkBookingFlow() {
           </div>
         )}
       </div>
+      
+      {/* Weather Consent Dialog */}
+      <WeatherConsentDialog
+        open={showWeatherConsent}
+        onOpenChange={setShowWeatherConsent}
+        onConsent={handleWeatherConsent}
+        walkerName={walker?.businessName || walker?.displayName || 'המוליך/ה'}
+        scheduledDate={selectedDate || new Date()}
+      />
     </div>
   );
 }
