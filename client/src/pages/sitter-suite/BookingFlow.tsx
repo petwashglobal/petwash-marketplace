@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
 import { getActivePaymentMethod } from "@/lib/paymentConfig";
 import { GooglePlacesAutocomplete, PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { OwnerInstructionsForm, useOwnerInstructions, type OwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -25,6 +26,7 @@ export default function SitterBookingFlow() {
   const [address, setAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const { instructions: ownerInstructions, setInstructions: setOwnerInstructions } = useOwnerInstructions();
 
   // Fetch sitter data from real API
   const { data: sitterData, isLoading: sitterLoading, error: sitterError } = useQuery({
@@ -193,7 +195,7 @@ export default function SitterBookingFlow() {
       <div className="max-w-3xl mx-auto px-4 pt-4">
         <div className="bg-gradient-to-r from-emerald-500/10 to-purple-500/10 rounded-xl p-3 border border-emerald-200/50 text-center">
           <p className="text-sm text-emerald-800 font-medium">
-            🏠 שירות שמרטפות 24/7 כל השנה · ללא טרחה · למעט יום כיפור
+            🏠 שירות שמרטפות 24/7 כל השנה · ללא טרחה
           </p>
         </div>
       </div>
@@ -334,10 +336,17 @@ export default function SitterBookingFlow() {
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
                 className="luxury-glass-minimal w-full resize-none px-4 py-3 text-sm"
-                placeholder="הנחיות מיוחדות, רגישויות, מפתח, וכו׳"
+                placeholder="הנחיות מיוחדות, רגישויות, וכו׳"
                 data-testid="textarea-notes"
               />
             </section>
+
+            {/* Owner Instructions (codes, locations, etc.) */}
+            <OwnerInstructionsForm
+              value={ownerInstructions}
+              onChange={setOwnerInstructions}
+              className="mb-6 luxury-shadow-xl luxury-stagger-item"
+            />
 
             {/* Pricing Summary */}
             <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-stagger-item p-6">
