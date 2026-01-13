@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'wouter';
 import { Sparkles, Heart, MapPin, Zap, ArrowRight } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
@@ -10,7 +10,27 @@ interface PetWashDivisionsProps {
 
 export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   const [hoveredDivision, setHoveredDivision] = useState<number | null>(null);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
   const isHebrew = language === 'he';
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsRevealed(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const divisions = [
     {
@@ -72,16 +92,23 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   ];
 
   return (
-    <section className="relative py-8 sm:py-20 lg:py-24 bg-white overflow-hidden">
+    <section 
+      ref={sectionRef}
+      className="relative py-8 sm:py-20 lg:py-24 bg-white overflow-hidden"
+    >
       {/* Subtle luxury gold accent line */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent" />
       
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Luxury Section Header - Fashion House Style */}
-        <div className="text-center mb-8 sm:mb-12">
-          {/* Elegant uppercase label */}
-          <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-4">
+        {/* Luxury Section Header - Fashion House Style with Animation */}
+        <div 
+          className={`text-center mb-8 sm:mb-12 transition-all duration-1000 ${
+            isRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
+          {/* Elegant uppercase label with shimmer */}
+          <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-4 gold-shimmer-text">
             {t('divisions.groupName', language)}
           </span>
           
@@ -90,8 +117,8 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
             {isHebrew ? 'עולם Pet Wash™' : 'The Pet Wash™ Universe'}
           </h2>
           
-          {/* Decorative line */}
-          <div className="w-12 h-px bg-[#c6a664] mx-auto mb-6" />
+          {/* Decorative line with animation */}
+          <div className="w-12 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mb-6" />
           
           {/* Subtitle */}
           <p className="text-sm sm:text-base text-[#666] font-light max-w-2xl mx-auto leading-relaxed">
@@ -99,9 +126,9 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
           </p>
         </div>
 
-        {/* Luxury Divisions Grid - Clean, Minimal */}
+        {/* Luxury Divisions Grid - Clean, Minimal with Stagger Animation */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-          {divisions.map((division) => {
+          {divisions.map((division, index) => {
             const Icon = division.icon;
             const isHovered = hoveredDivision === division.id;
             
@@ -109,15 +136,18 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
               <Link
                 key={division.id}
                 href={division.link}
-                className="block group"
+                className={`block group transition-all duration-700 ${
+                  isRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+                }`}
+                style={{ transitionDelay: `${200 + index * 150}ms` }}
                 onMouseEnter={() => setHoveredDivision(division.id)}
                 onMouseLeave={() => setHoveredDivision(null)}
               >
                 <div 
                   className={`
-                    relative p-6 sm:p-8 border border-[#e5e5e5] bg-white
+                    relative p-6 sm:p-8 border bg-white rounded-lg luxury-card
                     transition-all duration-500 ease-out
-                    ${isHovered ? 'border-[#c6a664] shadow-lg' : 'hover:border-[#ccc]'}
+                    ${isHovered ? 'border-[#c6a664] shadow-xl transform -translate-y-1' : 'border-[#e5e5e5] hover:border-[#ccc]'}
                   `}
                 >
                   {/* Gold accent corner on hover */}

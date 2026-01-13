@@ -1,4 +1,5 @@
 import { useLocation, Link } from 'wouter';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WashPackages } from '@/components/WashPackages';
 import { GiftCards } from '@/components/GiftCards';
@@ -9,6 +10,7 @@ import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/componen
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 interface LandingProps {
   language: Language;
@@ -18,6 +20,17 @@ interface LandingProps {
 export default function Landing({ language, onLanguageChange }: LandingProps) {
   const { user } = useFirebaseAuth();
   const [, setLocation] = useLocation();
+  const [heroAnimated, setHeroAnimated] = useState(false);
+  
+  const { ref: techRef, isRevealed: techRevealed } = useScrollReveal<HTMLElement>();
+  const { ref: featuresRef, isRevealed: featuresRevealed } = useScrollReveal<HTMLElement>();
+  const { ref: organicRef, isRevealed: organicRevealed } = useScrollReveal<HTMLElement>();
+  const { ref: paymentRef, isRevealed: paymentRevealed } = useScrollReveal<HTMLElement>();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setHeroAnimated(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const features = [
     {
@@ -45,62 +58,106 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
       <div className="min-h-screen bg-white">
-        {/* Hero Section with Main Image - Luxury Design */}
-        <section className="luxury-services-hero pt-[var(--header-height-mobile,148px)] md:pt-[var(--header-height-desktop,92px)]">
+        {/* Hero Section with Main Image - Luxury Design with Animations */}
+        <section className="luxury-services-hero pt-[var(--header-height-mobile,148px)] md:pt-[var(--header-height-desktop,92px)] overflow-hidden">
           <div className="max-w-6xl mx-auto">
-            {/* Hero Text Content - ABOVE the image */}
+            {/* Hero Text Content - ABOVE the image with cascading animations */}
             <div className="luxury-services-hero-content">
-              <div className="luxury-services-badge">
-                {t('hero.k9000Tech', language)}
+              {/* Animated Badge */}
+              <div 
+                className={`luxury-services-badge transition-all duration-700 ${
+                  heroAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                }`}
+                style={{ transitionDelay: '0ms' }}
+              >
+                <span className="gold-shimmer-text">{t('hero.k9000Tech', language)}</span>
               </div>
-              <h1 className="luxury-services-title">
+              
+              {/* Animated Title */}
+              <h1 
+                className={`luxury-services-title transition-all duration-700 ${
+                  heroAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+                }`}
+                style={{ transitionDelay: '150ms' }}
+              >
                 {t('hero.title', language)}
               </h1>
-              <p className="luxury-services-subtitle">
+              
+              {/* Animated Subtitle */}
+              <p 
+                className={`luxury-services-subtitle transition-all duration-700 ${
+                  heroAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+                }`}
+                style={{ transitionDelay: '300ms' }}
+              >
                 {t('hero.subtitle', language)}
               </p>
-              <p className="text-base sm:text-lg text-[#444] font-light max-w-2xl lg:max-w-3xl mx-auto mb-10 sm:mb-14 leading-relaxed">
+              
+              {/* Animated Description */}
+              <p 
+                className={`text-base sm:text-lg text-[#444] font-light max-w-2xl lg:max-w-3xl mx-auto mb-10 sm:mb-14 leading-relaxed transition-all duration-700 ${
+                  heroAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+                }`}
+                style={{ transitionDelay: '450ms' }}
+              >
                 {t('hero.description', language)}
               </p>
               
-              {user ? (
-                <Button 
-                  onClick={() => {
-                    document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="bg-[#111] text-white hover:bg-black transition-all duration-500 px-8 py-4 text-sm uppercase tracking-[0.15em] font-light"
-                >
-                  {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
-                </Button>
-              ) : (
-                <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-                  <button 
-                    onClick={() => setLocation('/signup')}
-                    className="bg-[#111] text-white px-10 py-4 text-sm uppercase tracking-[0.2em] font-light hover:bg-black transition-all duration-500 w-full sm:w-auto"
-                    data-testid="button-signup-hero"
+              {/* Animated CTA Buttons */}
+              <div 
+                className={`transition-all duration-700 ${
+                  heroAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+                }`}
+                style={{ transitionDelay: '600ms' }}
+              >
+                {user ? (
+                  <Button 
+                    onClick={() => {
+                      document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="gold-shimmer-btn text-white px-8 py-4 text-sm uppercase tracking-[0.15em] font-light rounded-none"
                   >
-                    {t('hero.getStarted', language)}
-                  </button>
-                  <button 
-                    onClick={() => setLocation('/signin')}
-                    className="bg-transparent text-[#111] border border-[#111] px-10 py-4 text-sm uppercase tracking-[0.2em] font-light hover:bg-[#111] hover:text-white transition-all duration-500 w-full sm:w-auto"
-                    data-testid="button-login-hero"
-                  >
-                    {t('landing.login', language)}
-                  </button>
-                </div>
-              )}
+                    {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
+                  </Button>
+                ) : (
+                  <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                    <button 
+                      onClick={() => setLocation('/signup')}
+                      className="gold-shimmer-btn text-white px-10 py-4 text-sm uppercase tracking-[0.2em] font-light w-full sm:w-auto rounded-none"
+                      data-testid="button-signup-hero"
+                    >
+                      {t('hero.getStarted', language)}
+                    </button>
+                    <button 
+                      onClick={() => setLocation('/signin')}
+                      className="bg-transparent text-[#111] border-2 border-[#c6a664] px-10 py-4 text-sm uppercase tracking-[0.2em] font-light hover:bg-[#c6a664] hover:text-white transition-all duration-500 w-full sm:w-auto animate-gold-border"
+                      data-testid="button-login-hero"
+                    >
+                      {t('landing.login', language)}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             
-            {/* Main Hero Image - BELOW the text - Prioritized for LCP */}
-            <div className="text-center">
-              <img 
-                src="/hero-image.jpeg"
-                alt="Professional pet washing service with adorable dogs and cats"
-                className="w-full max-w-sm sm:max-w-lg lg:max-w-2xl mx-auto rounded-lg shadow-lg object-cover h-60 sm:h-80 lg:h-96"
-                loading="eager"
-                decoding="async"
-              />
+            {/* Main Hero Image - BELOW the text with animation */}
+            <div 
+              className={`text-center transition-all duration-1000 ${
+                heroAnimated ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-95'
+              }`}
+              style={{ transitionDelay: '750ms' }}
+            >
+              <div className="relative inline-block">
+                <img 
+                  src="/hero-image.jpeg"
+                  alt="Professional pet washing service with adorable dogs and cats"
+                  className="w-full max-w-sm sm:max-w-lg lg:max-w-2xl mx-auto rounded-lg shadow-2xl object-cover h-60 sm:h-80 lg:h-96"
+                  loading="eager"
+                  decoding="async"
+                />
+                {/* Gold glow effect behind image */}
+                <div className="absolute -inset-4 bg-gradient-to-br from-[#c6a664]/20 via-transparent to-[#c6a664]/10 rounded-2xl -z-10 blur-xl animate-gold-pulse" />
+              </div>
             </div>
           </div>
         </section>
@@ -111,11 +168,16 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           <PetWashDivisions language={language} />
         </div>
 
-        {/* Technology Section - Pure White with Gold Accents */}
-        <section className="py-6 px-4 sm:py-20 sm:px-6 lg:px-8 bg-white">
+        {/* Technology Section - Pure White with Gold Accents and Scroll Animation */}
+        <section 
+          ref={techRef}
+          className={`py-6 px-4 sm:py-20 sm:px-6 lg:px-8 bg-white transition-all duration-1000 ${
+            techRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+          }`}
+        >
           <div className="max-w-5xl mx-auto text-center">
-            {/* Gold accent label */}
-            <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-3 block">Pet Wash™ Ltd</span>
+            {/* Gold accent label with shimmer */}
+            <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-3 block gold-shimmer-text">Pet Wash™ Ltd</span>
             <h2 className="font-serif text-xl sm:text-3xl lg:text-4xl font-light text-[#111] mb-3 sm:mb-4 tracking-tight">
               {t('technology.title', language)}
             </h2>
@@ -126,30 +188,50 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           </div>
         </section>
 
-        {/* Features Section - Couture Minimal Grid with Gold Accents */}
-        <section className="py-6 px-4 sm:py-20 sm:px-6 lg:px-8 bg-white">
+        {/* Features Section - Luxury Animated Cards with Gold Effects */}
+        <section 
+          ref={featuresRef}
+          className="py-6 px-4 sm:py-20 sm:px-6 lg:px-8 bg-white"
+        >
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10">
               {features.map((feature, index) => (
-                <div key={index} className="text-center group p-4 sm:p-6 border border-[#f0ebe0] hover:border-[#c6a664] transition-all duration-500">
-                  <h3 className="font-serif text-lg font-medium text-[#111] mb-2 tracking-tight">
+                <div 
+                  key={index} 
+                  className={`luxury-card text-center group p-5 sm:p-8 rounded-lg transition-all duration-700 relative ${
+                    featuresRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+                  }`}
+                  style={{ transitionDelay: `${index * 100}ms` }}
+                >
+                  {/* Decorative gold corner */}
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-[#c6a664]/30 group-hover:border-[#c6a664] transition-all duration-500 rounded-tr-lg pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-[#c6a664]/30 group-hover:border-[#c6a664] transition-all duration-500 rounded-bl-lg pointer-events-none" />
+                  
+                  <h3 className="font-serif text-lg font-medium text-[#111] mb-3 tracking-tight group-hover:text-[#c6a664] transition-colors duration-300">
                     {feature.title}
                   </h3>
                   <p className="text-sm text-[#666] font-light leading-relaxed">
                     {feature.description}
                   </p>
-                  <div className="w-8 h-px bg-[#c6a664] mx-auto mt-3 group-hover:w-16 transition-all duration-500" />
+                  <div className="w-8 h-0.5 bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mt-4 group-hover:w-20 transition-all duration-500" />
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Organic Promise Section - Luxury Editorial with Gold */}
-        <section className="py-8 px-4 sm:py-20 sm:px-6 lg:px-8 bg-white">
+        {/* Organic Promise Section - Luxury Timeline with Scroll Animation */}
+        <section 
+          ref={organicRef}
+          className="py-8 px-4 sm:py-20 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-[#fdfbf7] to-white"
+        >
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-8 sm:mb-12">
-              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium">Pet Wash™ Promise</span>
+            <div 
+              className={`text-center mb-8 sm:mb-12 transition-all duration-1000 ${
+                organicRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`}
+            >
+              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium gold-shimmer-text">Pet Wash™ Promise</span>
               <h2 className="font-serif text-xl sm:text-3xl lg:text-4xl font-light text-[#111] mt-3 mb-3 tracking-tight">
                 {t('organic.title', language)}
               </h2>
@@ -158,34 +240,39 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 {t('organic.subtitle', language)}
               </p>
             </div>
+            
+            {/* Timeline-style Promise Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-12">
-              <div className="text-center group p-4">
-                <div className="w-px h-8 bg-gradient-to-b from-[#c6a664] to-transparent mx-auto mb-4" />
-                <h3 className="font-serif text-base sm:text-lg font-medium text-[#111] mb-2 tracking-tight">
-                  {t('organic.biodegradable', language)}
-                </h3>
-                <p className="text-sm text-[#666] font-light leading-relaxed">
-                  {t('organic.biodegradableDesc', language)}
-                </p>
-              </div>
-              <div className="text-center group p-4">
-                <div className="w-px h-8 bg-gradient-to-b from-[#c6a664] to-transparent mx-auto mb-4" />
-                <h3 className="font-serif text-base sm:text-lg font-medium text-[#111] mb-2 tracking-tight">
-                  {t('organic.teaTreeBenefits', language)}
-                </h3>
-                <p className="text-sm text-[#666] font-light leading-relaxed">
-                  {t('organic.teaTreeDesc', language)}
-                </p>
-              </div>
-              <div className="text-center group p-4">
-                <div className="w-px h-8 bg-gradient-to-b from-[#c6a664] to-transparent mx-auto mb-4" />
-                <h3 className="font-serif text-base sm:text-lg font-medium text-[#111] mb-2 tracking-tight">
-                  {t('organic.ecoFriendly', language)}
-                </h3>
-                <p className="text-sm text-[#666] font-light leading-relaxed">
-                  {t('organic.ecoDesc', language)}
-                </p>
-              </div>
+              {[
+                { title: t('organic.biodegradable', language), desc: t('organic.biodegradableDesc', language), num: '01' },
+                { title: t('organic.teaTreeBenefits', language), desc: t('organic.teaTreeDesc', language), num: '02' },
+                { title: t('organic.ecoFriendly', language), desc: t('organic.ecoDesc', language), num: '03' }
+              ].map((item, index) => (
+                <div 
+                  key={index}
+                  className={`text-center group p-6 relative transition-all duration-700 ${
+                    organicRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+                  }`}
+                  style={{ transitionDelay: `${200 + index * 150}ms` }}
+                >
+                  {/* Gold numbered medallion */}
+                  <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-[#c6a664] flex items-center justify-center group-hover:bg-[#c6a664] transition-all duration-500">
+                    <span className="text-[#c6a664] text-sm font-light group-hover:text-white transition-colors duration-500">{item.num}</span>
+                  </div>
+                  
+                  {/* Connecting line to next item */}
+                  {index < 2 && (
+                    <div className="hidden md:block absolute top-10 left-[calc(50%+30px)] w-[calc(100%-60px)] h-px bg-gradient-to-r from-[#c6a664]/50 to-[#c6a664]/20" />
+                  )}
+                  
+                  <h3 className="font-serif text-base sm:text-lg font-medium text-[#111] mb-2 tracking-tight group-hover:text-[#c6a664] transition-colors duration-300">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-[#666] font-light leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -198,11 +285,18 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Gift Cards Section */}
         <GiftCards language={language} />
 
-        {/* Payment Methods Accepted Section - Pure White with Gold */}
-        <section className="py-6 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
+        {/* Payment Methods Accepted Section - Pure White with Gold and Animations */}
+        <section 
+          ref={paymentRef}
+          className="py-6 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white"
+        >
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-6 sm:mb-10">
-              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-3 block">Secure Payments</span>
+            <div 
+              className={`text-center mb-6 sm:mb-10 transition-all duration-1000 ${
+                paymentRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`}
+            >
+              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-3 block gold-shimmer-text">Secure Payments</span>
               <h2 className="font-serif text-xl sm:text-3xl font-light text-[#111] mb-2 tracking-tight">
                 {t('payment.title', language)}
               </h2>
