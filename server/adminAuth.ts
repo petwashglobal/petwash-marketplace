@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
 import { AdminUser } from "@shared/schema";
 import { logger } from './lib/logger';
+import { isSuperAdmin } from './middleware/rbac';
 
 // Extend Express Request to include admin user
 declare module "express-session" {
@@ -44,14 +45,23 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
       return res.status(401).json({ message: "Invalid or expired session" });
     }
 
-    // Check if user is admin in Firestore
+    // Check if user is admin in Firestore OR is a hardcoded super admin
     const { db: firestoreDb } = await import('./lib/firebase-admin');
     const userDoc = await firestoreDb.collection('users').doc(decodedClaims.uid).get();
     const userData = userDoc.data();
+    const userEmail = decodedClaims.email?.toLowerCase() || '';
     
-    if (userData?.role !== 'admin') {
+    // Allow access if user is in super admin list OR has admin role in Firestore
+    const isSuperAdminUser = isSuperAdmin(userEmail);
+    const hasAdminRole = userData?.role === 'admin' || userData?.role === 'super_admin';
+    
+    if (!isSuperAdminUser && !hasAdminRole) {
+      logger.warn(`[Admin Auth] Access denied for ${userEmail} - not super admin and role=${userData?.role}`);
       return res.status(403).json({ message: "Admin access required" });
     }
+    
+    logger.info(`[Admin Auth] Access granted: ${userEmail} (superAdmin=${isSuperAdminUser}, role=${userData?.role || 'none'})`);
+
 
     // 🚨 OCTOPUS PROTOCOL: Admin Override Logging
     const endpoint = req.path;
@@ -96,12 +106,18 @@ export const requireAuthenticatedRole = (allowedRoles: string[]) => {
         return res.status(401).json({ message: "Invalid or expired session" });
       }
 
-      // Check if user has one of the allowed roles in Firestore
+      // Check if user has one of the allowed roles in Firestore OR is a super admin
       const { db: firestoreDb } = await import('./lib/firebase-admin');
       const userDoc = await firestoreDb.collection('users').doc(decodedClaims.uid).get();
       const userData = userDoc.data();
+      const userEmail = decodedClaims.email?.toLowerCase() || '';
       
-      if (!userData?.role || !allowedRoles.includes(userData.role)) {
+      // Super admins bypass role checks
+      const isSuperAdminUser = isSuperAdmin(userEmail);
+      const hasAllowedRole = userData?.role && allowedRoles.includes(userData.role);
+      
+      if (!isSuperAdminUser && !hasAllowedRole) {
+        logger.warn(`[Role Auth] Access denied for ${userEmail} - role=${userData?.role}, required=${allowedRoles.join(',')}`);
         return res.status(403).json({ message: "Insufficient permissions for this operation" });
       }
 
@@ -136,8 +152,19 @@ export const requireAuthenticatedRole = (allowedRoles: string[]) => {
 
 // Role-based authorization middleware (requires req.adminUser to be populated)
 export const requireRole = (allowedRoles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     const adminUser = req.adminUser;
+    
+    // Check if the request has firebaseUser with email for super admin check
+    // Also check adminUser email as fallback
+    const userEmail = (req as any).firebaseUser?.email?.toLowerCase() 
+      || adminUser?.email?.toLowerCase() 
+      || '';
+    
+    // Super admins always have access
+    if (userEmail && isSuperAdmin(userEmail)) {
+      return next();
+    }
     
     if (!adminUser) {
       return res.status(401).json({ message: "Admin authentication required" });
