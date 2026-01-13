@@ -14,9 +14,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('en');
 
   useEffect(() => {
-    // Initialize from localStorage
+    // Initialize from localStorage - support all 6 languages
     const saved = localStorage.getItem('language') as Language;
-    if (saved && (saved === 'en' || saved === 'he')) {
+    const validLanguages: Language[] = ['en', 'he', 'ar', 'ru', 'fr', 'es'];
+    if (saved && validLanguages.includes(saved)) {
       setLanguageState(saved);
     }
   }, []);
