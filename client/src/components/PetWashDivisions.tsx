@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Link } from 'wouter';
 import { Sparkles, Heart, MapPin, Zap, ArrowRight } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 interface PetWashDivisionsProps {
   language: Language;
@@ -10,27 +11,8 @@ interface PetWashDivisionsProps {
 
 export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   const [hoveredDivision, setHoveredDivision] = useState<number | null>(null);
-  const [isRevealed, setIsRevealed] = useState(false);
-  const sectionRef = useRef<HTMLElement>(null);
+  const { ref: sectionRef, isRevealed } = useScrollReveal<HTMLElement>();
   const isHebrew = language === 'he';
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsRevealed(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   const divisions = [
     {
