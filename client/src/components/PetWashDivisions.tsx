@@ -76,40 +76,33 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   return (
     <section 
       ref={sectionRef}
-      className="relative py-8 sm:py-20 lg:py-24 bg-white overflow-hidden"
+      className="relative py-6 sm:py-12 lg:py-14 bg-gradient-to-br from-white via-[#fdfbf7] to-white overflow-hidden"
     >
-      {/* Subtle luxury gold accent line */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent" />
+      {/* Luxury corner decorations */}
+      <div className="absolute top-0 left-0 w-32 h-32 border-t border-l border-[#c6a664]/10" />
+      <div className="absolute bottom-0 right-0 w-32 h-32 border-b border-r border-[#c6a664]/10" />
       
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Luxury Section Header - Fashion House Style with Animation */}
+        {/* Compact Luxury Header */}
         <div 
-          className={`text-center mb-8 sm:mb-12 transition-all duration-1000 ${
+          className={`text-center mb-5 sm:mb-8 transition-all duration-1000 ${
             isRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
         >
-          {/* Elegant uppercase label with shimmer */}
-          <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-4 gold-shimmer-text">
+          <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-2 gold-shimmer-text">
             {t('divisions.groupName', language)}
           </span>
           
-          {/* Main Title - Serif, elegant */}
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-light text-[#111] mb-4 tracking-tight">
+          <h2 className="font-serif text-xl sm:text-2xl lg:text-3xl font-light text-[#111] mb-2 tracking-tight">
             {isHebrew ? 'עולם Pet Wash™' : 'The Pet Wash™ Universe'}
           </h2>
           
-          {/* Decorative line with animation */}
-          <div className="w-12 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mb-6" />
-          
-          {/* Subtitle */}
-          <p className="text-sm sm:text-base text-[#666] font-light max-w-2xl mx-auto leading-relaxed">
-            {t('divisions.subtitle', language)}
-          </p>
+          <div className="w-12 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto" />
         </div>
 
-        {/* Luxury Divisions Grid - Clean, Minimal with Stagger Animation */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        {/* Compact 2x2 Divisions Grid */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {divisions.map((division, index) => {
             const Icon = division.icon;
             const isHovered = hoveredDivision === division.id;
@@ -121,92 +114,53 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                 className={`block group transition-all duration-700 ${
                   isRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                 }`}
-                style={{ transitionDelay: `${200 + index * 150}ms` }}
+                style={{ transitionDelay: `${100 + index * 100}ms` }}
                 onMouseEnter={() => setHoveredDivision(division.id)}
                 onMouseLeave={() => setHoveredDivision(null)}
               >
                 <div 
                   className={`
-                    relative p-6 sm:p-8 border bg-white rounded-lg luxury-card
-                    transition-all duration-500 ease-out
-                    ${isHovered ? 'border-[#c6a664] shadow-xl transform -translate-y-1' : 'border-[#e5e5e5] hover:border-[#ccc]'}
+                    relative p-3 sm:p-5 border bg-white rounded-lg
+                    transition-all duration-500 ease-out h-full
+                    ${isHovered ? 'border-[#c6a664] shadow-lg transform -translate-y-0.5' : 'border-[#e5e5e5] hover:border-[#d5d5d5]'}
                   `}
                 >
-                  {/* Gold accent corner on hover */}
-                  <div 
-                    className={`
-                      absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[#c6a664]
-                      transition-opacity duration-500
-                      ${isHovered ? 'opacity-100' : 'opacity-0'}
-                    `}
-                  />
-                  <div 
-                    className={`
-                      absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-[#c6a664]
-                      transition-opacity duration-500
-                      ${isHovered ? 'opacity-100' : 'opacity-0'}
-                    `}
-                  />
-                  
-                  {/* Header */}
-                  <div className="flex items-start gap-4 mb-4">
-                    {/* Minimal icon */}
+                  {/* Compact Header with Icon */}
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2">
                     <div 
                       className={`
-                        p-3 border transition-all duration-500
+                        p-1.5 sm:p-2 rounded-lg border transition-all duration-500
                         ${isHovered ? 'border-[#c6a664] bg-[#faf8f5]' : 'border-[#e5e5e5] bg-[#fafafa]'}
                       `}
                     >
                       <Icon 
-                        className="w-5 h-5 sm:w-6 sm:h-6 text-[#111] transition-colors duration-500" 
+                        className="w-4 h-4 sm:w-5 sm:h-5 text-[#111] transition-colors duration-500" 
                         strokeWidth={1.5}
                       />
                     </div>
                     
-                    {/* Title & Tagline */}
-                    <div className="flex-1">
-                      <h3 className="font-serif text-lg sm:text-xl font-medium text-[#111] mb-1 tracking-tight">
-                        {isHebrew ? division.nameHe : division.name}
-                      </h3>
-                      <p className="text-[10px] sm:text-xs uppercase tracking-[0.15em] text-[#999]">
-                        {division.tagline}
-                      </p>
-                    </div>
+                    <h3 className="font-serif text-sm sm:text-base font-medium text-[#111] tracking-tight group-hover:text-[#c6a664] transition-colors duration-300 line-clamp-1">
+                      {isHebrew ? division.nameHe : division.name}
+                    </h3>
                   </div>
 
-                  {/* Description */}
-                  <p className="text-sm text-[#666] leading-relaxed mb-4 font-light">
+                  {/* Tagline */}
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.1em] text-[#c6a664] mb-2 line-clamp-1">
+                    {division.tagline}
+                  </p>
+
+                  {/* Description - Hidden on mobile for compactness */}
+                  <p className="text-xs text-[#666] leading-relaxed font-light line-clamp-2 hidden sm:block">
                     {division.description}
                   </p>
 
-                  {/* Minimal Feature Tags */}
-                  <div className="flex flex-wrap gap-2 mb-5">
-                    {division.features.map((feature, idx) => (
-                      <span
-                        key={idx}
-                        className="px-3 py-1 text-[10px] sm:text-xs uppercase tracking-wide text-[#888] border border-[#e5e5e5] bg-[#fafafa]"
-                      >
-                        {feature}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Elegant CTA */}
-                  <div className="flex items-center gap-2">
-                    <span 
-                      className={`
-                        text-xs sm:text-sm font-medium uppercase tracking-[0.1em] transition-colors duration-500
-                        ${isHovered ? 'text-[#c6a664]' : 'text-[#111]'}
-                      `}
-                    >
+                  {/* Compact CTA Arrow */}
+                  <div className="flex items-center gap-1 mt-2 sm:mt-3">
+                    <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-[0.1em] transition-colors duration-500 ${isHovered ? 'text-[#c6a664]' : 'text-[#888]'}`}>
                       {t('divisions.learnMore', language)}
                     </span>
                     <ArrowRight 
-                      className={`
-                        w-4 h-4 transition-all duration-500
-                        ${isHovered ? 'text-[#c6a664] translate-x-1' : 'text-[#111]'}
-                        ${isHebrew ? 'rotate-180' : ''}
-                      `}
+                      className={`w-3 h-3 sm:w-4 sm:h-4 transition-all duration-500 ${isHovered ? 'text-[#c6a664] translate-x-0.5' : 'text-[#888]'} ${isHebrew ? 'rotate-180' : ''}`}
                       strokeWidth={1.5}
                     />
                   </div>
@@ -214,13 +168,6 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
               </Link>
             );
           })}
-        </div>
-
-        {/* Bottom decorative element */}
-        <div className="mt-12 sm:mt-16 flex items-center justify-center gap-4">
-          <div className="w-16 h-px bg-[#e5e5e5]" />
-          <span className="text-[10px] uppercase tracking-[0.2em] text-[#999]">Pet Wash™ Ltd</span>
-          <div className="w-16 h-px bg-[#e5e5e5]" />
         </div>
       </div>
     </section>

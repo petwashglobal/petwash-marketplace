@@ -35,23 +35,33 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
   const features = [
     {
       title: t('features.dualStations', language),
-      description: t('features.dualStationsDesc', language)
+      description: t('features.dualStationsDesc', language),
+      icon: '🏢'
     },
     {
       title: t('features.twoSpeedSettings', language),
-      description: t('features.twoSpeedSettingsDesc', language)
+      description: t('features.twoSpeedSettingsDesc', language),
+      icon: '⚡'
     },
     {
       title: t('features.organicProducts', language),
-      description: t('features.organicProductsDesc', language)
+      description: t('features.organicProductsDesc', language),
+      icon: '🌿'
     },
     {
       title: t('features.ecoProcess', language),
-      description: t('features.ecoProcessDesc', language)
+      description: t('features.ecoProcessDesc', language),
+      icon: '♻️'
     },
     {
       title: t('features.fullBodyRinse', language),
-      description: t('features.fullBodyRinseDesc', language)
+      description: t('features.fullBodyRinseDesc', language),
+      icon: '🚿'
+    },
+    {
+      title: t('features.premiumCare', language) || 'Premium Care',
+      description: t('features.premiumCareDesc', language) || 'Luxury grooming experience for your beloved pet',
+      icon: '✨'
     }
   ];
 
@@ -168,107 +178,130 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           <PetWashDivisions language={language} />
         </div>
 
-        {/* Technology Section - Pure White with Gold Accents and Scroll Animation */}
+        {/* Luxury Gold Divider */}
+        <div className="relative h-16 bg-gradient-to-b from-white via-[#fdfbf7] to-white overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-32 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent" />
+            <div className="absolute w-2 h-2 rounded-full bg-[#c6a664]" />
+          </div>
+        </div>
+
+        {/* Technology Section - Compact with Luxury Background */}
         <section 
           ref={techRef}
-          className={`py-6 px-4 sm:py-20 sm:px-6 lg:px-8 bg-white transition-all duration-1000 ${
+          className={`py-8 px-4 sm:py-12 sm:px-6 lg:px-8 bg-gradient-to-br from-[#fdfbf7] via-white to-[#faf8f5] relative overflow-hidden transition-all duration-1000 ${
             techRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
           }`}
         >
-          <div className="max-w-5xl mx-auto text-center">
-            {/* Gold accent label with shimmer */}
-            <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-3 block gold-shimmer-text">Pet Wash™ Ltd</span>
-            <h2 className="font-serif text-xl sm:text-3xl lg:text-4xl font-light text-[#111] mb-3 sm:mb-4 tracking-tight">
+          {/* Subtle luxury pattern overlay */}
+          <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M30 0L60 30L30 60L0 30L30 0z\' fill=\'%23c6a664\' fill-opacity=\'1\'/%3E%3C/svg%3E")', backgroundSize: '30px 30px' }} />
+          
+          <div className="max-w-5xl mx-auto text-center relative z-10">
+            <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-2 block gold-shimmer-text">Pet Wash™ Ltd</span>
+            <h2 className="font-serif text-xl sm:text-2xl lg:text-3xl font-light text-[#111] mb-2 tracking-tight">
               {t('technology.title', language)}
             </h2>
-            <div className="w-12 sm:w-16 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mb-4 sm:mb-6" />
-            <p className="text-sm sm:text-lg text-[#444] font-light max-w-2xl lg:max-w-3xl mx-auto leading-relaxed">
+            <div className="w-12 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mb-3" />
+            <p className="text-sm sm:text-base text-[#444] font-light max-w-2xl mx-auto leading-relaxed">
               {t('technology.description', language)}
             </p>
           </div>
         </section>
 
-        {/* Features Section - Luxury Animated Cards with Gold Effects */}
+        {/* Features Section - Luxury Grid with Icons and Gold Effects */}
         <section 
           ref={featuresRef}
-          className="py-6 px-4 sm:py-20 sm:px-6 lg:px-8 bg-white"
+          className="py-6 px-4 sm:py-12 sm:px-6 lg:px-8 bg-white relative"
         >
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10">
+          {/* Floating gold accents */}
+          <div className="absolute top-8 left-8 w-20 h-20 border border-[#c6a664]/10 rotate-45 hidden lg:block" />
+          <div className="absolute bottom-8 right-8 w-16 h-16 border border-[#c6a664]/10 rotate-12 hidden lg:block" />
+          
+          <div className="max-w-6xl mx-auto relative z-10">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-5 lg:gap-6">
               {features.map((feature, index) => (
                 <div 
                   key={index} 
-                  className={`luxury-card text-center group p-5 sm:p-8 rounded-lg transition-all duration-700 relative ${
+                  className={`luxury-card text-center group p-4 sm:p-6 rounded-lg transition-all duration-700 relative bg-gradient-to-br from-white to-[#fdfbf7] border border-[#e8e5e0] hover:border-[#c6a664]/50 hover:shadow-lg ${
                     featuresRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                   }`}
-                  style={{ transitionDelay: `${index * 100}ms` }}
+                  style={{ transitionDelay: `${index * 80}ms` }}
                 >
-                  {/* Decorative gold corner */}
-                  <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-[#c6a664]/30 group-hover:border-[#c6a664] transition-all duration-500 rounded-tr-lg pointer-events-none" />
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-[#c6a664]/30 group-hover:border-[#c6a664] transition-all duration-500 rounded-bl-lg pointer-events-none" />
+                  {/* Icon with gold ring */}
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-[#fdfbf7] to-white border border-[#c6a664]/30 flex items-center justify-center group-hover:border-[#c6a664] group-hover:scale-110 transition-all duration-500">
+                    <span className="text-lg sm:text-xl">{feature.icon}</span>
+                  </div>
                   
-                  <h3 className="font-serif text-lg font-medium text-[#111] mb-3 tracking-tight group-hover:text-[#c6a664] transition-colors duration-300">
+                  <h3 className="font-serif text-sm sm:text-base font-medium text-[#111] mb-2 tracking-tight group-hover:text-[#c6a664] transition-colors duration-300">
                     {feature.title}
                   </h3>
-                  <p className="text-sm text-[#666] font-light leading-relaxed">
+                  <p className="text-xs sm:text-sm text-[#666] font-light leading-relaxed">
                     {feature.description}
                   </p>
-                  <div className="w-8 h-0.5 bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mt-4 group-hover:w-20 transition-all duration-500" />
+                  
+                  {/* Expanding gold line */}
+                  <div className="w-6 h-0.5 bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mt-3 group-hover:w-16 transition-all duration-500" />
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Organic Promise Section - Luxury Timeline with Scroll Animation */}
+        {/* Luxury Divider with Diamond */}
+        <div className="relative h-12 bg-white overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-48 h-px bg-gradient-to-r from-transparent via-[#c6a664]/60 to-transparent" />
+            <div className="absolute w-3 h-3 rotate-45 border border-[#c6a664] bg-white" />
+          </div>
+        </div>
+
+        {/* Organic Promise Section - Compact Luxury with Rich Background */}
         <section 
           ref={organicRef}
-          className="py-8 px-4 sm:py-20 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-[#fdfbf7] to-white"
+          className="py-6 px-4 sm:py-10 sm:px-6 lg:px-8 relative overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #fdfbf7 0%, #faf8f5 50%, #f8f6f1 100%)' }}
         >
-          <div className="max-w-6xl mx-auto">
+          {/* Luxury corner ornaments */}
+          <div className="absolute top-4 left-4 w-16 h-16 border-t border-l border-[#c6a664]/20" />
+          <div className="absolute bottom-4 right-4 w-16 h-16 border-b border-r border-[#c6a664]/20" />
+          
+          <div className="max-w-6xl mx-auto relative z-10">
             <div 
-              className={`text-center mb-8 sm:mb-12 transition-all duration-1000 ${
+              className={`text-center mb-6 transition-all duration-1000 ${
                 organicRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               }`}
             >
               <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium gold-shimmer-text">Pet Wash™ Promise</span>
-              <h2 className="font-serif text-xl sm:text-3xl lg:text-4xl font-light text-[#111] mt-3 mb-3 tracking-tight">
+              <h2 className="font-serif text-lg sm:text-2xl lg:text-3xl font-light text-[#111] mt-2 mb-2 tracking-tight">
                 {t('organic.title', language)}
               </h2>
-              <div className="w-20 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mb-4" />
-              <p className="text-sm sm:text-base text-[#555] font-light max-w-2xl mx-auto leading-relaxed">
-                {t('organic.subtitle', language)}
-              </p>
+              <div className="w-16 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto" />
             </div>
             
-            {/* Timeline-style Promise Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-12">
+            {/* Horizontal Timeline Cards */}
+            <div className="grid grid-cols-3 gap-3 sm:gap-6">
               {[
-                { title: t('organic.biodegradable', language), desc: t('organic.biodegradableDesc', language), num: '01' },
-                { title: t('organic.teaTreeBenefits', language), desc: t('organic.teaTreeDesc', language), num: '02' },
-                { title: t('organic.ecoFriendly', language), desc: t('organic.ecoDesc', language), num: '03' }
+                { title: t('organic.biodegradable', language), desc: t('organic.biodegradableDesc', language), num: '01', icon: '🌱' },
+                { title: t('organic.teaTreeBenefits', language), desc: t('organic.teaTreeDesc', language), num: '02', icon: '🌿' },
+                { title: t('organic.ecoFriendly', language), desc: t('organic.ecoDesc', language), num: '03', icon: '🌍' }
               ].map((item, index) => (
                 <div 
                   key={index}
-                  className={`text-center group p-6 relative transition-all duration-700 ${
+                  className={`text-center group p-3 sm:p-5 relative bg-white/80 backdrop-blur-sm rounded-lg border border-[#e8e5e0] hover:border-[#c6a664]/50 hover:shadow-md transition-all duration-700 ${
                     organicRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                   }`}
-                  style={{ transitionDelay: `${200 + index * 150}ms` }}
+                  style={{ transitionDelay: `${100 + index * 100}ms` }}
                 >
-                  {/* Gold numbered medallion */}
-                  <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-[#c6a664] flex items-center justify-center group-hover:bg-[#c6a664] transition-all duration-500">
-                    <span className="text-[#c6a664] text-sm font-light group-hover:text-white transition-colors duration-500">{item.num}</span>
+                  {/* Icon + Number combined */}
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <span className="text-lg sm:text-2xl">{item.icon}</span>
+                    <span className="text-[10px] sm:text-xs text-[#c6a664] font-light">{item.num}</span>
                   </div>
                   
-                  {/* Connecting line to next item */}
-                  {index < 2 && (
-                    <div className="hidden md:block absolute top-10 left-[calc(50%+30px)] w-[calc(100%-60px)] h-px bg-gradient-to-r from-[#c6a664]/50 to-[#c6a664]/20" />
-                  )}
-                  
-                  <h3 className="font-serif text-base sm:text-lg font-medium text-[#111] mb-2 tracking-tight group-hover:text-[#c6a664] transition-colors duration-300">
+                  <h3 className="font-serif text-xs sm:text-sm font-medium text-[#111] mb-1 tracking-tight group-hover:text-[#c6a664] transition-colors duration-300 line-clamp-2">
                     {item.title}
                   </h3>
-                  <p className="text-sm text-[#666] font-light leading-relaxed">
+                  <p className="text-[10px] sm:text-xs text-[#666] font-light leading-relaxed line-clamp-3 hidden sm:block">
                     {item.desc}
                   </p>
                 </div>
