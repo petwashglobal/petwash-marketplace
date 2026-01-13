@@ -7,12 +7,21 @@ import { z } from 'zod';
  * 
  * Multi-dimensional rewards platform with:
  * - 7-tier luxury progression (Bronze, Silver, Gold, Platinum, Diamond, Emerald, Royal)
- * - Points & XP system
+ * - Points & XP system (Pyramid-style accumulation like US leaders 2025)
+ * - Special categories: Verified Disabled (10%), Seniors/Golden Age (10%)
+ * - Base club members: 5% discount
  * - Badges & Achievements
  * - Daily challenges & streaks
  * - Partner redemption marketplace
  * - AI-powered personalization
  * - VIP experiences
+ * 
+ * DISCOUNT STRUCTURE (2025 Model):
+ * - Base club member: 5% discount
+ * - Verified disabled (with official certificate): 10% discount
+ * - Seniors/Golden Age (verified): 10% discount
+ * - Tier progression adds small bonuses (1-5% max cumulative)
+ * - Max discount cap: 15% (excluding special promotions)
  */
 
 // ========================================
@@ -33,17 +42,31 @@ export type LoyaltyTier = typeof LOYALTY_TIERS[keyof typeof LOYALTY_TIERS];
 
 export const LOYALTY_TIER_THRESHOLDS = {
   bronze: 0,
-  silver: 1000,
-  gold: 3000,
-  platinum: 6000,
-  diamond: 10000,
-  emerald: 20000,
-  royal: 35000,
+  silver: 2500,    // ~5 washes
+  gold: 7500,      // ~15 washes
+  platinum: 15000, // ~30 washes
+  diamond: 25000,  // ~50 washes
+  emerald: 40000,  // ~80 washes
+  royal: 50000,    // ~100 washes
 } as const;
 
 // ========================================
 // CORE LOYALTY PROFILE
 // ========================================
+
+// ========================================
+// SPECIAL MEMBER CATEGORIES
+// ========================================
+
+export const SPECIAL_MEMBER_CATEGORIES = {
+  NONE: 'none',
+  DISABLED: 'disabled',           // נכים - 10% discount with official certificate
+  SENIOR: 'senior',               // גיל הזהב - 10% discount
+  MILITARY: 'military',           // חיילים - special rates
+  FIRST_RESPONDER: 'first_responder', // כיבוי אש, מד"א - special rates
+} as const;
+
+export type SpecialMemberCategory = typeof SPECIAL_MEMBER_CATEGORIES[keyof typeof SPECIAL_MEMBER_CATEGORIES];
 
 export const loyaltyProfiles = pgTable('loyalty_profiles', {
   id: serial('id').primaryKey(),
@@ -55,17 +78,37 @@ export const loyaltyProfiles = pgTable('loyalty_profiles', {
   tierProgress: integer('tier_progress').notNull().default(0), // Points toward next tier
   tierThreshold: integer('tier_threshold').notNull().default(1000), // Points needed for next tier
   
-  // Points & Currency
-  points: integer('points').notNull().default(0), // Redeemable loyalty points
+  // Special Member Categories (verified status)
+  specialCategory: varchar('special_category', { length: 50 }).default('none'), // none, disabled, senior, military, first_responder
+  specialCategoryVerified: boolean('special_category_verified').notNull().default(false),
+  specialCategoryVerifiedAt: timestamp('special_category_verified_at'),
+  specialCategoryCertificateId: varchar('special_category_certificate_id', { length: 255 }), // Document ID for verification
+  specialCategoryExpiresAt: timestamp('special_category_expires_at'), // Some certifications expire
+  
+  // Base Club Membership (all registered members get 5% discount)
+  isClubMember: boolean('is_club_member').notNull().default(true),
+  clubMemberSince: timestamp('club_member_since').notNull().defaultNow(),
+  
+  // Points & Currency (Pyramid-style accumulation)
+  points: integer('points').notNull().default(0), // Redeemable loyalty points (credit)
   lifetimePoints: integer('lifetime_points').notNull().default(0), // Total points earned (never decreases)
   xp: integer('xp').notNull().default(0), // Experience points for leveling
   level: integer('level').notNull().default(1), // User level (1-100)
   
+  // Pyramid Points System (like Starbucks Stars, Sephora Beauty Insider)
+  pointsThisMonth: integer('points_this_month').notNull().default(0), // Monthly accumulation
+  pointsThisYear: integer('points_this_year').notNull().default(0), // Annual accumulation
+  pointsMultiplierActive: boolean('points_multiplier_active').notNull().default(false),
+  pointsMultiplierValue: decimal('points_multiplier_value', { precision: 3, scale: 2 }).default('1.00'),
+  pointsMultiplierExpiresAt: timestamp('points_multiplier_expires_at'),
+  
   // Engagement Metrics
   totalWashes: integer('total_washes').notNull().default(0),
-  currentStreak: integer('current_streak').notNull().default(0), // Consecutive wash days
+  totalServices: integer('total_services').notNull().default(0), // All services used
+  currentStreak: integer('current_streak').notNull().default(0), // Consecutive service days
   longestStreak: integer('longest_streak').notNull().default(0),
   lastWashDate: timestamp('last_wash_date'),
+  lastServiceDate: timestamp('last_service_date'),
   
   // AI Personalization
   preferredStations: jsonb('preferred_stations').default([]), // Array of station IDs
@@ -376,6 +419,24 @@ export type InsertReferral = z.infer<typeof insertReferralSchema>;
 // TIER CONFIGURATION
 // ========================================
 
+// ========================================
+// SPECIAL CATEGORY DISCOUNTS
+// ========================================
+
+export const SPECIAL_CATEGORY_DISCOUNTS = {
+  disabled: 10,           // נכים מאומתים - 10%
+  senior: 10,             // גיל הזהב מאומת - 10%
+  military: 5,            // חיילים - 5%
+  first_responder: 5,     // כיבוי אש, מד"א - 5%
+  none: 0,
+} as const;
+
+// Base club member discount (all registered members)
+export const BASE_CLUB_DISCOUNT = 5; // 5% for all club members
+
+// Maximum discount cap (excluding special promotions)
+export const MAX_DISCOUNT_CAP = 15;
+
 export interface TierConfig {
   id: string;
   name: string;
@@ -383,135 +444,188 @@ export interface TierConfig {
   color: string;
   icon: string;
   threshold: number; // Minimum lifetime points required
+  washesRequired: number; // Approximate washes needed to reach this tier
   benefits: {
-    discountPercent: number;
-    pointsMultiplier: number; // 1.0 = base, 1.5 = 50% bonus
+    tierBonusPercent: number; // Additional discount ON TOP of base 5% (capped)
+    pointsMultiplier: number; // 1.0 = base, 1.5 = 50% bonus points earned
     prioritySupport: boolean;
     birthdayBonus: number; // Extra points on birthday
     freeWashesPerYear: number;
     exclusiveAccess: boolean; // Early access to new products
     conciergeService: boolean;
+    pointsToCredit: number; // Points needed for ₪1 credit (lower = better)
   };
 }
 
+/**
+ * PYRAMID LOYALTY STRUCTURE (2025 Model)
+ * 
+ * Points earning: 10 points per ₪1 spent (like Starbucks Stars)
+ * Average wash: ₪50 = 500 points
+ * 
+ * Base discount: 5% (all club members)
+ * Special categories: 10% (disabled/seniors - replaces base, doesn't stack)
+ * 
+ * Tier bonuses are SMALL additions that reward loyalty without excessive discounts.
+ * Max cumulative discount: 10% for regular members (base 5% + tier 5%)
+ * Only Royal tier (after ~100 washes) gets the full 15% cap.
+ */
 export const TIER_CONFIGS: TierConfig[] = [
   {
     id: 'bronze',
     name: 'Bronze',
     nameHe: 'ברונזה',
-    color: '#cd7f32', // bronze
+    color: '#cd7f32',
     icon: '🥉',
     threshold: 0,
+    washesRequired: 0,
     benefits: {
-      discountPercent: 0,
+      tierBonusPercent: 0, // Base 5% only
       pointsMultiplier: 1.0,
       prioritySupport: false,
-      birthdayBonus: 100,
+      birthdayBonus: 50,
       freeWashesPerYear: 0,
       exclusiveAccess: false,
       conciergeService: false,
+      pointsToCredit: 100, // 100 points = ₪1
     },
   },
   {
     id: 'silver',
     name: 'Silver',
     nameHe: 'כסף',
-    color: '#cbd5e1', // silver
+    color: '#cbd5e1',
     icon: '🥈',
-    threshold: 1000,
+    threshold: 2500, // ~5 washes
+    washesRequired: 5,
     benefits: {
-      discountPercent: 10,
-      pointsMultiplier: 1.2,
+      tierBonusPercent: 1, // Total: 6%
+      pointsMultiplier: 1.1,
       prioritySupport: false,
-      birthdayBonus: 200,
-      freeWashesPerYear: 1,
+      birthdayBonus: 100,
+      freeWashesPerYear: 0,
       exclusiveAccess: false,
       conciergeService: false,
+      pointsToCredit: 90, // 90 points = ₪1
     },
   },
   {
     id: 'gold',
     name: 'Gold',
     nameHe: 'זהב',
-    color: '#fbbf24', // amber
+    color: '#fbbf24',
     icon: '🥇',
-    threshold: 3000,
+    threshold: 7500, // ~15 washes
+    washesRequired: 15,
     benefits: {
-      discountPercent: 15,
-      pointsMultiplier: 1.5,
-      prioritySupport: true,
-      birthdayBonus: 300,
-      freeWashesPerYear: 2,
-      exclusiveAccess: true,
+      tierBonusPercent: 2, // Total: 7%
+      pointsMultiplier: 1.25,
+      prioritySupport: false,
+      birthdayBonus: 150,
+      freeWashesPerYear: 1,
+      exclusiveAccess: false,
       conciergeService: false,
+      pointsToCredit: 80,
     },
   },
   {
     id: 'platinum',
     name: 'Platinum',
     nameHe: 'פלטינום',
-    color: '#e5e7eb', // platinum
+    color: '#e5e7eb',
     icon: '💎',
-    threshold: 6000,
+    threshold: 15000, // ~30 washes
+    washesRequired: 30,
     benefits: {
-      discountPercent: 20,
-      pointsMultiplier: 2.0,
+      tierBonusPercent: 3, // Total: 8%
+      pointsMultiplier: 1.5,
       prioritySupport: true,
-      birthdayBonus: 500,
-      freeWashesPerYear: 3,
+      birthdayBonus: 250,
+      freeWashesPerYear: 1,
       exclusiveAccess: true,
-      conciergeService: true,
+      conciergeService: false,
+      pointsToCredit: 70,
     },
   },
   {
     id: 'diamond',
     name: 'Diamond',
     nameHe: 'יהלום',
-    color: '#3b82f6', // blue
+    color: '#3b82f6',
     icon: '💠',
-    threshold: 10000,
+    threshold: 25000, // ~50 washes
+    washesRequired: 50,
     benefits: {
-      discountPercent: 25,
-      pointsMultiplier: 2.5,
+      tierBonusPercent: 4, // Total: 9%
+      pointsMultiplier: 1.75,
       prioritySupport: true,
-      birthdayBonus: 1000,
-      freeWashesPerYear: 5,
+      birthdayBonus: 400,
+      freeWashesPerYear: 2,
       exclusiveAccess: true,
-      conciergeService: true,
+      conciergeService: false,
+      pointsToCredit: 60,
     },
   },
   {
     id: 'emerald',
     name: 'Emerald',
     nameHe: 'אמרלד',
-    color: '#10b981', // emerald green
+    color: '#10b981',
     icon: '💚',
-    threshold: 20000,
+    threshold: 40000, // ~80 washes
+    washesRequired: 80,
     benefits: {
-      discountPercent: 30,
-      pointsMultiplier: 3.0,
+      tierBonusPercent: 5, // Total: 10%
+      pointsMultiplier: 2.0,
       prioritySupport: true,
-      birthdayBonus: 2000,
-      freeWashesPerYear: 8,
+      birthdayBonus: 600,
+      freeWashesPerYear: 3,
       exclusiveAccess: true,
       conciergeService: true,
+      pointsToCredit: 50,
     },
   },
   {
     id: 'royal',
     name: 'Royal',
     nameHe: 'מלכותי',
-    color: '#8b5cf6', // royal purple
+    color: '#8b5cf6',
     icon: '👑',
-    threshold: 35000,
+    threshold: 50000, // ~100 washes
+    washesRequired: 100,
     benefits: {
-      discountPercent: 40,
-      pointsMultiplier: 4.0,
+      tierBonusPercent: 10, // Total: 15% (max cap)
+      pointsMultiplier: 2.5,
       prioritySupport: true,
-      birthdayBonus: 5000,
-      freeWashesPerYear: 12,
+      birthdayBonus: 1000,
+      freeWashesPerYear: 6,
       exclusiveAccess: true,
       conciergeService: true,
+      pointsToCredit: 40, // Best conversion rate
     },
   },
 ];
+
+// ========================================
+// DISCOUNT CALCULATION HELPER
+// ========================================
+
+export function calculateTotalDiscount(
+  tier: LoyaltyTier,
+  specialCategory: SpecialMemberCategory,
+  isVerified: boolean
+): number {
+  const tierConfig = TIER_CONFIGS.find(t => t.id === tier);
+  const tierBonus = tierConfig?.benefits.tierBonusPercent || 0;
+  
+  // Special category (disabled/senior) gives flat 10% - doesn't stack with base
+  if (specialCategory !== 'none' && isVerified) {
+    const specialDiscount = SPECIAL_CATEGORY_DISCOUNTS[specialCategory] || 0;
+    // Special discount + tier bonus, capped at MAX_DISCOUNT_CAP
+    return Math.min(specialDiscount + tierBonus, MAX_DISCOUNT_CAP);
+  }
+  
+  // Regular club member: base 5% + tier bonus
+  const totalDiscount = BASE_CLUB_DISCOUNT + tierBonus;
+  return Math.min(totalDiscount, MAX_DISCOUNT_CAP);
+}
