@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { PinKeypad } from "@/components/PinKeypad";
-import { Loader2, Mail, Info, Fingerprint, Smartphone, ScanFace, Phone, User, Lock, ArrowRight, Sparkles, KeyRound } from "lucide-react";
+import { Loader2, Mail, Info, Fingerprint, Smartphone, ScanFace, Phone, User, Lock, ArrowRight, Sparkles, KeyRound, X, ArrowLeft } from "lucide-react";
 import { SiGmail } from "react-icons/si";
 import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -700,7 +700,17 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-md"
         >
-          <div className="luxury-glass-card luxury-shadow-xl p-8 space-y-8">
+          <div className="luxury-glass-card luxury-shadow-xl p-8 space-y-8 relative">
+          {/* Close/Back Button */}
+          <button
+            onClick={() => navigate("/")}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
+            aria-label={t('common.close', language)}
+            data-testid="button-close-signin"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+
           {/* Logo */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, AlertCircle, MapPin, Fingerprint, Shield, Sparkles } from "lucide-react";
+import { Loader2, AlertCircle, MapPin, Fingerprint, Shield, Sparkles, X } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { trackSignUp } from "@/lib/analytics";
@@ -449,7 +449,17 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-          <div className="luxury-glass-card luxury-shadow-xl p-8 space-y-8">
+          <div className="luxury-glass-card luxury-shadow-xl p-8 space-y-8 relative">
+          {/* Close/Back Button */}
+          <button
+            onClick={() => navigate("/")}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
+            aria-label={t('common.close', language)}
+            data-testid="button-close-signup"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
