@@ -111,73 +111,75 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           <PetWashDivisions language={language} />
         </div>
 
-        {/* Technology Section - Pure White Luxury */}
-        <section className="py-10 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
+        {/* Technology Section - Pure White with Gold Accents */}
+        <section className="py-6 px-4 sm:py-20 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-5xl mx-auto text-center">
+            {/* Gold accent label */}
+            <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-3 block">Pet Wash™ Ltd</span>
             <h2 className="font-serif text-xl sm:text-3xl lg:text-4xl font-light text-[#111] mb-3 sm:mb-4 tracking-tight">
               {t('technology.title', language)}
             </h2>
-            <div className="w-12 sm:w-16 h-px bg-[#e6e6e6] mx-auto mb-4 sm:mb-6" />
+            <div className="w-12 sm:w-16 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mb-4 sm:mb-6" />
             <p className="text-sm sm:text-lg text-[#444] font-light max-w-2xl lg:max-w-3xl mx-auto leading-relaxed">
               {t('technology.description', language)}
             </p>
           </div>
         </section>
 
-        {/* Features Section - Couture Minimal Grid */}
-        <section className="py-10 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
+        {/* Features Section - Couture Minimal Grid with Gold Accents */}
+        <section className="py-6 px-4 sm:py-20 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10">
               {features.map((feature, index) => (
-                <div key={index} className="text-center group">
-                  <h3 className="font-serif text-lg font-medium text-[#111] mb-3 tracking-tight">
+                <div key={index} className="text-center group p-4 sm:p-6 border border-[#f0ebe0] hover:border-[#c6a664] transition-all duration-500">
+                  <h3 className="font-serif text-lg font-medium text-[#111] mb-2 tracking-tight">
                     {feature.title}
                   </h3>
                   <p className="text-sm text-[#666] font-light leading-relaxed">
                     {feature.description}
                   </p>
-                  <div className="w-8 h-px bg-[#e6e6e6] mx-auto mt-4 group-hover:w-16 group-hover:bg-[#111] transition-all duration-500" />
+                  <div className="w-8 h-px bg-[#c6a664] mx-auto mt-3 group-hover:w-16 transition-all duration-500" />
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Organic Promise Section - Luxury Editorial */}
-        <section className="py-12 px-4 sm:py-28 sm:px-6 lg:px-8 bg-white">
+        {/* Organic Promise Section - Luxury Editorial with Gold */}
+        <section className="py-8 px-4 sm:py-20 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <span className="text-xs uppercase tracking-[0.3em] text-[#888] font-medium">Pet Wash™ Promise</span>
-              <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-light text-[#111] mt-4 mb-4 tracking-tight">
+            <div className="text-center mb-8 sm:mb-12">
+              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium">Pet Wash™ Promise</span>
+              <h2 className="font-serif text-xl sm:text-3xl lg:text-4xl font-light text-[#111] mt-3 mb-3 tracking-tight">
                 {t('organic.title', language)}
               </h2>
-              <div className="w-24 h-px bg-[#e6e6e6] mx-auto mb-6" />
-              <p className="text-base text-[#555] font-light max-w-2xl mx-auto leading-relaxed">
+              <div className="w-20 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mb-4" />
+              <p className="text-sm sm:text-base text-[#555] font-light max-w-2xl mx-auto leading-relaxed">
                 {t('organic.subtitle', language)}
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-16">
-              <div className="text-center group">
-                <div className="w-px h-12 bg-[#e6e6e6] mx-auto mb-6" />
-                <h3 className="font-serif text-lg font-medium text-[#111] mb-3 tracking-tight">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-12">
+              <div className="text-center group p-4">
+                <div className="w-px h-8 bg-gradient-to-b from-[#c6a664] to-transparent mx-auto mb-4" />
+                <h3 className="font-serif text-base sm:text-lg font-medium text-[#111] mb-2 tracking-tight">
                   {t('organic.biodegradable', language)}
                 </h3>
                 <p className="text-sm text-[#666] font-light leading-relaxed">
                   {t('organic.biodegradableDesc', language)}
                 </p>
               </div>
-              <div className="text-center group">
-                <div className="w-px h-12 bg-[#e6e6e6] mx-auto mb-6" />
-                <h3 className="font-serif text-lg font-medium text-[#111] mb-3 tracking-tight">
+              <div className="text-center group p-4">
+                <div className="w-px h-8 bg-gradient-to-b from-[#c6a664] to-transparent mx-auto mb-4" />
+                <h3 className="font-serif text-base sm:text-lg font-medium text-[#111] mb-2 tracking-tight">
                   {t('organic.teaTreeBenefits', language)}
                 </h3>
                 <p className="text-sm text-[#666] font-light leading-relaxed">
                   {t('organic.teaTreeDesc', language)}
                 </p>
               </div>
-              <div className="text-center group">
-                <div className="w-px h-12 bg-[#e6e6e6] mx-auto mb-6" />
-                <h3 className="font-serif text-lg font-medium text-[#111] mb-3 tracking-tight">
+              <div className="text-center group p-4">
+                <div className="w-px h-8 bg-gradient-to-b from-[#c6a664] to-transparent mx-auto mb-4" />
+                <h3 className="font-serif text-base sm:text-lg font-medium text-[#111] mb-2 tracking-tight">
                   {t('organic.ecoFriendly', language)}
                 </h3>
                 <p className="text-sm text-[#666] font-light leading-relaxed">
@@ -196,15 +198,15 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Gift Cards Section */}
         <GiftCards language={language} />
 
-        {/* Payment Methods Accepted Section - Pure White Luxury */}
-        <section className="py-10 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
+        {/* Payment Methods Accepted Section - Pure White with Gold */}
+        <section className="py-6 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <span className="text-xs uppercase tracking-[0.3em] text-[#888] font-medium mb-4 block">Secure Payments</span>
-              <h2 className="font-serif text-2xl sm:text-3xl font-light text-[#111] mb-3 tracking-tight">
+            <div className="text-center mb-6 sm:mb-10">
+              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-3 block">Secure Payments</span>
+              <h2 className="font-serif text-xl sm:text-3xl font-light text-[#111] mb-2 tracking-tight">
                 {t('payment.title', language)}
               </h2>
-              <p className="text-base text-[#555] font-light">
+              <p className="text-sm sm:text-base text-[#555] font-light">
                 {t('payment.subtitle', language)}
               </p>
             </div>

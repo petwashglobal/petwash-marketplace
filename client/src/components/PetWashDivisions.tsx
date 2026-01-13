@@ -72,14 +72,14 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   ];
 
   return (
-    <section className="relative py-16 sm:py-24 lg:py-28 bg-white overflow-hidden">
+    <section className="relative py-8 sm:py-20 lg:py-24 bg-white overflow-hidden">
       {/* Subtle luxury gold accent line */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent" />
       
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Luxury Section Header - Fashion House Style */}
-        <div className="text-center mb-12 sm:mb-16">
+        <div className="text-center mb-8 sm:mb-12">
           {/* Elegant uppercase label */}
           <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-4">
             {t('divisions.groupName', language)}
@@ -100,7 +100,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
         </div>
 
         {/* Luxury Divisions Grid - Clean, Minimal */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {divisions.map((division) => {
             const Icon = division.icon;
             const isHovered = hoveredDivision === division.id;

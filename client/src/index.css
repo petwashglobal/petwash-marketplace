@@ -206,44 +206,44 @@ h1, h2, h3, h4, h5, h6,
   font-family: 'Noto Serif Hebrew', 'Noto Serif Arabic', 'Cormorant Garamond', serif !important;
 }
 
-/* === PET WASH™ LUXURY BRAND TOKENS - GUCCI STYLE BLACK/WHITE === */
-/* ===== PURE BLACK & WHITE PALETTE - Minimalist Luxury ===== */
+/* === PET WASH™ LUXURY BRAND TOKENS - LOUIS VUITTON/CARTIER STYLE === */
+/* ===== PURE WHITE WITH GOLD ACCENTS - Fashion House Luxury ===== */
 :root {
-  /* Core Colors - PURE WHITE + BLACK (Gucci Style) */
+  /* Core Colors - PURE WHITE background + BLACK text */
   --color-bg: #FFFFFF;
   --color-text: #000000;
   --color-text-dark: #000000;
   --color-muted: #666666;
   
-  /* GUCCI STYLE - Pure Black & White (No Gold) */
-  --cartier-gold: #000000;           /* Replaced with black */
-  --cartier-gold-light: #333333;     /* Dark gray */
-  --cartier-gold-dark: #000000;      /* Pure black */
-  --cartier-gold-highlight: #FFFFFF; /* White highlight */
-  --cartier-gold-shadow: #000000;    /* Black shadow */
-  --gold-metallic: #000000;          /* Black */
-  --color-gold: #000000;             /* Primary black reference */
-  --color-gold-2: #000000;           /* Secondary black */
+  /* LUXURY GOLD PALETTE - Cartier/Louis Vuitton Style */
+  --cartier-gold: #c6a664;           /* Primary luxury gold */
+  --cartier-gold-light: #d4bc8a;     /* Light gold highlight */
+  --cartier-gold-dark: #a08040;      /* Deep gold shadow */
+  --cartier-gold-highlight: #e8d9b5; /* Soft gold highlight */
+  --cartier-gold-shadow: #8b7035;    /* Dark gold shadow */
+  --gold-metallic: #c9b37b;          /* Metallic gold */
+  --color-gold: #c6a664;             /* Primary gold reference */
+  --color-gold-2: #b8956e;           /* Secondary gold */
   
-  /* BLACK/WHITE GRADIENT - Clean minimalist */
-  --gradient-gold: linear-gradient(145deg, #FFFFFF 0%, #F5F5F5 25%, #000000 50%, #000000 75%, #000000 100%);
-  --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+  /* LUXURY GOLD GRADIENTS - Rich & Premium */
+  --gradient-gold: linear-gradient(145deg, #e8d9b5 0%, #d4bc8a 25%, #c6a664 50%, #a08040 75%, #8b7035 100%);
+  --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(230,215,180,0.6) 50%, transparent 100%);
   --gradient-black: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
   
-  /* Effects - BLACK SHADOWS (No gold glow) */
-  --gold-glow-light: rgba(0, 0, 0, 0.1);
-  --gold-glow-medium: rgba(0, 0, 0, 0.2);
-  --gold-glow-heavy: rgba(0, 0, 0, 0.3);
-  --shadow-gold: 0 8px 24px rgba(0, 0, 0, 0.2);
+  /* Effects - GOLD GLOW for luxury feel */
+  --gold-glow-light: rgba(198, 166, 100, 0.15);
+  --gold-glow-medium: rgba(198, 166, 100, 0.25);
+  --gold-glow-heavy: rgba(198, 166, 100, 0.4);
+  --shadow-gold: 0 8px 24px rgba(198, 166, 100, 0.25);
   --shadow-default: 0 8px 32px rgba(0, 0, 0, 0.08);
   
-  /* ===== 2025 BLACK/WHITE GRADIENTS - Gucci Minimalist ===== */
+  /* ===== 2025 LUXURY GOLD GRADIENTS - Fashion House Style ===== */
   
-  /* BLACK/WHITE VARIANTS */
-  --gradient-metallic-gold: linear-gradient(135deg, #FFFFFF 0%, #F0F0F0 25%, #000000 50%, #1a1a1a 75%, #000000 100%);
-  --gradient-gold-rich: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
-  --gradient-gold-royal: linear-gradient(to right, #FFFFFF 0%, #000000 50%, #000000 100%);
-  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #FFFFFF, #000000 50%, #000000);
+  /* METALLIC GOLD VARIANTS */
+  --gradient-metallic-gold: linear-gradient(135deg, #e8d9b5 0%, #d4bc8a 25%, #c6a664 50%, #b8956e 75%, #a08040 100%);
+  --gradient-gold-rich: linear-gradient(135deg, #d4bc8a 0%, #c6a664 50%, #a08040 100%);
+  --gradient-gold-royal: linear-gradient(to right, #e8d9b5 0%, #c6a664 50%, #8b7035 100%);
+  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #e8d9b5, #c6a664 50%, #a08040);
   
   /* Diamond & Crystal Effects - Keep white/light */
   --gradient-diamond: linear-gradient(135deg, #FFFFFF 0%, #F8F8F8 20%, #F0F0F0 40%, #E8E8E8 60%, #F0F0F0 80%, #FFFFFF 100%);
@@ -256,31 +256,31 @@ h1, h2, h3, h4, h5, h6,
   --gradient-chrome: linear-gradient(135deg, #FFFFFF 0%, #E8E8E8 20%, #D0D0D0 40%, #E0E0E0 60%, #F8F8F8 80%, #FFFFFF 100%);
   --gradient-silver-white: linear-gradient(to right, #FFFFFF 0%, #E8E8E8 50%, #FFFFFF 100%);
   
-  /* Rose Gold & Champagne - Replaced with grayscale */
-  --gradient-metallic-rose: linear-gradient(135deg, #F0F0F0 0%, #E0E0E0 25%, #D0D0D0 50%, #C0C0C0 75%, #E0E0E0 100%);
-  --gradient-rose-gold: linear-gradient(135deg, #E0E0E0 0%, #C0C0C0 50%, #D0D0D0 100%);
-  --gradient-champagne: linear-gradient(135deg, #F5F5F5 0%, #E8E8E8 50%, #F0F0F0 100%);
+  /* Rose Gold & Champagne - Luxury Variants */
+  --gradient-metallic-rose: linear-gradient(135deg, #e8c4b8 0%, #d4a394 25%, #c9967a 50%, #b8825f 75%, #d4a394 100%);
+  --gradient-rose-gold: linear-gradient(135deg, #e8c4b8 0%, #d4a394 50%, #c9967a 100%);
+  --gradient-champagne: linear-gradient(135deg, #f5e6d3 0%, #e8d4be 50%, #dcc5a9 100%);
   
   /* Glass & Frosted Effects */
   --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%);
   --gradient-frosted: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.3) 100%);
   
-  /* Premium Button Gradients - BLACK/WHITE ONLY */
+  /* Premium Button Gradients - LUXURY GOLD + BLACK */
   --gradient-luxury-primary: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
-  --gradient-luxury-gold-button: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
-  --gradient-luxury-rose-button: linear-gradient(135deg, #333333 0%, #000000 50%, #333333 100%);
-  --gradient-luxury-platinum-button: linear-gradient(135deg, #FFFFFF 0%, #F5F5F5 50%, #FFFFFF 100%);
+  --gradient-luxury-gold-button: linear-gradient(135deg, #d4bc8a 0%, #c6a664 50%, #a08040 100%);
+  --gradient-luxury-rose-button: linear-gradient(135deg, #e8c4b8 0%, #d4a394 50%, #c9967a 100%);
+  --gradient-luxury-platinum-button: linear-gradient(135deg, #E5E4E2 0%, #D8D8D8 50%, #E5E4E2 100%);
   
   /* Glassmorphism Effects */
   --glass-bg: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.2);
   --glass-blur: blur(10px);
   
-  /* Premium Shadows - BLACK ONLY */
-  --shadow-metallic: 0 8px 32px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-luxury: 0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
-  --shadow-glow-gold: 0 0 20px rgba(0, 0, 0, 0.2), 0 0 40px rgba(0, 0, 0, 0.1);
-  --shadow-glow-rose: 0 0 20px rgba(0, 0, 0, 0.15), 0 0 40px rgba(0, 0, 0, 0.1);
+  /* Premium Shadows - WITH GOLD GLOW */
+  --shadow-metallic: 0 8px 32px rgba(198, 166, 100, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-luxury: 0 20px 60px rgba(198, 166, 100, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
+  --shadow-glow-gold: 0 0 20px rgba(198, 166, 100, 0.3), 0 0 40px rgba(198, 166, 100, 0.15);
+  --shadow-glow-rose: 0 0 20px rgba(212, 163, 148, 0.25), 0 0 40px rgba(212, 163, 148, 0.12);
   
   /* Perfect Text Contrast - For Accessibility & Luxury Reading Experience */
   --text-on-dark: #FFFFFF;          /* Pure white for dark backgrounds */
