@@ -106,21 +106,26 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </section>
 
 
+        {/* PetWash Platforms - Mobile First Position */}
+        <div className="block md:hidden">
+          <PetWashDivisions language={language} />
+        </div>
+
         {/* Technology Section - Pure White Luxury */}
-        <section className="py-16 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
+        <section className="py-10 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-5xl mx-auto text-center">
-            <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-light text-[#111] mb-4 tracking-tight">
+            <h2 className="font-serif text-xl sm:text-3xl lg:text-4xl font-light text-[#111] mb-3 sm:mb-4 tracking-tight">
               {t('technology.title', language)}
             </h2>
-            <div className="w-16 h-px bg-[#e6e6e6] mx-auto mb-6" />
-            <p className="text-base sm:text-lg text-[#444] font-light max-w-2xl lg:max-w-3xl mx-auto leading-relaxed">
+            <div className="w-12 sm:w-16 h-px bg-[#e6e6e6] mx-auto mb-4 sm:mb-6" />
+            <p className="text-sm sm:text-lg text-[#444] font-light max-w-2xl lg:max-w-3xl mx-auto leading-relaxed">
               {t('technology.description', language)}
             </p>
           </div>
         </section>
 
         {/* Features Section - Couture Minimal Grid */}
-        <section className="py-16 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
+        <section className="py-10 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
               {features.map((feature, index) => (
@@ -139,7 +144,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </section>
 
         {/* Organic Promise Section - Luxury Editorial */}
-        <section className="py-20 px-4 sm:py-28 sm:px-6 lg:px-8 bg-white">
+        <section className="py-12 px-4 sm:py-28 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
               <span className="text-xs uppercase tracking-[0.3em] text-[#888] font-medium">Pet Wash™ Promise</span>
@@ -192,7 +197,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         <GiftCards language={language} />
 
         {/* Payment Methods Accepted Section - Pure White Luxury */}
-        <section className="py-16 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
+        <section className="py-10 px-4 sm:py-24 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
               <span className="text-xs uppercase tracking-[0.3em] text-[#888] font-medium mb-4 block">Secure Payments</span>
@@ -420,8 +425,10 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           </div>
         </section>
 
-        {/* PetWash Ltd Group - Our Unique Services */}
-        <PetWashDivisions language={language} />
+        {/* PetWash Ltd Group - Our Unique Services (Desktop Only - Mobile shows at top) */}
+        <div className="hidden md:block">
+          <PetWashDivisions language={language} />
+        </div>
 
         {/* Provider Registration - Join Our Team */}
         <ProviderRegistrationBanner variant="hero" platform="all" />

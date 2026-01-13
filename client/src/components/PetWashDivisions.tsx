@@ -88,7 +88,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   ];
 
   return (
-    <section className="relative py-20 sm:py-28 lg:py-32 overflow-hidden">
+    <section className="relative py-12 sm:py-28 lg:py-32 overflow-hidden">
       {/* Luxury Dark Background with Mesh Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-black" />
       
@@ -108,18 +108,18 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Luxury Section Header */}
-        <div className="text-center mb-16 sm:mb-20">
+        <div className="text-center mb-8 sm:mb-20">
           {/* Premium Badge */}
-          <div className="inline-flex items-center gap-2 mb-6 px-5 py-2.5 rounded-full border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 backdrop-blur-sm">
-            <Crown className="w-4 h-4 text-amber-400" />
-            <span className="text-sm font-medium tracking-wide text-amber-300">
+          <div className="inline-flex items-center gap-2 mb-4 sm:mb-6 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 backdrop-blur-sm">
+            <Crown className="w-3 sm:w-4 h-3 sm:h-4 text-amber-400" />
+            <span className="text-xs sm:text-sm font-medium tracking-wide text-amber-300">
               {t('divisions.groupName', language)}
             </span>
-            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+            <Star className="w-2.5 sm:w-3 h-2.5 sm:h-3 text-amber-400 fill-amber-400" />
           </div>
           
           {/* Main Title with Gradient */}
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold mb-6 tracking-tight">
+          <h2 className="text-2xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold mb-3 sm:mb-6 tracking-tight">
             <span className="text-white">{isHebrew ? 'עולם ' : 'The '}</span>
             <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-orange-500 bg-clip-text text-transparent">
               Pet Wash™
@@ -128,12 +128,12 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
           </h2>
           
           {/* Subtitle */}
-          <p className="text-lg sm:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed font-light">
+          <p className="text-sm sm:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed font-light px-2">
             {t('divisions.subtitle', language)}
           </p>
           
-          {/* Decorative Line */}
-          <div className="mt-8 flex items-center justify-center gap-3">
+          {/* Decorative Line - Hidden on mobile for density */}
+          <div className="hidden sm:flex mt-8 items-center justify-center gap-3">
             <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
             <div className="w-2 h-2 rounded-full bg-amber-500/60" />
             <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
@@ -141,7 +141,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
         </div>
 
         {/* Luxury Divisions Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           {divisions.map((division, index) => {
             const Icon = division.icon;
             const isHovered = hoveredDivision === division.id;
@@ -196,13 +196,13 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                   />
 
                   {/* Content */}
-                  <div className="relative z-10 p-8 sm:p-10">
+                  <div className="relative z-10 p-5 sm:p-10">
                     {/* Header Row */}
-                    <div className="flex items-start gap-5 mb-6">
+                    <div className="flex items-start gap-3 sm:gap-5 mb-4 sm:mb-6">
                       {/* Luxury Icon Container */}
                       <div 
                         className={`
-                          relative p-4 rounded-2xl transition-all duration-500
+                          relative p-3 sm:p-4 rounded-xl sm:rounded-2xl transition-all duration-500
                           ${isHovered ? 'scale-110' : 'scale-100'}
                         `}
                         style={{
@@ -215,7 +215,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                         }}
                       >
                         <Icon 
-                          className={`w-8 h-8 transition-all duration-500 ${isHovered ? 'text-white' : 'text-gray-300'}`} 
+                          className={`w-6 h-6 sm:w-8 sm:h-8 transition-all duration-500 ${isHovered ? 'text-white' : 'text-gray-300'}`} 
                         />
                         
                         {/* Icon Glow Ring */}
@@ -231,7 +231,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                       <div className="flex-1">
                         <h3 
                           className={`
-                            text-2xl sm:text-3xl font-bold mb-2 transition-all duration-500
+                            text-lg sm:text-3xl font-bold mb-1 sm:mb-2 transition-all duration-500
                             ${isHovered ? 'text-white' : 'text-gray-100'}
                           `}
                           style={{
@@ -240,24 +240,24 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                         >
                           {isHebrew ? division.nameHe : division.name}
                         </h3>
-                        <p className={`text-sm font-medium tracking-wide uppercase transition-colors duration-500 ${isHovered ? 'text-amber-400' : 'text-gray-500'}`}>
+                        <p className={`text-xs sm:text-sm font-medium tracking-wide uppercase transition-colors duration-500 ${isHovered ? 'text-amber-400' : 'text-gray-500'}`}>
                           {division.tagline}
                         </p>
                       </div>
                     </div>
 
-                    {/* Description */}
-                    <p className={`text-base leading-relaxed mb-8 transition-colors duration-500 ${isHovered ? 'text-gray-200' : 'text-gray-400'}`}>
+                    {/* Description - Hidden on very small screens for density */}
+                    <p className={`hidden sm:block text-base leading-relaxed mb-8 transition-colors duration-500 ${isHovered ? 'text-gray-200' : 'text-gray-400'}`}>
                       {division.description}
                     </p>
 
                     {/* Luxury Feature Tags */}
-                    <div className="flex flex-wrap gap-2 mb-8">
-                      {division.features.slice(0, 3).map((feature, idx) => (
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 sm:mb-8">
+                      {division.features.slice(0, 2).map((feature, idx) => (
                         <span
                           key={idx}
                           className={`
-                            px-4 py-2 rounded-full text-sm font-medium
+                            px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium
                             transition-all duration-500 border
                             ${isHovered 
                               ? 'bg-white/10 text-white border-white/20 shadow-lg' 
@@ -273,10 +273,10 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                     </div>
 
                     {/* Luxury CTA */}
-                    <div className="flex items-center gap-3 group/cta">
+                    <div className="flex items-center gap-2 sm:gap-3 group/cta">
                       <span 
                         className={`
-                          text-lg font-semibold tracking-wide transition-all duration-500
+                          text-sm sm:text-lg font-semibold tracking-wide transition-all duration-500
                           ${isHovered ? 'text-white' : 'text-gray-300'}
                         `}
                       >
@@ -284,7 +284,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                       </span>
                       <div 
                         className={`
-                          p-2 rounded-full transition-all duration-500
+                          p-1.5 sm:p-2 rounded-full transition-all duration-500
                           ${isHovered ? 'bg-white/20 translate-x-1' : 'bg-white/5'}
                         `}
                         style={{
@@ -292,7 +292,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                         }}
                       >
                         <ArrowRight 
-                          className={`w-5 h-5 transition-colors duration-500 ${isHovered ? 'text-white' : 'text-gray-400'} ${isHebrew ? 'rotate-180' : ''}`} 
+                          className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-500 ${isHovered ? 'text-white' : 'text-gray-400'} ${isHebrew ? 'rotate-180' : ''}`} 
                         />
                       </div>
                     </div>
@@ -314,8 +314,8 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
           })}
         </div>
 
-        {/* Luxury Trust Badges */}
-        <div className="mt-20 pt-16 border-t border-white/10">
+        {/* Luxury Trust Badges - Hidden on mobile for density */}
+        <div className="hidden sm:block mt-20 pt-16 border-t border-white/10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
             {[
               { icon: Shield, value: '100%', label: t('divisions.kycVerified', language), color: 'text-blue-400' },
@@ -334,8 +334,8 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
           </div>
         </div>
 
-        {/* Mission Statement */}
-        <div className="mt-16 text-center max-w-4xl mx-auto">
+        {/* Mission Statement - Hidden on mobile */}
+        <div className="hidden sm:block mt-16 text-center max-w-4xl mx-auto">
           <p className="text-lg text-gray-400 leading-relaxed italic">
             "{t('divisions.missionStatement', language)}"
           </p>
