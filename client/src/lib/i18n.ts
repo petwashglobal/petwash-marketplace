@@ -91,6 +91,8 @@ export const translations: TranslationStrings = {
   'features.ecoProcessDesc': { en: 'Water-saving technology', he: 'טכנולוגיית חיסכון במים', ar: 'تقنية توفير المياه', ru: 'Технология экономии воды', fr: 'Technologie d\'économie d\'eau', es: 'Tecnología de ahorro de agua' },
   'features.fullBodyRinse': { en: 'Full Body Rinse', he: 'שטיפת גוף מלאה', ar: 'شطف كامل للجسم', ru: 'Полное ополаскивание', fr: 'Rinçage complet du corps', es: 'Enjuague completo del cuerpo' },
   'features.fullBodyRinseDesc': { en: 'Complete cleaning coverage', he: 'כיסוי ניקוי מלא', ar: 'تغطية تنظيف كاملة', ru: 'Полное покрытие очистки', fr: 'Couverture de nettoyage complète', es: 'Cobertura de limpieza completa' },
+  'features.premiumCare': { en: 'Premium Care', he: 'טיפול פרימיום', ar: 'رعاية فاخرة', ru: 'Премиум уход', fr: 'Soin premium', es: 'Cuidado premium' },
+  'features.premiumCareDesc': { en: 'Luxury grooming experience for your beloved pet', he: 'חוויית טיפוח יוקרתית לחיית המחמד האהובה שלך', ar: 'تجربة عناية فاخرة لحيوانك الأليف', ru: 'Роскошный груминг для вашего питомца', fr: 'Expérience de toilettage luxueuse pour votre animal', es: 'Experiencia de aseo lujosa para tu mascota' },
   // Organic section
   'organic.title': { en: '100% Organic Promise', he: 'הבטחה אורגנית 100%', ar: 'وعد عضوي 100٪', ru: '100% органическая гарантия', fr: 'Promesse 100% bio', es: 'Promesa 100% orgánica' },
   'organic.subtitle': { en: 'Pure, natural ingredients for your pet\'s health', he: 'מרכיבים טבעיים וטהורים לבריאות חיית המחמד שלך', ar: 'مكونات طبيعية نقية لصحة حيوانك الأليف', ru: 'Чистые натуральные ингредиенты для здоровья питомца', fr: 'Ingrédients purs et naturels pour la santé de votre animal', es: 'Ingredientes puros y naturales para la salud de tu mascota' },

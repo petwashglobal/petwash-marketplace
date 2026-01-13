@@ -59,8 +59,8 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
       icon: '🚿'
     },
     {
-      title: t('features.premiumCare', language) || 'Premium Care',
-      description: t('features.premiumCareDesc', language) || 'Luxury grooming experience for your beloved pet',
+      title: t('features.premiumCare', language),
+      description: t('features.premiumCareDesc', language),
       icon: '✨'
     }
   ];
