@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -24,20 +24,35 @@ import {
   DollarSign,
   Star,
   ArrowRight,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 
 export default function ProviderOnboarding() {
   const { user } = useFirebaseAuth();
   const { language } = useLanguage();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const isHebrew = language === 'he';
 
   // Form state
   const [step, setStep] = useState(1);
   const [inviteCode, setInviteCode] = useState('');
-  const [providerType, setProviderType] = useState<'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer'>('walker');
+  const [providerTypes, setProviderTypes] = useState<Array<'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer'>>([]);
+  
+  // Toggle a provider type in the multi-select list
+  const toggleProviderType = (type: 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer') => {
+    setProviderTypes(prev => 
+      prev.includes(type) 
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
+  };
+  
+  // Helper to check if a type is selected
+  const hasProviderType = (type: 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer') => 
+    providerTypes.includes(type);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -217,7 +232,7 @@ export default function ProviderOnboarding() {
 
       if (data.valid) {
         setCodeValid(true);
-        setProviderType(data.providerType);
+        setProviderTypes([data.providerType]);
         toast({
           title: isHebrew ? 'קוד תקף!' : 'Valid Code!',
           description: isHebrew 
@@ -274,7 +289,7 @@ export default function ProviderOnboarding() {
       formData.append('phoneNumber', phoneNumber);
       formData.append('city', city);
       formData.append('country', country);
-      formData.append('providerType', providerType);
+      formData.append('providerTypes', JSON.stringify(providerTypes));
       formData.append('selfiePhoto', selfiePhoto);
       formData.append('governmentId', governmentId);
       
@@ -408,6 +423,16 @@ export default function ProviderOnboarding() {
 
   return (
     <div className={`min-h-screen luxury-bg-mesh py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
+      {/* Close Button - Top Right */}
+      <button
+        onClick={() => navigate('/')}
+        className="fixed top-4 right-4 z-50 p-3 rounded-full bg-white/80 dark:bg-black/80 backdrop-blur-sm shadow-lg hover:bg-white dark:hover:bg-black transition-colors"
+        aria-label={isHebrew ? 'סגור' : 'Close'}
+        data-testid="button-close-onboarding"
+      >
+        <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+      </button>
+
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8 luxury-animate-fade-in">
           <h1 className="luxury-heading-xl mb-4">
@@ -594,47 +619,91 @@ export default function ProviderOnboarding() {
                 {!codeValid && (
                   <div className="mb-6">
                     <Label className="luxury-heading-sm mb-3 block">{t.providerTypeTitle}</Label>
-                    <RadioGroup
-                      value={providerType}
-                      onValueChange={(val) => setProviderType(val as typeof providerType)}
-                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
-                    >
-                      <div className={`luxury-glass-card p-4 cursor-pointer transition-all ${providerType === 'walker' ? 'ring-2 ring-black' : ''}`} onClick={() => setProviderType('walker')}>
-                        <RadioGroupItem value="walker" id="walker" className="sr-only" />
-                        <Label htmlFor="walker" className="cursor-pointer block text-center">
-                          <span className="text-2xl mb-2 block">🚶</span>
-                          <span className="font-semibold block">{t.walker}</span>
-                        </Label>
+                    <p className="text-sm text-gray-500 mb-3">
+                      {isHebrew ? 'ניתן לבחור יותר מפלטפורמה אחת' : 'You can select more than one platform'}
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div 
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('walker') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                        onClick={() => toggleProviderType('walker')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Checkbox 
+                            checked={hasProviderType('walker')} 
+                            onCheckedChange={() => toggleProviderType('walker')}
+                            id="walker"
+                          />
+                          <Label htmlFor="walker" className="cursor-pointer flex-1 text-center">
+                            <span className="text-2xl mb-2 block">🚶</span>
+                            <span className="font-semibold block">{t.walker}</span>
+                          </Label>
+                        </div>
                       </div>
-                      <div className={`luxury-glass-card p-4 cursor-pointer transition-all ${providerType === 'sitter' ? 'ring-2 ring-black' : ''}`} onClick={() => setProviderType('sitter')}>
-                        <RadioGroupItem value="sitter" id="sitter" className="sr-only" />
-                        <Label htmlFor="sitter" className="cursor-pointer block text-center">
-                          <span className="text-2xl mb-2 block">🏠</span>
-                          <span className="font-semibold block">{t.sitter}</span>
-                        </Label>
+                      <div 
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('sitter') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                        onClick={() => toggleProviderType('sitter')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Checkbox 
+                            checked={hasProviderType('sitter')} 
+                            onCheckedChange={() => toggleProviderType('sitter')}
+                            id="sitter"
+                          />
+                          <Label htmlFor="sitter" className="cursor-pointer flex-1 text-center">
+                            <span className="text-2xl mb-2 block">🏠</span>
+                            <span className="font-semibold block">{t.sitter}</span>
+                          </Label>
+                        </div>
                       </div>
-                      <div className={`luxury-glass-card p-4 cursor-pointer transition-all ${providerType === 'driver' ? 'ring-2 ring-black' : ''}`} onClick={() => setProviderType('driver')}>
-                        <RadioGroupItem value="driver" id="driver" className="sr-only" />
-                        <Label htmlFor="driver" className="cursor-pointer block text-center">
-                          <span className="text-2xl mb-2 block">🚗</span>
-                          <span className="font-semibold block">{isHebrew ? 'נהג PetTrek' : 'PetTrek Driver'}</span>
-                        </Label>
+                      <div 
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('driver') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                        onClick={() => toggleProviderType('driver')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Checkbox 
+                            checked={hasProviderType('driver')} 
+                            onCheckedChange={() => toggleProviderType('driver')}
+                            id="driver"
+                          />
+                          <Label htmlFor="driver" className="cursor-pointer flex-1 text-center">
+                            <span className="text-2xl mb-2 block">🚗</span>
+                            <span className="font-semibold block">{isHebrew ? 'נהג PetTrek' : 'PetTrek Driver'}</span>
+                          </Label>
+                        </div>
                       </div>
-                      <div className={`luxury-glass-card p-4 cursor-pointer transition-all ${providerType === 'trainer' ? 'ring-2 ring-black' : ''}`} onClick={() => setProviderType('trainer')}>
-                        <RadioGroupItem value="trainer" id="trainer" className="sr-only" />
-                        <Label htmlFor="trainer" className="cursor-pointer block text-center">
-                          <span className="text-2xl mb-2 block">🎓</span>
-                          <span className="font-semibold block">{isHebrew ? 'מאלף כלבים' : 'Dog Trainer'}</span>
-                        </Label>
+                      <div 
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('trainer') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                        onClick={() => toggleProviderType('trainer')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Checkbox 
+                            checked={hasProviderType('trainer')} 
+                            onCheckedChange={() => toggleProviderType('trainer')}
+                            id="trainer"
+                          />
+                          <Label htmlFor="trainer" className="cursor-pointer flex-1 text-center">
+                            <span className="text-2xl mb-2 block">🎓</span>
+                            <span className="font-semibold block">{isHebrew ? 'מאלף כלבים' : 'Dog Trainer'}</span>
+                          </Label>
+                        </div>
                       </div>
-                      <div className={`luxury-glass-card p-4 cursor-pointer transition-all ${providerType === 'station_operator' ? 'ring-2 ring-black' : ''}`} onClick={() => setProviderType('station_operator')}>
-                        <RadioGroupItem value="station_operator" id="station_operator" className="sr-only" />
-                        <Label htmlFor="station_operator" className="cursor-pointer block text-center">
-                          <span className="text-2xl mb-2 block">🚿</span>
-                          <span className="font-semibold block">{t.stationOperator}</span>
-                        </Label>
+                      <div 
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('station_operator') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                        onClick={() => toggleProviderType('station_operator')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Checkbox 
+                            checked={hasProviderType('station_operator')} 
+                            onCheckedChange={() => toggleProviderType('station_operator')}
+                            id="station_operator"
+                          />
+                          <Label htmlFor="station_operator" className="cursor-pointer flex-1 text-center">
+                            <span className="text-2xl mb-2 block">🚿</span>
+                            <span className="font-semibold block">{t.stationOperator}</span>
+                          </Label>
+                        </div>
                       </div>
-                    </RadioGroup>
+                    </div>
                   </div>
                 )}
 
@@ -802,7 +871,7 @@ export default function ProviderOnboarding() {
                   </div>
 
                   {/* Insurance Certificate + Policy Details (Walkers/Sitters) */}
-                  {(providerType === 'walker' || providerType === 'sitter') && (
+                  {(hasProviderType('walker') || hasProviderType('sitter')) && (
                     <>
                       <div className="luxury-glass-card luxury-shadow-md p-4 space-y-3 border-2 border-blue-400/20">
                         <Label htmlFor="insurance" className="text-lg font-semibold">
@@ -922,7 +991,7 @@ export default function ProviderOnboarding() {
                   )}
 
                   {/* Business License (Station Operators) */}
-                  {providerType === 'station_operator' && (
+                  {hasProviderType('station_operator') && (
                     <div>
                       <Label htmlFor="businessLicense" className="text-lg font-semibold">
                         {t.businessLicense}
@@ -988,7 +1057,7 @@ export default function ProviderOnboarding() {
                   </p>
 
                   {/* Driver Declarations (PetTrek) */}
-                  {providerType === 'driver' && (
+                  {hasProviderType('driver') && (
                     <div className="space-y-3 mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                       <h4 className="font-semibold text-blue-900 dark:text-blue-200">
                         🚗 {isHebrew ? 'הצהרות נהג (PetTrek)' : 'Driver Declarations (PetTrek)'}
@@ -1027,7 +1096,7 @@ export default function ProviderOnboarding() {
                   )}
 
                   {/* Trainer Declarations (Academy) */}
-                  {providerType === 'trainer' && (
+                  {hasProviderType('trainer') && (
                     <div className="space-y-3 mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                       <h4 className="font-semibold text-green-900 dark:text-green-200">
                         🎓 {isHebrew ? 'הצהרות מאמן (Academy)' : 'Trainer Declarations (Academy)'}
@@ -1051,7 +1120,7 @@ export default function ProviderOnboarding() {
                   )}
 
                   {/* Sitter/Walker Declarations */}
-                  {(providerType === 'walker' || providerType === 'sitter') && (
+                  {(hasProviderType('walker') || hasProviderType('sitter')) && (
                     <div className="space-y-3 mb-6 p-4 bg-pink-50 dark:bg-pink-900/20 rounded-lg border border-pink-200 dark:border-pink-800">
                       <h4 className="font-semibold text-pink-900 dark:text-pink-200">
                         🐕 {isHebrew ? 'הצהרות שמרטף/מטייל' : 'Sitter/Walker Declarations'}
@@ -1169,7 +1238,7 @@ export default function ProviderOnboarding() {
                       !declarationAcceptTerms ||
                       residentialHistory.filter(addr => addr.trim()).length === 0 ||
                       // Driver-specific declarations (PetTrek)
-                      (providerType === 'driver' && (
+                      (hasProviderType('driver') && (
                         !declarationValidLicense ||
                         !declarationNoSuspension ||
                         !declarationUnderPointsLimit ||
@@ -1178,13 +1247,13 @@ export default function ProviderOnboarding() {
                         !declarationVehicleInspection
                       )) ||
                       // Trainer-specific declarations (Academy)
-                      (providerType === 'trainer' && (
+                      (hasProviderType('trainer') && (
                         !declarationTrainingCertification ||
                         !declarationAccreditedCourses ||
                         !declarationLiabilityInsurance
                       )) ||
                       // Sitter/Walker-specific declarations
-                      ((providerType === 'walker' || providerType === 'sitter') && (
+                      ((hasProviderType('walker') || hasProviderType('sitter')) && (
                         !declarationPhysicallyFit ||
                         !declarationAnimalExperience
                       ))
