@@ -7,7 +7,7 @@ import {
 } from "firebase/auth";
 import { initializeFirestore, CACHE_SIZE_UNLIMITED } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { setLogLevel } from "firebase/app";
 import { logger } from './logger';
 import type { AppCheck } from 'firebase/app-check';
@@ -94,10 +94,10 @@ let appCheckInstance: AppCheck | null = null;
 if (APP_CHECK_SITE_KEY) {
   try {
     appCheckInstance = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
+      provider: new ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY),
       isTokenAutoRefreshEnabled: true
     });
-    logger.debug('✅ App Check initialized with reCAPTCHA v3');
+    logger.debug('✅ App Check initialized with reCAPTCHA Enterprise');
   } catch (error) {
     logger.warn('⚠️ App Check init failed (fail-open mode)', error);
   }

@@ -41,3 +41,8 @@ integrations = ["javascript_database:1.0.0", "javascript_auth_all_persistence:1.
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+VITE_FIREBASE_APPCHECK_SITE_KEY = "6LeIpvcrAAAAAJzFvAjQ-89-YK9XPJGjHw2pfRh0"
