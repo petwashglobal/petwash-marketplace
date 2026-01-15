@@ -25,7 +25,6 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
   const { ref: techRef, isRevealed: techRevealed } = useScrollReveal<HTMLElement>();
   const { ref: featuresRef, isRevealed: featuresRevealed } = useScrollReveal<HTMLElement>();
   const { ref: organicRef, isRevealed: organicRevealed } = useScrollReveal<HTMLElement>();
-  const { ref: paymentRef, isRevealed: paymentRevealed } = useScrollReveal<HTMLElement>();
 
   useEffect(() => {
     const timer = setTimeout(() => setHeroAnimated(true), 100);
@@ -318,74 +317,6 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Gift Cards Section */}
         <GiftCards language={language} />
 
-        {/* Payment Methods Accepted Section - Pure White with Gold and Animations */}
-        <section 
-          ref={paymentRef}
-          className="py-6 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white"
-        >
-          <div className="max-w-6xl mx-auto">
-            <div 
-              className={`text-center mb-6 sm:mb-10 transition-all duration-1000 ${
-                paymentRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-              }`}
-            >
-              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-3 block gold-shimmer-text">Secure Payments</span>
-              <h2 className="font-serif text-xl sm:text-3xl font-light text-[#111] mb-2 tracking-tight">
-                {t('payment.title', language)}
-              </h2>
-              <p className="text-sm sm:text-base text-[#555] font-light">
-                {t('payment.subtitle', language)}
-              </p>
-            </div>
-            
-            {/* Premium Payment Icons - Luxury Minimal Style */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 items-center justify-items-center max-w-4xl mx-auto">
-              {/* Visa */}
-              <div className="w-24 h-14 sm:w-28 sm:h-16 bg-white border border-[#e5e5e5] rounded-lg flex items-center justify-center p-3 hover:border-[#c6a664] hover:shadow-md transition-all duration-300">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-6 sm:h-8 w-auto object-contain" />
-              </div>
-
-              {/* Mastercard */}
-              <div className="w-24 h-14 sm:w-28 sm:h-16 bg-white border border-[#e5e5e5] rounded-lg flex items-center justify-center p-3 hover:border-[#c6a664] hover:shadow-md transition-all duration-300">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-8 sm:h-10 w-auto object-contain" />
-              </div>
-
-              {/* American Express */}
-              <div className="w-24 h-14 sm:w-28 sm:h-16 bg-white border border-[#e5e5e5] rounded-lg flex items-center justify-center p-3 hover:border-[#c6a664] hover:shadow-md transition-all duration-300">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" alt="American Express" className="h-6 sm:h-8 w-auto object-contain" />
-              </div>
-
-              {/* Apple Pay */}
-              <div className="w-24 h-14 sm:w-28 sm:h-16 bg-white border border-[#e5e5e5] rounded-lg flex items-center justify-center p-3 hover:border-[#c6a664] hover:shadow-md transition-all duration-300">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Apple_Pay_logo.svg" alt="Apple Pay" className="h-6 sm:h-8 w-auto object-contain" />
-              </div>
-
-              {/* Google Pay */}
-              <div className="w-24 h-14 sm:w-28 sm:h-16 bg-white border border-[#e5e5e5] rounded-lg flex items-center justify-center p-3 hover:border-[#c6a664] hover:shadow-md transition-all duration-300">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg" alt="Google Pay" className="h-6 sm:h-8 w-auto object-contain" />
-              </div>
-
-              {/* Diners Club */}
-              <div className="w-24 h-14 sm:w-28 sm:h-16 bg-white border border-[#e5e5e5] rounded-lg flex items-center justify-center p-3 hover:border-[#c6a664] hover:shadow-md transition-all duration-300">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a6/Diners_Club_Logo3.svg" alt="Diners Club" className="h-6 sm:h-8 w-auto object-contain" />
-              </div>
-            </div>
-            
-            {/* Trust Badge - Luxury Minimal */}
-            <div className="mt-12 text-center">
-              <div className="inline-flex items-center gap-3 px-8 py-4">
-                <div className="w-px h-4 bg-[#e6e6e6]" />
-                <svg className="w-4 h-4 text-[#888]" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span className="text-xs uppercase tracking-[0.15em] text-[#666] font-light">
-                  {t('payment.secureCheckout', language)}
-                </span>
-                <div className="w-px h-4 bg-[#e6e6e6]" />
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Digital Wallet Download Section */}
         <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-black keep-bg" data-keep-bg="true">
