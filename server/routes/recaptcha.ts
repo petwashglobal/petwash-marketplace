@@ -1,19 +1,21 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
+import { RecaptchaEnterpriseServiceClient } from '@google-cloud/recaptcha-enterprise';
 
 const router = Router();
 
-// reCAPTCHA verification schema
+const RECAPTCHA_SITE_KEY = process.env.VITE_FIREBASE_APPCHECK_SITE_KEY || process.env.RECAPTCHA_ENTERPRISE_SITE_KEY || '';
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'signinpetwash';
+
 const verifySchema = z.object({
   token: z.string().min(1, { message: 'reCAPTCHA token is required' }),
-  action: z.string().optional() // For reCAPTCHA v3
+  action: z.string().min(1, { message: 'Action is required' })
 });
 
 /**
  * POST /api/recaptcha/verify
- * Verify reCAPTCHA token on the server
- * This protects signin, payment, and other sensitive forms from bots
+ * Verify reCAPTCHA Enterprise token using Google Cloud Assessment API
  */
 router.post('/verify', async (req, res) => {
   try {
@@ -27,94 +29,83 @@ router.post('/verify', async (req, res) => {
     }
     
     const { token, action } = validation.data;
-    const secretKey = process.env.RECAPTCHA_SECRET_KEY;
 
-    if (!secretKey) {
-      logger.error('[ReCaptcha] RECAPTCHA_SECRET_KEY not configured');
-      return res.status(500).json({
-        success: false,
-        error: 'reCAPTCHA not configured on server'
-      });
-    }
+    logger.info('[ReCaptcha Enterprise] Verifying token for action:', action);
 
-    // Verify token with Google reCAPTCHA API
-    const verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-    const params = new URLSearchParams({
-      secret: secretKey,
-      response: token,
-      remoteip: req.ip || req.socket.remoteAddress || ''
-    });
+    const client = new RecaptchaEnterpriseServiceClient();
+    const projectPath = client.projectPath(PROJECT_ID);
 
-    logger.info('[ReCaptcha] Verifying token from IP:', req.ip);
-
-    const response = await fetch(verifyUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+    const request = {
+      assessment: {
+        event: {
+          token: token,
+          siteKey: RECAPTCHA_SITE_KEY,
+        },
       },
-      body: params.toString()
-    });
-
-    const data = await response.json() as {
-      success: boolean;
-      challenge_ts?: string;
-      hostname?: string;
-      score?: number;
-      action?: string;
-      'error-codes'?: string[];
+      parent: projectPath,
     };
 
-    if (!data.success) {
-      logger.warn('[ReCaptcha] Verification failed:', {
-        errors: data['error-codes'],
-        ip: req.ip
-      });
+    const [response] = await client.createAssessment(request);
 
+    if (!response.tokenProperties?.valid) {
+      const reason = response.tokenProperties?.invalidReason || 'UNKNOWN';
+      logger.warn('[ReCaptcha Enterprise] Invalid token:', { reason, ip: req.ip });
+      
+      await client.close();
       return res.status(400).json({
         success: false,
         error: 'reCAPTCHA verification failed',
-        errors: data['error-codes']
+        reason
       });
     }
 
-    // For reCAPTCHA v3, check the score (0.0 to 1.0, higher is more human-like)
-    if (data.score !== undefined) {
-      const minimumScore = 0.5; // Adjust based on your needs
-      if (data.score < minimumScore) {
-        logger.warn('[ReCaptcha] Low score detected:', {
-          score: data.score,
-          action: data.action,
-          ip: req.ip
-        });
-
-        return res.status(400).json({
-          success: false,
-          error: 'Suspicious activity detected',
-          score: data.score
-        });
-      }
-
-      logger.info('[ReCaptcha] Verification successful:', {
-        score: data.score,
-        action: data.action,
-        hostname: data.hostname
+    if (response.tokenProperties?.action !== action) {
+      logger.warn('[ReCaptcha Enterprise] Action mismatch:', {
+        expected: action,
+        received: response.tokenProperties?.action,
+        ip: req.ip
       });
-    } else {
-      logger.info('[ReCaptcha] Verification successful (v2):', {
-        hostname: data.hostname,
-        challenge_ts: data.challenge_ts
+      
+      await client.close();
+      return res.status(400).json({
+        success: false,
+        error: 'Action mismatch'
       });
     }
 
+    const score = response.riskAnalysis?.score ?? 0;
+    const reasons = response.riskAnalysis?.reasons || [];
+    
+    logger.info('[ReCaptcha Enterprise] Assessment result:', {
+      score,
+      reasons,
+      action: response.tokenProperties?.action,
+      ip: req.ip
+    });
+
+    const minimumScore = 0.5;
+    if (score < minimumScore) {
+      logger.warn('[ReCaptcha Enterprise] Low score:', { score, reasons, ip: req.ip });
+      
+      await client.close();
+      return res.status(400).json({
+        success: false,
+        error: 'Suspicious activity detected',
+        score
+      });
+    }
+
+    await client.close();
+    
     res.json({
       success: true,
-      score: data.score,
-      action: data.action,
-      hostname: data.hostname
+      score,
+      reasons,
+      action: response.tokenProperties?.action
     });
 
   } catch (error) {
-    logger.error('[ReCaptcha] Verification error:', error);
+    logger.error('[ReCaptcha Enterprise] Verification error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error during verification'
@@ -124,21 +115,13 @@ router.post('/verify', async (req, res) => {
 
 /**
  * GET /api/recaptcha/config
- * Get reCAPTCHA site key for frontend
+ * Get reCAPTCHA Enterprise site key for frontend
  */
 router.get('/config', (req, res) => {
-  const siteKey = process.env.VITE_RECAPTCHA_SITE_KEY;
-  
-  if (!siteKey) {
-    return res.status(500).json({
-      success: false,
-      error: 'reCAPTCHA not configured'
-    });
-  }
-
   res.json({
     success: true,
-    siteKey
+    siteKey: RECAPTCHA_SITE_KEY,
+    type: 'enterprise'
   });
 });
 
