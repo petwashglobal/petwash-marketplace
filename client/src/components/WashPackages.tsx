@@ -97,11 +97,11 @@ export function WashPackages({ language }: WashPackagesProps) {
 
   if (isLoading) {
     return (
-      <section className="py-16 sm:py-20 lg:py-24 bg-white">
+      <section className="py-8 sm:py-12 lg:py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <div className="animate-spin w-10 h-10 sm:w-12 sm:h-12 border-4 border-black border-t-transparent rounded-full mx-auto"></div>
-            <p className="mt-4 sm:mt-6 text-base sm:text-lg text-black">
+            <div className="animate-spin w-8 h-8 sm:w-10 sm:h-10 border-3 border-black border-t-transparent rounded-full mx-auto"></div>
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-black">
               {t('common.loading', language)}
             </p>
           </div>
@@ -168,11 +168,11 @@ export function WashPackages({ language }: WashPackagesProps) {
   return (
     <section 
       id="packages"
-      className="py-16 sm:py-20 lg:py-24 bg-white relative overflow-hidden"
+      className="py-8 sm:py-12 lg:py-16 bg-white relative overflow-hidden"
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Luxury Header Section */}
-        <div className="text-center mb-12 sm:mb-16 lg:mb-20">
+        <div className="text-center mb-6 sm:mb-10 lg:mb-14">
           {/* Premium Badge */}
           <div className="inline-flex items-center justify-center p-2 mb-4 sm:mb-6">
             <span className="px-4 py-2 bg-white rounded-full text-xs sm:text-sm font-semibold text-black shadow-sm border border-black">
@@ -199,19 +199,9 @@ export function WashPackages({ language }: WashPackagesProps) {
           </p>
         </div>
 
-        {/* Compact error notice if API fails */}
-        {showErrorNotice && (
-          <div className="mb-6 max-w-4xl mx-auto">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
-              <p className="text-sm text-amber-800">
-                {t('packages.errorLoading', language)} - {language === 'he' ? 'מציג מחירים בסיסיים' : 'Showing standard pricing'}
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* LUXURY CREDIT CARD STYLE PACKAGES */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-7xl mx-auto">
           {displayPackages.map((pkg, index) => {
             const discount = getDiscountPercentage(pkg.washCount);
             const pricePerWash = pkg.washCount > 1 

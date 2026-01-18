@@ -43,11 +43,11 @@ export function GiftCards({ language }: GiftCardsProps) {
   return (
     <section 
       id="gift-cards"
-      className="py-16 sm:py-20 lg:py-24 bg-white relative overflow-hidden"
+      className="py-8 sm:py-12 lg:py-16 bg-white relative overflow-hidden"
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-12 sm:mb-16">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-black mb-4 px-4">
+        <div className="text-center mb-6 sm:mb-10">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black mb-3 px-4">
             {t('giftCards.title', language)}
           </h2>
           <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto px-4">
@@ -57,7 +57,7 @@ export function GiftCards({ language }: GiftCardsProps) {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 max-w-6xl mx-auto">
           {vouchers.map((voucher) => {
             const style = cardStyles[voucher.color];
             return (
@@ -115,7 +115,7 @@ export function GiftCards({ language }: GiftCardsProps) {
           })}
         </div>
 
-        <div className="mt-10 text-center">
+        <div className="mt-6 sm:mt-8 text-center">
           <Link
             href="/egift"
             className="inline-flex items-center gap-2 px-8 py-4 bg-black text-white rounded-xl font-bold text-lg hover:bg-gray-800 transition-all duration-300 shadow-lg hover:shadow-xl"
