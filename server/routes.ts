@@ -5425,10 +5425,59 @@ self.addEventListener('notificationclick', (event) => {
   // Admin auth endpoint for useAdminAuth hook
   app.get('/api/admin/auth/me', requireAdmin, async (req: any, res) => {
     try {
-      res.json(req.adminUser);
+      // If adminUser exists in storage, return it with ok wrapper
+      if (req.adminUser) {
+        return res.json({ 
+          ok: true, 
+          user: {
+            id: req.adminUser.id,
+            email: req.adminUser.email,
+            firstName: req.adminUser.firstName || 'Admin',
+            lastName: req.adminUser.lastName || 'User',
+            role: req.adminUser.role || 'admin',
+            isActive: req.adminUser.isActive !== false,
+            status: 'active',
+            regions: req.adminUser.regions || ['IL'],
+            lastLogin: req.adminUser.lastLogin || new Date().toISOString(),
+            createdAt: req.adminUser.createdAt,
+            updatedAt: req.adminUser.updatedAt
+          }
+        });
+      }
+      
+      // If user passed requireAdmin but no adminUser (super admin via hardcoded list),
+      // create a virtual admin user from session claims
+      const { verifySessionCookie, SESSION_COOKIE_NAME } = await import('./lib/sessionCookies');
+      const sessionCookie = req.cookies?.[SESSION_COOKIE_NAME];
+      
+      if (sessionCookie) {
+        const claims = await verifySessionCookie(sessionCookie, false);
+        const { isSuperAdmin } = await import('./middleware/rbac');
+        
+        if (isSuperAdmin(claims.email || '')) {
+          return res.json({
+            ok: true,
+            user: {
+              id: claims.uid,
+              email: claims.email,
+              firstName: claims.name?.split(' ')[0] || 'Super',
+              lastName: claims.name?.split(' ').slice(1).join(' ') || 'Admin',
+              role: 'admin',
+              isActive: true,
+              status: 'active',
+              regions: ['IL', 'GLOBAL'],
+              lastLogin: new Date().toISOString(),
+              createdAt: null,
+              updatedAt: null
+            }
+          });
+        }
+      }
+      
+      res.status(403).json({ ok: false, error: 'Admin access required' });
     } catch (error) {
       logger.error('Admin auth check error:', error);
-      res.status(500).json({ message: "Authentication check failed" });
+      res.status(500).json({ ok: false, error: "Authentication check failed" });
     }
   });
 

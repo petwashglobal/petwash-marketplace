@@ -228,12 +228,22 @@ router.post("/login/standard", async (req, res) => {
 
       const authData = await response.json();
       const userId = authData.localId;
+      const firebaseIdToken = authData.idToken;
 
       // Get user details from Firebase Admin
       const userRecord = await admin.auth().getUser(userId);
 
       // Generate JWT tokens for session management
       const tokens = generateTokenPair(userId, email);
+
+      // Create Firebase session cookie for admin panel access
+      try {
+        const { createSessionCookie } = await import('../lib/sessionCookies');
+        await createSessionCookie(firebaseIdToken, res);
+        logger.info(`[Identity] Session cookie created for: ${email}`);
+      } catch (cookieError) {
+        logger.warn(`[Identity] Failed to create session cookie (non-fatal): ${cookieError}`);
+      }
 
       // Log successful login
       await db.collection("auth_events").add({

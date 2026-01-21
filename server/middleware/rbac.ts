@@ -14,7 +14,8 @@ const SUPER_ADMINS = [
   'nirhadad1@gmail.com',        // Nir Hadad - Founder & CEO (Gmail)
   'nir.h@petwash.co.il',        // Nir Hadad - Founder & CEO
   'ido.s@petwash.co.il',        // Ido Shakarzi - National Operations Director
-  'idoshaka@gmail.com'          // Ido Shakarzi - Director (Gmail)
+  'idoshaka@gmail.com',         // Ido Shakarzi - Director (Gmail)
+  'idoshakarzi110@gmail.com'    // Ido Shakarzi - Director (Gmail alt)
 ];
 
 // Extended Request with user role information
