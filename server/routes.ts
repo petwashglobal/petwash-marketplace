@@ -8440,31 +8440,40 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/vat', apiLimiter, vatRoutes);
   app.use('/api/fees', apiLimiter, feesRoutes);
   
-  // Google Dialogflow CX AI Chatbot (Gemini-powered)
+  // Kenzo AI Chatbot (Gemini 2.5 Flash powered with Hebrew/English/Arabic support)
   app.post('/api/v1/chat/message', apiLimiter, async (req, res) => {
     try {
-      const { aiChatService } = await import('./services/AiChatService');
+      const { enhancedChatWithLearning } = await import('./ai-enhanced-chat');
       const { text, sessionId, languageCode } = req.body;
 
       if (!text || !sessionId) {
         return res.status(400).json({ error: 'Missing text or sessionId' });
       }
 
-      if (!aiChatService.isConfigured()) {
-        return res.status(503).json({ 
-          error: 'AI Chat service is not configured. Missing Google Dialogflow credentials.',
-          reply: 'מצטערים, צ\'אט AI אינו זמין כרגע. אנא נסה שוב מאוחר יותר.'
-        });
-      }
+      // Map language code to supported languages
+      const langMap: Record<string, 'he' | 'en' | 'ar' | 'es' | 'fr' | 'ru'> = {
+        'he': 'he', 'he-IL': 'he',
+        'en': 'en', 'en-US': 'en', 'en-GB': 'en',
+        'ar': 'ar', 'ar-IL': 'ar',
+        'es': 'es', 'es-ES': 'es',
+        'fr': 'fr', 'fr-FR': 'fr',
+        'ru': 'ru', 'ru-RU': 'ru'
+      };
+      const language = langMap[languageCode] || 'he';
 
-      const aiResponse = await aiChatService.detectIntent(text, sessionId, languageCode);
-      res.json({ reply: aiResponse, success: true });
+      const result = await enhancedChatWithLearning({
+        message: text,
+        language,
+        sessionId
+      });
+
+      res.json({ reply: result.response, success: result.success });
       
     } catch (error: any) {
       console.error('[AI Chat] Endpoint error:', error);
       res.status(500).json({ 
         error: 'Failed to get AI response.',
-        reply: error.message || 'מצטערים, אנחנו חווים בעיה טכנית. נסה שוב בעוד רגע.'
+        reply: 'מצטערים, אנחנו חווים בעיה טכנית. נסה שוב בעוד רגע.'
       });
     }
   });
