@@ -46,9 +46,24 @@ export async function enhancedChatWithLearning(
   // Generate or use existing session ID
   const chatSessionId = sessionId || `chat_${nanoid(16)}`;
   
+  // DEBUG: Log incoming request details
+  logger.info('[AI Chat] Request received', {
+    message: message?.substring(0, 50),
+    language,
+    sessionId: chatSessionId?.substring(0, 8),
+    hasHistory: !!conversationHistory?.length
+  });
+  
   try {
     // Step 1: Check if we have a learned answer with high confidence
     const learnedAnswer = await getLearnedFAQAnswer(message, language);
+    
+    // DEBUG: Log learned answer result
+    logger.info('[AI Chat] Learned answer check', {
+      confidence: learnedAnswer.confidence,
+      source: learnedAnswer.source,
+      answerPreview: learnedAnswer.answer?.substring(0, 50)
+    });
     
     let finalAnswer: string;
     let source: 'learned' | 'gemini' | 'hybrid';
