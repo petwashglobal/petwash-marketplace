@@ -183,8 +183,8 @@ export default function ProviderApplicationForm() {
   const t = {
     title: isHebrew ? 'הפוך לספק שירות' : 'Become a Provider',
     subtitle: isHebrew 
-      ? 'הצטרף לפלטפורמה המובילה לשירותי חיות מחמד בישראל והרוויח בזמן שלך'
-      : 'Join the leading pet services platform in Israel and earn on your schedule',
+      ? 'הצטרף למשפחת Pet Wash™ והתחל להרוויח! הפלטפורמה המובילה לשירותי חיות מחמד בישראל'
+      : 'Join the Pet Wash™ family and start earning! The leading pet services platform in Israel',
     step1Title: isHebrew ? 'בחר את הפלטפורמות שלך' : 'Choose Your Platforms',
     step1Desc: isHebrew ? 'בחר אחד או יותר שירותים שתרצה להציע' : 'Select one or more services you\'d like to offer',
     step2Title: isHebrew ? 'קבע את המחירים שלך' : 'Set Your Prices',
@@ -203,9 +203,9 @@ export default function ProviderApplicationForm() {
     addressSection: isHebrew ? 'כתובת' : 'Address',
     addressHint: isHebrew ? 'הקלד כתובת והמערכת תמלא אוטומטית את כל השדות' : 'Start typing and the system will auto-fill all fields',
     experience: isHebrew ? 'שנות ניסיון' : 'Years of Experience',
-    hasTransport: isHebrew ? 'יש לי רכב' : 'I have my own vehicle',
-    hasFirstAid: isHebrew ? 'תעודת עזרה ראשונה לבעלי חיים' : 'Pet first aid certification',
-    hasInsurance: isHebrew ? 'ביטוח אחריות' : 'Liability insurance',
+    hasTransport: isHebrew ? 'יש לי רכב (אופציונלי)' : 'I have my own vehicle (Optional)',
+    hasFirstAid: isHebrew ? 'תעודת עזרה ראשונה לבעלי חיים (מומלץ - לא חובה)' : 'Pet first aid certification (Recommended - Not required)',
+    hasInsurance: isHebrew ? 'ביטוח אחריות (אופציונלי)' : 'Liability insurance (Optional)',
     availability: isHebrew ? 'זמינות ושעות העדפה' : 'Availability & Preferred Hours',
     aboutMe: isHebrew ? 'ספר/י על עצמך' : 'Tell us about yourself',
     aboutMeHint: isHebrew ? 'ספר על הניסיון שלך עם חיות מחמד ולמה אתה אוהב לעבוד איתן' : 'Share your experience with pets and why you love working with them',
@@ -885,10 +885,15 @@ export default function ProviderApplicationForm() {
 
                   {/* Qualifications - Luxury Glass Card */}
                   <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                    <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                    <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
                       <Crown className="h-5 w-5 text-amber-400" />
                       {isHebrew ? 'הכשרות והסמכות' : 'Qualifications & Certifications'}
                     </h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      {isHebrew 
+                        ? 'סמן את הפריטים שמתאימים לך. כל אלה הם אופציונליים אבל יגדילו את הנראות של הפרופיל שלך.'
+                        : 'Check any that apply to you. All are optional but will boost your profile visibility.'}
+                    </p>
                     <div className="space-y-4">
                       <FormField
                         control={form.control}
