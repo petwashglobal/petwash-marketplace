@@ -267,7 +267,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                     {/* TOP: Brand */}
                     <div className="flex items-start justify-between">
                       <p className="text-sm sm:text-base font-semibold" style={{ color: theme.textColor }}>
-                        PetWash™
+                        Pet Wash™
                       </p>
                       
                       {/* Badge */}

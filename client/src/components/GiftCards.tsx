@@ -90,7 +90,7 @@ export function GiftCards({ language }: GiftCardsProps) {
                       <Gift className="w-3 h-3 sm:w-4 sm:h-4" style={{ color: voucher.color === 'gold' ? '#8B6914' : '#333' }} />
                     </div>
                     <span className="text-xs sm:text-sm font-bold tracking-wider" style={{ color: style.textColor }}>
-                      PetWash™
+                      Pet Wash™
                     </span>
                   </div>
 

@@ -109,10 +109,10 @@ function LuxuryGiftCard({
           }} />
         </div>
         
-        {/* PetWash Logo Top */}
+        {/* Pet Wash™ Logo Top */}
         <div className="absolute top-4 sm:top-5 left-4 sm:left-5">
           <p className="text-base sm:text-lg font-semibold" style={{ color: style.textColor }}>
-            PetWash™
+            Pet Wash™
           </p>
         </div>
         

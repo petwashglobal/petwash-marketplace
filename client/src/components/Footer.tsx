@@ -19,7 +19,7 @@ export function Footer({ language }: FooterProps) {
             <Link href="/" aria-label={t('footer.backToHome', language)}>
               <img 
                 src="/brand/petwash-logo-official.png" 
-                alt="PetWash™ Official Logo"
+                alt="Pet Wash™ Official Logo"
                 className="h-10 w-auto object-contain mx-auto md:mx-0 mb-4 cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: 'transparent' }}
               />
@@ -28,7 +28,7 @@ export function Footer({ language }: FooterProps) {
               {t('hero.slogan', language)}
             </p>
             <div className="text-sm text-gray-600 space-y-1">
-              <p>PetWash™ Ltd</p>
+              <p>Pet Wash™ Ltd</p>
               <p>{t('footer.companyNumber', language)}: 517145033</p>
             </div>
           </div>
@@ -223,7 +223,7 @@ export function Footer({ language }: FooterProps) {
               <Link href="/" aria-label={t('footer.backToHome', language)}>
                 <img 
                   src="/brand/petwash-logo-official.png" 
-                  alt="PetWash™ Official Logo"
+                  alt="Pet Wash™ Official Logo"
                   width="160"
                   height="32"
                   className="h-8 md:h-10 w-auto object-contain mx-auto md:mx-0 mb-2 cursor-pointer hover:opacity-90 transition-opacity"
@@ -238,7 +238,7 @@ export function Footer({ language }: FooterProps) {
               </p>
             </div>
             <div className="text-center md:text-right text-sm text-gray-600">
-              <p className="font-semibold text-gray-900">&copy; 2025 PetWash™ Ltd</p>
+              <p className="font-semibold text-gray-900">&copy; 2025 Pet Wash™ Ltd</p>
               <p className="text-xs mt-1">{t('footer.allRightsReserved', language)}</p>
               <p className="flex items-center justify-center md:justify-end gap-1 mt-2">
                 <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>

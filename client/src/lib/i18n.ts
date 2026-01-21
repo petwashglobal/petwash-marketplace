@@ -216,7 +216,7 @@ export const translations: TranslationStrings = {
   'landing.accessibleLockScreen': { en: 'Accessible from lock screen', he: 'נגיש מנעילת המסך', ar: 'يمكن الوصول إليه من شاشة القفل', ru: 'Доступно с экрана блокировки', fr: 'Accessible depuis l\'écran de verrouillage', es: 'Accesible desde la pantalla de bloqueo' },
   'landing.learnMoreDigitalCards': { en: 'Learn more about our digital cards', he: 'למד עוד על הכרטיסים הדיגיטליים שלנו', ar: 'تعرف على المزيد حول بطاقاتنا الرقمية', ru: 'Узнайте больше о наших цифровых картах', fr: 'En savoir plus sur nos cartes numériques', es: 'Aprende más sobre nuestras tarjetas digitales' },
   // Loyalty Program Page
-  'loyalty.title': { en: 'PetWash VIP Club', he: 'מועדון VIP פטוואש', ar: 'نادي PetWash VIP', ru: 'PetWash VIP клуб', fr: 'Club VIP PetWash', es: 'Club VIP PetWash' },
+  'loyalty.title': { en: 'Pet Wash™ VIP Club', he: 'מועדון VIP של Pet Wash™', ar: 'نادي Pet Wash™ VIP', ru: 'Pet Wash™ VIP клуб', fr: 'Club VIP Pet Wash™', es: 'Club VIP Pet Wash™' },
   'loyalty.subtitle': { en: 'Exclusive Experience for Our Distinguished Members', he: 'חוויה בלעדית לחברי המועדון המובחרים', ar: 'تجربة حصرية لأعضائنا المتميزين', ru: 'Эксклюзивный опыт для наших избранных членов', fr: 'Expérience exclusive pour nos membres distingués', es: 'Experiencia exclusiva para nuestros miembros distinguidos' },
   'loyalty.description': { en: 'Join our exclusive VIP program and enjoy premium benefits with every wash', he: 'הצטרפו לתוכנית ה-VIP הבלעדית שלנו ותיהנו מהטבות מובילות עם כל רחיצה', ar: 'انضم إلى برنامج VIP الحصري واستمتع بالمزايا المميزة مع كل غسلة', ru: 'Присоединяйтесь к нашей эксклюзивной VIP-программе и наслаждайтесь премиум-преимуществами с каждой мойкой', fr: 'Rejoignez notre programme VIP exclusif et profitez d\'avantages premium à chaque lavage', es: 'Únete a nuestro programa VIP exclusivo y disfruta de beneficios premium con cada lavado' },
   'loyalty.newMember': { en: 'New Member', he: 'חבר חדש', ar: 'عضو جديد', ru: 'Новый член', fr: 'Nouveau membre', es: 'Nuevo miembro' },
@@ -1286,12 +1286,12 @@ export const translations: TranslationStrings = {
     es: '🐾 Kenzo' 
   },
   'chat.kenzoSubtitle': { 
-    en: 'Official PetWash™️ Ambassador', 
-    he: 'השגריר הרשמי של PetWash™️', 
-    ar: 'السفير الرسمي لـ PetWash™️', 
-    ru: 'Официальный посол PetWash™️', 
-    fr: 'Ambassadeur officiel de PetWash™️', 
-    es: 'Embajador oficial de PetWash™️' 
+    en: 'Official Pet Wash™ Ambassador', 
+    he: 'השגריר הרשמי של Pet Wash™', 
+    ar: 'السفير الرسمي لـ Pet Wash™', 
+    ru: 'Официальный посол Pet Wash™', 
+    fr: 'Ambassadeur officiel de Pet Wash™', 
+    es: 'Embajador oficial de Pet Wash™' 
   },
   'chat.connectionError': { 
     en: "Sorry, something went wrong. Please try again.", 
@@ -1440,7 +1440,7 @@ export const translations: TranslationStrings = {
   'registration.seniorDiscountInfo': { en: 'Seniors (60+) & people with disabilities qualify for 50% discount on all services. Upload a valid ID to apply.', he: 'אזרחים ותיקים (60+) ואנשים עם מוגבלות זכאים ל-50% הנחה על כל השירותים. העלו תעודה תקפה כדי להגיש בקשה.', ar: 'كبار السن (60+) والأشخاص ذوو الإعاقة مؤهلون للحصول على خصم 50٪ على جميع الخدمات. قم بتحميل هوية صالحة للتقديم.', ru: 'Пенсионеры (60+) и люди с ограниченными возможностями имеют право на скидку 50% на все услуги. Загрузите действительное удостоверение личности для подачи заявки.', fr: 'Les personnes âgées (60+) et les personnes handicapées bénéficient d\'une réduction de 50% sur tous les services. Téléchargez une pièce d\'identité valide pour postuler.', es: 'Los mayores (60+) y las personas con discapacidades califican para un 50% de descuento en todos los servicios. Sube una ID válida para aplicar.' },
   'registration.uploadID': { en: 'Upload ID Document', he: 'העלאת מסמך זהות', ar: 'تحميل وثيقة الهوية', ru: 'Загрузить удостоверение личности', fr: 'Télécharger le document d\'identité', es: 'Subir documento de identidad' },
   'registration.fileTypes': { en: 'JPG, PNG, or PDF', he: 'JPG, PNG, או PDF', ar: 'JPG, PNG, أو PDF', ru: 'JPG, PNG или PDF', fr: 'JPG, PNG ou PDF', es: 'JPG, PNG o PDF' },
-  'registration.loyaltyBenefits': { en: 'I want to join the PetWash™ Loyalty Club and receive exclusive discounts, birthday rewards, and priority booking.', he: 'אני רוצה להצטרף למועדון הנאמנות של PetWash™ ולקבל הנחות בלעדיות, מתנות יום הולדת, והזמנות עדיפות.', ar: 'أريد الانضمام إلى نادي الولاء PetWash™ والحصول على خصومات حصرية ومكافآت أعياد الميلاد وحجز ذو أولوية.', ru: 'Я хочу присоединиться к программе лояльности PetWash™ и получать эксклюзивные скидки, подарки на день рождения и приоритетное бронирование.', fr: 'Je souhaite rejoindre le Club de fidélité PetWash™ et recevoir des réductions exclusives, des récompenses d\'anniversaire et des réservations prioritaires.', es: 'Quiero unirme al Club de Fidelidad PetWash™ y recibir descuentos exclusivos, recompensas de cumpleaños y reservas prioritarias.' },
+  'registration.loyaltyBenefits': { en: 'I want to join the Pet Wash™ Loyalty Club and receive exclusive discounts, birthday rewards, and priority booking.', he: 'אני רוצה להצטרף למועדון הנאמנות של Pet Wash™ ולקבל הנחות בלעדיות, מתנות יום הולדת, והזמנות עדיפות.', ar: 'أريد الانضمام إلى نادي الولاء Pet Wash™ والحصول على خصومات حصرية ومكافآت أعياد الميلاد وحجز ذو أولوية.', ru: 'Я хочу присоединиться к программе лояльности Pet Wash™ и получать эксклюзивные скидки, подарки на день рождения и приоритетное бронирование.', fr: 'Je souhaite rejoindre le Club de fidélité Pet Wash™ et recevoir des réductions exclusives, des récompenses d\'anniversaire et des réservations prioritaires.', es: 'Quiero unirme al Club de Fidelidad Pet Wash™ y recibir descuentos exclusivos, recompensas de cumpleaños y reservas prioritarias.' },
   'registration.serviceReminders': { en: 'Send me appointment reminders and pet care tips via WhatsApp/Email', he: 'שלחו לי תזכורות לפגישות וטיפים לטיפול בחיות מחמד דרך WhatsApp/אימייל', ar: 'أرسل لي تذكيرات المواعيد ونصائح رعاية الحيوانات الأليفة عبر WhatsApp/البريد الإلكتروني', ru: 'Отправляйте мне напоминания о встречах и советы по уходу за питомцами через WhatsApp/Email', fr: 'Envoyez-moi des rappels de rendez-vous et des conseils de soins pour animaux via WhatsApp/Email', es: 'Envíame recordatorios de citas y consejos de cuidado de mascotas por WhatsApp/Email' },
   'registration.marketingConsent': { en: 'I agree to receive marketing communications and promotional offers (you can unsubscribe anytime)', he: 'אני מסכים לקבל תקשורת שיווקית והצעות מבצעים (תוכלו לבטל את המנוי בכל עת)', ar: 'أوافق على تلقي الاتصالات التسويقية والعروض الترويجية (يمكنك إلغاء الاشتراك في أي وقت)', ru: 'Я согласен получать маркетинговые сообщения и рекламные предложения (вы можете отписаться в любое время)', fr: 'J\'accepte de recevoir des communications marketing et des offres promotionnelles (vous pouvez vous désabonner à tout moment)', es: 'Acepto recibir comunicaciones de marketing y ofertas promocionales (puedes darte de baja en cualquier momento)' },
   'registration.termsConsent': { en: 'I have read and agree to the', he: 'קראתי ואני מסכים ל', ar: 'لقد قرأت وأوافق على', ru: 'Я прочитал и согласен с', fr: 'J\'ai lu et j\'accepte les', es: 'He leído y acepto los' },
