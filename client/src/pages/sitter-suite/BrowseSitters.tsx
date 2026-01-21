@@ -50,7 +50,46 @@ export default function BrowseSitters() {
   const [, setLocation] = useLocation();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
-  const [searchParams, setSearchParams] = useState<SearchParams | null>(null);
+  
+  // Parse URL parameters on initial load
+  const getInitialSearchParams = (): SearchParams | null => {
+    if (typeof window === 'undefined') return null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const location = urlParams.get('location');
+    const pet = urlParams.get('pet');
+    const start = urlParams.get('start');
+    const end = urlParams.get('end');
+    
+    if (!location && !pet && !start && !end) return null;
+    
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+    
+    if (start) {
+      const parsedStart = new Date(start);
+      if (!isNaN(parsedStart.getTime())) startDate = parsedStart;
+    }
+    if (end) {
+      const parsedEnd = new Date(end);
+      if (!isNaN(parsedEnd.getTime())) endDate = parsedEnd;
+    }
+    
+    // Validate dates - end must be after start
+    if (startDate && endDate && endDate < startDate) {
+      // Swap dates if end is before start
+      [startDate, endDate] = [endDate, startDate];
+    }
+    
+    return {
+      location: location || '',
+      petType: pet || undefined,
+      startDate,
+      endDate,
+      service: undefined
+    };
+  };
+  
+  const [searchParams, setSearchParams] = useState<SearchParams | null>(getInitialSearchParams);
 
   // Build query string for API
   const buildQueryString = () => {
