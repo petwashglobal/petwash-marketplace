@@ -55,6 +55,13 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - Navigation structure must provide unified, predictable experience for all users
 - NO future updates should change or interfere with this layout consistency rule
 
+**GOOGLE PLACES AUTOCOMPLETE RULE:**
+- **ALWAYS** use `GooglePlacesAutocomplete` component (`client/src/components/ui/google-places-autocomplete.tsx`) for ALL address input fields
+- **NEVER** use regular Input for address fields - users expect instant autocomplete with auto-fill
+- Component auto-fills: street, city, postal code, country from Google Places API
+- Default restriction: Israel (`country={['il']}`) - expand as needed for international forms
+- Import: `import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";`
+
 ## System Architecture
 
 ### Production Deployment
