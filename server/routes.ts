@@ -406,6 +406,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // PUBLIC HEALTH CHECK - No auth required
+  app.get('/api/health', (req, res) => {
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      version: '2.0.0',
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
+  // PUBLIC WASH PACKAGES - No auth required (for marketing display)
+  app.get('/api/credit-wallet/packages', (req, res) => {
+    const WASH_PACKAGES = [
+      {
+        id: 'starter',
+        name: 'Starter Pack',
+        nameHe: 'חבילת התחלה',
+        washes: 3,
+        priceILS: 99,
+        bonusCredits: 10,
+        discountPercent: 10,
+        description: 'Perfect for trying our service',
+        descriptionHe: 'מושלם להתנסות בשירות שלנו'
+      },
+      {
+        id: 'regular',
+        name: 'Regular Pack',
+        nameHe: 'חבילה רגילה',
+        washes: 5,
+        priceILS: 149,
+        bonusCredits: 25,
+        discountPercent: 15,
+        description: 'Great value for regular customers',
+        descriptionHe: 'ערך מעולה ללקוחות קבועים'
+      },
+      {
+        id: 'premium',
+        name: 'Premium Pack',
+        nameHe: 'חבילת פרימיום',
+        washes: 10,
+        priceILS: 269,
+        bonusCredits: 75,
+        discountPercent: 20,
+        description: 'Best value - save more!',
+        descriptionHe: 'הערך הטוב ביותר - חסכו יותר!'
+      },
+      {
+        id: 'unlimited',
+        name: 'Monthly Unlimited',
+        nameHe: 'ללא הגבלה חודשי',
+        washes: -1,
+        priceILS: 399,
+        bonusCredits: 200,
+        discountPercent: 0,
+        description: 'Unlimited washes for 30 days',
+        descriptionHe: 'שטיפות ללא הגבלה ל-30 יום'
+      }
+    ];
+    
+    res.json({
+      success: true,
+      packages: WASH_PACKAGES
+    });
+  });
+
+  // PUBLIC LOYALTY TIERS - No auth required (for marketing display)
+  app.get('/api/loyalty/tiers', (req, res) => {
+    const LOYALTY_TIERS = [
+      {
+        id: 'bronze',
+        name: 'Bronze',
+        nameHe: 'ארד',
+        icon: '🥉',
+        color: '#CD7F32',
+        minBookings: 0,
+        discountPercent: 0,
+        benefits: ['Welcome bonus points', 'Access to basic rewards'],
+        benefitsHe: ['נקודות בונוס ברוכים הבאים', 'גישה לפרסים בסיסיים']
+      },
+      {
+        id: 'silver',
+        name: 'Silver',
+        nameHe: 'כסף',
+        icon: '🥈',
+        color: '#C0C0C0',
+        minBookings: 10,
+        discountPercent: 5,
+        benefits: ['5% discount on bookings', 'Priority customer support', 'Birthday bonus'],
+        benefitsHe: ['הנחה של 5% על הזמנות', 'תמיכת לקוחות בעדיפות', 'בונוס יום הולדת']
+      },
+      {
+        id: 'gold',
+        name: 'Gold',
+        nameHe: 'זהב',
+        icon: '🥇',
+        color: '#FFD700',
+        minBookings: 25,
+        discountPercent: 8,
+        benefits: ['8% discount on bookings', 'Exclusive member events', 'Free add-ons'],
+        benefitsHe: ['הנחה של 8% על הזמנות', 'אירועים בלעדיים לחברים', 'תוספות חינם']
+      },
+      {
+        id: 'platinum',
+        name: 'Platinum',
+        nameHe: 'פלטינום',
+        icon: '💎',
+        color: '#E5E4E2',
+        minBookings: 50,
+        discountPercent: 10,
+        benefits: ['10% discount on bookings', 'VIP concierge service', 'Priority booking'],
+        benefitsHe: ['הנחה של 10% על הזמנות', 'שירות קונסיירז׳ VIP', 'הזמנה בעדיפות']
+      },
+      {
+        id: 'diamond',
+        name: 'Diamond',
+        nameHe: 'יהלום',
+        icon: '💠',
+        color: '#B9F2FF',
+        minBookings: 100,
+        discountPercent: 15,
+        benefits: ['15% discount on all services', 'Personal account manager', 'Exclusive rewards', 'Free upgrades'],
+        benefitsHe: ['הנחה של 15% על כל השירותים', 'מנהל חשבון אישי', 'פרסים בלעדיים', 'שדרוגים חינם']
+      }
+    ];
+    
+    res.json({
+      success: true,
+      tiers: LOYALTY_TIERS
+    });
+  });
+
   // SECURITY FIX: Dynamic Firebase Service Worker with environment variables
   // Serves the service worker with Firebase config injected from environment variables
   // This prevents hardcoded credentials in static files
