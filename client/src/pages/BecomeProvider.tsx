@@ -189,9 +189,9 @@ export default function BecomeProvider() {
       <Layout>
         <div className="min-h-screen relative overflow-hidden">
           {/* Luxury Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900" />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
           <div className="absolute inset-0 opacity-30" style={{
-            backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(168, 85, 247, 0.2) 0%, transparent 50%)'
+            backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(198, 166, 100, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(245, 158, 11, 0.15) 0%, transparent 50%)'
           }} />
           
           <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12">

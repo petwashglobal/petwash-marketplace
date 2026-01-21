@@ -349,7 +349,7 @@ export default function SitterSuite() {
         <div className="luxury-divider"></div>
 
         {/* VALUE PROPOSITION SECTION */}
-        <div className="luxury-section bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900">
+        <div className="luxury-section bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
           <div className="luxury-container">
             <div className="text-center mb-12 luxury-animate-fade-in">
               <span className="luxury-badge luxury-badge-gold mb-4 inline-flex items-center gap-2">
@@ -432,7 +432,7 @@ export default function SitterSuite() {
             </div>
 
             {/* Vacation CTA */}
-            <div className="mt-12 luxury-glass-card luxury-shadow-xl p-8 bg-gradient-to-r from-pink-600/30 via-purple-600/30 to-pink-600/30 border-2 border-pink-400/30 luxury-animate-fade-in">
+            <div className="mt-12 luxury-glass-card luxury-shadow-xl p-8 bg-gradient-to-r from-amber-600/30 via-orange-500/30 to-amber-600/30 border-2 border-amber-400/30 luxury-animate-fade-in">
               <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
                 <div className="text-center lg:text-right">
                   <h3 className="text-2xl font-black text-white mb-2">
