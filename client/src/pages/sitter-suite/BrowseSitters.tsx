@@ -156,6 +156,10 @@ export default function BrowseSitters() {
                 onSearch={handleSearch} 
                 platform="sitter-suite"
                 theme="pink"
+                initialLocation={searchParams?.location}
+                initialPetType={searchParams?.petType}
+                initialStartDate={searchParams?.startDate}
+                initialEndDate={searchParams?.endDate}
               />
             </div>
           </div>

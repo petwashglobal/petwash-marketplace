@@ -394,6 +394,10 @@ interface MadPawsSearchProps {
   showResults?: boolean;
   platform?: 'sitter-suite' | 'walk-my-pet' | 'pettrek' | 'academy' | 'all';
   theme?: 'pink' | 'emerald' | 'blue' | 'purple' | 'amber';
+  initialLocation?: string;
+  initialPetType?: PetType | string;
+  initialStartDate?: Date;
+  initialEndDate?: Date;
 }
 
 export interface SearchParams {
@@ -427,22 +431,37 @@ export interface SearchParams {
   emergencyContactPhone: string;
 }
 
-export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', theme = 'pink' }: MadPawsSearchProps) {
+export function MadPawsSearch({ 
+  onSearch, 
+  showResults = true, 
+  platform = 'all', 
+  theme = 'pink',
+  initialLocation = '',
+  initialPetType,
+  initialStartDate,
+  initialEndDate
+}: MadPawsSearchProps) {
   const [, navigate] = useLocation();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
   const t = THEMES[theme] || THEMES.pink;
 
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState(initialLocation);
   const [selectedService, setSelectedService] = useState<ServiceType>(
     platform === 'walk-my-pet' ? 'dog-walking' : 
     platform === 'pettrek' ? 'pet-taxi' : 
     platform === 'academy' ? 'training' : 'boarding'
   );
-  const [petType, setPetType] = useState<PetType>('dog');
+  const [petType, setPetType] = useState<PetType>(
+    (initialPetType as PetType) || 'dog'
+  );
   const [petCount, setPetCount] = useState(1);
-  const [startDate, setStartDate] = useState<Date | undefined>(addDays(new Date(), 1));
-  const [endDate, setEndDate] = useState<Date | undefined>(addDays(new Date(), 3));
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    initialStartDate || addDays(new Date(), 1)
+  );
+  const [endDate, setEndDate] = useState<Date | undefined>(
+    initialEndDate || addDays(new Date(), 3)
+  );
   const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
   const [petTypeDropdownOpen, setPetTypeDropdownOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -771,23 +790,29 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
                   </span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0 max-h-[80vh] overflow-y-auto" align="start">
                 <div className="flex flex-col sm:flex-row">
                   <div className="p-3 border-b sm:border-b-0 sm:border-r border-gray-100">
-                    <p className="text-xs font-medium text-gray-500 mb-2 px-1">
-                      {isHebrew ? 'תאריך התחלה' : 'Start Date'}
+                    <p className="text-xs font-medium text-white bg-rose-500 rounded-full px-3 py-1 mb-2 text-center">
+                      {isHebrew ? '① תאריך התחלה' : '① Start Date'}
                     </p>
                     <Calendar
                       mode="single"
                       selected={startDate}
-                      onSelect={setStartDate}
+                      onSelect={(date) => {
+                        setStartDate(date);
+                        // If end date is before new start date, reset end date
+                        if (date && endDate && endDate < date) {
+                          setEndDate(undefined);
+                        }
+                      }}
                       disabled={(date) => date < new Date()}
                       initialFocus
                     />
                   </div>
-                  <div className="p-3">
-                    <p className="text-xs font-medium text-gray-500 mb-2 px-1">
-                      {isHebrew ? 'תאריך סיום' : 'End Date'}
+                  <div className="p-3 bg-gray-50 sm:bg-white">
+                    <p className="text-xs font-medium text-white bg-purple-500 rounded-full px-3 py-1 mb-2 text-center">
+                      {isHebrew ? '② תאריך סיום' : '② End Date'}
                     </p>
                     <Calendar
                       mode="single"
@@ -796,6 +821,9 @@ export function MadPawsSearch({ onSearch, showResults = true, platform = 'all', 
                       disabled={(date) => date < (startDate || new Date())}
                     />
                   </div>
+                </div>
+                <div className="p-2 bg-gray-100 text-center text-xs text-gray-600 sm:hidden">
+                  {isHebrew ? '↓ גלול למטה לתאריך סיום ↓' : '↓ Scroll down for End Date ↓'}
                 </div>
               </PopoverContent>
             </Popover>
