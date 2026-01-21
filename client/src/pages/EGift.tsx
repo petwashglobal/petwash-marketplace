@@ -10,28 +10,36 @@ import PaymentMethods from '@/components/PaymentMethods';
 
 const cardStyles = {
   rose: {
-    gradient: 'linear-gradient(135deg, #E8A0B5 0%, #D77A9E 20%, #C45D8A 40%, #B24578 60%, #A03366 80%, #8E2255 100%)',
-    textColor: '#FFFFFF',
-    chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
-    shadowColor: 'rgba(180,69,120,0.4)',
+    gradient: 'linear-gradient(145deg, #F8E8EC 0%, #E8D0D8 15%, #D4B8C4 35%, #C8A8B8 55%, #BC98AC 75%, #B088A0 100%)',
+    textColor: '#1A1A1A',
+    chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
+    shadowColor: 'rgba(180,120,140,0.35)',
+    accentColor: '#C6A664',
+    holographicGlow: 'rgba(255, 200, 220, 0.4)',
   },
   emerald: {
-    gradient: 'linear-gradient(135deg, #7CB342 0%, #689F38 20%, #558B2F 40%, #4A7A28 60%, #3D6B22 80%, #33691E 100%)',
-    textColor: '#FFFFFF',
-    chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
-    shadowColor: 'rgba(85,139,47,0.4)',
+    gradient: 'linear-gradient(145deg, #E8F0E8 0%, #D0E0D0 15%, #B8D0BC 35%, #A0C0A8 55%, #88B094 75%, #70A080 100%)',
+    textColor: '#1A1A1A',
+    chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
+    shadowColor: 'rgba(100,140,100,0.35)',
+    accentColor: '#C6A664',
+    holographicGlow: 'rgba(180, 255, 200, 0.4)',
   },
   platinum: {
-    gradient: 'linear-gradient(135deg, #3A3A3A 0%, #2D2D2D 20%, #1F1F1F 40%, #171717 60%, #0F0F0F 80%, #0A0A0A 100%)',
-    textColor: '#FFFFFF',
-    chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
-    shadowColor: 'rgba(0,0,0,0.5)',
+    gradient: 'linear-gradient(145deg, #F0F0F2 0%, #E4E4E8 15%, #D8D8DC 35%, #CCCCCC 55%, #C0C0C0 75%, #B4B4B8 100%)',
+    textColor: '#1A1A1A',
+    chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
+    shadowColor: 'rgba(100,100,110,0.4)',
+    accentColor: '#C6A664',
+    holographicGlow: 'rgba(200, 200, 255, 0.4)',
   },
   gold: {
-    gradient: 'linear-gradient(135deg, #D4B96A 0%, #C9A83A 20%, #BFA02E 40%, #B59628 60%, #A88B22 80%, #9A7F1C 100%)',
-    textColor: '#FFFFFF',
-    chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
-    shadowColor: 'rgba(201,168,58,0.4)',
+    gradient: 'linear-gradient(145deg, #FAF6F0 0%, #F0E8DC 15%, #E8DCC8 35%, #DED0B4 55%, #D4C4A0 75%, #C6A664 100%)',
+    textColor: '#1A1A1A',
+    chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
+    shadowColor: 'rgba(180,150,80,0.4)',
+    accentColor: '#8B7355',
+    holographicGlow: 'rgba(255, 230, 180, 0.5)',
   }
 };
 
@@ -60,7 +68,7 @@ function LuxuryGiftCard({
   onClick: () => void;
   selected?: boolean;
 }) {
-  const style = cardStyles[option.color];
+  const style = cardStyles[option.color] as typeof cardStyles.rose;
   const formattedValue = option.value >= 1000 
     ? `₪${(option.value / 1000).toFixed(0)},000` 
     : `₪${option.value}`;
@@ -68,121 +76,157 @@ function LuxuryGiftCard({
   return (
     <button 
       type="button"
-      className={`relative w-full text-left transition-all duration-300 group ${
+      className={`relative w-full text-left transition-all duration-500 group perspective-1000 ${
         selected 
-          ? 'scale-[1.02]' 
-          : 'hover:scale-[1.01] hover:-translate-y-0.5'
+          ? 'scale-[1.03]' 
+          : 'hover:scale-[1.02] hover:-translate-y-1'
       }`}
       onClick={onClick}
       data-testid={`egift-card-${option.value}`}
+      style={{ perspective: '1000px' }}
     >
       {option.value === 1000 && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
-          <span className="px-3 py-1 bg-amber-400 text-black text-[10px] sm:text-xs font-bold rounded-full shadow-md whitespace-nowrap">
+          <span className="px-4 py-1.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black text-[10px] sm:text-xs font-bold rounded-full shadow-lg whitespace-nowrap tracking-wide">
             BEST VALUE
           </span>
         </div>
       )}
       
       <div 
-        className="relative w-full aspect-[1.586/1] overflow-hidden"
+        className="relative w-full aspect-[1.586/1] overflow-hidden transition-transform duration-500 group-hover:rotate-y-[2deg] group-hover:rotate-x-[-2deg]"
         style={{ 
           background: style.gradient,
-          borderRadius: '12px',
+          borderRadius: '16px',
           boxShadow: selected 
-            ? `0 20px 40px -10px ${style.shadowColor}, 0 8px 16px -4px rgba(0,0,0,0.15)`
-            : `0 10px 25px -8px ${style.shadowColor}, 0 4px 10px -3px rgba(0,0,0,0.1)`,
+            ? `0 25px 50px -12px ${style.shadowColor}, 0 12px 24px -8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4)`
+            : `0 15px 35px -10px ${style.shadowColor}, 0 8px 16px -6px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)`,
+          transformStyle: 'preserve-3d',
         }}
       >
-        {/* Brushed Metal Texture */}
+        {/* Apple Card Style Brushed Titanium Texture */}
         <div 
-          className="absolute inset-0 opacity-20"
+          className="absolute inset-0 opacity-30"
           style={{
-            background: 'repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(255,255,255,0.03) 1px, rgba(255,255,255,0.03) 2px)',
+            background: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 4px)',
           }}
         />
         
-        {/* Subtle Light Reflection */}
-        <div className="absolute inset-0 opacity-25">
-          <div className="absolute top-0 left-0 w-full h-1/2" style={{
-            background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%)'
+        {/* Holographic Shimmer Effect */}
+        <div 
+          className="absolute inset-0 opacity-0 group-hover:opacity-60 transition-opacity duration-700 pointer-events-none"
+          style={{
+            background: `linear-gradient(125deg, transparent 0%, ${style.holographicGlow} 25%, transparent 50%, ${style.holographicGlow} 75%, transparent 100%)`,
+            backgroundSize: '200% 200%',
+            animation: 'shimmer 3s ease-in-out infinite',
+          }}
+        />
+        
+        {/* Premium Light Reflection Arc */}
+        <div className="absolute inset-0 overflow-hidden rounded-[16px]">
+          <div className="absolute -top-1/2 -left-1/4 w-[150%] h-full opacity-20" style={{
+            background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%, transparent 60%)',
+            transform: 'rotate(-15deg)',
           }} />
         </div>
         
-        {/* Pet Wash™ Logo Top */}
-        <div className="absolute top-4 sm:top-5 left-4 sm:left-5">
-          <p className="text-base sm:text-lg font-semibold" style={{ color: style.textColor }}>
-            Pet Wash™
+        {/* Pet Wash™ Logo - Apple Card Style */}
+        <div className="absolute top-5 sm:top-6 left-5 sm:left-6">
+          <p className="text-lg sm:text-xl font-light tracking-tight" style={{ color: style.textColor, fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
+            Pet Wash<span className="text-xs align-super">™</span>
           </p>
         </div>
         
-        {/* EMV Chip */}
-        <div className="absolute top-12 sm:top-14 left-4 sm:left-5">
+        {/* Mastercard 2025 Style EMV Chip */}
+        <div className="absolute top-[42%] sm:top-[40%] left-5 sm:left-6 transform -translate-y-1/2">
           <div 
-            className="w-10 h-7 sm:w-11 sm:h-8 rounded-sm overflow-hidden"
+            className="w-12 h-9 sm:w-14 sm:h-10 rounded-md overflow-hidden"
             style={{
               background: style.chipColor,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+              boxShadow: 'inset 0 -1px 2px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.15)',
             }}
           >
-            <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-[1px] p-1">
-              <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
-              <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
-              <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
-              <div className="rounded-[1px]" style={{ background: 'rgba(0,0,0,0.12)' }} />
+            {/* Modern Chip Contact Pattern */}
+            <div className="w-full h-full p-1 flex flex-col justify-center">
+              <div className="flex gap-0.5">
+                <div className="flex-1 h-1.5 rounded-sm" style={{ background: 'linear-gradient(90deg, rgba(180,160,120,0.6) 0%, rgba(200,180,140,0.8) 50%, rgba(180,160,120,0.6) 100%)' }} />
+                <div className="flex-1 h-1.5 rounded-sm" style={{ background: 'linear-gradient(90deg, rgba(180,160,120,0.6) 0%, rgba(200,180,140,0.8) 50%, rgba(180,160,120,0.6) 100%)' }} />
+              </div>
+              <div className="h-2 mt-0.5 rounded-sm mx-1" style={{ background: 'linear-gradient(90deg, rgba(180,160,120,0.5) 0%, rgba(200,180,140,0.7) 50%, rgba(180,160,120,0.5) 100%)' }} />
+              <div className="flex gap-0.5 mt-0.5">
+                <div className="flex-1 h-1.5 rounded-sm" style={{ background: 'linear-gradient(90deg, rgba(180,160,120,0.6) 0%, rgba(200,180,140,0.8) 50%, rgba(180,160,120,0.6) 100%)' }} />
+                <div className="flex-1 h-1.5 rounded-sm" style={{ background: 'linear-gradient(90deg, rgba(180,160,120,0.6) 0%, rgba(200,180,140,0.8) 50%, rgba(180,160,120,0.6) 100%)' }} />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Card Title & Value */}
-        <div className="absolute top-12 sm:top-14 left-16 sm:left-20">
+        {/* Contactless Payment Icon */}
+        <div className="absolute top-[42%] sm:top-[40%] left-20 sm:left-24 transform -translate-y-1/2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="opacity-50">
+            <path d="M12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18" stroke={style.textColor} strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14" stroke={style.textColor} strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22" stroke={style.textColor} strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+
+        {/* Card Value - Apple Card Typography */}
+        <div className="absolute bottom-16 sm:bottom-20 left-5 sm:left-6">
           <p 
-            className="text-lg sm:text-xl font-semibold"
-            style={{ color: style.textColor }}
+            className="text-2xl sm:text-3xl font-semibold tracking-tight"
+            style={{ color: style.textColor, fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}
           >
-            {formattedValue} E-Gift
+            {formattedValue}
           </p>
           <p 
-            className="text-xs sm:text-sm opacity-80"
+            className="text-xs sm:text-sm opacity-60 mt-0.5 tracking-wide"
             style={{ color: style.textColor }}
           >
-            PetWash Ltd
+            E-Gift Card
           </p>
         </div>
 
-        {/* Bottom Info */}
-        <div className="absolute bottom-4 sm:bottom-5 left-4 sm:left-5 right-4 sm:right-5 flex items-end justify-between">
+        {/* Card Number - Modern Sans Serif */}
+        <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 right-5 sm:right-6 flex items-end justify-between">
           <div>
             <p 
-              className="text-[10px] sm:text-xs opacity-70"
-              style={{ color: style.textColor }}
+              className="text-[11px] sm:text-xs font-medium tracking-[0.2em] opacity-80"
+              style={{ color: style.textColor, fontFamily: 'SF Mono, Menlo, monospace' }}
             >
-              E-Gift Credit
-            </p>
-            <p 
-              className="text-xs sm:text-sm font-mono"
-              style={{ color: style.textColor }}
-            >
-              SN: PW{option.value}0001
+              •••• •••• •••• {String(option.value).padStart(4, '0')}
             </p>
           </div>
           
-          <p 
-            className="text-sm sm:text-base font-semibold"
-            style={{ color: style.textColor }}
-          >
-            MEMBER
-          </p>
+          {/* Mastercard 2025 Style Circles */}
+          <div className="flex -space-x-2">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" style={{ background: 'rgba(235, 0, 27, 0.85)' }} />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" style={{ background: 'rgba(255, 95, 0, 0.85)' }} />
+          </div>
         </div>
 
-        {/* Selection Indicator */}
+        {/* Selection Indicator - Premium Style */}
         {selected && (
-          <div className="absolute top-3 right-3">
-            <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-md">
+          <div className="absolute top-4 right-4">
+            <div className="w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/50">
               <Check className="w-4 h-4 text-green-600" strokeWidth={3} />
             </div>
           </div>
         )}
+
+        {/* Premium Tier Badge */}
+        <div className="absolute top-5 right-5">
+          <div 
+            className="px-2.5 py-1 rounded-full backdrop-blur-sm"
+            style={{ 
+              background: 'rgba(255,255,255,0.15)', 
+              border: '1px solid rgba(255,255,255,0.2)',
+            }}
+          >
+            <span className="text-[9px] sm:text-[10px] font-semibold tracking-[0.1em] uppercase" style={{ color: style.textColor }}>
+              {option.color === 'gold' ? 'ELITE' : option.color === 'platinum' ? 'PREMIUM' : option.color === 'emerald' ? 'PLUS' : 'CLASSIC'}
+            </span>
+          </div>
+        </div>
       </div>
     </button>
   );

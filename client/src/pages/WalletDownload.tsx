@@ -49,39 +49,59 @@ export default function WalletDownload() {
             )}
           </div>
 
-          {/* Main CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16 luxury-animate-fade-in luxury-delay-1">
-            {/* Apple Wallet Button */}
-            <a 
-              href="/loyalty/dashboard" 
-              className="group relative luxury-hover-glow"
-              data-testid="link-apple-wallet-download"
-            >
-              <div className="absolute -inset-1 bg-gradient-to-r from-black via-gray-800 to-black rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-200"></div>
-              <div className="relative flex items-center gap-4 px-8 py-6 bg-black rounded-2xl hover:bg-gray-900 transition-all duration-200 luxury-shadow-xl">
-                <Apple className="w-12 h-12 text-white" />
-                <div className="text-left">
-                  <div className="text-sm text-gray-300">{isHebrew ? 'הורד ב-' : 'Download on the'}</div>
-                  <div className="text-2xl font-bold text-white">Apple Wallet</div>
-                </div>
-              </div>
-            </a>
+          {/* Coming Soon Banner */}
+          <div className="flex flex-col items-center justify-center mb-16 luxury-animate-fade-in luxury-delay-1">
+            <div className="relative w-full max-w-2xl">
+              {/* Premium Glass Card */}
+              <div 
+                className="relative overflow-hidden rounded-3xl p-8 sm:p-12 text-center"
+                style={{
+                  background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,248,250,0.95) 100%)',
+                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.5)',
+                  border: '1px solid rgba(198,166,100,0.2)',
+                }}
+              >
+                {/* Holographic Shimmer */}
+                <div 
+                  className="absolute inset-0 opacity-30 pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(125deg, transparent 0%, rgba(198,166,100,0.2) 25%, transparent 50%, rgba(198,166,100,0.15) 75%, transparent 100%)',
+                    backgroundSize: '200% 200%',
+                    animation: 'shimmer 3s ease-in-out infinite',
+                  }}
+                />
+                
+                <div className="relative z-10">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 mb-6">
+                    <Smartphone className="w-10 h-10 text-amber-600" />
+                  </div>
+                  
+                  <div className="inline-block px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-sm font-semibold mb-4">
+                    {isHebrew ? 'בקרוב' : 'COMING SOON'}
+                  </div>
+                  
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+                    {isHebrew ? 'Apple Wallet & Google Wallet' : 'Apple Wallet & Google Wallet'}
+                  </h2>
+                  
+                  <p className="text-gray-600 max-w-md mx-auto mb-8">
+                    {isHebrew 
+                      ? 'אנחנו עובדים על אינטגרציה מלאה עם Apple Wallet ו-Google Wallet. הכרטיסים הדיגיטליים שלכם יהיו זמינים בקרוב!'
+                      : "We're working on full integration with Apple Wallet and Google Wallet. Your digital cards will be available soon!"}
+                  </p>
 
-            {/* Google Wallet Button */}
-            <a 
-              href="/loyalty/dashboard" 
-              className="group relative luxury-hover-glow"
-              data-testid="link-google-wallet-download"
-            >
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-200"></div>
-              <div className="relative flex items-center gap-4 px-8 py-6 bg-blue-600 rounded-2xl hover:bg-blue-700 transition-all duration-200 luxury-shadow-xl">
-                <SiAndroid className="w-12 h-12 text-white" />
-                <div className="text-left">
-                  <div className="text-sm text-blue-100">{isHebrew ? 'הורד ב-' : 'Download on'}</div>
-                  <div className="text-2xl font-bold text-white">Google Wallet</div>
+                  {/* View Loyalty Dashboard Link */}
+                  <button 
+                    onClick={() => setLocation('/loyalty/dashboard')}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-black text-white font-medium hover:bg-gray-900 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    data-testid="link-loyalty-dashboard"
+                  >
+                    <CreditCard className="w-5 h-5" />
+                    {isHebrew ? 'צפייה בכרטיס ה-VIP שלי' : 'View My VIP Card'}
+                  </button>
                 </div>
               </div>
-            </a>
+            </div>
           </div>
 
           {/* Features Grid */}

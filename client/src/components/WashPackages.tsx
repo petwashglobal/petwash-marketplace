@@ -118,48 +118,52 @@ export function WashPackages({ language }: WashPackagesProps) {
     return 0; // No discounts per official pricing
   };
 
-  // CLEAN BRUSHED METAL CARD THEMES - Matching Reference Images
+  // APPLE CARD / MASTERCARD 2025 STYLE THEMES - Ultra Modern Titanium Finish
   const getLuxuryTheme = (index: number) => {
     const themes = [
       {
-        // ROSE/PINK - Single Wash
-        gradient: 'linear-gradient(135deg, #E8A0B5 0%, #D77A9E 20%, #C45D8A 40%, #B24578 60%, #A03366 80%, #8E2255 100%)',
-        badge: 'BASIC',
-        badgeBg: 'rgba(255,255,255,0.9)',
+        // ROSE/TITANIUM PINK - Single Wash - Apple Card Style
+        gradient: 'linear-gradient(145deg, #F8E8EC 0%, #E8D0D8 15%, #D4B8C4 35%, #C8A8B8 55%, #BC98AC 75%, #B088A0 100%)',
+        badge: 'CLASSIC',
+        badgeBg: 'rgba(255,255,255,0.85)',
         icon: CreditCard,
-        shadowColor: 'rgba(180,69,120,0.4)',
-        chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
-        textColor: '#FFFFFF',
+        shadowColor: 'rgba(180,120,140,0.35)',
+        chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
+        textColor: '#1A1A1A',
+        holographicGlow: 'rgba(255, 200, 220, 0.4)',
       },
       {
-        // EMERALD/GREEN - 3 Washes (Most Popular)
-        gradient: 'linear-gradient(135deg, #7CB342 0%, #689F38 20%, #558B2F 40%, #4A7A28 60%, #3D6B22 80%, #33691E 100%)',
+        // EMERALD/TITANIUM GREEN - 3 Washes (Most Popular) - Apple Card Style
+        gradient: 'linear-gradient(145deg, #E8F0E8 0%, #D0E0D0 15%, #B8D0BC 35%, #A0C0A8 55%, #88B094 75%, #70A080 100%)',
         badge: 'POPULAR',
-        badgeBg: 'rgba(255,255,255,0.9)',
+        badgeBg: 'rgba(0,0,0,0.85)',
         icon: Crown,
-        shadowColor: 'rgba(85,139,47,0.4)',
-        chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
-        textColor: '#FFFFFF',
+        shadowColor: 'rgba(100,140,100,0.35)',
+        chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
+        textColor: '#1A1A1A',
+        holographicGlow: 'rgba(180, 255, 200, 0.4)',
       },
       {
-        // PLATINUM/BLACK - 5 Washes (Premium)
-        gradient: 'linear-gradient(135deg, #3A3A3A 0%, #2D2D2D 20%, #1F1F1F 40%, #171717 60%, #0F0F0F 80%, #0A0A0A 100%)',
+        // PLATINUM/TITANIUM SILVER - 5 Washes (Premium) - Apple Card Style
+        gradient: 'linear-gradient(145deg, #F0F0F2 0%, #E4E4E8 15%, #D8D8DC 35%, #CCCCCC 55%, #C0C0C0 75%, #B4B4B8 100%)',
         badge: 'PREMIUM',
-        badgeBg: 'rgba(255,255,255,0.9)',
+        badgeBg: 'rgba(0,0,0,0.85)',
         icon: Sparkles,
-        shadowColor: 'rgba(0,0,0,0.5)',
-        chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
-        textColor: '#FFFFFF',
+        shadowColor: 'rgba(100,100,110,0.4)',
+        chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
+        textColor: '#1A1A1A',
+        holographicGlow: 'rgba(200, 200, 255, 0.4)',
       },
       {
-        // GOLD - 10 Washes (Family Pack - Elite)
-        gradient: 'linear-gradient(135deg, #D4B96A 0%, #C9A83A 20%, #BFA02E 40%, #B59628 60%, #A88B22 80%, #9A7F1C 100%)',
+        // GOLD/TITANIUM GOLD - 10 Washes (Family Pack - Elite) - Apple Card Style
+        gradient: 'linear-gradient(145deg, #FAF6F0 0%, #F0E8DC 15%, #E8DCC8 35%, #DED0B4 55%, #D4C4A0 75%, #C6A664 100%)',
         badge: 'ELITE',
         badgeBg: 'rgba(0,0,0,0.85)',
         icon: Shield,
-        shadowColor: 'rgba(201,168,58,0.4)',
-        chipColor: 'linear-gradient(145deg, #C9A227 0%, #E8C547 30%, #D4AF37 50%, #C9A227 70%, #B8962A 100%)',
-        textColor: '#FFFFFF',
+        shadowColor: 'rgba(180,150,80,0.4)',
+        chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
+        textColor: '#1A1A1A',
+        holographicGlow: 'rgba(255, 230, 180, 0.5)',
       },
     ];
     return themes[index] || themes[0];
