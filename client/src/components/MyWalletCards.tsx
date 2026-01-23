@@ -193,24 +193,9 @@ export default function MyWalletCards() {
             </div>
           </div>
 
-          <Button 
-            onClick={handleAddLoyaltyCard}
-            disabled={isGenerating === 'loyalty'}
-            className="w-full bg-black hover:bg-gray-800 text-white h-12 text-lg font-medium"
-            data-testid="button-add-loyalty-card"
-          >
-            {isGenerating === 'loyalty' ? (
-              <>
-                <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                {isHebrew ? 'יוצר...' : 'Creating...'}
-              </>
-            ) : (
-              <>
-                <Download className="w-5 h-5 mr-2" />
-                {isHebrew ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet'}
-              </>
-            )}
-          </Button>
+          <div className="w-full bg-gray-100 dark:bg-gray-800 text-gray-500 h-12 text-lg font-medium rounded-md flex items-center justify-center">
+            {isHebrew ? '🚀 בקרוב...' : '🚀 Coming Soon...'}
+          </div>
         </CardContent>
       </Card>
 
@@ -288,24 +273,9 @@ export default function MyWalletCards() {
             </div>
           </div>
 
-          <Button 
-            onClick={handleAddBusinessCard}
-            disabled={isGenerating === 'business'}
-            className="w-full bg-black hover:bg-gray-800 text-white h-12 text-lg font-medium"
-            data-testid="button-add-business-card"
-          >
-            {isGenerating === 'business' ? (
-              <>
-                <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                {isHebrew ? 'יוצר...' : 'Creating...'}
-              </>
-            ) : (
-              <>
-                <Download className="w-5 h-5 mr-2" />
-                {isHebrew ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet'}
-              </>
-            )}
-          </Button>
+          <div className="w-full bg-gray-100 dark:bg-gray-800 text-gray-500 h-12 text-lg font-medium rounded-md flex items-center justify-center">
+            {isHebrew ? '🚀 בקרוב...' : '🚀 Coming Soon...'}
+          </div>
         </CardContent>
       </Card>
     </div>

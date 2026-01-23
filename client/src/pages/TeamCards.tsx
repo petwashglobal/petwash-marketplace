@@ -203,48 +203,11 @@ export default function TeamCards() {
                   )}
                 </div>
 
-                {/* Wallet Buttons */}
+                {/* Wallet Buttons - Coming Soon */}
                 <div className="space-y-2">
-                  {isIOS && (
-                    <Button 
-                      onClick={() => handleAppleWallet(member)}
-                      className="w-full luxury-btn-primary"
-                      data-testid={`button-apple-wallet-${member.name.replace(/\s+/g, '-').toLowerCase()}`}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      {isHebrew ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet'}
-                    </Button>
-                  )}
-                  
-                  {isAndroid && (
-                    <Button 
-                      onClick={() => handleGoogleWallet(member)}
-                      className="w-full luxury-btn-primary"
-                      data-testid={`button-google-wallet-${member.name.replace(/\s+/g, '-').toLowerCase()}`}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      {isHebrew ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet'}
-                    </Button>
-                  )}
-
-                  {!isIOS && !isAndroid && (
-                    <>
-                      <Button 
-                        onClick={() => handleAppleWallet(member)}
-                        className="w-full luxury-btn-primary"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        {isHebrew ? 'Apple Wallet' : 'Apple Wallet'}
-                      </Button>
-                      <Button 
-                        onClick={() => handleGoogleWallet(member)}
-                        className="w-full luxury-btn-secondary"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        {isHebrew ? 'Google Wallet' : 'Google Wallet'}
-                      </Button>
-                    </>
-                  )}
+                  <div className="text-center py-3 px-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm text-gray-500">
+                    {isHebrew ? '🚀 Wallet בקרוב...' : '🚀 Wallet Coming Soon...'}
+                  </div>
                 </div>
 
                 {/* Sharing Instructions */}
