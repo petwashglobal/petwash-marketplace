@@ -50,6 +50,7 @@ function Calendar({
         ),
         day: cn(
           "h-10 w-10 p-0 font-medium rounded-lg",
+          "text-gray-900 dark:text-white",
           "hover:bg-gray-100 dark:hover:bg-gray-700",
           "focus:bg-gray-100 dark:focus:bg-gray-700",
           "transition-colors duration-200",

@@ -790,9 +790,9 @@ export function MadPawsSearch({
                   </span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 max-h-[80vh] overflow-y-auto" align="start">
-                <div className="flex flex-col sm:flex-row">
-                  <div className="p-3 border-b sm:border-b-0 sm:border-r border-gray-100">
+              <PopoverContent className="w-auto p-0 max-h-[80vh] overflow-y-auto bg-white" align="start">
+                <div className="flex flex-col sm:flex-row bg-white">
+                  <div className="p-3 border-b sm:border-b-0 sm:border-r border-gray-100 bg-white">
                     <p className="text-xs font-medium text-white bg-rose-500 rounded-full px-3 py-1 mb-2 text-center">
                       {isHebrew ? '① תאריך התחלה' : '① Start Date'}
                     </p>
@@ -808,9 +808,10 @@ export function MadPawsSearch({
                       }}
                       disabled={(date) => date < new Date()}
                       initialFocus
+                      className="bg-white [&_.rdp-day]:text-gray-900"
                     />
                   </div>
-                  <div className="p-3 bg-gray-50 sm:bg-white">
+                  <div className="p-3 bg-white">
                     <p className="text-xs font-medium text-white bg-purple-500 rounded-full px-3 py-1 mb-2 text-center">
                       {isHebrew ? '② תאריך סיום' : '② End Date'}
                     </p>
@@ -819,6 +820,7 @@ export function MadPawsSearch({
                       selected={endDate}
                       onSelect={setEndDate}
                       disabled={(date) => date < (startDate || new Date())}
+                      className="bg-white [&_.rdp-day]:text-gray-900"
                     />
                   </div>
                 </div>
