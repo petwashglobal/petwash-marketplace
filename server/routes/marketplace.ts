@@ -379,9 +379,11 @@ async function searchGroomers(filters: MarketplaceSearchFilters): Promise<{
  */
 router.get('/provider/:platform/:id', async (req, res) => {
   try {
-    const { platform, id } = req.params;
+    const { platform: rawPlatform, id } = req.params;
+    // Normalize platform name (sitter-suite -> sitter_suite)
+    const platform = rawPlatform.replace(/-/g, '_');
     
-    logger.info('[Marketplace] Provider detail request', { platform, id });
+    logger.info('[Marketplace] Provider detail request', { platform, id, rawPlatform });
 
     let provider: MarketplaceProvider | null = null;
 
@@ -423,8 +425,14 @@ router.get('/provider/:platform/:id', async (req, res) => {
       }
 
       case 'sitter_suite': {
+        // Support both numeric ID and userId string (e.g., "demo-sitter-1")
+        const numericId = parseInt(id);
         const [sitter] = await db.select().from(sitterProfiles)
-          .where(eq(sitterProfiles.id, parseInt(id)))
+          .where(
+            isNaN(numericId) 
+              ? eq(sitterProfiles.userId, id)
+              : eq(sitterProfiles.id, numericId)
+          )
           .limit(1);
 
         if (sitter) {
@@ -468,7 +476,10 @@ router.get('/provider/:platform/:id', async (req, res) => {
 
     res.json({ provider });
   } catch (error: any) {
-    logger.error('[Marketplace] Provider detail error', { error: error.message });
+    logger.error('[Marketplace] Provider detail error', { 
+      error: error?.message || String(error),
+      code: error?.code
+    });
     res.status(500).json({ error: 'Failed to fetch provider details' });
   }
 });
