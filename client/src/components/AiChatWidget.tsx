@@ -90,13 +90,13 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/v1/chat/message', {
+      const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: userInput,
+          message: userInput,
+          language: language,
           sessionId: sessionId,
-          languageCode: language,
         }),
       });
 
@@ -107,7 +107,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
       const data = await response.json();
       const botMessage: Message = {
         id: nanoid(),
-        text: data.reply || 'מצטער, לא הבנתי. אנא נסה שוב.',
+        text: data.response || data.reply || 'מצטער, לא הבנתי. אנא נסה שוב.',
         sender: 'bot',
         timestamp: new Date(),
       };
