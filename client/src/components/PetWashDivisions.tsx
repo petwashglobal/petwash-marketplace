@@ -164,9 +164,9 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                   />
                   
                   {/* Glamorous Header with Icon */}
-                  <div className="relative flex items-center gap-3 sm:gap-4 mb-3">
+                  <div className="relative flex items-start gap-2 sm:gap-3 mb-3">
                     <div 
-                      className="p-2.5 sm:p-3 rounded-xl transition-all duration-500 shadow-sm"
+                      className="p-2 sm:p-2.5 rounded-xl transition-all duration-500 shadow-sm flex-shrink-0"
                       style={{
                         background: isHovered 
                           ? `linear-gradient(135deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`
@@ -175,14 +175,14 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                       }}
                     >
                       <Icon 
-                        className="w-5 h-5 sm:w-6 sm:h-6 transition-colors duration-500" 
+                        className="w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-500" 
                         style={{ color: isHovered ? '#ffffff' : division.gradientFrom }}
                         strokeWidth={2}
                       />
                     </div>
                     
                     <h3 
-                      className="font-serif text-base sm:text-lg font-semibold tracking-tight line-clamp-1 transition-all duration-300"
+                      className="font-serif text-sm sm:text-base font-semibold tracking-tight leading-tight transition-all duration-300"
                       style={{
                         background: isHovered 
                           ? `linear-gradient(135deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`
@@ -198,7 +198,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
 
                   {/* Tagline with gradient */}
                   <p 
-                    className="relative text-[10px] sm:text-xs uppercase tracking-[0.15em] font-semibold mb-2 line-clamp-1"
+                    className="relative text-[9px] sm:text-xs uppercase tracking-[0.1em] font-semibold mb-2 leading-tight"
                     style={{
                       background: `linear-gradient(90deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`,
                       WebkitBackgroundClip: 'text',
