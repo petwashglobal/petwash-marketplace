@@ -95,6 +95,7 @@ export default function BrowseSitters() {
   const buildQueryString = () => {
     const params = new URLSearchParams();
     params.set('platform', 'sitter_suite');
+    if (searchParams?.location) params.set('city', searchParams.location);
     if (searchParams?.service) params.set('serviceType', searchParams.service);
     if (searchParams?.startDate) params.set('startDate', format(searchParams.startDate, 'yyyy-MM-dd'));
     if (searchParams?.endDate) params.set('endDate', format(searchParams.endDate, 'yyyy-MM-dd'));

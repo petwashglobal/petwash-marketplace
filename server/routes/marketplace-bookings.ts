@@ -672,6 +672,7 @@ router.get('/search/providers', async (req, res) => {
       serviceType,
       startDate,
       endDate,
+      city,
       minRating = 0,
       page = 1,
       limit = 20
@@ -679,6 +680,7 @@ router.get('/search/providers', async (req, res) => {
 
     const offset = (Number(page) - 1) * Number(limit);
     const platformStr = platform as string;
+    const cityStr = city as string;
     
     // Build query with filters
     let whereConditions = [eq(providerRateCards.isActive, true)];
@@ -693,7 +695,7 @@ router.get('/search/providers', async (req, res) => {
     const rateCards = await db.select()
       .from(providerRateCards)
       .where(and(...whereConditions))
-      .limit(Number(limit))
+      .limit(Number(limit) * 5) // Fetch more to filter by city later
       .offset(offset);
 
     // Filter by availability if dates provided
@@ -804,21 +806,36 @@ router.get('/search/providers', async (req, res) => {
       };
     });
 
+    // Filter by city if specified (case-insensitive partial match for Hebrew/English)
+    let filteredResults = results;
+    if (cityStr && cityStr.trim().length > 0) {
+      const searchCity = cityStr.trim().toLowerCase();
+      filteredResults = results.filter(r => {
+        if (!r.location) return false;
+        const providerCity = r.location.toLowerCase();
+        // Match if provider city contains search term or search term contains provider city
+        return providerCity.includes(searchCity) || searchCity.includes(providerCity);
+      });
+    }
+    
     // Filter by minimum rating if specified
-    const filteredResults = Number(minRating) > 0 
-      ? results.filter(r => (r.rating || 0) >= Number(minRating))
-      : results;
+    if (Number(minRating) > 0) {
+      filteredResults = filteredResults.filter(r => (r.rating || 0) >= Number(minRating));
+    }
+    
+    // Apply pagination limit
+    const paginatedResults = filteredResults.slice(0, Number(limit));
 
     res.json({
       success: true,
-      providers: filteredResults,
+      providers: paginatedResults,
       pagination: {
         page: Number(page),
         limit: Number(limit),
         total: filteredResults.length,
-        hasMore: filteredResults.length === Number(limit)
+        hasMore: filteredResults.length > Number(limit)
       },
-      filters: { platform, serviceType, startDate, endDate, minRating }
+      filters: { platform, serviceType, startDate, endDate, city, minRating }
     });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Provider search error', { error: error?.message || String(error) });
