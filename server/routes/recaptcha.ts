@@ -6,7 +6,7 @@ import { RecaptchaEnterpriseServiceClient } from '@google-cloud/recaptcha-enterp
 const router = Router();
 
 const RECAPTCHA_SITE_KEY = process.env.VITE_FIREBASE_APPCHECK_SITE_KEY || process.env.RECAPTCHA_ENTERPRISE_SITE_KEY || '';
-const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'signinpetwash';
+const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash';
 
 const verifySchema = z.object({
   token: z.string().min(1, { message: 'reCAPTCHA token is required' }),

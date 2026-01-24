@@ -19,7 +19,8 @@ const EnvSchema = z.object({
     .describe("Neon PostgreSQL connection string"),
   
   // ===== FIREBASE (REQUIRED) =====
-  FIREBASE_PROJECT_ID: z.string().min(1, "Firebase Project ID is required")
+  // Note: Using VITE_ prefix to match Replit secrets configuration
+  VITE_FIREBASE_PROJECT_ID: z.string().min(1, "Firebase Project ID is required")
     .describe("Firebase project identifier"),
   
   // ===== JWT SECRETS (REQUIRED) =====
@@ -138,7 +139,7 @@ export function validateEnv(): ValidatedEnv {
   console.log("✅ Core System: Validated");
   console.log(`   → Environment: ${env.NODE_ENV}`);
   console.log(`   → Database: ${env.DATABASE_URL ? 'Connected' : '❌ Missing'}`);
-  console.log(`   → Firebase: ${env.FIREBASE_PROJECT_ID ? '✅ Configured' : '❌ Missing'}`);
+  console.log(`   → Firebase: ${env.VITE_FIREBASE_PROJECT_ID ? '✅ Configured' : '❌ Missing'}`);
   console.log(`   → JWT Secrets: ${env.JWT_SECRET && env.JWT_REFRESH_SECRET ? '✅ Configured' : '❌ Missing'}`);
   
   console.log("\n💳 Payment Gateways:");
