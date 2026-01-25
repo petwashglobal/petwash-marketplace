@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { Sparkles, Heart, MapPin, Zap, ArrowRight } from 'lucide-react';
+import { Sparkles, Heart, MapPin, Zap, GraduationCap, ArrowRight } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
@@ -77,6 +77,22 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       features: [
         t('divisions.petTrek.feature1', language),
         t('divisions.petTrek.feature2', language),
+      ],
+    },
+    {
+      id: 5,
+      name: 'Pet Wash Academy™',
+      nameHe: 'אקדמיית פט ווש',
+      tagline: t('divisions.academy.tagline', language),
+      description: t('divisions.academy.description', language),
+      icon: GraduationCap,
+      gradientFrom: '#8b5cf6',
+      gradientTo: '#a855f7',
+      glowColor: 'rgba(139, 92, 246, 0.4)',
+      link: '/academy',
+      features: [
+        t('divisions.academy.feature1', language),
+        t('divisions.academy.feature2', language),
       ],
     },
   ];
