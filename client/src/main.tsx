@@ -1,3 +1,4 @@
+// Cache bust: 2026-01-25T13:44:09.637Z
 // CRITICAL: All imports must be AFTER Firebase config loads
 // Only import React root - App will be dynamically imported
 import { createRoot } from "react-dom/client";
