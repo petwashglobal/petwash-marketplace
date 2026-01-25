@@ -80,8 +80,8 @@ app.use(cors({
   maxAge: 86400 // 24 hours preflight cache
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // Increased limit for base64 image uploads
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // D. Session with ENHANCED security settings
