@@ -45,6 +45,8 @@ const allowedOrigins = [
   'https://petwash.co.il',
   'https://www.petwash.co.il',
   process.env.BASE_URL || 'http://localhost:5000',
+  // Cloud Run API domain
+  /\.run\.app$/,
   // Replit preview domains
   /\.replit\.dev$/,
   /\.repl\.co$/,
@@ -76,7 +78,7 @@ app.use(cors({
     : true, // Allow all origins in dev
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-WebAuthn-CSRF-Token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-WebAuthn-CSRF-Token', 'X-Firebase-AppCheck'],
   maxAge: 86400 // 24 hours preflight cache
 }));
 

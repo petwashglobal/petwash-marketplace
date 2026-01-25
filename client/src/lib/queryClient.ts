@@ -1,5 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAppCheckToken } from "./firebase";
+import { getApiUrl } from "./apiConfig";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -44,7 +45,7 @@ export async function apiRequest(
     headers["X-Firebase-AppCheck"] = appCheckToken;
   }
 
-  const res = await fetch(url, {
+  const res = await fetch(getApiUrl(url), {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
@@ -75,7 +76,7 @@ export const getQueryFn: <T>(options: {
       headers["X-Firebase-AppCheck"] = appCheckToken;
     }
 
-    const res = await fetch(queryKey[0] as string, {
+    const res = await fetch(getApiUrl(queryKey[0] as string), {
       credentials: "include",
       headers,
     });
