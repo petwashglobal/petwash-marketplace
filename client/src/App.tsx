@@ -2078,6 +2078,9 @@ function App() {
       } catch (error) {
         // On error, keep Hebrew default for Israeli market
         if (import.meta.env.DEV) {
+
+// BUILD_FORCE_REBUILD: 1769350182889
+console.log("Build: 1769350182889");
           console.error('Background language detection error:', error);
         }
       }
