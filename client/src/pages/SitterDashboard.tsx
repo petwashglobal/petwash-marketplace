@@ -341,12 +341,20 @@ export default function SitterDashboard() {
               <div className="flex items-center gap-6 mb-8">
                 <div className="relative luxury-animate-scale-in">
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-full blur-md opacity-75 animate-pulse"></div>
-                  <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-1">
-                    <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
-                      <span className="text-4xl font-bold bg-gradient-to-br from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                        {profile?.fullName?.charAt(0) || 'S'}
-                      </span>
-                    </div>
+                  <div className="relative h-24 w-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-1 overflow-hidden">
+                    {profile?.profilePictureUrl ? (
+                      <img 
+                        src={profile.profilePictureUrl} 
+                        alt={profile?.fullName || 'Profile'} 
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center">
+                        <span className="text-4xl font-bold bg-gradient-to-br from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                          {profile?.fullName?.charAt(0) || 'S'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="luxury-animate-fade-in luxury-delay-1">

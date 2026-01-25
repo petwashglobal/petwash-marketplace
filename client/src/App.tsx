@@ -174,6 +174,7 @@ const SitterDetail = lazy(() => import("@/pages/sitter-suite/SitterDetail"));
 const SitterBookingFlow = lazy(() => import("@/pages/sitter-suite/BookingFlow"));
 const SitterOwnerDashboard = lazy(() => import("@/pages/sitter-suite/OwnerDashboard"));
 const SitterDashboard = lazy(() => import("@/pages/sitter-suite/SitterDashboard"));
+const SitterEditProfile = lazy(() => import("@/pages/sitter-suite/SitterEditProfile"));
 const OwnerDashboardPage = SitterOwnerDashboard; // Alias
 const SitterDashboardPage = SitterDashboard; // Alias
 
@@ -989,6 +990,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RequireAuth>
               <Suspense fallback={<PageLoader />}>
                 <SitterDashboardPage />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+        
+        {/* The Sitter Suite™ - Sitter Edit Profile (MadPaws-style with Photo Upload) */}
+        <Route path="/sitter-suite/sitter/edit-profile">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <SitterEditProfile />
               </Suspense>
             </RequireAuth>
           )}
