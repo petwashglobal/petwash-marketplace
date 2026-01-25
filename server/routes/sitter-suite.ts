@@ -164,6 +164,69 @@ router.post('/sitters', async (req, res) => {
   }
 });
 
+/**
+ * PATCH /api/sitter-suite/sitters/:id - Update sitter profile
+ * Supports updating profile photo and other profile fields
+ */
+router.patch('/sitters/:id', async (req, res) => {
+  try {
+    const idParam = req.params.id;
+    const numericId = parseInt(idParam);
+    const isNumeric = !isNaN(numericId) && String(numericId) === idParam;
+    
+    // Find the sitter first
+    const [existingSitter] = await db
+      .select()
+      .from(sitterProfiles)
+      .where(isNumeric ? eq(sitterProfiles.id, numericId) : eq(sitterProfiles.userId, idParam));
+    
+    if (!existingSitter) {
+      return res.status(404).json({ error: 'Sitter not found' });
+    }
+    
+    // Extract allowed update fields
+    const {
+      firstName,
+      lastName,
+      phone,
+      city,
+      bio,
+      yearsOfExperience,
+      pricePerDayCents,
+      profilePictureUrl,
+      isActive,
+    } = req.body;
+    
+    // Build update object with only provided fields
+    const updateData: Record<string, any> = { updatedAt: new Date() };
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (phone !== undefined) updateData.phone = phone;
+    if (city !== undefined) updateData.city = city;
+    if (bio !== undefined) updateData.bio = bio;
+    if (yearsOfExperience !== undefined) updateData.yearsOfExperience = yearsOfExperience;
+    if (pricePerDayCents !== undefined) updateData.pricePerDayCents = pricePerDayCents;
+    if (profilePictureUrl !== undefined) updateData.profilePictureUrl = profilePictureUrl;
+    if (isActive !== undefined) updateData.isActive = isActive;
+    
+    const [updatedSitter] = await db
+      .update(sitterProfiles)
+      .set(updateData)
+      .where(eq(sitterProfiles.id, existingSitter.id))
+      .returning();
+    
+    logger.info('[Sitter Suite] Sitter profile updated', {
+      sitterId: updatedSitter.id,
+      fieldsUpdated: Object.keys(updateData).filter(k => k !== 'updatedAt'),
+    });
+    
+    res.json(updatedSitter);
+  } catch (error) {
+    logger.error('[Sitter Suite] Error updating sitter', error);
+    res.status(400).json({ error: 'Failed to update sitter profile' });
+  }
+});
+
 // ==================== PET PROFILES ====================
 
 /**
