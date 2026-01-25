@@ -1,6 +1,6 @@
 const getApiBaseUrl = (): string => {
-  if (import.meta.env.PROD) {
-    return import.meta.env.VITE_API_URL || 'https://petwash-api-signinpetwash.me-west1.run.app';
+  if (import.meta.env.PROD && import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
   }
   return '';
 };
