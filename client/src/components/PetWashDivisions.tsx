@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { Sparkles, Heart, Shield, MapPin, Zap, Clock, Award, Globe, ArrowRight, Star, Crown } from 'lucide-react';
+import { Sparkles, Heart, MapPin, Zap, GraduationCap, ArrowRight } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 interface PetWashDivisionsProps {
   language: Language;
@@ -10,6 +11,7 @@ interface PetWashDivisionsProps {
 
 export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   const [hoveredDivision, setHoveredDivision] = useState<number | null>(null);
+  const { ref: sectionRef, isRevealed } = useScrollReveal<HTMLElement>();
   const isHebrew = language === 'he';
 
   const divisions = [
@@ -20,15 +22,13 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.smartHub.tagline', language),
       description: t('divisions.smartHub.description', language),
       icon: Sparkles,
-      gradient: 'from-cyan-400 via-blue-500 to-indigo-600',
-      glowColor: 'rgba(59, 130, 246, 0.4)',
-      accentColor: '#3b82f6',
+      gradientFrom: '#0ea5e9',
+      gradientTo: '#06b6d4',
+      glowColor: 'rgba(14, 165, 233, 0.4)',
       link: '/our-service',
       features: [
         t('divisions.smartHub.feature1', language),
         t('divisions.smartHub.feature2', language),
-        t('divisions.smartHub.feature3', language),
-        t('divisions.smartHub.feature4', language),
       ],
     },
     {
@@ -38,15 +38,13 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.sitterSuite.tagline', language),
       description: t('divisions.sitterSuite.description', language),
       icon: Heart,
-      gradient: 'from-pink-400 via-rose-500 to-purple-600',
+      gradientFrom: '#ec4899',
+      gradientTo: '#f43f5e',
       glowColor: 'rgba(236, 72, 153, 0.4)',
-      accentColor: '#ec4899',
       link: '/sitter-suite',
       features: [
         t('divisions.sitterSuite.feature1', language),
         t('divisions.sitterSuite.feature2', language),
-        t('divisions.sitterSuite.feature3', language),
-        t('divisions.sitterSuite.feature4', language),
       ],
     },
     {
@@ -56,15 +54,13 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.walkMyPet.tagline', language),
       description: t('divisions.walkMyPet.description', language),
       icon: MapPin,
-      gradient: 'from-emerald-400 via-green-500 to-teal-600',
+      gradientFrom: '#10b981',
+      gradientTo: '#14b8a6',
       glowColor: 'rgba(16, 185, 129, 0.4)',
-      accentColor: '#10b981',
       link: '/walk-my-pet',
       features: [
         t('divisions.walkMyPet.feature1', language),
         t('divisions.walkMyPet.feature2', language),
-        t('divisions.walkMyPet.feature3', language),
-        t('divisions.walkMyPet.feature4', language),
       ],
     },
     {
@@ -74,74 +70,77 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.petTrek.tagline', language),
       description: t('divisions.petTrek.description', language),
       icon: Zap,
-      gradient: 'from-amber-400 via-orange-500 to-red-600',
-      glowColor: 'rgba(245, 158, 11, 0.4)',
-      accentColor: '#f59e0b',
+      gradientFrom: '#c6a664',
+      gradientTo: '#d4af37',
+      glowColor: 'rgba(198, 166, 100, 0.5)',
       link: '/pettrek/book',
       features: [
         t('divisions.petTrek.feature1', language),
         t('divisions.petTrek.feature2', language),
-        t('divisions.petTrek.feature3', language),
-        t('divisions.petTrek.feature4', language),
+      ],
+    },
+    {
+      id: 5,
+      name: 'Pet Wash Academy™',
+      nameHe: 'אקדמיית פט ווש',
+      tagline: t('divisions.academy.tagline', language),
+      description: t('divisions.academy.description', language),
+      icon: GraduationCap,
+      gradientFrom: '#8b5cf6',
+      gradientTo: '#a855f7',
+      glowColor: 'rgba(139, 92, 246, 0.4)',
+      link: '/academy',
+      features: [
+        t('divisions.academy.feature1', language),
+        t('divisions.academy.feature2', language),
       ],
     },
   ];
 
   return (
-    <section className="relative py-20 sm:py-28 lg:py-32 overflow-hidden">
-      {/* Luxury Dark Background with Mesh Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-black" />
+    <section 
+      ref={sectionRef}
+      className="relative py-8 sm:py-14 lg:py-16 bg-gradient-to-br from-slate-50 via-white to-amber-50/30 overflow-hidden"
+    >
+      {/* Glamorous background decorations */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(198,166,100,0.08),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(236,72,153,0.05),transparent_50%)]" />
+      <div className="absolute top-0 left-0 w-48 h-48 border-t-2 border-l-2 border-[#c6a664]/20 rounded-tl-3xl" />
+      <div className="absolute bottom-0 right-0 w-48 h-48 border-b-2 border-r-2 border-[#c6a664]/20 rounded-br-3xl" />
       
-      {/* Animated Gradient Orbs */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-br from-amber-500/20 to-orange-600/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-1/2 -right-40 w-80 h-80 bg-gradient-to-br from-purple-500/15 to-pink-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-gradient-to-br from-blue-500/15 to-cyan-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-      </div>
+      {/* Floating luxury orbs */}
+      <div className="absolute top-20 right-20 w-32 h-32 bg-gradient-to-br from-amber-200/20 to-yellow-100/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-20 left-20 w-40 h-40 bg-gradient-to-br from-pink-200/15 to-rose-100/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       
-      {/* Subtle Grid Pattern */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-        backgroundSize: '60px 60px'
-      }} />
-
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Luxury Section Header */}
-        <div className="text-center mb-16 sm:mb-20">
-          {/* Premium Badge */}
-          <div className="inline-flex items-center gap-2 mb-6 px-5 py-2.5 rounded-full border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 backdrop-blur-sm">
-            <Crown className="w-4 h-4 text-amber-400" />
-            <span className="text-sm font-medium tracking-wide text-amber-300">
-              {t('divisions.groupName', language)}
-            </span>
-            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-          </div>
+        {/* Glamorous Luxury Header */}
+        <div 
+          className={`text-center mb-6 sm:mb-10 transition-all duration-1000 ${
+            isRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
+          <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.35em] bg-gradient-to-r from-[#c6a664] via-[#d4af37] to-[#c6a664] bg-clip-text text-transparent font-semibold mb-3 animate-shimmer">
+            {t('divisions.groupName', language)}
+          </span>
           
-          {/* Main Title with Gradient */}
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold mb-6 tracking-tight">
-            <span className="text-white">{isHebrew ? 'עולם ' : 'The '}</span>
-            <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-orange-500 bg-clip-text text-transparent">
+          <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-medium mb-3 tracking-tight">
+            <span className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 bg-clip-text text-transparent">
+              {isHebrew ? 'עולם ' : 'The '}
+            </span>
+            <span className="bg-gradient-to-r from-[#c6a664] via-[#d4af37] to-[#c6a664] bg-clip-text text-transparent font-bold">
               Pet Wash™
             </span>
-            <span className="text-white">{isHebrew ? ' שלנו' : ' Universe'}</span>
+            <span className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 bg-clip-text text-transparent">
+              {isHebrew ? '' : ' Universe'}
+            </span>
           </h2>
           
-          {/* Subtitle */}
-          <p className="text-lg sm:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed font-light">
-            {t('divisions.subtitle', language)}
-          </p>
-          
-          {/* Decorative Line */}
-          <div className="mt-8 flex items-center justify-center gap-3">
-            <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
-            <div className="w-2 h-2 rounded-full bg-amber-500/60" />
-            <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
-          </div>
+          <div className="w-20 h-0.5 bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto rounded-full" />
         </div>
 
-        {/* Luxury Divisions Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        {/* Glamorous 2x2 Divisions Grid */}
+        <div className="grid grid-cols-2 gap-4 sm:gap-5">
           {divisions.map((division, index) => {
             const Icon = division.icon;
             const isHovered = hoveredDivision === division.id;
@@ -150,204 +149,114 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
               <Link
                 key={division.id}
                 href={division.link}
-                className="block group"
+                className={`block group transition-all duration-700 ${
+                  isRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+                }`}
+                style={{ transitionDelay: `${100 + index * 100}ms` }}
                 onMouseEnter={() => setHoveredDivision(division.id)}
                 onMouseLeave={() => setHoveredDivision(null)}
               >
                 <div 
                   className={`
-                    relative h-full rounded-3xl overflow-hidden
-                    transition-all duration-700 ease-out
-                    ${isHovered ? 'scale-[1.02]' : 'scale-100'}
+                    relative p-4 sm:p-6 bg-white/80 backdrop-blur-sm rounded-2xl
+                    transition-all duration-500 ease-out h-full overflow-hidden
+                    border-2 shadow-sm
+                    ${isHovered 
+                      ? 'shadow-xl transform -translate-y-1 scale-[1.02]' 
+                      : 'hover:shadow-md border-slate-100'
+                    }
                   `}
                   style={{
-                    boxShadow: isHovered 
-                      ? `0 25px 60px -12px ${division.glowColor}, 0 0 0 1px rgba(255,255,255,0.1)` 
-                      : '0 10px 40px -15px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)'
+                    borderColor: isHovered ? division.gradientFrom : undefined,
+                    boxShadow: isHovered ? `0 20px 40px -12px ${division.glowColor}` : undefined,
                   }}
                 >
-                  {/* Glassmorphic Background */}
+                  {/* Gradient glow overlay on hover */}
                   <div 
-                    className="absolute inset-0 transition-all duration-700"
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"
                     style={{
-                      background: isHovered
-                        ? `linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 100%)`
-                        : `linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)`,
-                      backdropFilter: 'blur(20px)',
+                      background: `linear-gradient(135deg, ${division.gradientFrom}08 0%, ${division.gradientTo}05 100%)`,
                     }}
                   />
                   
-                  {/* Gradient Border Glow on Hover */}
-                  <div 
-                    className={`absolute inset-0 rounded-3xl transition-opacity duration-700 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
-                    style={{
-                      background: `linear-gradient(135deg, ${division.accentColor}20 0%, transparent 50%, ${division.accentColor}10 100%)`,
-                    }}
-                  />
-                  
-                  {/* Animated Shimmer Effect */}
-                  <div 
-                    className={`absolute inset-0 transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
-                    style={{
-                      background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.08) 50%, transparent 60%)',
-                      backgroundSize: '200% 100%',
-                      animation: isHovered ? 'shimmer 2s infinite' : 'none',
-                    }}
-                  />
-
-                  {/* Content */}
-                  <div className="relative z-10 p-8 sm:p-10">
-                    {/* Header Row */}
-                    <div className="flex items-start gap-5 mb-6">
-                      {/* Luxury Icon Container */}
-                      <div 
-                        className={`
-                          relative p-4 rounded-2xl transition-all duration-500
-                          ${isHovered ? 'scale-110' : 'scale-100'}
-                        `}
-                        style={{
-                          background: isHovered 
-                            ? `linear-gradient(135deg, ${division.accentColor}40, ${division.accentColor}20)`
-                            : 'rgba(255,255,255,0.05)',
-                          boxShadow: isHovered 
-                            ? `0 10px 30px -10px ${division.glowColor}` 
-                            : 'none'
-                        }}
-                      >
-                        <Icon 
-                          className={`w-8 h-8 transition-all duration-500 ${isHovered ? 'text-white' : 'text-gray-300'}`} 
-                        />
-                        
-                        {/* Icon Glow Ring */}
-                        <div 
-                          className={`absolute inset-0 rounded-2xl transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
-                          style={{
-                            boxShadow: `inset 0 0 20px ${division.accentColor}30`
-                          }}
-                        />
-                      </div>
-                      
-                      {/* Title & Tagline */}
-                      <div className="flex-1">
-                        <h3 
-                          className={`
-                            text-2xl sm:text-3xl font-bold mb-2 transition-all duration-500
-                            ${isHovered ? 'text-white' : 'text-gray-100'}
-                          `}
-                          style={{
-                            textShadow: isHovered ? `0 0 30px ${division.glowColor}` : 'none'
-                          }}
-                        >
-                          {isHebrew ? division.nameHe : division.name}
-                        </h3>
-                        <p className={`text-sm font-medium tracking-wide uppercase transition-colors duration-500 ${isHovered ? 'text-amber-400' : 'text-gray-500'}`}>
-                          {division.tagline}
-                        </p>
-                      </div>
+                  {/* Glamorous Header with Icon */}
+                  <div className="relative flex items-start gap-2 sm:gap-3 mb-3">
+                    <div 
+                      className="p-2 sm:p-2.5 rounded-xl transition-all duration-500 shadow-sm flex-shrink-0"
+                      style={{
+                        background: isHovered 
+                          ? `linear-gradient(135deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`
+                          : `linear-gradient(135deg, ${division.gradientFrom}15 0%, ${division.gradientTo}10 100%)`,
+                        boxShadow: isHovered ? `0 8px 20px -6px ${division.glowColor}` : undefined,
+                      }}
+                    >
+                      <Icon 
+                        className="w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-500" 
+                        style={{ color: isHovered ? '#ffffff' : division.gradientFrom }}
+                        strokeWidth={2}
+                      />
                     </div>
-
-                    {/* Description */}
-                    <p className={`text-base leading-relaxed mb-8 transition-colors duration-500 ${isHovered ? 'text-gray-200' : 'text-gray-400'}`}>
-                      {division.description}
-                    </p>
-
-                    {/* Luxury Feature Tags */}
-                    <div className="flex flex-wrap gap-2 mb-8">
-                      {division.features.slice(0, 3).map((feature, idx) => (
-                        <span
-                          key={idx}
-                          className={`
-                            px-4 py-2 rounded-full text-sm font-medium
-                            transition-all duration-500 border
-                            ${isHovered 
-                              ? 'bg-white/10 text-white border-white/20 shadow-lg' 
-                              : 'bg-white/5 text-gray-400 border-white/5'}
-                          `}
-                          style={{
-                            boxShadow: isHovered ? `0 4px 15px -5px ${division.glowColor}` : 'none'
-                          }}
-                        >
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Luxury CTA */}
-                    <div className="flex items-center gap-3 group/cta">
-                      <span 
-                        className={`
-                          text-lg font-semibold tracking-wide transition-all duration-500
-                          ${isHovered ? 'text-white' : 'text-gray-300'}
-                        `}
-                      >
-                        {t('divisions.learnMore', language)}
-                      </span>
-                      <div 
-                        className={`
-                          p-2 rounded-full transition-all duration-500
-                          ${isHovered ? 'bg-white/20 translate-x-1' : 'bg-white/5'}
-                        `}
-                        style={{
-                          transform: isHebrew ? (isHovered ? 'translateX(-4px)' : '') : (isHovered ? 'translateX(4px)' : ''),
-                        }}
-                      >
-                        <ArrowRight 
-                          className={`w-5 h-5 transition-colors duration-500 ${isHovered ? 'text-white' : 'text-gray-400'} ${isHebrew ? 'rotate-180' : ''}`} 
-                        />
-                      </div>
-                    </div>
+                    
+                    <h3 
+                      className="font-serif text-sm sm:text-base font-semibold tracking-tight leading-tight transition-all duration-300"
+                      style={{
+                        background: isHovered 
+                          ? `linear-gradient(135deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`
+                          : 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                      }}
+                    >
+                      {isHebrew ? division.nameHe : division.name}
+                    </h3>
                   </div>
 
-                  {/* Corner Accent */}
-                  <div 
-                    className={`
-                      absolute top-0 right-0 w-32 h-32 transition-opacity duration-700
-                      ${isHovered ? 'opacity-100' : 'opacity-0'}
-                    `}
+                  {/* Tagline with gradient */}
+                  <p 
+                    className="relative text-[9px] sm:text-xs uppercase tracking-[0.1em] font-semibold mb-2 leading-tight"
                     style={{
-                      background: `radial-gradient(circle at 100% 0%, ${division.accentColor}25 0%, transparent 70%)`
+                      background: `linear-gradient(90deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
                     }}
-                  />
+                  >
+                    {division.tagline}
+                  </p>
+
+                  {/* Description - Hidden on mobile for compactness */}
+                  <p className="relative text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-2 hidden sm:block mb-3">
+                    {division.description}
+                  </p>
+
+                  {/* Glamorous CTA with gradient */}
+                  <div className="relative flex items-center gap-1.5 mt-2 sm:mt-4">
+                    <span 
+                      className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.12em] transition-all duration-500"
+                      style={{
+                        background: isHovered 
+                          ? `linear-gradient(90deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`
+                          : 'linear-gradient(90deg, #94a3b8 0%, #64748b 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                      }}
+                    >
+                      {t('divisions.learnMore', language)}
+                    </span>
+                    <ArrowRight 
+                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all duration-500 ${isHovered ? 'translate-x-1' : ''} ${isHebrew ? 'rotate-180' : ''}`}
+                      style={{ color: isHovered ? division.gradientFrom : '#94a3b8' }}
+                      strokeWidth={2.5}
+                    />
+                  </div>
                 </div>
               </Link>
             );
           })}
         </div>
-
-        {/* Luxury Trust Badges */}
-        <div className="mt-20 pt-16 border-t border-white/10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
-            {[
-              { icon: Shield, value: '100%', label: t('divisions.kycVerified', language), color: 'text-blue-400' },
-              { icon: Clock, value: '24/7', label: t('divisions.support', language), color: 'text-emerald-400' },
-              { icon: Award, value: t('divisions.premium', language), label: t('divisions.quality', language), color: 'text-purple-400' },
-              { icon: Heart, value: t('divisions.passion', language), label: t('divisions.forPets', language), color: 'text-pink-400' },
-            ].map((badge, idx) => (
-              <div key={idx} className="text-center group cursor-default">
-                <div className="inline-flex p-4 rounded-2xl bg-white/5 border border-white/10 mb-4 transition-all duration-500 group-hover:bg-white/10 group-hover:border-white/20 group-hover:scale-110">
-                  <badge.icon className={`w-8 h-8 ${badge.color} transition-transform duration-500 group-hover:scale-110`} />
-                </div>
-                <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{badge.value}</div>
-                <div className="text-sm text-gray-500 font-medium">{badge.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Mission Statement */}
-        <div className="mt-16 text-center max-w-4xl mx-auto">
-          <p className="text-lg text-gray-400 leading-relaxed italic">
-            "{t('divisions.missionStatement', language)}"
-          </p>
-        </div>
       </div>
-
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
     </section>
   );
 }
