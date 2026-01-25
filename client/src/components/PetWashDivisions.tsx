@@ -86,9 +86,9 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.academy.tagline', language),
       description: t('divisions.academy.description', language),
       icon: GraduationCap,
-      gradientFrom: '#8b5cf6',
-      gradientTo: '#a855f7',
-      glowColor: 'rgba(139, 92, 246, 0.4)',
+      gradientFrom: '#0d9488',
+      gradientTo: '#14b8a6',
+      glowColor: 'rgba(13, 148, 136, 0.4)',
       link: '/academy',
       features: [
         t('divisions.academy.feature1', language),
