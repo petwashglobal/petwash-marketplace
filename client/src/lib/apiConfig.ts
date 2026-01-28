@@ -6,7 +6,8 @@
  */
 
 // Replit deployment URL - this is where the backend API runs
-const REPLIT_API_URL = 'https://petwash-marketplace.replit.app';
+// Note: Use the Replit dev domain until we have a stable deployment URL
+const REPLIT_API_URL = 'https://f46fb046-7dd0-4090-af9e-1be17d9de48e-00-15el1m8qkuf16.picard.replit.dev';
 
 const getApiBaseUrl = (): string => {
   // Use explicit VITE_API_URL if provided
