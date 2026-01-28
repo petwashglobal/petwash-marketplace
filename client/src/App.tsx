@@ -356,6 +356,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/signin">
           {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
+        <Route path="/sign-in">
+          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+        </Route>
         <Route path="/login">
           {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>

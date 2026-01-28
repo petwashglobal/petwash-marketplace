@@ -23,6 +23,19 @@ import { EmailService } from '../emailService';
 
 const router = Router();
 
+// Helper to generate friendly display names from provider IDs
+function formatProviderName(providerId: string): string {
+  // Extract meaningful name from provider ID patterns like "user-ido", "demo-sitter-1", etc.
+  const id = providerId.replace(/^(user-|demo-|provider-)/i, '');
+  const parts = id.split(/[-_]/);
+  // Capitalize first part and return
+  if (parts.length > 0 && parts[0].length > 1) {
+    const name = parts[0];
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }
+  return 'Pet Care Pro';
+}
+
 router.post('/quote', async (req, res) => {
   try {
     const { 
@@ -786,7 +799,7 @@ router.get('/search/providers', async (req, res) => {
         id: provider.providerId,
         platform: provider.platform,
         serviceType: provider.serviceType,
-        displayName: profile?.displayName || `Provider ${provider.providerId.slice(-4)}`,
+        displayName: profile?.displayName || profile?.businessName || profile?.firstName || formatProviderName(provider.providerId),
         bio: profile?.bio || null,
         profilePhotoUrl: profile?.profilePhotoUrl || null,
         location: profile?.city || null,
