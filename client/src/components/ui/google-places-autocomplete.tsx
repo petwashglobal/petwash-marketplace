@@ -56,16 +56,29 @@ export function GooglePlacesAutocomplete({
 
   useEffect(() => {
     // Load Google Maps Script
-    const loadScript = () => {
+    const loadScript = async () => {
       if (window.google && window.google.maps) {
         console.log('[Google Places] ✅ Google Maps already loaded');
         setScriptLoaded(true);
         return;
       }
 
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+      // Fetch API key from server (secrets aren't available at build time)
+      let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
       if (!apiKey) {
-        console.error('[Google Places] ❌ VITE_GOOGLE_MAPS_API_KEY not configured');
+        try {
+          const response = await fetch('/api/config/google-maps');
+          if (response.ok) {
+            const data = await response.json();
+            apiKey = data.apiKey || '';
+          }
+        } catch (e) {
+          console.error('[Google Places] Failed to fetch API key from server');
+        }
+      }
+
+      if (!apiKey) {
+        console.error('[Google Places] ❌ Google Maps API key not configured');
         return;
       }
       
@@ -218,17 +231,36 @@ export function useGooglePlaces() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    if (window.google && window.google.maps) {
-      setIsLoaded(true);
-      return;
-    }
+    const loadMaps = async () => {
+      if (window.google && window.google.maps) {
+        setIsLoaded(true);
+        return;
+      }
 
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}&libraries=places&language=en`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => setIsLoaded(true);
-    document.head.appendChild(script);
+      let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+      if (!apiKey) {
+        try {
+          const response = await fetch('/api/config/google-maps');
+          if (response.ok) {
+            const data = await response.json();
+            apiKey = data.apiKey || '';
+          }
+        } catch (e) {
+          console.error('[Google Places] Failed to fetch API key');
+        }
+      }
+
+      if (!apiKey) return;
+
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=en`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => setIsLoaded(true);
+      document.head.appendChild(script);
+    };
+
+    loadMaps();
   }, []);
 
   return { isLoaded };

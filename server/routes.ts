@@ -376,6 +376,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Maps API Key endpoint (PUBLIC - needed by frontend for Places Autocomplete)
+  app.get('/api/config/google-maps', (req, res) => {
+    const apiKey = process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Google Maps API key not configured' });
+    }
+    res.json({ apiKey });
+  });
+
   // Payment Gateway Status Endpoint - PUBLIC (no auth required)
   // Check if Nayax is configured - used by frontend to show "Coming Soon" badges
   app.get('/payment-status', (req, res) => {
