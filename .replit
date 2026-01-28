@@ -45,4 +45,3 @@ externalPort = 80
 [userenv]
 
 [userenv.shared]
-VITE_FIREBASE_APPCHECK_SITE_KEY = "6LeIpvcrAAAAAJzFvAjQ-89-YK9XPJGjHw2pfRh0"
