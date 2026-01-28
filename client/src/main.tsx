@@ -2,6 +2,7 @@
 // Only import React root - App will be dynamically imported
 import { createRoot } from "react-dom/client";
 import "./index.css"; // CRITICAL: Static import so Vite bundles CSS into <link> tag
+import "./lib/i18next-init"; // Initialize react-i18next (prevents useTranslation warnings)
 
 // HubSpot route change tracking
 declare global {

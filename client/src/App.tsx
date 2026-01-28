@@ -1,3 +1,4 @@
+import "./lib/i18next-init"; // Initialize react-i18next before any component imports
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
