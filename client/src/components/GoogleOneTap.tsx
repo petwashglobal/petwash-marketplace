@@ -3,6 +3,7 @@ import { auth } from '@/lib/firebase';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
+import { getApiUrl } from '@/lib/apiConfig';
 import { useLocation } from 'wouter';
 
 interface GoogleOneTapProps {
@@ -113,7 +114,7 @@ export function GoogleOneTap({
 
       // Create session cookie
       const firebaseIdToken = await userCredential.user.getIdToken();
-      const sessionResponse = await fetch('/api/auth/session', {
+      const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

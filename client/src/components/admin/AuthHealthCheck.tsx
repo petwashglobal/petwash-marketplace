@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Activity, CheckCircle, XCircle, AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import { getApiUrl } from "@/lib/apiConfig";
 
 interface HealthCheckResult {
   status: 'success' | 'error' | 'warning';
@@ -61,7 +62,7 @@ export default function AuthHealthCheck() {
 
       // 2. Check Auth Health Endpoint
       try {
-        const healthResponse = await fetch('/api/auth/health', {
+        const healthResponse = await fetch(getApiUrl('/api/auth/health'), {
           method: 'GET',
           credentials: 'include'
         });
@@ -93,7 +94,7 @@ export default function AuthHealthCheck() {
 
       // 3. Check Current User Session
       try {
-        const meResponse = await fetch('/api/auth/me', {
+        const meResponse = await fetch(getApiUrl('/api/auth/me'), {
           method: 'GET',
           credentials: 'include'
         });

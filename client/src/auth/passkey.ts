@@ -12,6 +12,7 @@ import {
 } from '@simplewebauthn/browser';
 import { auth } from '@/lib/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
+import { getApiUrl } from '@/lib/apiConfig';
 
 /**
  * Log biometric authentication failure to immutable audit ledger (Protocol 3 compliance)
@@ -28,7 +29,7 @@ async function logBiometricFailure(
     const errorType = error.name || 'UnknownWebAuthnError';
     const isCanceled = errorType === 'NotAllowedError' || errorType === 'AbortError';
     
-    await fetch('/api/audit/record-biometric-failure', {
+    await fetch(getApiUrl('/api/audit/record-biometric-failure'), {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -177,7 +178,7 @@ export async function registerPasskey(
     const hasPlatformAuth = await isPlatformAuthenticatorAvailable();
 
     // Get registration options from server (using session cookie)
-    const optionsResponse = await fetch('/api/webauthn/register/options', {
+    const optionsResponse = await fetch(getApiUrl('/api/webauthn/register/options'), {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -210,7 +211,7 @@ export async function registerPasskey(
     });
 
     // Verify registration with server
-    const verifyResponse = await fetch('/api/webauthn/register/verify', {
+    const verifyResponse = await fetch(getApiUrl('/api/webauthn/register/verify'), {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -273,7 +274,7 @@ export async function signInWithPasskey(
       return { success: false, error: 'Please enter a valid email address' };
     }
 
-    const optionsResponse = await fetch('/api/webauthn/login/options', {
+    const optionsResponse = await fetch(getApiUrl('/api/webauthn/login/options'), {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -296,7 +297,7 @@ export async function signInWithPasskey(
     });
 
     // Verify authentication with server
-    const verifyResponse = await fetch('/api/webauthn/login/verify', {
+    const verifyResponse = await fetch(getApiUrl('/api/webauthn/login/verify'), {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -391,7 +392,7 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
       return false;
     }
 
-    const optionsResponse = await fetch('/api/webauthn/login/options', {
+    const optionsResponse = await fetch(getApiUrl('/api/webauthn/login/options'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -415,7 +416,7 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
     });
 
     // Verify authentication with server
-    const verifyResponse = await fetch('/api/webauthn/login/verify', {
+    const verifyResponse = await fetch(getApiUrl('/api/webauthn/login/verify'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -480,7 +481,7 @@ export async function signInWithPasskeyAuto(
     console.log('Auto Face ID: Starting authentication for', storedEmail.substring(0, 3) + '***');
 
     // Get authentication options from server
-    const optionsResponse = await fetch('/api/webauthn/login/options', {
+    const optionsResponse = await fetch(getApiUrl('/api/webauthn/login/options'), {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -502,7 +503,7 @@ export async function signInWithPasskeyAuto(
     });
 
     // Verify authentication with server
-    const verifyResponse = await fetch('/api/webauthn/login/verify', {
+    const verifyResponse = await fetch(getApiUrl('/api/webauthn/login/verify'), {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -575,7 +576,7 @@ export async function requestBiometricReAuth(): Promise<{ success: boolean; erro
  */
 export async function getUserPasskeyDevices(firebaseToken: string) {
   try {
-    const response = await fetch('/api/auth/webauthn/devices', {
+    const response = await fetch(getApiUrl('/api/auth/webauthn/devices'), {
       headers: {
         'Authorization': `Bearer ${firebaseToken}`,
       },

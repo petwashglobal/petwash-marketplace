@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential } from "firebase/auth";
 import { auth } from "../lib/firebase";
+import { getApiUrl } from "@/lib/apiConfig";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { useSEO, pageSEO } from "@/lib/seo";
@@ -290,7 +291,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       setPinError("");
 
       // Use the device trust token for secure PIN verification
-      const response = await fetch('/api/pin-auth/trusted-device-verify', {
+      const response = await fetch(getApiUrl('/api/pin-auth/trusted-device-verify'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -380,7 +381,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       }
       
       const idToken = await userCredential.user.getIdToken();
-      const sessionResponse = await fetch('/api/auth/session', {
+      const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -405,7 +406,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       }));
       
       try {
-        const consentResponse = await fetch('/api/consent/oauth', {
+        const consentResponse = await fetch(getApiUrl('/api/consent/oauth'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -479,7 +480,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       
       const idToken = await userCredential.user.getIdToken();
-      const sessionResponse = await fetch('/api/auth/session', {
+      const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Layout } from "@/components/Layout";
 import { useLanguage } from "@/lib/languageStore";
+import { getApiUrl } from "@/lib/apiConfig";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +69,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
       if (!firebaseUser) return;
       try {
         const token = await firebaseUser.getIdToken();
-        const response = await fetch('/api/pin-auth/status', {
+        const response = await fetch(getApiUrl('/api/pin-auth/status'), {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (response.ok) {
@@ -91,7 +92,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
     setIsSubmitting(true);
     try {
       const token = await firebaseUser.getIdToken();
-      const response = await fetch('/api/pin-auth/setup', {
+      const response = await fetch(getApiUrl('/api/pin-auth/setup'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +142,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
     setIsSubmitting(true);
     try {
       const token = await firebaseUser.getIdToken();
-      const response = await fetch('/api/pin-auth/remove', {
+      const response = await fetch(getApiUrl('/api/pin-auth/remove'), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -330,7 +331,7 @@ export default function Settings() {
         setLoadingDevices(true);
         const token = await firebaseUser.getIdToken();
         
-        const response = await fetch('/api/auth/webauthn/devices', {
+        const response = await fetch(getApiUrl('/api/auth/webauthn/devices'), {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -450,7 +451,7 @@ export default function Settings() {
         });
 
         // Refresh devices list
-        const response = await fetch('/api/auth/webauthn/devices', {
+        const response = await fetch(getApiUrl('/api/auth/webauthn/devices'), {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -491,7 +492,7 @@ export default function Settings() {
     try {
       const token = await firebaseUser.getIdToken();
       
-      const response = await fetch('/api/user/delete', {
+      const response = await fetch(getApiUrl('/api/user/delete'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

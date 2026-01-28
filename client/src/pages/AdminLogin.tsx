@@ -20,6 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { getApiUrl } from "@/lib/apiConfig";
 import { auth } from "@/lib/firebase";
 import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { Shield, Lock, Fingerprint, Loader2, Phone } from "lucide-react";
@@ -148,7 +149,7 @@ export default function AdminLogin() {
       console.log('[AdminLogin] ✅ ID token obtained');
       
       console.log('[AdminLogin] Step 3: Creating session cookie...');
-      const sessionRes = await fetch('/api/auth/session', {
+      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -164,7 +165,7 @@ export default function AdminLogin() {
       console.log('[AdminLogin] ✅ Session cookie created:', sessionData);
       
       console.log('[AdminLogin] Step 4: Verifying admin access...');
-      const meRes = await fetch('/api/auth/me', { credentials: 'include' });
+      const meRes = await fetch(getApiUrl('/api/auth/me'), { credentials: 'include' });
       
       if (!meRes.ok) {
         const error = await meRes.json();
@@ -200,7 +201,7 @@ export default function AdminLogin() {
         console.log('[AdminLogin] ✅ Login successful, checking if passkey setup is needed');
         
         // Check if user already has a passkey
-        const hasPasskeyCheck = await fetch('/api/auth/webauthn/devices', {
+        const hasPasskeyCheck = await fetch(getApiUrl('/api/auth/webauthn/devices'), {
           credentials: 'include',
         });
         
@@ -473,15 +474,16 @@ export default function AdminLogin() {
                       const result = await signInWithPopup(auth, provider);
                       const idToken = await result.user.getIdToken();
                       
-                      const sessionRes = await fetch('/api/auth/session', {
+                      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
                         body: JSON.stringify({ idToken, expiresInMs: 432000000 })
                       });
                       
                       if (!sessionRes.ok) throw new Error('Session failed');
                       
-                      const meRes = await fetch('/api/auth/me', { credentials: 'include' });
+                      const meRes = await fetch(getApiUrl('/api/auth/me'), { credentials: 'include' });
                       const meData = await meRes.json();
                       
                       if (meData.user?.role !== 'admin' && meData.user?.role !== 'ops') {

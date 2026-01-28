@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { User, Shield, Eye, EyeOff, Upload, Calendar } from 'lucide-react';
+import { getApiUrl } from '@/lib/apiConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -132,7 +133,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
         }
       });
 
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch(getApiUrl('/api/auth/register'), {
         method: 'POST',
         body: formDataToSend,
       });

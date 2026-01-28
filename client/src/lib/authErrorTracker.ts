@@ -1,4 +1,5 @@
 import { logger } from './logger';
+import { getApiUrl } from './apiConfig';
 
 interface AuthErrorDetails {
   errorCode: string;
@@ -28,7 +29,7 @@ export async function trackAuthError(error: any, method: string) {
   logger.error(`[AUTH ERROR TRACKER] ${method} failed:`, errorDetails);
 
   try {
-    await fetch('/api/auth/track-error', {
+    await fetch(getApiUrl('/api/auth/track-error'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(errorDetails),
