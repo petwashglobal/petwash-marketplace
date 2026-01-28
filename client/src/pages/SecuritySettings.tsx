@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Shield, Smartphone, Trash2, Edit2, Check, X } from 'lucide-react';
+import { getApiUrl } from "@/lib/apiConfig";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -79,7 +80,7 @@ export default function SecuritySettings() {
   const createPasskeyMutation = useMutation({
     mutationFn: async () => {
       // Step 1: Get registration options
-      const optionsRes = await fetch('/api/webauthn/register/options', {
+      const optionsRes = await fetch(getApiUrl('/api/webauthn/register/options'), {
         method: 'POST',
         credentials: 'include',
       });

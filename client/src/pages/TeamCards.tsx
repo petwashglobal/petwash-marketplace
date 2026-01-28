@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Share2, Smartphone, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/lib/languageStore";
+import { getApiUrl } from '@/lib/apiConfig';
 
 // Team members from business cards
 const teamMembers = [
@@ -55,7 +56,7 @@ export default function TeamCards() {
 
   const handleAppleWallet = async (member: typeof teamMembers[0]) => {
     try {
-      const response = await fetch('/api/wallet/business-card', {
+      const response = await fetch(getApiUrl('/api/wallet/business-card'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(member)
@@ -89,7 +90,7 @@ export default function TeamCards() {
 
   const handleGoogleWallet = async (member: typeof teamMembers[0]) => {
     try {
-      const response = await fetch('/api/google-wallet/business-card', {
+      const response = await fetch(getApiUrl('/api/google-wallet/business-card'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(member)

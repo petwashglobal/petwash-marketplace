@@ -5,6 +5,7 @@ import {
   platformAuthenticatorIsAvailable,
 } from '@simplewebauthn/browser';
 import { logger } from '@/lib/logger';
+import { getApiUrl } from '@/lib/apiConfig';
 
 /**
  * Check if WebAuthn is supported in this browser
@@ -59,7 +60,7 @@ export async function registerPasskey(): Promise<boolean> {
     logger.info('[WebAuthn] Starting passkey registration');
 
     // Get registration options from server
-    const optionsRes = await fetch('/api/webauthn/register/options', {
+    const optionsRes = await fetch(getApiUrl('/api/webauthn/register/options'), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -76,7 +77,7 @@ export async function registerPasskey(): Promise<boolean> {
     const response = await startRegistration(options);
 
     // Verify registration with server
-    const verifyRes = await fetch('/api/webauthn/register/verify', {
+    const verifyRes = await fetch(getApiUrl('/api/webauthn/register/verify'), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -118,7 +119,7 @@ export async function authenticateWithPasskey(email: string): Promise<{
     logger.info('[WebAuthn] Starting passkey authentication', { email });
 
     // Get authentication options from server
-    const optionsRes = await fetch('/api/webauthn/login/options', {
+    const optionsRes = await fetch(getApiUrl('/api/webauthn/login/options'), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -136,7 +137,7 @@ export async function authenticateWithPasskey(email: string): Promise<{
     const response = await startAuthentication(options);
 
     // Verify authentication with server
-    const verifyRes = await fetch('/api/webauthn/login/verify', {
+    const verifyRes = await fetch(getApiUrl('/api/webauthn/login/verify'), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -171,7 +172,7 @@ export async function authenticateWithPasskey(email: string): Promise<{
  */
 export async function getUserPasskeys(): Promise<any[]> {
   try {
-    const res = await fetch('/api/webauthn/credentials', {
+    const res = await fetch(getApiUrl('/api/webauthn/credentials'), {
       credentials: 'include',
     });
 
@@ -192,7 +193,7 @@ export async function getUserPasskeys(): Promise<any[]> {
  */
 export async function deletePasskey(credentialId: string): Promise<boolean> {
   try {
-    const res = await fetch(`/api/webauthn/credentials/${credentialId}`, {
+    const res = await fetch(getApiUrl(`/api/webauthn/credentials/${credentialId}`), {
       method: 'DELETE',
       credentials: 'include',
     });

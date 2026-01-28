@@ -9,6 +9,7 @@ import type { WashPackage } from '@shared/schema';
 import type { Language } from '@/lib/i18n';
 import { trackVoucherRedeemed } from '@/lib/analytics';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface CheckoutModalProps {
   package: WashPackage;
@@ -38,7 +39,7 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
 
   const checkoutMutation = useMutation({
     mutationFn: async (paymentMethod: string) => {
-      const response = await fetch('/api/checkout', {
+      const response = await fetch(getApiUrl('/api/checkout'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

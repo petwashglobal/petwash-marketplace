@@ -8,6 +8,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Delete, Check, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface PinKeypadProps {
   pinLength?: 4 | 5 | 6;
@@ -289,7 +290,7 @@ export function PinSetupFlow({
 
     setLoading(true);
     try {
-      const response = await fetch('/api/pin-auth/setup', {
+      const response = await fetch(getApiUrl('/api/pin-auth/setup'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -382,7 +383,7 @@ export function PinLoginFlow({
     setError('');
 
     try {
-      const response = await fetch('/api/pin-auth/verify', {
+      const response = await fetch(getApiUrl('/api/pin-auth/verify'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin, email }),

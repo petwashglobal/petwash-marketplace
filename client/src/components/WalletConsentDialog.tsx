@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Shield, FileText, Info, ExternalLink } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface WalletConsentDialogProps {
   isOpen: boolean;
@@ -37,7 +38,7 @@ export function WalletConsentDialog({
     
     // Log consent to backend
     try {
-      await fetch('/api/consent/wallet', {
+      await fetch(getApiUrl('/api/consent/wallet'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

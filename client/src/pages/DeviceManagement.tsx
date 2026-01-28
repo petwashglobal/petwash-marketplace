@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Layout } from "@/components/Layout";
 import { useLanguage } from "@/lib/languageStore";
+import { getApiUrl } from "@/lib/apiConfig";
 import { t, isRTL } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -79,7 +80,7 @@ export default function DeviceManagement() {
       try {
         setLoadingDevices(true);
         
-        const response = await fetch('/api/webauthn/credentials', {
+        const response = await fetch(getApiUrl('/api/webauthn/credentials'), {
           credentials: 'include',
         });
 
@@ -104,7 +105,7 @@ export default function DeviceManagement() {
     if (!firebaseUser || !editName.trim()) return;
 
     try {
-      const response = await fetch(`/api/webauthn/credentials/${credId}/rename`, {
+      const response = await fetch(getApiUrl(`/api/webauthn/credentials/${credId}/rename`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +149,7 @@ export default function DeviceManagement() {
     if (!firebaseUser) return;
 
     try {
-      const response = await fetch(`/api/webauthn/credentials/${credId}`, {
+      const response = await fetch(getApiUrl(`/api/webauthn/credentials/${credId}`), {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -200,7 +201,7 @@ export default function DeviceManagement() {
         });
 
         // Refresh devices list
-        const response = await fetch('/api/webauthn/credentials', {
+        const response = await fetch(getApiUrl('/api/webauthn/credentials'), {
           credentials: 'include',
         });
 

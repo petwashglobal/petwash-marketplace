@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/apiConfig';
 import {
   Wrench,
   Package,
@@ -88,7 +89,7 @@ export default function SparePartsManagement() {
   // Order part mutation
   const orderPartMutation = useMutation({
     mutationFn: async (data: { partId: number; quantity: number; stationId?: number }) => {
-      const response = await fetch('/api/k9000/spare-parts/order', {
+      const response = await fetch(getApiUrl('/api/k9000/spare-parts/order'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

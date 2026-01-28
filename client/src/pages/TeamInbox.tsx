@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLanguage } from '@/lib/languageStore';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { getApiUrl } from "@/lib/apiConfig";
 import { t } from '@/lib/i18n';
 import { useAuth } from '@/hooks/useAuth';
 import { auth } from '@/lib/firebase';
@@ -102,7 +103,7 @@ export default function TeamInbox() {
     queryFn: async () => {
       if (!firebaseUser) throw new Error('Not authenticated');
       const token = await firebaseUser.getIdToken();
-      const response = await fetch('/api/messaging/conversations', {
+      const response = await fetch(getApiUrl('/api/messaging/conversations'), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch conversations');
@@ -120,7 +121,7 @@ export default function TeamInbox() {
     queryFn: async () => {
       if (!firebaseUser || !selectedConversationId) throw new Error('Not authenticated');
       const token = await firebaseUser.getIdToken();
-      const response = await fetch(`/api/messaging/conversations/${selectedConversationId}/messages`, {
+      const response = await fetch(getApiUrl(`/api/messaging/conversations/${selectedConversationId}/messages`), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch messages');
@@ -251,7 +252,7 @@ export default function TeamInbox() {
     const markAsRead = async () => {
       try {
         const token = await firebaseUser.getIdToken();
-        await fetch(`/api/messaging/conversations/${selectedConversationId}/read-all`, {
+        await fetch(getApiUrl(`/api/messaging/conversations/${selectedConversationId}/read-all`), {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -291,7 +292,7 @@ export default function TeamInbox() {
       // Use fetch directly for FormData instead of apiRequest
       if (!firebaseUser) throw new Error('Not authenticated');
       const token = await firebaseUser.getIdToken();
-      const response = await fetch(`/api/messaging/conversations/${selectedConversationId}/messages`, {
+      const response = await fetch(getApiUrl(`/api/messaging/conversations/${selectedConversationId}/messages`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -327,7 +328,7 @@ export default function TeamInbox() {
     mutationFn: async (messageId: string) => {
       if (!firebaseUser) throw new Error('Not authenticated');
       const token = await firebaseUser.getIdToken();
-      const response = await fetch(`/api/messaging/conversations/${selectedConversationId}/pin-message`, {
+      const response = await fetch(getApiUrl(`/api/messaging/conversations/${selectedConversationId}/pin-message`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -358,7 +359,7 @@ export default function TeamInbox() {
     mutationFn: async () => {
       if (!firebaseUser) throw new Error('Not authenticated');
       const token = await firebaseUser.getIdToken();
-      const response = await fetch(`/api/messaging/conversations/${selectedConversationId}/unpin-message`, {
+      const response = await fetch(getApiUrl(`/api/messaging/conversations/${selectedConversationId}/unpin-message`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

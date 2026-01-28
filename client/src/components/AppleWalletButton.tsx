@@ -17,6 +17,7 @@ import { useLanguage } from '@/lib/languageStore';
 import { Apple, Download, Loader2, Wallet } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface AppleWalletButtonProps {
   tier: 'new' | 'silver' | 'gold' | 'platinum' | 'diamond';
@@ -61,7 +62,7 @@ export default function AppleWalletButton({
       const userEmail = (user as any).email || '';
 
       // Call API to generate Apple Wallet pass
-      const response = await fetch('/api/wallet/vip-card', {
+      const response = await fetch(getApiUrl('/api/wallet/vip-card'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -218,7 +219,7 @@ export function AppleWalletBadge({
       const userName = (user as any).displayName || (user as any).email?.split('@')[0] || 'VIP Member';
       const userEmail = (user as any).email || '';
 
-      const response = await fetch('/api/wallet/vip-card', {
+      const response = await fetch(getApiUrl('/api/wallet/vip-card'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

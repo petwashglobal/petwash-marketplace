@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { getApiUrl } from '@/lib/apiConfig';
 
 type ProviderType = "sitter" | "walker" | "driver" | "trainer";
 
@@ -249,7 +250,7 @@ export default function ProviderRegistrationBanner({
         agreeToContractorStatus: true,
       };
 
-      const response = await fetch("/api/provider-intake/submit", {
+      const response = await fetch(getApiUrl("/api/provider-intake/submit"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

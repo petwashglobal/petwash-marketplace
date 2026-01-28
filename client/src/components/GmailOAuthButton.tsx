@@ -7,6 +7,7 @@ import { Mail, Loader2, CheckCircle2, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { type Language, t } from '@/lib/i18n';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface GmailOAuthButtonProps {
   language: Language;
@@ -68,7 +69,7 @@ export function GmailOAuthButton({ language, onSuccess, onError }: GmailOAuthBut
       const idToken = await result.user.getIdToken();
       
       // Save the Gmail access token to backend with authentication
-      const response = await fetch('/api/gmail/connect', {
+      const response = await fetch(getApiUrl('/api/gmail/connect'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

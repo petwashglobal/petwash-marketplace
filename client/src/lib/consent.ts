@@ -3,6 +3,8 @@
  * Centralized consent preferences handling for GDPR compliance
  */
 
+import { getApiUrl } from '@/lib/apiConfig';
+
 export interface ConsentPreferences {
   necessary: boolean; // Always true
   functional: boolean;
@@ -65,7 +67,7 @@ export function applyConsentPreferences(consent: ConsentPreferences): void {
  */
 async function saveConsentToBackend(consent: ConsentPreferences): Promise<void> {
   try {
-    await fetch('/api/consent', {
+    await fetch(getApiUrl('/api/consent'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(consent),
@@ -136,7 +138,7 @@ export function createRejectAllConsent(): ConsentPreferences {
  */
 export async function loadConsentFromBackend(): Promise<ConsentPreferences | null> {
   try {
-    const response = await fetch('/api/consent');
+    const response = await fetch(getApiUrl('/api/consent'));
     if (response.ok) {
       const data = await response.json();
       return data.consent || null;

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "../../lib/firebase";
+import { getApiUrl } from "@/lib/apiConfig";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,7 @@ export default function InternalOnboard() {
   
   const verifyToken = async (inviteToken: string) => {
     try {
-      const response = await fetch(`/api/internal/invitations/verify/${inviteToken}`);
+      const response = await fetch(getApiUrl(`/api/internal/invitations/verify/${inviteToken}`));
       const data = await response.json();
       
       if (!response.ok || !data.success) {
@@ -149,7 +150,7 @@ export default function InternalOnboard() {
       
       const idToken = await user.getIdToken();
       
-      const acceptResponse = await fetch('/api/internal/invitations/accept', {
+      const acceptResponse = await fetch(getApiUrl('/api/internal/invitations/accept'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

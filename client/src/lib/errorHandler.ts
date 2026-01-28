@@ -10,6 +10,7 @@
  */
 
 import { logger } from './logger';
+import { getApiUrl } from '@/lib/apiConfig';
 
 export interface ErrorContext {
   context: string;              // Where the error occurred (e.g., 'payment', 'booking')
@@ -216,7 +217,7 @@ export class ErrorHandler {
         timestamp: new Date().toISOString(),
       };
 
-      await fetch('/api/errors/log', {
+      await fetch(getApiUrl('/api/errors/log'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(report),

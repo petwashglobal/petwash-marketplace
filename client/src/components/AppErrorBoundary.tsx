@@ -2,6 +2,7 @@ import { Component, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
+import { getApiUrl } from "@/lib/apiConfig";
 
 interface Props {
   children: ReactNode;
@@ -23,7 +24,7 @@ export class AppErrorBoundary extends Component<Props, State> {
     this.setState({ error, errorInfo });
     
     // Log to server
-    fetch("/api/logError", {
+    fetch(getApiUrl("/api/logError"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

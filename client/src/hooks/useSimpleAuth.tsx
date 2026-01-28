@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { logger } from '@/lib/logger';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface User {
   id: number;
@@ -37,7 +38,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/simple-auth/me', {
+      const response = await fetch(getApiUrl('/api/simple-auth/me'), {
         credentials: 'include',
       });
 
@@ -64,7 +65,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await apiRequest('/api/simple-auth/login', {
+    const response = await apiRequest(getApiUrl('/api/simple-auth/login'), {
       method: 'POST',
       body: JSON.stringify({ email, password }),
       headers: { 'Content-Type': 'application/json' },
@@ -80,7 +81,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (signupData: SignupData) => {
-    const response = await apiRequest('/api/simple-auth/signup', {
+    const response = await apiRequest(getApiUrl('/api/simple-auth/signup'), {
       method: 'POST',
       body: JSON.stringify(signupData),
       headers: { 'Content-Type': 'application/json' },
@@ -96,7 +97,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    await apiRequest('/api/simple-auth/logout', {
+    await apiRequest(getApiUrl('/api/simple-auth/logout'), {
       method: 'POST',
     });
     setUser(null);

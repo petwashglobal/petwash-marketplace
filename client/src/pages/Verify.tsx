@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Language } from '@/lib/i18n';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { logger } from '@/lib/logger';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface KYCStatus {
   status: string | null;
@@ -150,7 +151,7 @@ export default function Verify() {
       }
 
       try {
-        const response = await fetch(`/api/kyc/status/${firebaseUser.uid}`);
+        const response = await fetch(getApiUrl(`/api/kyc/status/${firebaseUser.uid}`));
         if (response.ok) {
           const data = await response.json();
           setKycStatus(data);
@@ -247,7 +248,7 @@ export default function Verify() {
         setUploadProgress((prev) => Math.min(prev + 10, 90));
       }, 200);
 
-      const response = await fetch('/api/kyc/upload', {
+      const response = await fetch(getApiUrl('/api/kyc/upload'), {
         method: 'POST',
         body: formData,
       });

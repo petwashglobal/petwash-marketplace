@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/Layout";
+import { getApiUrl } from '@/lib/apiConfig';
 import { type Language, t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,7 +81,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
 
     setLoading(true);
     try {
-      const response = await fetch('/api/gift-cards/purchase', {
+      const response = await fetch(getApiUrl('/api/gift-cards/purchase'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

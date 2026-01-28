@@ -1,5 +1,6 @@
 // Client-side HubSpot integration helpers
 import { logger } from "./logger";
+import { getApiUrl } from '@/lib/apiConfig';
 // Never includes any API keys or tokens - all server-side
 
 export async function trackEvent(
@@ -8,7 +9,7 @@ export async function trackEvent(
   properties?: Record<string, any>
 ): Promise<void> {
   try {
-    const response = await fetch('/api/hubspot/track-event', {
+    const response = await fetch(getApiUrl('/api/hubspot/track-event'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, eventName, properties })
@@ -43,7 +44,7 @@ export async function syncUser(userData: {
   petWeight?: string;
 }): Promise<void> {
   try {
-    const response = await fetch('/api/hubspot/sync-user', {
+    const response = await fetch(getApiUrl('/api/hubspot/sync-user'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData)

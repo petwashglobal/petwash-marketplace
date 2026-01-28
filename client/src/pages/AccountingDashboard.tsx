@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { getApiUrl } from '@/lib/apiConfig';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,7 +32,7 @@ export default function AccountingDashboard() {
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useQuery({
     queryKey: ['/api/accounting/summary', year, month],
     queryFn: async () => {
-      const res = await fetch(`/api/accounting/summary?year=${year}&month=${month}`);
+      const res = await fetch(getApiUrl(`/api/accounting/summary?year=${year}&month=${month}`));
       if (!res.ok) return null;
       return res.json();
     },
@@ -39,7 +40,7 @@ export default function AccountingDashboard() {
 
   const exportTransactionsMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch('/api/accounting/export/transactions', {
+      const res = await fetch(getApiUrl('/api/accounting/export/transactions'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ includeAI: true }),
@@ -66,7 +67,7 @@ export default function AccountingDashboard() {
 
   const exportComplianceMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch('/api/accounting/export/compliance', {
+      const res = await fetch(getApiUrl('/api/accounting/export/compliance'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ year, month }),
@@ -92,7 +93,7 @@ export default function AccountingDashboard() {
 
   const exportEscrowMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch('/api/accounting/export/escrow', {
+      const res = await fetch(getApiUrl('/api/accounting/export/escrow'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

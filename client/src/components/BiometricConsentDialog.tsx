@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Shield, Fingerprint, Smartphone, Key, Lock, FileText, ExternalLink, AlertCircle } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface BiometricConsentDialogProps {
   isOpen: boolean;
@@ -36,7 +37,7 @@ export function BiometricConsentDialog({
     
     // Log biometric consent to backend (REQUIRED by Apple/Google)
     try {
-      await fetch('/api/consent/biometric', {
+      await fetch(getApiUrl('/api/consent/biometric'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

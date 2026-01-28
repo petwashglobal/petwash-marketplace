@@ -11,6 +11,7 @@ import { Link } from 'wouter';
 import { createHubSpotForm } from '@/lib/utils';
 import { logger } from "@/lib/logger";
 import { useToast } from '@/hooks/use-toast';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface ContactProps {
   language: Language;
@@ -101,7 +102,7 @@ export default function Contact({ language }: ContactProps) {
     
     try {
       // Send to backend API
-      const response = await fetch('/api/contact', {
+      const response = await fetch(getApiUrl('/api/contact'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

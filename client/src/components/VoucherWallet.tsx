@@ -11,6 +11,7 @@ import { Gift, Plus, Loader2, Calendar, Coins, History, ChevronRight } from 'luc
 import { useLocation } from 'wouter';
 import { trackVoucherClaimed } from '@/lib/analytics';
 import { useAuth } from '@/hooks/useAuth';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface Voucher {
   id: string;
@@ -55,7 +56,7 @@ export function VoucherWallet() {
 
   const claimMutation = useMutation({
     mutationFn: async (code: string) => {
-      const response = await fetch('/api/vouchers/claim', {
+      const response = await fetch(getApiUrl('/api/vouchers/claim'), {
         method: 'POST',
         body: JSON.stringify({ code }),
         headers: { 'Content-Type': 'application/json' },

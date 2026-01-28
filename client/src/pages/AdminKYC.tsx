@@ -13,6 +13,7 @@ import { queryClient } from '@/lib/queryClient';
 import { Loader2 } from 'lucide-react';
 import { trackKYCApproved, trackKYCRejected } from '@/lib/analytics';
 import { logger } from "@/lib/logger";
+import { getApiUrl } from '@/lib/apiConfig';
 
 const ADMIN_EMAIL = 'nirhadad1@gmail.com';
 
@@ -103,7 +104,7 @@ export default function AdminKYC() {
     enabled: isAdmin && !!firebaseUser,
     queryFn: async () => {
       const headers = await getAuthHeaders();
-      const response = await fetch('/api/kyc/admin/pending', { headers });
+      const response = await fetch(getApiUrl('/api/kyc/admin/pending'), { headers });
       if (!response.ok) throw new Error('Failed to fetch pending submissions');
       return response.json();
     }
@@ -112,7 +113,7 @@ export default function AdminKYC() {
   // Fetch document URLs
   const fetchDocuments = async (uid: string) => {
     const headers = await getAuthHeaders();
-    const response = await fetch(`/api/kyc/admin/document/${uid}`, { headers });
+    const response = await fetch(getApiUrl(`/api/kyc/admin/document/${uid}`), { headers });
     if (!response.ok) throw new Error('Failed to fetch documents');
     const data = await response.json();
     return data.urls;
@@ -133,7 +134,7 @@ export default function AdminKYC() {
   const approveMutation = useMutation({
     mutationFn: async ({ uid, expiryYears }: { uid: string; expiryYears: string }) => {
       const headers = await getAuthHeaders();
-      const response = await fetch('/api/kyc/admin/approve', {
+      const response = await fetch(getApiUrl('/api/kyc/admin/approve'), {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -161,7 +162,7 @@ export default function AdminKYC() {
   const rejectMutation = useMutation({
     mutationFn: async ({ uid, reason }: { uid: string; reason: string }) => {
       const headers = await getAuthHeaders();
-      const response = await fetch('/api/kyc/admin/reject', {
+      const response = await fetch(getApiUrl('/api/kyc/admin/reject'), {
         method: 'POST',
         headers,
         body: JSON.stringify({

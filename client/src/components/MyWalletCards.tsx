@@ -7,6 +7,7 @@ import { CreditCard, Briefcase, Download, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/lib/languageStore";
 import { useAuth } from "@/hooks/useAuth";
+import { getApiUrl } from '@/lib/apiConfig';
 
 export default function MyWalletCards() {
   const { toast } = useToast();
@@ -35,7 +36,7 @@ export default function MyWalletCards() {
     try {
       setIsGenerating('loyalty');
       
-      const response = await fetch('/api/wallet/vip-card', {
+      const response = await fetch(getApiUrl('/api/wallet/vip-card'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
@@ -85,7 +86,7 @@ export default function MyWalletCards() {
     try {
       setIsGenerating('business');
       
-      const response = await fetch('/api/wallet/my-business-card', {
+      const response = await fetch(getApiUrl('/api/wallet/my-business-card'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

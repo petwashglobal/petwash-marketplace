@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { getApiUrl } from "@/lib/apiConfig";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,7 +56,7 @@ export default function CEODashboard() {
     setIsRequestingCode(true);
 
     try {
-      const response = await fetch('/api/admin/ceo/request-voucher', {
+      const response = await fetch(getApiUrl('/api/admin/ceo/request-voucher'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -106,7 +107,7 @@ export default function CEODashboard() {
     setIsVerifying(true);
 
     try {
-      const response = await fetch('/api/admin/ceo/issue-free-voucher', {
+      const response = await fetch(getApiUrl('/api/admin/ceo/issue-free-voucher'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

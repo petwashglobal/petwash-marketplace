@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/apiConfig';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -122,7 +123,7 @@ export default function PlushLab() {
       formData.append('accessories', JSON.stringify(data.accessories));
       formData.append('customization', JSON.stringify(data.customization));
       
-      const response = await fetch('/api/avatars', {
+      const response = await fetch(getApiUrl('/api/avatars'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`,
@@ -256,7 +257,7 @@ export default function PlushLab() {
       formData.append('photo', selectedFile);
       
       try {
-        const response = await fetch('/api/avatars/guest', {
+        const response = await fetch(getApiUrl('/api/avatars/guest'), {
           method: 'POST',
           body: formData,
         });

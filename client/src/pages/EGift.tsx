@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ChevronLeft, ArrowRight, Wallet, Gift, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
+import { getApiUrl } from '@/lib/apiConfig';
 
 const cardStyles = {
   rose: {
@@ -296,7 +297,7 @@ export default function EGift() {
     const finalPrice = selectedOption.value;
 
     try {
-      const response = await fetch('/api/multi-service-gift', {
+      const response = await fetch(getApiUrl('/api/multi-service-gift'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

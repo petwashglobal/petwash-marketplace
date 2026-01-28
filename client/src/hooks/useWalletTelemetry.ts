@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface WalletTelemetryOptions {
   token?: string;
@@ -40,7 +41,7 @@ export function useWalletTelemetry(options: WalletTelemetryOptions) {
     // Try sendBeacon first (more reliable for page unload)
     try {
       const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-      if (navigator.sendBeacon('/api/wallet/telemetry/beacon', blob)) {
+      if (navigator.sendBeacon(getApiUrl('/api/wallet/telemetry/beacon'), blob)) {
         return;
       }
     } catch (error) {
@@ -48,7 +49,7 @@ export function useWalletTelemetry(options: WalletTelemetryOptions) {
     }
 
     // Fallback to fetch with keepalive
-    fetch('/api/wallet/telemetry/beacon', {
+    fetch(getApiUrl('/api/wallet/telemetry/beacon'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

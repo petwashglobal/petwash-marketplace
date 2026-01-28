@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { getApiUrl } from '@/lib/apiConfig';
 import { type Language } from '@/lib/i18n';
 import { kenzoAvatarService } from '@/services/KenzoAvatarChatService';
 import { AIChatAssistant } from '@/components/AIChatAssistant';
@@ -75,7 +76,7 @@ export default function PawFinder({ language }: PawFinderProps) {
     e.preventDefault();
     
     try {
-      const response = await fetch('/api/paw-finder/reports', {
+      const response = await fetch(getApiUrl('/api/paw-finder/reports'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

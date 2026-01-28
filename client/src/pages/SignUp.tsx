@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { registerPasskey, isPasskeySupported, getBiometricMethodName } from "@/auth/passkey";
 import { motion } from "framer-motion";
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface SignUpProps {
   language: Language;
@@ -241,7 +242,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       const idToken = await user.getIdToken();
       
       // Create user profile via server API (bypasses Firestore security rules)
-      const profileResponse = await fetch('/api/users/create-profile', {
+      const profileResponse = await fetch(getApiUrl('/api/users/create-profile'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -296,7 +297,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
       // Send welcome email (non-blocking)
       logger.debug("Triggering welcome email");
-      fetch('/api/welcome-email', {
+      fetch(getApiUrl('/api/welcome-email'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

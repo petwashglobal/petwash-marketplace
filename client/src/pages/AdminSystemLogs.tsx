@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { getApiUrl } from '@/lib/apiConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,7 +66,7 @@ export default function AdminSystemLogs() {
     refetchInterval: isRealTime ? 5000 : false,
     queryFn: async () => {
       const headers = await getAuthHeaders();
-      const response = await fetch('/api/admin/system-logs/workflow', { headers });
+      const response = await fetch(getApiUrl('/api/admin/system-logs/workflow'), { headers });
       if (!response.ok) throw new Error('Failed to fetch workflow logs');
       return response.json();
     }
@@ -77,7 +78,7 @@ export default function AdminSystemLogs() {
     refetchInterval: isRealTime ? 5000 : false,
     queryFn: async () => {
       const headers = await getAuthHeaders();
-      const response = await fetch('/api/admin/system-logs/activity', { headers });
+      const response = await fetch(getApiUrl('/api/admin/system-logs/activity'), { headers });
       if (!response.ok) throw new Error('Failed to fetch activity logs');
       return response.json();
     }

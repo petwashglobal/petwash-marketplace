@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { getApiUrl } from '@/lib/apiConfig';
 import { t } from "@/lib/i18n";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -331,7 +332,7 @@ export default function LeadManagement() {
       if (sourceFilter) params.append('source', sourceFilter);
       if (assigneeFilter) params.append('assignedTo', assigneeFilter);
 
-      const response = await fetch(`/api/crm/leads?${params}`);
+      const response = await fetch(getApiUrl(`/api/crm/leads?${params}`));
       if (!response.ok) throw new Error('Failed to fetch leads');
       return response.json();
     }
@@ -340,7 +341,7 @@ export default function LeadManagement() {
   const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
     queryKey: ['/api/crm/leads/analytics'],
     queryFn: async () => {
-      const response = await fetch('/api/crm/leads/analytics');
+      const response = await fetch(getApiUrl('/api/crm/leads/analytics'));
       if (!response.ok) throw new Error('Failed to fetch analytics');
       return response.json();
     }
@@ -349,7 +350,7 @@ export default function LeadManagement() {
   const { data: dealStagesData } = useQuery({
     queryKey: ['/api/crm/deal-stages'],
     queryFn: async () => {
-      const response = await fetch('/api/crm/deal-stages');
+      const response = await fetch(getApiUrl('/api/crm/deal-stages'));
       if (!response.ok) throw new Error('Failed to fetch deal stages');
       return response.json();
     }
@@ -359,7 +360,7 @@ export default function LeadManagement() {
     queryKey: ['/api/crm/leads', selectedLead?.id],
     queryFn: async () => {
       if (!selectedLead?.id) return null;
-      const response = await fetch(`/api/crm/leads/${selectedLead.id}`);
+      const response = await fetch(getApiUrl(`/api/crm/leads/${selectedLead.id}`));
       if (!response.ok) throw new Error('Failed to fetch lead details');
       return response.json();
     },

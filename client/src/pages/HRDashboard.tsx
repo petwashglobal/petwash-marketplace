@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getApiUrl } from "@/lib/apiConfig";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,7 @@ export default function HRDashboard() {
   const { data: employees, isLoading: loadingEmployees } = useQuery({
     queryKey: ["/api/enterprise/hr/employees"],
     queryFn: async () => {
-      const response = await fetch("/api/enterprise/hr/employees?filter=active", { credentials: "include" });
+      const response = await fetch(getApiUrl("/api/enterprise/hr/employees?filter=active"), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch employees");
       return response.json();
     },
@@ -34,7 +35,7 @@ export default function HRDashboard() {
   const { data: payroll, isLoading: loadingPayroll } = useQuery({
     queryKey: ["/api/enterprise/hr/payroll"],
     queryFn: async () => {
-      const response = await fetch("/api/enterprise/hr/payroll", { credentials: "include" });
+      const response = await fetch(getApiUrl("/api/enterprise/hr/payroll"), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch payroll");
       return response.json();
     },
@@ -44,7 +45,7 @@ export default function HRDashboard() {
     queryKey: ["/api/enterprise/hr/employees", selectedEmployee?.id, "time-tracking"],
     queryFn: async () => {
       if (!selectedEmployee) return null;
-      const response = await fetch(`/api/enterprise/hr/employees/${selectedEmployee.id}/time-tracking`, { credentials: "include" });
+      const response = await fetch(getApiUrl(`/api/enterprise/hr/employees/${selectedEmployee.id}/time-tracking`), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch time tracking");
       return response.json();
     },

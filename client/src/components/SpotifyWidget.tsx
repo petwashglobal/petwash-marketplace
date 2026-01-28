@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { SiSpotify } from 'react-icons/si';
 import { Music, User, ExternalLink } from 'lucide-react';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface SpotifyProfile {
   id: string;
@@ -44,19 +45,19 @@ export function SpotifyWidget({ variant = 'compact', language = 'en' }: SpotifyW
   useEffect(() => {
     async function fetchSpotifyStatus() {
       try {
-        const res = await fetch('/api/spotify/status');
+        const res = await fetch(getApiUrl('/api/spotify/status'));
         const data = await res.json();
         
         if (data.success && data.connected) {
           setConnected(true);
           
-          const profileRes = await fetch('/api/spotify/profile');
+          const profileRes = await fetch(getApiUrl('/api/spotify/profile'));
           const profileData = await profileRes.json();
           if (profileData.success) {
             setProfile(profileData.profile);
           }
           
-          const nowPlayingRes = await fetch('/api/spotify/now-playing');
+          const nowPlayingRes = await fetch(getApiUrl('/api/spotify/now-playing'));
           const nowPlayingData = await nowPlayingRes.json();
           if (nowPlayingData.success && nowPlayingData.nowPlaying) {
             setNowPlaying(nowPlayingData.nowPlaying);

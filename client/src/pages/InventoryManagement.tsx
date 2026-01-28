@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/apiConfig';
 import {
   Package,
   AlertTriangle,
@@ -64,7 +65,7 @@ export default function InventoryManagement() {
   // Request restock mutation
   const requestRestockMutation = useMutation({
     mutationFn: async (data: { stationId: number; itemType: string; quantity: number }) => {
-      const response = await fetch('/api/k9000/restock-request', {
+      const response = await fetch(getApiUrl('/api/k9000/restock-request'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

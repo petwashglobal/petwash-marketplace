@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { getApiUrl } from '@/lib/apiConfig';
 import { queryClient } from '@/lib/queryClient';
 import { auth, db } from '@/lib/firebase';
 import { collection, query as firestoreQuery, where, getDocs } from 'firebase/firestore';
@@ -127,7 +128,7 @@ export default function Inbox() {
     queryKey: ['/api/inbox/user'],
     enabled: !!authToken,
     queryFn: async () => {
-      const response = await fetch('/api/inbox/user', {
+      const response = await fetch(getApiUrl('/api/inbox/user'), {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -148,7 +149,7 @@ export default function Inbox() {
   const markAsReadMutation = useMutation({
     mutationFn: async (messageId: string) => {
       if (!authToken) throw new Error('Not authenticated');
-      const response = await fetch(`/api/inbox/user/${messageId}/read`, {
+      const response = await fetch(getApiUrl(`/api/inbox/user/${messageId}/read`), {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${authToken}`,

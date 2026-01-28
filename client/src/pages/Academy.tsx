@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getApiUrl } from '@/lib/apiConfig';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -218,7 +219,7 @@ export default function Academy() {
     queryKey: ['/api/academy/trainers'],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/academy/trainers');
+        const response = await fetch(getApiUrl('/api/academy/trainers'));
         if (!response.ok) {
           return MOCK_TRAINERS;
         }

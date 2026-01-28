@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { getApiUrl } from '@/lib/apiConfig';
 
 export interface AdminUser {
   id: string;
@@ -26,7 +27,7 @@ export function useAdminAuth() {
     retry: false,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const res = await fetch('/api/admin/auth/me', { credentials: 'include' });
+      const res = await fetch(getApiUrl('/api/admin/auth/me'), { credentials: 'include' });
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || 'Authentication failed');

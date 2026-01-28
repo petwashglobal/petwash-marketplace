@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { getApiUrl } from "@/lib/apiConfig";
 import { auth } from '@/lib/firebase';
 import { useLanguage } from '@/lib/languageStore';
 import { trackPetAdded, trackPetUpdated, trackPetDeleted } from '@/lib/analytics';
@@ -108,7 +109,7 @@ export default function Pets() {
     queryKey: ['/api/pets'],
     enabled: !!authToken,
     queryFn: async () => {
-      const response = await fetch('/api/pets', {
+      const response = await fetch(getApiUrl('/api/pets'), {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },

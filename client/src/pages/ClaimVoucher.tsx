@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { trackVoucherClaimed } from '@/lib/analytics';
+import { getApiUrl } from '@/lib/apiConfig';
 
 export default function ClaimVoucher() {
   const { t, language, dir } = useLanguage();
@@ -27,7 +28,7 @@ export default function ClaimVoucher() {
       if (!user) {
         throw new Error('Please sign in to claim vouchers');
       }
-      const response = await fetch('/api/vouchers/claim', {
+      const response = await fetch(getApiUrl('/api/vouchers/claim'), {
         method: 'POST',
         body: JSON.stringify({ code }),
         headers: { 'Content-Type': 'application/json' },

@@ -5,6 +5,7 @@
  */
 
 import { nanoid } from 'nanoid';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface InteractionEvent {
   sessionId: string;
@@ -290,10 +291,10 @@ class InteractionTracker {
         const blob = new Blob([JSON.stringify({ events: eventsToSend })], {
           type: 'application/json',
         });
-        navigator.sendBeacon('/api/track/interactions', blob);
+        navigator.sendBeacon(getApiUrl('/api/track/interactions'), blob);
       } else {
         // Fallback to fetch
-        await fetch('/api/track/interactions', {
+        await fetch(getApiUrl('/api/track/interactions'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Loader2 } from 'lucide-react';
+import { getApiUrl } from '@/lib/apiConfig';
 
 /**
  * 🌟 WORLD-CLASS GOOGLE PLACES AUTOCOMPLETE 🌟
@@ -67,7 +68,7 @@ export function GooglePlacesAutocomplete({
       let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
       if (!apiKey) {
         try {
-          const response = await fetch('/api/config/google-maps');
+          const response = await fetch(getApiUrl('/api/config/google-maps'));
           if (response.ok) {
             const data = await response.json();
             apiKey = data.apiKey || '';
@@ -240,7 +241,7 @@ export function useGooglePlaces() {
       let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
       if (!apiKey) {
         try {
-          const response = await fetch('/api/config/google-maps');
+          const response = await fetch(getApiUrl('/api/config/google-maps'));
           if (response.ok) {
             const data = await response.json();
             apiKey = data.apiKey || '';

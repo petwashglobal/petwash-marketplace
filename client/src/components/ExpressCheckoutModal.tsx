@@ -11,6 +11,7 @@ import type { WashPackage } from '@shared/schema';
 import type { Language } from '@/lib/i18n';
 import { useLanguage } from '@/lib/languageStore';
 import { logger } from "@/lib/logger";
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface CreditPackage {
   id: string;
@@ -65,7 +66,7 @@ export function ExpressCheckoutModal({
     mutationFn: async (data: ExpressCheckoutData) => {
       // For gift cards: always use full price (no discounts)
       if (isGiftCard) {
-        const response = await fetch('/api/nayax-checkout', {
+        const response = await fetch(getApiUrl('/api/nayax-checkout'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -87,7 +88,7 @@ export function ExpressCheckoutModal({
         return await response.json();
       } else {
         // For regular packages: allow discounts for authenticated members
-        const response = await fetch('/api/express-checkout', {
+        const response = await fetch(getApiUrl('/api/express-checkout'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

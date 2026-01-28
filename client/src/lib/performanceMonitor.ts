@@ -12,6 +12,7 @@
  */
 
 import { logger } from './logger';
+import { getApiUrl } from '@/lib/apiConfig';
 
 // ============================================================================
 // PERFORMANCE METRICS TYPES
@@ -311,7 +312,7 @@ export class PerformanceMonitor {
     if (!this.metrics) return;
 
     try {
-      await fetch('/api/performance/track', {
+      await fetch(getApiUrl('/api/performance/track'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(this.metrics),

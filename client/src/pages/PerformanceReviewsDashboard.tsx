@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getApiUrl } from "@/lib/apiConfig";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,7 @@ export default function PerformanceReviewsDashboard() {
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["/api/enterprise/hr/performance-reviews"],
     queryFn: async () => {
-      const response = await fetch("/api/enterprise/hr/performance-reviews", { credentials: "include" });
+      const response = await fetch(getApiUrl("/api/enterprise/hr/performance-reviews"), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch reviews");
       return response.json();
     },
@@ -33,7 +34,7 @@ export default function PerformanceReviewsDashboard() {
   const { data: employees } = useQuery({
     queryKey: ["/api/enterprise/hr/employees"],
     queryFn: async () => {
-      const response = await fetch("/api/enterprise/hr/employees", { credentials: "include" });
+      const response = await fetch(getApiUrl("/api/enterprise/hr/employees"), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch employees");
       return response.json();
     },

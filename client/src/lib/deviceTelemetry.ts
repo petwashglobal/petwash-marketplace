@@ -6,6 +6,7 @@
  */
 
 import { auth } from '../lib/firebase';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface DeviceTelemetryData {
   platform: 'iOS' | 'Android' | 'Windows' | 'macOS' | 'Linux' | 'Unknown';
@@ -265,7 +266,7 @@ export async function sendDeviceTelemetry(
     const telemetry = await collectDeviceTelemetry(webauthnCredentialId);
     
     // Send to backend
-    const response = await fetch('/api/devices/fingerprint', {
+    const response = await fetch(getApiUrl('/api/devices/fingerprint'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

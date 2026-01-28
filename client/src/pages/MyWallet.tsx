@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getApiUrl } from '@/lib/apiConfig';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CreditCard, Gift, Send, History, Plus, RefreshCw, Wallet, Award, Crown, Apple, Zap, ArrowUpRight, ArrowDownRight, Calendar, Check, Mail, ChevronRight, Smartphone, Star, Sparkles, Gem } from "lucide-react";
@@ -107,7 +108,7 @@ export default function MyWallet() {
     setIsDownloadingVIP(true);
     
     try {
-      const prepareResponse = await fetch('/api/wallet/vip-card/prepare', {
+      const prepareResponse = await fetch(getApiUrl('/api/wallet/vip-card/prepare'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
@@ -169,7 +170,7 @@ export default function MyWallet() {
     setIsDownloadingBusiness(true);
     
     try {
-      const response = await fetch('/api/wallet/my-business-card', {
+      const response = await fetch(getApiUrl('/api/wallet/my-business-card'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -217,7 +218,7 @@ export default function MyWallet() {
     setIsEmailingCards(true);
     
     try {
-      const response = await fetch('/api/wallet/email-cards', {
+      const response = await fetch(getApiUrl('/api/wallet/email-cards'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

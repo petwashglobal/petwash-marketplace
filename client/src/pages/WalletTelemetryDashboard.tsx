@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getApiUrl } from "@/lib/apiConfig";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +57,7 @@ export default function WalletTelemetryDashboard() {
 
   const handleCleanup = async () => {
     try {
-      await fetch('/api/wallet/telemetry/cleanup', {
+      await fetch(getApiUrl('/api/wallet/telemetry/cleanup'), {
         method: 'POST',
         credentials: 'include'
       });

@@ -28,6 +28,7 @@ import {
   X
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
+import { getApiUrl } from '@/lib/apiConfig';
 
 export default function ProviderOnboarding() {
   const { user } = useFirebaseAuth();
@@ -222,7 +223,7 @@ export default function ProviderOnboarding() {
     setValidatingCode(true);
 
     try {
-      const response = await fetch('/api/provider-onboarding/validate-invite-code', {
+      const response = await fetch(getApiUrl('/api/provider-onboarding/validate-invite-code'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteCode })
@@ -314,7 +315,7 @@ export default function ProviderOnboarding() {
       
       if (businessLicense) formData.append('businessLicense', businessLicense);
 
-      const response = await fetch('/api/provider-onboarding/apply', {
+      const response = await fetch(getApiUrl('/api/provider-onboarding/apply'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${idToken}`

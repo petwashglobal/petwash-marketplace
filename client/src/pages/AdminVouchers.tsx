@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/lib/languageStore';
+import { getApiUrl } from "@/lib/apiConfig";
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -163,7 +164,7 @@ export default function AdminVouchers() {
   const handleGenerateTest = async () => {
     setIsGenerating(true);
     try {
-      const response = await fetch('/api/admin/vouchers/generate-test', {
+      const response = await fetch(getApiUrl('/api/admin/vouchers/generate-test'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -238,7 +239,7 @@ export default function AdminVouchers() {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/admin/vouchers/export', {
+      const response = await fetch(getApiUrl('/api/admin/vouchers/export'), {
         credentials: 'include'
       });
 

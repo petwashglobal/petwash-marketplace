@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,7 +94,7 @@ export default function ProviderBookingsDashboard() {
   const { data: bookingsData, isLoading, refetch } = useQuery({
     queryKey: ['/api/booking-requests', 'provider'],
     queryFn: async () => {
-      const res = await fetch('/api/booking-requests?role=provider', {
+      const res = await fetch(getApiUrl('/api/booking-requests?role=provider'), {
         headers: { 'x-user-id': 'demo-provider' },
       });
       if (!res.ok) throw new Error('Failed to fetch bookings');
@@ -320,7 +321,7 @@ function PendingBookingCard({
 
   const respondMutation = useMutation({
     mutationFn: async ({ action, data }: { action: 'accept' | 'decline'; data?: any }) => {
-      const res = await fetch(`/api/booking-requests/${booking.requestId}/respond`, {
+      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/respond`), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

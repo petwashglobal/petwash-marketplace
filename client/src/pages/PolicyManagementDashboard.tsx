@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
+import { getApiUrl } from "@/lib/apiConfig";
 import { 
   FileText, 
   Plus, 
@@ -78,7 +79,7 @@ export default function PolicyManagementDashboard() {
   // Fetch expiring certifications
   const { data: expiringCerts } = useQuery<ComplianceCertification[]>({ 
     queryKey: ['/api/enterprise/policy/certifications/expiring'], 
-    queryFn: () => fetch('/api/enterprise/policy/certifications/expiring?days=30').then(r => r.json())
+    queryFn: () => fetch(getApiUrl('/api/enterprise/policy/certifications/expiring?days=30')).then(r => r.json())
   });
 
   // Filter policies by category and search
