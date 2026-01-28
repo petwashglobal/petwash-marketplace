@@ -1,1 +1,0 @@
-const t="https://f46fb046-7dd0-4090-af9e-1be17d9de48e-00-15el1m8qkuf16.picard.replit.dev",o=()=>typeof window<"u"&&(window.location.hostname==="petwash.co.il"||window.location.hostname==="www.petwash.co.il"||window.location.hostname.endsWith(".web.app")||window.location.hostname.endsWith(".firebaseapp.com"))?t:"",i=o(),n=e=>e.startsWith("http")?e:`${i}${e}`;export{n as g};

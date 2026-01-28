@@ -1,43 +1,79 @@
 /**
- * Production API Configuration
+ * Production API Configuration - Industry Best Practice 2025
  * 
- * In production (Firebase Hosting), the frontend calls the Replit backend directly.
- * The backend has CORS configured to allow requests from petwash.co.il
+ * Architecture:
+ * - Frontend: Firebase Hosting (petwash.co.il) - static files only
+ * - Backend: Replit Autoscale Deployment (*.replit.app) - stable URL
+ * 
+ * How big brands do it:
+ * 1. Use environment variables for API URLs (never hardcode)
+ * 2. Use stable deployment URLs (not dev URLs)
+ * 3. Configure CORS properly for cross-origin requests
  */
 
-// Replit deployment URL - this is where the backend API runs
-// Note: Use the Replit dev domain until we have a stable deployment URL
-const REPLIT_API_URL = 'https://f46fb046-7dd0-4090-af9e-1be17d9de48e-00-15el1m8qkuf16.picard.replit.dev';
-
 const getApiBaseUrl = (): string => {
-  // Use explicit VITE_API_URL if provided
+  // Priority 1: Explicit VITE_API_URL (set in .env or build-time)
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
   
-  // In production (Firebase Hosting), use Replit backend
-  if (import.meta.env.PROD) {
-    // Check if we're on Firebase Hosting (petwash.co.il)
-    const isFirebaseHosting = typeof window !== 'undefined' && 
-      (window.location.hostname === 'petwash.co.il' || 
-       window.location.hostname === 'www.petwash.co.il' ||
-       window.location.hostname.endsWith('.web.app') ||
-       window.location.hostname.endsWith('.firebaseapp.com'));
+  // Priority 2: Check if running in production (Firebase Hosting)
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    // Production Firebase Hosting domains
+    const isFirebaseHosting = 
+      hostname === 'petwash.co.il' || 
+      hostname === 'www.petwash.co.il' ||
+      hostname.endsWith('.web.app') ||
+      hostname.endsWith('.firebaseapp.com');
     
     if (isFirebaseHosting) {
-      return REPLIT_API_URL;
+      // Use the Replit deployment URL for production
+      // NOTE: After publishing in Replit, update this to your *.replit.app URL
+      const productionApiUrl = import.meta.env.VITE_PRODUCTION_API_URL || 
+        'https://petwash-marketplace.replit.app';
+      return productionApiUrl;
+    }
+    
+    // If on Replit preview (dev), use same origin
+    if (hostname.endsWith('.replit.dev') || 
+        hostname.endsWith('.repl.co') || 
+        hostname.endsWith('.replit.app')) {
+      return ''; // Same origin - relative URLs work
     }
   }
   
-  // Development or same-origin deployment - use relative URLs
+  // Priority 3: Development mode - use relative URLs (same origin)
   return '';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
 
+/**
+ * Get the full API URL for a given path
+ * @param path - The API path (e.g., '/api/users')
+ * @returns Full URL with base (e.g., 'https://api.example.com/api/users')
+ */
 export const getApiUrl = (path: string): string => {
-  if (path.startsWith('http')) {
+  // If already a full URL, return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
+  
+  // Combine base URL with path
   return `${API_BASE_URL}${path}`;
 };
+
+/**
+ * Debug: Log current API configuration (only in dev)
+ */
+if (import.meta.env.DEV) {
+  console.log('[API Config]', {
+    baseUrl: API_BASE_URL || '(relative)',
+    isProduction: import.meta.env.PROD,
+    hostname: typeof window !== 'undefined' ? window.location.hostname : 'server',
+    envApiUrl: import.meta.env.VITE_API_URL || 'not set',
+    envProdApiUrl: import.meta.env.VITE_PRODUCTION_API_URL || 'not set',
+  });
+}
