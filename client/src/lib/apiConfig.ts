@@ -30,9 +30,9 @@ const getApiBaseUrl = (): string => {
     
     if (isFirebaseHosting) {
       // Use the Replit deployment URL for production
-      // NOTE: After publishing in Replit, update this to your *.replit.app URL
+      // Priority: VITE_PRODUCTION_API_URL env var > current dev domain
       const productionApiUrl = import.meta.env.VITE_PRODUCTION_API_URL || 
-        'https://petwash-marketplace.replit.app';
+        'https://f46fb046-7dd0-4090-af9e-1be17d9de48e-00-15el1m8qkuf16.picard.replit.dev';
       return productionApiUrl;
     }
     
