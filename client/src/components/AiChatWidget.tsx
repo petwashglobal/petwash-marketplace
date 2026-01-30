@@ -91,11 +91,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
     setIsLoading(true);
 
     try {
-<<<<<<< HEAD
       const response = await fetch(getApiUrl('/api/ai/chat'), {
-=======
-      const response = await fetch('/api/ai/chat', {
->>>>>>> b02dd2833bee21ca627963d7b8d577fd38239dd0
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
