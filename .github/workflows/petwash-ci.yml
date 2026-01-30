@@ -84,9 +84,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy  # Run after frontend deployment
     
+    # Backend build-time environment variables
+    env:
+      NODE_ENV: production
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -101,10 +111,31 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker me-west1-docker.pkg.dev
 
-      - name: Build and push Docker image
+      - name: Verify npm lock file
         run: |
-          docker build -t me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:${{ github.sha }} .
+          if [ ! -f package-lock.json ]; then
+            echo "ERROR: package-lock.json not found. Run 'npm install' locally and commit the lockfile."
+            exit 1
+          fi
+          echo "✅ package-lock.json found"
+
+      - name: Build Docker image
+        run: |
+          echo "=== Building Docker image ==="
+          docker build \
+            --build-arg NODE_ENV=production \
+            --progress=plain \
+            -t me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:${{ github.sha }} \
+            -t me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:latest \
+            .
+          echo "=== Build complete ==="
+
+      - name: Push Docker image
+        run: |
+          echo "=== Pushing Docker image ==="
           docker push me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:${{ github.sha }}
+          docker push me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:latest
+          echo "=== Push complete ==="
 
       - name: Deploy to Cloud Run
         run: |
@@ -120,3 +151,9 @@ jobs:
             --max-instances 10 \
             --set-env-vars "NODE_ENV=production" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest"
+
+      - name: Verify deployment
+        run: |
+          echo "=== Verifying Cloud Run deployment ==="
+          gcloud run services describe petwash-api --region me-west1 --format="value(status.url)"
+          echo "=== Deployment verification complete ==="
