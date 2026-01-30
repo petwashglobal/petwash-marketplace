@@ -257,8 +257,8 @@ export default function K9000BookingFlow() {
                 מועד שטיפה
               </div>
               <MobileDatePicker
-                value={selectedDate}
-                onChange={setSelectedDate}
+                value={selectedDate || undefined}
+                onChange={(date) => setSelectedDate(date)}
                 minDate={new Date()}
                 includeTime={true}
                 label=""

@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
  */
 
 interface MobileDatePickerProps {
-  value?: Date;
+  value?: Date | null;
   onChange: (date: Date) => void;
   label?: string;
   error?: string;
@@ -37,11 +37,11 @@ export function MobileDatePicker({
   includeTime = false,
   className = '',
 }: MobileDatePickerProps) {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(value);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(value || undefined);
   const [displayMode, setDisplayMode] = useState<'calendar' | 'time'>('calendar');
 
   useEffect(() => {
-    setSelectedDate(value);
+    setSelectedDate(value || undefined);
   }, [value]);
 
   const handleDateChange = (dateString: string) => {

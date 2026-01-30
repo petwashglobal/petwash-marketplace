@@ -272,8 +272,8 @@ export default function PetTrekBookingFlow() {
                 מועד איסוף
               </div>
               <MobileDatePicker
-                value={selectedDate}
-                onChange={setSelectedDate}
+                value={selectedDate || undefined}
+                onChange={(date) => setSelectedDate(date)}
                 minDate={new Date()}
                 includeTime={true}
                 label=""

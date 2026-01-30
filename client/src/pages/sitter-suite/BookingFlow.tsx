@@ -303,8 +303,8 @@ export default function SitterBookingFlow() {
                 תאריך ושעת התחלה
               </div>
               <MobileDatePicker
-                value={selectedDate}
-                onChange={setSelectedDate}
+                value={selectedDate || undefined}
+                onChange={(date) => setSelectedDate(date)}
                 minDate={new Date()}
                 includeTime={true}
                 label=""

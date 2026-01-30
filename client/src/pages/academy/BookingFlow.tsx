@@ -261,8 +261,8 @@ export default function AcademyBookingFlow() {
                 תאריך ושעה
               </div>
               <MobileDatePicker
-                value={selectedDate}
-                onChange={setSelectedDate}
+                value={selectedDate || undefined}
+                onChange={(date) => setSelectedDate(date)}
                 minDate={new Date()}
                 includeTime={true}
                 label=""
