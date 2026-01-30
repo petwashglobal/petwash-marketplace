@@ -1,0 +1,94 @@
+If you are using pnpm or yarn, use the matching install command consistently everywhere.
+
+2) Firebase Functions deploy fails because permissions are wrong
+
+Most common in CI:
+	•	Service account missing roles to deploy functions
+	•	Wrong project selected
+	•	Token expired
+
+Minimum roles that usually fix deploy-backend:
+	•	Firebase Admin
+	•	Cloud Functions Admin
+	•	Service Account User
+	•	Cloud Build Editor (often required)
+	•	Artifact Registry Writer (often required now)
+
+Tip: If frontend hosting deploy works but functions fails, your token or service account likely has hosting permissions but not functions permissions.
+
+3) Required Google APIs not enabled in the project
+
+Functions deploy can fail if APIs are off:
+	•	Cloud Functions API
+	•	Cloud Build API
+	•	Artifact Registry API
+	•	Cloud Run API (Gen 2 functions often use Cloud Run)
+	•	Eventarc API (for triggers)
+
+If you recently created the project or changed regions, this is very common.
+
+4) Node runtime mismatch between Firebase Functions and CI
+
+If your functions/package.json has:
+	•	"engines": { "node": "18" } but CI uses Node 20
+or the opposite, deploy can fail.
+
+Make them match:
+	•	functions/package.json engines node
+	•	GitHub Actions Node version
+	•	Firebase Functions runtime
+
+5) Missing backend secrets in CI
+
+Backend deploy often fails when code expects config like:
+	•	API keys
+	•	JWT secret
+	•	webhook secret
+	•	database URL
+	•	admin SDK config
+
+If you used Replit secrets but did not mirror them into GitHub Actions secrets, the backend build or deploy step fails.
+
+What to do:
+	•	Put backend secrets into GitHub repo secrets
+	•	In workflow, export them into env
+	•	Or use Firebase config/secret manager
+
+6) Wrong working directory in the workflow
+
+Classic mistake:
+	•	workflow runs in repo root but functions are in /functions
+	•	or backend is in /backend
+So it installs dependencies in the wrong place and deploy fails.
+
+Fix: set working-directory for all backend steps.
+
+7) Firebase CLI auth method mismatch
+
+There are 2 common patterns:
+	•	FIREBASE_TOKEN token auth
+	•	Service account JSON via GOOGLE_APPLICATION_CREDENTIALS
+
+Token method is more fragile long term. Service account is more stable.
+
+Stable approach:
+	•	Store service account JSON in GitHub secret
+	•	Write it to a file in the workflow
+	•	Export GOOGLE_APPLICATION_CREDENTIALS
+
+The fastest way to know the real reason in 60 seconds
+
+Open the workflow run and look at the first red error line inside deploy-backend. You will see one of these patterns:
+	•	Error: Functions predeploy error: Command terminated with non-zero exit code
+	•	HTTP Error: 403 (permissions)
+	•	Failed to load function definition (build issue)
+	•	npm ERR! (dependency issue)
+	•	FirebaseError: Failed to create function (APIs or runtime mismatch)
+
+Quick hardening checklist (do these and most failures disappear)
+	1.	Pin Node version in Actions and align with Functions runtime
+	2.	Use npm ci with a committed lockfile
+	3.	Correct working-directory for backend
+	4.	Use service account auth with correct roles
+	5.	Ensure required Google APIs are enabled
+	6.	Ensure backend secrets exist in CI

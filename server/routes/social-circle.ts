@@ -15,7 +15,7 @@ const router = Router();
 // ============ POSTS ============
 
 // Get feed (all approved posts)
-router.get("/social/feed", async (req: Request, res: Response) => {
+router.get("/feed", async (req: Request, res: Response) => {
   try {
     const posts = await db
       .select()
@@ -32,7 +32,7 @@ router.get("/social/feed", async (req: Request, res: Response) => {
 });
 
 // Create new post (with SYNCHRONOUS AI moderation - check BEFORE publishing)
-router.post("/social/posts", async (req: Request, res: Response) => {
+router.post("/posts", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     if (!user) {
@@ -106,7 +106,7 @@ router.post("/social/posts", async (req: Request, res: Response) => {
 });
 
 // Like/Unlike post
-router.post("/social/posts/:id/like", async (req: Request, res: Response) => {
+router.post("/posts/:id/like", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     if (!user) {
@@ -158,7 +158,7 @@ router.post("/social/posts/:id/like", async (req: Request, res: Response) => {
 // ============ COMMENTS ============
 
 // Get comments for a post
-router.get("/social/posts/:id/comments", async (req: Request, res: Response) => {
+router.get("/posts/:id/comments", async (req: Request, res: Response) => {
   try {
     const postId = parseInt(req.params.id);
 
@@ -179,7 +179,7 @@ router.get("/social/posts/:id/comments", async (req: Request, res: Response) => 
 });
 
 // Add comment (with SYNCHRONOUS AI moderation - check BEFORE publishing)
-router.post("/social/posts/:id/comments", async (req: Request, res: Response) => {
+router.post("/posts/:id/comments", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     if (!user) {

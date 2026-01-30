@@ -161,11 +161,22 @@ async function saveFCMToken(userId: string, token: string): Promise<void> {
  */
 export async function deleteFCMToken(userId: string): Promise<void> {
   try {
+    // Skip deletion for development mock users
+    if (userId.startsWith('dev-user-') || userId.startsWith('mock-')) {
+      logger.debug('[FCM] Skipping token deletion for development user');
+      return;
+    }
+    
     const deviceId = getDeviceId();
     const deviceTokenRef = doc(firestore, 'fcmTokens', userId, 'devices', deviceId);
     await deleteDoc(deviceTokenRef);
     logger.info(`[FCM] Token deleted for device ${deviceId}`);
-  } catch (error) {
+  } catch (error: any) {
+    // Silently handle permission errors (expected when user is not authenticated)
+    if (error?.code === 'permission-denied') {
+      logger.debug('[FCM] Token deletion skipped - not authenticated');
+      return;
+    }
     logger.error('[FCM] Failed to delete token from Firestore:', error);
   }
 }
@@ -175,6 +186,12 @@ export async function deleteFCMToken(userId: string): Promise<void> {
  */
 export async function deleteAllFCMTokens(userId: string): Promise<void> {
   try {
+    // Skip deletion for development mock users
+    if (userId.startsWith('dev-user-') || userId.startsWith('mock-')) {
+      logger.debug('[FCM] Skipping all token deletion for development user');
+      return;
+    }
+    
     const devicesRef = collection(firestore, 'fcmTokens', userId, 'devices');
     const snapshot = await getDocs(devicesRef);
     
@@ -182,7 +199,12 @@ export async function deleteAllFCMTokens(userId: string): Promise<void> {
     await Promise.all(deletePromises);
     
     logger.info(`[FCM] Deleted ${snapshot.size} device tokens for user ${userId}`);
-  } catch (error) {
+  } catch (error: any) {
+    // Silently handle permission errors
+    if (error?.code === 'permission-denied') {
+      logger.debug('[FCM] Token deletion skipped - not authenticated');
+      return;
+    }
     logger.error('[FCM] Failed to delete all tokens:', error);
   }
 }

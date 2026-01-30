@@ -21,6 +21,7 @@ export default function Contact({ language }: ContactProps) {
   const { toast } = useToast();
   const [currentLanguage, setCurrentLanguage] = useState<Language>(language);
   const [submitting, setSubmitting] = useState(false);
+  const [hubspotLoaded, setHubspotLoaded] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -33,11 +34,19 @@ export default function Contact({ language }: ContactProps) {
     setCurrentLanguage(newLanguage);
   };
 
-  // Load HubSpot form when component mounts
+  // Load HubSpot form when component mounts with fallback detection
   useEffect(() => {
     const timer = setTimeout(() => {
       createHubSpotForm('hubspot-contact-form');
-    }, 1000); // Wait for HubSpot script to load
+      // Check if HubSpot form loaded after another delay
+      const checkTimer = setTimeout(() => {
+        const container = document.getElementById('hubspot-contact-form');
+        if (container && container.querySelector('form')) {
+          setHubspotLoaded(true);
+        }
+      }, 2000);
+      return () => clearTimeout(checkTimer);
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -238,26 +247,114 @@ export default function Contact({ language }: ContactProps) {
               </div>
             </div>
 
-            {/* HubSpot Contact Form */}
+            {/* Contact Form */}
             <div className="luxury-glass-card luxury-shadow-xl p-8">
               <h2 className="luxury-heading-md text-center mb-8">
                 {currentLanguage === 'en' ? 'Send us a Message' : 'שלח לנו הודעה'}
               </h2>
               
-              {/* HubSpot Form Container */}
-              <div id="hubspot-contact-form" className="min-h-[400px]" data-testid="hubspot-form"></div>
+              {/* HubSpot Form Container - hidden if not loaded */}
+              <div id="hubspot-contact-form" className={hubspotLoaded ? 'min-h-[400px]' : 'hidden'} data-testid="hubspot-form"></div>
               
-              {/* Fallback message while HubSpot form loads */}
-              <script dangerouslySetInnerHTML={{
-                __html: `
-                  document.addEventListener('DOMContentLoaded', function() {
-                    const formContainer = document.getElementById('hubspot-contact-form');
-                    if (formContainer && !formContainer.innerHTML.trim()) {
-                      formContainer.innerHTML = '<div class="text-center p-8 luxury-text-small">${currentLanguage === 'en' ? 'Loading contact form...' : 'טוען טופס יצירת קשר...'}</div>';
-                    }
-                  });
-                `
-              }} />
+              {/* Native Fallback Contact Form - shown when HubSpot doesn't load */}
+              {!hubspotLoaded && (
+                <form onSubmit={handleSubmit} className="space-y-4" data-testid="contact-form">
+                  <div>
+                    <label className="block luxury-text-small mb-1">
+                      {currentLanguage === 'en' ? 'Your Name *' : 'שם מלא *'}
+                    </label>
+                    <Input
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder={currentLanguage === 'en' ? 'Enter your name' : 'הכנס את שמך'}
+                      className="w-full"
+                      data-testid="input-name"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block luxury-text-small mb-1">
+                      {currentLanguage === 'en' ? 'Email Address *' : 'כתובת אימייל *'}
+                    </label>
+                    <Input
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder={currentLanguage === 'en' ? 'your@email.com' : 'your@email.com'}
+                      className="w-full"
+                      data-testid="input-email"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block luxury-text-small mb-1">
+                      {currentLanguage === 'en' ? 'Phone Number' : 'מספר טלפון'}
+                    </label>
+                    <Input
+                      name="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder="+972-50-123-4567"
+                      className="w-full"
+                      data-testid="input-phone"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block luxury-text-small mb-1">
+                      {currentLanguage === 'en' ? 'Subject' : 'נושא'}
+                    </label>
+                    <Select 
+                      value={formData.subject} 
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
+                    >
+                      <SelectTrigger data-testid="select-subject">
+                        <SelectValue placeholder={currentLanguage === 'en' ? 'Select a topic' : 'בחר נושא'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="general">{currentLanguage === 'en' ? 'General Inquiry' : 'פנייה כללית'}</SelectItem>
+                        <SelectItem value="support">{currentLanguage === 'en' ? 'Customer Support' : 'תמיכה טכנית'}</SelectItem>
+                        <SelectItem value="business">{currentLanguage === 'en' ? 'Business Partnership' : 'שותפות עסקית'}</SelectItem>
+                        <SelectItem value="franchise">{currentLanguage === 'en' ? 'Franchise Inquiry' : 'פנייה לזכיינות'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <label className="block luxury-text-small mb-1">
+                      {currentLanguage === 'en' ? 'Your Message *' : 'ההודעה שלך *'}
+                    </label>
+                    <Textarea
+                      name="message"
+                      value={formData.message}
+                      onChange={handleChange}
+                      placeholder={currentLanguage === 'en' ? 'How can we help you?' : 'איך נוכל לעזור לך?'}
+                      rows={5}
+                      className="w-full"
+                      data-testid="input-message"
+                    />
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="luxury-btn-primary w-full"
+                    disabled={submitting}
+                    data-testid="button-submit"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        {currentLanguage === 'en' ? 'Sending...' : 'שולח...'}
+                      </>
+                    ) : (
+                      currentLanguage === 'en' ? 'Send Message' : 'שלח הודעה'
+                    )}
+                  </Button>
+                </form>
+              )}
             </div>
           </div>
 

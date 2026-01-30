@@ -8538,7 +8538,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/webauthn', webauthnLimiter, webauthnRoutes);
   
   // The PetWash Circle - Social Network (Instagram-style with AI moderation)
-  app.use('/api', validateFirebaseToken, apiLimiter, socialCircleRoutes);
+  // Note: Using /api/social prefix to avoid catching other /api routes
+  app.use('/api/social', validateFirebaseToken, apiLimiter, socialCircleRoutes);
   
   // Passport Verification (KYC using Google Vision API)
   const passportRoutes = (await import('./routes/passport')).default;
@@ -9692,28 +9693,15 @@ self.addEventListener('notificationclick', (event) => {
       
       logger.info('Contact form submission received', { name, email, subject });
       
-      // Store in Firestore
-      const { db } = await import('./lib/firebase-admin');
-      const contactData = {
-        name,
-        email,
-        phone: phone || '',
-        subject: subject || '',
-        message,
-        language: language || 'en',
-        createdAt: new Date().toISOString(),
-        status: 'new',
-        read: false
-      };
-      
-      const contactRef = await db.collection('contact_submissions').add(contactData);
+      // Generate a unique contact ID without Firestore
+      const contactId = `contact-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       
       // Send notification email to support team
       const { EmailService } = await import('./emailService');
-      const supportEmailSent = await EmailService.sendRawEmail(
-        'Support@PetWash.co.il',
-        language === 'he' ? `הודעה חדשה מ-${name}` : `New message from ${name}`,
-        `
+      const supportEmailSent = await EmailService.send({
+        to: 'Support@PetWash.co.il',
+        subject: language === 'he' ? `הודעה חדשה מ-${name}` : `New message from ${name}`,
+        html: `
           <h2>${language === 'he' ? 'הודעת צור קשר חדשה' : 'New Contact Form Submission'}</h2>
           <p><strong>${language === 'he' ? 'שם' : 'Name'}:</strong> ${name}</p>
           <p><strong>${language === 'he' ? 'אימייל' : 'Email'}:</strong> ${email}</p>
@@ -9722,9 +9710,10 @@ self.addEventListener('notificationclick', (event) => {
           <p><strong>${language === 'he' ? 'הודעה' : 'Message'}:</strong></p>
           <p>${message}</p>
           <hr>
-          <p><small>ID: ${contactRef.id}</small></p>
+          <p><small>ID: ${contactId}</small></p>
+          <p><small>Submitted: ${new Date().toISOString()}</small></p>
         `
-      );
+      });
       
       if (supportEmailSent) {
         logger.info(`Contact form notification sent to Support@PetWash.co.il`);
@@ -9733,10 +9722,10 @@ self.addEventListener('notificationclick', (event) => {
       }
       
       // Send confirmation email to user
-      const confirmationSent = await EmailService.sendRawEmail(
-        email,
-        language === 'he' ? 'קיבלנו את ההודעה שלך' : 'We received your message',
-        language === 'he' 
+      const confirmationSent = await EmailService.send({
+        to: email,
+        subject: language === 'he' ? 'קיבלנו את ההודעה שלך' : 'We received your message',
+        html: language === 'he' 
           ? `
             <h2>שלום ${name},</h2>
             <p>תודה שפנית אלינו! קיבלנו את הודעתך ונחזור אליך בהקדם האפשרי.</p>
@@ -9753,11 +9742,11 @@ self.addEventListener('notificationclick', (event) => {
             <hr>
             <p>Best regards,<br>Pet Wash™ Team</p>
           `
-      );
+      });
       
       res.json({ 
         success: true, 
-        contactId: contactRef.id,
+        contactId,
         emailSent: confirmationSent
       });
       
