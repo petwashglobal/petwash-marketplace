@@ -775,60 +775,40 @@ export function MadPawsSearch({
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
               {isHebrew ? 'תאריכים' : 'Dates'}
             </label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  className="w-full h-12 px-4 flex items-center gap-2 bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
-                  data-testid="button-date-picker"
-                >
-                  <CalendarDays className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-900 text-sm">
-                    {startDate && endDate 
-                      ? `${format(startDate, 'dd/MM')} - ${format(endDate, 'dd/MM')}`
-                      : isHebrew ? 'בחר תאריכים' : 'Select dates'
+            {/* Mobile-friendly native date inputs - works perfectly on iOS/Android */}
+            <div className="flex gap-2 h-12">
+              <div className="relative flex-1">
+                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
+                <input
+                  type="date"
+                  value={startDate ? format(startDate, 'yyyy-MM-dd') : ''}
+                  onChange={(e) => {
+                    const date = e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined;
+                    setStartDate(date);
+                    if (date && endDate && endDate < date) {
+                      setEndDate(undefined);
                     }
-                  </span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 max-h-[80vh] overflow-y-auto bg-white" align="start">
-                <div className="flex flex-col sm:flex-row bg-white">
-                  <div className="p-3 border-b sm:border-b-0 sm:border-r border-gray-100 bg-white">
-                    <p className="text-xs font-medium text-white bg-rose-500 rounded-full px-3 py-1 mb-2 text-center">
-                      {isHebrew ? '① תאריך התחלה' : '① Start Date'}
-                    </p>
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={(date) => {
-                        setStartDate(date);
-                        // If end date is before new start date, reset end date
-                        if (date && endDate && endDate < date) {
-                          setEndDate(undefined);
-                        }
-                      }}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                      className="bg-white [&_.rdp-day]:text-gray-900"
-                    />
-                  </div>
-                  <div className="p-3 bg-white">
-                    <p className="text-xs font-medium text-white bg-purple-500 rounded-full px-3 py-1 mb-2 text-center">
-                      {isHebrew ? '② תאריך סיום' : '② End Date'}
-                    </p>
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={setEndDate}
-                      disabled={(date) => date < (startDate || new Date())}
-                      className="bg-white [&_.rdp-day]:text-gray-900"
-                    />
-                  </div>
-                </div>
-                <div className="p-2 bg-gray-100 text-center text-xs text-gray-600 sm:hidden">
-                  {isHebrew ? '↓ גלול למטה לתאריך סיום ↓' : '↓ Scroll down for End Date ↓'}
-                </div>
-              </PopoverContent>
-            </Popover>
+                  }}
+                  min={format(new Date(), 'yyyy-MM-dd')}
+                  className="w-full h-12 pl-9 pr-2 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors cursor-pointer"
+                  data-testid="input-start-date"
+                />
+              </div>
+              <div className="relative flex-1">
+                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-400 pointer-events-none z-10" />
+                <input
+                  type="date"
+                  value={endDate ? format(endDate, 'yyyy-MM-dd') : ''}
+                  onChange={(e) => {
+                    const date = e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined;
+                    setEndDate(date);
+                  }}
+                  min={startDate ? format(startDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
+                  className="w-full h-12 pl-9 pr-2 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors cursor-pointer"
+                  data-testid="input-end-date"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="lg:col-span-1 flex items-end">

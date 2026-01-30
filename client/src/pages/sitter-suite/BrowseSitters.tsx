@@ -10,6 +10,7 @@ import { MadPawsSearch, MadPawsProviderCard, MadPawsEmptyState, type SearchParam
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
 import { CompactWeatherWidget } from "@/components/weather/CompactWeatherWidget";
 import { format } from "date-fns";
+import { getApiUrl } from "@/lib/apiConfig";
 
 interface Provider {
   id: string;
@@ -107,7 +108,7 @@ export default function BrowseSitters() {
     queryKey: ["/api/marketplace-bookings/search/providers", searchParams],
     queryFn: async () => {
       const queryString = buildQueryString();
-      const response = await fetch(`/api/marketplace-bookings/search/providers?${queryString}`);
+      const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?${queryString}`));
       if (!response.ok) throw new Error('Failed to fetch providers');
       return response.json();
     },
