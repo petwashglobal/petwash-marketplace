@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format, addDays } from "date-fns";
+import { format, addDays, isValid } from "date-fns";
 import { useLanguage } from "@/lib/languageStore";
 import { useToast } from "@/hooks/use-toast";
 
@@ -781,12 +781,18 @@ export function MadPawsSearch({
                 <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
                 <input
                   type="date"
-                  value={startDate ? format(startDate, 'yyyy-MM-dd') : ''}
+                  value={startDate && isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : ''}
                   onChange={(e) => {
-                    const date = e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined;
-                    setStartDate(date);
-                    if (date && endDate && endDate < date) {
-                      setEndDate(undefined);
+                    if (!e.target.value) {
+                      setStartDate(undefined);
+                      return;
+                    }
+                    const date = new Date(e.target.value + 'T12:00:00');
+                    if (isValid(date)) {
+                      setStartDate(date);
+                      if (endDate && isValid(endDate) && endDate < date) {
+                        setEndDate(undefined);
+                      }
                     }
                   }}
                   min={format(new Date(), 'yyyy-MM-dd')}
@@ -798,12 +804,18 @@ export function MadPawsSearch({
                 <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-400 pointer-events-none z-10" />
                 <input
                   type="date"
-                  value={endDate ? format(endDate, 'yyyy-MM-dd') : ''}
+                  value={endDate && isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : ''}
                   onChange={(e) => {
-                    const date = e.target.value ? new Date(e.target.value + 'T12:00:00') : undefined;
-                    setEndDate(date);
+                    if (!e.target.value) {
+                      setEndDate(undefined);
+                      return;
+                    }
+                    const date = new Date(e.target.value + 'T12:00:00');
+                    if (isValid(date)) {
+                      setEndDate(date);
+                    }
                   }}
-                  min={startDate ? format(startDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
+                  min={startDate && isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
                   className="w-full h-12 pl-9 pr-2 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors cursor-pointer"
                   data-testid="input-end-date"
                 />
