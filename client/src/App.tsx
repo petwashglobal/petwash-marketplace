@@ -307,7 +307,7 @@ const PersonalInbox = lazy(() => import("@/pages/PersonalInbox"));
 
 // Loading fallback component
 const PageLoader = () => (
-  <div className="min-h-screen bg-white flex items-center justify-center">
+  <div data-build-version="BUILD_2026_01_25_1769349430610" className="min-h-screen bg-white flex items-center justify-center">
     <div className="text-center">
       <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
       <p className="text-gray-600 font-medium">Loading...</p>
@@ -2094,6 +2094,9 @@ function App() {
       } catch (error) {
         // On error, keep Hebrew default for Israeli market
         if (import.meta.env.DEV) {
+
+// BUILD_FORCE_REBUILD: 1769350182889
+console.log("Build: 1769350182889");
           console.error('Background language detection error:', error);
         }
       }
