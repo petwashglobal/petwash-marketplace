@@ -165,6 +165,7 @@ import recaptchaRoutes from "./routes/recaptcha";
 import reviewsRoutes from "./routes/reviews";
 import securityStatusRoutes from "./routes/security-status";
 import eventsRoutes from "./routes/events";
+import unifiedBookingRoutes from "./routes/unified-booking";
 import sendReportRoutes from "./routes/send-report";
 import seoRoutes from "./routes/seo";
 import signaturesRoutes from "./routes/signatures";
@@ -8492,6 +8493,10 @@ self.addEventListener('notificationclick', (event) => {
   
   // Unified Booking System (Sitter Suite, Walk My Pet, PetTrek)
   app.use('/api/bookings', apiLimiter, bookingsRoutes);
+  
+  // UNIFIED BOOKING ENGINE 2025 - Reference implementation
+  // Immutable transactions, event logging, admin audit trail
+  app.use('/api/unified-booking', apiLimiter, unifiedBookingRoutes);
   
   // SUPER-APP BOOKING ENGINE - Platform-scoped booking system for all 6 platforms
   // K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers, Shared Services
