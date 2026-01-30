@@ -104,6 +104,17 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Multi-Platform Marketplace View**: Unified marketplace page (`src/modules/platforms/PetWashTalentMarketplacePage.tsx`) showing contractors across all 7 platforms with color-coded branding, responsive grid layout, and demo profiles.
 - **MadPaws-Style Provider Search**: API at `/api/marketplace-bookings/search/providers` with real-time availability filtering (by date range), platform/service type filtering, rating filters, profile enrichment from sitterProfiles/walkerProfiles tables, and proper pagination. Frontend at `/sitter-suite/browse` displays provider cards with Hebrew names, bios, locations, and pricing.
 
+## File Storage & Admin Access
+- **Document Storage**: Google Cloud Storage bucket `petwash-secure-documents`
+  - Upload endpoint: `POST /api/documents/upload` (requires `upload_documents` permission)
+  - Max file size: 50MB
+  - Allowed types: PDF, Word docs, Excel, images (JPEG/PNG/GIF), text files
+  - Access logging: All document access is logged to `document_access_log` table with user ID, email, timestamp, IP address
+- **Biometric Storage**: Firebase Storage bucket `signinpetwash.firebasestorage.app` with prefix from `BIOMETRIC_PREFIX` secret
+  - Auto-expires files after configured retention period
+- **Admin File Access**: Admin users with `view_documents` permission can view all documents via `/api/documents` endpoint
+- **RBAC Permissions**: Document access controlled by role-based permissions (upload_documents, view_documents, delete_documents)
+
 ## External Dependencies
 - **Database & ORM**: @neondatabase/serverless (PostgreSQL), drizzle-orm.
 - **Frontend Frameworks**: @tanstack/react-query, @radix-ui/*, tailwindcss, vite.
