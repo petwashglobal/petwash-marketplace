@@ -280,12 +280,12 @@ export default function BrowseSitters() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {providers.map((provider) => {
+              {providers.map((provider, index) => {
                 const pricePerNight = provider.pricing.perNight ? parseFloat(provider.pricing.perNight) : 0;
                 
                 return (
                   <MadPawsProviderCard
-                    key={provider.id}
+                    key={`${provider.id}-${provider.serviceType}-${index}`}
                     id={provider.id}
                     name={provider.displayName || 'Provider'}
                     photo={provider.profilePhotoUrl}

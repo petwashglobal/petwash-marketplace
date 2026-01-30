@@ -1291,7 +1291,7 @@ export function MadPawsSearch({
 }
 
 interface ProviderCardProps {
-  id: number;
+  id: string | number;
   name: string;
   photo: string | null;
   location: string;
