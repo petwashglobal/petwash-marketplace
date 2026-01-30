@@ -203,9 +203,11 @@ export function GooglePlacesAutocomplete({
             border-2
             focus:ring-2 focus:ring-blue-500
             transition-all
+            text-gray-900 placeholder:text-gray-500
             ${error ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'}
             ${isLoading ? 'bg-blue-50' : 'bg-white'}
           `}
+          style={{ color: '#1f2937' }}
           required={required}
           autoComplete="off"
           data-testid="input-google-places-autocomplete"
