@@ -309,6 +309,58 @@ export default function SitterDetail() {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Left: Booking Form */}
             <div className="lg:col-span-2 space-y-6">
+              {/* Login/Add Pet Prompt */}
+              {!user && (
+                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-8 border-2 border-dashed border-purple-300">
+                  <div className="text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+                      <Users className="w-8 h-8 text-purple-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                      {isHebrew ? 'התחבר כדי להזמין' : 'Sign In to Book'}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      {isHebrew 
+                        ? 'התחבר כדי להזמין שמרטף לחיית המחמד שלך'
+                        : 'Sign in to book a sitter for your beloved pet'}
+                    </p>
+                    <Button 
+                      onClick={() => navigate('/signin')}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                      data-testid="button-signin-to-book"
+                    >
+                      {isHebrew ? 'התחבר עכשיו' : 'Sign In Now'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Add Pet Prompt */}
+              {user && (!pets || pets.length === 0) && (
+                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-8 border-2 border-dashed border-purple-300">
+                  <div className="text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+                      <Dog className="w-8 h-8 text-purple-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                      {isHebrew ? 'הוסף את חיית המחמד שלך' : 'Add Your Pet First'}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      {isHebrew 
+                        ? 'הוסף את חיית המחמד שלך כדי להתחיל להזמין שירותי שמרטפות'
+                        : 'Add your pet to start booking pet sitting services'}
+                    </p>
+                    <Button 
+                      onClick={() => navigate('/pets')}
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                      data-testid="button-add-pet"
+                    >
+                      {isHebrew ? 'הוסף חיית מחמד' : 'Add Pet'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Select Pet */}
               {user && pets && pets.length > 0 && (
                 <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-8">
