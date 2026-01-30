@@ -120,15 +120,18 @@ jobs:
           echo "✅ package-lock.json found"
 
       - name: Build Docker image
+        timeout-minutes: 30
         run: |
           echo "=== Building Docker image ==="
+          echo "Git SHA: ${{ github.sha }}"
+          echo "Build started at: $(date)"
           docker build \
             --build-arg NODE_ENV=production \
             --progress=plain \
             -t me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:${{ github.sha }} \
             -t me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:latest \
-            .
-          echo "=== Build complete ==="
+            . 2>&1
+          echo "=== Build complete at: $(date) ==="
 
       - name: Push Docker image
         run: |
