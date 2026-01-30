@@ -1,0 +1,56 @@
+Discrepancies in code are inconsistencies between expected and actual behavior, often manifesting as mismatches between design specifications and implementation, unreachable code, or logical errors. They represent deviations, such as incorrect UI elements or functional flaws, often caused by misunderstanding data types, scoping rules, or concurrency issues. 
+Key aspects and causes of code discrepancies include:
+Definition: A mismatch between intended behavior and actual code performance. Unlike a defect, which is a broken component, a discrepancy may still allow the code to run, but incorrectly.
+Types of Discrepancies:
+Inconsistent Code: Code that is unreachable or contains contradictory logic.
+Logical/Functional: Misinterpreting requirements, such as incorrect variable scoping (var vs. let in JavaScript).
+Data Type Issues: Misunderstanding how a language handles data, such as confusing strings and numbers.
+External/Integration: Mismatches between documentation and the actual application, such as UI elements not matching design specs.
+Identification and Resolution:
+Code Reviews: Essential for identifying deviations from standards.
+Debugging Tools: Using IDEs like PyCharm to identify type mismatches or logical errors.
+Testing: Unit tests and verifying that the code meets the intended design specifications.
+Preventive Measures:
+Understanding Code: Avoiding copy-pasting without understanding, as this can lead to unverified, inconsistent code.
+Documentation: Clear, up-to-date documentation reduces discrepancies.
+Refactoring: Addressing technical debt and cleaning up confusing logic. 
+In addition to software, in scientific or medical contexts, code discrepancies can refer to documentation inconsistencies, such as different records for a patient's treatment status. 
+Explaining Inconsistent Code - NYU
+A code fragment is inconsistent if it is not part of any nor- mally terminating execution. Examples of such inconsisten- cies include code that is unreachable, ...
+
+NYU Computer Science department
+
+Defect vs Error vs Discrepancy: What’s the Difference in Software Testing? | by Sourojit Das | CodeToDeploy | Medium
+14 Jun 2025 — Here's some information about each term: * **Discrepancy** A mismatch between the actual behavior and the expected behavior. Discrepancies can occur in the UI, ...
+
+Medium
+
+What are the common misunderstandings in code interpretation?
+3 Apr 2025 — For example, in JavaScript, not realizing that variables declared with var have function scope while those with let and const have block scope. Misinterpretatio...
+
+Tencent Cloud
+718: A CROSS-SECTIONAL STUDY OF DISCREPANCIES IN CODE ...
+1 Dec 2012 — We defined a significant discrepancy as an instance in which a patient was listed as having a LLST in one source, but Full Code or not recorded in another. The ...
+
+Ovid
+
+3m
+How to find and fix errors in your code with pytest in PyCharm
+
+
+YouTube·PyCharm, a JetBrains IDE
+
+3m
+How did you handle discrepancies in coding standards?
+
+
+YouTube·Fredrik Christenson
+Common Coding Mistakes at Every Level (And How to Fix Them)
+21 Nov 2025 — 2. Copy-Pasting Code Without Understanding It * Find the solution on Stack Overflow or wherever. * Read it carefully. * Close the browser. * Try to implement it...
+
+DEV Community
+
+What is Discrepancy? | Convene Board Portal Glossary
+A discrepancy is an inconsistency and deviation between expected and actual values, data points, processes, or records. This happens when information from diffe...
+
+Convene Board Management Software

@@ -19,17 +19,18 @@ export async function getDefaultLanguageByLocation(): Promise<Language> {
     
     // ALWAYS check IP location first for Israeli users
     // Try multiple IP geolocation services for reliability
+    // Ordered by reliability and speed
     const geolocationServices = [
+      'https://ipinfo.io/json',
       'https://ipapi.co/json/',
-      'https://ip-api.com/json/',
-      'https://ipinfo.io/json'
+      'https://ip-api.com/json/'
     ];
 
     for (const service of geolocationServices) {
       try {
-        // Add 400ms timeout for instant performance (as per requirements)
+        // Use 800ms timeout - balance between speed and reliability
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 400);
+        const timeoutId = setTimeout(() => controller.abort(), 800);
         
         const response = await fetch(service, {
           method: 'GET',

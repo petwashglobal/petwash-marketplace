@@ -52,6 +52,10 @@ class ProductionWebsiteMonitorService {
   private monitoringInterval: NodeJS.Timeout | null = null;
   private CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
   private lastResults: Map<string, MonitoringResult> = new Map();
+  private geminiRateLimited = false;
+  private geminiRateLimitResetTime: Date | null = null;
+  private geminiCallsToday = 0;
+  private GEMINI_DAILY_LIMIT = 15; // Stay under 20 free tier limit
 
   constructor() {
     if (GEMINI_API_KEY) {
@@ -248,9 +252,31 @@ class ProductionWebsiteMonitorService {
 
   /**
    * Use Gemini AI to analyze monitoring results and provide insights
+   * Includes rate limit protection to avoid exceeding free tier limits
    */
   private async analyzeWithGemini(results: MonitoringResult[]): Promise<void> {
     if (!this.ai) return;
+
+    // Check if we're rate limited
+    if (this.geminiRateLimited) {
+      if (this.geminiRateLimitResetTime && new Date() < this.geminiRateLimitResetTime) {
+        logger.debug('[ProductionMonitor] Skipping Gemini analysis - rate limited until', { 
+          resetTime: this.geminiRateLimitResetTime.toISOString() 
+        });
+        return;
+      }
+      this.geminiRateLimited = false;
+      this.geminiRateLimitResetTime = null;
+    }
+
+    // Check daily limit
+    if (this.geminiCallsToday >= this.GEMINI_DAILY_LIMIT) {
+      logger.debug('[ProductionMonitor] Skipping Gemini analysis - daily limit reached', { 
+        calls: this.geminiCallsToday, 
+        limit: this.GEMINI_DAILY_LIMIT 
+      });
+      return;
+    }
 
     try {
       const issueResults = results.filter(r => r.issues.length > 0);
@@ -280,6 +306,8 @@ Respond in a structured format. Be concise but thorough.`;
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
       });
 
+      this.geminiCallsToday++;
+
       if (response.candidates && response.candidates[0]?.content?.parts) {
         const analysis = response.candidates[0].content.parts
           .filter((p: any) => p.text)
@@ -288,13 +316,20 @@ Respond in a structured format. Be concise but thorough.`;
 
         logger.info('[ProductionMonitor] 🤖 Gemini Analysis:', { analysis: analysis.substring(0, 500) });
 
-        // Store analysis for later retrieval
         for (const result of issueResults) {
           result.geminiAnalysis = analysis;
         }
       }
-    } catch (error) {
-      logger.error('[ProductionMonitor] Gemini analysis failed:', error);
+    } catch (error: any) {
+      // Handle rate limit errors gracefully
+      if (error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+        this.geminiRateLimited = true;
+        // Reset after 1 hour
+        this.geminiRateLimitResetTime = new Date(Date.now() + 60 * 60 * 1000);
+        logger.warn('[ProductionMonitor] Gemini rate limited - pausing AI analysis for 1 hour');
+      } else {
+        logger.error('[ProductionMonitor] Gemini analysis failed:', error);
+      }
     }
   }
 
