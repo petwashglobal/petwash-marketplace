@@ -183,12 +183,10 @@ export default function WalkBookingFlow() {
         } : null
       };
 
-      const booking = await apiRequest(`/api/walks/book`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const response = await apiRequest('POST', '/api/walks/book', payload);
+      const booking = await response.json();
 
-      setBookingId(booking.id || booking.bookingNumber || 'pending');
+      setBookingId(booking.booking?.id || booking.id || booking.bookingNumber || 'pending');
       
       // Show pending match step for two-way consent (like Uber/Tinder matching)
       setStep("pending_match");

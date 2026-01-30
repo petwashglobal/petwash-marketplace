@@ -100,12 +100,10 @@ export default function PetTrekBookingFlow() {
         }
       };
 
-      const booking = await apiRequest(`/api/bookings/create`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const response = await apiRequest('POST', '/api/bookings/create', payload);
+      const booking = await response.json();
 
-      setBookingId(booking.id || booking.bookingNumber || 'pending');
+      setBookingId(booking.booking?.id || booking.id || booking.bookingNumber || 'pending');
       setStep("confirmation");
 
       toast({

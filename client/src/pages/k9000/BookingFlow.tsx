@@ -106,12 +106,10 @@ export default function K9000BookingFlow() {
         }
       };
 
-      const booking = await apiRequest(`/api/platforms/k9000/bookings`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const response = await apiRequest('POST', '/api/platforms/k9000/bookings', payload);
+      const booking = await response.json();
 
-      setBookingId(booking.id || booking.bookingNumber || 'pending');
+      setBookingId(booking.booking?.id || booking.id || booking.bookingNumber || 'pending');
       setStep("confirmation");
 
       toast({

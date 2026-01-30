@@ -121,12 +121,10 @@ export default function SitterBookingFlow() {
         }
       };
 
-      const booking = await apiRequest(`/api/sitter-suite/bookings`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const response = await apiRequest('POST', '/api/sitter-suite/bookings', payload);
+      const booking = await response.json();
 
-      setBookingId(booking.id || booking.bookingId || 'pending');
+      setBookingId(booking.booking?.id || booking.id || booking.bookingId || 'pending');
       setStep("confirmation");
 
       toast({
