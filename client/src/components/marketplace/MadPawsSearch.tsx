@@ -596,15 +596,15 @@ export function MadPawsSearch({
       case 'house-sitting':
       case 'daycare':
       case 'drop-in':
-        return '/sitter-suite';
+        return '/sitter-suite/browse';
       case 'dog-walking':
-        return '/walk-my-pet';
+        return '/walk-my-pet/browse';
       case 'pet-taxi':
-        return '/pettrek';
+        return '/pettrek/browse';
       case 'training':
-        return '/academy';
+        return '/academy/browse';
       default:
-        return '/sitter-suite';
+        return '/sitter-suite/browse';
     }
   };
 
