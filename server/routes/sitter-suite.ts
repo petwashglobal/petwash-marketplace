@@ -5,7 +5,7 @@
  * Like Booking.com/Airbnb - Apple-level premium experience
  */
 
-import { Router } from 'express';
+import { Router, Request } from 'express';
 import { db } from '../db';
 import {
   sitterProfiles,
@@ -30,8 +30,130 @@ import { requireLoyaltyMember } from '../middleware/loyalty';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { advancedBookingEngine as sitterAdvancedBookingEngine } from '../services/SitterAdvancedBookingEngine';
+import multer from 'multer';
+import { storage, auth } from '../lib/firebase-admin';
 
 const router = Router();
+
+// Configure multer for file uploads
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype.toLowerCase())) {
+      return cb(new Error(`Invalid file type. Allowed: JPEG, PNG, WebP, HEIC`));
+    }
+    cb(null, true);
+  }
+});
+
+/**
+ * POST /api/sitter-suite/upload/profile-photo - Upload profile photo
+ * Requires Firebase authentication
+ * Returns the URL to use for profile updates
+ */
+router.post('/upload/profile-photo', upload.single('photo'), async (req: Request, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    let user;
+    try {
+      user = await auth.verifyIdToken(token);
+    } catch (authError) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    const ext = req.file.mimetype.split('/')[1] || 'jpg';
+    const fileName = `providers/${user.uid}/profile/photo_${Date.now()}.${ext}`;
+    const fileRef = bucket.file(fileName);
+
+    await fileRef.save(req.file.buffer, {
+      metadata: { contentType: req.file.mimetype },
+    });
+
+    const [signedUrl] = await fileRef.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+    });
+
+    logger.info('[Sitter Suite] Profile photo uploaded', { userId: user.uid, fileName });
+
+    res.json({
+      success: true,
+      url: signedUrl,
+      path: fileName,
+      message: 'Profile photo uploaded successfully'
+    });
+  } catch (error: any) {
+    logger.error('[Sitter Suite] Profile photo upload error', error);
+    res.status(500).json({ error: error.message || 'Failed to upload photo' });
+  }
+});
+
+/**
+ * POST /api/sitter-suite/upload/document - Upload document (ID, certificates, etc.)
+ * Requires Firebase authentication
+ */
+router.post('/upload/document', upload.single('document'), async (req: Request, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    let user;
+    try {
+      user = await auth.verifyIdToken(token);
+    } catch (authError) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const docType = req.body.documentType || 'general';
+    const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    const ext = req.file.mimetype.split('/')[1] || 'jpg';
+    const fileName = `providers/${user.uid}/documents/${docType}_${Date.now()}.${ext}`;
+    const fileRef = bucket.file(fileName);
+
+    await fileRef.save(req.file.buffer, {
+      metadata: { contentType: req.file.mimetype },
+    });
+
+    const [signedUrl] = await fileRef.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+    });
+
+    logger.info('[Sitter Suite] Document uploaded', { userId: user.uid, docType, fileName });
+
+    res.json({
+      success: true,
+      url: signedUrl,
+      path: fileName,
+      documentType: docType,
+      message: 'Document uploaded successfully'
+    });
+  } catch (error: any) {
+    logger.error('[Sitter Suite] Document upload error', error);
+    res.status(500).json({ error: error.message || 'Failed to upload document' });
+  }
+});
 
 // ==================== SITTER PROFILES ====================
 
