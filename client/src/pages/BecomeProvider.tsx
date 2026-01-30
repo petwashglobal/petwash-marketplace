@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { GooglePlacesAutocomplete, PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -488,12 +489,68 @@ export default function BecomeProvider() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <Label className="text-gray-300 font-medium">{isHebrew ? 'תאריך לידה' : 'Date of Birth'} *</Label>
-                      <Input 
-                        type="date"
-                        {...form.register('dateOfBirth')}
-                        className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
-                        data-testid="input-dob"
-                      />
+                      <div className="mt-2 grid grid-cols-3 gap-2" data-testid="input-dob">
+                        <Select
+                          value={form.watch('dateOfBirth')?.split('-')[2] || ''}
+                          onValueChange={(day) => {
+                            const current = form.watch('dateOfBirth') || '--';
+                            const [year, month] = current.split('-');
+                            form.setValue('dateOfBirth', `${year || ''}-${month || ''}-${day}`);
+                          }}
+                        >
+                          <SelectTrigger className="h-12 bg-slate-800/50 border-slate-600 text-white focus:border-amber-500">
+                            <SelectValue placeholder={isHebrew ? 'יום' : 'Day'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                              <SelectItem key={day} value={String(day).padStart(2, '0')}>
+                                {day}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={form.watch('dateOfBirth')?.split('-')[1] || ''}
+                          onValueChange={(month) => {
+                            const current = form.watch('dateOfBirth') || '--';
+                            const [year, , day] = current.split('-');
+                            form.setValue('dateOfBirth', `${year || ''}-${month}-${day || ''}`);
+                          }}
+                        >
+                          <SelectTrigger className="h-12 bg-slate-800/50 border-slate-600 text-white focus:border-amber-500">
+                            <SelectValue placeholder={isHebrew ? 'חודש' : 'Month'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(isHebrew 
+                              ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+                              : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+                            ).map((name, i) => (
+                              <SelectItem key={i} value={String(i + 1).padStart(2, '0')}>
+                                {name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={form.watch('dateOfBirth')?.split('-')[0] || ''}
+                          onValueChange={(year) => {
+                            const current = form.watch('dateOfBirth') || '--';
+                            const [, month, day] = current.split('-');
+                            form.setValue('dateOfBirth', `${year}-${month || ''}-${day || ''}`);
+                          }}
+                        >
+                          <SelectTrigger className="h-12 bg-slate-800/50 border-slate-600 text-white focus:border-amber-500">
+                            <SelectValue placeholder={isHebrew ? 'שנה' : 'Year'} />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[200px]">
+                            {Array.from({ length: 80 }, (_, i) => new Date().getFullYear() - 18 - i).map((year) => (
+                              <SelectItem key={year} value={String(year)}>
+                                {year}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       {form.formState.errors.dateOfBirth && (
                         <p className="text-red-400 text-sm mt-1">{form.formState.errors.dateOfBirth.message}</p>
                       )}
