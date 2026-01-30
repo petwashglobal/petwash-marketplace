@@ -310,6 +310,76 @@ function GooglePlacesLocationInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  const handleUseMyLocation = async () => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setIsGettingLocation(true);
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+          
+          if (apiKey && scriptLoaded && window.google?.maps) {
+            const geocoder = new google.maps.Geocoder();
+            const response = await geocoder.geocode({ 
+              location: { lat: latitude, lng: longitude } 
+            });
+            
+            if (response.results[0]) {
+              let cityName = '';
+              for (const component of response.results[0].address_components) {
+                if (component.types.includes('locality')) {
+                  cityName = component.long_name;
+                  break;
+                }
+                if (component.types.includes('administrative_area_level_1') && !cityName) {
+                  cityName = component.long_name;
+                }
+              }
+              if (cityName) {
+                onChange(cityName);
+              } else {
+                onChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+              }
+            }
+          } else {
+            onChange('Tel Aviv');
+          }
+        } catch (error) {
+          console.error('Geocoding error:', error);
+          onChange('Tel Aviv');
+        } finally {
+          setIsGettingLocation(false);
+        }
+      },
+      (error) => {
+        setIsGettingLocation(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setLocationError('Location permission denied');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setLocationError('Location unavailable');
+            break;
+          case error.TIMEOUT:
+            setLocationError('Location request timed out');
+            break;
+          default:
+            setLocationError('Unable to get location');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
+  };
 
   useEffect(() => {
     if (window.google && window.google.maps) {
@@ -381,10 +451,33 @@ function GooglePlacesLocationInput({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`pl-10 h-12 border-gray-200 rounded-xl focus:ring-2 ${focusRing} ${focusBorder}`}
+        className={`pl-10 pr-12 h-12 border-gray-200 rounded-xl focus:ring-2 ${focusRing} ${focusBorder}`}
         data-testid="input-search-location"
         autoComplete="off"
       />
+      <button
+        type="button"
+        onClick={handleUseMyLocation}
+        disabled={isGettingLocation}
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+        title="Use my location"
+        data-testid="button-use-my-location"
+      >
+        {isGettingLocation ? (
+          <Loader2 className="h-5 w-5 text-gray-500 animate-spin" />
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-blue-500">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>
+          </svg>
+        )}
+      </button>
+      {locationError && (
+        <div className="absolute top-full left-0 mt-1 text-xs text-red-500 flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          {locationError}
+        </div>
+      )}
     </div>
   );
 }
