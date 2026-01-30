@@ -1,0 +1,326 @@
+/**
+ * BASE LUXURY BOOKING ENGINE
+ * ===========================
+ * Unified booking infrastructure for all Pet Wash™ platforms
+ * Like Uber: one core engine, platform-specific strategies
+ *
+ * Provides:
+ * - Availability checking with capacity management
+ * - Dynamic pricing with loyalty tier discounts
+ * - Escrow payment processing
+ * - Cancellation policy enforcement
+ * - Post-confirmation workflows (GPS, dispatch, IoT unlock)
+ *
+ * Oracle-level enterprise quality - DO NOT modify without architectural review
+ */
+import { logger } from '../../../lib/logger';
+import { getLoyaltyStatus } from '../../loyalty';
+import { bookingPolicyEngine } from '../../BookingPolicyEngine';
+/**
+ * Base Luxury Booking Engine
+ * All vertical engines extend this for unified experience
+ */
+export class BaseLuxuryBookingEngine {
+    availabilityStrategy;
+    pricingStrategy;
+    postConfirmationStrategy;
+    constructor(availabilityStrategy, pricingStrategy, postConfirmationStrategy) {
+        this.availabilityStrategy = availabilityStrategy;
+        this.pricingStrategy = pricingStrategy;
+        this.postConfirmationStrategy = postConfirmationStrategy;
+    }
+    /**
+     * Check availability with vertical-specific logic
+     */
+    async checkAvailability(params) {
+        try {
+            logger.info('[Luxury Booking] Checking availability', {
+                providerId: params.providerId,
+                serviceType: params.serviceType,
+                dateRange: `${params.startDate.toISOString()} - ${params.endDate.toISOString()}`,
+            });
+            // Validate dates
+            this.validateBookingDates(params.startDate, params.endDate);
+            // Execute vertical-specific availability check
+            const result = await this.availabilityStrategy.checkAvailability(params);
+            logger.info('[Luxury Booking] Availability check complete', {
+                available: result.available,
+                message: result.message,
+            });
+            return result;
+        }
+        catch (error) {
+            logger.error('[Luxury Booking] Availability check failed', {
+                error: error.message,
+                params,
+            });
+            return {
+                available: false,
+                message: 'Error checking availability. Please try again.',
+            };
+        }
+    }
+    /**
+     * Quote price with loyalty tier discounts applied
+     * ALL platforms get loyalty integration automatically
+     *
+     * CRITICAL: Recalculates provider payout AFTER discount to ensure financial reconciliation
+     */
+    async quotePrice(params) {
+        try {
+            logger.info('[Luxury Booking] Calculating price quote', {
+                providerId: params.providerId,
+                userId: params.userId,
+                serviceType: params.serviceType,
+            });
+            // Get base pricing from vertical strategy
+            const basePricing = await this.pricingStrategy.calculatePrice(params);
+            // Apply loyalty tier discount (UNIFIED across all platforms)
+            const loyaltyUser = await getLoyaltyStatus(params.userId);
+            const loyaltyDiscount = this.calculateLoyaltyDiscount(basePricing.subtotal, loyaltyUser);
+            // Recalculate totals with loyalty discount
+            const discountedSubtotal = basePricing.subtotal - loyaltyDiscount;
+            // CRITICAL FIX #1: Recalculate provider payout based on discounted subtotal
+            // Otherwise providers get paid original amount while customer pays less = negative margin
+            const providerPayoutRatio = basePricing.subtotal > 0
+                ? basePricing.providerPayout / basePricing.subtotal
+                : 0;
+            const adjustedProviderPayout = discountedSubtotal * providerPayoutRatio;
+            // Platform fee is the SPLIT of the subtotal (not added on top)
+            const platformFee = discountedSubtotal - adjustedProviderPayout;
+            // CRITICAL FIX #2: Tax is on subtotal, then total = subtotal + tax
+            // Platform fee is already IN the subtotal (not added on top!)
+            const tax = discountedSubtotal * this.getTaxRate(params.ipAddress);
+            const totalPrice = discountedSubtotal + tax; // NOT + platformFee (already included!)
+            const finalPricing = {
+                ...basePricing,
+                loyaltyDiscount,
+                subtotal: discountedSubtotal,
+                platformFee,
+                tax,
+                totalPrice,
+                providerPayout: adjustedProviderPayout, // FIXED: Use recalculated payout
+                breakdown: [
+                    ...basePricing.breakdown,
+                    {
+                        description: `Loyalty Discount (${loyaltyUser?.tier || 'BRONZE'})`,
+                        amount: -loyaltyDiscount,
+                    },
+                    {
+                        description: `Platform Fee (${Math.round(((platformFee / discountedSubtotal) * 100) * 10) / 10}%)`,
+                        amount: platformFee
+                    },
+                    { description: 'Tax (VAT)', amount: tax },
+                ],
+            };
+            logger.info('[Luxury Booking] Price quote complete', {
+                totalPrice,
+                loyaltyDiscount,
+                loyaltyTier: loyaltyUser?.tier,
+                currency: finalPricing.currency,
+                providerPayout: adjustedProviderPayout,
+                platformFee,
+                financialCheck: {
+                    customerPays: totalPrice,
+                    providerGets: adjustedProviderPayout,
+                    platformGets: platformFee,
+                    taxes: tax,
+                    reconciles: Math.abs((adjustedProviderPayout + platformFee + tax) - totalPrice) < 0.01,
+                },
+            });
+            return finalPricing;
+        }
+        catch (error) {
+            logger.error('[Luxury Booking] Price calculation failed', {
+                error: error.message,
+                params,
+            });
+            throw error;
+        }
+    }
+    /**
+     * Reserve slot (hold inventory before payment)
+     */
+    async reserveSlot(params) {
+        try {
+            // Check availability first
+            const availability = await this.checkAvailability(params);
+            if (!availability.available) {
+                return { success: false };
+            }
+            // Create temporary reservation (15 minutes to complete payment)
+            const reservationId = `RES-${Date.now()}-${params.providerId.slice(0, 8)}`;
+            const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+            logger.info('[Luxury Booking] Slot reserved', {
+                reservationId,
+                expiresAt,
+            });
+            return {
+                success: true,
+                reservationId,
+                expiresAt,
+            };
+        }
+        catch (error) {
+            logger.error('[Luxury Booking] Slot reservation failed', error);
+            return { success: false };
+        }
+    }
+    /**
+     * Confirm booking with payment processing and escrow
+     */
+    async confirmBooking(bookingId, pricing, userId) {
+        try {
+            logger.info('[Luxury Booking] Confirming booking', {
+                bookingId,
+                totalPrice: pricing.totalPrice,
+                currency: pricing.currency,
+            });
+            // Process payment and move to escrow (like Airbnb)
+            const escrowResult = await this.moveToEscrow(bookingId, pricing.totalPrice, pricing.currency);
+            if (!escrowResult.success) {
+                logger.error('[Luxury Booking] Payment/escrow failed', { bookingId });
+                return {
+                    bookingId,
+                    status: 'failed',
+                    pricing,
+                };
+            }
+            // Execute vertical-specific post-confirmation actions
+            // (GPS activation for Walk, dispatch for PetTrek, IoT unlock for K9000)
+            await this.triggerPostConfirmation(bookingId);
+            logger.info('[Luxury Booking] Booking confirmed successfully', {
+                bookingId,
+                escrowReferenceId: escrowResult.escrowReferenceId,
+            });
+            return {
+                bookingId,
+                status: 'confirmed',
+                pricing,
+                escrowReferenceId: escrowResult.escrowReferenceId,
+            };
+        }
+        catch (error) {
+            logger.error('[Luxury Booking] Booking confirmation failed', {
+                error: error.message,
+                bookingId,
+            });
+            return {
+                bookingId,
+                status: 'failed',
+                pricing,
+            };
+        }
+    }
+    /**
+     * Trigger post-confirmation workflows
+     * (GPS for Walk, Dispatch for PetTrek, IoT for K9000, Escrow release for Sitter)
+     */
+    async triggerPostConfirmation(bookingId) {
+        try {
+            logger.info('[Luxury Booking] Triggering post-confirmation workflow', {
+                bookingId,
+            });
+            await this.postConfirmationStrategy.executePostConfirmation(bookingId, {});
+            logger.info('[Luxury Booking] Post-confirmation workflow complete', {
+                bookingId,
+            });
+        }
+        catch (error) {
+            logger.error('[Luxury Booking] Post-confirmation workflow failed', {
+                error: error.message,
+                bookingId,
+            });
+            // Non-blocking - booking is still confirmed
+        }
+    }
+    /**
+     * Cancel booking with policy-based refund calculation
+     * UNIFIED across all platforms
+     */
+    async cancelBooking(bookingId, userId, serviceType, bookingAmount, bookingDate) {
+        try {
+            logger.info('[Luxury Booking] Processing cancellation', {
+                bookingId,
+                userId,
+                serviceType,
+            });
+            // Calculate refund using BookingPolicyEngine
+            const cancellationResult = await bookingPolicyEngine.calculateCancellation(serviceType, bookingAmount, bookingDate, new Date(), // cancellation date = now
+            'IL' // TODO: Get country from user profile
+            );
+            if (cancellationResult.canCancel && cancellationResult.refundAmount > 0) {
+                // Process refund from escrow
+                await bookingPolicyEngine.processAutoRefund(parseInt(bookingId), cancellationResult.refundAmount, cancellationResult.refundMethod);
+            }
+            logger.info('[Luxury Booking] Cancellation processed', {
+                bookingId,
+                refundAmount: cancellationResult.refundAmount,
+                refundPercent: cancellationResult.refundPercent,
+            });
+            return cancellationResult;
+        }
+        catch (error) {
+            logger.error('[Luxury Booking] Cancellation failed', {
+                error: error.message,
+                bookingId,
+            });
+            throw error;
+        }
+    }
+    // ==================== PRIVATE HELPERS ====================
+    /**
+     * Validate booking dates
+     */
+    validateBookingDates(startDate, endDate) {
+        if (startDate >= endDate) {
+            throw new Error('Start date must be before end date');
+        }
+        if (startDate < new Date()) {
+            throw new Error('Start date must be in the future');
+        }
+    }
+    /**
+     * Calculate loyalty tier discount
+     * Progressive: BRONZE 0%, SILVER 5%, GOLD 10%, PLATINUM 15%, DIAMOND 20%
+     */
+    calculateLoyaltyDiscount(subtotal, loyaltyUser) {
+        if (!loyaltyUser)
+            return 0;
+        const discountPercent = loyaltyUser.discount; // From loyalty service
+        return (subtotal * discountPercent) / 100;
+    }
+    /**
+     * Get tax rate based on IP/country
+     */
+    getTaxRate(ipAddress) {
+        // TODO: Use globalConfig.getLocalSettings(ipAddress) for country-specific VAT
+        return parseFloat(process.env.VAT_RATE || '0.18'); // Israel VAT 18% (updated Jan 2025)
+    }
+    /**
+     * Move payment to escrow (like Airbnb - hold until service completion)
+     */
+    async moveToEscrow(bookingId, amount, currency) {
+        try {
+            // TODO: Integrate with Nayax escrow API when keys available
+            const escrowReferenceId = `ESCROW-${Date.now()}-${bookingId.slice(0, 8)}`;
+            logger.info('[Escrow] Funds moved to escrow', {
+                bookingId,
+                amount,
+                currency,
+                escrowReferenceId,
+            });
+            return {
+                success: true,
+                escrowReferenceId,
+            };
+        }
+        catch (error) {
+            logger.error('[Escrow] Failed to move funds to escrow', {
+                error: error.message,
+                bookingId,
+            });
+            return { success: false };
+        }
+    }
+}

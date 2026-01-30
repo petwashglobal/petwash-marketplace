@@ -113,6 +113,8 @@ import {
   hrPayroll,
   hrTimeTracking,
   hrPerformanceReviews,
+  hrRecruitment,
+  hrJobApplications,
   // Enterprise Corporate types
   type JvPartner,
   type InsertJvPartner,
