@@ -618,6 +618,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* MARKETPLACE SEARCH - Alias for booking search */}
+        <Route path="/marketplace/search">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <BookingSearchPage />
+            </Suspense>
+          )}
+        </Route>
+        
         {/* TALENT MARKETPLACE - 7-Platform Pet Wash™ Directory */}
         <Route path="/talent">
           {() => (
@@ -803,6 +812,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         
         {/* Walk My Pet™ - Browse Alias (MadPaws-style) */}
         <Route path="/walk-my-pet/browse">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <WalkMyPet />
+            </Suspense>
+          )}
+        </Route>
+        
+        {/* Walk My Pet™ - Browse Walkers List (alias for browse) */}
+        <Route path="/walk-my-pet/walkers">
           {() => (
             <Suspense fallback={<PageLoader />}>
               <WalkMyPet />
