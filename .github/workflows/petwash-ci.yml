@@ -105,8 +105,31 @@ jobs:
           echo "=== Deploying to Firebase Hosting ==="
           echo "Project: signinpetwash"
           echo "Using ADC via GOOGLE_APPLICATION_CREDENTIALS"
-          firebase deploy --only hosting --project signinpetwash
-          echo "=== Firebase Hosting deployment complete ==="
+          
+          # Retry logic for transient network issues
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if firebase deploy --only hosting --project signinpetwash --non-interactive; then
+              echo "✅ Firebase Hosting deployment complete"
+              exit 0
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "⚠️ Deploy attempt $RETRY_COUNT failed, retrying in 10 seconds..."
+                sleep 10
+              fi
+            fi
+          done
+          
+          echo "❌ Firebase Hosting deployment failed after $MAX_RETRIES attempts"
+          echo ""
+          echo "Common fixes:"
+          echo "1. Ensure service account has 'Firebase Hosting Admin' role"
+          echo "2. Go to: https://console.firebase.google.com/project/signinpetwash/settings/serviceaccounts"
+          echo "3. Or add role via: gcloud projects add-iam-policy-binding signinpetwash --member='serviceAccount:YOUR_SA_EMAIL' --role='roles/firebasehosting.admin'"
+          exit 1
 
   # Deploy backend to Cloud Run
   deploy-backend:
