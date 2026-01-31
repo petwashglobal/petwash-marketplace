@@ -72,17 +72,31 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Verify credentials exist
+      - name: Verify Google Cloud authentication
         run: |
-          echo "=== Checking authentication ==="
+          echo "=== Verifying authentication ==="
           if [ -z "${{ steps.auth.outputs.credentials_file_path }}" ]; then
-            echo "ERROR: No credentials file path from auth step"
-            echo "Make sure GOOGLE_APPLICATION_CREDENTIALS_JSON secret is set correctly"
+            echo "❌ ERROR: No credentials file path from auth step"
+            echo "Make sure GOOGLE_APPLICATION_CREDENTIALS_JSON secret contains raw JSON (not base64)"
             exit 1
           fi
-          echo "Credentials file: ${{ steps.auth.outputs.credentials_file_path }}"
-          ls -la ${{ steps.auth.outputs.credentials_file_path }} || echo "File not accessible"
-          echo "=== Auth check complete ==="
+          echo "✅ Credentials file: ${{ steps.auth.outputs.credentials_file_path }}"
+          
+          # Hard fail if cannot access project
+          echo "=== Testing project access ==="
+          ACCOUNT=$(gcloud config list account --format="value(core.account)")
+          if [ -z "$ACCOUNT" ]; then
+            echo "❌ ERROR: No gcloud account configured"
+            exit 1
+          fi
+          echo "✅ Authenticated as: $ACCOUNT"
+          
+          if ! gcloud projects describe signinpetwash --format="value(projectId)" > /dev/null 2>&1; then
+            echo "❌ ERROR: Cannot access project 'signinpetwash'"
+            echo "Service account needs: Firebase Admin, Firebase Hosting Admin roles"
+            exit 1
+          fi
+          echo "✅ Project access verified"
 
       - name: Deploy to Firebase Hosting
         env:
@@ -90,7 +104,7 @@ jobs:
         run: |
           echo "=== Deploying to Firebase Hosting ==="
           echo "Project: signinpetwash"
-          echo "Credentials: $GOOGLE_APPLICATION_CREDENTIALS"
+          echo "Using ADC via GOOGLE_APPLICATION_CREDENTIALS"
           firebase deploy --only hosting --project signinpetwash
           echo "=== Firebase Hosting deployment complete ==="
 
