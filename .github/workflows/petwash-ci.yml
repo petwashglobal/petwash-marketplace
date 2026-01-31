@@ -59,11 +59,9 @@ jobs:
           echo "=== Build timestamp: $(date) ==="
 
       - name: Authenticate to Google Cloud
+        id: auth
         uses: google-github-actions/auth@v2
         with:
-          # Full JSON of the service account key from Secrets
-          # Example service account:
-          # petwash-backup-service@signinpetwash.iam.gserviceaccount.com
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
 
       - name: Set up gcloud SDK
@@ -71,13 +69,17 @@ jobs:
         with:
           project_id: signinpetwash
 
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
       - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
-          projectId: signinpetwash
-          channelId: live
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+        run: |
+          echo "=== Deploying to Firebase Hosting ==="
+          echo "Using credentials from: $GOOGLE_APPLICATION_CREDENTIALS"
+          firebase deploy --only hosting --project signinpetwash --debug
+          echo "=== Firebase Hosting deployment complete ==="
 
   # Deploy backend to Cloud Run
   deploy-backend:
