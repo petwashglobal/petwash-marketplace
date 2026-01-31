@@ -3723,3 +3723,21 @@ body {
 /* ONLY specific non-text containers that must maintain visual order */
 /* DO NOT override direction on text-containing elements */
 
+/* ============================================ */
+/* BRAND TRADEMARK PROTECTION - RTL FIX        */
+/* ============================================ */
+/* Ensures Pet Wash™ trademark symbol ALWAYS   */
+/* appears to the RIGHT of "Wash" in ALL       */
+/* languages including Hebrew and Arabic RTL   */
+/* The main fix is in i18n.ts which adds LRM   */
+/* (Left-to-Right Mark) after ™ symbols.       */
+/* This CSS provides additional isolation.     */
+/* ============================================ */
+
+/* Pet Wash™ brand text wrapper - always LTR regardless of document direction */
+.brand-petwash {
+  unicode-bidi: isolate;
+  direction: ltr;
+  display: inline;
+}
+

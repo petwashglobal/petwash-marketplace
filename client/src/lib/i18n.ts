@@ -2060,12 +2060,32 @@ export const translations: TranslationStrings = {
 };
 // Supported languages with English as global default
 export type Language = 'en' | 'he' | 'ar' | 'ru' | 'fr' | 'es';
+
+// Unicode Left-to-Right Mark - prevents RTL reordering of trademark symbols
+const LRM = '\u200E';
+
+/**
+ * Fix trademark positioning for RTL languages
+ * Ensures ™ always appears to the RIGHT of "Wash" in Pet Wash™
+ * by adding LRM after trademark symbols to anchor them in place
+ */
+function fixTrademarkForRTL(text: string, language: Language): string {
+  // Only apply fix for RTL languages (Hebrew and Arabic)
+  if (language !== 'he' && language !== 'ar') return text;
+  
+  // Add LRM after trademark symbols to prevent RTL reordering
+  // This anchors the ™ to stay on the right side of "Wash"
+  return text.replace(/™️?/g, `™${LRM}`);
+}
+
 // Translation function with automatic English fallback for legal transparency
 export function t(key: string, language: Language): string {
   const translation = translations[key];
   if (!translation) return key;
   // Return requested language or fallback to English (global default)
-  return translation[language] || translation.en || key;
+  const result = translation[language] || translation.en || key;
+  // Fix trademark positioning for RTL languages
+  return fixTrademarkForRTL(result, language);
 }
 
 // Check if a language is Right-to-Left (RTL)
