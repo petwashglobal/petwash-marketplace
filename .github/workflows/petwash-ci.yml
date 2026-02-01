@@ -163,6 +163,19 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker me-west1-docker.pkg.dev
 
+      - name: Create Artifact Registry repository if not exists
+        run: |
+          if ! gcloud artifacts repositories describe petwash-api --location=me-west1 --format="value(name)" 2>/dev/null; then
+            echo "Creating Artifact Registry repository..."
+            gcloud artifacts repositories create petwash-api \
+              --repository-format=docker \
+              --location=me-west1 \
+              --description="PetWash API Docker images"
+            echo "✅ Repository created"
+          else
+            echo "✅ Repository already exists"
+          fi
+
       - name: Verify npm lock file
         run: |
           if [ ! -f package-lock.json ]; then
