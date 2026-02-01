@@ -178,8 +178,8 @@ export class ErrorHandler {
     if (storedLang === 'he' || storedLang === 'ar') return 'he';
     if (storedLang === 'en') return 'en';
 
-    // Check browser language
-    const browserLang = navigator.language.toLowerCase();
+    // Check browser language (guard against undefined)
+    const browserLang = (navigator?.language || 'en').toLowerCase();
     if (browserLang.startsWith('he') || browserLang.startsWith('ar')) return 'he';
 
     // Default to English

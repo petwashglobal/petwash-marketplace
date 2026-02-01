@@ -131,7 +131,9 @@ function friendlyAuthError(codeOrMsg: string): string {
     'auth/internal-error': 'We had a hiccup. Please try again in a moment.',
   };
   
-  const matchedKey = Object.keys(errorMap).find(k => codeOrMsg.includes(k));
+  // Guard against undefined/null codeOrMsg
+  const safeCode = String(codeOrMsg || '');
+  const matchedKey = Object.keys(errorMap).find(k => safeCode.includes(k));
   return matchedKey ? errorMap[matchedKey] : 'Sign-in failed. Please try again.';
 }
 

@@ -60,8 +60,8 @@ function detectInitialLanguage(): string {
     return "he"; // Hebrew default for Israel
   }
   
-  // Fallback: Use browser language or default to English
-  const lang = navigator.language.toLowerCase();
+  // Fallback: Use browser language or default to English (guard against undefined)
+  const lang = (navigator?.language || 'en').toLowerCase();
   if (lang.startsWith("he")) return "he";
   if (lang.startsWith("ar")) return "ar";
   if (lang.startsWith("ru")) return "ru";
