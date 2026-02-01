@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    needs: deploy-backend  # Wait for backend to be deployed first
 
     # All build time env from GitHub Secrets
     env:
@@ -131,10 +132,9 @@ jobs:
           echo "3. Or add role via: gcloud projects add-iam-policy-binding signinpetwash --member='serviceAccount:YOUR_SA_EMAIL' --role='roles/firebasehosting.admin'"
           exit 1
 
-  # Deploy backend to Cloud Run
+  # Deploy backend to Cloud Run FIRST (frontend depends on it)
   deploy-backend:
     runs-on: ubuntu-latest
-    needs: deploy  # Run after frontend deployment
     
     # Backend build-time environment variables
     env:
