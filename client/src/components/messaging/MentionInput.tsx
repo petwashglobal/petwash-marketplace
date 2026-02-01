@@ -40,8 +40,8 @@ export function MentionInput({ value, onChange, placeholder, disabled, className
     const textBeforeCursor = value.substring(0, cursorPosition);
     const mentionMatch = textBeforeCursor.match(/@([\w-]*)$/);
 
-    if (mentionMatch) {
-      const query = mentionMatch[1].toLowerCase();
+    if (mentionMatch && mentionMatch[1] !== undefined) {
+      const query = (mentionMatch[1] || '').toLowerCase();
       setMentionQuery(query);
       
       const filtered = ROLE_SUGGESTIONS.filter(

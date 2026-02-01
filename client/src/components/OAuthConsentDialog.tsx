@@ -75,10 +75,10 @@ export function OAuthConsentDialog({
         {/* Body */}
         <div className="px-6 py-6 space-y-6">
           {/* User info if available */}
-          {userEmail && (
+          {userEmail && userEmail.length > 0 && (
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0a2540] to-[#1a365d] flex items-center justify-center text-white font-semibold">
-                {userEmail[0].toUpperCase()}
+                {userEmail[0]?.toUpperCase() || '?'}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{userEmail}</p>

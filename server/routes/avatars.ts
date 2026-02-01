@@ -352,7 +352,7 @@ router.patch('/:avatarId', validateFirebaseToken, async (req, res) => {
       updatedAt: new Date(),
     };
     
-    if (req.body.petName) updates.petName = req.body.petName.trim();
+    if (req.body.petName && typeof req.body.petName === 'string') updates.petName = req.body.petName.trim();
     if (req.body.ttsVoice) updates.ttsVoice = req.body.ttsVoice;
     if (req.body.animationProfile) updates.animationProfile = req.body.animationProfile;
     if (req.body.landmarkConfig) updates.landmarkConfig = req.body.landmarkConfig;

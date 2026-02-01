@@ -91,7 +91,7 @@ router.post("/expenses", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     
-    if (!user) {
+    if (!user || !user.email) {
       return res.status(401).json({
         success: false,
         error: "Authentication required",
