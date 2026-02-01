@@ -56,6 +56,12 @@ export const API_BASE_URL = getApiBaseUrl();
  * @returns Full URL with base (e.g., 'https://api.example.com/api/users')
  */
 export const getApiUrl = (path: string): string => {
+  // Guard against undefined/null path
+  if (!path || typeof path !== 'string') {
+    console.warn('[API Config] getApiUrl called with invalid path:', path);
+    return API_BASE_URL || '';
+  }
+  
   // If already a full URL, return as-is
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
