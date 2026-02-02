@@ -258,7 +258,14 @@ if (isProduction) {
     
     // 4. Register all API routes FIRST (critical for dev mode)
     // MUST be BEFORE Vite middleware or production static files
-    await registerRoutes(app);
+    // CRITICAL: Add timeout to prevent indefinite hangs in Cloud Run
+    const ROUTE_REGISTRATION_TIMEOUT = 30000; // 30 seconds max
+    const routeRegistrationPromise = registerRoutes(app);
+    const routeTimeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Route registration timed out after 30 seconds')), ROUTE_REGISTRATION_TIMEOUT)
+    );
+    
+    await Promise.race([routeRegistrationPromise, routeTimeoutPromise]);
     
     // 5. Serve static files - CONDITIONAL based on environment
     // DEVELOPMENT: Use Vite dev server with HMR for hot reloading
