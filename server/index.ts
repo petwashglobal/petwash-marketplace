@@ -10,6 +10,18 @@ import { ensureBiometricStorage } from "./infra/biometricStorage";
 import { registerRoutes } from "./routes";
 import { startMonthlySettlementsCron } from "./cron/monthly-settlements";
 
+// --- CRITICAL: Early startup logging for Cloud Run debugging ---
+console.log('--------------------------------------------------');
+console.log('🚀 [Startup] PetWash Server initializing...');
+console.log(`   Timestamp: ${new Date().toISOString()}`);
+console.log(`   Node version: ${process.version}`);
+console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`   Port: ${process.env.PORT || 5000}`);
+console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✅ SET' : '❌ NOT SET'}`);
+console.log(`   FIREBASE_SERVICE_ACCOUNT_KEY: ${process.env.FIREBASE_SERVICE_ACCOUNT_KEY ? '✅ SET' : '❌ NOT SET'}`);
+console.log(`   COOKIE_SECRET: ${process.env.COOKIE_SECRET ? '✅ SET' : '❌ NOT SET'}`);
+console.log('--------------------------------------------------');
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
