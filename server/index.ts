@@ -116,11 +116,15 @@ app.use((req, res, next) => {
 });
 
 // --- 2025 HEALTH MONITORING ENDPOINT ---
+// Track server readiness state
+let serverReady = false;
+
+// Health endpoint - always responds 200 for Cloud Run liveness check
 app.get('/health', (req, res) => {
   const uptime = process.uptime();
   
   res.status(200).json({
-    status: 'ONLINE',
+    status: serverReady ? 'ONLINE' : 'STARTING',
     system: 'Pet Wash System v2.0',
     timestamp: new Date().toISOString(),
     metrics: {
@@ -128,15 +132,35 @@ app.get('/health', (req, res) => {
       memory_usage: (process.memoryUsage().rss / 1024 / 1024).toFixed(2) + ' MB',
     },
     checks: {
-      database: 'Connected',
-      email_service: 'Ready',
-      port_config: 'Safe (5000)'
+      database: serverReady ? 'Connected' : 'Initializing',
+      email_service: serverReady ? 'Ready' : 'Initializing',
+      port_config: `Port ${PORT}`
     }
   });
 });
+
+// --- CRITICAL: Block all non-health requests until initialization is complete ---
+// This prevents 404s during startup when routes aren't registered yet
+app.use((req, res, next) => {
+  // Always allow health checks through
+  if (req.path === '/health') {
+    return next();
+  }
+  
+  // In production, block requests until server is ready
+  if (isProduction && !serverReady) {
+    return res.status(503).json({
+      error: 'Service Unavailable',
+      message: 'Server is starting up, please retry in a moment',
+      retryAfter: 5
+    });
+  }
+  
+  next();
+});
 // ---------------------------------------
 
-// 2. Initialise biometric storage once on startup
+// 2. Initialise biometric storage once on startup (non-blocking)
 ensureBiometricStorage()
   .then(() => {
     console.log("[BiometricStorage] ready");
@@ -144,6 +168,19 @@ ensureBiometricStorage()
   .catch((err) => {
     console.error("[BiometricStorage] init failed", err);
   });
+
+// --- CRITICAL FIX: Start server IMMEDIATELY in production (Cloud Run requires fast port binding) ---
+// In production, start listening BEFORE route registration to satisfy Cloud Run health checks
+if (isProduction) {
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log('--------------------------------------------------');
+    console.log(`🚀 [Server] Port ${PORT} bound - starting initialization...`);
+    console.log('--------------------------------------------------');
+  });
+  
+  // Store server reference for later use
+  (app as any)._server = server;
+}
 
 // 3. Static assets, API routes, and server startup
 (async () => {
@@ -238,6 +275,9 @@ ensureBiometricStorage()
       });
       await setupVite(app, server);
       console.log('✅ [Vite] Dev server initialized - source files will hot-reload');
+      
+      // Mark server as ready in development mode
+      serverReady = true;
       
       // Skip the rest of initialization in development mode
       // (Vite handles serving index.html and static assets)
@@ -363,14 +403,25 @@ ensureBiometricStorage()
       });
     });
     
-    // Start server
-    app.listen(PORT, "0.0.0.0", () => {
+    // Mark server as fully ready
+    serverReady = true;
+    
+    // Start server (only in development - production already started at top of file)
+    if (process.env.NODE_ENV !== 'production') {
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log('--------------------------------------------------');
+        console.log(`✅ [Server] listening on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
+        console.log(`📁 [Server] Static files: ${DIST_PUBLIC_PATH}`);
+        console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/`);
+        console.log('--------------------------------------------------');
+      });
+    } else {
       console.log('--------------------------------------------------');
-      console.log(`✅ [Server] listening on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
+      console.log(`✅ [Server] Initialization complete - port ${PORT} (production)`);
       console.log(`📁 [Server] Static files: ${DIST_PUBLIC_PATH}`);
-      console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/`);
+      console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/health`);
       console.log('--------------------------------------------------');
-    });
+    }
   } catch (error) {
     console.error('--------------------------------------------------');
     console.error("❌ [FATAL] Server startup failed:", error);
