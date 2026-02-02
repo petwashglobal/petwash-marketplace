@@ -323,31 +323,37 @@ if (isProduction) {
       console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);
     }
     
-    // 5c. Initialize Israeli CPI data (AFTER routes, BEFORE serving) - NON-BLOCKING
-    try {
-      console.log('[CPI] Initializing Israeli Consumer Price Index data...');
-      const IsraeliCPIService = (await import('./services/IsraeliCPIService')).default;
-      const isCurrent = await IsraeliCPIService.isCPIDataCurrent();
-      if (!isCurrent) {
-        console.log('[CPI] No CPI data found - seeding initial data...');
-        await IsraeliCPIService.seedInitialData();
-      } else {
-        const latest = await IsraeliCPIService.getLatestCPI();
-        console.log(`[CPI] ✅ CPI data current - Latest: ${latest?.month} = ${latest?.indexValue}`);
+    // 5c. Initialize Israeli CPI data - TRULY NON-BLOCKING (fire-and-forget)
+    // CRITICAL: Do NOT await - these can be slow and should not delay serverReady
+    (async () => {
+      try {
+        console.log('[CPI] Initializing Israeli Consumer Price Index data (background)...');
+        const IsraeliCPIService = (await import('./services/IsraeliCPIService')).default;
+        const isCurrent = await IsraeliCPIService.isCPIDataCurrent();
+        if (!isCurrent) {
+          console.log('[CPI] No CPI data found - seeding initial data...');
+          await IsraeliCPIService.seedInitialData();
+        } else {
+          const latest = await IsraeliCPIService.getLatestCPI();
+          console.log(`[CPI] ✅ CPI data current - Latest: ${latest?.month} = ${latest?.indexValue}`);
+        }
+      } catch (error) {
+        console.error('[CPI] Failed to initialize CPI data (non-fatal):', error);
       }
-    } catch (error) {
-      console.error('[CPI] Failed to initialize CPI data (non-fatal):', error);
-    }
+    })();
     
-    // 5d. Initialize Control Panel Registry (AFTER routes, BEFORE serving) - NON-BLOCKING
-    try {
-      console.log('[Control Panel] Initializing registry data...');
-      const { initializeControlPanelRegistry } = await import('./services/ControlPanelRegistry');
-      await initializeControlPanelRegistry();
-      console.log('[Control Panel] ✅ Registry initialized successfully');
-    } catch (error) {
-      console.error('[Control Panel] Failed to initialize registry (non-fatal):', error);
-    }
+    // 5d. Initialize Control Panel Registry - TRULY NON-BLOCKING (fire-and-forget)
+    // CRITICAL: Do NOT await - database seeding should not delay serverReady
+    (async () => {
+      try {
+        console.log('[Control Panel] Initializing registry data (background)...');
+        const { initializeControlPanelRegistry } = await import('./services/ControlPanelRegistry');
+        await initializeControlPanelRegistry();
+        console.log('[Control Panel] ✅ Registry initialized successfully');
+      } catch (error) {
+        console.error('[Control Panel] Failed to initialize registry (non-fatal):', error);
+      }
+    })();
     
     // --- 2025 PRODUCTION SAFETY NET ---
     
