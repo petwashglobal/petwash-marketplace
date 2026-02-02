@@ -213,10 +213,12 @@ jobs:
             --region me-west1 \
             --allow-unauthenticated \
             --port 8080 \
-            --memory 1Gi \
-            --cpu 1 \
+            --memory 2Gi \
+            --cpu 2 \
             --min-instances 0 \
             --max-instances 10 \
+            --timeout 300 \
+            --cpu-boost \
             --set-env-vars "NODE_ENV=production" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest"
 
