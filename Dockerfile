@@ -30,9 +30,9 @@ ENV PORT=8080
 
 EXPOSE 8080
 
-# Health check with longer timeout for cold starts
+# Health check with longer timeout for cold starts (path: /health matches server/index.ts)
 HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=5 \
-  CMD node -e "const http = require('http'); http.get('http://localhost:8080/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+  CMD node -e "const http = require('http'); http.get('http://localhost:8080/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 # Run TypeScript directly with tsx (same as development, guaranteed to work)
 CMD ["npx", "tsx", "server/index.ts"]
