@@ -10,8 +10,42 @@
 import { google } from 'googleapis';
 
 let connectionSettings: any;
+let serviceAccountAuth: any = null;
 
-async function getAccessToken() {
+const isProduction = process.env.NODE_ENV === 'production';
+
+/**
+ * Get auth client - uses service account in production, Replit Connectors in development
+ */
+async function getAuthClient() {
+  // Production: Use service account credentials (works in Cloud Run)
+  if (isProduction || process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    if (!serviceAccountAuth) {
+      const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+      if (!credentialsJson) {
+        throw new Error('Google service account credentials not configured for production');
+      }
+      const credentials = JSON.parse(credentialsJson);
+      serviceAccountAuth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: [
+          'https://www.googleapis.com/auth/drive',
+          'https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/documents',
+        ],
+      });
+    }
+    return serviceAccountAuth;
+  }
+  
+  // Development: Use Replit Connectors OAuth flow
+  const accessToken = await getAccessTokenFromReplit();
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({ access_token: accessToken });
+  return oauth2Client;
+}
+
+async function getAccessTokenFromReplit() {
   if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
     return connectionSettings.settings.access_token;
   }
@@ -23,8 +57,8 @@ async function getAccessToken() {
     ? 'depl ' + process.env.WEB_REPL_RENEWAL 
     : null;
 
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+  if (!xReplitToken || !hostname) {
+    throw new Error('Replit connector tokens not available - use service account in production');
   }
 
   connectionSettings = await fetch(
@@ -40,30 +74,24 @@ async function getAccessToken() {
   const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
 
   if (!connectionSettings || !accessToken) {
-    throw new Error('Google Drive not connected');
+    throw new Error('Google Drive not connected via Replit Connectors');
   }
   return accessToken;
 }
 
 async function getGoogleDriveClient() {
-  const accessToken = await getAccessToken();
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  return google.drive({ version: 'v3', auth: oauth2Client });
+  const auth = await getAuthClient();
+  return google.drive({ version: 'v3', auth });
 }
 
 async function getGoogleSheetsClient() {
-  const accessToken = await getAccessToken();
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  return google.sheets({ version: 'v4', auth: oauth2Client });
+  const auth = await getAuthClient();
+  return google.sheets({ version: 'v4', auth });
 }
 
 async function getGoogleDocsClient() {
-  const accessToken = await getAccessToken();
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  return google.docs({ version: 'v1', auth: oauth2Client });
+  const auth = await getAuthClient();
+  return google.docs({ version: 'v1', auth });
 }
 
 export interface BackupResult {
