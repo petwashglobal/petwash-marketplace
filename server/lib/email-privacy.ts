@@ -7,6 +7,11 @@
 import sgMail from '@sendgrid/mail';
 import { logger } from './logger';
 
+// Initialize SendGrid once at module load (not on every call)
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
+
 export interface EmailOptions {
   to: string | string[];
   from: string;
@@ -82,7 +87,6 @@ export async function sendPrivacyRespectingEmail(options: EmailOptions): Promise
       },
     };
 
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     await sgMail.send(msg);
 
     logger.info('[Email] Sent email', {
