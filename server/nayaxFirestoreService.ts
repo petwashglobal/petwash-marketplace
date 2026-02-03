@@ -1270,8 +1270,12 @@ export async function createStationAlert(alert: Omit<StationAlert, 'id'>): Promi
  */
 async function sendAlertEmail(alertId: string, alert: Omit<StationAlert, 'id'>): Promise<void> {
   try {
+    if (!process.env.SENDGRID_API_KEY) {
+      logger.warn('[sendAlertEmail] SENDGRID_API_KEY not configured - skipping email');
+      return;
+    }
     const sgMail = await import('@sendgrid/mail');
-    sgMail.default.setApiKey(process.env.SENDGRID_API_KEY!);
+    sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
 
     const emailContent = {
       to: 'Support@PetWash.co.il',
