@@ -2,6 +2,17 @@
   "projects": {
     "default": "signinpetwash"
   },
-  "targets": {},
+  "targets": {
+    "signinpetwash": {
+      "hosting": {
+        "main": [
+          "signinpetwash"
+        ],
+        "www-redirect": [
+          "petwash-www"
+        ]
+      }
+    }
+  },
   "etags": {}
 }
