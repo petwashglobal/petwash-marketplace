@@ -62,9 +62,26 @@ export default function ProviderListings() {
   const [minRating, setMinRating] = useState(0);
   const [sortBy, setSortBy] = useState<'rating' | 'price' | 'experience'>('rating');
   
-  // Fetch providers
+  // Map service type to platform name
+  const platformMap: Record<typeof serviceType, string> = {
+    walker: 'walk_my_pet',
+    sitter: 'sitter_suite',
+    driver: 'pettrek',
+  };
+  
+  // Build query URL with all params for queryKey[0]
+  const providerQueryUrl = (() => {
+    const params = new URLSearchParams();
+    params.set('platform', platformMap[serviceType]);
+    if (cityFilter !== 'all') params.set('city', cityFilter);
+    if (minRating > 0) params.set('minRating', minRating.toString());
+    params.set('sortBy', sortBy);
+    return `/api/marketplace-bookings/search/providers?${params.toString()}`;
+  })();
+  
+  // Fetch providers using default queryFn (uses queryKey[0] as URL)
   const { data: providersData, isLoading } = useQuery({
-    queryKey: ['/api/providers', serviceType, cityFilter, minRating, sortBy],
+    queryKey: [providerQueryUrl],
   });
   
   const providers: Provider[] = providersData?.providers || [];

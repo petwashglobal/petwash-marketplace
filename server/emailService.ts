@@ -3273,6 +3273,32 @@ export class EmailService {
                 </p>
             </div>
             
+            <!-- Finance Department Stamp -->
+            <div style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(212, 175, 55, 0.15) 100%); border: 2px solid #d4af37; border-radius: 16px; padding: 25px; margin-bottom: 25px; text-align: center; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg); font-size: 80px; color: rgba(16, 185, 129, 0.08); font-weight: 900; letter-spacing: 5px; white-space: nowrap;">
+                    ${isHebrew ? 'מאושר' : 'APPROVED'}
+                </div>
+                <div style="position: relative; z-index: 1;">
+                    <div style="width: 70px; height: 70px; margin: 0 auto 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+                        <span style="font-size: 36px;">✓</span>
+                    </div>
+                    <h4 style="color: #d4af37; font-size: 16px; margin: 0 0 8px 0; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">
+                        ${isHebrew ? 'מחלקת הכספים' : 'Finance Department'}
+                    </h4>
+                    <p style="color: #10b981; font-size: 18px; margin: 0 0 5px 0; font-weight: 600;">
+                        ${isHebrew ? 'תשלום אושר' : 'Payment Approved'}
+                    </p>
+                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                        ${isHebrew ? 'חותמת דיגיטלית' : 'Digital Stamp'} • ${new Date().toISOString().split('T')[0]}
+                    </p>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(212, 175, 55, 0.3);">
+                        <p style="color: #64748b; font-size: 11px; margin: 0; font-style: italic;">
+                            ${isHebrew ? 'אושר אוטומטית על ידי מערכת הסליקה של Pet Wash™' : 'Automatically approved by Pet Wash™ payment system'}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Contact -->
             <p style="color: #94a3b8; font-size: 14px; text-align: center; margin: 30px 0 0 0;">
                 ${t.contactUs}: <a href="mailto:${t.contactEmail}" style="color: #d4af37; text-decoration: none;">${t.contactEmail}</a>
