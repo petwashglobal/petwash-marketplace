@@ -176,6 +176,7 @@ import walkPaymentFlowRoutes from "./routes/walk-payment-flow";
 import walletTelemetryRoutes from "./routes/wallet-telemetry";
 import weatherTestRoutes from "./routes/weather-test";
 import productionMonitorRoutes from "./routes/production-monitor";
+import octopusBrainRoutes from "./routes/octopus-brain";
 import { publicAuthRouter } from "./routes/publicAuthRoutes";
 // SSL certificate endpoints removed - handled by Replit platform
 import { 
@@ -8315,6 +8316,9 @@ self.addEventListener('notificationclick', (event) => {
   // Gemini AI Watchdog - Real-time monitoring, user struggle detection, auto-fix engine
   const geminiWatchdogRoutes = await import('./routes/gemini-watchdog');
   app.use('/api/gemini-watchdog', adminLimiter, geminiWatchdogRoutes.default);
+  
+  // 🐙 Octopus Brain - Central platform orchestration with Gemini AI monitoring
+  app.use('/api/octopus-brain', apiLimiter, octopusBrainRoutes);
   
   // Mobile Authentication (iOS/Android Google Sign-In with OAuth2 + Biometric)
   app.use('/api/mobile-auth', apiLimiter, mobileAuthRoutes);
