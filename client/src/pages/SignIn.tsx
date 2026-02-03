@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential } from "firebase/auth";
+import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential, getRedirectResult } from "firebase/auth";
+import { signInWithBestMethod, isIOS, createGoogleProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
 import { Layout } from "@/components/Layout";
@@ -100,6 +101,50 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       return () => clearTimeout(timer);
     }
   }, [magicLinkResendCountdown]);
+  
+  // Handle iOS redirect result on page load
+  useEffect(() => {
+    const handleRedirectSignIn = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          logger.info('[iOS Auth] Redirect sign-in successful', { email: result.user.email });
+          
+          // Create session
+          const idToken = await result.user.getIdToken();
+          const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ idToken }),
+          });
+
+          if (!sessionResponse.ok) {
+            throw new Error('Failed to create session');
+          }
+          
+          const { trackLogin } = await import('@/lib/analytics');
+          trackLogin('google', result.user.uid);
+          
+          toast({
+            title: t('signin.successTitle', language),
+            description: t('signin.redirecting', language),
+          });
+
+          setTimeout(() => {
+            window.scrollTo(0, 0);
+            navigate("/");
+          }, 1000);
+        }
+      } catch (error: any) {
+        if (error.code !== 'auth/popup-closed-by-user') {
+          logger.error('[iOS Auth] Redirect result error:', error);
+        }
+      }
+    };
+    
+    handleRedirectSignIn();
+  }, []);
   
   const handleUsePasswordInstead = () => {
     logger.info("User manually switched to password mode");
@@ -367,11 +412,21 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     try {
       setSocialLoading(provider);
       
-      const authProvider = new GoogleAuthProvider();
-      authProvider.addScope('email');
-      authProvider.addScope('profile');
-
-      const userCredential = await signInWithPopup(auth, authProvider);
+      const authProvider = createGoogleProvider();
+      
+      // Log device info for debugging
+      const deviceInfo = getDeviceInfo();
+      logger.info('[Auth] Device info:', deviceInfo);
+      
+      // Use iOS-compatible auth method (redirect for iOS, popup for others)
+      const userCredential = await signInWithBestMethod(auth, authProvider);
+      
+      // If redirect method was used, userCredential will be null
+      // The redirect result will be handled by the useEffect on page load
+      if (!userCredential) {
+        logger.info('[iOS Auth] Redirect initiated, waiting for return...');
+        return; // Early return - auth will complete after redirect
+      }
       
       let grantedScopes: string[] = [];
       try {

@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import { 
   MapPin, 
   Navigation, 
@@ -42,6 +44,8 @@ export default function BookTrip() {
   const [selectedDriver, setSelectedDriver] = useState<string>('');
   const [pickupAddress, setPickupAddress] = useState('');
   const [dropoffAddress, setDropoffAddress] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
 
   // Mock driver data
   const drivers: Driver[] = [
@@ -269,34 +273,32 @@ export default function BookTrip() {
                         {/* Date & Time */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                           <div>
-                            <label htmlFor="date" className="luxury-heading-sm mb-2 block">
+                            <label className="luxury-heading-sm mb-2 block">
                               {isHebrew ? 'תאריך' : 'Date'}
                             </label>
-                            <div className="relative">
-                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-purple-600" />
-                              <Input
-                                id="date"
-                                type="date"
-                                className="luxury-glass-minimal pl-10"
-                                data-testid="input-date"
-                                required
-                              />
-                            </div>
+                            <DatePicker
+                              value={selectedDate}
+                              onChange={setSelectedDate}
+                              placeholder={isHebrew ? 'בחר תאריך' : 'Select date'}
+                              minDate={new Date()}
+                              language={language}
+                              testId="input-date"
+                              className="luxury-glass-minimal"
+                            />
                           </div>
                           <div>
-                            <label htmlFor="time" className="luxury-heading-sm mb-2 block">
+                            <label className="luxury-heading-sm mb-2 block">
                               {isHebrew ? 'שעה' : 'Time'}
                             </label>
-                            <div className="relative">
-                              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-purple-600" />
-                              <Input
-                                id="time"
-                                type="time"
-                                className="luxury-glass-minimal pl-10"
-                                data-testid="input-time"
-                                required
-                              />
-                            </div>
+                            <TimePicker
+                              value={selectedTime}
+                              onChange={setSelectedTime}
+                              placeholder={isHebrew ? 'בחר שעה' : 'Select time'}
+                              language={language}
+                              testId="input-time"
+                              className="luxury-glass-minimal"
+                              interval={30}
+                            />
                           </div>
                         </div>
 
