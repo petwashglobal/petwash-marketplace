@@ -221,7 +221,6 @@ jobs:
             --timeout 300 \
             --cpu-boost \
             --execution-environment gen2 \
-            --startup-cpu-boost \
             --startup-probe "httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=0,failureThreshold=20,timeoutSeconds=10,periodSeconds=10" \
             --set-env-vars "NODE_ENV=production" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest"
