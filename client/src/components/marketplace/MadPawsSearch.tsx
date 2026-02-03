@@ -294,6 +294,15 @@ export interface BookingSearchResponse {
   searchId: string;
 }
 
+const ISRAELI_CITIES = [
+  'תל אביב', 'Tel Aviv', 'ירושלים', 'Jerusalem', 'חיפה', 'Haifa', 
+  'ראשון לציון', 'Rishon LeZion', 'פתח תקווה', 'Petah Tikva',
+  'אשדוד', 'Ashdod', 'נתניה', 'Netanya', 'באר שבע', 'Beer Sheva',
+  'הרצליה', 'Herzliya', 'רעננה', 'Raanana', 'כפר סבא', 'Kfar Saba',
+  'רמת גן', 'Ramat Gan', 'גבעתיים', 'Givatayim', 'הוד השרון', 'Hod HaSharon',
+  'מודיעין', 'Modiin', 'רחובות', 'Rehovot', 'אילת', 'Eilat',
+];
+
 function GooglePlacesLocationInput({
   value,
   onChange,
@@ -312,6 +321,8 @@ function GooglePlacesLocationInput({
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [autocompleteWorking, setAutocompleteWorking] = useState(true);
 
   const handleUseMyLocation = async () => {
     if (!navigator.geolocation) {
@@ -433,9 +444,13 @@ function GooglePlacesLocationInput({
         });
         
         onChange(cityName);
+        setShowCitySuggestions(false);
       });
+      
+      setAutocompleteWorking(true);
     } catch (error) {
-      console.error('[MadPaws Search] Google Places init error:', error);
+      console.warn('[MadPaws Search] Google Places not available, using fallback city list');
+      setAutocompleteWorking(false);
     }
 
     return () => {
@@ -445,6 +460,10 @@ function GooglePlacesLocationInput({
     };
   }, [scriptLoaded, onChange]);
 
+  const filteredCities = value.length > 0 
+    ? ISRAELI_CITIES.filter(city => city.toLowerCase().includes(value.toLowerCase())).slice(0, 6)
+    : ISRAELI_CITIES.slice(0, 8);
+
   return (
     <div className="relative">
       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none z-10" />
@@ -453,7 +472,20 @@ function GooglePlacesLocationInput({
         type="text"
         placeholder={placeholder}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          onChange(e.target.value);
+          if (!autocompleteWorking || !scriptLoaded) {
+            setShowCitySuggestions(true);
+          }
+        }}
+        onFocus={() => {
+          if (!autocompleteWorking || !scriptLoaded) {
+            setShowCitySuggestions(true);
+          }
+        }}
+        onBlur={() => {
+          setTimeout(() => setShowCitySuggestions(false), 200);
+        }}
         className={`pl-10 pr-12 h-12 border-gray-200 rounded-xl focus:ring-2 ${focusRing} ${focusBorder}`}
         data-testid="input-search-location"
         autoComplete="off"
@@ -479,6 +511,26 @@ function GooglePlacesLocationInput({
         <div className="absolute top-full left-0 mt-1 text-xs text-red-500 flex items-center gap-1">
           <AlertTriangle className="h-3 w-3" />
           {locationError}
+        </div>
+      )}
+      
+      {showCitySuggestions && filteredCities.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
+          {filteredCities.map((city, index) => (
+            <button
+              key={`${city}-${index}`}
+              type="button"
+              className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(city);
+                setShowCitySuggestions(false);
+              }}
+            >
+              <MapPin className="h-4 w-4 text-gray-400" />
+              {city}
+            </button>
+          ))}
         </div>
       )}
     </div>
