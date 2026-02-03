@@ -405,6 +405,9 @@ function GooglePlacesLocationInput({
     script.async = true;
     script.defer = true;
     script.onload = () => setScriptLoaded(true);
+    script.onerror = () => {
+      console.warn('[MadPaws Search] Google Maps script failed to load - search will work without autocomplete');
+    };
     document.head.appendChild(script);
   }, []);
 
