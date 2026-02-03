@@ -2,7 +2,50 @@ import path from "node:path";
 import express from "express";
 import helmet from "helmet";
 import compression from "compression";
-import cors from "cors";
+// CORS middleware - inline implementation due to ESM import issues
+function cors(options: { origin: any; credentials?: boolean; methods?: string[]; allowedHeaders?: string[]; maxAge?: number }) {
+  return (req: any, res: any, next: any) => {
+    const origin = req.get('Origin');
+    
+    // Handle origin checking
+    if (options.origin === true || !origin) {
+      res.set('Access-Control-Allow-Origin', origin || '*');
+    } else if (typeof options.origin === 'function') {
+      options.origin(origin, (err: any, allowed: boolean) => {
+        if (err || !allowed) {
+          return next(err || new Error('Not allowed by CORS'));
+        }
+        res.set('Access-Control-Allow-Origin', origin);
+      });
+    } else {
+      res.set('Access-Control-Allow-Origin', origin || '*');
+    }
+    
+    if (options.credentials) {
+      res.set('Access-Control-Allow-Credentials', 'true');
+    }
+    
+    if (options.methods) {
+      res.set('Access-Control-Allow-Methods', options.methods.join(', '));
+    }
+    
+    if (options.allowedHeaders) {
+      res.set('Access-Control-Allow-Headers', options.allowedHeaders.join(', '));
+    }
+    
+    if (options.maxAge) {
+      res.set('Access-Control-Max-Age', String(options.maxAge));
+    }
+    
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+      res.set('Access-Control-Allow-Headers', req.get('Access-Control-Request-Headers') || options.allowedHeaders?.join(', ') || '*');
+      return res.status(204).end();
+    }
+    
+    next();
+  };
+}
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import { fileURLToPath } from "node:url";

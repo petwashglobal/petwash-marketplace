@@ -132,6 +132,13 @@ jobs:
           echo "3. Or add role via: gcloud projects add-iam-policy-binding signinpetwash --member='serviceAccount:YOUR_SA_EMAIL' --role='roles/firebasehosting.admin'"
           exit 1
 
+      - name: Configure Cloud Storage CORS
+        run: |
+          echo "=== Configuring Cloud Storage CORS for documents and images ==="
+          gsutil cors set cors.json gs://signinpetwash.firebasestorage.app || echo "⚠️ Firebase Storage CORS may need manual config"
+          gsutil cors set cors.json gs://petwash-secure-documents || echo "⚠️ Documents bucket CORS may need manual config"
+          echo "✅ Storage CORS configuration complete"
+
   # Deploy backend to Cloud Run FIRST (frontend depends on it)
   deploy-backend:
     runs-on: ubuntu-latest

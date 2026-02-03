@@ -1,0 +1,20 @@
+[
+  {
+    "origin": [
+      "https://petwash.co.il",
+      "https://www.petwash.co.il",
+      "https://petwash-api-signinpetwash.me-west1.run.app",
+      "http://localhost:5000"
+    ],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE", "OPTIONS"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length",
+      "Content-Disposition",
+      "Cache-Control",
+      "Accept-Ranges",
+      "X-GUploader-UploadID"
+    ]
+  }
+]
