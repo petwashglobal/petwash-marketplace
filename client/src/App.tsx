@@ -700,6 +700,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* The Sitter Suite™ - Provider Profile (alias for sitters) */}
+        <Route path="/sitter-suite/provider/:id">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <SitterDetail />
+            </Suspense>
+          )}
+        </Route>
+        
         {/* Pet Wash Academy™ - Professional Trainer Marketplace (Public browsing, auth required for booking) */}
         <Route path="/academy">
           {() => (
