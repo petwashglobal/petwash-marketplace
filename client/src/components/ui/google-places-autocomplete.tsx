@@ -115,8 +115,22 @@ export function GooglePlacesAutocomplete({
       // Listen for place selection
       autocompleteRef.current.addListener('place_changed', () => {
         const place = autocompleteRef.current?.getPlace();
-        if (!place || !place.address_components) {
-          console.warn('[Google Places] No place details available');
+        
+        // Handle case where user pressed Enter without selecting from dropdown
+        // (place exists but has no address_components - only name property)
+        if (!place?.address_components) {
+          // If we have formatted_address or name, still use it
+          if (place?.formatted_address || place?.name) {
+            const basicDetails: PlaceDetails = {
+              formattedAddress: place.formatted_address || place.name || inputRef.current?.value || '',
+              placeId: place.place_id,
+              lat: place.geometry?.location?.lat(),
+              lng: place.geometry?.location?.lng(),
+            };
+            console.log('[Google Places] ✅ Basic address selected (no components):', basicDetails);
+            onChange(basicDetails.formattedAddress, basicDetails);
+            onPlaceSelected?.(basicDetails);
+          }
           return;
         }
 
@@ -193,6 +207,7 @@ export function GooglePlacesAutocomplete({
           ref={inputRef}
           id="google-places-input"
           type="text"
+          inputMode="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
@@ -207,9 +222,18 @@ export function GooglePlacesAutocomplete({
             ${error ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'}
             ${isLoading ? 'bg-blue-50' : 'bg-white'}
           `}
-          style={{ color: '#1f2937' }}
+          style={{ 
+            color: '#1f2937',
+            fontSize: '16px',
+            WebkitAppearance: 'none',
+          }}
           required={required}
           autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+          data-form-type="other"
+          data-lpignore="true"
           data-testid="input-google-places-autocomplete"
         />
       </div>

@@ -3741,3 +3741,116 @@ body {
   display: inline;
 }
 
+/* ============================================ */
+/* GOOGLE PLACES AUTOCOMPLETE - MOBILE FIX     */
+/* ============================================ */
+/* Critical fix for iOS Safari and mobile      */
+/* browsers where the dropdown appears behind  */
+/* other elements or doesn't respond to touch  */
+/* ============================================ */
+
+/* Google Places Autocomplete dropdown container */
+.pac-container {
+  z-index: 99999 !important;
+  position: fixed !important;
+  background-color: #ffffff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #e5e7eb !important;
+  margin-top: 4px !important;
+  font-family: inherit !important;
+  max-height: 60vh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Each autocomplete suggestion item */
+.pac-item {
+  padding: 14px 16px !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  cursor: pointer !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+  display: flex !important;
+  align-items: center !important;
+  min-height: 52px !important;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: manipulation !important;
+}
+
+/* Remove default border-top on pac-items */
+.pac-item:first-child {
+  border-top: none !important;
+}
+
+/* Remove border-bottom on last item */
+.pac-item:last-child {
+  border-bottom: none !important;
+}
+
+/* Hover and active states for touch */
+.pac-item:hover,
+.pac-item:active,
+.pac-item-selected {
+  background-color: #f0f7ff !important;
+}
+
+/* Location icon in each suggestion */
+.pac-icon {
+  width: 20px !important;
+  height: 20px !important;
+  margin-right: 12px !important;
+  margin-inline-end: 12px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Main text (address/place name) */
+.pac-item-query {
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  color: #1f2937 !important;
+}
+
+/* Secondary text (city, country) */
+.pac-item span:not(.pac-item-query):not(.pac-icon) {
+  font-size: 14px !important;
+  color: #6b7280 !important;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  .pac-container {
+    left: 8px !important;
+    right: 8px !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+  
+  .pac-item {
+    padding: 16px !important;
+    min-height: 56px !important;
+    font-size: 17px !important;
+  }
+  
+  .pac-item-query {
+    font-size: 17px !important;
+  }
+}
+
+/* RTL support for Google Places */
+[dir="rtl"] .pac-container {
+  text-align: right !important;
+}
+
+[dir="rtl"] .pac-icon {
+  margin-right: 0 !important;
+  margin-left: 12px !important;
+  margin-inline-start: 0 !important;
+  margin-inline-end: 12px !important;
+}
+
+/* Hide Google branding (optional - check Google ToS) */
+.pac-logo::after {
+  display: none !important;
+}
+
