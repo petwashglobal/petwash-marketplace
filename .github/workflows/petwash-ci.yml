@@ -228,12 +228,23 @@ jobs:
             --timeout 300 \
             --cpu-boost \
             --execution-environment gen2 \
-            --startup-probe "httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=10,failureThreshold=20,timeoutSeconds=10,periodSeconds=15" \
-            --liveness-probe "httpGet.path=/health,httpGet.port=8080,initialDelaySeconds=60,failureThreshold=5,timeoutSeconds=10,periodSeconds=60" \
+            --startup-cpu-boost \
+            --startup-probe-path=/health \
+            --startup-probe-port=8080 \
+            --startup-probe-initial-delay=10s \
+            --startup-probe-timeout=5s \
+            --startup-probe-period=10s \
+            --startup-probe-failure-threshold=30 \
+            --liveness-probe-path=/health \
+            --liveness-probe-port=8080 \
+            --liveness-probe-initial-delay=60s \
+            --liveness-probe-timeout=10s \
+            --liveness-probe-period=60s \
+            --liveness-probe-failure-threshold=5 \
             --set-env-vars "NODE_ENV=production" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest"
           
-          echo "=== Startup probe: 10s delay, 20 retries x 15s = 300s max startup time ==="
+          echo "=== Startup probe: 10s delay, 30 retries x 10s = 300s max startup time ==="
 
       - name: Verify deployment
         run: |
