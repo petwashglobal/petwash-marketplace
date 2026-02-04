@@ -54,12 +54,27 @@ spec:
             secretKeyRef:
               key: latest
               name: FIREBASE_SERVICE_ACCOUNT_KEY
+        - name: TWILIO_ACCOUNT_SID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: TWILIO_ACCOUNT_SID
+        - name: TWILIO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: TWILIO_AUTH_TOKEN
+        - name: TWILIO_PHONE_NUMBER
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: TWILIO_PHONE_NUMBER
         startupProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 0
-          timeoutSeconds: 1
+          initialDelaySeconds: 5
+          timeoutSeconds: 10
           periodSeconds: 10
           failureThreshold: 30
         livenessProbe:
