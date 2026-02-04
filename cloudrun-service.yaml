@@ -2,10 +2,6 @@ apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   name: petwash-api
-  labels:
-    cloud.googleapis.com/location: me-west1
-  annotations:
-    run.googleapis.com/launch-stage: GA
 spec:
   template:
     metadata:
@@ -62,17 +58,17 @@ spec:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 30
+          initialDelaySeconds: 0
+          timeoutSeconds: 1
           periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 10
+          failureThreshold: 30
         livenessProbe:
           httpGet:
             path: /health
             port: 8080
           initialDelaySeconds: 60
+          timeoutSeconds: 1
           periodSeconds: 60
-          timeoutSeconds: 10
           failureThreshold: 5
   traffic:
   - percent: 100

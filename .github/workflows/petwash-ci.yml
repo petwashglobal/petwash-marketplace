@@ -231,7 +231,7 @@ jobs:
             --role="roles/run.invoker" \
             --region=me-west1 || echo "IAM policy already set or requires manual configuration"
           
-          echo "=== Startup probe: 15s delay, timeout 5s < period 10s (stable) ==="
+          echo "=== Startup probe: 0s delay, 1s timeout, 10s period, 30 failures = 300s max ==="
 
       - name: Verify deployment
         run: |
