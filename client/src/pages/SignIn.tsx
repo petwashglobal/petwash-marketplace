@@ -527,6 +527,190 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
 
+  // Phone Auth Handlers - Firebase Phone Authentication with reCAPTCHA
+  const initRecaptcha = () => {
+    if (!recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container-signin', {
+          size: 'invisible',
+          callback: () => {
+            logger.info('[PhoneAuth] reCAPTCHA solved');
+          },
+          'expired-callback': () => {
+            logger.warn('[PhoneAuth] reCAPTCHA expired');
+            recaptchaVerifierRef.current = null;
+          }
+        });
+      } catch (error) {
+        logger.error('[PhoneAuth] Failed to init reCAPTCHA:', error);
+      }
+    }
+    return recaptchaVerifierRef.current;
+  };
+
+  const handleSendPhoneCode = async () => {
+    if (!phoneNumber || phoneNumber.length < 10) {
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'שגיאה' : 'Error',
+        description: language === 'he' ? 'הזן מספר טלפון תקין' : 'Please enter a valid phone number',
+      });
+      return;
+    }
+
+    setPhoneLoading(true);
+    try {
+      const verifier = initRecaptcha();
+      if (!verifier) {
+        throw new Error('Failed to initialize reCAPTCHA');
+      }
+
+      // Format phone number with Israel country code if not present
+      let formattedPhone = phoneNumber.trim();
+      if (!formattedPhone.startsWith('+')) {
+        formattedPhone = formattedPhone.startsWith('0') 
+          ? `+972${formattedPhone.substring(1)}` 
+          : `+972${formattedPhone}`;
+      }
+
+      logger.info('[PhoneAuth] Sending code to:', formattedPhone);
+      const result = await signInWithPhoneNumber(auth, formattedPhone, verifier);
+      setConfirmationResult(result);
+
+      toast({
+        title: language === 'he' ? 'קוד נשלח' : 'Code Sent',
+        description: language === 'he' ? 'בדוק את הודעות ה-SMS שלך' : 'Check your SMS messages',
+      });
+
+      trackEvent({
+        action: 'phone_code_sent',
+        category: 'authentication',
+        label: 'phone_sms_sent',
+        language,
+      });
+    } catch (error: any) {
+      logger.error('[PhoneAuth] Failed to send code:', error);
+      
+      // Reset reCAPTCHA on error
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
+      }
+
+      let errorMessage = language === 'he' ? 'נכשל לשלוח קוד' : 'Failed to send code';
+      if (error.code === 'auth/invalid-phone-number') {
+        errorMessage = language === 'he' ? 'מספר טלפון לא תקין' : 'Invalid phone number';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = language === 'he' ? 'יותר מדי ניסיונות. נסה שוב מאוחר יותר' : 'Too many attempts. Try again later';
+      } else if (error.code === 'auth/captcha-check-failed') {
+        errorMessage = language === 'he' ? 'אימות reCAPTCHA נכשל' : 'reCAPTCHA verification failed';
+      }
+
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'שגיאה' : 'Error',
+        description: errorMessage,
+      });
+
+      trackEvent({
+        action: 'phone_code_error',
+        category: 'authentication',
+        label: error.code || 'unknown_error',
+        language,
+      });
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneCode = async () => {
+    if (!verificationCode || verificationCode.length < 6) {
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'שגיאה' : 'Error',
+        description: language === 'he' ? 'הזן קוד אימות בן 6 ספרות' : 'Enter 6-digit verification code',
+      });
+      return;
+    }
+
+    if (!confirmationResult) {
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'שגיאה' : 'Error',
+        description: language === 'he' ? 'שלח קוד אימות קודם' : 'Send verification code first',
+      });
+      return;
+    }
+
+    setPhoneLoading(true);
+    try {
+      const userCredential = await confirmationResult.confirm(verificationCode);
+      
+      // Create session
+      const idToken = await userCredential.user.getIdToken();
+      const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!sessionResponse.ok) {
+        throw new Error('Failed to create session');
+      }
+
+      const { trackLogin } = await import('@/lib/analytics');
+      trackLogin('phone', userCredential.user.uid);
+
+      trackEvent({
+        action: 'phone_login_success',
+        category: 'authentication',
+        label: 'phone_verified',
+        language,
+      });
+
+      toast({
+        title: t('signin.successTitle', language),
+        description: t('signin.redirecting', language),
+      });
+
+      // Reset phone auth state
+      setPhoneMode(false);
+      setPhoneNumber('');
+      setVerificationCode('');
+      setConfirmationResult(null);
+
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        navigate("/");
+      }, 1000);
+    } catch (error: any) {
+      logger.error('[PhoneAuth] Verification failed:', error);
+
+      let errorMessage = language === 'he' ? 'אימות נכשל' : 'Verification failed';
+      if (error.code === 'auth/invalid-verification-code') {
+        errorMessage = language === 'he' ? 'קוד אימות שגוי' : 'Invalid verification code';
+      } else if (error.code === 'auth/code-expired') {
+        errorMessage = language === 'he' ? 'קוד אימות פג תוקף' : 'Verification code expired';
+      }
+
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'שגיאה' : 'Error',
+        description: errorMessage,
+      });
+
+      trackEvent({
+        action: 'phone_verify_error',
+        category: 'authentication',
+        label: error.code || 'unknown_error',
+        language,
+      });
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
   const handleEmailPasswordSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -845,6 +1029,16 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               </Button>
             )}
 
+            {/* Phone Login Option */}
+            <Button
+              onClick={() => setPhoneMode(true)}
+              className="luxury-btn-secondary w-full h-14 sm:h-16 md:h-16 lg:h-14 text-base font-medium bg-gradient-to-r from-green-500/10 to-emerald-500/10 hover:from-green-500/20 hover:to-emerald-500/20 border-green-500/30"
+              data-testid="button-phone-signin"
+            >
+              <Phone className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-green-600" />
+              {language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}
+            </Button>
+
             {/* Dev Mode Button - For Testing Only */}
             {import.meta.env.DEV && (
               <Button
@@ -934,8 +1128,139 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.div>
           )}
 
+          {/* Phone Login Mode */}
+          {phoneMode && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+              className="space-y-6"
+            >
+              <div className="luxury-glass-minimal p-6 rounded-2xl space-y-4">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                    <Phone className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+                <h3 className="text-center text-lg font-medium text-black">
+                  {language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}
+                </h3>
+                
+                {!confirmationResult ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-sm text-gray-600">
+                        {language === 'he' ? 'מספר טלפון' : 'Phone Number'}
+                      </Label>
+                      <Input
+                        type="tel"
+                        placeholder={language === 'he' ? '050-1234567' : '050-1234567'}
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        className="luxury-glass-minimal h-14 text-base text-black placeholder:text-gray-400"
+                        dir="ltr"
+                        data-testid="input-phone-number"
+                      />
+                      <p className="text-xs text-gray-500">
+                        {language === 'he' ? 'הזן מספר טלפון ישראלי (עם או בלי קידומת 972+)' : 'Enter Israeli phone number (with or without +972)'}
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      onClick={handleSendPhoneCode}
+                      disabled={phoneLoading || !phoneNumber}
+                      className="luxury-btn-primary w-full h-14"
+                      data-testid="button-send-phone-code"
+                    >
+                      {phoneLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          {language === 'he' ? 'שלח קוד אימות' : 'Send Verification Code'}
+                          <ArrowRight className="w-5 h-5 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-sm text-gray-600">
+                        {language === 'he' ? 'קוד אימות' : 'Verification Code'}
+                      </Label>
+                      <Input
+                        type="text"
+                        placeholder="123456"
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="luxury-glass-minimal h-14 text-base text-center text-black placeholder:text-gray-400 tracking-widest font-mono"
+                        maxLength={6}
+                        dir="ltr"
+                        data-testid="input-verification-code"
+                      />
+                      <p className="text-xs text-gray-500 text-center">
+                        {language === 'he' ? 'הזן את הקוד בן 6 הספרות שנשלח ל-SMS' : 'Enter the 6-digit code sent to your phone'}
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      onClick={handleVerifyPhoneCode}
+                      disabled={phoneLoading || verificationCode.length < 6}
+                      className="luxury-btn-primary w-full h-14"
+                      data-testid="button-verify-phone-code"
+                    >
+                      {phoneLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          {language === 'he' ? 'אמת והתחבר' : 'Verify & Sign In'}
+                          <ArrowRight className="w-5 h-5 ml-2" />
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setConfirmationResult(null);
+                        setVerificationCode('');
+                      }}
+                      variant="ghost"
+                      className="w-full h-10 text-sm text-gray-500"
+                      data-testid="button-resend-code"
+                    >
+                      {language === 'he' ? 'שלח קוד חדש' : 'Resend Code'}
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              <Button
+                type="button"
+                onClick={() => {
+                  setPhoneMode(false);
+                  setPhoneNumber('');
+                  setVerificationCode('');
+                  setConfirmationResult(null);
+                  if (recaptchaVerifierRef.current) {
+                    recaptchaVerifierRef.current.clear();
+                    recaptchaVerifierRef.current = null;
+                  }
+                }}
+                variant="ghost"
+                className="luxury-btn-ghost w-full h-12"
+                data-testid="button-back-from-phone"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                {language === 'he' ? 'חזור להתחברות רגילה' : 'Back to regular sign in'}
+              </Button>
+            </motion.div>
+          )}
+
           {/* Email/Password Form */}
-          {!magicLinkMode && !showPasswordReset && !pinMode && (
+          {!magicLinkMode && !showPasswordReset && !pinMode && !phoneMode && (
             <motion.form
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1135,6 +1460,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         </motion.div>
       </div>
       <ReCaptcha language={language} />
+      {/* Firebase Phone Auth reCAPTCHA container - must be present in DOM */}
+      <div id="recaptcha-container-signin" />
       </div>
     </Layout>
   );
