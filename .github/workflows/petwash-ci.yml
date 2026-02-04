@@ -212,38 +212,26 @@ jobs:
           docker push me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:latest
           echo "=== Push complete ==="
 
-      - name: Deploy to Cloud Run
+      - name: Deploy to Cloud Run (YAML-based 2026 stable method)
         run: |
-          echo "=== Deploying to Cloud Run with generous startup probe ==="
-          gcloud run deploy petwash-api \
-            --image me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:${{ github.sha }} \
-            --platform managed \
-            --region me-west1 \
-            --allow-unauthenticated \
-            --port 8080 \
-            --memory 2Gi \
-            --cpu 2 \
-            --min-instances 1 \
-            --max-instances 10 \
-            --timeout 300 \
-            --cpu-boost \
-            --execution-environment gen2 \
-            --startup-probe-type=http \
-            --startup-probe-path=/health \
-            --startup-probe-initial-delay=15s \
-            --startup-probe-period=10s \
-            --startup-probe-timeout=5s \
-            --startup-probe-failure-threshold=5 \
-            --liveness-probe-type=http \
-            --liveness-probe-path=/health \
-            --liveness-probe-initial-delay=60s \
-            --liveness-probe-period=60s \
-            --liveness-probe-timeout=10s \
-            --liveness-probe-failure-threshold=5 \
-            --set-env-vars "NODE_ENV=production" \
-            --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest"
+          echo "=== Deploying to Cloud Run using service.yaml ==="
           
-          echo "=== Startup probe: 15s delay, 5 retries x 10s = 65s max startup time ==="
+          # Replace image placeholder with actual built image
+          sed -i "s|image: IMAGE_PLACEHOLDER|image: me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:${{ github.sha }}|g" cloudrun-service.yaml
+          
+          echo "=== Service YAML configuration ==="
+          cat cloudrun-service.yaml
+          
+          # Deploy using stable replace command
+          gcloud run services replace cloudrun-service.yaml --region me-west1
+          
+          # Set IAM policy for public access
+          gcloud run services add-iam-policy-binding petwash-api \
+            --member="allUsers" \
+            --role="roles/run.invoker" \
+            --region=me-west1 || echo "IAM policy already set or requires manual configuration"
+          
+          echo "=== Startup probe: 15s delay, timeout 5s < period 10s (stable) ==="
 
       - name: Verify deployment
         run: |

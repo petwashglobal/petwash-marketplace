@@ -4,6 +4,8 @@ metadata:
   name: petwash-api
   labels:
     cloud.googleapis.com/location: me-west1
+  annotations:
+    run.googleapis.com/launch-stage: GA
 spec:
   template:
     metadata:
@@ -16,7 +18,7 @@ spec:
       containerConcurrency: 80
       timeoutSeconds: 300
       containers:
-      - image: me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:latest
+      - image: IMAGE_PLACEHOLDER
         ports:
         - containerPort: 8080
         resources:
@@ -26,6 +28,36 @@ spec:
         env:
         - name: NODE_ENV
           value: production
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: DATABASE_URL
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: JWT_SECRET
+        - name: COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: COOKIE_SECRET
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: GOOGLE_API_KEY
+        - name: SENDGRID_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: SENDGRID_API_KEY
+        - name: FIREBASE_SERVICE_ACCOUNT_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: FIREBASE_SERVICE_ACCOUNT_KEY
         startupProbe:
           httpGet:
             path: /health
