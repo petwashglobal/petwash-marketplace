@@ -81,7 +81,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 ### Core Features & Design Decisions
 - **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Focus on responsive, mobile-first, luxury designs with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
-- **Authentication & User Management**: Firebase Auth, WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
+- **Authentication & User Management**: Firebase Auth with Twilio SMS phone verification (secure token binding), WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
 - **AI Chat Assistant**: Google Dialogflow CX powered by Gemini 2.5 Flash with Kenzo mascot, bilingual Hebrew/English, WCAG 2.1 AA compliant.
 - **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™ (AI-powered pet avatar creator).
 - **Loyalty Program**: 7-tier luxury progressive system, e-gift cards, wash packages, Apple Wallet integration.
