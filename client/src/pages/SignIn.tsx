@@ -527,27 +527,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
 
-  // Phone Auth Handlers - Firebase Phone Authentication with reCAPTCHA
-  const initRecaptcha = () => {
-    if (!recaptchaVerifierRef.current) {
-      try {
-        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container-signin', {
-          size: 'invisible',
-          callback: () => {
-            logger.info('[PhoneAuth] reCAPTCHA solved');
-          },
-          'expired-callback': () => {
-            logger.warn('[PhoneAuth] reCAPTCHA expired');
-            recaptchaVerifierRef.current = null;
-          }
-        });
-      } catch (error) {
-        logger.error('[PhoneAuth] Failed to init reCAPTCHA:', error);
-      }
-    }
-    return recaptchaVerifierRef.current;
-  };
-
+  // Phone Auth Handlers - Twilio SMS Verification
   const handleSendPhoneCode = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
       toast({
@@ -560,11 +540,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
     setPhoneLoading(true);
     try {
-      const verifier = initRecaptcha();
-      if (!verifier) {
-        throw new Error('Failed to initialize reCAPTCHA');
-      }
-
       // Format phone number with Israel country code if not present
       let formattedPhone = phoneNumber.trim();
       if (!formattedPhone.startsWith('+')) {
@@ -574,8 +549,21 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       }
 
       logger.info('[PhoneAuth] Sending code to:', formattedPhone);
-      const result = await signInWithPhoneNumber(auth, formattedPhone, verifier);
-      setConfirmationResult(result);
+      
+      const response = await fetch(getApiUrl('/api/auth/phone/send-code'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone: formattedPhone, language }),
+      });
+
+      const result = await response.json();
+
+      if (!result.ok) {
+        throw new Error(result.error || result.message || 'Failed to send code');
+      }
+
+      setConfirmationResult({ phone: formattedPhone } as any);
 
       toast({
         title: language === 'he' ? 'קוד נשלח' : 'Code Sent',
@@ -590,32 +578,17 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       });
     } catch (error: any) {
       logger.error('[PhoneAuth] Failed to send code:', error);
-      
-      // Reset reCAPTCHA on error
-      if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
-        recaptchaVerifierRef.current = null;
-      }
-
-      let errorMessage = language === 'he' ? 'נכשל לשלוח קוד' : 'Failed to send code';
-      if (error.code === 'auth/invalid-phone-number') {
-        errorMessage = language === 'he' ? 'מספר טלפון לא תקין' : 'Invalid phone number';
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = language === 'he' ? 'יותר מדי ניסיונות. נסה שוב מאוחר יותר' : 'Too many attempts. Try again later';
-      } else if (error.code === 'auth/captcha-check-failed') {
-        errorMessage = language === 'he' ? 'אימות reCAPTCHA נכשל' : 'reCAPTCHA verification failed';
-      }
 
       toast({
         variant: "destructive",
         title: language === 'he' ? 'שגיאה' : 'Error',
-        description: errorMessage,
+        description: error.message || (language === 'he' ? 'נכשל לשלוח קוד' : 'Failed to send code'),
       });
 
       trackEvent({
         action: 'phone_code_error',
         category: 'authentication',
-        label: error.code || 'unknown_error',
+        label: 'twilio_error',
         language,
       });
     } finally {
@@ -633,7 +606,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       return;
     }
 
-    if (!confirmationResult) {
+    if (!confirmationResult?.phone) {
       toast({
         variant: "destructive",
         title: language === 'he' ? 'שגיאה' : 'Error',
@@ -644,23 +617,40 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
     setPhoneLoading(true);
     try {
-      const userCredential = await confirmationResult.confirm(verificationCode);
-      
-      // Create session
-      const idToken = await userCredential.user.getIdToken();
-      const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+      // Verify code with Twilio
+      const verifyResponse = await fetch(getApiUrl('/api/auth/phone/verify-code'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ 
+          phone: confirmationResult.phone, 
+          code: verificationCode,
+          language 
+        }),
+      });
+
+      const verifyResult = await verifyResponse.json();
+
+      if (!verifyResult.ok) {
+        throw new Error(verifyResult.error || 'Verification failed');
+      }
+
+      // Create phone session using verification token
+      const sessionResponse = await fetch(getApiUrl('/api/auth/phone-session'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ verificationToken: verifyResult.verificationToken }),
       });
 
       if (!sessionResponse.ok) {
         throw new Error('Failed to create session');
       }
 
+      const sessionData = await sessionResponse.json();
+
       const { trackLogin } = await import('@/lib/analytics');
-      trackLogin('phone', userCredential.user.uid);
+      trackLogin('phone', sessionData.userId || confirmationResult.phone);
 
       trackEvent({
         action: 'phone_login_success',
@@ -687,23 +677,16 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     } catch (error: any) {
       logger.error('[PhoneAuth] Verification failed:', error);
 
-      let errorMessage = language === 'he' ? 'אימות נכשל' : 'Verification failed';
-      if (error.code === 'auth/invalid-verification-code') {
-        errorMessage = language === 'he' ? 'קוד אימות שגוי' : 'Invalid verification code';
-      } else if (error.code === 'auth/code-expired') {
-        errorMessage = language === 'he' ? 'קוד אימות פג תוקף' : 'Verification code expired';
-      }
-
       toast({
         variant: "destructive",
         title: language === 'he' ? 'שגיאה' : 'Error',
-        description: errorMessage,
+        description: error.message || (language === 'he' ? 'אימות נכשל' : 'Verification failed'),
       });
 
       trackEvent({
         action: 'phone_verify_error',
         category: 'authentication',
-        label: error.code || 'unknown_error',
+        label: 'twilio_error',
         language,
       });
     } finally {
