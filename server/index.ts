@@ -178,6 +178,7 @@ let serverReady = false;
 app.get('/health', (req, res) => {
   const uptime = process.uptime();
   
+  res.set('X-Octopus-Source', 'petwash-backend-global');
   res.status(200).json({
     status: serverReady ? 'ONLINE' : 'STARTING',
     system: 'Pet Wash System v2.0',

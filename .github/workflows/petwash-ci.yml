@@ -231,9 +231,9 @@ jobs:
             --startup-cpu-boost \
             --startup-probe-http-path=/health \
             --startup-probe-port=8080 \
-            --startup-probe-initial-delay=15s \
-            --startup-probe-timeout=5s \
-            --startup-probe-period=10s \
+            --startup-probe-initial-delay=20s \
+            --startup-probe-timeout=3s \
+            --startup-probe-period=5s \
             --startup-probe-failure-threshold=5 \
             --liveness-probe-http-path=/health \
             --liveness-probe-port=8080 \
@@ -244,7 +244,7 @@ jobs:
             --set-env-vars "NODE_ENV=production" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest"
           
-          echo "=== Startup probe: 15s delay, 5 retries x 10s = 65s max startup time ==="
+          echo "=== Startup probe: 20s delay, 5 retries x 5s = 45s max startup time ==="
 
       - name: Verify deployment
         run: |
