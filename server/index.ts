@@ -74,6 +74,14 @@ const PORT = Number(process.env.PORT || 5000);
 // Trust proxy for Replit/Cloud Run deployment
 app.set('trust proxy', 1);
 
+// CRITICAL FIX 2026: Start server IMMEDIATELY in production for Cloud Run health checks
+// This allows Cloud Run to get 200 OK on /health while async initialization continues
+if (process.env.NODE_ENV === 'production') {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 [Production] Server listening on port ${PORT} - initialization continuing...`);
+  });
+}
+
 // 1. Security and basic middleware
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -475,22 +483,22 @@ if (isProduction) {
     // Mark server as fully ready
     serverReady = true;
     
-    // Start server (only in development - production already started at top of file)
+    // Start server in development mode only (production already started at top of file)
     if (process.env.NODE_ENV !== 'production') {
       app.listen(PORT, "0.0.0.0", () => {
         console.log('--------------------------------------------------');
         console.log(`✅ [Server] listening on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
         console.log(`📁 [Server] Static files: ${DIST_PUBLIC_PATH}`);
-        console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/`);
+        console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/health`);
         console.log('--------------------------------------------------');
       });
-    } else {
-      console.log('--------------------------------------------------');
-      console.log(`✅ [Server] Initialization complete - port ${PORT} (production)`);
-      console.log(`📁 [Server] Static files: ${DIST_PUBLIC_PATH}`);
-      console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/health`);
-      console.log('--------------------------------------------------');
     }
+    
+    console.log('--------------------------------------------------');
+    console.log(`✅ [Server] Initialization complete - ${process.env.NODE_ENV || 'development'} mode`);
+    console.log(`📁 [Server] Static files: ${DIST_PUBLIC_PATH}`);
+    console.log(`🏥 [Server] Health endpoint: /health`);
+    console.log('--------------------------------------------------');
   } catch (error) {
     console.error('--------------------------------------------------');
     console.error("❌ [FATAL] Server startup failed:", error);
