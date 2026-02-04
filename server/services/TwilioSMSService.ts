@@ -124,10 +124,16 @@ class TwilioSMSService {
         expiresIn: VERIFICATION_CODE_EXPIRY_MINUTES * 60
       };
     } catch (error: any) {
-      logger.error('[TwilioSMS] Failed to send verification code', { 
-        error: error.message,
+      const errorDetails = {
+        message: error.message || 'Unknown error',
+        code: error.code,
+        status: error.status,
+        moreInfo: error.moreInfo,
+        details: error.details,
         phone: formattedPhone.slice(0, 6) + '****'
-      });
+      };
+      logger.error('[TwilioSMS] Failed to send verification code', errorDetails);
+      console.error('[TwilioSMS] Full error:', JSON.stringify(error, null, 2));
 
       return {
         success: false,
