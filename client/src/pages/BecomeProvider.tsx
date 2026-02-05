@@ -498,10 +498,10 @@ export default function BecomeProvider() {
                       />
                     </div>
                     <div>
-                      <Label className="text-gray-300 font-medium">{isHebrew ? 'תעודת זהות' : 'National ID'}</Label>
+                      <Label className="text-gray-300 font-medium">{isHebrew ? 'תעודת זהות / פספורט / רישיון נהיגה' : 'ID / Passport / Driver\'s License'} *</Label>
                       <Input 
                         {...form.register('nationalId')}
-                        placeholder="123456789"
+                        placeholder={isHebrew ? 'מספר תעודה מזהה' : '123456789'}
                         className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                         data-testid="input-national-id"
                       />

@@ -105,6 +105,7 @@ const applicationSchema = z.object({
   lastName: z.string().min(2, { message: "Last name is required" }),
   email: z.string().email({ message: "Valid email required" }),
   phoneNumber: z.string().min(9, { message: "Valid phone number required" }),
+  idNumber: z.string().min(5, { message: "ID / Passport / License number is required" }),
   streetAddress: z.string().min(3, { message: "Street address is required" }),
   city: z.string().min(2, { message: "City is required" }),
   postalCode: z.string().optional(),
@@ -161,6 +162,7 @@ export default function ProviderApplicationForm() {
       lastName: "",
       email: "",
       phoneNumber: "",
+      idNumber: "",
       streetAddress: "",
       city: "",
       postalCode: "",
@@ -196,6 +198,8 @@ export default function ProviderApplicationForm() {
     lastName: isHebrew ? 'שם משפחה' : 'Last Name',
     email: isHebrew ? 'אימייל' : 'Email',
     phone: isHebrew ? 'טלפון' : 'Phone',
+    idNumber: isHebrew ? 'תעודת זהות / פספורט / רישיון נהיגה' : 'ID / Passport / Driver\'s License',
+    idNumberPlaceholder: isHebrew ? 'מספר תעודה מזהה' : 'ID number',
     streetAddress: isHebrew ? 'כתובת רחוב' : 'Street Address',
     city: isHebrew ? 'עיר' : 'City',
     postalCode: isHebrew ? 'מיקוד' : 'Postal Code',
@@ -717,6 +721,25 @@ export default function ProviderApplicationForm() {
                               type="tel"
                               className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                               data-testid="input-phone"
+                            />
+                          </FormControl>
+                          <FormMessage className="text-red-400" />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="idNumber"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel className="text-gray-300 font-medium">{t.idNumber} *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder={t.idNumberPlaceholder}
+                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                              data-testid="input-id-number"
                             />
                           </FormControl>
                           <FormMessage className="text-red-400" />
