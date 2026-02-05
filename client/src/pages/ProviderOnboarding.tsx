@@ -57,6 +57,7 @@ export default function ProviderOnboarding() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [idNumber, setIdNumber] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('IL');
   
@@ -127,6 +128,8 @@ export default function ProviderOnboarding() {
     firstName: isHebrew ? 'שם פרטי' : 'First Name',
     lastName: isHebrew ? 'שם משפחה' : 'Last Name',
     phone: isHebrew ? 'טלפון' : 'Phone Number',
+    idNumber: isHebrew ? 'תעודת זהות / פספורט / רישיון נהיגה' : 'ID / Passport / Driver\'s License Number',
+    idNumberPlaceholder: isHebrew ? 'מספר תעודת זהות, פספורט או רישיון נהיגה' : 'ID, passport or driver\'s license number',
     city: isHebrew ? 'עיר' : 'City',
     country: isHebrew ? 'מדינה' : 'Country',
     biometricKyc: isHebrew ? 'אימות ביומטרי (רמת בנקאות)' : 'Biometric Verification (Banking-Level)',
@@ -743,6 +746,18 @@ export default function ProviderOnboarding() {
                   />
                 </div>
 
+                <div>
+                  <Label htmlFor="idNumber">{t.idNumber}</Label>
+                  <Input
+                    id="idNumber"
+                    value={idNumber}
+                    onChange={(e) => setIdNumber(e.target.value)}
+                    placeholder={t.idNumberPlaceholder}
+                    className="luxury-glass-minimal"
+                    data-testid="input-id-number"
+                  />
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="city">{t.city}</Label>
@@ -802,7 +817,7 @@ export default function ProviderOnboarding() {
                   <button 
                     onClick={() => setStep(3)} 
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
-                    disabled={!firstName || !lastName || !phoneNumber || !city}
+                    disabled={!firstName || !lastName || !phoneNumber || !idNumber || !city}
                     data-testid="button-next-step3"
                   >
                     {t.next}
