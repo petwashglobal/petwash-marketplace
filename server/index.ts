@@ -74,13 +74,7 @@ const PORT = Number(process.env.PORT || 5000);
 // Trust proxy for Replit/Cloud Run deployment
 app.set('trust proxy', 1);
 
-// CRITICAL FIX 2026: Start server IMMEDIATELY in production for Cloud Run health checks
-// This allows Cloud Run to get 200 OK on /health while async initialization continues
-if (process.env.NODE_ENV === 'production') {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 [Production] Server listening on port ${PORT} - initialization continuing...`);
-  });
-}
+// Production early listen is handled below (single listen point at line ~239)
 
 // 1. Security and basic middleware
 const isProduction = process.env.NODE_ENV === 'production';
