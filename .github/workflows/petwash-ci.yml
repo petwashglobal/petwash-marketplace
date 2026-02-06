@@ -148,6 +148,40 @@ jobs:
       NODE_ENV: production
     
     steps:
+      - name: Verify all required secrets exist
+        run: |
+          echo "=== Checking GitHub Secrets ==="
+          MISSING=0
+          
+          check_secret() {
+            if [ -z "$1" ]; then
+              echo "❌ MISSING: $2"
+              MISSING=$((MISSING + 1))
+            else
+              echo "✅ OK: $2"
+            fi
+          }
+          
+          check_secret "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" "GOOGLE_APPLICATION_CREDENTIALS_JSON"
+          check_secret "${{ secrets.VITE_FIREBASE_API_KEY }}" "VITE_FIREBASE_API_KEY"
+          check_secret "${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}" "VITE_FIREBASE_AUTH_DOMAIN"
+          check_secret "${{ secrets.VITE_FIREBASE_PROJECT_ID }}" "VITE_FIREBASE_PROJECT_ID"
+          check_secret "${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}" "VITE_FIREBASE_STORAGE_BUCKET"
+          check_secret "${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}" "VITE_FIREBASE_MESSAGING_SENDER_ID"
+          check_secret "${{ secrets.VITE_FIREBASE_APP_ID }}" "VITE_FIREBASE_APP_ID"
+          check_secret "${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}" "VITE_FIREBASE_MEASUREMENT_ID"
+          check_secret "${{ secrets.VITE_RECAPTCHA_SITE_KEY }}" "VITE_RECAPTCHA_SITE_KEY"
+          check_secret "${{ secrets.VITE_WEBAUTHN_RP_ID }}" "VITE_WEBAUTHN_RP_ID"
+          
+          if [ $MISSING -gt 0 ]; then
+            echo ""
+            echo "❌ $MISSING secret(s) missing! Add them at:"
+            echo "   github.com/petwashglobal/petwash-marketplace/settings/secrets/actions"
+            exit 1
+          fi
+          echo ""
+          echo "✅ All GitHub secrets verified!"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -211,6 +245,30 @@ jobs:
           docker push me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:${{ github.sha }}
           docker push me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:latest
           echo "=== Push complete ==="
+
+      - name: Verify Google Cloud secrets exist
+        run: |
+          echo "=== Checking Google Cloud Secret Manager ==="
+          MISSING=0
+          
+          for SECRET in DATABASE_URL JWT_SECRET COOKIE_SECRET GOOGLE_API_KEY SENDGRID_API_KEY FIREBASE_SERVICE_ACCOUNT_KEY TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_PHONE_NUMBER; do
+            if gcloud secrets describe $SECRET --project=signinpetwash > /dev/null 2>&1; then
+              echo "✅ OK: $SECRET"
+            else
+              echo "❌ MISSING: $SECRET"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          
+          if [ $MISSING -gt 0 ]; then
+            echo ""
+            echo "❌ $MISSING Google Cloud secret(s) missing!"
+            echo "Create them with: echo -n 'VALUE' | gcloud secrets create SECRET_NAME --data-file=- --project=signinpetwash"
+            echo "Then grant access: gcloud secrets add-iam-policy-binding SECRET_NAME --member='serviceAccount:COMPUTE_SA' --role='roles/secretmanager.secretAccessor'"
+            exit 1
+          fi
+          echo ""
+          echo "✅ All Google Cloud secrets verified!"
 
       - name: Deploy to Cloud Run (YAML-based 2026 stable method)
         run: |
