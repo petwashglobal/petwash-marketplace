@@ -172,15 +172,6 @@ jobs:
           check_secret "${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}" "VITE_FIREBASE_MEASUREMENT_ID"
           check_secret "${{ secrets.VITE_RECAPTCHA_SITE_KEY }}" "VITE_RECAPTCHA_SITE_KEY"
           check_secret "${{ secrets.VITE_WEBAUTHN_RP_ID }}" "VITE_WEBAUTHN_RP_ID"
-          check_secret "${{ secrets.DATABASE_URL }}" "DATABASE_URL"
-          check_secret "${{ secrets.JWT_SECRET }}" "JWT_SECRET"
-          check_secret "${{ secrets.COOKIE_SECRET }}" "COOKIE_SECRET"
-          check_secret "${{ secrets.GOOGLE_API_KEY }}" "GOOGLE_API_KEY"
-          check_secret "${{ secrets.SENDGRID_API_KEY }}" "SENDGRID_API_KEY"
-          check_secret "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}" "FIREBASE_SERVICE_ACCOUNT_KEY"
-          check_secret "${{ secrets.TWILIO_ACCOUNT_SID }}" "TWILIO_ACCOUNT_SID"
-          check_secret "${{ secrets.TWILIO_AUTH_TOKEN }}" "TWILIO_AUTH_TOKEN"
-          check_secret "${{ secrets.TWILIO_PHONE_NUMBER }}" "TWILIO_PHONE_NUMBER"
           
           if [ $MISSING -gt 0 ]; then
             echo ""
@@ -189,7 +180,8 @@ jobs:
             exit 1
           fi
           echo ""
-          echo "✅ All 19 GitHub secrets verified!"
+          echo "✅ All GitHub secrets verified!"
+          echo "ℹ️ Backend secrets (DATABASE_URL, JWT_SECRET, etc.) are pulled from Google Cloud Secret Manager"
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -255,7 +247,47 @@ jobs:
           docker push me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:latest
           echo "=== Push complete ==="
 
-      - name: Deploy to Cloud Run (direct env vars - no Secret Manager needed)
+      - name: Auto-create missing Google Cloud secrets from GitHub secrets
+        run: |
+          echo "=== Syncing secrets from GitHub to Google Cloud Secret Manager ==="
+          
+          sync_secret() {
+            SECRET_NAME=$1
+            SECRET_VALUE=$2
+            
+            if [ -z "$SECRET_VALUE" ]; then
+              echo "⚠️ SKIP: $SECRET_NAME (not set in GitHub)"
+              return
+            fi
+            
+            if gcloud secrets describe $SECRET_NAME --project=signinpetwash > /dev/null 2>&1; then
+              echo "✅ EXISTS: $SECRET_NAME"
+            else
+              echo -n "$SECRET_VALUE" | gcloud secrets create $SECRET_NAME --data-file=- --project=signinpetwash
+              echo "🆕 CREATED: $SECRET_NAME"
+            fi
+            
+            PROJECT_NUMBER=$(gcloud projects describe signinpetwash --format='value(projectNumber)')
+            gcloud secrets add-iam-policy-binding $SECRET_NAME \
+              --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+              --role="roles/secretmanager.secretAccessor" \
+              --project=signinpetwash --quiet 2>/dev/null || true
+          }
+          
+          sync_secret "DATABASE_URL" "${{ secrets.DATABASE_URL }}"
+          sync_secret "JWT_SECRET" "${{ secrets.JWT_SECRET }}"
+          sync_secret "COOKIE_SECRET" "${{ secrets.COOKIE_SECRET }}"
+          sync_secret "GOOGLE_API_KEY" "${{ secrets.GOOGLE_API_KEY }}"
+          sync_secret "SENDGRID_API_KEY" "${{ secrets.SENDGRID_API_KEY }}"
+          sync_secret "FIREBASE_SERVICE_ACCOUNT_KEY" "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}"
+          sync_secret "TWILIO_ACCOUNT_SID" "${{ secrets.TWILIO_ACCOUNT_SID }}"
+          sync_secret "TWILIO_AUTH_TOKEN" "${{ secrets.TWILIO_AUTH_TOKEN }}"
+          sync_secret "TWILIO_PHONE_NUMBER" "${{ secrets.TWILIO_PHONE_NUMBER }}"
+          
+          echo ""
+          echo "✅ All secrets synced to Google Cloud Secret Manager!"
+
+      - name: Deploy to Cloud Run (using Google Cloud Secret Manager)
         run: |
           echo "=== Deploying to Cloud Run ==="
           
@@ -273,15 +305,7 @@ jobs:
             --cpu-boost \
             --execution-environment=gen2 \
             --set-env-vars="NODE_ENV=production" \
-            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --set-env-vars="JWT_SECRET=${{ secrets.JWT_SECRET }}" \
-            --set-env-vars="COOKIE_SECRET=${{ secrets.COOKIE_SECRET }}" \
-            --set-env-vars="GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" \
-            --set-env-vars="SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}" \
-            --set-env-vars="FIREBASE_SERVICE_ACCOUNT_KEY=${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}" \
-            --set-env-vars="TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}" \
-            --set-env-vars="TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}" \
-            --set-env-vars="TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}"
+            --set-secrets="DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest"
           
           echo "✅ Cloud Run deployment complete"
 
