@@ -112,7 +112,7 @@ jobs:
           RETRY_COUNT=0
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if firebase deploy --only hosting --project signinpetwash --non-interactive; then
+            if firebase deploy --only hosting:main --project signinpetwash --non-interactive; then
               echo "✅ Firebase Hosting deployment complete"
               exit 0
             else
