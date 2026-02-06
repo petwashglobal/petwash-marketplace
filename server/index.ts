@@ -49,9 +49,6 @@ function cors(options: { origin: any; credentials?: boolean; methods?: string[];
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import { fileURLToPath } from "node:url";
-import { ensureBiometricStorage } from "./infra/biometricStorage";
-import { registerRoutes } from "./routes";
-import { startMonthlySettlementsCron } from "./cron/monthly-settlements";
 
 // --- CRITICAL: Early startup logging for Cloud Run debugging ---
 console.log('--------------------------------------------------');
@@ -218,14 +215,12 @@ app.use((req, res, next) => {
 });
 // ---------------------------------------
 
-// 2. Initialise biometric storage once on startup (non-blocking)
-ensureBiometricStorage()
-  .then(() => {
-    console.log("[BiometricStorage] ready");
-  })
-  .catch((err) => {
-    console.error("[BiometricStorage] init failed", err);
-  });
+// 2. Initialise biometric storage once on startup (non-blocking, lazy import)
+import("./infra/biometricStorage").then(({ ensureBiometricStorage }) => {
+  ensureBiometricStorage()
+    .then(() => console.log("[BiometricStorage] ready"))
+    .catch((err) => console.error("[BiometricStorage] init failed", err));
+}).catch((err) => console.error("[BiometricStorage] module load failed", err));
 
 // --- CRITICAL FIX: Start server IMMEDIATELY in production (Cloud Run requires fast port binding) ---
 // In production, start listening BEFORE route registration to satisfy Cloud Run health checks
@@ -318,6 +313,9 @@ if (isProduction) {
     // MUST be BEFORE Vite middleware or production static files
     // CRITICAL: Add timeout to prevent indefinite hangs in Cloud Run
     const ROUTE_REGISTRATION_TIMEOUT = 120000; // 120 seconds max (large app needs time)
+    console.log('[Server] Loading routes module (dynamic import)...');
+    const { registerRoutes } = await import("./routes");
+    console.log('[Server] Routes module loaded, registering routes...');
     const routeRegistrationPromise = registerRoutes(app);
     const routeTimeoutPromise = new Promise<never>((_, reject) => 
       setTimeout(() => reject(new Error('Route registration timed out after 120 seconds')), ROUTE_REGISTRATION_TIMEOUT)
@@ -382,6 +380,7 @@ if (isProduction) {
     // 5b. Initialize automated cron jobs (AFTER routes, BEFORE error handlers) - NON-BLOCKING
     try {
       console.log('[Cron] Initializing automated jobs...');
+      const { startMonthlySettlementsCron } = await import("./cron/monthly-settlements");
       startMonthlySettlementsCron();
       console.log('[Cron] All cron jobs initialized successfully');
     } catch (error) {
