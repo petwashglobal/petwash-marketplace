@@ -477,20 +477,8 @@ if (isProduction) {
     // Mark server as fully ready
     serverReady = true;
     
-    // Start server in development mode only (production already started at top of file)
-    if (process.env.NODE_ENV !== 'production') {
-      app.listen(PORT, "0.0.0.0", () => {
-        console.log('--------------------------------------------------');
-        console.log(`✅ [Server] listening on port ${PORT} in ${process.env.NODE_ENV || "development"} mode`);
-        console.log(`📁 [Server] Static files: ${DIST_PUBLIC_PATH}`);
-        console.log(`🏥 [Server] Health check: http://0.0.0.0:${PORT}/health`);
-        console.log('--------------------------------------------------');
-      });
-    }
-    
     console.log('--------------------------------------------------');
     console.log(`✅ [Server] Initialization complete - ${process.env.NODE_ENV || 'development'} mode`);
-    console.log(`📁 [Server] Static files: ${DIST_PUBLIC_PATH}`);
     console.log(`🏥 [Server] Health endpoint: /health`);
     console.log('--------------------------------------------------');
   } catch (error) {

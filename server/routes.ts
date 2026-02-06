@@ -1,5 +1,4 @@
 import express, { type Express } from "express";
-import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
@@ -234,7 +233,7 @@ import { logSecurityEvent } from './services/securityEvents';
 import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClientIP, getCityFromIP } from './services/alerts';
 import { hashPassword, verifyPassword } from './simpleAuth';
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<void> {
   
   // NOTE: Static assets now served by serveStatic() in production mode
   // Development: serve from dist/public for Vite HMR
@@ -12465,9 +12464,6 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Wire K9000 LED automation to EventBus for smart triggers
   wireLedAutomation(eventBus);
   logger.info('[K9000 LED] Automation wired to EventBus successfully! 🚨💡');
-
-  const server = createServer(app);
-  return server;
 }
 
 
