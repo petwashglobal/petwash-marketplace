@@ -317,10 +317,10 @@ if (isProduction) {
     // 4. Register all API routes FIRST (critical for dev mode)
     // MUST be BEFORE Vite middleware or production static files
     // CRITICAL: Add timeout to prevent indefinite hangs in Cloud Run
-    const ROUTE_REGISTRATION_TIMEOUT = 30000; // 30 seconds max
+    const ROUTE_REGISTRATION_TIMEOUT = 120000; // 120 seconds max (large app needs time)
     const routeRegistrationPromise = registerRoutes(app);
     const routeTimeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Route registration timed out after 30 seconds')), ROUTE_REGISTRATION_TIMEOUT)
+      setTimeout(() => reject(new Error('Route registration timed out after 120 seconds')), ROUTE_REGISTRATION_TIMEOUT)
     );
     
     await Promise.race([routeRegistrationPromise, routeTimeoutPromise]);
@@ -485,7 +485,12 @@ if (isProduction) {
     console.error('--------------------------------------------------');
     console.error("❌ [FATAL] Server startup failed:", error);
     console.error('--------------------------------------------------');
-    process.exit(1);
+    if (isProduction) {
+      console.error('⚠️ [Production] Keeping server alive for health checks - routes may be unavailable');
+      serverReady = false;
+    } else {
+      process.exit(1);
+    }
   }
 })();
 
