@@ -486,10 +486,10 @@ export default function ProviderApplicationForm() {
               });
             })}>
               
-              {/* Step 1: Platform Selection */}
+              {/* Step 1: Platform Selection - Multi-Select */}
               {step === 1 && (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-3 mb-8">
+                  <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
                       <Home className="w-6 h-6 text-white" />
                     </div>
@@ -499,6 +499,23 @@ export default function ProviderApplicationForm() {
                       </h2>
                       <p className="text-gray-400 text-sm">{t.step1Desc}</p>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/15 border border-blue-400/30">
+                      <Sparkles className="h-4 w-4 text-blue-400" />
+                      <span className="text-blue-300 text-sm font-medium">
+                        {isHebrew ? 'ניתן לבחור מספר שירותים!' : 'You can select multiple services!'}
+                      </span>
+                    </div>
+                    {selectedPlatforms.length > 0 && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/30">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                        <span className="text-emerald-300 text-sm font-bold">
+                          {selectedPlatforms.length} {isHebrew ? 'נבחרו' : 'selected'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -517,11 +534,17 @@ export default function ProviderApplicationForm() {
                           }`}
                           data-testid={`platform-${platform.id}`}
                         >
-                          {isSelected && (
-                            <div className="absolute top-3 right-3">
-                              <Check className="h-6 w-6 text-white" />
-                            </div>
-                          )}
+                          <div className={`absolute top-3 ${isHebrew ? 'left-3' : 'right-3'} w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                            isSelected 
+                              ? 'bg-white/30' 
+                              : 'bg-white/10 border border-white/20'
+                          }`}>
+                            {isSelected ? (
+                              <Check className="h-5 w-5 text-white" />
+                            ) : (
+                              <div className="w-4 h-4 rounded border-2 border-white/30" />
+                            )}
+                          </div>
                           <Icon className={`h-10 w-10 mb-3 ${isSelected ? 'text-white' : 'text-gray-300'}`} />
                           <h3 className={`font-bold text-lg ${isSelected ? 'text-white' : 'text-white'}`}>
                             {isHebrew ? platform.nameHe : platform.nameEn}

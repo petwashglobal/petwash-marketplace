@@ -576,7 +576,19 @@ export default function BecomeProvider() {
                   </div>
                   
                   <div>
-                    <Label className="mb-4 block text-gray-300 font-medium">{isHebrew ? 'בחר שירותים' : 'Select Services'} *</Label>
+                    <div className="flex items-center justify-between mb-4">
+                      <Label className="block text-gray-300 font-medium">{isHebrew ? 'בחר שירותים' : 'Select Services'} *</Label>
+                      <div className="flex items-center gap-3">
+                        <span className="text-blue-300 text-xs font-medium px-2 py-1 rounded-full bg-blue-500/15 border border-blue-400/30">
+                          {isHebrew ? 'ניתן לבחור מספר שירותים' : 'Select multiple'}
+                        </span>
+                        {form.watch('serviceTypes').length > 0 && (
+                          <span className="text-emerald-300 text-xs font-bold px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30">
+                            {form.watch('serviceTypes').length} {isHebrew ? 'נבחרו' : 'selected'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {serviceTypeOptions.map((service) => {
                         const isSelected = form.watch('serviceTypes').includes(service.id);
@@ -591,13 +603,20 @@ export default function BecomeProvider() {
                                 form.setValue('serviceTypes', [...current, service.id]);
                               }
                             }}
-                            className={`p-5 rounded-2xl cursor-pointer transition-all duration-300 ${
+                            className={`relative p-5 rounded-2xl cursor-pointer transition-all duration-300 ${
                               isSelected 
                                 ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50 shadow-lg shadow-amber-500/10'
                                 : 'bg-slate-800/50 border border-slate-600 hover:border-amber-500/30'
                             }`}
                             data-testid={`service-${service.id}`}
                           >
+                            <div className="absolute top-3 right-3 w-6 h-6 rounded-md flex items-center justify-center transition-all duration-300">
+                              {isSelected ? (
+                                <CheckCircle2 className="w-6 h-6 text-amber-400" />
+                              ) : (
+                                <div className="w-5 h-5 rounded border-2 border-slate-500" />
+                              )}
+                            </div>
                             <div className="flex items-center gap-3">
                               {service.icon && <service.icon className={`w-7 h-7 ${isSelected ? 'text-amber-400' : 'text-slate-400'}`} />}
                               <span className={`font-medium ${isSelected ? 'text-amber-300' : 'text-gray-300'}`}>
