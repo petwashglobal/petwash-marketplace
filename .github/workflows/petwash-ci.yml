@@ -294,7 +294,7 @@ jobs:
           echo "✅ All secrets synced to Google Cloud Secret Manager!"
 
       - name: Deploy to Cloud Run (using Google Cloud Secret Manager)
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: |
           echo "=== Deploying to Cloud Run ==="
           
@@ -305,10 +305,10 @@ jobs:
             --allow-unauthenticated \
             --memory=2Gi \
             --cpu=2 \
+            --timeout=600 \
             --min-instances=0 \
             --max-instances=10 \
             --concurrency=80 \
-            --timeout=300 \
             --cpu-boost \
             --execution-environment=gen2 \
             --startup-cpu-boost \

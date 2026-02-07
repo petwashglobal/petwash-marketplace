@@ -1,47 +1,30 @@
-# ============================================
-# Stage 1: Build (install all deps + build frontend)
-# ============================================
-FROM node:20-alpine AS builder
-
+# Stage 1: Build the application
+FROM node:20-slim AS builder
 WORKDIR /app
-
-RUN apk add --no-cache python3 make g++
-
 COPY package*.json ./
-RUN npm ci
-
+RUN npm install
 COPY . .
+RUN npm run build
 
-RUN echo "=== Building frontend ===" && \
-    npm run build && \
-    echo "=== Verifying build output ===" && \
-    ls -la dist/public/ && \
-    test -f dist/public/index.html && echo "✅ index.html exists" || (echo "❌ Build failed - no index.html" && exit 1)
-
-# ============================================
-# Stage 2: Production (lean runtime image)
-# ============================================
-FROM node:20-alpine
-
+# Stage 2: Production runtime (minimal image)
+FROM node:20-alpine AS runner
 WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-
+# Copy only the compiled production files from the builder stage
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/src ./src
-COPY --from=builder /app/brand ./brand
-COPY --from=builder /app/drizzle.config.ts ./
 COPY --from=builder /app/tsconfig.json ./
 
+# Install only essential production dependencies
+RUN npm install --omit=dev
+
+# tsx is often needed for server/index.ts if it's not compiled to CJS
+RUN npm install -g tsx
+
+EXPOSE 8080
 ENV NODE_ENV=production
 ENV PORT=8080
 
-EXPOSE 8080
-
-HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=5 \
-  CMD node -e "const http = require('http'); http.get('http://localhost:8080/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
-
-CMD ["npx", "tsx", "server/index.ts"]
+CMD ["tsx", "server/index.ts"]

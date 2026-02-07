@@ -7,7 +7,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["openssl", "pngquant", "optipng", "k6", "dig", "jq", "psmisc"]
+packages = ["openssl", "pngquant", "optipng", "k6", "dig", "jq", "psmisc", "git-lfs"]
 
 [deployment]
 deploymentTarget = "cloudrun"
