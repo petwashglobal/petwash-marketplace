@@ -245,10 +245,10 @@ To enable SMS/OTP authentication, add these 4 secrets in Replit:
 2. Add these secrets:
 
 ```
-TWILIO_ACCOUNT_SID = ACd21e697c18973a5ccf504ac2ee170b6e
-TWILIO_API_KEY = SKt348537ff0dtf39cd52fe52e8f181331
-TWILIO_API_SECRET = tQsL0neAtcLCHDGR0svCvthGsJ84lNR
-TWILIO_PHONE_NUMBER = +972549833355
+TWILIO_ACCOUNT_SID = (stored securely in Replit Secrets)
+TWILIO_API_KEY = (stored securely in Replit Secrets)
+TWILIO_API_SECRET = (stored securely in Replit Secrets)
+TWILIO_PHONE_NUMBER = (stored securely in Replit Secrets)
 ```
 
 After adding, server restarts automatically and shows:
