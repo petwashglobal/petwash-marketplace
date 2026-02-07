@@ -240,7 +240,13 @@ jobs:
             . 2>&1
           echo "=== Build complete at: $(date) ==="
 
+      - name: Check Docker image size
+        run: |
+          echo "=== Docker image size ==="
+          docker images me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend --format "{{.Tag}}: {{.Size}}"
+
       - name: Push Docker image
+        timeout-minutes: 15
         run: |
           echo "=== Pushing Docker image ==="
           docker push me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:${{ github.sha }}
@@ -277,17 +283,18 @@ jobs:
           sync_secret "DATABASE_URL" "${{ secrets.DATABASE_URL }}"
           sync_secret "JWT_SECRET" "${{ secrets.JWT_SECRET }}"
           sync_secret "COOKIE_SECRET" "${{ secrets.COOKIE_SECRET }}"
-          sync_secret "GOOGLE_API_KEY" "${{ secrets.GOOGLE_API_KEY }}"
           sync_secret "SENDGRID_API_KEY" "${{ secrets.SENDGRID_API_KEY }}"
           sync_secret "FIREBASE_SERVICE_ACCOUNT_KEY" "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}"
           sync_secret "TWILIO_ACCOUNT_SID" "${{ secrets.TWILIO_ACCOUNT_SID }}"
           sync_secret "TWILIO_AUTH_TOKEN" "${{ secrets.TWILIO_AUTH_TOKEN }}"
           sync_secret "TWILIO_PHONE_NUMBER" "${{ secrets.TWILIO_PHONE_NUMBER }}"
+          sync_secret "GEMINI_API_KEY" "${{ secrets.GEMINI_API_KEY }}"
           
           echo ""
           echo "✅ All secrets synced to Google Cloud Secret Manager!"
 
       - name: Deploy to Cloud Run (using Google Cloud Secret Manager)
+        timeout-minutes: 10
         run: |
           echo "=== Deploying to Cloud Run ==="
           
@@ -298,14 +305,15 @@ jobs:
             --allow-unauthenticated \
             --memory=2Gi \
             --cpu=2 \
-            --min-instances=1 \
+            --min-instances=0 \
             --max-instances=10 \
             --concurrency=80 \
             --timeout=300 \
             --cpu-boost \
             --execution-environment=gen2 \
+            --startup-cpu-boost \
             --set-env-vars="NODE_ENV=production" \
-            --set-secrets="DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest"
+            --set-secrets="DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest"
           
           echo "✅ Cloud Run deployment complete"
 

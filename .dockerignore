@@ -1,7 +1,15 @@
-# Deployment Optimization - Exclude unnecessary files from deployment image
-# This file reduces deployment size from 8+ GiB to under the limit
+# Deployment Optimization - Exclude unnecessary files from Docker build context
+# Multi-stage build handles the rest - this just speeds up COPY . .
 
-# Development dependencies
+# BIGGEST savings: attached_assets (stock images, screenshots, etc.)
+attached_assets/
+
+# Git history not needed
+.git/
+.gitignore
+.gitattributes
+
+# Development dependencies cache
 node_modules/.cache
 .npm
 .yarn
@@ -15,6 +23,8 @@ __tests__
 coverage
 .nyc_output
 vitest.config.ts
+playwright.config.ts
+test-*.ts
 
 # Development tools
 .vscode
@@ -24,19 +34,13 @@ vitest.config.ts
 *~
 .DS_Store
 
-# Git files
-.git
-.gitignore
-.gitattributes
-
 # Documentation
 *.md
 !README.md
 docs/
 examples/
 
-# Build artifacts (CRITICAL: dist/ must be included for frontend to work!)
-# dist - REMOVED: Replit builds BEFORE deployment, must include dist/public
+# Build artifacts from previous builds
 build
 .vite
 .cache
@@ -70,7 +74,6 @@ scripts/dev-*
 scripts/test-*
 
 # Large media files (use CDN in production)
-attached_assets/stock_images/
 public/dev-*
 
 # Backup files
@@ -93,3 +96,11 @@ gcs-service-account.json
 # Development configuration
 .replit
 replit.nix
+.local/
+.config/
+
+# Standalone scripts not needed at runtime
+analyze_id.ts
+verify_id_temp.ts
+send_launch_invitation.ts
+POSTMAN_COLLECTION.json
