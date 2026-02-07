@@ -12402,6 +12402,131 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
+  // ==================== ADMIN BACKEND PANEL API ====================
+  // Mobile-friendly admin endpoints for viewing members, providers, staff
+  app.get('/api/admin-panel/stats', requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const usersResult = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
+      const providersResult = await db.execute(sql`SELECT COUNT(*) as count FROM providers`);
+      const applicantsResult = await db.execute(sql`SELECT COUNT(*) as count FROM provider_applicants`);
+      const staffResult = await db.execute(sql`SELECT COUNT(*) as count FROM staff_applications`);
+      const pendingApplicantsResult = await db.execute(sql`SELECT COUNT(*) as count FROM provider_applicants WHERE status = 'pending'`);
+      const pendingStaffResult = await db.execute(sql`SELECT COUNT(*) as count FROM staff_applications WHERE status = 'pending'`);
+      res.json({
+        members: Number(usersResult.rows?.[0]?.count ?? usersResult[0]?.count ?? 0),
+        providers: Number(providersResult.rows?.[0]?.count ?? providersResult[0]?.count ?? 0),
+        applicants: Number(applicantsResult.rows?.[0]?.count ?? applicantsResult[0]?.count ?? 0),
+        staff: Number(staffResult.rows?.[0]?.count ?? staffResult[0]?.count ?? 0),
+        pendingApplicants: Number(pendingApplicantsResult.rows?.[0]?.count ?? pendingApplicantsResult[0]?.count ?? 0),
+        pendingStaff: Number(pendingStaffResult.rows?.[0]?.count ?? pendingStaffResult[0]?.count ?? 0),
+      });
+    } catch (error: any) {
+      logger.error('[AdminPanel] Stats error:', error);
+      res.status(500).json({ error: 'Failed to load stats' });
+    }
+  });
+
+  app.get('/api/admin-panel/members', requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const search = (req.query.search as string) || '';
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+      const offset = (page - 1) * limit;
+
+      let query;
+      let countQuery;
+      if (search) {
+        const searchPattern = `%${search}%`;
+        query = sql`SELECT id, email, first_name, last_name, phone, country, loyalty_tier, is_club_member, created_at, roles FROM users WHERE email ILIKE ${searchPattern} OR first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR phone ILIKE ${searchPattern} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+        countQuery = sql`SELECT COUNT(*) as count FROM users WHERE email ILIKE ${searchPattern} OR first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR phone ILIKE ${searchPattern}`;
+      } else {
+        query = sql`SELECT id, email, first_name, last_name, phone, country, loyalty_tier, is_club_member, created_at, roles FROM users ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+        countQuery = sql`SELECT COUNT(*) as count FROM users`;
+      }
+      const membersResult = await db.execute(query);
+      const totalResult = await db.execute(countQuery);
+      const members = membersResult.rows ?? membersResult;
+      const totalCount = Number(totalResult.rows?.[0]?.count ?? totalResult[0]?.count ?? 0);
+      res.json({ members, total: totalCount, page, limit });
+    } catch (error: any) {
+      logger.error('[AdminPanel] Members error:', error);
+      res.status(500).json({ error: 'Failed to load members' });
+    }
+  });
+
+  app.get('/api/admin-panel/providers', requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const search = (req.query.search as string) || '';
+      const status = (req.query.status as string) || '';
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+      const offset = (page - 1) * limit;
+
+      let query;
+      let countQuery;
+      if (search && status) {
+        const searchPattern = `%${search}%`;
+        query = sql`SELECT id, email, first_name, last_name, phone_number, service_types, status, stage, city, country_code, years_experience, submitted_at, approved_at, rejected_at, rejection_reason FROM provider_applicants WHERE (first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR email ILIKE ${searchPattern}) AND status = ${status} ORDER BY submitted_at DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}`;
+        countQuery = sql`SELECT COUNT(*) as count FROM provider_applicants WHERE (first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR email ILIKE ${searchPattern}) AND status = ${status}`;
+      } else if (search) {
+        const searchPattern = `%${search}%`;
+        query = sql`SELECT id, email, first_name, last_name, phone_number, service_types, status, stage, city, country_code, years_experience, submitted_at, approved_at, rejected_at, rejection_reason FROM provider_applicants WHERE first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR email ILIKE ${searchPattern} ORDER BY submitted_at DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}`;
+        countQuery = sql`SELECT COUNT(*) as count FROM provider_applicants WHERE first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR email ILIKE ${searchPattern}`;
+      } else if (status) {
+        query = sql`SELECT id, email, first_name, last_name, phone_number, service_types, status, stage, city, country_code, years_experience, submitted_at, approved_at, rejected_at, rejection_reason FROM provider_applicants WHERE status = ${status} ORDER BY submitted_at DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}`;
+        countQuery = sql`SELECT COUNT(*) as count FROM provider_applicants WHERE status = ${status}`;
+      } else {
+        query = sql`SELECT id, email, first_name, last_name, phone_number, service_types, status, stage, city, country_code, years_experience, submitted_at, approved_at, rejected_at, rejection_reason FROM provider_applicants ORDER BY submitted_at DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}`;
+        countQuery = sql`SELECT COUNT(*) as count FROM provider_applicants`;
+      }
+      const providersResult = await db.execute(query);
+      const totalResult = await db.execute(countQuery);
+      const providers = providersResult.rows ?? providersResult;
+      const totalCount = Number(totalResult.rows?.[0]?.count ?? totalResult[0]?.count ?? 0);
+      res.json({ providers, total: totalCount, page, limit });
+    } catch (error: any) {
+      logger.error('[AdminPanel] Providers error:', error);
+      res.status(500).json({ error: 'Failed to load providers' });
+    }
+  });
+
+  app.get('/api/admin-panel/staff', requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const search = (req.query.search as string) || '';
+      const status = (req.query.status as string) || '';
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+      const offset = (page - 1) * limit;
+
+      let query;
+      let countQuery;
+      if (search) {
+        const searchPattern = `%${search}%`;
+        if (status) {
+          query = sql`SELECT id, application_id, first_name, last_name, email, phone, application_type, status, city, country, submitted_at, reviewed_at, approved_at FROM staff_applications WHERE (first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR email ILIKE ${searchPattern}) AND status = ${status} ORDER BY submitted_at DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}`;
+          countQuery = sql`SELECT COUNT(*) as count FROM staff_applications WHERE (first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR email ILIKE ${searchPattern}) AND status = ${status}`;
+        } else {
+          query = sql`SELECT id, application_id, first_name, last_name, email, phone, application_type, status, city, country, submitted_at, reviewed_at, approved_at FROM staff_applications WHERE first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR email ILIKE ${searchPattern} ORDER BY submitted_at DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}`;
+          countQuery = sql`SELECT COUNT(*) as count FROM staff_applications WHERE first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR email ILIKE ${searchPattern}`;
+        }
+      } else if (status) {
+        query = sql`SELECT id, application_id, first_name, last_name, email, phone, application_type, status, city, country, submitted_at, reviewed_at, approved_at FROM staff_applications WHERE status = ${status} ORDER BY submitted_at DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}`;
+        countQuery = sql`SELECT COUNT(*) as count FROM staff_applications WHERE status = ${status}`;
+      } else {
+        query = sql`SELECT id, application_id, first_name, last_name, email, phone, application_type, status, city, country, submitted_at, reviewed_at, approved_at FROM staff_applications ORDER BY submitted_at DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}`;
+        countQuery = sql`SELECT COUNT(*) as count FROM staff_applications`;
+      }
+      const staffResult = await db.execute(query);
+      const totalResult = await db.execute(countQuery);
+      const staff = staffResult.rows ?? staffResult;
+      const totalCount = Number(totalResult.rows?.[0]?.count ?? totalResult[0]?.count ?? 0);
+      res.json({ staff, total: totalCount, page, limit });
+    } catch (error: any) {
+      logger.error('[AdminPanel] Staff error:', error);
+      res.status(500).json({ error: 'Failed to load staff' });
+    }
+  });
+
   // CRITICAL: SPA History Fallback (PRODUCTION ONLY)
   // In development, Vite middleware handles ALL SPA routing automatically
   // In production, we need to serve index.html for all non-API GET requests
