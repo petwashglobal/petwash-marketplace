@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 500" width="780" height="500">
+  <rect width="780" height="500" rx="40" fill="white"/>
+  <circle cx="348" cy="250" r="140" fill="none" stroke="#0079BE" stroke-width="20"/>
+  <path d="M286 178v144c-27.5-15.8-46-45.5-46-80s18.5-64.2 46-80zm124 0c27.5 15.8 46 45.5 46 80s-18.5 64.2-46 80V178z" fill="#0079BE"/>
+  <text x="540" y="225" font-family="Arial,Helvetica,sans-serif" font-size="44" font-weight="700" fill="#0079BE" letter-spacing="1">DINERS</text>
+  <text x="540" y="280" font-family="Arial,Helvetica,sans-serif" font-size="44" font-weight="700" fill="#0079BE" letter-spacing="1">CLUB</text>
+</svg>

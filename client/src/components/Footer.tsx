@@ -143,7 +143,7 @@ export function Footer({ language }: FooterProps) {
                 ].map((logo) => (
                   <div
                     key={logo.name}
-                    className="group relative flex items-center justify-center w-16 h-10 sm:w-20 sm:h-12 
+                    className="group relative flex items-center justify-center w-16 h-10 sm:w-20 sm:h-12 md:w-24 md:h-14 lg:w-28 lg:h-16
                       bg-gradient-to-br from-slate-50 via-white to-gray-100
                       rounded-lg sm:rounded-xl 
                       shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.9)]
@@ -159,7 +159,7 @@ export function Footer({ language }: FooterProps) {
                     <img 
                       src={logo.src} 
                       alt={logo.name}
-                      className="h-5 sm:h-6 w-auto object-contain drop-shadow-sm group-hover:drop-shadow-md transition-all duration-300"
+                      className="h-5 sm:h-6 md:h-7 lg:h-8 w-auto object-contain drop-shadow-sm group-hover:drop-shadow-md transition-all duration-300"
                       loading="lazy"
                     />
                   </div>
