@@ -6,7 +6,6 @@ npm-debug.log
 dist
 build
 .env
-attached_assets
 .replit
 replit.nix
 replit.md
