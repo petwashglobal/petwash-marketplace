@@ -298,6 +298,7 @@ jobs:
         run: |
           echo "=== Deploying to Cloud Run ==="
           
+          # Force service to use 8080 and 2Gi memory with extended timeout
           gcloud run deploy petwash-api \
             --image=me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:${{ github.sha }} \
             --region=me-west1 \
@@ -305,6 +306,7 @@ jobs:
             --allow-unauthenticated \
             --memory=2Gi \
             --cpu=2 \
+            --port=8080 \
             --timeout=600 \
             --min-instances=0 \
             --max-instances=10 \
@@ -312,7 +314,7 @@ jobs:
             --cpu-boost \
             --execution-environment=gen2 \
             --startup-cpu-boost \
-            --set-env-vars="NODE_ENV=production" \
+            --set-env-vars="NODE_ENV=production,PORT=8080" \
             --set-secrets="DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest"
           
           echo "✅ Cloud Run deployment complete"
