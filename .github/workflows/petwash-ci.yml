@@ -300,6 +300,7 @@ jobs:
           
           # Force service to use 8080 and 2Gi memory with extended timeout
           # Fix: Use --cpu-boost instead of --startup-cpu-boost as per gcloud error
+          # Fix: PORT is a reserved env name in Cloud Run when using --port, removing from --set-env-vars
           gcloud run deploy petwash-api \
             --image=me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:${{ github.sha }} \
             --region=me-west1 \
@@ -314,7 +315,7 @@ jobs:
             --concurrency=80 \
             --cpu-boost \
             --execution-environment=gen2 \
-            --set-env-vars="NODE_ENV=production,PORT=8080" \
+            --set-env-vars="NODE_ENV=production" \
             --set-secrets="DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,COOKIE_SECRET=COOKIE_SECRET:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest,TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest"
           
           echo "✅ Cloud Run deployment complete"
