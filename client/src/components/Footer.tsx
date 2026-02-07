@@ -134,12 +134,12 @@ export function Footer({ language }: FooterProps) {
               {/* Metallic Payment Icons Grid */}
               <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                 {[
-                  { name: 'Visa', src: '/assets/payments/visa-2025.svg' },
-                  { name: 'Mastercard', src: '/assets/payments/mastercard-2025.svg' },
-                  { name: 'American Express', src: '/assets/payments/amex-2025.svg' },
-                  { name: 'Apple Pay', src: '/assets/payments/apple-pay-2025.svg' },
-                  { name: 'Google Pay', src: '/assets/payments/google-pay-2025.svg' },
-                  { name: 'Diners Club', src: '/assets/payments/diners-2025.svg' },
+                  { name: 'Visa', src: '/assets/payments/visa-color.svg' },
+                  { name: 'Mastercard', src: '/assets/payments/mastercard-color.svg' },
+                  { name: 'American Express', src: '/assets/payments/amex-color.svg' },
+                  { name: 'Apple Pay', src: '/assets/payments/apple-pay-color.svg' },
+                  { name: 'Google Pay', src: '/assets/payments/google-pay-color.svg' },
+                  { name: 'Diners Club', src: '/assets/payments/diners-color.svg' },
                 ].map((logo) => (
                   <div
                     key={logo.name}

@@ -8,11 +8,11 @@ interface PaymentMethodsProps {
 }
 
 const paymentLogos = [
-  { name: 'Visa', src: '/assets/payments/visa-2025.svg' },
-  { name: 'Mastercard', src: '/assets/payments/mastercard-2025.svg' },
-  { name: 'American Express', src: '/assets/payments/amex-2025.svg' },
-  { name: 'Apple Pay', src: '/assets/payments/apple-pay-2025.svg' },
-  { name: 'Google Pay', src: '/assets/payments/google-pay-2025.svg' },
+  { name: 'Visa', src: '/assets/payments/visa-color.svg' },
+  { name: 'Mastercard', src: '/assets/payments/mastercard-color.svg' },
+  { name: 'American Express', src: '/assets/payments/amex-color.svg' },
+  { name: 'Apple Pay', src: '/assets/payments/apple-pay-color.svg' },
+  { name: 'Google Pay', src: '/assets/payments/google-pay-color.svg' },
 ];
 
 export default function PaymentMethods({ 
