@@ -6,8 +6,19 @@ export default function LoyaltyRefer() {
   const [referralCode] = useState('PETWASH2025');
   const { toast } = useToast();
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(referralCode);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(referralCode);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = referralCode;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
     toast({
       title: 'Copied!',
       description: 'Referral code copied to clipboard',

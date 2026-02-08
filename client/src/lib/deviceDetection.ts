@@ -79,8 +79,22 @@ export function detectDevice(): DeviceInfo {
  * Detect operating system - auto-recognizes new OS versions
  */
 function detectOS(ua: string, platform: string): { os: string; version: string } {
-  // iOS Detection (iPhone, iPad, iPod)
-  if (/iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && 'ontouchend' in document)) {
+  // iPadOS Detection (iPadOS 13+ reports as MacIntel with touch)
+  if (/iPad/.test(ua) || (platform === 'MacIntel' && 'ontouchend' in document && navigator.maxTouchPoints > 1)) {
+    const osMatch = ua.match(/OS (\d+)_(\d+)_?(\d+)?/);
+    if (osMatch) {
+      const version = `${osMatch[1]}.${osMatch[2]}${osMatch[3] ? '.' + osMatch[3] : ''}`;
+      return { os: 'iPadOS', version };
+    }
+    const ipadOSMatch = ua.match(/iPadOS\s+([\d.]+)/);
+    if (ipadOSMatch) {
+      return { os: 'iPadOS', version: ipadOSMatch[1] };
+    }
+    return { os: 'iPadOS', version: 'Unknown' };
+  }
+
+  // iOS Detection (iPhone, iPod)
+  if (/iPhone|iPod/.test(ua)) {
     const match = ua.match(/OS (\d+)_(\d+)_?(\d+)?/);
     if (match) {
       const version = `${match[1]}.${match[2]}${match[3] ? '.' + match[3] : ''}`;
@@ -89,10 +103,16 @@ function detectOS(ua: string, platform: string): { os: string; version: string }
     return { os: 'iOS', version: 'Unknown' };
   }
 
-  // Android Detection
+  // Android Detection (including Android 16+)
   if (/Android/.test(ua)) {
     const match = ua.match(/Android\s+([\d.]+)/);
     return { os: 'Android', version: match ? match[1] : 'Unknown' };
+  }
+
+  // HarmonyOS Detection (Huawei)
+  if (/HarmonyOS/.test(ua)) {
+    const match = ua.match(/HarmonyOS\s+([\d.]+)/);
+    return { os: 'HarmonyOS', version: match ? match[1] : 'Unknown' };
   }
 
   // Windows Detection
@@ -104,7 +124,7 @@ function detectOS(ua: string, platform: string): { os: string; version: string }
     return { os: 'Windows', version: 'Unknown' };
   }
 
-  // macOS Detection
+  // macOS Detection (non-touch Mac = true macOS)
   if (/Mac OS X/.test(ua)) {
     const match = ua.match(/Mac OS X (\d+)[._](\d+)[._]?(\d+)?/);
     if (match) {
@@ -212,65 +232,88 @@ function detectBrowser(ua: string): { name: string; version: string } {
  * Detect device brand and model - auto-recognizes new models
  */
 function detectDeviceModel(ua: string, width: number, height: number): { brand: string; model: string } {
-  // iPhone Detection (including future models)
+  const minDim = Math.min(width, height);
+  const maxDim = Math.max(width, height);
+
+  // iPhone Detection (including 2026+ models)
+  // Note: iPhone 15 Pro Max and 16 Pro share 430x932 — grouped together
   if (/iPhone/.test(ua)) {
-    // iPhone 16 Pro Max (2024+)
-    if (width === 440 || height === 956) return { brand: 'Apple', model: 'iPhone 16 Pro Max' };
-    // iPhone 15 Pro Max
-    if (width === 430 || height === 932) return { brand: 'Apple', model: 'iPhone 15 Pro Max' };
-    // iPhone 15 Pro / 15
-    if (width === 393 || height === 852) return { brand: 'Apple', model: 'iPhone 15 / 15 Pro' };
-    // iPhone 14 Pro Max
-    if (width === 428 || height === 926) return { brand: 'Apple', model: 'iPhone 14 Pro Max' };
-    // iPhone 14 Pro
-    if (width === 393 || height === 852) return { brand: 'Apple', model: 'iPhone 14 Pro' };
+    // Future iPhone 17+ (2026+) — any dimensions beyond current known models
+    if (minDim > 440 || maxDim > 956) return { brand: 'Apple', model: 'iPhone 17+ (New Model)' };
+    // iPhone 16 Pro Max (2024)
+    if (minDim === 440 && maxDim === 956) return { brand: 'Apple', model: 'iPhone 16 Pro Max' };
+    // iPhone 15 Pro Max / 16 Pro / 16 Plus (all share 430x932)
+    if (minDim === 430 && maxDim === 932) return { brand: 'Apple', model: 'iPhone 15 Pro Max / 16 Pro' };
+    // iPhone 14 Pro Max / 14 Plus (428x926)
+    if (minDim === 428 && maxDim === 926) return { brand: 'Apple', model: 'iPhone 14 Pro Max' };
+    // iPhone 15 / 15 Pro / 16 (393x852)
+    if (minDim === 393 && maxDim === 852) return { brand: 'Apple', model: 'iPhone 15/16 Series' };
+    // iPhone 14 / 13 / 12 (390x844)
+    if (minDim === 390 && maxDim === 844) return { brand: 'Apple', model: 'iPhone 12-14 Series' };
+    // iPhone 13 Mini / 12 Mini (375x812)
+    if (minDim === 375 && maxDim === 812) return { brand: 'Apple', model: 'iPhone 12/13 Mini' };
+    // iPhone SE 3rd / 8 / 7 / 6s (375x667)
+    if (minDim === 375 && maxDim === 667) return { brand: 'Apple', model: 'iPhone SE / 8' };
+    // iPhone SE 1st / 5s (320x568)
+    if (minDim === 320 && maxDim === 568) return { brand: 'Apple', model: 'iPhone SE 1st Gen' };
     // Generic iPhone (future-proof for new models)
     return { brand: 'Apple', model: 'iPhone (New Model)' };
   }
 
   // iPad Detection (including future models)
-  if (/iPad/.test(ua) || (navigator.platform === 'MacIntel' && 'ontouchend' in document)) {
-    if (width === 1024 || height === 1366) return { brand: 'Apple', model: 'iPad Pro 12.9"' };
-    if (width === 834 || height === 1194) return { brand: 'Apple', model: 'iPad Pro 11"' };
-    if (width === 820 || height === 1180) return { brand: 'Apple', model: 'iPad Air' };
+  if (/iPad/.test(ua) || (navigator.platform === 'MacIntel' && 'ontouchend' in document && navigator.maxTouchPoints > 1)) {
+    if (minDim === 1024 && maxDim === 1366) return { brand: 'Apple', model: 'iPad Pro 12.9"' };
+    if (minDim === 834 && maxDim === 1194) return { brand: 'Apple', model: 'iPad Pro 11"' };
+    if (minDim === 820 && maxDim === 1180) return { brand: 'Apple', model: 'iPad Air' };
+    if (minDim === 810 && maxDim === 1080) return { brand: 'Apple', model: 'iPad 10th Gen' };
+    if (minDim === 744 && maxDim === 1133) return { brand: 'Apple', model: 'iPad Mini 6' };
     return { brand: 'Apple', model: 'iPad (New Model)' };
   }
 
-  // Samsung Detection (including future Galaxy models)
+  // Samsung Detection (including 2026+ Galaxy models)
   if (/Samsung/.test(ua) || /SM-/.test(ua)) {
+    // Galaxy S26 Ultra (2026+)
+    if (minDim >= 440 && maxDim >= 960) return { brand: 'Samsung', model: 'Galaxy S26 Ultra (Estimated)' };
     // Galaxy S25 Ultra (2025+)
-    if (width >= 440) return { brand: 'Samsung', model: 'Galaxy S25 Ultra (Estimated)' };
+    if (minDim >= 412 && maxDim >= 920) return { brand: 'Samsung', model: 'Galaxy S25 Ultra' };
     // Galaxy S24 Ultra
-    if (width === 412 || width === 384) return { brand: 'Samsung', model: 'Galaxy S24/S24 Ultra' };
-    // Galaxy S23 series
-    if (width === 360 || width === 412) return { brand: 'Samsung', model: 'Galaxy S23 Series' };
-    // Galaxy Tab S10 (2025+)
-    if (width >= 800 && /Tablet|Tab/.test(ua)) return { brand: 'Samsung', model: 'Galaxy Tab S10+ (Estimated)' };
+    if (minDim === 412 && maxDim >= 900) return { brand: 'Samsung', model: 'Galaxy S24 Ultra' };
+    // Galaxy S24/S23 series
+    if (minDim >= 360 && minDim <= 412) return { brand: 'Samsung', model: 'Galaxy S23/S24 Series' };
+    // Galaxy Tab S10+ (2025+)
+    if (minDim >= 800 && /Tablet|Tab/.test(ua)) return { brand: 'Samsung', model: 'Galaxy Tab S10+' };
     // Galaxy Tab S9
-    if ((width === 712 || width === 753) && /Tablet|Tab/.test(ua)) return { brand: 'Samsung', model: 'Galaxy Tab S9' };
-    // Generic Samsung device
+    if ((minDim >= 700 && minDim <= 760) && /Tablet|Tab/.test(ua)) return { brand: 'Samsung', model: 'Galaxy Tab S9' };
     return { brand: 'Samsung', model: 'Galaxy Device (New Model)' };
   }
 
-  // Google Pixel (including future models)
+  // Google Pixel (including Pixel 10/11 - 2026+)
   if (/Pixel/.test(ua)) {
-    if (width === 412) return { brand: 'Google', model: 'Pixel 8/9 Series' };
+    const pixelMatch = ua.match(/Pixel\s*(\d+)/);
+    if (pixelMatch) {
+      return { brand: 'Google', model: `Pixel ${pixelMatch[1]}` };
+    }
     return { brand: 'Google', model: 'Pixel (New Model)' };
   }
 
   // Xiaomi (including future models)
-  if (/Xiaomi|Mi |Redmi/.test(ua)) {
-    return { brand: 'Xiaomi', model: 'Mi/Redmi Device' };
+  if (/Xiaomi|Mi |Redmi|POCO/.test(ua)) {
+    return { brand: 'Xiaomi', model: 'Xiaomi Device' };
   }
 
-  // Huawei (including future models)
-  if (/Huawei|HUAWEI/.test(ua)) {
+  // Huawei (including HarmonyOS devices)
+  if (/Huawei|HUAWEI|HarmonyOS/.test(ua)) {
     return { brand: 'Huawei', model: 'Huawei Device' };
   }
 
   // OnePlus (including future models)
   if (/OnePlus/.test(ua)) {
     return { brand: 'OnePlus', model: 'OnePlus Device' };
+  }
+
+  // Nothing Phone
+  if (/Nothing/.test(ua)) {
+    return { brand: 'Nothing', model: 'Nothing Phone' };
   }
 
   // Generic detection for unknown future devices
@@ -284,23 +327,33 @@ function determineDeviceType(ua: string, width: number, height: number, touchEna
   const maxDimension = Math.max(width, height);
   const minDimension = Math.min(width, height);
 
+  // iPad detection takes priority (iPadOS 13+ reports as MacIntel)
+  if (/iPad/.test(ua) || (navigator.platform === 'MacIntel' && 'ontouchend' in document && navigator.maxTouchPoints > 1)) {
+    return 'tablet';
+  }
+
   // Tiny Mobile (compact phones, mini devices)
   if (touchEnabled && maxDimension < 600 && minDimension < 400) {
     return 'mobile';
   }
 
-  // Standard Mobile
+  // Standard Mobile (phones)
   if (touchEnabled && maxDimension < 768) {
     return 'mobile';
   }
 
-  // Tablet
-  if (touchEnabled && maxDimension >= 768 && maxDimension < 1200) {
+  // Mobile phones with tall screens (modern phones up to ~430px wide)
+  if (touchEnabled && minDimension <= 440 && maxDimension < 1000 && /Mobile|iPhone|Android/.test(ua)) {
+    return 'mobile';
+  }
+
+  // Tablet (touch + medium screen, NOT a phone)
+  if (touchEnabled && maxDimension >= 768 && maxDimension <= 1400 && minDimension >= 600) {
     return 'tablet';
   }
 
-  // Laptop (touch-enabled convertibles)
-  if (maxDimension >= 1200 && touchEnabled) {
+  // Laptop (touch-enabled convertibles with large screens)
+  if (maxDimension > 1400 && touchEnabled) {
     return 'laptop';
   }
 
@@ -309,17 +362,23 @@ function determineDeviceType(ua: string, width: number, height: number, touchEna
     return 'desktop';
   }
 
-  return 'unknown';
+  // Fallback: large touch devices are tablets, non-touch are desktops
+  if (touchEnabled) return 'tablet';
+  return 'desktop';
 }
 
 /**
  * Extract firmware version from user agent
  */
 function extractFirmware(ua: string, os: string): string {
-  if (os === 'iOS') {
+  if (os === 'iOS' || os === 'iPadOS') {
     const match = ua.match(/OS (\d+)_(\d+)_?(\d+)?/);
     if (match) {
-      return `iOS ${match[1]}.${match[2]}${match[3] ? '.' + match[3] : ''}`;
+      return `${os} ${match[1]}.${match[2]}${match[3] ? '.' + match[3] : ''}`;
+    }
+    const versionMatch = ua.match(/(?:iPad|iPhone)OS\s+([\d.]+)/i);
+    if (versionMatch) {
+      return `${os} ${versionMatch[1]}`;
     }
   }
 
@@ -327,6 +386,13 @@ function extractFirmware(ua: string, os: string): string {
     const match = ua.match(/Android\s+([\d.]+)/);
     if (match) {
       return `Android ${match[1]}`;
+    }
+  }
+
+  if (os === 'HarmonyOS') {
+    const match = ua.match(/HarmonyOS\s+([\d.]+)/);
+    if (match) {
+      return `HarmonyOS ${match[1]}`;
     }
   }
 

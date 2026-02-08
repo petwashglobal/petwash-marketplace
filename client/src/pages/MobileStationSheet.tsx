@@ -177,8 +177,19 @@ export default function MobileStationSheet() {
     station.address.country
   ].filter(Boolean).join(', ');
 
-  const copyAddress = () => {
-    navigator.clipboard.writeText(fullAddress);
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(fullAddress);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = fullAddress;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
     toast({ title: 'Address copied!' });
   };
 
@@ -603,9 +614,20 @@ export default function MobileStationSheet() {
             <div className="border-b border-[#2A2A2A] px-4 py-3 flex items-center justify-between sticky top-0 bg-[#0B0B0B] z-10">
               <h3 className="text-[15px] font-medium text-[#EDEDED]">Utilities & Council</h3>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const summary = `Station: ${station.name}\nAddress: ${station.address.line1}, ${station.address.city}\nSerial: ${station.serialNumber}\nNayax Terminal: ${station.nayax?.terminalId || 'N/A'}`;
-                  navigator.clipboard.writeText(summary);
+                  try {
+                    await navigator.clipboard.writeText(summary);
+                  } catch {
+                    const ta = document.createElement('textarea');
+                    ta.value = summary;
+                    ta.style.position = 'fixed';
+                    ta.style.left = '-9999px';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    ta.remove();
+                  }
                   toast({ title: 'Copied to clipboard' });
                 }}
                 className="px-3 py-1.5 rounded text-[13px] font-medium bg-[#1F1F1F] border border-[#2A2A2A] text-[#EDEDED] hover:bg-[#252525] transition-colors duration-100"
@@ -891,8 +913,20 @@ export default function MobileStationSheet() {
             </p>
             <Button
               variant="outline"
-              onClick={() => {
-                navigator.clipboard.writeText(`https://petwash.co.il/s/${stationId}`);
+              onClick={async () => {
+                const link = `https://petwash.co.il/s/${stationId}`;
+                try {
+                  await navigator.clipboard.writeText(link);
+                } catch {
+                  const ta = document.createElement('textarea');
+                  ta.value = link;
+                  ta.style.position = 'fixed';
+                  ta.style.left = '-9999px';
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  ta.remove();
+                }
                 toast({ title: 'Link copied!' });
               }}
               data-testid="button-copy-link"

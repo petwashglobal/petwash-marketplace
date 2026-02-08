@@ -342,8 +342,19 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                 {isHebrew ? '📱 פדיון Nayax QR' : '📱 Nayax QR Redemption'}
               </h3>
               <Button 
-                onClick={() => {
-                  navigator.clipboard.writeText(qrData.url);
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(qrData.url);
+                  } catch {
+                    const ta = document.createElement('textarea');
+                    ta.value = qrData.url;
+                    ta.style.position = 'fixed';
+                    ta.style.left = '-9999px';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    ta.remove();
+                  }
                   toast({
                     title: isHebrew ? '✅ הקוד הועתק!' : '✅ Code Copied!',
                     description: isHebrew ? 'הדבק בארנק הדיגיטלי שלך' : 'Paste in your digital wallet',
