@@ -10,12 +10,13 @@ echo " PetWash™ — GCP Secret Manager Provisioning"
 echo " Project: ${PROJECT_ID}"
 echo "============================================"
 echo ""
-echo "This script creates missing secrets in Google Cloud Secret Manager"
+echo "This script creates ALL missing secrets in Google Cloud Secret Manager"
 echo "so that Cloud Run deployment succeeds."
 echo ""
-echo "IMPORTANT: Secrets marked [PLACEHOLDER] need real values."
-echo "Update them later via:"
-echo "  echo -n 'real-value' | gcloud secrets versions add SECRET_NAME --data-file=-"
+echo "Legend:"
+echo "  [AUTO-GENERATED] = Secure random value, ready to use"
+echo "  [PLACEHOLDER]    = Needs real value — update later"
+echo "  [KNOWN VALUE]    = Default value based on project config"
 echo ""
 
 gcloud config set project "${PROJECT_ID}" 2>/dev/null
@@ -61,28 +62,49 @@ grant_access() {
 echo ""
 echo "--- Step 1: Verify existing secrets ---"
 EXISTING_SECRETS=$(gcloud secrets list --project="${PROJECT_ID}" --format="value(name)" 2>/dev/null)
-echo "  Found $(echo "${EXISTING_SECRETS}" | wc -l | tr -d ' ') secrets in project"
+EXISTING_COUNT=$(echo "${EXISTING_SECRETS}" | grep -c . || echo "0")
+echo "  Found ${EXISTING_COUNT} secrets in project"
 
 echo ""
 echo "--- Step 2: Create missing secrets ---"
+
 echo ""
 echo "[Core Authentication & Security]"
+create_secret "JWT_REFRESH_SECRET" "$(openssl rand -hex 32)" "[AUTO-GENERATED]"
 create_secret "MOBILE_LINK_SECRET" "$(openssl rand -hex 32)" "[AUTO-GENERATED]"
 create_secret "WALLET_LINK_SECRET" "$(openssl rand -hex 32)" "[AUTO-GENERATED]"
 create_secret "WEBAUTHN_COOKIE_SECRET" "$(openssl rand -hex 32)" "[AUTO-GENERATED]"
-create_secret "VOUCHER_SALT" "$(openssl rand -hex 16)" "[AUTO-GENERATED]"
 create_secret "KYC_SALT" "$(openssl rand -hex 16)" "[AUTO-GENERATED]"
 create_secret "GMAIL_TOKEN_ENCRYPTION_KEY" "$(openssl rand -hex 32)" "[AUTO-GENERATED]"
 
 echo ""
-echo "[Biometric & Storage]"
-create_secret "BIOMETRIC_BUCKET_NAME" "signinpetwash.firebasestorage.app" "[KNOWN VALUE]"
-create_secret "BIOMETRIC_PREFIX" "biometric-data" "[PLACEHOLDER - update if different]"
+echo "[Google API Keys]"
+create_secret "GOOGLE_MAPS_API_KEY" "placeholder-update-with-google-maps-api-key" "[PLACEHOLDER]"
+create_secret "GOOGLE_TRANSLATE_API_KEY" "placeholder-update-with-google-translate-api-key" "[PLACEHOLDER]"
+create_secret "GOOGLE_WEATHER_API_KEY" "placeholder-update-with-google-weather-api-key" "[PLACEHOLDER]"
 
 echo ""
-echo "[Payment & Webhooks]"
+echo "[Google Dialogflow / AI Agent]"
+create_secret "GOOGLE_AGENT_ID" "placeholder-update-with-dialogflow-agent-id" "[PLACEHOLDER]"
+create_secret "GOOGLE_AGENT_LOCATION" "global" "[KNOWN VALUE]"
+
+echo ""
+echo "[Google Business Profile]"
+create_secret "GOOGLE_BUSINESS_CLIENT_ID" "placeholder-update-with-google-business-client-id" "[PLACEHOLDER]"
+create_secret "GOOGLE_BUSINESS_CLIENT_SECRET" "placeholder-update-with-google-business-client-secret" "[PLACEHOLDER]"
+create_secret "GOOGLE_BUSINESS_REFRESH_TOKEN" "placeholder-update-with-google-business-refresh-token" "[PLACEHOLDER]"
+create_secret "GOOGLE_BUSINESS_ACCOUNT_ID" "placeholder-update-with-google-business-account-id" "[PLACEHOLDER]"
+
+echo ""
+echo "[Biometric & Storage]"
+create_secret "BIOMETRIC_BUCKET_NAME" "signinpetwash.firebasestorage.app" "[KNOWN VALUE]"
+create_secret "BIOMETRIC_PREFIX" "biometric-data" "[KNOWN VALUE]"
+
+echo ""
+echo "[Payment & Security]"
 create_secret "NAYAX_WEBHOOK_SECRET" "placeholder-update-with-real-nayax-webhook-secret" "[PLACEHOLDER]"
 create_secret "RECAPTCHA_SECRET_KEY" "placeholder-update-with-real-recaptcha-key" "[PLACEHOLDER]"
+create_secret "VOUCHER_SALT" "$(openssl rand -hex 16)" "[AUTO-GENERATED]"
 
 echo ""
 echo "[Voucher ES256 Keys]"
@@ -95,7 +117,11 @@ if ! gcloud secrets describe "VOUCHER_ES256_PRIVATE_KEY_PEM" --project="${PROJEC
   rm -rf "${KEYTMP}"
 else
   echo "  ✅ VOUCHER_ES256_PRIVATE_KEY_PEM — already exists"
-  echo "  ✅ VOUCHER_ES256_PUBLIC_KEY_PEM — already exists"
+  if ! gcloud secrets describe "VOUCHER_ES256_PUBLIC_KEY_PEM" --project="${PROJECT_ID}" &>/dev/null; then
+    echo "  ⚠️  VOUCHER_ES256_PUBLIC_KEY_PEM missing but private key exists — generate matching public key manually"
+  else
+    echo "  ✅ VOUCHER_ES256_PUBLIC_KEY_PEM — already exists"
+  fi
 fi
 
 echo ""
@@ -104,50 +130,49 @@ create_secret "HUBSPOT_FORM_GUID" "placeholder-update-with-hubspot-form-guid" "[
 create_secret "HUBSPOT_PORTAL_ID" "placeholder-update-with-hubspot-portal-id" "[PLACEHOLDER]"
 
 echo ""
+echo "[Monitoring]"
+create_secret "SENTRY_DSN" "placeholder-update-with-sentry-dsn" "[PLACEHOLDER]"
+create_secret "METRICS_AUTH_TOKEN" "$(openssl rand -hex 32)" "[AUTO-GENERATED]"
+create_secret "ALERTS_SLACK_WEBHOOK" "placeholder-update-with-slack-webhook" "[PLACEHOLDER]"
+
+echo ""
 echo "[Backup Buckets]"
+create_secret "CS_BACKUP_BUCKET" "petwash-secure-documents" "[KNOWN VALUE]"
 create_secret "GCS_BACKUP_BUCKET" "petwash-backups" "[PLACEHOLDER - update if different]"
 create_secret "GCS_CODE_BUCKET" "petwash-code-backups" "[PLACEHOLDER - update if different]"
 create_secret "GCS_FIRESTORE_BUCKET" "petwash-firestore-backups" "[PLACEHOLDER - update if different]"
 
 echo ""
-echo "--- Step 3: Grant Cloud Run service account access ---"
-SECRETS=(
-  MOBILE_LINK_SECRET WALLET_LINK_SECRET WEBAUTHN_COOKIE_SECRET
-  VOUCHER_SALT KYC_SALT GMAIL_TOKEN_ENCRYPTION_KEY
-  BIOMETRIC_BUCKET_NAME BIOMETRIC_PREFIX
-  NAYAX_WEBHOOK_SECRET RECAPTCHA_SECRET_KEY
-  VOUCHER_ES256_PRIVATE_KEY_PEM VOUCHER_ES256_PUBLIC_KEY_PEM
-  HUBSPOT_FORM_GUID HUBSPOT_PORTAL_ID
-  GCS_BACKUP_BUCKET GCS_CODE_BUCKET GCS_FIRESTORE_BUCKET
-)
-
-for secret in "${SECRETS[@]}"; do
-  grant_access "${secret}"
-done
-echo "  ✅ IAM bindings applied for ${SA_EMAIL}"
-
-echo ""
-echo "--- Step 4: Verify all CI-required secrets exist ---"
-CI_SECRETS=(
+echo "--- Step 3: Grant Cloud Run service account access to ALL secrets ---"
+ALL_SECRETS=(
   DATABASE_URL JWT_SECRET JWT_REFRESH_SECRET COOKIE_SECRET SESSION_SECRET
   SENDGRID_API_KEY FIREBASE_SERVICE_ACCOUNT_KEY
   TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_PHONE_NUMBER
-  GEMINI_API_KEY GOOGLE_MAPS_API_KEY
-  GOOGLE_SERVICE_ACCOUNT_JSON
+  GEMINI_API_KEY GOOGLE_MAPS_API_KEY GOOGLE_SERVICE_ACCOUNT_JSON
   GOOGLE_TRANSLATE_API_KEY GOOGLE_WEATHER_API_KEY
   GOOGLE_AGENT_ID GOOGLE_AGENT_LOCATION
   GOOGLE_BUSINESS_CLIENT_ID GOOGLE_BUSINESS_CLIENT_SECRET
+  GOOGLE_BUSINESS_REFRESH_TOKEN GOOGLE_BUSINESS_ACCOUNT_ID
   MOBILE_LINK_SECRET WALLET_LINK_SECRET
   BIOMETRIC_BUCKET_NAME BIOMETRIC_PREFIX
   WEBAUTHN_COOKIE_SECRET NAYAX_WEBHOOK_SECRET
   VOUCHER_SALT VOUCHER_ES256_PRIVATE_KEY_PEM VOUCHER_ES256_PUBLIC_KEY_PEM
   RECAPTCHA_SECRET_KEY KYC_SALT GMAIL_TOKEN_ENCRYPTION_KEY
   HUBSPOT_FORM_GUID HUBSPOT_PORTAL_ID
-  GCS_BACKUP_BUCKET GCS_CODE_BUCKET GCS_FIRESTORE_BUCKET
+  SENTRY_DSN METRICS_AUTH_TOKEN ALERTS_SLACK_WEBHOOK
+  CS_BACKUP_BUCKET GCS_BACKUP_BUCKET GCS_CODE_BUCKET GCS_FIRESTORE_BUCKET
 )
 
+echo "  Granting access to ${#ALL_SECRETS[@]} secrets..."
+for secret in "${ALL_SECRETS[@]}"; do
+  grant_access "${secret}"
+done
+echo "  ✅ IAM bindings applied for ${SA_EMAIL}"
+
+echo ""
+echo "--- Step 4: Final verification — all 42 CI-required secrets ---"
 MISSING=0
-for secret in "${CI_SECRETS[@]}"; do
+for secret in "${ALL_SECRETS[@]}"; do
   if ! gcloud secrets describe "${secret}" --project="${PROJECT_ID}" &>/dev/null; then
     echo "  ❌ MISSING: ${secret}"
     MISSING=$((MISSING + 1))
@@ -155,10 +180,12 @@ for secret in "${CI_SECRETS[@]}"; do
 done
 
 if [ "${MISSING}" -eq 0 ]; then
-  echo "  ✅ All ${#CI_SECRETS[@]} CI-required secrets verified!"
+  echo "  ✅ All ${#ALL_SECRETS[@]} CI-required secrets verified!"
+  echo ""
+  echo "  🚀 You can now trigger GitHub Actions to deploy!"
 else
   echo ""
-  echo "  ⚠️  ${MISSING} secret(s) still missing — deployment will fail until these are created"
+  echo "  ⚠️  ${MISSING} secret(s) still missing — deployment will fail"
 fi
 
 echo ""
@@ -166,18 +193,37 @@ echo "============================================"
 echo " ✅ Provisioning complete!"
 echo "============================================"
 echo ""
-echo "NEXT STEPS — Update placeholder secrets with real values:"
+echo "SECRETS WITH PLACEHOLDER VALUES — update these with real values:"
 echo ""
-echo "  1. NAYAX_WEBHOOK_SECRET   — Get from Nayax dashboard"
-echo "  2. RECAPTCHA_SECRET_KEY   — Get from Google reCAPTCHA console"
-echo "  3. HUBSPOT_FORM_GUID      — Get from HubSpot Forms"
-echo "  4. HUBSPOT_PORTAL_ID      — Get from HubSpot Settings > Account"
-echo "  5. GCS_BACKUP_BUCKET      — Your actual GCS bucket name for backups"
-echo "  6. GCS_CODE_BUCKET        — Your actual GCS bucket name for code"
-echo "  7. GCS_FIRESTORE_BUCKET   — Your actual GCS bucket name for Firestore"
-echo "  8. BIOMETRIC_PREFIX       — Confirm prefix matches your setup"
+echo "  Google API Keys (copy from Google Cloud Console > APIs & Services > Credentials):"
+echo "    gcloud secrets versions add GOOGLE_MAPS_API_KEY --data-file=- <<< 'YOUR_KEY'"
+echo "    gcloud secrets versions add GOOGLE_TRANSLATE_API_KEY --data-file=- <<< 'YOUR_KEY'"
+echo "    gcloud secrets versions add GOOGLE_WEATHER_API_KEY --data-file=- <<< 'YOUR_KEY'"
 echo ""
-echo "To update a secret:"
-echo "  echo -n 'real-value' | gcloud secrets versions add SECRET_NAME --data-file=-"
+echo "  Google Dialogflow (from Dialogflow CX Console):"
+echo "    gcloud secrets versions add GOOGLE_AGENT_ID --data-file=- <<< 'YOUR_AGENT_ID'"
 echo ""
-echo "Then re-run your GitHub Actions workflow to deploy."
+echo "  Google Business Profile (from Google Cloud Console > OAuth):"
+echo "    gcloud secrets versions add GOOGLE_BUSINESS_CLIENT_ID --data-file=- <<< 'YOUR_ID'"
+echo "    gcloud secrets versions add GOOGLE_BUSINESS_CLIENT_SECRET --data-file=- <<< 'YOUR_SECRET'"
+echo "    gcloud secrets versions add GOOGLE_BUSINESS_REFRESH_TOKEN --data-file=- <<< 'YOUR_TOKEN'"
+echo "    gcloud secrets versions add GOOGLE_BUSINESS_ACCOUNT_ID --data-file=- <<< 'YOUR_ACCOUNT'"
+echo ""
+echo "  reCAPTCHA (from Google reCAPTCHA Console):"
+echo "    gcloud secrets versions add RECAPTCHA_SECRET_KEY --data-file=- <<< 'YOUR_KEY'"
+echo ""
+echo "  Nayax (from Nayax Dashboard):"
+echo "    gcloud secrets versions add NAYAX_WEBHOOK_SECRET --data-file=- <<< 'YOUR_SECRET'"
+echo ""
+echo "  HubSpot (from HubSpot Settings):"
+echo "    gcloud secrets versions add HUBSPOT_FORM_GUID --data-file=- <<< 'YOUR_GUID'"
+echo "    gcloud secrets versions add HUBSPOT_PORTAL_ID --data-file=- <<< 'YOUR_ID'"
+echo ""
+echo "  GCS Buckets (update with actual bucket names if different):"
+echo "    gcloud secrets versions add GCS_BACKUP_BUCKET --data-file=- <<< 'YOUR_BUCKET'"
+echo "    gcloud secrets versions add GCS_CODE_BUCKET --data-file=- <<< 'YOUR_BUCKET'"
+echo "    gcloud secrets versions add GCS_FIRESTORE_BUCKET --data-file=- <<< 'YOUR_BUCKET'"
+echo ""
+echo "TIP: The app will START with placeholder values — those features just"
+echo "won't work until you update them with real values."
+echo ""
