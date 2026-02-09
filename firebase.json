@@ -85,22 +85,6 @@
           ]
         }
       ]
-    },
-    {
-      "target": "www-redirect",
-      "public": "dist/public",
-      "ignore": [
-        "firebase.json",
-        "**/.*",
-        "**/node_modules/**"
-      ],
-      "redirects": [
-        {
-          "source": "**",
-          "destination": "https://petwash.co.il/:splat",
-          "type": 301
-        }
-      ]
     }
   ]
 }

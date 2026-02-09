@@ -7,9 +7,6 @@
       "hosting": {
         "main": [
           "signinpetwash"
-        ],
-        "www-redirect": [
-          "petwash-www"
         ]
       }
     }
