@@ -58,8 +58,13 @@ jobs:
             --allow-unauthenticated
             --port=8080
             --execution-environment=gen2
-            --set-env-vars=NODE_ENV=production,BASE_URL=https://petwash.co.il,FIREBASE_PROJECT_ID=signinpetwash,GOOGLE_DIALOGFLOW_PROJECT_ID=signinpetwash,WEBAUTHN_RP_ID=petwash.co.il,SENTRY_ENV=production
+            --set-env-vars=NODE_ENV=production
           secrets: |
+            BASE_URL=BASE_URL:latest
+            FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest
+            GOOGLE_DIALOGFLOW_PROJECT_ID=GOOGLE_DIALOGFLOW_PROJECT_ID:latest
+            WEBAUTHN_RP_ID=WEBAUTHN_RP_ID:latest
+            SENTRY_ENV=SENTRY_ENV:latest
             DATABASE_URL=DATABASE_URL:latest
             JWT_SECRET=JWT_SECRET:latest
             JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest

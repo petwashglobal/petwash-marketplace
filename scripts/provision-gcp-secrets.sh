@@ -69,6 +69,14 @@ echo ""
 echo "--- Step 2: Create missing secrets ---"
 
 echo ""
+echo "[Configuration (previously env vars, now secrets)]"
+create_secret "BASE_URL" "https://petwash.co.il" "[KNOWN VALUE]"
+create_secret "FIREBASE_PROJECT_ID" "signinpetwash" "[KNOWN VALUE]"
+create_secret "GOOGLE_DIALOGFLOW_PROJECT_ID" "signinpetwash" "[KNOWN VALUE]"
+create_secret "WEBAUTHN_RP_ID" "petwash.co.il" "[KNOWN VALUE]"
+create_secret "SENTRY_ENV" "production" "[KNOWN VALUE]"
+
+echo ""
 echo "[Core Authentication & Security]"
 create_secret "JWT_REFRESH_SECRET" "$(openssl rand -hex 32)" "[AUTO-GENERATED]"
 create_secret "MOBILE_LINK_SECRET" "$(openssl rand -hex 32)" "[AUTO-GENERATED]"
@@ -145,6 +153,7 @@ create_secret "GCS_FIRESTORE_BUCKET" "petwash-firestore-backups" "[PLACEHOLDER -
 echo ""
 echo "--- Step 3: Grant Cloud Run service account access to ALL secrets ---"
 ALL_SECRETS=(
+  BASE_URL FIREBASE_PROJECT_ID GOOGLE_DIALOGFLOW_PROJECT_ID WEBAUTHN_RP_ID SENTRY_ENV
   DATABASE_URL JWT_SECRET JWT_REFRESH_SECRET COOKIE_SECRET SESSION_SECRET
   SENDGRID_API_KEY FIREBASE_SERVICE_ACCOUNT_KEY
   TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_PHONE_NUMBER
