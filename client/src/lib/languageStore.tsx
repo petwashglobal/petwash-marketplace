@@ -14,17 +14,26 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('en');
 
   useEffect(() => {
-    // Initialize from localStorage - support all 6 languages
-    const saved = localStorage.getItem('language') as Language;
     const validLanguages: Language[] = ['en', 'he', 'ar', 'ru', 'fr', 'es'];
+    const saved = (localStorage.getItem('pw_lang') || localStorage.getItem('language')) as Language;
     if (saved && validLanguages.includes(saved)) {
       setLanguageState(saved);
     }
+
+    const interval = setInterval(() => {
+      const current = (localStorage.getItem('pw_lang') || localStorage.getItem('language')) as Language;
+      if (current && validLanguages.includes(current)) {
+        setLanguageState(prev => prev !== current ? current : prev);
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
   }, []);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('language', lang);
+    localStorage.setItem('pw_lang', lang);
     document.documentElement.lang = lang;
     document.documentElement.dir = isRTL(lang) ? 'rtl' : 'ltr';
   };
