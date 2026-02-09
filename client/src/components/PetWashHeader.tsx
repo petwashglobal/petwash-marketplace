@@ -32,6 +32,7 @@
 
 import React, { useEffect, useState } from "react";
 import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from "react-icons/si";
+import { useFirebaseAuth } from "../auth/AuthProvider";
 
 type LangDir = "ltr" | "rtl";
 
@@ -290,7 +291,8 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   language: controlledLanguage, 
   onLanguageChange: controlledOnLanguageChange 
 }) => {
-  // Internal state for uncontrolled mode (backwards compatibility)
+  const { user, logout } = useFirebaseAuth();
+
   const [internalLanguage, setInternalLanguage] = useState<string>(detectInitialLanguage);
   const [isPlatformsOpen, setIsPlatformsOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -611,12 +613,21 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               </option>
             ))}
           </select>
-          <button
-            className="pw-account-btn"
-            onClick={() => handleNavigate("/account")}
-          >
-            <div className="pw-account-circle">👤</div>
-          </button>
+          {user ? (
+            <button
+              className="pw-account-btn"
+              onClick={() => handleNavigate("/my-account")}
+            >
+              <div className="pw-account-circle">👤</div>
+            </button>
+          ) : (
+            <button
+              className="pw-account-btn"
+              onClick={() => handleNavigate("/signin")}
+            >
+              <div className="pw-account-circle">👤</div>
+            </button>
+          )}
         </div>
 
         {/* Scrollable menu content */}
@@ -721,6 +732,48 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 {item.label}
               </button>
             ))}
+          </div>
+
+          {/* Account / Sign in / Sign out */}
+          <div className="pw-mobile-section">
+            <div className="pw-mobile-section-title">
+              {user ? (currentLanguage === "he" || currentLanguage === "ar" ? "חשבון" : "Account") : (currentLanguage === "he" || currentLanguage === "ar" ? "התחברות" : "Sign in")}
+            </div>
+            {user ? (
+              <>
+                <button
+                  className="pw-mobile-link"
+                  onClick={() => handleNavigate("/my-account")}
+                >
+                  {currentLanguage === "he" ? "החשבון שלי" : currentLanguage === "ar" ? "حسابي" : currentLanguage === "ru" ? "Мой аккаунт" : currentLanguage === "fr" ? "Mon compte" : currentLanguage === "es" ? "Mi cuenta" : "My account"}
+                </button>
+                <button
+                  className="pw-mobile-link pw-logout-btn"
+                  onClick={async () => {
+                    await logout();
+                    setIsMobileOpen(false);
+                    window.location.assign("/");
+                  }}
+                >
+                  {currentLanguage === "he" ? "התנתק" : currentLanguage === "ar" ? "تسجيل الخروج" : currentLanguage === "ru" ? "Выйти" : currentLanguage === "fr" ? "Déconnexion" : currentLanguage === "es" ? "Cerrar sesión" : "Log out"}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="pw-mobile-link"
+                  onClick={() => handleNavigate("/signin")}
+                >
+                  {currentLanguage === "he" ? "התחברות" : currentLanguage === "ar" ? "تسجيل الدخول" : currentLanguage === "ru" ? "Войти" : currentLanguage === "fr" ? "Se connecter" : currentLanguage === "es" ? "Iniciar sesión" : "Sign in"}
+                </button>
+                <button
+                  className="pw-mobile-link"
+                  onClick={() => handleNavigate("/signup")}
+                >
+                  {currentLanguage === "he" ? "הרשמה" : currentLanguage === "ar" ? "إنشاء حساب" : currentLanguage === "ru" ? "Регистрация" : currentLanguage === "fr" ? "S'inscrire" : currentLanguage === "es" ? "Registrarse" : "Sign up"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
