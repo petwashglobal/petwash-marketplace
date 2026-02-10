@@ -444,71 +444,39 @@ function LuxuryGiftCard({
           }} />
         </div>
         
-        <div className="absolute top-5 sm:top-6 left-5 sm:left-6">
-          <p className="text-lg sm:text-xl font-light tracking-tight" style={{ color: style.textColor, fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
-            Pet Wash<span className="text-xs align-super">™</span>
-          </p>
-        </div>
-        
-        <div className="absolute top-[42%] sm:top-[40%] left-5 sm:left-6 transform -translate-y-1/2">
-          <div 
-            className="w-12 h-9 sm:w-14 sm:h-10 rounded-md overflow-hidden"
-            style={{
-              background: style.chipColor,
-              boxShadow: 'inset 0 -1px 2px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.15)',
-            }}
-          >
-            <div className="w-full h-full p-1 flex flex-col justify-center">
-              <div className="flex gap-0.5">
-                <div className="flex-1 h-1.5 rounded-sm" style={{ background: 'linear-gradient(90deg, rgba(180,160,120,0.6) 0%, rgba(200,180,140,0.8) 50%, rgba(180,160,120,0.6) 100%)' }} />
-                <div className="flex-1 h-1.5 rounded-sm" style={{ background: 'linear-gradient(90deg, rgba(180,160,120,0.6) 0%, rgba(200,180,140,0.8) 50%, rgba(180,160,120,0.6) 100%)' }} />
-              </div>
-              <div className="h-2 mt-0.5 rounded-sm mx-1" style={{ background: 'linear-gradient(90deg, rgba(180,160,120,0.5) 0%, rgba(200,180,140,0.7) 50%, rgba(180,160,120,0.5) 100%)' }} />
-              <div className="flex gap-0.5 mt-0.5">
-                <div className="flex-1 h-1.5 rounded-sm" style={{ background: 'linear-gradient(90deg, rgba(180,160,120,0.6) 0%, rgba(200,180,140,0.8) 50%, rgba(180,160,120,0.6) 100%)' }} />
-                <div className="flex-1 h-1.5 rounded-sm" style={{ background: 'linear-gradient(90deg, rgba(180,160,120,0.6) 0%, rgba(200,180,140,0.8) 50%, rgba(180,160,120,0.6) 100%)' }} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="absolute top-[42%] sm:top-[40%] left-20 sm:left-24 transform -translate-y-1/2">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="opacity-50">
-            <path d="M12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18" stroke={style.textColor} strokeWidth="1.5" strokeLinecap="round"/>
-            <path d="M12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14" stroke={style.textColor} strokeWidth="1.5" strokeLinecap="round"/>
-            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22" stroke={style.textColor} strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-        </div>
-
-        <div className="absolute bottom-16 sm:bottom-20 left-5 sm:left-6">
-          <p 
-            className="text-2xl sm:text-3xl font-semibold tracking-tight"
-            style={{ color: style.textColor, fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}
-          >
-            {formattedValue}
-          </p>
-          <p 
-            className="text-xs sm:text-sm opacity-60 mt-0.5 tracking-wide"
-            style={{ color: style.textColor }}
-          >
-            {tx('eGiftCard', lang)}
-          </p>
-        </div>
-
-        <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 right-5 sm:right-6 flex items-end justify-between">
-          <div>
-            <p 
-              className="text-[11px] sm:text-xs font-medium tracking-[0.2em] opacity-80"
-              style={{ color: style.textColor, fontFamily: 'SF Mono, Menlo, monospace' }}
-            >
-              •••• •••• •••• {String(option.value).padStart(4, '0')}
+        <div className="absolute top-5 sm:top-6 left-5 sm:left-6 right-5 sm:right-6">
+          <div className="flex items-start justify-between">
+            <p className="text-base sm:text-lg font-light tracking-wide" style={{ color: style.textColor, fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', Georgia, serif" }}>
+              Pet Wash<span className="text-[8px] align-super">™</span>
+            </p>
+            <p className="text-[10px] sm:text-[11px] tracking-[0.15em] uppercase opacity-50" style={{ color: style.textColor }}>
+              {tx('eGiftCard', lang)}
             </p>
           </div>
-          
-          <div className="flex -space-x-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" style={{ background: 'rgba(235, 0, 27, 0.85)' }} />
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" style={{ background: 'rgba(255, 95, 0, 0.85)' }} />
+        </div>
+
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <p 
+              className="text-3xl sm:text-4xl font-light tracking-tight"
+              style={{ color: style.textColor, fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', Georgia, serif" }}
+            >
+              {formattedValue}
+            </p>
+            <p 
+              className="text-[11px] sm:text-xs opacity-40 mt-1.5 tracking-[0.15em] uppercase"
+              style={{ color: style.textColor }}
+            >
+              {tx('eGiftCredit', lang)}
+            </p>
           </div>
+        </div>
+
+        <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 right-5 sm:right-6">
+          <div className="w-full h-[1px] opacity-10 mb-3" style={{ background: style.textColor }} />
+          <p className="text-[10px] tracking-[0.2em] uppercase opacity-30 text-center" style={{ color: style.textColor }}>
+            Premium Organic Pet Care
+          </p>
         </div>
 
         <div className="absolute top-0 left-0 right-0 h-[1px]" style={{
