@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Check, Sparkles, Crown, Shield, ShoppingCart } from 'lucide-react';
+import { Check, Sparkles, Crown, Leaf, ShieldCheck, ArrowRight } from 'lucide-react';
 import { ExpressCheckoutModal } from '@/components/ExpressCheckoutModal';
 import { CustomerSignupModal } from '@/components/CustomerSignupModal';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -60,11 +60,31 @@ const FALLBACK_PACKAGES: WashPackage[] = [
   },
 ];
 
-const tierLabels: Record<string, Record<string, string>> = {
-  CLASSIC: { en: 'Classic', he: 'קלאסי', ar: 'كلاسيك', ru: 'Классик', fr: 'Classique', es: 'Clásico' },
-  POPULAR: { en: 'Most Popular', he: 'הכי פופולרי', ar: 'الأكثر شعبية', ru: 'Популярный', fr: 'Populaire', es: 'Popular' },
-  PREMIUM: { en: 'Premium', he: 'פרימיום', ar: 'بريميوم', ru: 'Премиум', fr: 'Premium', es: 'Premium' },
-  ELITE: { en: 'Elite Collection', he: 'קולקציית אליט', ar: 'مجموعة إيليت', ru: 'Коллекция Элит', fr: 'Collection Élite', es: 'Colección Élite' },
+const tierConfig: Record<string, {
+  labels: Record<string, string>;
+  accent: string;
+  icon: string;
+}> = {
+  CLASSIC: {
+    labels: { en: 'Essentials', he: 'בסיסי', ar: 'أساسي', ru: 'Классик', fr: 'Essentiel', es: 'Esencial' },
+    accent: '#8B7355',
+    icon: '◈',
+  },
+  POPULAR: {
+    labels: { en: 'Most Popular', he: 'הכי פופולרי', ar: 'الأكثر شعبية', ru: 'Популярный', fr: 'Populaire', es: 'Popular' },
+    accent: '#1a1a1a',
+    icon: '★',
+  },
+  PREMIUM: {
+    labels: { en: 'Premium', he: 'פרימיום', ar: 'بريميوم', ru: 'Премиум', fr: 'Premium', es: 'Premium' },
+    accent: '#8B7355',
+    icon: '♦',
+  },
+  ELITE: {
+    labels: { en: 'Maison Collection', he: 'קולקציית מזון', ar: 'مجموعة ميزون', ru: 'Коллекция Мезон', fr: 'Collection Maison', es: 'Colección Maison' },
+    accent: '#2c2c2c',
+    icon: '✦',
+  },
 };
 
 const washText: Record<string, string> = {
@@ -132,41 +152,56 @@ export function WashPackages({ language }: WashPackagesProps) {
   return (
     <section 
       id="packages"
-      className="py-16 sm:py-24 lg:py-28 relative"
+      className="py-20 sm:py-28 lg:py-32 relative overflow-hidden"
       style={{ background: '#FFFFFF' }}
     >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-10 sm:mb-14 lg:mb-16">
-          <p className="text-[11px] sm:text-xs tracking-[0.3em] uppercase mb-4 text-gray-400 font-medium">
+      <div className="absolute inset-0 opacity-[0.02]" style={{
+        backgroundImage: `repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)`,
+        backgroundSize: '24px 24px',
+      }} />
+
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="text-center mb-14 sm:mb-20">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#c9a96e]" />
+            <Leaf className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
+            <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#c9a96e]" />
+          </div>
+
+          <p className="text-[10px] sm:text-[11px] tracking-[0.35em] uppercase mb-5 font-medium"
+            style={{ color: '#c9a96e' }}>
             {t('packages.premiumBadge', language)}
           </p>
 
           <h2 
-            className="text-3xl sm:text-4xl lg:text-5xl text-black mb-5 px-4 font-light"
-            style={{ fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', Georgia, serif", letterSpacing: '-0.02em' }}
+            className="text-3xl sm:text-4xl lg:text-[3.2rem] text-[#1a1a1a] mb-6 px-4 font-light leading-tight"
+            style={{ fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', Georgia, serif", letterSpacing: '-0.03em' }}
           >
             {t('packages.title', language)}
           </h2>
           
-          <p className="text-sm sm:text-base text-gray-500 max-w-lg mx-auto mb-3">
+          <p className="text-sm sm:text-[15px] text-[#888] max-w-md mx-auto mb-3 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
             {t('packages.subtitle', language)}
           </p>
           
-          <p className="text-xs sm:text-sm text-gray-400 italic">
+          <p className="text-[11px] sm:text-xs text-[#b5a088] tracking-wide">
             {organicText[language] || organicText.en}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-7 max-w-[1040px] mx-auto">
           {displayPackages.map((pkg, index) => {
             const badge = getTierBadge(index);
+            const tier = tierConfig[badge] || tierConfig.CLASSIC;
             const pricePerWash = pkg.washCount > 1 
               ? Math.round(Number(pkg.price) / pkg.washCount) 
               : Number(pkg.price);
-            const badgeLabel = tierLabels[badge]?.[language] || tierLabels[badge]?.en || badge;
+            const badgeLabel = tier.labels[language] || tier.labels.en;
             const wText = pkg.washCount === 1 ? (washText[language] || washText.en) : (washesText[language] || washesText.en);
             const buyText = buyNowText[language] || buyNowText.en;
             const perWash = perWashText[language] || perWashText.en;
+            const isPopular = badge === 'POPULAR';
+            const isElite = badge === 'ELITE';
             
             return (
               <div
@@ -174,40 +209,106 @@ export function WashPackages({ language }: WashPackagesProps) {
                 className="group cursor-pointer"
                 onClick={() => handleExpressCheckout(pkg)}
               >
-                <div className="relative bg-[#F6F4F1] rounded-sm overflow-hidden aspect-square flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-[#EFECE7]">
-                  <div className="text-center px-4">
-                    <p className="text-[10px] tracking-[0.2em] uppercase text-gray-400 mb-3 font-medium">
-                      {badgeLabel}
-                    </p>
-                    <p className="text-4xl sm:text-5xl font-light text-black mb-2"
-                      style={{ fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', Georgia, serif" }}>
-                      ₪{pkg.price}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {pkg.washCount} {wText}
-                    </p>
-                    {pkg.washCount > 1 && (
-                      <p className="text-[11px] text-gray-400 mt-1">
-                        ₪{pricePerWash} {perWash}
-                      </p>
-                    )}
-                  </div>
-                </div>
+                <div className={`relative overflow-hidden transition-all duration-500 ${
+                  isElite 
+                    ? 'bg-[#1a1a1a]' 
+                    : 'bg-[#FAFAF8]'
+                }`}
+                  style={{ 
+                    borderRadius: '2px',
+                    border: isPopular ? '1.5px solid #c9a96e' : isElite ? '1.5px solid #333' : '1px solid #eee',
+                  }}
+                >
+                  {isPopular && (
+                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#c9a96e] via-[#e8d5b0] to-[#c9a96e]" />
+                  )}
 
-                <div className="text-center">
-                  <p className="text-sm text-black mb-3 font-normal">
-                    {language === 'he' ? (pkg as any).nameHe || pkg.name : pkg.name}
-                  </p>
-                  
+                  <div className="px-4 sm:px-5 pt-5 sm:pt-6 pb-4">
+                    <div className="flex items-center justify-between mb-5 sm:mb-6">
+                      <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
+                        isElite ? 'text-[#c9a96e]' : isPopular ? 'text-[#c9a96e]' : 'text-[#999]'
+                      }`}>
+                        {badgeLabel}
+                      </span>
+                      {isPopular && (
+                        <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2 py-0.5 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '1px' }}>
+                          {language === 'he' ? 'מומלץ' : 'Best Value'}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mb-5 sm:mb-6">
+                      <div className="flex items-baseline gap-1">
+                        <span className={`text-[11px] sm:text-xs ${isElite ? 'text-[#888]' : 'text-[#999]'}`}>₪</span>
+                        <span className={`text-4xl sm:text-5xl lg:text-[3.4rem] font-light ${
+                          isElite ? 'text-white' : 'text-[#1a1a1a]'
+                        }`}
+                          style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
+                          {pkg.price}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={`border-t ${isElite ? 'border-[#333]' : 'border-[#eee]'} pt-4 mb-4`}>
+                      <p className={`text-xs sm:text-[13px] ${isElite ? 'text-[#ccc]' : 'text-[#555]'} mb-1.5`}
+                        style={{ fontFamily: "'Inter', sans-serif" }}>
+                        {pkg.washCount} {wText}
+                      </p>
+                      {pkg.washCount > 1 && (
+                        <p className={`text-[10px] sm:text-[11px] ${isElite ? 'text-[#777]' : 'text-[#aaa]'}`}>
+                          ₪{pricePerWash} {perWash}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className={`space-y-2 mb-5 ${isElite ? 'text-[#999]' : 'text-[#888]'}`}>
+                      <div className="flex items-center gap-2">
+                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                        <span className="text-[10px] sm:text-[11px]">
+                          {language === 'he' ? 'שמפו אורגני פרימיום' : 'Premium organic shampoo'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                        <span className="text-[10px] sm:text-[11px]">
+                          {language === 'he' ? 'ללא תאריך תפוגה' : 'Never expires'}
+                        </span>
+                      </div>
+                      {pkg.washCount >= 3 && (
+                        <div className="flex items-center gap-2">
+                          <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                          <span className="text-[10px] sm:text-[11px]">
+                            {language === 'he' ? 'ניתן להעברה' : 'Transferable'}
+                          </span>
+                        </div>
+                      )}
+                      {pkg.washCount >= 10 && (
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                          <span className="text-[10px] sm:text-[11px]">
+                            {language === 'he' ? 'הנחה משפחתית' : 'Family discount'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleExpressCheckout(pkg);
                     }}
-                    className="w-full py-2.5 text-[12px] tracking-[0.1em] uppercase font-medium transition-all duration-200 rounded-none border border-black text-black hover:bg-black hover:text-white"
+                    className={`w-full py-3.5 sm:py-4 text-[10px] sm:text-[11px] tracking-[0.18em] uppercase font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
+                      isElite
+                        ? 'bg-white text-[#1a1a1a] hover:bg-[#f5f5f5]'
+                        : isPopular 
+                          ? 'bg-[#1a1a1a] text-white hover:bg-[#333]' 
+                          : 'bg-transparent text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white border-t border-[#eee]'
+                    }`}
                     data-testid={`button-express-checkout-${pkg.id}`}
                   >
                     {buyText}
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
                   </button>
                 </div>
               </div>
@@ -215,40 +316,46 @@ export function WashPackages({ language }: WashPackagesProps) {
           })}
         </div>
 
-        <div className="mt-14 sm:mt-20 flex justify-center gap-6">
-          <button className="px-8 py-3 text-[12px] tracking-[0.12em] uppercase font-medium border border-black text-black rounded-full hover:bg-black hover:text-white transition-all duration-200">
-            {language === 'he' ? 'תשלום מאובטח' : 'Secure Checkout'}
-          </button>
-        </div>
-
-        <div className="mt-14 sm:mt-20 border-t border-gray-100 pt-12">
-          <div className="grid grid-cols-3 gap-6 sm:gap-12 max-w-2xl mx-auto">
+        <div className="mt-16 sm:mt-24">
+          <div className="flex items-center justify-center gap-4 mb-12">
+            <div className="flex-1 max-w-[80px] h-px bg-gradient-to-r from-transparent to-[#ddd]" />
+            <ShieldCheck className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
+            <div className="flex-1 max-w-[80px] h-px bg-gradient-to-l from-transparent to-[#ddd]" />
+          </div>
+          
+          <div className="grid grid-cols-3 gap-8 sm:gap-16 max-w-xl mx-auto">
             <div className="text-center">
-              <Check className="w-5 h-5 mx-auto mb-2 text-gray-400" strokeWidth={1.5} />
-              <p className="text-[11px] sm:text-xs text-gray-600 font-medium">
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full border border-[#e8e4de] flex items-center justify-center">
+                <Check className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.5} />
+              </div>
+              <p className="text-[10px] sm:text-[11px] tracking-[0.08em] text-[#555] font-medium uppercase">
                 {t('packages.trust1Title', language)}
               </p>
-              <p className="text-[10px] text-gray-400 mt-0.5 hidden sm:block">
+              <p className="text-[9px] sm:text-[10px] text-[#aaa] mt-1 hidden sm:block">
                 {t('packages.trust1Desc', language)}
               </p>
             </div>
             
             <div className="text-center">
-              <Crown className="w-5 h-5 mx-auto mb-2 text-gray-400" strokeWidth={1.5} />
-              <p className="text-[11px] sm:text-xs text-gray-600 font-medium">
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full border border-[#e8e4de] flex items-center justify-center">
+                <Crown className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.5} />
+              </div>
+              <p className="text-[10px] sm:text-[11px] tracking-[0.08em] text-[#555] font-medium uppercase">
                 {t('packages.trust2Title', language)}
               </p>
-              <p className="text-[10px] text-gray-400 mt-0.5 hidden sm:block">
+              <p className="text-[9px] sm:text-[10px] text-[#aaa] mt-1 hidden sm:block">
                 {t('packages.trust2Desc', language)}
               </p>
             </div>
             
             <div className="text-center">
-              <Sparkles className="w-5 h-5 mx-auto mb-2 text-gray-400" strokeWidth={1.5} />
-              <p className="text-[11px] sm:text-xs text-gray-600 font-medium">
+              <div className="w-10 h-10 mx-auto mb-3 rounded-full border border-[#e8e4de] flex items-center justify-center">
+                <Leaf className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.5} />
+              </div>
+              <p className="text-[10px] sm:text-[11px] tracking-[0.08em] text-[#555] font-medium uppercase">
                 {t('packages.trust3Title', language)}
               </p>
-              <p className="text-[10px] text-gray-400 mt-0.5 hidden sm:block">
+              <p className="text-[9px] sm:text-[10px] text-[#aaa] mt-1 hidden sm:block">
                 {t('packages.trust3Desc', language)}
               </p>
             </div>
