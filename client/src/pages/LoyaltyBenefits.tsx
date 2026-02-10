@@ -1,147 +1,131 @@
-import { Sparkles, Calendar, Gift, Percent, Crown, Zap, Star, Heart } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'wouter';
+import { Sparkles, Calendar, Gift, Percent, Crown, Zap, Star, Heart, ArrowLeft } from 'lucide-react';
 
 export default function LoyaltyBenefits() {
+  const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
+  const isHebrew = language === 'he';
+
   const benefits = [
     {
       icon: Percent,
-      title: 'Exclusive Discounts',
-      description: 'Save up to 20% on all washes depending on your tier',
-      tier: 'All Tiers',
-      tierBadge: 'luxury-badge-success',
-      color: 'from-green-400 to-emerald-500',
-      delay: '1'
+      title: isHebrew ? 'הנחות בלעדיות' : 'Exclusive Discounts',
+      subtitle: isHebrew ? 'Exclusive Discounts' : 'הנחות בלעדיות',
+      description: isHebrew ? 'חסכו עד 15% בכל הרחיצות בהתאם לדרגה שלכם' : 'Save up to 15% on all washes depending on your tier',
+      tier: isHebrew ? 'כל הדרגות' : 'All Tiers',
     },
     {
       icon: Calendar,
-      title: 'Priority Booking',
-      description: 'Skip the wait with priority access to all time slots',
-      tier: 'Silver+',
-      tierBadge: 'luxury-badge',
-      color: 'from-blue-400 to-indigo-500',
-      delay: '2'
+      title: isHebrew ? 'הזמנה בעדיפות' : 'Priority Booking',
+      subtitle: isHebrew ? 'Priority Booking' : 'הזמנה בעדיפות',
+      description: isHebrew ? 'דלגו על התור עם גישה מועדפת לכל המשבצות' : 'Skip the wait with priority access to all time slots',
+      tier: isHebrew ? 'פלטינום+' : 'Platinum+',
     },
     {
       icon: Gift,
-      title: 'Free Washes',
-      description: 'Enjoy complimentary washes throughout the year',
-      tier: 'Gold+',
-      tierBadge: 'luxury-badge-gold',
-      color: 'from-yellow-400 to-amber-500',
-      delay: '3'
+      title: isHebrew ? 'רחיצות חינם' : 'Free Washes',
+      subtitle: isHebrew ? 'Free Washes' : 'רחיצות חינם',
+      description: isHebrew ? 'רחיצות חינם לאורך כל השנה בהתאם לדרגה' : 'Enjoy complimentary washes throughout the year',
+      tier: isHebrew ? 'זהב+' : 'Gold+',
     },
     {
       icon: Crown,
-      title: 'VIP Events',
-      description: 'Exclusive invitations to member-only events',
-      tier: 'Gold+',
-      tierBadge: 'luxury-badge-gold',
-      color: 'from-purple-400 to-pink-500',
-      delay: '4'
+      title: isHebrew ? 'אירועי VIP' : 'VIP Events',
+      subtitle: isHebrew ? 'VIP Events' : 'אירועי VIP',
+      description: isHebrew ? 'הזמנות בלעדיות לאירועים של חברי מועדון בלבד' : 'Exclusive invitations to member-only events',
+      tier: isHebrew ? 'יהלום+' : 'Diamond+',
     },
     {
       icon: Zap,
-      title: 'Free Upgrades',
-      description: 'Automatic upgrades to premium wash packages',
-      tier: 'Silver+',
-      tierBadge: 'luxury-badge',
-      color: 'from-orange-400 to-red-500',
-      delay: '5'
+      title: isHebrew ? 'שדרוגים חינם' : 'Free Upgrades',
+      subtitle: isHebrew ? 'Free Upgrades' : 'שדרוגים חינם',
+      description: isHebrew ? 'שדרוגים אוטומטיים לחבילות רחיצה פרימיום' : 'Automatic upgrades to premium wash packages',
+      tier: isHebrew ? 'כסף+' : 'Silver+',
     },
     {
       icon: Sparkles,
-      title: 'Concierge Service',
-      description: 'Personal account manager for all your needs',
-      tier: 'VIP Elite',
-      tierBadge: 'luxury-badge-gold',
-      color: 'from-indigo-400 to-purple-500',
-      delay: '6'
+      title: isHebrew ? 'שירות קונסיירז׳' : 'Concierge Service',
+      subtitle: isHebrew ? 'Concierge Service' : 'שירות קונסיירז׳',
+      description: isHebrew ? 'מנהל חשבון אישי לכל הצרכים שלכם' : 'Personal account manager for all your needs',
+      tier: isHebrew ? 'אמרלד+' : 'Emerald+',
     },
     {
       icon: Star,
-      title: 'Early Access',
-      description: 'Be first to try new services and features',
-      tier: 'Silver+',
-      tierBadge: 'luxury-badge',
-      color: 'from-cyan-400 to-blue-500',
-      delay: '7'
+      title: isHebrew ? 'גישה מוקדמת' : 'Early Access',
+      subtitle: isHebrew ? 'Early Access' : 'גישה מוקדמת',
+      description: isHebrew ? 'היו הראשונים לנסות שירותים ותכונות חדשות' : 'Be first to try new services and features',
+      tier: isHebrew ? 'פלטינום+' : 'Platinum+',
     },
     {
       icon: Heart,
-      title: 'Birthday Rewards',
-      description: 'Special treats for you and your pets birthdays',
-      tier: 'All Tiers',
-      tierBadge: 'luxury-badge-success',
-      color: 'from-pink-400 to-rose-500',
-      delay: '8'
-    }
+      title: isHebrew ? 'הטבות יום הולדת' : 'Birthday Rewards',
+      subtitle: isHebrew ? 'Birthday Rewards' : 'הטבות יום הולדת',
+      description: isHebrew ? 'הפתעות מיוחדות לכם ולחיות המחמד ביום ההולדת' : 'Special treats for you and your pets on birthdays',
+      tier: isHebrew ? 'כל הדרגות' : 'All Tiers',
+    },
   ];
 
   return (
-    <div className="min-h-screen luxury-bg-mesh">
-      <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-12 luxury-animate-fade-in">
-          <h1 className="luxury-heading-xl mb-4">Benefits & Perks</h1>
-          <p className="luxury-text-body max-w-2xl mx-auto">
-            Discounted washes, early access, VIP events and more. 
-            Experience premium perks designed for loyal pet parents.
+    <div
+      dir={isHebrew || language === 'ar' ? 'rtl' : 'ltr'}
+      className="min-h-screen"
+      style={{ background: '#0A0A0F' }}
+    >
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <Link href="/loyalty">
+          <a className="inline-flex items-center gap-2 text-[#C9A96E] hover:text-[#d4af37] transition-all duration-300 mb-8 group">
+            <ArrowLeft className={`w-5 h-5 transition-transform duration-300 ${isHebrew ? 'rotate-180 group-hover:translate-x-1' : 'group-hover:-translate-x-1'}`} />
+            <span className="text-sm font-medium">{isHebrew ? 'חזרה לנאמנות' : 'Back to Loyalty'}</span>
+          </a>
+        </Link>
+
+        <div className="text-center mb-12">
+          <img src="/brand/petwash-logo-black-bg.png" alt="Pet Wash™" className="h-12 mx-auto mb-6 opacity-90" />
+          <div className="inline-flex items-center gap-2 mb-4">
+            <Sparkles className="w-6 h-6 text-[#C9A96E]" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+            {isHebrew ? 'הטבות ופריבילגיות' : 'Benefits & Privileges'}
+          </h1>
+          <p className="text-lg text-white/50 max-w-2xl mx-auto">
+            {isHebrew ? 'גלו את כל ההטבות הבלעדיות שמחכות לכם כחברי מועדון' : 'Discover all the exclusive benefits awaiting you as a club member'}
           </p>
         </div>
 
-        {/* Benefits Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-          {benefits.map((benefit) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-12">
+          {benefits.map((benefit, idx) => (
             <div
-              key={benefit.title}
-              className={`luxury-glass-card luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-${benefit.delay}`}
-              style={{ opacity: 0 }}
+              key={idx}
+              className="p-6 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(201,169,110,0.3)] group"
             >
-              {/* Icon with Gradient Circle */}
-              <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${benefit.color} bg-opacity-10 flex items-center justify-center mb-4`}>
-                <benefit.icon className={`w-7 h-7 bg-gradient-to-br ${benefit.color} bg-clip-text text-transparent`} strokeWidth={2} />
+              <div className="w-12 h-12 rounded-xl bg-[rgba(201,169,110,0.1)] flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-[rgba(201,169,110,0.2)]">
+                <benefit.icon className="w-6 h-6 text-[#C9A96E]" />
               </div>
 
-              {/* Benefit Title */}
-              <h3 className="luxury-heading-sm mb-2">{benefit.title}</h3>
+              <h3 className="text-white font-bold text-lg mb-1">{benefit.title}</h3>
+              <p className="text-white/30 text-xs mb-3">{benefit.subtitle}</p>
+              <p className="text-white/50 text-sm mb-4 leading-relaxed">{benefit.description}</p>
 
-              {/* Description */}
-              <p className="luxury-text-small mb-4">{benefit.description}</p>
-
-              {/* Tier Badge */}
-              <div className="flex justify-start">
-                <span className={benefit.tierBadge}>{benefit.tier}</span>
-              </div>
+              <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[rgba(201,169,110,0.1)] text-[#C9A96E] border border-[rgba(201,169,110,0.2)]">
+                {benefit.tier}
+              </span>
             </div>
           ))}
         </div>
 
-        {/* Additional Info */}
-        <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-fade-in luxury-delay-9" style={{ opacity: 0 }}>
-          <div className="text-center">
-            <h2 className="luxury-heading-md mb-4">Unlock More Benefits</h2>
-            <p className="luxury-text-body max-w-3xl mx-auto mb-6">
-              The more you wash, the more you save. Upgrade your tier to unlock premium benefits, 
-              exclusive perks, and VIP treatment that make every visit special.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <div className="px-6 py-3 luxury-glass-panel">
-                <p className="text-sm font-semibold luxury-text-gradient">Member</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">3 Benefits</p>
-              </div>
-              <div className="px-6 py-3 luxury-glass-panel">
-                <p className="text-sm font-semibold luxury-text-gradient">Silver</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">6 Benefits</p>
-              </div>
-              <div className="px-6 py-3 luxury-glass-panel">
-                <p className="text-sm font-semibold luxury-text-gradient">Gold</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">8 Benefits</p>
-              </div>
-              <div className="px-6 py-3 luxury-glass-panel">
-                <p className="text-sm font-semibold luxury-text-gradient">VIP Elite</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">All Benefits</p>
-              </div>
-            </div>
-          </div>
+        <div className="p-8 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl text-center">
+          <h2 className="text-2xl font-bold text-white mb-3">
+            {isHebrew ? 'מוכנים ליהנות מהטבות בלעדיות?' : 'Ready to enjoy exclusive benefits?'}
+          </h2>
+          <p className="text-white/40 mb-6 max-w-xl mx-auto">
+            {isHebrew ? 'הצטרפו למועדון הנאמנות שלנו והתחילו לצבור נקודות והטבות מהרגע הראשון' : 'Join our loyalty club and start earning points and benefits from day one'}
+          </p>
+          <Link href="/loyalty">
+            <a className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(201,169,110,0.3)] hover:scale-105">
+              <Crown className="w-5 h-5" />
+              <span>{isHebrew ? 'הצטרפו עכשיו' : 'Join Now'}</span>
+            </a>
+          </Link>
         </div>
       </div>
     </div>

@@ -1,8 +1,11 @@
-import { Share2, Users, Gift, Copy, Facebook, Twitter, Mail, MessageCircle, TrendingUp, Award } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'wouter';
+import { Share2, Users, Gift, Copy, Mail, MessageCircle, TrendingUp, Award, ArrowLeft, Send, Facebook } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoyaltyRefer() {
+  const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
+  const isHebrew = language === 'he';
   const [referralCode] = useState('PETWASH2025');
   const { toast } = useToast();
 
@@ -20,160 +23,186 @@ export default function LoyaltyRefer() {
       ta.remove();
     }
     toast({
-      title: 'Copied!',
-      description: 'Referral code copied to clipboard',
+      title: isHebrew ? 'הועתק!' : 'Copied!',
+      description: isHebrew ? 'קוד ההפניה הועתק ללוח' : 'Referral code copied to clipboard',
     });
   };
 
   const shareButtons = [
-    { icon: Facebook, label: 'Facebook', color: 'from-blue-500 to-blue-600' },
-    { icon: Twitter, label: 'Twitter', color: 'from-sky-400 to-blue-500' },
-    { icon: MessageCircle, label: 'WhatsApp', color: 'from-green-500 to-emerald-600' },
-    { icon: Mail, label: 'Email', color: 'from-gray-500 to-gray-600' },
+    { icon: MessageCircle, label: isHebrew ? 'וואטסאפ' : 'WhatsApp', labelEn: 'WhatsApp' },
+    { icon: Facebook, label: isHebrew ? 'פייסבוק' : 'Facebook', labelEn: 'Facebook' },
+    { icon: Mail, label: isHebrew ? 'אימייל' : 'Email', labelEn: 'Email' },
+    { icon: Send, label: isHebrew ? 'SMS' : 'SMS', labelEn: 'SMS' },
   ];
 
   const stats = [
-    { icon: Users, label: 'Friends Referred', value: '0', color: 'from-blue-400 to-indigo-500' },
-    { icon: Gift, label: 'Rewards Earned', value: '0', color: 'from-purple-400 to-pink-500' },
-    { icon: Award, label: 'Bonus Points', value: '0', color: 'from-yellow-400 to-amber-500' },
+    {
+      icon: Users,
+      label: isHebrew ? 'חברים שהופנו' : 'Friends Referred',
+      value: '0',
+    },
+    {
+      icon: Gift,
+      label: isHebrew ? 'תגמולים שנצברו' : 'Rewards Earned',
+      value: '0',
+    },
+    {
+      icon: Award,
+      label: isHebrew ? 'נקודות בונוס' : 'Bonus Points',
+      value: '0',
+    },
   ];
 
   const rewards = [
     {
-      friends: '1 Friend',
-      reward: '200 Points',
-      bonus: 'Free Basic Wash',
-      delay: '1'
+      friends: isHebrew ? 'חבר 1' : '1 Friend',
+      friendsAlt: isHebrew ? '1 Friend' : 'חבר 1',
+      reward: '200',
+      bonus: isHebrew ? 'רחיצה בסיסית חינם' : 'Free Basic Wash',
     },
     {
-      friends: '3 Friends',
-      reward: '750 Points',
-      bonus: 'Free Premium Wash',
-      delay: '2'
+      friends: isHebrew ? '3 חברים' : '3 Friends',
+      friendsAlt: isHebrew ? '3 Friends' : '3 חברים',
+      reward: '750',
+      bonus: isHebrew ? 'רחיצה פרימיום חינם' : 'Free Premium Wash',
     },
     {
-      friends: '5 Friends',
-      reward: '1,500 Points',
-      bonus: 'Silver Tier Upgrade',
-      delay: '3'
+      friends: isHebrew ? '5 חברים' : '5 Friends',
+      friendsAlt: isHebrew ? '5 Friends' : '5 חברים',
+      reward: '1,500',
+      bonus: isHebrew ? 'שדרוג לדרגת כסף' : 'Silver Tier Upgrade',
     },
     {
-      friends: '10 Friends',
-      reward: '3,500 Points',
-      bonus: 'Gold Tier Upgrade',
-      delay: '4'
+      friends: isHebrew ? '10 חברים' : '10 Friends',
+      friendsAlt: isHebrew ? '10 Friends' : '10 חברים',
+      reward: '3,500',
+      bonus: isHebrew ? 'שדרוג לדרגת זהב' : 'Gold Tier Upgrade',
     },
   ];
 
   return (
-    <div className="min-h-screen luxury-bg-mesh">
-      <div className="max-w-6xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-12 luxury-animate-fade-in">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-indigo-200 flex items-center justify-center mx-auto mb-4">
-            <Share2 className="w-8 h-8 text-purple-600" />
+    <div
+      dir={isHebrew || language === 'ar' ? 'rtl' : 'ltr'}
+      className="min-h-screen"
+      style={{ background: '#0A0A0F' }}
+    >
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <Link href="/loyalty">
+          <a className="inline-flex items-center gap-2 text-[#C9A96E] hover:text-[#d4af37] transition-all duration-300 mb-8 group">
+            <ArrowLeft className={`w-5 h-5 transition-transform duration-300 ${isHebrew ? 'rotate-180 group-hover:translate-x-1' : 'group-hover:-translate-x-1'}`} />
+            <span className="text-sm font-medium">{isHebrew ? 'חזרה לנאמנות' : 'Back to Loyalty'}</span>
+          </a>
+        </Link>
+
+        <div className="text-center mb-12">
+          <img src="/brand/petwash-logo-black-bg.png" alt="Pet Wash™" className="h-12 mx-auto mb-6 opacity-90" />
+          <div className="w-16 h-16 rounded-2xl bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.2)] flex items-center justify-center mx-auto mb-4">
+            <Share2 className="w-8 h-8 text-purple-400" />
           </div>
-          <h1 className="luxury-heading-xl mb-4">Refer a Friend</h1>
-          <p className="luxury-text-body max-w-2xl mx-auto">
-            Invite friends and earn wash credits. Share the love and get rewarded together!
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+            {isHebrew ? 'הזמנת חברים' : 'Refer a Friend'}
+          </h1>
+          <p className="text-lg text-white/50 max-w-2xl mx-auto">
+            {isHebrew ? 'הזמינו חברים והרוויחו קרדיט רחיצה. שתפו את האהבה וקבלו תגמולים יחד!' : 'Invite friends and earn wash credits. Share the love and get rewarded together!'}
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {stats.map((stat, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+          {stats.map((stat, idx) => (
             <div
-              key={stat.label}
-              className={`luxury-glass-card luxury-shadow-xl p-6 text-center luxury-animate-fade-in luxury-delay-${index + 1}`}
-              style={{ opacity: 0 }}
+              key={idx}
+              className="p-6 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl text-center transition-all duration-300 hover:border-[rgba(139,92,246,0.3)]"
             >
-              <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${stat.color} bg-opacity-10 flex items-center justify-center mx-auto mb-3`}>
-                <stat.icon className={`w-6 h-6 bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`} strokeWidth={2} />
+              <div className="w-12 h-12 rounded-xl bg-[rgba(139,92,246,0.1)] flex items-center justify-center mx-auto mb-3">
+                <stat.icon className="w-6 h-6 text-purple-400" />
               </div>
-              <p className="luxury-text-small mb-1">{stat.label}</p>
-              <p className="text-3xl font-bold luxury-text-gradient">{stat.value}</p>
+              <p className="text-white/40 text-sm mb-1">{stat.label}</p>
+              <p className="text-3xl font-bold text-[#C9A96E]">{stat.value}</p>
             </div>
           ))}
         </div>
 
-        {/* Referral Code Card */}
-        <div className="luxury-glass-card luxury-shadow-xl p-8 mb-12 luxury-animate-fade-in luxury-delay-4" style={{ opacity: 0 }}>
-          <h2 className="luxury-heading-md text-center mb-6">Your Referral Code</h2>
+        <div className="p-8 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(201,169,110,0.15)] backdrop-blur-xl mb-10 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
+          <h2 className="text-2xl font-bold text-white text-center mb-6">
+            {isHebrew ? 'קוד ההפניה שלך' : 'Your Referral Code'}
+          </h2>
           <div className="max-w-md mx-auto">
-            <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border-2 border-purple-200 mb-6">
-              <code className="flex-1 text-2xl font-bold text-center luxury-text-gradient tracking-wider">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-[rgba(232,230,240,0.05)] border border-[rgba(201,169,110,0.2)] mb-6">
+              <code className="flex-1 text-2xl font-bold text-center text-[#C9A96E] tracking-[0.2em]">
                 {referralCode}
               </code>
               <button
                 onClick={handleCopy}
-                className="p-3 rounded-lg bg-white hover:bg-purple-50 transition-colors border border-purple-200"
-                data-testid="button-copy-code"
+                className="p-3 rounded-lg bg-[rgba(201,169,110,0.1)] hover:bg-[rgba(201,169,110,0.2)] transition-all duration-300 border border-[rgba(201,169,110,0.2)]"
               >
-                <Copy className="w-5 h-5 text-purple-600" />
+                <Copy className="w-5 h-5 text-[#C9A96E]" />
               </button>
             </div>
 
-            {/* Share Buttons */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {shareButtons.map((button) => (
+              {shareButtons.map((button, idx) => (
                 <button
-                  key={button.label}
-                  className="luxury-btn-primary flex flex-col items-center gap-2 py-4"
-                  data-testid={`button-share-${button.label.toLowerCase()}`}
+                  key={idx}
+                  className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.15)] hover:bg-[rgba(139,92,246,0.15)] hover:border-[rgba(139,92,246,0.3)] transition-all duration-300"
                 >
-                  <button.icon className="w-5 h-5" />
-                  <span className="text-xs">{button.label}</span>
+                  <button.icon className="w-5 h-5 text-purple-400" />
+                  <span className="text-xs text-white/60">{button.label}</span>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Rewards Table */}
-        <div className="luxury-glass-card luxury-shadow-xl p-8 luxury-animate-fade-in luxury-delay-5" style={{ opacity: 0 }}>
-          <h2 className="luxury-heading-md text-center mb-8">Referral Rewards</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {rewards.map((reward) => (
+        <div className="p-8 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl mb-10">
+          <h2 className="text-2xl font-bold text-white text-center mb-8">
+            {isHebrew ? 'תגמולי הפניה' : 'Referral Rewards'}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {rewards.map((reward, idx) => (
               <div
-                key={reward.friends}
-                className={`luxury-glass-panel p-6 text-center luxury-animate-fade-in luxury-delay-${reward.delay}`}
-                style={{ opacity: 0 }}
+                key={idx}
+                className="p-6 rounded-xl bg-[rgba(232,230,240,0.04)] border border-[rgba(232,230,240,0.08)] text-center transition-all duration-300 hover:border-[rgba(201,169,110,0.3)] hover:scale-[1.02]"
               >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-indigo-200 flex items-center justify-center mx-auto mb-3">
-                  <TrendingUp className="w-5 h-5 text-purple-600" />
+                <div className="w-10 h-10 rounded-full bg-[rgba(201,169,110,0.1)] flex items-center justify-center mx-auto mb-3">
+                  <TrendingUp className="w-5 h-5 text-[#C9A96E]" />
                 </div>
-                <p className="font-semibold text-gray-900 mb-2">{reward.friends}</p>
-                <p className="text-2xl font-bold luxury-text-gradient mb-2">{reward.reward}</p>
-                <p className="luxury-text-small">{reward.bonus}</p>
+                <p className="font-semibold text-white mb-1">{reward.friends}</p>
+                <p className="text-white/30 text-xs mb-2">{reward.friendsAlt}</p>
+                <p className="text-2xl font-bold text-[#C9A96E] mb-1">{reward.reward}</p>
+                <p className="text-white/40 text-xs">{isHebrew ? 'נקודות' : 'Points'}</p>
+                <div className="mt-3 pt-3 border-t border-[rgba(232,230,240,0.08)]">
+                  <p className="text-white/50 text-sm">{reward.bonus}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* How It Works */}
-        <div className="luxury-glass-card luxury-shadow-lg p-8 mt-12 luxury-animate-fade-in luxury-delay-6" style={{ opacity: 0 }}>
-          <h2 className="luxury-heading-md text-center mb-8">How It Works</h2>
+        <div className="p-8 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl">
+          <h2 className="text-2xl font-bold text-white text-center mb-8">
+            {isHebrew ? 'איך זה עובד' : 'How It Works'}
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold text-xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F] font-bold text-xl flex items-center justify-center mx-auto mb-4">
                 1
               </div>
-              <h3 className="font-semibold mb-2 text-gray-900">Share Your Code</h3>
-              <p className="luxury-text-small">Send your unique referral code to friends and family</p>
+              <h3 className="font-semibold text-white mb-1">{isHebrew ? 'שתפו את הקוד' : 'Share Your Code'}</h3>
+              <p className="text-white/40 text-sm">{isHebrew ? 'שלחו את קוד ההפניה הייחודי שלכם לחברים ומשפחה' : 'Send your unique referral code to friends and family'}</p>
             </div>
             <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold text-xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F] font-bold text-xl flex items-center justify-center mx-auto mb-4">
                 2
               </div>
-              <h3 className="font-semibold mb-2 text-gray-900">They Sign Up</h3>
-              <p className="luxury-text-small">Your friend creates an account using your code</p>
+              <h3 className="font-semibold text-white mb-1">{isHebrew ? 'הם נרשמים' : 'They Sign Up'}</h3>
+              <p className="text-white/40 text-sm">{isHebrew ? 'החבר שלכם יוצר חשבון באמצעות הקוד שלכם' : 'Your friend creates an account using your code'}</p>
             </div>
             <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold text-xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F] font-bold text-xl flex items-center justify-center mx-auto mb-4">
                 3
               </div>
-              <h3 className="font-semibold mb-2 text-gray-900">Earn Rewards</h3>
-              <p className="luxury-text-small">Both of you receive bonus points and rewards</p>
+              <h3 className="font-semibold text-white mb-1">{isHebrew ? 'הרוויחו תגמולים' : 'Earn Rewards'}</h3>
+              <p className="text-white/40 text-sm">{isHebrew ? 'שניכם מקבלים נקודות בונוס ותגמולים' : 'Both of you receive bonus points and rewards'}</p>
             </div>
           </div>
         </div>
