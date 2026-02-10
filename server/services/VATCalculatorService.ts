@@ -2,11 +2,14 @@
  * VAT Calculator Service for Israeli Tax Compliance
  * Israeli VAT Rate: 18% (effective January 1, 2025)
  * 
- * Platform-specific commission rates (aligned with fee calculators):
- * - Sitter Suite: 7.5% broker + 10% service fee = 17.5% effective
- * - Walk My Pet: 20% walker fee (0% owner fee)
- * - PetTrek: 15% platform fee
- * - Other: 15% default
+ * FLAT 15% commission on ALL third-party providers across ALL platforms.
+ * This matches MadPaws (Australia) and industry standard marketplace commission.
+ * 
+ * Fee Model (all platforms):
+ * - Provider sets base rate
+ * - Customer pays: Base + 15% platform fee + 18% VAT on platform fee
+ * - Provider receives: 85% of base (after 15% commission deduction)
+ * - Platform keeps: 15% commission + VAT collected
  * 
  * Dual-save: Records to both Firestore (real-time) and PostgreSQL (legal compliance)
  */
@@ -22,8 +25,8 @@ export const ISRAELI_VAT_RATE = 0.18;
 export const PLATFORM_COMMISSION_RATE = 0.15;
 
 const PLATFORM_COMMISSION_RATES: Record<string, number> = {
-  'sitter-suite': 0.175,
-  'walk-my-pet': 0.20,
+  'sitter-suite': 0.15,
+  'walk-my-pet': 0.15,
   'pettrek': 0.15,
   'pet-wash-hub': 0.15,
   'paw-finder': 0.15,
