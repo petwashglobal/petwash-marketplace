@@ -1,11 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, Leaf, ShieldCheck, Heart, Star, PartyPopper, Sparkles, Globe } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, ShieldCheck, Heart, Star, PartyPopper, Sparkles, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -672,7 +670,6 @@ function LuxuryGiftCard({
 }
 
 export default function EGift() {
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { language, dir } = useLanguage();
   const lang = language;

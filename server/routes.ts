@@ -4083,7 +4083,9 @@ self.addEventListener('notificationclick', (event) => {
     senderName: z.string().min(1).max(100),
     senderEmail: z.string().email(),
     message: z.string().max(500).optional(),
-    eligibleServices: z.array(z.enum(['wash', 'sitter', 'walk', 'trek', 'all'])).min(1).default(['wash', 'sitter', 'walk', 'trek'])
+    occasion: z.string().max(50).optional(),
+    messageLanguage: z.string().max(5).optional(),
+    eligibleServices: z.array(z.enum(['wash', 'sitter', 'walk', 'trek', 'academy', 'nayax', 'all'])).min(1).default(['wash', 'sitter', 'walk', 'trek', 'academy', 'nayax'])
   });
 
   app.post('/api/multi-service-gift', async (req, res) => {
