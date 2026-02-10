@@ -66,10 +66,10 @@ export function OwnerInstructionsForm({ value, onChange, className = "" }: Owner
 
       {isExpanded && (
         <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700">
-                <Lock className="h-3.5 w-3.5" />
+              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700 text-sm">
+                <Lock className="h-3.5 w-3.5 flex-shrink-0" />
                 קוד שער
               </Label>
               <Input
@@ -77,12 +77,12 @@ export function OwnerInstructionsForm({ value, onChange, className = "" }: Owner
                 placeholder="****"
                 value={value.gateCode || ""}
                 onChange={(e) => updateField("gateCode", e.target.value)}
-                className="font-mono"
+                className="font-mono min-h-[44px]"
               />
             </div>
             <div>
-              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700">
-                <Key className="h-3.5 w-3.5" />
+              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700 text-sm">
+                <Key className="h-3.5 w-3.5 flex-shrink-0" />
                 קוד דלת
               </Label>
               <Input
@@ -90,12 +90,12 @@ export function OwnerInstructionsForm({ value, onChange, className = "" }: Owner
                 placeholder="****"
                 value={value.doorCode || ""}
                 onChange={(e) => updateField("doorCode", e.target.value)}
-                className="font-mono"
+                className="font-mono min-h-[44px]"
               />
             </div>
             <div>
-              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700">
-                <Shield className="h-3.5 w-3.5" />
+              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700 text-sm">
+                <Shield className="h-3.5 w-3.5 flex-shrink-0" />
                 קוד אזעקה
               </Label>
               <Input
@@ -103,7 +103,7 @@ export function OwnerInstructionsForm({ value, onChange, className = "" }: Owner
                 placeholder="****"
                 value={value.alarmCode || ""}
                 onChange={(e) => updateField("alarmCode", e.target.value)}
-                className="font-mono"
+                className="font-mono min-h-[44px]"
               />
             </div>
           </div>
@@ -119,38 +119,41 @@ export function OwnerInstructionsForm({ value, onChange, className = "" }: Owner
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700">
-                <Thermometer className="h-3.5 w-3.5" />
+              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700 text-sm">
+                <Thermometer className="h-3.5 w-3.5 flex-shrink-0" />
                 מיקום מזגן
               </Label>
               <Input
                 placeholder="בסלון, ליד הספה"
                 value={value.airconLocation || ""}
                 onChange={(e) => updateField("airconLocation", e.target.value)}
+                className="min-h-[44px]"
               />
             </div>
             <div>
-              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700">
-                <UtensilsCrossed className="h-3.5 w-3.5" />
+              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700 text-sm">
+                <UtensilsCrossed className="h-3.5 w-3.5 flex-shrink-0" />
                 מיקום אוכל
               </Label>
               <Input
                 placeholder="במטבח, ארון תחתון"
                 value={value.foodLocation || ""}
                 onChange={(e) => updateField("foodLocation", e.target.value)}
+                className="min-h-[44px]"
               />
             </div>
             <div>
-              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700">
-                <Droplets className="h-3.5 w-3.5" />
+              <Label className="flex items-center gap-1.5 mb-1.5 text-slate-700 text-sm">
+                <Droplets className="h-3.5 w-3.5 flex-shrink-0" />
                 מיקום מים
               </Label>
               <Input
                 placeholder="קערה במטבח"
                 value={value.waterLocation || ""}
                 onChange={(e) => updateField("waterLocation", e.target.value)}
+                className="min-h-[44px]"
               />
             </div>
           </div>
@@ -168,21 +171,23 @@ export function OwnerInstructionsForm({ value, onChange, className = "" }: Owner
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="mb-1.5 text-slate-700">איש קשר לחירום</Label>
+              <Label className="mb-1.5 text-slate-700 text-sm">איש קשר לחירום</Label>
               <Input
                 placeholder="שם וטלפון"
                 value={value.emergencyContact || ""}
                 onChange={(e) => updateField("emergencyContact", e.target.value)}
+                className="min-h-[44px]"
               />
             </div>
             <div>
-              <Label className="mb-1.5 text-slate-700">וטרינר</Label>
+              <Label className="mb-1.5 text-slate-700 text-sm">וטרינר</Label>
               <Input
                 placeholder="שם המרפאה וטלפון"
                 value={value.vetContact || ""}
                 onChange={(e) => updateField("vetContact", e.target.value)}
+                className="min-h-[44px]"
               />
             </div>
           </div>

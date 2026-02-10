@@ -3,7 +3,6 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Shield, PawPrint, Clock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
@@ -13,6 +12,29 @@ import { OwnerInstructionsForm, useOwnerInstructions, type OwnerInstructions } f
 
 type BookingStep = "details" | "summary" | "confirmation";
 
+function formatDateForInput(date?: Date | null): string {
+  if (!date) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function formatTimeForInput(date?: Date | null): string {
+  if (!date) return '';
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function formatDisplayDate(date?: Date | null): string {
+  if (!date) return '';
+  return date.toLocaleDateString('he-IL', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function daysBetween(start: Date, end: Date): number {
+  const diff = end.getTime() - start.getTime();
+  return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
 export default function SitterBookingFlow() {
   const { sitterId } = useParams();
   const [, setLocation] = useLocation();
@@ -20,21 +42,21 @@ export default function SitterBookingFlow() {
 
   const [step, setStep] = useState<BookingStep>("details");
   const [selectedPetIds, setSelectedPetIds] = useState<number[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [hours, setHours] = useState<number>(4);
+  const [checkInDate, setCheckInDate] = useState<Date | null>(null);
+  const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
+  const [checkInTime, setCheckInTime] = useState("10:00");
+  const [checkOutTime, setCheckOutTime] = useState("10:00");
   const [notes, setNotes] = useState("");
   const [address, setAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const { instructions: ownerInstructions, setInstructions: setOwnerInstructions } = useOwnerInstructions();
 
-  // Fetch sitter data from real API
   const { data: sitterData, isLoading: sitterLoading, error: sitterError } = useQuery({
     queryKey: [`/api/sitter-suite/sitters/${sitterId}`],
     enabled: !!sitterId,
   });
 
-  // Fetch user's pets from real API  
   const { data: petsData, isLoading: petsLoading } = useQuery({
     queryKey: ['/api/pets'],
     enabled: step === 'details',
@@ -43,11 +65,15 @@ export default function SitterBookingFlow() {
   const sitter = sitterData?.sitter;
   const pets = Array.isArray(petsData) ? petsData : (petsData?.pets || []);
 
-  // Calculate pricing using VAT calculator
+  const totalDays = useMemo(() => {
+    if (!checkInDate || !checkOutDate) return 0;
+    return daysBetween(checkInDate, checkOutDate);
+  }, [checkInDate, checkOutDate]);
+
   const baseAmount = useMemo(() => {
-    if (!sitter?.pricePerDayCents) return 0;
-    return (sitter.pricePerDayCents / 100) * (hours / 24); // Convert cents to ILS, pro-rate hourly
-  }, [sitter, hours]);
+    if (!sitter?.pricePerDayCents || totalDays === 0) return 0;
+    return (sitter.pricePerDayCents / 100) * totalDays;
+  }, [sitter, totalDays]);
 
   const pricing = useMemo(() => {
     return vatCalculator.calculateVAT(baseAmount);
@@ -57,16 +83,60 @@ export default function SitterBookingFlow() {
     return (
       !!sitter &&
       selectedPetIds.length > 0 &&
-      !!selectedDate &&
-      hours > 0 &&
+      !!checkInDate &&
+      !!checkOutDate &&
+      checkOutDate > checkInDate &&
       address.trim().length > 5
     );
-  }, [sitter, selectedPetIds, selectedDate, hours, address]);
+  }, [sitter, selectedPetIds, checkInDate, checkOutDate, address]);
+
+  function handleCheckInDateChange(dateStr: string) {
+    if (!dateStr) return;
+    const d = new Date(dateStr);
+    const [h, m] = checkInTime.split(':').map(Number);
+    d.setHours(h, m, 0, 0);
+    setCheckInDate(d);
+    if (checkOutDate && d >= checkOutDate) {
+      const next = new Date(d);
+      next.setDate(next.getDate() + 1);
+      const [oh, om] = checkOutTime.split(':').map(Number);
+      next.setHours(oh, om, 0, 0);
+      setCheckOutDate(next);
+    }
+  }
+
+  function handleCheckOutDateChange(dateStr: string) {
+    if (!dateStr) return;
+    const d = new Date(dateStr);
+    const [h, m] = checkOutTime.split(':').map(Number);
+    d.setHours(h, m, 0, 0);
+    setCheckOutDate(d);
+  }
+
+  function handleCheckInTimeChange(timeStr: string) {
+    setCheckInTime(timeStr);
+    if (checkInDate) {
+      const [h, m] = timeStr.split(':').map(Number);
+      const d = new Date(checkInDate);
+      d.setHours(h, m, 0, 0);
+      setCheckInDate(d);
+    }
+  }
+
+  function handleCheckOutTimeChange(timeStr: string) {
+    setCheckOutTime(timeStr);
+    if (checkOutDate) {
+      const [h, m] = timeStr.split(':').map(Number);
+      const d = new Date(checkOutDate);
+      d.setHours(h, m, 0, 0);
+      setCheckOutDate(d);
+    }
+  }
 
   async function handleNextFromDetails() {
     if (!canContinueDetails) {
       toast({
-        title: "נדרשים פרטים נוספים",
+        title: "חסרים פרטים",
         description: "יש למלא את כל השדות לפני המשך",
         variant: "destructive",
       });
@@ -76,20 +146,16 @@ export default function SitterBookingFlow() {
   }
 
   async function handleConfirmBooking() {
-    if (!sitter || !selectedDate) return;
+    if (!sitter || !checkInDate || !checkOutDate) return;
 
     try {
       setIsSubmitting(true);
 
-      const startDate = new Date(selectedDate);
-      const endDate = new Date(startDate);
-      endDate.setHours(endDate.getHours() + hours);
-
       const payload = {
         sitterId: sitter.id,
         petId: selectedPetIds[0],
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
+        startDate: checkInDate.toISOString(),
+        endDate: checkOutDate.toISOString(),
         specialInstructions: notes || '',
         address,
         petIds: selectedPetIds,
@@ -115,7 +181,7 @@ export default function SitterBookingFlow() {
         } : null,
         platformData: {
           sitterName: `${sitter.firstName} ${sitter.lastName}`,
-          hours,
+          totalDays,
           paymentMethod: getActivePaymentMethod(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         }
@@ -128,13 +194,13 @@ export default function SitterBookingFlow() {
       setStep("confirmation");
 
       toast({
-        title: "הזמנה נקלטה בהצלחה! 🎉",
+        title: "ההזמנה נקלטה בהצלחה!",
         description: "השמרטף/ית יקבל/תקבל הודעה. התשלום יתואם לאחר ההזמנה.",
       });
     } catch (error: any) {
       toast({
         title: "שגיאה ביצירת הזמנה",
-        description: error.message || "אירעה שגיאה. אין חיוב. נסה/י שוב.",
+        description: error.message || "אירעה שגיאה. אין חיוב. נסו שוב.",
         variant: "destructive",
       });
     } finally {
@@ -153,19 +219,19 @@ export default function SitterBookingFlow() {
     if (step === "confirmation") setLocation("/sitter-suite");
   }
 
-  // Loading state
+  const todayStr = formatDateForInput(new Date());
+
   if (sitterLoading || petsLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-slate-600 font-light">טוען את נתוני השמרטף/ית...</p>
+          <p className="text-slate-600 font-light">...טוען</p>
         </div>
       </div>
     );
   }
 
-  // Error state
   if (sitterError || !sitter) {
     return (
       <div className="flex h-screen items-center justify-center bg-white">
@@ -183,95 +249,104 @@ export default function SitterBookingFlow() {
   }
 
   return (
-    <div className="min-h-screen luxury-bg-mesh">
+    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-white">
       {/* Header */}
-      <div className="luxury-glass-panel border-b border-white/10">
-        <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-30">
+        <div className="max-w-2xl mx-auto px-4 py-4">
           <button
-            className="luxury-btn-ghost mb-4"
+            className="flex items-center gap-1 text-sm text-slate-500 mb-2 touch-manipulation min-h-[44px]"
             onClick={() => setLocation("/sitter-suite")}
             data-testid="button-back"
           >
-            <ChevronLeft className="h-4 w-4 mr-2" />
+            <ChevronLeft className="h-4 w-4" />
             חזרה לשמרטפים
           </button>
-
-          <h1 className="luxury-heading-md luxury-text-gradient" data-testid="page-title">
+          <h1 className="text-xl font-semibold text-slate-900">
             הזמנת {sitter.firstName} {sitter.lastName}
           </h1>
         </div>
       </div>
 
-      {/* 24/7 Availability Banner - Hassle Free! */}
-      <div className="max-w-3xl mx-auto px-4 pt-4">
-        <div className="bg-gradient-to-r from-emerald-500/10 to-purple-500/10 rounded-xl p-3 border border-emerald-200/50 text-center">
-          <p className="text-sm text-emerald-800 font-medium">
-            🏠 שירות שמרטפות 24/7 כל השנה · ללא טרחה
-          </p>
-        </div>
-      </div>
-
-      {/* Progress Stepper */}
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-center gap-2 mb-8 luxury-fade-in">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'details' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : step === 'summary' || step === 'confirmation' ? 'luxury-gradient-border bg-white text-purple-600' : 'bg-slate-200 text-slate-500'}`}>
-            1
-          </div>
-          <div className={`h-1 w-16 rounded-full ${step === 'summary' || step === 'confirmation' ? 'luxury-bg-primary' : 'bg-slate-200'}`}></div>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'summary' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : step === 'confirmation' ? 'luxury-gradient-border bg-white text-purple-600' : 'bg-slate-200 text-slate-500'}`}>
-            2
-          </div>
-          <div className={`h-1 w-16 rounded-full ${step === 'confirmation' ? 'luxury-bg-primary' : 'bg-slate-200'}`}></div>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'confirmation' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-slate-200 text-slate-500'}`}>
-            3
-          </div>
+      {/* Progress Steps */}
+      <div className="max-w-2xl mx-auto px-4 py-5">
+        <div className="flex items-center justify-center gap-3">
+          {[
+            { num: 1, label: 'פרטים', key: 'details' },
+            { num: 2, label: 'סיכום', key: 'summary' },
+            { num: 3, label: 'אישור', key: 'confirmation' },
+          ].map(({ num, label, key }, idx) => {
+            const steps: BookingStep[] = ['details', 'summary', 'confirmation'];
+            const currentIdx = steps.indexOf(step);
+            const stepIdx = steps.indexOf(key as BookingStep);
+            const isActive = step === key;
+            const isDone = stepIdx < currentIdx;
+            return (
+              <div key={key} className="flex items-center gap-3">
+                {idx > 0 && (
+                  <div className={`h-0.5 w-8 sm:w-12 rounded-full ${isDone ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                )}
+                <div className="flex flex-col items-center gap-1">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                    isActive ? 'bg-emerald-500 text-white shadow-lg' :
+                    isDone ? 'bg-emerald-100 text-emerald-700' :
+                    'bg-slate-100 text-slate-400'
+                  }`}>
+                    {isDone ? <Check className="h-4 w-4" /> : num}
+                  </div>
+                  <span className={`text-xs ${isActive ? 'text-emerald-700 font-medium' : 'text-slate-400'}`}>
+                    {label}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-3xl mx-auto px-4 pb-12">
-        
+      <div className="max-w-2xl mx-auto px-4 pb-16">
+
         {/* Step 1: Details */}
         {step === "details" && (
-          <>
-            {/* Sitter Info Card */}
-            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
-              <div className="flex items-center gap-3">
+          <div className="space-y-5">
+            {/* Sitter Info */}
+            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <div className="flex items-center gap-4">
                 {sitter.profilePictureUrl ? (
                   <img
                     src={sitter.profilePictureUrl}
                     alt={`${sitter.firstName} ${sitter.lastName}`}
-                    className="h-16 w-16 rounded-full object-cover border-2 border-emerald-200"
+                    className="h-14 w-14 rounded-full object-cover border-2 border-emerald-100"
                   />
                 ) : (
-                  <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center text-xl font-semibold text-emerald-700">
+                  <div className="h-14 w-14 rounded-full bg-emerald-50 flex items-center justify-center text-lg font-semibold text-emerald-600">
                     {sitter.firstName.charAt(0)}
                   </div>
                 )}
-                <div className="flex-1">
-                  <div className="luxury-heading-sm">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-slate-900 truncate">
                     {sitter.firstName} {sitter.lastName}
                   </div>
-                  <div className="text-sm text-slate-600">
-                    {sitter.city} · ⭐ {sitter.rating.toFixed(1)} ({sitter.totalBookings} הזמנות)
+                  <div className="text-sm text-slate-500">
+                    {sitter.city} · {Number(sitter.rating).toFixed(1)} ({sitter.totalBookings} הזמנות)
                   </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    {sitter.yearsOfExperience} שנות ניסיון
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    {sitter.yearsOfExperience} שנות ניסיון · ₪{(sitter.pricePerDayCents / 100).toFixed(0)}/יום
                   </div>
                 </div>
               </div>
             </section>
 
             {/* Pet Selection */}
-            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
-              <div className="mb-4 luxury-heading-sm flex items-center gap-2">
+            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <div className="mb-3 flex items-center gap-2">
                 <PawPrint className="h-4 w-4 text-emerald-500" />
-                חיות מחמד להזמנה
+                <span className="font-semibold text-slate-800 text-sm">בחירת חיות מחמד</span>
               </div>
               {pets.length === 0 ? (
-                <div className="luxury-text-body text-center py-4">
-                  אין חיות מחמד. הוסף/י חיה לפרופיל שלך.
-                </div>
+                <p className="text-sm text-slate-500 text-center py-4">
+                  אין חיות מחמד ברשומה. יש להוסיף חיה לפרופיל.
+                </p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {pets.map((pet: any) => {
@@ -281,10 +356,10 @@ export default function SitterBookingFlow() {
                         key={pet.id}
                         type="button"
                         onClick={() => togglePet(pet.id)}
-                        className={`rounded-full px-5 py-3 min-h-[44px] text-sm transition-all touch-manipulation ${
+                        className={`rounded-full px-5 py-3 min-h-[44px] text-sm font-medium transition-all touch-manipulation ${
                           active
                             ? "bg-emerald-500 text-white shadow-md"
-                            : "bg-white text-slate-700 border border-slate-200"
+                            : "bg-slate-50 text-slate-700 border border-slate-200 hover:border-emerald-300"
                         }`}
                         data-testid={`button-pet-${pet.id}`}
                       >
@@ -296,185 +371,247 @@ export default function SitterBookingFlow() {
               )}
             </section>
 
-            {/* Date & Time */}
-            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
-              <div className="mb-4 luxury-heading-sm flex items-center gap-2">
+            {/* Check-in / Check-out */}
+            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <div className="mb-4 flex items-center gap-2">
                 <Clock className="h-4 w-4 text-emerald-500" />
-                תאריך ושעת התחלה
+                <span className="font-semibold text-slate-800 text-sm">תאריכי שמרטפות</span>
               </div>
-              <MobileDatePicker
-                value={selectedDate || undefined}
-                onChange={(date) => setSelectedDate(date)}
-                minDate={new Date()}
-                includeTime={true}
-                label=""
-              />
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-sm text-slate-600">משך שמרטפות (שעות)</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={24}
-                  value={hours}
-                  onChange={e => setHours(Math.max(1, Number(e.target.value) || 1))}
-                  className="w-20 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-sm"
-                  data-testid="input-hours"
-                />
+
+              <div className="space-y-4">
+                {/* Check-in */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">כניסה (Check-in)</label>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <input
+                      type="date"
+                      value={formatDateForInput(checkInDate)}
+                      onChange={(e) => handleCheckInDateChange(e.target.value)}
+                      min={todayStr}
+                      className="w-full px-4 py-3 min-h-[48px] text-base rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all touch-manipulation bg-white"
+                      style={{ fontSize: '16px' }}
+                      data-testid="input-checkin-date"
+                    />
+                    <input
+                      type="time"
+                      value={checkInTime}
+                      onChange={(e) => handleCheckInTimeChange(e.target.value)}
+                      className="w-28 px-3 py-3 min-h-[48px] text-base rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all touch-manipulation bg-white text-center"
+                      style={{ fontSize: '16px' }}
+                      data-testid="input-checkin-time"
+                    />
+                  </div>
+                  {checkInDate && (
+                    <p className="text-xs text-slate-500 mt-1">{formatDisplayDate(checkInDate)}</p>
+                  )}
+                </div>
+
+                {/* Check-out */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">יציאה (Check-out)</label>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <input
+                      type="date"
+                      value={formatDateForInput(checkOutDate)}
+                      onChange={(e) => handleCheckOutDateChange(e.target.value)}
+                      min={checkInDate ? formatDateForInput(new Date(checkInDate.getTime() + 86400000)) : todayStr}
+                      className="w-full px-4 py-3 min-h-[48px] text-base rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all touch-manipulation bg-white"
+                      style={{ fontSize: '16px' }}
+                      data-testid="input-checkout-date"
+                    />
+                    <input
+                      type="time"
+                      value={checkOutTime}
+                      onChange={(e) => handleCheckOutTimeChange(e.target.value)}
+                      className="w-28 px-3 py-3 min-h-[48px] text-base rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all touch-manipulation bg-white text-center"
+                      style={{ fontSize: '16px' }}
+                      data-testid="input-checkout-time"
+                    />
+                  </div>
+                  {checkOutDate && (
+                    <p className="text-xs text-slate-500 mt-1">{formatDisplayDate(checkOutDate)}</p>
+                  )}
+                </div>
+
+                {/* Duration summary */}
+                {totalDays > 0 && (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 text-center">
+                    <span className="text-sm font-medium text-emerald-800">
+                      {totalDays === 1 ? 'יום אחד' : `${totalDays} ימים`}
+                    </span>
+                  </div>
+                )}
               </div>
             </section>
 
             {/* Address */}
-            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
-              <div className="mb-2 text-sm font-semibold text-slate-700">
+            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
                 כתובת מלאה
-              </div>
+              </label>
               <GooglePlacesAutocomplete
                 value={address}
                 onChange={(value) => setAddress(value)}
                 onPlaceSelected={(place: PlaceDetails) => setAddress(place.formattedAddress)}
-                placeholder="הקלד כתובת..."
+                placeholder="הקלידו כתובת..."
                 country={['il']}
               />
             </section>
 
             {/* Notes */}
-            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
-              <div className="mb-2 text-sm font-semibold text-slate-700">
+            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
                 הערות (אופציונלי)
-              </div>
+              </label>
               <textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
-                className="luxury-glass-minimal w-full resize-none px-4 py-3 text-sm"
-                placeholder="הנחיות מיוחדות, רגישויות, וכו׳"
+                className="w-full resize-none px-4 py-3 text-sm rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all min-h-[48px] touch-manipulation"
+                placeholder="הנחיות מיוחדות, רגישויות וכו׳"
+                style={{ fontSize: '16px' }}
                 data-testid="textarea-notes"
               />
             </section>
 
-            {/* Owner Instructions (codes, locations, etc.) */}
+            {/* Owner Instructions */}
             <OwnerInstructionsForm
               value={ownerInstructions}
               onChange={setOwnerInstructions}
-              className="mb-6 luxury-shadow-xl luxury-stagger-item"
+              className="mb-2"
             />
 
-            {/* Pricing Summary */}
-            <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-stagger-item p-6">
-              <div className="mb-3 flex items-center justify-between luxury-text-body">
-                <span>סכום בסיס</span>
-                <span>₪{pricing.baseAmount.toFixed(2)}</span>
+            {/* Pricing */}
+            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-slate-600">
+                  <span>₪{(sitter.pricePerDayCents / 100).toFixed(0)}/יום x {totalDays || 0} ימים</span>
+                  <span>₪{pricing.baseAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>עמלת פלטפורמה (15%)</span>
+                  <span>₪{pricing.commission.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>מע״מ על עמלה (18%)</span>
+                  <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
+                </div>
+                <div className="pt-3 mt-2 border-t border-slate-100 flex justify-between">
+                  <span className="font-semibold text-slate-900">סה״כ לחיוב</span>
+                  <span className="font-bold text-lg text-emerald-600">
+                    ₪{pricing.totalCharged.toFixed(2)}
+                  </span>
+                </div>
               </div>
-              <div className="mb-3 flex items-center justify-between luxury-text-body">
-                <span>עמלת פלטפורמה (15%)</span>
-                <span>₪{pricing.commission.toFixed(2)}</span>
-              </div>
-              <div className="mb-4 flex items-center justify-between luxury-text-body">
-                <span>מע״מ על עמלה (18%)</span>
-                <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
-              </div>
-              <div className="pt-4 border-t border-purple-100 flex items-center justify-between">
-                <span className="luxury-heading-sm">סה״כ לחיוב</span>
-                <span className="luxury-heading-lg luxury-text-gradient">
-                  ₪{pricing.totalCharged.toFixed(2)}
-                </span>
-              </div>
-              <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
-                <Shield className="h-3 w-3 inline mr-1 text-emerald-500" />
-                הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר לשמרטף/ית לאחר סיום השירות.
-              </div>
-            </div>
+              <p className="text-xs text-slate-400 mt-3 flex items-center gap-1">
+                <Shield className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+                הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים
+              </p>
+            </section>
 
             {/* Continue Button */}
             <Button
-              className="luxury-btn-primary luxury-shadow-xl w-full h-14 luxury-stagger-item"
+              className="w-full h-14 text-base font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg touch-manipulation"
               disabled={!canContinueDetails}
               onClick={handleNextFromDetails}
               data-testid="button-continue"
             >
-              המשך לאישור
+              המשך לסיכום
             </Button>
-          </>
+          </div>
         )}
 
         {/* Step 2: Summary */}
         {step === "summary" && (
-          <>
-            <h2 className="luxury-heading-md mb-8 luxury-fade-in">סיכום הזמנה</h2>
-            
-            <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6 space-y-3">
-              <div className="luxury-heading-sm">
+          <div className="space-y-5">
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">סיכום הזמנה</h2>
+
+            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-3">
+              <div className="font-semibold text-slate-900">
                 {sitter.firstName} {sitter.lastName}
               </div>
-              <div className="luxury-text-body">
-                תאריך: {selectedDate ? selectedDate.toLocaleString("he-IL") : "-"}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-600">
+                <div>
+                  <span className="font-medium text-slate-700">כניסה: </span>
+                  {checkInDate ? checkInDate.toLocaleString("he-IL") : "-"}
+                </div>
+                <div>
+                  <span className="font-medium text-slate-700">יציאה: </span>
+                  {checkOutDate ? checkOutDate.toLocaleString("he-IL") : "-"}
+                </div>
               </div>
-              <div className="luxury-text-body">
-                משך: {hours} שעות
+              <div className="text-sm text-slate-600">
+                <span className="font-medium text-slate-700">משך: </span>
+                {totalDays === 1 ? 'יום אחד' : `${totalDays} ימים`}
               </div>
-              <div className="luxury-text-body">
-                חיות: {pets.filter((p: any) => selectedPetIds.includes(p.id)).map((p: any) => p.name).join(", ")}
+              <div className="text-sm text-slate-600">
+                <span className="font-medium text-slate-700">חיות: </span>
+                {pets.filter((p: any) => selectedPetIds.includes(p.id)).map((p: any) => p.name).join(", ")}
               </div>
-              <div className="luxury-text-body">
-                כתובת: {address}
+              <div className="text-sm text-slate-600">
+                <span className="font-medium text-slate-700">כתובת: </span>
+                {address}
               </div>
-            </div>
+            </section>
 
-            <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-stagger-item p-6">
-              <div className="mb-4 luxury-heading-sm">פירוט מחיר</div>
-              <div className="mb-2 flex items-center justify-between luxury-text-small">
-                <span>סכום בסיס</span>
-                <span>₪{pricing.baseAmount.toFixed(2)}</span>
+            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <div className="font-semibold text-slate-900 mb-3">פירוט מחיר</div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-slate-600">
+                  <span>סכום בסיס ({totalDays} ימים)</span>
+                  <span>₪{pricing.baseAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>עמלה + מע״מ</span>
+                  <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
+                </div>
+                <div className="pt-3 mt-2 border-t border-slate-100 flex justify-between">
+                  <span className="font-semibold text-slate-900">סה״כ</span>
+                  <span className="font-bold text-lg text-emerald-600">₪{pricing.totalCharged.toFixed(2)}</span>
+                </div>
               </div>
-              <div className="mb-2 flex items-center justify-between luxury-text-small">
-                <span>עמלה + מע״מ</span>
-                <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
-              </div>
-              <div className="pt-4 border-t border-purple-100 flex items-center justify-between">
-                <span className="luxury-heading-sm">סה״כ</span>
-                <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.totalCharged.toFixed(2)}</span>
-              </div>
-              <div className="mt-4 luxury-text-small opacity-80">
-                התשלום יתואם לאחר ההזמנה.
-              </div>
-            </div>
+              <p className="text-xs text-slate-400 mt-3">התשלום יתואם לאחר ההזמנה.</p>
+            </section>
 
-            <div className="flex gap-4 luxury-stagger-item">
+            <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="luxury-btn-secondary flex-1 h-14"
+                className="flex-1 h-14 rounded-xl text-base font-medium touch-manipulation"
                 onClick={handleBack}
                 data-testid="button-back-summary"
               >
                 חזרה
               </Button>
               <Button
-                className="luxury-btn-primary luxury-shadow-xl flex-1 h-14"
+                className="flex-1 h-14 rounded-xl text-base font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg touch-manipulation"
                 onClick={handleConfirmBooking}
                 disabled={isSubmitting}
                 data-testid="button-confirm"
               >
-                {isSubmitting ? "שולח..." : "אישור והמשך"}
+                {isSubmitting ? "שולח..." : "אישור הזמנה"}
               </Button>
             </div>
-          </>
+          </div>
         )}
 
         {/* Step 3: Confirmation */}
         {step === "confirmation" && (
-          <div className="text-center py-12 luxury-fade-in">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
-              <Check className="h-12 w-12 text-white" />
+          <div className="text-center py-12">
+            <div className="w-20 h-20 rounded-full bg-emerald-100 mx-auto flex items-center justify-center mb-6">
+              <Check className="h-10 w-10 text-emerald-600" />
             </div>
-            <h2 className="luxury-heading-lg mb-4">ההזמנה נקלטה בהצלחה!</h2>
-            <p className="luxury-text-body max-w-md mx-auto mb-3">
-              השמרטף/ית יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
+            <h2 className="text-2xl font-semibold text-slate-900 mb-3">ההזמנה נקלטה בהצלחה</h2>
+            <p className="text-slate-600 max-w-md mx-auto mb-2">
+              השמרטף/ית יקבל/תקבל את פרטי ההזמנה.
             </p>
-            <p className="luxury-text-small max-w-md mx-auto mb-8">
+            <p className="text-sm text-slate-400 mb-1">
+              מספר הזמנה: {bookingId || "בבדיקה"}
+            </p>
+            <p className="text-sm text-slate-400 mb-8">
               פרטי התשלום ישלחו בהודעה נפרדת.
             </p>
             <Button
-              className="luxury-btn-primary luxury-shadow-xl px-12"
+              className="h-14 px-12 rounded-xl text-base font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg touch-manipulation"
               onClick={() => setLocation("/dashboard")}
               data-testid="button-dashboard"
             >
