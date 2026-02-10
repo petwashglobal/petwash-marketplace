@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, Leaf, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, Leaf, ShieldCheck, Heart, Star, PartyPopper, Sparkles, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -21,6 +22,129 @@ const cardImages: Record<string, string> = {
   PREMIUM: blackCardFront,
   ELITE: goldCardFront,
 };
+
+interface CardOccasion {
+  id: string;
+  icon: typeof Heart;
+  gradient: string;
+  borderColor: string;
+  labels: Record<string, string>;
+  messageSuggestions: Record<string, string[]>;
+}
+
+const cardOccasions: CardOccasion[] = [
+  {
+    id: 'birthday',
+    icon: PartyPopper,
+    gradient: 'from-[#fdf2f8] via-[#fce7f3] to-[#fbcfe8]',
+    borderColor: '#ec4899',
+    labels: {
+      en: 'Birthday', he: 'יום הולדת', ar: 'عيد ميلاد', ru: 'День рождения', fr: 'Anniversaire', es: 'Cumpleaños',
+    },
+    messageSuggestions: {
+      en: ['Happy Birthday! Treat your furry friend to something special!', 'Wishing you and your pet a wonderful birthday!'],
+      he: ['יום הולדת שמח! פנק את החבר הפרוותי שלך!', 'מאחלים לך ולחיית המחמד שלך יום הולדת נפלא!'],
+      ar: ['عيد ميلاد سعيد! دلل صديقك الفروي!', 'أتمنى لك ولحيوانك الأليف عيد ميلاد رائع!'],
+      ru: ['С днём рождения! Побалуйте своего пушистого друга!', 'Желаем вам и вашему питомцу чудесного дня рождения!'],
+      fr: ['Joyeux anniversaire! Gâtez votre ami à fourrure!', 'Nous vous souhaitons un merveilleux anniversaire!'],
+      es: ['¡Feliz cumpleaños! ¡Consiente a tu amigo peludo!', '¡Les deseamos un maravilloso cumpleaños!'],
+    },
+  },
+  {
+    id: 'thankyou',
+    icon: Heart,
+    gradient: 'from-[#fef3c7] via-[#fde68a] to-[#fcd34d]',
+    borderColor: '#d97706',
+    labels: {
+      en: 'Thank You', he: 'תודה', ar: 'شكراً', ru: 'Спасибо', fr: 'Merci', es: 'Gracias',
+    },
+    messageSuggestions: {
+      en: ['Thank you for everything! Your pet deserves the best care.', 'A small token of appreciation for you and your furry companion.'],
+      he: ['תודה על הכל! חיית המחמד שלך ראויה לטיפוח הטוב ביותר.', 'מתנה קטנה של הערכה לך ולחבר הפרוותי שלך.'],
+      ar: ['شكراً لك على كل شيء! حيوانك الأليف يستحق أفضل رعاية.', 'رمز تقدير صغير لك ولصديقك الفروي.'],
+      ru: ['Спасибо за всё! Ваш питомец заслуживает лучшего ухода.', 'Небольшой знак благодарности вам и вашему пушистому другу.'],
+      fr: ['Merci pour tout! Votre animal mérite les meilleurs soins.', 'Un petit geste de reconnaissance pour vous et votre compagnon.'],
+      es: ['¡Gracias por todo! Tu mascota merece el mejor cuidado.', 'Un pequeño detalle de agradecimiento para ti y tu compañero peludo.'],
+    },
+  },
+  {
+    id: 'holiday',
+    icon: Sparkles,
+    gradient: 'from-[#ecfdf5] via-[#d1fae5] to-[#a7f3d0]',
+    borderColor: '#059669',
+    labels: {
+      en: 'Holiday', he: 'חג שמח', ar: 'عطلة سعيدة', ru: 'Праздник', fr: 'Fêtes', es: 'Fiesta',
+    },
+    messageSuggestions: {
+      en: ['Happy Holidays! Give your pet the gift of luxury care!', 'Celebrate the season with premium pet pampering!'],
+      he: ['חג שמח! תנו לחיית המחמד שלכם את מתנת הפינוק!', 'חגגו את העונה עם טיפוח פרימיום לחיות מחמד!'],
+      ar: ['عطلة سعيدة! امنح حيوانك الأليف هدية الرعاية الفاخرة!', 'احتفل بالموسم مع تدليل الحيوانات الأليفة المميز!'],
+      ru: ['С праздником! Подарите питомцу роскошный уход!', 'Отпразднуйте с премиальным уходом за питомцем!'],
+      fr: ['Bonnes fêtes! Offrez à votre animal le luxe du soin!', 'Célébrez la saison avec des soins premium!'],
+      es: ['¡Felices fiestas! ¡Regala cuidado de lujo a tu mascota!', '¡Celebra la temporada con cuidado premium!'],
+    },
+  },
+  {
+    id: 'love',
+    icon: Heart,
+    gradient: 'from-[#fef2f2] via-[#fee2e2] to-[#fecaca]',
+    borderColor: '#ef4444',
+    labels: {
+      en: 'With Love', he: 'באהבה', ar: 'بحب', ru: 'С любовью', fr: 'Avec amour', es: 'Con amor',
+    },
+    messageSuggestions: {
+      en: ['Sending love to you and your adorable pet!', 'Because you and your pet deserve the very best!'],
+      he: ['שולחים אהבה לך ולחיית המחמד המקסימה שלך!', 'כי אתם וחיית המחמד שלכם ראויים לטוב ביותר!'],
+      ar: ['نرسل الحب لك ولحيوانك الأليف الرائع!', 'لأنك وحيوانك الأليف تستحقان الأفضل!'],
+      ru: ['С любовью к вам и вашему питомцу!', 'Потому что вы и ваш питомец заслуживаете лучшего!'],
+      fr: ['Avec tout notre amour pour vous et votre animal!', 'Parce que vous et votre animal méritez le meilleur!'],
+      es: ['¡Enviando amor a ti y a tu adorable mascota!', '¡Porque tú y tu mascota merecen lo mejor!'],
+    },
+  },
+  {
+    id: 'congrats',
+    icon: Star,
+    gradient: 'from-[#eff6ff] via-[#dbeafe] to-[#bfdbfe]',
+    borderColor: '#3b82f6',
+    labels: {
+      en: 'Congrats', he: 'מזל טוב', ar: 'مبروك', ru: 'Поздравляю', fr: 'Félicitations', es: 'Felicitaciones',
+    },
+    messageSuggestions: {
+      en: ['Congratulations! Celebrate with premium pet care!', 'Here\'s to new beginnings – treat your pet to the best!'],
+      he: ['מזל טוב! חגגו עם טיפוח פרימיום לחיות מחמד!', 'לתחילה חדשה – פנקו את חיית המחמד שלכם בטוב ביותר!'],
+      ar: ['مبروك! احتفل مع رعاية الحيوانات الأليفة المميزة!', 'لبدايات جديدة – دلل حيوانك الأليف بالأفضل!'],
+      ru: ['Поздравляем! Отпразднуйте с премиальным уходом!', 'За новые начинания – побалуйте питомца лучшим!'],
+      fr: ['Félicitations! Célébrez avec des soins premium!', 'Pour un nouveau départ – gâtez votre animal!'],
+      es: ['¡Felicitaciones! ¡Celebra con cuidado premium!', '¡Por nuevos comienzos – consiente a tu mascota!'],
+    },
+  },
+  {
+    id: 'justbecause',
+    icon: Gift,
+    gradient: 'from-[#f5f3ff] via-[#ede9fe] to-[#ddd6fe]',
+    borderColor: '#8b5cf6',
+    labels: {
+      en: 'Just Because', he: 'סתם ככה', ar: 'بدون سبب', ru: 'Просто так', fr: 'Juste comme ça', es: 'Solo porque sí',
+    },
+    messageSuggestions: {
+      en: ['No special occasion needed – just because you\'re amazing!', 'A surprise for the best pet parent ever!'],
+      he: ['לא צריך סיבה מיוחדת – פשוט כי מגיע לך!', 'הפתעה להורה הכי טוב לחיית מחמד!'],
+      ar: ['لا حاجة لمناسبة خاصة – فقط لأنك رائع!', 'مفاجأة لأفضل والد حيوان أليف!'],
+      ru: ['Не нужен повод – просто потому что вы замечательны!', 'Сюрприз лучшему хозяину питомца!'],
+      fr: ['Pas besoin d\'occasion – juste parce que vous êtes génial!', 'Une surprise pour le meilleur parent d\'animal!'],
+      es: ['No se necesita ocasión – ¡solo porque eres increíble!', '¡Una sorpresa para el mejor padre de mascota!'],
+    },
+  },
+];
+
+const messageLanguages = [
+  { code: 'he', label: 'עברית', flag: '🇮🇱', dir: 'rtl' as const, inputLang: 'he' },
+  { code: 'en', label: 'English', flag: '🇬🇧', dir: 'ltr' as const, inputLang: 'en' },
+  { code: 'ar', label: 'العربية', flag: '🇸🇦', dir: 'rtl' as const, inputLang: 'ar' },
+  { code: 'ru', label: 'Русский', flag: '🇷🇺', dir: 'ltr' as const, inputLang: 'ru' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷', dir: 'ltr' as const, inputLang: 'fr' },
+  { code: 'es', label: 'Español', flag: '🇪🇸', dir: 'ltr' as const, inputLang: 'es' },
+];
 
 const translations: Record<string, Record<string, string>> = {
   platformCredit: {
@@ -200,12 +324,12 @@ const translations: Record<string, Record<string, string>> = {
     es: 'Mensaje personal',
   },
   messagePlaceholder: {
-    en: 'Add a personal touch...',
-    he: 'הוסיפו מגע אישי...',
-    ar: 'أضف لمسة شخصية...',
-    ru: 'Добавьте личное сообщение...',
-    fr: 'Ajoutez une touche personnelle...',
-    es: 'Agrega un toque personal...',
+    en: 'Write your personal message here...',
+    he: 'כתבו את ההודעה האישית שלכם כאן...',
+    ar: 'اكتب رسالتك الشخصية هنا...',
+    ru: 'Напишите ваше личное сообщение здесь...',
+    fr: 'Écrivez votre message personnel ici...',
+    es: 'Escribe tu mensaje personal aquí...',
   },
   redeemableAt: {
     en: 'Redeemable at:',
@@ -335,6 +459,70 @@ const translations: Record<string, Record<string, string>> = {
     fr: 'Envoyer cadeau',
     es: 'Enviar regalo',
   },
+  chooseOccasion: {
+    en: 'Choose Occasion',
+    he: 'בחרו אירוע',
+    ar: 'اختر المناسبة',
+    ru: 'Выберите повод',
+    fr: 'Choisir l\'occasion',
+    es: 'Elegir ocasión',
+  },
+  chooseValue: {
+    en: 'Choose Value',
+    he: 'בחרו סכום',
+    ar: 'اختر القيمة',
+    ru: 'Выберите сумму',
+    fr: 'Choisir la valeur',
+    es: 'Elegir valor',
+  },
+  messageLanguage: {
+    en: 'Message Language',
+    he: 'שפת ההודעה',
+    ar: 'لغة الرسالة',
+    ru: 'Язык сообщения',
+    fr: 'Langue du message',
+    es: 'Idioma del mensaje',
+  },
+  suggestedMessages: {
+    en: 'Suggested Messages',
+    he: 'הודעות מוצעות',
+    ar: 'رسائل مقترحة',
+    ru: 'Предложенные сообщения',
+    fr: 'Messages suggérés',
+    es: 'Mensajes sugeridos',
+  },
+  tapToUse: {
+    en: 'Tap to use',
+    he: 'לחצו לשימוש',
+    ar: 'انقر للاستخدام',
+    ru: 'Нажмите для использования',
+    fr: 'Appuyez pour utiliser',
+    es: 'Toque para usar',
+  },
+  customAmount: {
+    en: 'Custom Amount',
+    he: 'סכום מותאם אישית',
+    ar: 'مبلغ مخصص',
+    ru: 'Произвольная сумма',
+    fr: 'Montant personnalisé',
+    es: 'Monto personalizado',
+  },
+  enterAmount: {
+    en: 'Enter amount (₪50-₪5,000)',
+    he: 'הזינו סכום (₪50-₪5,000)',
+    ar: 'أدخل المبلغ (₪50-₪5,000)',
+    ru: 'Введите сумму (₪50-₪5,000)',
+    fr: 'Entrez le montant (₪50-₪5,000)',
+    es: 'Ingrese monto (₪50-₪5,000)',
+  },
+  occasionSelected: {
+    en: 'Card occasion set!',
+    he: 'סוג הכרטיס נבחר!',
+    ar: 'تم تحديد المناسبة!',
+    ru: 'Повод выбран!',
+    fr: 'Occasion sélectionnée!',
+    es: '¡Ocasión seleccionada!',
+  },
 };
 
 const platformServices = [
@@ -354,10 +542,10 @@ const giftOptions = [
 ];
 
 const tierLabels: Record<string, Record<string, string>> = {
-  CLASSIC: { en: 'Classic', he: 'קלאסי' },
-  PLUS: { en: 'Plus', he: 'פלוס' },
-  PREMIUM: { en: 'Premium', he: 'פרימיום' },
-  ELITE: { en: 'Maison', he: 'מזון' },
+  CLASSIC: { en: 'Classic', he: 'קלאסי', ar: 'كلاسيك', ru: 'Классик', fr: 'Classique', es: 'Clásico' },
+  PLUS: { en: 'Plus', he: 'פלוס', ar: 'بلس', ru: 'Плюс', fr: 'Plus', es: 'Plus' },
+  PREMIUM: { en: 'Premium', he: 'פרימיום', ar: 'بريميوم', ru: 'Премиум', fr: 'Premium', es: 'Premium' },
+  ELITE: { en: 'Maison', he: 'מזון', ar: 'ميزون', ru: 'Мезон', fr: 'Maison', es: 'Maison' },
 };
 
 function tx(key: string, lang: string): string {
@@ -370,12 +558,14 @@ function LuxuryGiftCard({
   option,
   onClick,
   selected,
-  lang
+  lang,
+  occasion
 }: { 
   option: typeof giftOptions[0];
   onClick: () => void;
   selected?: boolean;
   lang: string;
+  occasion?: CardOccasion;
 }) {
   const formattedValue = option.value >= 1000 
     ? `${(option.value / 1000).toFixed(0)},000` 
@@ -385,7 +575,8 @@ function LuxuryGiftCard({
   const isPremium = option.tier === 'PREMIUM';
   const tierLabel = tierLabels[option.tier]?.[lang] || tierLabels[option.tier]?.en || option.tier;
   const cardImage = cardImages[option.tier];
-  
+  const occasionLabel = occasion ? (occasion.labels[lang] || occasion.labels.en) : null;
+
   return (
     <button 
       type="button"
@@ -417,7 +608,17 @@ function LuxuryGiftCard({
           </div>
         )}
 
-        <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6">
+        <div className={`relative overflow-hidden p-4 sm:p-5 lg:p-6 ${occasion ? `bg-gradient-to-b ${occasion.gradient}` : 'bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]'}`}>
+          {occasion && (
+            <div className="absolute top-2 start-2 z-[5]">
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-sm shadow-sm">
+                <occasion.icon className="w-3 h-3" style={{ color: occasion.borderColor }} strokeWidth={2} />
+                <span className="text-[8px] font-medium tracking-wide" style={{ color: occasion.borderColor }}>
+                  {occasionLabel}
+                </span>
+              </div>
+            </div>
+          )}
           <img 
             src={cardImage} 
             alt={`PetWash™ ${tierLabel} E-Gift Card`}
@@ -486,7 +687,12 @@ export default function EGift() {
   const [selectedOption, setSelectedOption] = useState<typeof giftOptions[0] | null>(preselectedOption);
   const [selectedServices, setSelectedServices] = useState<string[]>(['wash', 'sitter', 'walk', 'trek', 'academy', 'nayax']);
   const [step, setStep] = useState<'select' | 'checkout'>('select');
-  
+  const [selectedOccasion, setSelectedOccasion] = useState<CardOccasion | null>(null);
+  const [messageLang, setMessageLang] = useState(messageLanguages.find(ml => ml.code === lang) || messageLanguages[0]);
+  const [customAmount, setCustomAmount] = useState('');
+  const [isCustom, setIsCustom] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const [formData, setFormData] = useState({
     recipientName: '',
     recipientEmail: '',
@@ -523,6 +729,19 @@ export default function EGift() {
 
   const handleCardClick = (option: typeof giftOptions[0]) => {
     setSelectedOption(option);
+    setIsCustom(false);
+    setCustomAmount('');
+  };
+
+  const handleCustomAmount = (val: string) => {
+    const num = val.replace(/[^0-9]/g, '');
+    setCustomAmount(num);
+    const parsed = parseInt(num);
+    if (parsed >= 50 && parsed <= 5000) {
+      setSelectedOption({ value: parsed, tier: parsed >= 750 ? 'ELITE' : parsed >= 400 ? 'PREMIUM' : parsed >= 200 ? 'PLUS' : 'CLASSIC' });
+    } else {
+      setSelectedOption(null);
+    }
   };
 
   const proceedToCheckout = () => {
@@ -555,6 +774,8 @@ export default function EGift() {
           senderName: formData.senderName,
           senderEmail: formData.senderEmail,
           message: formData.message,
+          occasion: selectedOccasion?.id || 'justbecause',
+          messageLanguage: messageLang.code,
           eligibleServices: selectedServices
         })
       });
@@ -568,6 +789,9 @@ export default function EGift() {
         });
         setFormData({ recipientName: '', recipientEmail: '', senderName: '', senderEmail: '', message: '' });
         setSelectedOption(null);
+        setSelectedOccasion(null);
+        setIsCustom(false);
+        setCustomAmount('');
         setStep('select');
       } else {
         toast({ 
@@ -593,6 +817,13 @@ export default function EGift() {
     );
   };
 
+  const applySuggestedMessage = (msg: string) => {
+    setFormData(prev => ({ ...prev, message: msg }));
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
   const BackIcon = isRtl ? ChevronRight : ChevronLeft;
   const ForwardIcon = isRtl ? ArrowLeft : ArrowRight;
 
@@ -602,6 +833,8 @@ export default function EGift() {
       ? `₪${(finalPrice / 1000).toFixed(0)},000` 
       : `₪${finalPrice}`;
     const tierLabel = tierLabels[selectedOption.tier]?.[lang] || tierLabels[selectedOption.tier]?.en;
+    const occasionLabel = selectedOccasion ? (selectedOccasion.labels[lang] || selectedOccasion.labels.en) : null;
+    const suggestions = selectedOccasion?.messageSuggestions[messageLang.code] || selectedOccasion?.messageSuggestions.en || [];
 
     return (
       <div className="min-h-screen bg-white" dir={dir}>
@@ -632,10 +865,16 @@ export default function EGift() {
                       placeholder={tx('recipientNamePlaceholder', lang)}
                       value={formData.recipientName}
                       onChange={(e) => setFormData(prev => ({ ...prev, recipientName: e.target.value }))}
-                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none ${errors.recipientName ? 'border-red-400' : ''}`}
+                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none text-[16px] ${errors.recipientName ? 'border-red-400' : ''}`}
                       data-testid="input-recipient-name"
                       dir={dir}
+                      autoComplete="given-name"
+                      autoCapitalize="words"
+                      spellCheck={false}
+                      enterKeyHint="next"
+                      lang={lang}
                     />
+                    {errors.recipientName && <p className="text-[10px] text-red-500 mt-1">{errors.recipientName}</p>}
                   </div>
 
                   <div>
@@ -643,13 +882,18 @@ export default function EGift() {
                     <Input
                       id="recipientEmail"
                       type="email"
+                      inputMode="email"
                       placeholder={tx('recipientEmailPlaceholder', lang)}
                       value={formData.recipientEmail}
                       onChange={(e) => setFormData(prev => ({ ...prev, recipientEmail: e.target.value }))}
-                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none ${errors.recipientEmail ? 'border-red-400' : ''}`}
+                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none text-[16px] ${errors.recipientEmail ? 'border-red-400' : ''}`}
                       data-testid="input-recipient-email"
                       dir="ltr"
+                      autoComplete="email"
+                      autoCapitalize="none"
+                      enterKeyHint="next"
                     />
+                    {errors.recipientEmail && <p className="text-[10px] text-red-500 mt-1">{errors.recipientEmail}</p>}
                   </div>
 
                   <div>
@@ -659,10 +903,16 @@ export default function EGift() {
                       placeholder={tx('yourNamePlaceholder', lang)}
                       value={formData.senderName}
                       onChange={(e) => setFormData(prev => ({ ...prev, senderName: e.target.value }))}
-                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none ${errors.senderName ? 'border-red-400' : ''}`}
+                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none text-[16px] ${errors.senderName ? 'border-red-400' : ''}`}
                       data-testid="input-sender-name"
                       dir={dir}
+                      autoComplete="name"
+                      autoCapitalize="words"
+                      spellCheck={false}
+                      enterKeyHint="next"
+                      lang={lang}
                     />
+                    {errors.senderName && <p className="text-[10px] text-red-500 mt-1">{errors.senderName}</p>}
                   </div>
 
                   <div>
@@ -670,26 +920,86 @@ export default function EGift() {
                     <Input
                       id="senderEmail"
                       type="email"
+                      inputMode="email"
                       placeholder={tx('yourEmailPlaceholder', lang)}
                       value={formData.senderEmail}
                       onChange={(e) => setFormData(prev => ({ ...prev, senderEmail: e.target.value }))}
-                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none ${errors.senderEmail ? 'border-red-400' : ''}`}
+                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none text-[16px] ${errors.senderEmail ? 'border-red-400' : ''}`}
                       data-testid="input-sender-email"
                       dir="ltr"
+                      autoComplete="email"
+                      autoCapitalize="none"
+                      enterKeyHint="next"
                     />
+                    {errors.senderEmail && <p className="text-[10px] text-red-500 mt-1">{errors.senderEmail}</p>}
                   </div>
 
                   <div className="sm:col-span-2">
-                    <Label htmlFor="message" className="text-[11px] tracking-[0.08em] uppercase text-[#888] font-medium">{tx('personalMessage', lang)}</Label>
-                    <Input
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label htmlFor="message" className="text-[11px] tracking-[0.08em] uppercase text-[#888] font-medium">
+                        {tx('personalMessage', lang)}
+                      </Label>
+                      <div className="flex items-center gap-1">
+                        <Globe className="w-3 h-3 text-[#aaa]" />
+                        <div className="flex gap-0.5">
+                          {messageLanguages.map((ml) => (
+                            <button
+                              key={ml.code}
+                              type="button"
+                              onClick={() => setMessageLang(ml)}
+                              className={`px-1.5 py-0.5 text-[10px] rounded transition-all duration-200 touch-manipulation ${
+                                messageLang.code === ml.code
+                                  ? 'bg-[#1a1a1a] text-white shadow-sm'
+                                  : 'text-[#999] hover:text-[#555] hover:bg-[#f5f5f5]'
+                              }`}
+                              title={ml.label}
+                              data-testid={`msg-lang-${ml.code}`}
+                            >
+                              {ml.flag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {suggestions.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-[9px] tracking-[0.1em] uppercase text-[#bbb] mb-1.5">{tx('suggestedMessages', lang)}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {suggestions.map((msg, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => applySuggestedMessage(msg)}
+                              className="px-3 py-1.5 text-[10px] sm:text-[11px] bg-[#FAFAF8] border border-[#eee] text-[#666] hover:border-[#c9a96e] hover:text-[#1a1a1a] transition-all duration-200 rounded-full touch-manipulation leading-relaxed"
+                              style={{ maxWidth: '100%' }}
+                              dir={messageLang.dir}
+                            >
+                              {msg.length > 50 ? msg.substring(0, 50) + '...' : msg}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <Textarea
+                      ref={textareaRef}
                       id="message"
-                      placeholder={tx('messagePlaceholder', lang)}
+                      placeholder={tx('messagePlaceholder', messageLang.code)}
                       value={formData.message}
                       onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                      className="mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none"
+                      className="mt-0 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none text-[16px] min-h-[100px] resize-none leading-relaxed"
                       data-testid="input-message"
-                      dir={dir}
+                      dir={messageLang.dir}
+                      lang={messageLang.inputLang}
+                      autoCapitalize="sentences"
+                      autoCorrect="on"
+                      spellCheck={true}
+                      enterKeyHint="done"
                     />
+                    <p className="text-[9px] text-[#ccc] mt-1 text-end">
+                      {messageLang.flag} {messageLang.label}
+                    </p>
                   </div>
                 </div>
 
@@ -705,7 +1015,7 @@ export default function EGift() {
                 </div>
 
                 <button
-                  className="w-full py-4 mt-5 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 flex items-center justify-center gap-2"
+                  className="w-full py-4 mt-5 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation"
                   onClick={handleCheckout}
                   data-testid="button-checkout"
                   style={{ borderRadius: '2px' }}
@@ -726,10 +1036,20 @@ export default function EGift() {
 
             <div className="order-1 lg:order-2">
               <div className="w-full max-w-xs sm:max-w-sm mx-auto lg:sticky lg:top-8">
-                <div className="bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-5 sm:p-7 lg:p-8" style={{ borderRadius: '8px', border: '1px solid #eee' }}>
-                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#c9a96e] font-medium mb-4 text-center">
-                    {tx('eGiftCard', lang)} · {tierLabel}
-                  </p>
+                <div className={`p-5 sm:p-7 lg:p-8 ${selectedOccasion ? `bg-gradient-to-b ${selectedOccasion.gradient}` : 'bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]'}`} style={{ borderRadius: '8px', border: selectedOccasion ? `1.5px solid ${selectedOccasion.borderColor}30` : '1px solid #eee' }}>
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    {selectedOccasion && (
+                      <selectedOccasion.icon className="w-4 h-4" style={{ color: selectedOccasion.borderColor }} strokeWidth={1.5} />
+                    )}
+                    <p className="text-[10px] tracking-[0.25em] uppercase text-[#c9a96e] font-medium text-center">
+                      {tx('eGiftCard', lang)} · {tierLabel}
+                    </p>
+                  </div>
+                  {occasionLabel && (
+                    <p className="text-[11px] text-center mb-3 font-medium" style={{ color: selectedOccasion?.borderColor }}>
+                      {occasionLabel}
+                    </p>
+                  )}
                   <img 
                     src={cardImages[selectedOption.tier]} 
                     alt={`PetWash™ ${tierLabel} E-Gift Card`}
@@ -787,6 +1107,45 @@ export default function EGift() {
         </div>
 
         <div className="max-w-[1040px] mx-auto">
+          <div className="mb-10 sm:mb-14">
+            <p className="text-[10px] tracking-[0.25em] uppercase font-medium text-[#c9a96e] mb-4 text-center">
+              {tx('chooseOccasion', lang)}
+            </p>
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+              {cardOccasions.map((occasion) => {
+                const OccIcon = occasion.icon;
+                const isSelected = selectedOccasion?.id === occasion.id;
+                const label = occasion.labels[lang] || occasion.labels.en;
+                return (
+                  <button
+                    key={occasion.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedOccasion(isSelected ? null : occasion);
+                      if (!isSelected) {
+                        toast({ title: tx('occasionSelected', lang), description: label });
+                      }
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 text-[11px] sm:text-xs tracking-[0.05em] font-medium transition-all duration-300 touch-manipulation ${
+                      isSelected
+                        ? 'text-white shadow-lg scale-[1.02]'
+                        : 'text-[#555] bg-white hover:shadow-md hover:scale-[1.01]'
+                    }`}
+                    style={{
+                      borderRadius: '100px',
+                      border: isSelected ? `2px solid ${occasion.borderColor}` : '1.5px solid #eee',
+                      background: isSelected ? occasion.borderColor : undefined,
+                    }}
+                    data-testid={`occasion-${occasion.id}`}
+                  >
+                    <OccIcon className="w-4 h-4" strokeWidth={isSelected ? 2.5 : 1.5} />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="mb-8 sm:mb-10">
             <p className="text-[10px] tracking-[0.15em] uppercase font-medium text-[#999] mb-3 text-center">
               {tx('usableAt', lang)}
@@ -797,7 +1156,7 @@ export default function EGift() {
                   key={service.id}
                   type="button"
                   onClick={() => toggleService(service.id)}
-                  className={`px-3 sm:px-4 py-2 text-[10px] sm:text-[11px] tracking-[0.08em] font-medium transition-all duration-200 ${
+                  className={`px-3 sm:px-4 py-2 text-[10px] sm:text-[11px] tracking-[0.08em] font-medium transition-all duration-200 touch-manipulation ${
                     selectedServices.includes(service.id)
                       ? 'text-[#1a1a1a] border-[#1a1a1a] bg-[#FAFAF8]'
                       : 'text-[#aaa] border-[#eee] bg-white hover:text-[#555] hover:border-[#ccc]'
@@ -811,22 +1170,73 @@ export default function EGift() {
             </div>
           </div>
 
+          <div className="mb-3 text-center">
+            <p className="text-[10px] tracking-[0.25em] uppercase font-medium text-[#c9a96e] mb-4">
+              {tx('chooseValue', lang)}
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-7">
             {giftOptions.map((option) => (
               <LuxuryGiftCard
                 key={option.value}
                 option={option}
                 onClick={() => handleCardClick(option)}
-                selected={selectedOption?.value === option.value}
+                selected={!isCustom && selectedOption?.value === option.value}
                 lang={lang}
+                occasion={selectedOccasion || undefined}
               />
             ))}
+          </div>
+
+          <div className="mt-6 sm:mt-8 max-w-md mx-auto">
+            <button
+              type="button"
+              onClick={() => {
+                setIsCustom(!isCustom);
+                if (!isCustom) {
+                  setSelectedOption(null);
+                }
+              }}
+              className={`w-full py-3 text-[11px] tracking-[0.12em] uppercase font-medium transition-all duration-200 touch-manipulation flex items-center justify-center gap-2 ${
+                isCustom 
+                  ? 'bg-[#1a1a1a] text-white' 
+                  : 'bg-white text-[#888] border border-[#ddd] hover:border-[#999] hover:text-[#555]'
+              }`}
+              style={{ borderRadius: '2px' }}
+              data-testid="button-custom-amount"
+            >
+              <Sparkles className="w-3.5 h-3.5" strokeWidth={1.5} />
+              {tx('customAmount', lang)}
+            </button>
+            
+            {isCustom && (
+              <div className="mt-3 relative">
+                <span className="absolute start-3 top-1/2 -translate-y-1/2 text-[#999] text-sm pointer-events-none">₪</span>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder={tx('enterAmount', lang)}
+                  value={customAmount}
+                  onChange={(e) => handleCustomAmount(e.target.value)}
+                  className="ps-8 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none text-[16px] text-center"
+                  dir="ltr"
+                  autoFocus
+                  enterKeyHint="done"
+                  data-testid="input-custom-amount"
+                />
+                {customAmount && (parseInt(customAmount) < 50 || parseInt(customAmount) > 5000) && (
+                  <p className="text-[10px] text-red-400 mt-1 text-center">₪50 - ₪5,000</p>
+                )}
+              </div>
+            )}
           </div>
 
           {selectedOption && (
             <div className="mt-10 sm:mt-12 text-center">
               <button
-                className="px-10 sm:px-14 py-4 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 inline-flex items-center gap-2.5"
+                className="px-10 sm:px-14 py-4 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 inline-flex items-center gap-2.5 touch-manipulation"
                 onClick={proceedToCheckout}
                 data-testid="button-proceed-checkout"
                 style={{ borderRadius: '2px' }}
