@@ -65,15 +65,24 @@ export default function StationRegistryDashboard() {
         ? { lat: parseFloat(formData.get("lat") as string), lng: parseFloat(formData.get("lng") as string) }
         : null;
 
+    if (!stationAddress.trim()) {
+      toast({ title: "Error", description: "Address is required", variant: "destructive" });
+      return;
+    }
+    if (!stationCity.trim()) {
+      toast({ title: "Error", description: "City is required", variant: "destructive" });
+      return;
+    }
+
     const data = {
       stationId: formData.get("stationId"),
       stationName: formData.get("stationName"),
       stationNameHe: formData.get("stationNameHe"),
-      address: stationAddress || formData.get("address"),
-      city: stationCity || formData.get("city"),
+      address: stationAddress,
+      city: stationCity,
       region: formData.get("region"),
-      country: stationCountry || formData.get("country"),
-      postalCode: stationPostalCode || formData.get("postalCode"),
+      country: stationCountry,
+      postalCode: stationPostalCode,
       coordinates,
       stationType: stationType,
       ownershipType: ownershipType,
@@ -196,7 +205,20 @@ export default function StationRegistryDashboard() {
         </div>
       )}
 
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) {
+          setStationAddress("");
+          setStationCity("");
+          setStationCountry("IL");
+          setStationPostalCode("");
+          setStationLat("");
+          setStationLng("");
+          setStationType("k9000");
+          setOwnershipType("corporate");
+          setOperatingStatus("active");
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-station">
           <DialogHeader>
             <DialogTitle>Register New Station</DialogTitle>
@@ -255,15 +277,15 @@ export default function StationRegistryDashboard() {
               </div>
               <div>
                 <Label htmlFor="postalCode">Postal Code</Label>
-                <Input id="postalCode" name="postalCode" data-testid="input-postal-code" />
+                <Input id="postalCode" name="postalCode" value={stationPostalCode} onChange={e => setStationPostalCode(e.target.value)} data-testid="input-postal-code" />
               </div>
               <div>
                 <Label htmlFor="lat">Latitude</Label>
-                <Input id="lat" name="lat" type="number" step="any" placeholder="32.0853" data-testid="input-latitude" />
+                <Input id="lat" name="lat" type="number" step="any" placeholder="32.0853" value={stationLat} onChange={e => setStationLat(e.target.value)} data-testid="input-latitude" />
               </div>
               <div>
                 <Label htmlFor="lng">Longitude</Label>
-                <Input id="lng" name="lng" type="number" step="any" placeholder="34.7818" data-testid="input-longitude" />
+                <Input id="lng" name="lng" type="number" step="any" placeholder="34.7818" value={stationLng} onChange={e => setStationLng(e.target.value)} data-testid="input-longitude" />
               </div>
               <div>
                 <Label htmlFor="stationType">Station Type</Label>
