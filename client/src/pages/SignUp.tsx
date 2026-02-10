@@ -468,14 +468,6 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
             transition={{ delay: 0.1, duration: 0.5 }}
             className="text-center space-y-4"
           >
-            <motion.div
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", duration: 0.6, delay: 0.2 }}
-              className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto flex items-center justify-center luxury-shadow-xl"
-            >
-              <Sparkles className="w-10 h-10 text-white" />
-            </motion.div>
             <div className="space-y-2">
               <h1 className="luxury-heading-xl">
                 {t('register.createAccount', language)}
@@ -594,20 +586,89 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 )}
               </Label>
               <div className="relative">
-                <Input
+                <select
                   id="country"
                   name="country"
-                  type="text"
                   required
                   value={formData.country}
-                  onChange={handleChange}
+                  onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
                   disabled={geoLoading}
-                  className={`luxury-glass-minimal ${geoDetected ? "border-green-500" : ""}`}
+                  className={`flex h-12 w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 luxury-glass-minimal cursor-pointer ${geoDetected ? "border-green-500" : ""}`}
                   data-testid="input-country"
-                />
-                {geoLoading && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-purple-600" />
-                )}
+                  style={{ fontSize: '16px' }}
+                >
+                  {!['Israel','United States','United Kingdom','Canada','Australia','France','Germany','Spain','Italy','Netherlands','Belgium','Switzerland','Austria','Sweden','Norway','Denmark','Finland','Portugal','Greece','Ireland','Poland','Czech Republic','Hungary','Romania','Bulgaria','Croatia','Slovakia','Slovenia','Estonia','Latvia','Lithuania','Cyprus','Malta','Luxembourg','Iceland','Russia','Ukraine','Turkey','Japan','South Korea','China','India','Brazil','Mexico','Argentina','Chile','Colombia','South Africa','Egypt','Morocco','Tunisia','United Arab Emirates','Saudi Arabia','Jordan','Thailand','Singapore','Malaysia','Philippines','Indonesia','Vietnam','New Zealand'].includes(formData.country) && (
+                    <option value={formData.country}>{formData.country}</option>
+                  )}
+                  <option value="Israel">Israel</option>
+                  <option value="United States">United States</option>
+                  <option value="United Kingdom">United Kingdom</option>
+                  <option value="Canada">Canada</option>
+                  <option value="Australia">Australia</option>
+                  <option value="France">France</option>
+                  <option value="Germany">Germany</option>
+                  <option value="Spain">Spain</option>
+                  <option value="Italy">Italy</option>
+                  <option value="Netherlands">Netherlands</option>
+                  <option value="Belgium">Belgium</option>
+                  <option value="Switzerland">Switzerland</option>
+                  <option value="Austria">Austria</option>
+                  <option value="Sweden">Sweden</option>
+                  <option value="Norway">Norway</option>
+                  <option value="Denmark">Denmark</option>
+                  <option value="Finland">Finland</option>
+                  <option value="Portugal">Portugal</option>
+                  <option value="Greece">Greece</option>
+                  <option value="Ireland">Ireland</option>
+                  <option value="Poland">Poland</option>
+                  <option value="Czech Republic">Czech Republic</option>
+                  <option value="Hungary">Hungary</option>
+                  <option value="Romania">Romania</option>
+                  <option value="Bulgaria">Bulgaria</option>
+                  <option value="Croatia">Croatia</option>
+                  <option value="Slovakia">Slovakia</option>
+                  <option value="Slovenia">Slovenia</option>
+                  <option value="Estonia">Estonia</option>
+                  <option value="Latvia">Latvia</option>
+                  <option value="Lithuania">Lithuania</option>
+                  <option value="Cyprus">Cyprus</option>
+                  <option value="Malta">Malta</option>
+                  <option value="Luxembourg">Luxembourg</option>
+                  <option value="Iceland">Iceland</option>
+                  <option value="Russia">Russia</option>
+                  <option value="Ukraine">Ukraine</option>
+                  <option value="Turkey">Turkey</option>
+                  <option value="Japan">Japan</option>
+                  <option value="South Korea">South Korea</option>
+                  <option value="China">China</option>
+                  <option value="India">India</option>
+                  <option value="Brazil">Brazil</option>
+                  <option value="Mexico">Mexico</option>
+                  <option value="Argentina">Argentina</option>
+                  <option value="Chile">Chile</option>
+                  <option value="Colombia">Colombia</option>
+                  <option value="South Africa">South Africa</option>
+                  <option value="Egypt">Egypt</option>
+                  <option value="Morocco">Morocco</option>
+                  <option value="Tunisia">Tunisia</option>
+                  <option value="United Arab Emirates">United Arab Emirates</option>
+                  <option value="Saudi Arabia">Saudi Arabia</option>
+                  <option value="Jordan">Jordan</option>
+                  <option value="Thailand">Thailand</option>
+                  <option value="Singapore">Singapore</option>
+                  <option value="Malaysia">Malaysia</option>
+                  <option value="Philippines">Philippines</option>
+                  <option value="Indonesia">Indonesia</option>
+                  <option value="Vietnam">Vietnam</option>
+                  <option value="New Zealand">New Zealand</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  {geoLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                  ) : (
+                    <svg className="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  )}
+                </div>
               </div>
             </div>
 
