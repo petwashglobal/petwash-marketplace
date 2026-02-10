@@ -1,16 +1,21 @@
-import { ArrowRight, Leaf, Gift, Check } from 'lucide-react';
+import { ArrowRight, Leaf, Gift } from 'lucide-react';
 import { Link } from 'wouter';
 import { t, type Language } from '@/lib/i18n';
+
+import pinkCardFront from '@assets/IMG_2004_1770750271081.png';
+import greenCardFront from '@assets/IMG_2002_1770750271081.png';
+import blackCardFront from '@assets/IMG_1998_1770750271081.png';
+import goldCardFront from '@assets/IMG_1996_1770750271081.png';
 
 interface GiftCardsProps {
   language: Language;
 }
 
 const vouchers = [
-  { id: '1', value: 100, tier: 'CLASSIC' },
-  { id: '2', value: 250, tier: 'PLUS' },
-  { id: '3', value: 500, tier: 'PREMIUM' },
-  { id: '4', value: 1000, tier: 'ELITE' }
+  { id: '1', value: 100, tier: 'CLASSIC', image: pinkCardFront, label: 'Single Wash', labelHe: 'רחיצה בודדת' },
+  { id: '2', value: 250, tier: 'PLUS', image: greenCardFront, label: '3 Washes', labelHe: '3 רחיצות' },
+  { id: '3', value: 500, tier: 'PREMIUM', image: blackCardFront, label: '5 Washes', labelHe: '5 רחיצות' },
+  { id: '4', value: 1000, tier: 'ELITE', image: goldCardFront, label: '10 Washes', labelHe: '10 רחיצות' }
 ];
 
 const tierLabels: Record<string, Record<string, string>> = {
@@ -65,7 +70,7 @@ export function GiftCards({ language }: GiftCardsProps) {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-7 max-w-[1040px] mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-8 max-w-[1200px] mx-auto">
           {vouchers.map((voucher) => {
             const isElite = voucher.tier === 'ELITE';
             const isPremium = voucher.tier === 'PREMIUM';
@@ -78,80 +83,65 @@ export function GiftCards({ language }: GiftCardsProps) {
                 className="group block"
                 data-testid={`gift-card-${voucher.value}`}
               >
-                <div className={`relative overflow-hidden transition-all duration-500 ${
-                  isElite ? 'bg-[#1a1a1a]' : 'bg-white'
-                }`}
+                <div className="relative overflow-hidden transition-all duration-500 bg-white hover:shadow-xl hover:shadow-black/[0.06]"
                   style={{
-                    borderRadius: '2px',
-                    border: isPremium ? '1.5px solid #c9a96e' : isElite ? '1.5px solid #333' : '1px solid #eee',
+                    borderRadius: '6px',
+                    border: isPremium ? '1.5px solid #c9a96e' : isElite ? '1.5px solid #c9a96e' : '1px solid #eee',
                   }}
                 >
-                  {isPremium && (
-                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#c9a96e] via-[#e8d5b0] to-[#c9a96e]" />
+                  {isElite && (
+                    <div className="absolute top-3 end-3 z-10">
+                      <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '2px' }}>
+                        {bestValueText[language] || bestValueText.en}
+                      </span>
+                    </div>
                   )}
 
-                  <div className="px-4 sm:px-5 pt-5 sm:pt-6 pb-4">
-                    <div className="flex items-center justify-between mb-5 sm:mb-6">
+                  <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6">
+                    <div className="relative mx-auto" style={{ perspective: '1000px' }}>
+                      <img 
+                        src={voucher.image} 
+                        alt={`PetWash™ ${voucher.label} E-Gift Card`}
+                        className="w-full h-auto rounded-lg shadow-lg transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+                        style={{ 
+                          filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.12))',
+                          maxWidth: '280px',
+                          margin: '0 auto',
+                          display: 'block',
+                        }}
+                        loading="lazy"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="px-4 sm:px-5 py-4 sm:py-5">
+                    <div className="flex items-center justify-between mb-3">
                       <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
                         isElite || isPremium ? 'text-[#c9a96e]' : 'text-[#999]'
                       }`}>
                         {tierLabel}
                       </span>
-                      {isElite && (
-                        <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2 py-0.5 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '1px' }}>
-                          {bestValueText[language] || bestValueText.en}
-                        </span>
-                      )}
                     </div>
 
-                    <div className="mb-5 sm:mb-6">
+                    <div className="mb-3">
                       <div className="flex items-baseline gap-1">
-                        <span className={`text-[11px] sm:text-xs ${isElite ? 'text-[#888]' : 'text-[#999]'}`}>₪</span>
-                        <span className={`text-4xl sm:text-5xl lg:text-[3.4rem] font-light ${
-                          isElite ? 'text-white' : 'text-[#1a1a1a]'
-                        }`}
+                        <span className="text-[11px] sm:text-xs text-[#999]">₪</span>
+                        <span className="text-3xl sm:text-4xl lg:text-[2.8rem] font-light text-[#1a1a1a]"
                           style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
                           {formatValue(voucher.value)}
                         </span>
                       </div>
-                      <p className={`text-[10px] sm:text-[11px] mt-2 tracking-[0.1em] uppercase ${isElite ? 'text-[#777]' : 'text-[#aaa]'}`}>
-                        E-Gift Credit
+                      <p className="text-[10px] sm:text-[11px] mt-1.5 text-[#aaa]">
+                        {language === 'he' ? voucher.labelHe : voucher.label} · E-Gift
                       </p>
                     </div>
 
-                    <div className={`border-t ${isElite ? 'border-[#333]' : 'border-[#eee]'} pt-4 mb-4`}>
-                      <div className={`space-y-2 ${isElite ? 'text-[#999]' : 'text-[#888]'}`}>
-                        <div className="flex items-center gap-2">
-                          <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
-                          <span className="text-[10px] sm:text-[11px]">
-                            {language === 'he' ? 'כל השירותים' : 'All services'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
-                          <span className="text-[10px] sm:text-[11px]">
-                            {language === 'he' ? 'ללא צורך בחשבון' : 'No account needed'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
-                          <span className="text-[10px] sm:text-[11px]">
-                            {language === 'he' ? 'משלוח מיידי' : 'Instant delivery'}
-                          </span>
-                        </div>
-                      </div>
+                    <div className="w-full py-3 sm:py-3.5 text-[10px] sm:text-[11px] tracking-[0.18em] uppercase font-medium transition-all duration-300 flex items-center justify-center gap-2 bg-[#1a1a1a] text-white hover:bg-[#333]"
+                      style={{ borderRadius: '2px' }}
+                    >
+                      {language === 'he' ? 'שלח מתנה' : 'Send Gift'}
+                      <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
                     </div>
-                  </div>
-
-                  <div className={`w-full py-3.5 sm:py-4 text-[10px] sm:text-[11px] tracking-[0.18em] uppercase font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
-                    isElite
-                      ? 'bg-white text-[#1a1a1a] hover:bg-[#f5f5f5]'
-                      : isPremium
-                        ? 'bg-[#1a1a1a] text-white hover:bg-[#333]'
-                        : 'bg-transparent text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white border-t border-[#eee]'
-                  }`}>
-                    {language === 'he' ? 'שלח מתנה' : 'Send Gift'}
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
                   </div>
                 </div>
               </Link>

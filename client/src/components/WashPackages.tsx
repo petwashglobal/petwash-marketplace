@@ -9,6 +9,18 @@ import { t, type Language } from '@/lib/i18n';
 import { logger } from "@/lib/logger";
 import type { WashPackage } from '@shared/schema';
 
+import pinkCardFront from '@assets/IMG_2004_1770750271081.png';
+import greenCardFront from '@assets/IMG_2002_1770750271081.png';
+import blackCardFront from '@assets/IMG_1998_1770750271081.png';
+import goldCardFront from '@assets/IMG_1996_1770750271081.png';
+
+const cardImagesByWashCount: Record<number, string> = {
+  1: pinkCardFront,
+  3: greenCardFront,
+  5: blackCardFront,
+  10: goldCardFront,
+};
+
 interface WashPackagesProps {
   language: Language;
 }
@@ -189,7 +201,7 @@ export function WashPackages({ language }: WashPackagesProps) {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-7 max-w-[1040px] mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-8 max-w-[1200px] mx-auto">
           {displayPackages.map((pkg, index) => {
             const badge = getTierBadge(index);
             const tier = tierConfig[badge] || tierConfig.CLASSIC;
@@ -202,6 +214,7 @@ export function WashPackages({ language }: WashPackagesProps) {
             const perWash = perWashText[language] || perWashText.en;
             const isPopular = badge === 'POPULAR';
             const isElite = badge === 'ELITE';
+            const cardImage = cardImagesByWashCount[pkg.washCount] || pinkCardFront;
             
             return (
               <div
@@ -209,59 +222,67 @@ export function WashPackages({ language }: WashPackagesProps) {
                 className="group cursor-pointer"
                 onClick={() => handleExpressCheckout(pkg)}
               >
-                <div className={`relative overflow-hidden transition-all duration-500 ${
-                  isElite 
-                    ? 'bg-[#1a1a1a]' 
-                    : 'bg-[#FAFAF8]'
-                }`}
+                <div className="relative overflow-hidden transition-all duration-500 bg-white hover:shadow-xl hover:shadow-black/[0.06]"
                   style={{ 
-                    borderRadius: '2px',
-                    border: isPopular ? '1.5px solid #c9a96e' : isElite ? '1.5px solid #333' : '1px solid #eee',
+                    borderRadius: '6px',
+                    border: isPopular ? '1.5px solid #c9a96e' : '1px solid #eee',
                   }}
                 >
                   {isPopular && (
-                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#c9a96e] via-[#e8d5b0] to-[#c9a96e]" />
+                    <div className="absolute top-3 start-3 z-10">
+                      <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '2px' }}>
+                        {language === 'he' ? 'מומלץ' : 'Best Value'}
+                      </span>
+                    </div>
                   )}
 
-                  <div className="px-4 sm:px-5 pt-5 sm:pt-6 pb-4">
-                    <div className="flex items-center justify-between mb-5 sm:mb-6">
+                  <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6">
+                    <img 
+                      src={cardImage} 
+                      alt={`PetWash™ ${pkg.name} Package`}
+                      className="w-full h-auto rounded-lg shadow-lg transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+                      style={{ 
+                        filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.12))',
+                        maxWidth: '280px',
+                        margin: '0 auto',
+                        display: 'block',
+                      }}
+                      loading="lazy"
+                    />
+                  </div>
+
+                  <div className="px-4 sm:px-5 py-4 sm:py-5">
+                    <div className="flex items-center justify-between mb-2">
                       <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
-                        isElite ? 'text-[#c9a96e]' : isPopular ? 'text-[#c9a96e]' : 'text-[#999]'
+                        isElite || isPopular ? 'text-[#c9a96e]' : 'text-[#999]'
                       }`}>
                         {badgeLabel}
                       </span>
-                      {isPopular && (
-                        <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2 py-0.5 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '1px' }}>
-                          {language === 'he' ? 'מומלץ' : 'Best Value'}
-                        </span>
-                      )}
                     </div>
 
-                    <div className="mb-5 sm:mb-6">
+                    <div className="mb-2">
                       <div className="flex items-baseline gap-1">
-                        <span className={`text-[11px] sm:text-xs ${isElite ? 'text-[#888]' : 'text-[#999]'}`}>₪</span>
-                        <span className={`text-4xl sm:text-5xl lg:text-[3.4rem] font-light ${
-                          isElite ? 'text-white' : 'text-[#1a1a1a]'
-                        }`}
+                        <span className="text-[11px] sm:text-xs text-[#999]">₪</span>
+                        <span className="text-3xl sm:text-4xl lg:text-[2.8rem] font-light text-[#1a1a1a]"
                           style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
                           {pkg.price}
                         </span>
                       </div>
                     </div>
 
-                    <div className={`border-t ${isElite ? 'border-[#333]' : 'border-[#eee]'} pt-4 mb-4`}>
-                      <p className={`text-xs sm:text-[13px] ${isElite ? 'text-[#ccc]' : 'text-[#555]'} mb-1.5`}
+                    <div className="mb-3">
+                      <p className="text-xs sm:text-[13px] text-[#555] mb-0.5"
                         style={{ fontFamily: "'Inter', sans-serif" }}>
                         {pkg.washCount} {wText}
                       </p>
                       {pkg.washCount > 1 && (
-                        <p className={`text-[10px] sm:text-[11px] ${isElite ? 'text-[#777]' : 'text-[#aaa]'}`}>
+                        <p className="text-[10px] sm:text-[11px] text-[#aaa]">
                           ₪{pricePerWash} {perWash}
                         </p>
                       )}
                     </div>
 
-                    <div className={`space-y-2 mb-5 ${isElite ? 'text-[#999]' : 'text-[#888]'}`}>
+                    <div className="border-t border-[#eee] pt-3 space-y-1.5 text-[#888] mb-4">
                       <div className="flex items-center gap-2">
                         <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
                         <span className="text-[10px] sm:text-[11px]">
@@ -298,13 +319,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                       e.stopPropagation();
                       handleExpressCheckout(pkg);
                     }}
-                    className={`w-full py-3.5 sm:py-4 text-[10px] sm:text-[11px] tracking-[0.18em] uppercase font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
-                      isElite
-                        ? 'bg-white text-[#1a1a1a] hover:bg-[#f5f5f5]'
-                        : isPopular 
-                          ? 'bg-[#1a1a1a] text-white hover:bg-[#333]' 
-                          : 'bg-transparent text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white border-t border-[#eee]'
-                    }`}
+                    className="w-full py-3.5 sm:py-4 text-[10px] sm:text-[11px] tracking-[0.18em] uppercase font-medium transition-all duration-300 flex items-center justify-center gap-2 bg-[#1a1a1a] text-white hover:bg-[#333]"
                     data-testid={`button-express-checkout-${pkg.id}`}
                   >
                     {buyText}

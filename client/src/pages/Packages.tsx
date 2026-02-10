@@ -5,6 +5,11 @@ import { ChevronLeft, ChevronRight, Check, ArrowRight, ArrowLeft, Leaf, Sparkles
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
 
+import pinkCardFront from '@assets/IMG_2004_1770750271081.png';
+import greenCardFront from '@assets/IMG_2002_1770750271081.png';
+import blackCardFront from '@assets/IMG_1998_1770750271081.png';
+import goldCardFront from '@assets/IMG_1996_1770750271081.png';
+
 const WASH_PRICE = 55;
 
 interface PackageOption {
@@ -13,6 +18,7 @@ interface PackageOption {
   nameHe: string;
   discount: number;
   tier: string;
+  image: string;
   features: { en: string; he: string }[];
   popular?: boolean;
 }
@@ -24,6 +30,7 @@ const packageOptions: PackageOption[] = [
     nameHe: 'בסיסי',
     discount: 0, 
     tier: 'CLASSIC',
+    image: pinkCardFront,
     features: [
       { en: 'Single premium wash', he: 'רחיצה פרימיום בודדת' },
       { en: '100% organic shampoo', he: 'שמפו אורגני 100%' },
@@ -36,6 +43,7 @@ const packageOptions: PackageOption[] = [
     nameHe: 'סילבר',
     discount: 5, 
     tier: 'POPULAR',
+    image: greenCardFront,
     features: [
       { en: '3 premium washes', he: '3 רחיצות פרימיום' },
       { en: '5% discount', he: '5% הנחה' },
@@ -50,6 +58,7 @@ const packageOptions: PackageOption[] = [
     nameHe: 'פרימיום',
     discount: 8, 
     tier: 'PREMIUM',
+    image: blackCardFront,
     features: [
       { en: '5 premium washes', he: '5 רחיצות פרימיום' },
       { en: '8% discount', he: '8% הנחה' },
@@ -63,6 +72,7 @@ const packageOptions: PackageOption[] = [
     nameHe: 'קולקציית מזון',
     discount: 12, 
     tier: 'ELITE',
+    image: goldCardFront,
     features: [
       { en: '10 premium washes', he: '10 רחיצות פרימיום' },
       { en: '12% discount', he: '12% הנחה' },
@@ -115,7 +125,6 @@ export default function Packages() {
   if (showDetails && selectedPackage) {
     const price = Math.round(selectedPackage.washes * WASH_PRICE * (1 - selectedPackage.discount / 100));
     const originalPrice = selectedPackage.washes * WASH_PRICE;
-    const isElite = selectedPackage.tier === 'ELITE';
     const tierLabel = tierLabels[selectedPackage.tier]?.[lang] || tierLabels[selectedPackage.tier]?.en;
 
     return (
@@ -195,29 +204,28 @@ export default function Packages() {
 
             <div className="order-1 lg:order-2">
               <div className="w-full max-w-xs sm:max-w-sm mx-auto lg:sticky lg:top-8">
-                <div className={`p-6 sm:p-8 ${isElite ? 'bg-[#1a1a1a]' : 'bg-[#FAFAF8] border border-[#eee]'}`} style={{ borderRadius: '2px' }}>
-                  <div className="flex items-center justify-between mb-8">
-                    <p className={`text-[11px] tracking-[0.2em] uppercase font-medium ${isElite ? 'text-[#c9a96e]' : 'text-[#999]'}`}>
-                      {tierLabel}
-                    </p>
-                    <p className={`text-[10px] tracking-[0.15em] uppercase ${isElite ? 'text-[#666]' : 'text-[#bbb]'}`}>
-                      Pet Wash™
-                    </p>
-                  </div>
-
-                  <div className="text-center py-8">
-                    <p className={`text-5xl sm:text-6xl font-light mb-2 ${isElite ? 'text-white' : 'text-[#1a1a1a]'}`}
+                <div className="bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-5 sm:p-7 lg:p-8" style={{ borderRadius: '8px', border: '1px solid #eee' }}>
+                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#c9a96e] font-medium mb-4 text-center">
+                    {tierLabel} · Pet Wash™
+                  </p>
+                  <img 
+                    src={selectedPackage.image} 
+                    alt={`PetWash™ ${isHe ? selectedPackage.nameHe : selectedPackage.name} Wash Package`}
+                    className="w-full h-auto rounded-lg shadow-xl"
+                    style={{ 
+                      filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))',
+                      maxWidth: '340px',
+                      margin: '0 auto',
+                      display: 'block',
+                    }}
+                  />
+                  <div className="text-center mt-5">
+                    <p className="text-3xl sm:text-4xl font-light text-[#1a1a1a] mb-1"
                       style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em' }}>
                       ₪{price}
                     </p>
-                    <p className={`text-[11px] tracking-[0.15em] uppercase ${isElite ? 'text-[#888]' : 'text-[#aaa]'}`}>
-                      {selectedPackage.washes} {isHe ? 'רחיצות' : 'washes'}
-                    </p>
-                  </div>
-
-                  <div className={`border-t ${isElite ? 'border-[#333]' : 'border-[#eee]'} pt-5 mt-4`}>
-                    <p className={`text-[10px] tracking-[0.2em] uppercase text-center ${isElite ? 'text-[#666]' : 'text-[#bbb]'}`}>
-                      Premium Organic Pet Care
+                    <p className="text-[10px] tracking-[0.15em] uppercase text-[#aaa]">
+                      {selectedPackage.washes} {isHe ? 'רחיצות' : 'washes'} · Premium Organic
                     </p>
                   </div>
                 </div>
@@ -231,7 +239,7 @@ export default function Packages() {
 
   return (
     <div className="min-h-screen bg-white" dir={dir}>
-      <div className="container mx-auto px-4 py-12 sm:py-16">
+      <div className="container mx-auto px-4 py-12 sm:py-16 lg:py-20">
         <div className="text-center mb-14 sm:mb-20">
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#c9a96e]" />
@@ -253,8 +261,8 @@ export default function Packages() {
           </p>
         </div>
 
-        <div className="max-w-[1040px] mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-7">
+        <div className="max-w-[1200px] mx-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-8">
             {packageOptions.map((pkg) => {
               const price = Math.round(pkg.washes * WASH_PRICE * (1 - pkg.discount / 100));
               const originalPrice = pkg.washes * WASH_PRICE;
@@ -272,66 +280,84 @@ export default function Packages() {
                   onClick={() => handlePackageClick(pkg)}
                   data-testid={`package-card-${pkg.tier.toLowerCase()}`}
                 >
-                  <div className={`relative overflow-hidden transition-all duration-500 ${
-                    isElite ? 'bg-[#1a1a1a]' : 'bg-[#FAFAF8]'
-                  }`}
+                  <div className="relative overflow-hidden transition-all duration-500 bg-white hover:shadow-xl hover:shadow-black/[0.06]"
                     style={{
-                      borderRadius: '2px',
+                      borderRadius: '6px',
                       border: selected 
-                        ? '2px solid #1a1a1a'
-                        : isPopular ? '1.5px solid #c9a96e' : isElite ? '1.5px solid #333' : '1px solid #eee',
+                        ? '2.5px solid #1a1a1a'
+                        : isPopular ? '1.5px solid #c9a96e' : '1px solid #eee',
                     }}
                   >
-                    {isPopular && (
-                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#c9a96e] via-[#e8d5b0] to-[#c9a96e]" />
+                    {selected && (
+                      <div className="absolute top-3 end-3 z-10">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center bg-[#1a1a1a] shadow-lg">
+                          <Check className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                        </div>
+                      </div>
                     )}
 
-                    <div className="px-4 sm:px-5 pt-5 sm:pt-6 pb-4">
-                      <div className="flex items-center justify-between mb-5 sm:mb-6">
+                    {isPopular && (
+                      <div className="absolute top-3 start-3 z-10">
+                        <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '2px' }}>
+                          {isHe ? 'מומלץ' : 'Best'}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6">
+                      <img 
+                        src={pkg.image} 
+                        alt={`PetWash™ ${isHe ? pkg.nameHe : pkg.name} Wash Package`}
+                        className="w-full h-auto rounded-lg shadow-lg transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+                        style={{ 
+                          filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.12))',
+                          maxWidth: '280px',
+                          margin: '0 auto',
+                          display: 'block',
+                        }}
+                        loading="lazy"
+                      />
+                    </div>
+
+                    <div className="px-4 sm:px-5 py-4 sm:py-5">
+                      <div className="flex items-center justify-between mb-2">
                         <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
                           isElite || isPopular ? 'text-[#c9a96e]' : 'text-[#999]'
                         }`}>
                           {tierLabel}
                         </span>
-                        {isPopular && (
-                          <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2 py-0.5 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '1px' }}>
-                            {isHe ? 'מומלץ' : 'Best'}
-                          </span>
-                        )}
                       </div>
 
-                      <div className="mb-5 sm:mb-6">
+                      <div className="mb-2">
                         <div className="flex items-baseline gap-1">
-                          <span className={`text-[11px] sm:text-xs ${isElite ? 'text-[#888]' : 'text-[#999]'}`}>₪</span>
-                          <span className={`text-4xl sm:text-5xl lg:text-[3.4rem] font-light ${
-                            isElite ? 'text-white' : 'text-[#1a1a1a]'
-                          }`}
+                          <span className="text-[11px] sm:text-xs text-[#999]">₪</span>
+                          <span className="text-3xl sm:text-4xl lg:text-[2.8rem] font-light text-[#1a1a1a]"
                             style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
                             {price}
                           </span>
+                          {pkg.discount > 0 && (
+                            <span className="text-[10px] line-through text-[#ccc] ms-1">₪{originalPrice}</span>
+                          )}
                         </div>
-                        {pkg.discount > 0 && (
-                          <span className={`text-[10px] line-through ${isElite ? 'text-[#666]' : 'text-[#ccc]'}`}>₪{originalPrice}</span>
-                        )}
                       </div>
 
-                      <div className={`border-t ${isElite ? 'border-[#333]' : 'border-[#eee]'} pt-4 mb-4`}>
-                        <p className={`text-xs sm:text-[13px] ${isElite ? 'text-[#ccc]' : 'text-[#555]'} mb-1.5`}>
+                      <div className="mb-3">
+                        <p className="text-xs sm:text-[13px] text-[#555] mb-0.5">
                           {pkg.washes} {isHe ? 'רחיצות' : `wash${pkg.washes > 1 ? 'es' : ''}`}
                         </p>
                         {pkg.washes > 1 && (
-                          <p className={`text-[10px] sm:text-[11px] ${isElite ? 'text-[#777]' : 'text-[#aaa]'}`}>
+                          <p className="text-[10px] sm:text-[11px] text-[#aaa]">
                             ₪{pricePerWash} {isHe ? 'לרחיצה' : 'per wash'}
                           </p>
                         )}
                         {pkg.discount > 0 && (
-                          <p className="text-[10px] sm:text-[11px] text-[#c9a96e] mt-1 font-medium">
+                          <p className="text-[10px] sm:text-[11px] text-[#c9a96e] mt-0.5 font-medium">
                             {isHe ? `${pkg.discount}% הנחה` : `Save ${pkg.discount}%`}
                           </p>
                         )}
                       </div>
 
-                      <div className={`space-y-2 mb-4 ${isElite ? 'text-[#999]' : 'text-[#888]'}`}>
+                      <div className="border-t border-[#eee] pt-3 space-y-1.5 text-[#888]">
                         {pkg.features.slice(0, 3).map((feature, i) => (
                           <div key={i} className="flex items-center gap-2">
                             <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
@@ -342,14 +368,6 @@ export default function Packages() {
                         ))}
                       </div>
                     </div>
-
-                    {selected && (
-                      <div className="absolute top-3 end-3 z-10">
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center bg-[#1a1a1a]">
-                          <Check className="w-3 h-3 text-white" strokeWidth={2.5} />
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </button>
               );

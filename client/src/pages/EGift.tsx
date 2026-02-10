@@ -10,6 +10,18 @@ import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useLanguage } from '@/lib/languageStore';
 
+import pinkCardFront from '@assets/IMG_2004_1770750271081.png';
+import greenCardFront from '@assets/IMG_2002_1770750271081.png';
+import blackCardFront from '@assets/IMG_1998_1770750271081.png';
+import goldCardFront from '@assets/IMG_1996_1770750271081.png';
+
+const cardImages: Record<string, string> = {
+  CLASSIC: pinkCardFront,
+  PLUS: greenCardFront,
+  PREMIUM: blackCardFront,
+  ELITE: goldCardFront,
+};
+
 const translations: Record<string, Record<string, string>> = {
   platformCredit: {
     en: 'Platform-Wide Credit',
@@ -372,6 +384,7 @@ function LuxuryGiftCard({
   const isElite = option.tier === 'ELITE';
   const isPremium = option.tier === 'PREMIUM';
   const tierLabel = tierLabels[option.tier]?.[lang] || tierLabels[option.tier]?.en || option.tier;
+  const cardImage = cardImages[option.tier];
   
   return (
     <button 
@@ -380,78 +393,78 @@ function LuxuryGiftCard({
       onClick={onClick}
       data-testid={`egift-card-${option.value}`}
     >
-      <div className={`relative overflow-hidden transition-all duration-500 ${
-        isElite ? 'bg-[#1a1a1a]' : 'bg-white'
-      }`}
+      <div className="relative overflow-hidden transition-all duration-500 bg-white hover:shadow-xl hover:shadow-black/[0.06]"
         style={{
-          borderRadius: '2px',
+          borderRadius: '6px',
           border: selected 
-            ? '2px solid #1a1a1a' 
-            : isPremium 
-              ? '1.5px solid #c9a96e' 
-              : isElite 
-                ? '1.5px solid #333' 
-                : '1px solid #eee',
+            ? '2.5px solid #1a1a1a' 
+            : '1px solid #eee',
         }}
       >
-        {isPremium && (
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#c9a96e] via-[#e8d5b0] to-[#c9a96e]" />
+        {selected && (
+          <div className="absolute top-3 end-3 z-10">
+            <div className="w-6 h-6 rounded-full flex items-center justify-center bg-[#1a1a1a] shadow-lg">
+              <Check className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+            </div>
+          </div>
         )}
 
-        <div className="px-4 sm:px-5 pt-5 sm:pt-6 pb-5">
-          <div className="flex items-center justify-between mb-5 sm:mb-6">
+        {isElite && (
+          <div className="absolute top-3 start-3 z-10">
+            <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '2px' }}>
+              {tx('bestValue', lang)}
+            </span>
+          </div>
+        )}
+
+        <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6">
+          <img 
+            src={cardImage} 
+            alt={`PetWash™ ${tierLabel} E-Gift Card`}
+            className="w-full h-auto rounded-lg shadow-lg transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+            style={{ 
+              filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.12))',
+              maxWidth: '280px',
+              margin: '0 auto',
+              display: 'block',
+            }}
+            loading="lazy"
+          />
+        </div>
+
+        <div className="px-4 sm:px-5 py-4 sm:py-5">
+          <div className="flex items-center justify-between mb-2">
             <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
               isElite || isPremium ? 'text-[#c9a96e]' : 'text-[#999]'
             }`}>
               {tierLabel}
             </span>
-            {isElite && (
-              <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2 py-0.5 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '1px' }}>
-                {tx('bestValue', lang)}
-              </span>
-            )}
           </div>
 
-          <div className="mb-5 sm:mb-6">
-            <div className="flex items-baseline gap-1">
-              <span className={`text-[11px] sm:text-xs ${isElite ? 'text-[#888]' : 'text-[#999]'}`}>₪</span>
-              <span className={`text-4xl sm:text-5xl lg:text-[3.4rem] font-light ${
-                isElite ? 'text-white' : 'text-[#1a1a1a]'
-              }`}
-                style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
-                {formattedValue}
-              </span>
-            </div>
-            <p className={`text-[10px] sm:text-[11px] mt-2 tracking-[0.1em] uppercase ${isElite ? 'text-[#777]' : 'text-[#aaa]'}`}>
-              {tx('eGiftCredit', lang)}
-            </p>
+          <div className="flex items-baseline gap-1 mb-2">
+            <span className="text-[11px] sm:text-xs text-[#999]">₪</span>
+            <span className="text-3xl sm:text-4xl lg:text-[2.8rem] font-light text-[#1a1a1a]"
+              style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
+              {formattedValue}
+            </span>
           </div>
+          <p className="text-[10px] sm:text-[11px] text-[#aaa]">
+            {tx('eGiftCredit', lang)}
+          </p>
 
-          <div className={`border-t ${isElite ? 'border-[#333]' : 'border-[#eee]'} pt-4`}>
-            <div className={`space-y-2 ${isElite ? 'text-[#999]' : 'text-[#888]'}`}>
+          <div className="border-t border-[#eee] pt-3 mt-3">
+            <div className="space-y-1.5 text-[#888]">
               <div className="flex items-center gap-2">
                 <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
-                <span className="text-[10px] sm:text-[11px]">
-                  {tx('allServices', lang)}
-                </span>
+                <span className="text-[10px] sm:text-[11px]">{tx('allServices', lang)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
-                <span className="text-[10px] sm:text-[11px]">
-                  {tx('valid12Months', lang)}
-                </span>
+                <span className="text-[10px] sm:text-[11px]">{tx('valid12Months', lang)}</span>
               </div>
             </div>
           </div>
         </div>
-
-        {selected && (
-          <div className="absolute top-3 end-3 z-10">
-            <div className="w-5 h-5 rounded-full flex items-center justify-center bg-[#1a1a1a]">
-              <Check className="w-3 h-3 text-white" strokeWidth={2.5} />
-            </div>
-          </div>
-        )}
       </div>
     </button>
   );
@@ -713,29 +726,28 @@ export default function EGift() {
 
             <div className="order-1 lg:order-2">
               <div className="w-full max-w-xs sm:max-w-sm mx-auto lg:sticky lg:top-8">
-                <div className="bg-[#1a1a1a] p-6 sm:p-8" style={{ borderRadius: '2px' }}>
-                  <div className="flex items-center justify-between mb-8">
-                    <p className="text-[11px] tracking-[0.2em] uppercase text-[#c9a96e] font-medium">
-                      {tx('eGiftCard', lang)}
-                    </p>
-                    <p className="text-[10px] tracking-[0.15em] uppercase text-[#666]">
-                      {tierLabel}
-                    </p>
-                  </div>
-
-                  <div className="text-center py-6">
-                    <p className="text-5xl sm:text-6xl font-light text-white mb-2"
+                <div className="bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-5 sm:p-7 lg:p-8" style={{ borderRadius: '8px', border: '1px solid #eee' }}>
+                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#c9a96e] font-medium mb-4 text-center">
+                    {tx('eGiftCard', lang)} · {tierLabel}
+                  </p>
+                  <img 
+                    src={cardImages[selectedOption.tier]} 
+                    alt={`PetWash™ ${tierLabel} E-Gift Card`}
+                    className="w-full h-auto rounded-lg shadow-xl"
+                    style={{ 
+                      filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))',
+                      maxWidth: '340px',
+                      margin: '0 auto',
+                      display: 'block',
+                    }}
+                  />
+                  <div className="text-center mt-5">
+                    <p className="text-3xl sm:text-4xl font-light text-[#1a1a1a] mb-1"
                       style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em' }}>
                       {formattedValue}
                     </p>
-                    <p className="text-[10px] tracking-[0.2em] uppercase text-[#888]">
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-[#aaa]">
                       {tx('eGiftCredit', lang)}
-                    </p>
-                  </div>
-
-                  <div className="border-t border-[#333] pt-5 mt-4">
-                    <p className="text-[10px] tracking-[0.2em] uppercase text-[#666] text-center">
-                      Pet Wash™ · Premium Organic Pet Care
                     </p>
                   </div>
                 </div>
