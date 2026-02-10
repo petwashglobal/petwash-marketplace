@@ -466,7 +466,7 @@ function GooglePlacesLocationInput({
 
   return (
     <div className="relative">
-      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none z-10" />
+      <MapPin className="absolute start-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none z-10" />
       <Input
         ref={inputRef}
         type="text"
@@ -486,7 +486,7 @@ function GooglePlacesLocationInput({
         onBlur={() => {
           setTimeout(() => setShowCitySuggestions(false), 200);
         }}
-        className={`pl-10 pr-12 h-12 border-gray-200 rounded-xl focus:ring-2 ${focusRing} ${focusBorder}`}
+        className={`ps-10 pe-12 h-12 border-gray-200 rounded-xl focus:ring-2 ${focusRing} ${focusBorder}`}
         data-testid="input-search-location"
         autoComplete="off"
       />
@@ -494,7 +494,7 @@ function GooglePlacesLocationInput({
         type="button"
         onClick={handleUseMyLocation}
         disabled={isGettingLocation}
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+        className="absolute end-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
         title="Use my location"
         data-testid="button-use-my-location"
       >
@@ -508,14 +508,14 @@ function GooglePlacesLocationInput({
         )}
       </button>
       {locationError && (
-        <div className="absolute top-full left-0 mt-1 text-xs text-red-500 flex items-center gap-1">
+        <div className="absolute top-full start-0 mt-1 text-xs text-red-500 flex items-center gap-1">
           <AlertTriangle className="h-3 w-3" />
           {locationError}
         </div>
       )}
       
       {showCitySuggestions && filteredCities.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
+        <div className="absolute top-full start-0 end-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
           {filteredCities.map((city, index) => (
             <button
               key={`${city}-${index}`}
@@ -926,7 +926,7 @@ export function MadPawsSearch({
             {/* Mobile-friendly native date inputs - works perfectly on iOS/Android */}
             <div className="flex gap-2 h-12">
               <div className="relative flex-1">
-                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
+                <CalendarDays className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
                 <input
                   type="date"
                   value={startDate && isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : ''}
@@ -944,12 +944,12 @@ export function MadPawsSearch({
                     }
                   }}
                   min={format(new Date(), 'yyyy-MM-dd')}
-                  className="w-full h-12 pl-9 pr-2 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors cursor-pointer"
+                  className="w-full h-12 ps-9 pe-2 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors cursor-pointer"
                   data-testid="input-start-date"
                 />
               </div>
               <div className="relative flex-1">
-                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-400 pointer-events-none z-10" />
+                <CalendarDays className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-400 pointer-events-none z-10" />
                 <input
                   type="date"
                   value={endDate && isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : ''}
@@ -964,7 +964,7 @@ export function MadPawsSearch({
                     }
                   }}
                   min={startDate && isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
-                  className="w-full h-12 pl-9 pr-2 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors cursor-pointer"
+                  className="w-full h-12 ps-9 pe-2 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors cursor-pointer"
                   data-testid="input-end-date"
                 />
               </div>
@@ -979,9 +979,9 @@ export function MadPawsSearch({
               data-testid="button-search"
             >
               {searchMutation.isPending ? (
-                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                <Loader2 className="h-5 w-5 me-2 animate-spin" />
               ) : (
-                <Search className="h-5 w-5 mr-2" />
+                <Search className="h-5 w-5 me-2" />
               )}
               {searchMutation.isPending 
                 ? (isHebrew ? 'מחפש...' : 'Searching...') 

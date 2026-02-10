@@ -219,7 +219,7 @@ export default function BrowseSitters() {
                     onClick={() => setLocation('/become-provider')}
                     data-testid="button-become-sitter"
                   >
-                    <Users className="h-5 w-5 mr-2" />
+                    <Users className="h-5 w-5 me-2" />
                     {isHebrew ? 'הפוך לשמרטף' : 'Become a Sitter'}
                   </Button>
                   <Button 
@@ -227,7 +227,7 @@ export default function BrowseSitters() {
                     className="rounded-full px-8"
                     data-testid="button-notify-me"
                   >
-                    <Sparkles className="w-5 h-5 mr-2" />
+                    <Sparkles className="w-5 h-5 me-2" />
                     {isHebrew ? 'עדכנו אותי' : 'Notify Me'}
                   </Button>
                 </div>
