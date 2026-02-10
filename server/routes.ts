@@ -3705,6 +3705,64 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // GET /api/admin/providers - Get all providers across platforms for admin management dashboard
+  app.get('/api/admin/providers', requireAdmin, async (req: any, res) => {
+    try {
+      const { sitterProfiles, walkerProfiles, providerApplications } = await import('@shared/schema');
+      const providers: any[] = [];
+
+      try {
+        const sitters = await db.select({
+          id: sitterProfiles.id,
+          firstName: sitterProfiles.firstName,
+          lastName: sitterProfiles.lastName,
+          email: sitterProfiles.email,
+          phone: sitterProfiles.phone,
+          city: sitterProfiles.city,
+        }).from(sitterProfiles);
+
+        sitters.forEach(s => providers.push({
+          ...s, platform: 'sitter', status: 'active', location: s.city
+        }));
+      } catch (e) { /* table may not exist yet */ }
+
+      try {
+        const walkers = await db.select({
+          id: walkerProfiles.id,
+          firstName: walkerProfiles.firstName,
+          lastName: walkerProfiles.lastName,
+          city: walkerProfiles.city,
+        }).from(walkerProfiles);
+
+        walkers.forEach(w => providers.push({
+          ...w, email: '', phone: '', platform: 'walker', status: 'active', location: w.city
+        }));
+      } catch (e) { /* table may not exist yet */ }
+
+      try {
+        const apps = await db.select({
+          id: providerApplications.id,
+          firstName: providerApplications.firstName,
+          lastName: providerApplications.lastName,
+          email: providerApplications.email,
+          phone: providerApplications.phoneNumber,
+          platform: providerApplications.providerType,
+          city: providerApplications.city,
+        }).from(providerApplications);
+
+        apps.forEach(a => providers.push({
+          ...a, status: 'applicant', location: a.city
+        }));
+      } catch (e) { /* table may not exist yet */ }
+
+      logger.info('[Admin] Providers list fetched', { count: providers.length, admin: req.user?.email });
+      res.json({ providers });
+    } catch (error) {
+      logger.error('[Admin] Error fetching providers:', error);
+      res.status(500).json({ error: 'Failed to fetch providers' });
+    }
+  });
+
   // POST /api/webhooks/nayax - Handle Nayax webhook events (Firestore + Google Cloud Backup)
   // CRITICAL: Must capture raw body for signature verification
   app.post('/api/webhooks/nayax', express.raw({ type: 'application/json' }), async (req, res) => {

@@ -184,51 +184,51 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
 
   if (loading) {
     return (
-      <div className="luxury-glass-card luxury-shadow-lg p-8 mt-6 luxury-animate-scale-in">
+      <div className="luxury-dark-card rounded-2xl p-8 mt-6 luxury-animate-scale-in">
         <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-[#000000] dark:text-[#FFFFFF]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#C9A96E]" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="luxury-glass-card luxury-shadow-lg p-8 mt-6 luxury-animate-scale-in luxury-delay-2">
+    <div className="luxury-dark-card rounded-2xl p-8 mt-6 luxury-animate-scale-in luxury-delay-2">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-full bg-gradient-to-br from-[#000000] to-[#333333] shadow-lg">
-            <KeyRound className="h-6 w-6 text-white" />
+          <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.3)] to-[rgba(201,169,110,0.1)]">
+            <KeyRound className="h-6 w-6 text-[#C9A96E]" />
           </div>
           <div>
-            <h2 className="luxury-heading-md">
+            <h2 className="luxury-dark-heading-lg text-lg">
               {language === 'he' ? 'קוד PIN' : 'PIN Code'}
             </h2>
-            <p className="luxury-text-small mt-1">
+            <p className="luxury-dark-text-small mt-1">
               {language === 'he' ? 'התחברות מהירה עם קוד PIN בן 4-6 ספרות' : 'Quick sign-in with 4-6 digit PIN'}
             </p>
           </div>
         </div>
         
         {pinStatus?.hasPin ? (
-          <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+          <Badge className="bg-emerald-500/15 text-emerald-400 border-0">
             {language === 'he' ? 'מופעל' : 'Enabled'}
           </Badge>
         ) : (
-          <Badge variant="outline" className="border-gray-300 text-gray-500">
+          <Badge variant="outline" className="border-[rgba(232,230,240,0.1)] text-[rgba(149,144,168,0.6)]">
             {language === 'he' ? 'לא מופעל' : 'Not set'}
           </Badge>
         )}
       </div>
 
       {showSetup ? (
-        <div className="luxury-glass-minimal p-6 rounded-2xl">
-          <h3 className="luxury-heading-sm text-center mb-4">
+        <div className="luxury-dark-surface p-6 rounded-2xl">
+          <h3 className="luxury-dark-heading-sm text-center mb-4 text-white">
             {setupStep === 'enter' 
               ? (language === 'he' ? 'הזן קוד PIN חדש' : 'Enter new PIN')
               : (language === 'he' ? 'אשר את קוד ה-PIN' : 'Confirm your PIN')
             }
           </h3>
-          <p className="luxury-text-small text-center mb-6 text-gray-600">
+          <p className="luxury-dark-text-small text-center mb-6">
             {language === 'he' ? 'בחר קוד בן 4-6 ספרות' : 'Choose a 4-6 digit code'}
           </p>
           
@@ -248,7 +248,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
         <div className="space-y-4">
           {pinStatus?.hasPin ? (
             <>
-              <p className="luxury-text-body text-gray-600">
+              <p className="luxury-dark-text-body">
                 {language === 'he' 
                   ? 'קוד ה-PIN שלך מוגדר ופעיל. תוכל להשתמש בו להתחברות מהירה.'
                   : 'Your PIN is set and active. You can use it for quick sign-in.'
@@ -258,7 +258,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
                 <Button
                   onClick={() => setShowSetup(true)}
                   variant="outline"
-                  className="luxury-glass-minimal"
+                  className="border-[rgba(232,230,240,0.1)] text-white hover:bg-[rgba(232,230,240,0.05)]"
                   data-testid="button-change-pin"
                 >
                   <KeyRound className="h-4 w-4 mr-2" />
@@ -268,7 +268,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
                   onClick={handleRemovePin}
                   variant="outline"
                   disabled={isSubmitting}
-                  className="text-red-600 hover:bg-red-50 border-red-300"
+                  className="text-red-400 hover:bg-red-500/10 border-red-500/30"
                   data-testid="button-remove-pin"
                 >
                   {isSubmitting ? (
@@ -282,20 +282,20 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
             </>
           ) : (
             <>
-              <p className="luxury-text-body text-gray-600">
+              <p className="luxury-dark-text-body">
                 {language === 'he' 
                   ? 'הגדר קוד PIN להתחברות מהירה ומאובטחת לחשבונך.'
                   : 'Set up a PIN for quick and secure sign-in to your account.'
                 }
               </p>
-              <Button
+              <button
                 onClick={() => setShowSetup(true)}
-                className="luxury-btn-primary bg-gradient-to-r from-[#000000] to-[#333333] hover:from-[#333333] hover:to-[#555555]"
+                className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2"
                 data-testid="button-setup-pin"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 {language === 'he' ? 'הגדר קוד PIN' : 'Set up PIN'}
-              </Button>
+              </button>
             </>
           )}
         </div>
@@ -541,8 +541,8 @@ export default function Settings() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="luxury-dark-mesh min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C9A96E]" />
       </div>
     );
   }
@@ -554,14 +554,13 @@ export default function Settings() {
 
   return (
     <Layout language={language} onLanguageChange={setLanguage}>
-      <div className="min-h-screen luxury-bg-mesh">
+      <div className="luxury-dark-mesh min-h-screen">
         <div className="pt-20 pb-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8 luxury-animate-fade-in">
             <div className="flex items-center gap-6 mb-6">
-              {/* Pet Avatar Display with Gradient Border */}
-              <div className="relative p-1 rounded-full bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#667eea] luxury-animate-scale-in">
-                <div className="bg-white rounded-full p-1">
+              <div className="relative p-1 rounded-full bg-gradient-to-br from-[#C9A96E] via-[#d4af37] to-[#C9A96E] luxury-animate-scale-in">
+                <div className="bg-[#0A0A0F] rounded-full p-1">
                   <PetAvatarDisplay 
                     size="lg" 
                     showName={true}
@@ -570,10 +569,10 @@ export default function Settings() {
                 </div>
               </div>
               <div className="flex-1 luxury-animate-slide-up luxury-delay-1">
-                <h1 className="luxury-heading-lg">
+                <h1 className="luxury-dark-heading-xl text-2xl sm:text-3xl">
                   {t('settings.title', language)}
                 </h1>
-                <p className="mt-2 luxury-text-body">
+                <p className="mt-2 luxury-dark-text-body">
                   {t('settings.subtitle', language)}
                 </p>
               </div>
@@ -581,65 +580,65 @@ export default function Settings() {
           </div>
 
           <Tabs defaultValue="security" className="w-full luxury-animate-slide-up luxury-delay-2">
-            <TabsList className="grid w-full grid-cols-2 mb-8 luxury-glass-minimal border-none">
-              <TabsTrigger value="account" data-testid="tab-account" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#667eea] data-[state=active]:to-[#764ba2] data-[state=active]:text-white">
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-[rgba(232,230,240,0.05)] border border-[rgba(232,230,240,0.1)] rounded-xl">
+              <TabsTrigger value="account" data-testid="tab-account" className="text-[rgba(232,230,240,0.6)] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#C9A96E] data-[state=active]:to-[#d4af37] data-[state=active]:text-[#0A0A0F] rounded-lg">
                 {t('settings.account', language)}
               </TabsTrigger>
-              <TabsTrigger value="security" data-testid="tab-security" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#667eea] data-[state=active]:to-[#764ba2] data-[state=active]:text-white">
+              <TabsTrigger value="security" data-testid="tab-security" className="text-[rgba(232,230,240,0.6)] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#C9A96E] data-[state=active]:to-[#d4af37] data-[state=active]:text-[#0A0A0F] rounded-lg">
                 <Shield className="h-4 w-4 mr-2" />
                 {t('settings.security', language)}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="account">
-              <div className="luxury-glass-card luxury-shadow-lg p-8 mb-6 luxury-animate-scale-in">
-                <h2 className="luxury-heading-md mb-6 flex items-center gap-3">
-                  <div className="p-2 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2]">
-                    <Shield className="h-5 w-5 text-white" />
+              <div className="luxury-dark-card rounded-2xl p-8 mb-6 luxury-animate-scale-in">
+                <h2 className="luxury-dark-heading-lg text-lg mb-6 flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.3)] to-[rgba(201,169,110,0.1)]">
+                    <Shield className="h-5 w-5 text-[#C9A96E]" />
                   </div>
                   {t('settings.accountDetails', language)}
                 </h2>
                 <div className="space-y-6">
                   <div className="luxury-animate-fade-in luxury-delay-1">
-                    <Label className="luxury-text-small font-semibold">{t('settings.email', language)}</Label>
-                    <Input value={firebaseUser?.email || ''} disabled className="luxury-glass-minimal border-none mt-2" />
+                    <Label className="luxury-dark-text-small text-xs uppercase tracking-wider font-semibold">{t('settings.email', language)}</Label>
+                    <Input value={firebaseUser?.email || ''} disabled className="mt-2 h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white" />
                   </div>
                   <div className="luxury-animate-fade-in luxury-delay-2">
-                    <Label className="luxury-text-small font-semibold">{t('settings.name', language)}</Label>
-                    <Input value={firebaseUser?.displayName || ''} disabled className="luxury-glass-minimal border-none mt-2" />
+                    <Label className="luxury-dark-text-small text-xs uppercase tracking-wider font-semibold">{t('settings.name', language)}</Label>
+                    <Input value={firebaseUser?.displayName || ''} disabled className="mt-2 h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white" />
                   </div>
                 </div>
               </div>
 
               {/* DANGER ZONE - Account Deletion */}
-              <div className="luxury-glass-card luxury-shadow-lg p-8 border-2 border-red-400 bg-gradient-to-br from-red-50/90 to-red-100/90 backdrop-blur-xl luxury-animate-scale-in luxury-delay-3">
+              <div className="luxury-dark-card rounded-2xl p-8 border border-red-500/20 luxury-animate-scale-in luxury-delay-3">
                 <div className="flex items-start gap-4 mb-6">
-                  <div className="p-3 rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
-                    <AlertCircle className="h-6 w-6 text-white" />
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-red-500/20 to-red-600/10">
+                    <AlertCircle className="h-6 w-6 text-red-400" />
                   </div>
                   <div>
-                    <h2 className="luxury-heading-md text-red-900 mb-2">
+                    <h2 className="luxury-dark-heading-lg text-lg text-red-400 mb-2">
                       {t('settings.dangerZone', language)}
                     </h2>
-                    <p className="luxury-text-small text-red-800">
+                    <p className="luxury-dark-text-body text-sm text-red-300/60">
                       {t('settings.irreversibleActions', language)}
                     </p>
                   </div>
                 </div>
 
-                <div className="luxury-glass-card p-6 border-2 border-red-300">
+                <div className="luxury-dark-surface rounded-xl p-6 border border-red-500/10">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h3 className="luxury-heading-sm text-gray-900 mb-3 flex items-center gap-2">
-                        <div className="p-2 rounded-full bg-red-100">
-                          <Trash2 className="h-5 w-5 text-red-600" />
+                      <h3 className="luxury-dark-heading-sm text-white mb-3 flex items-center gap-2">
+                        <div className="p-2 rounded-xl bg-red-500/15">
+                          <Trash2 className="h-5 w-5 text-red-400" />
                         </div>
                         {t('settings.deleteAccount', language)}
                       </h3>
-                      <p className="luxury-text-body mb-4">
+                      <p className="luxury-dark-text-body mb-4">
                         {t('settings.deleteDescPermanent', language)}
                       </p>
-                      <ul className="luxury-text-small space-y-2 pl-6 list-disc">
+                      <ul className="luxury-dark-text-small space-y-2 pl-6 list-disc text-[rgba(149,144,168,0.6)]">
                         <li>{t('settings.deleteWarning1', language)}</li>
                         <li>{t('settings.deleteWarning2', language)}</li>
                         <li>{t('settings.deleteWarning3', language)}</li>
@@ -650,7 +649,7 @@ export default function Settings() {
                     <Button
                       onClick={() => setDeletingAccount(true)}
                       variant="destructive"
-                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all"
+                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
                       data-testid="button-delete-account"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
@@ -664,20 +663,20 @@ export default function Settings() {
             <TabsContent value="security">
               {/* Trusted Device Status - Inline Quick View */}
               {trustedDevice && (
-                <div className="luxury-glass-card luxury-shadow-md p-6 mb-6 bg-gradient-to-r from-green-50/90 to-green-100/90 border-green-300 backdrop-blur-xl luxury-animate-fade-in">
+                <div className="luxury-dark-card rounded-2xl p-6 mb-6 border border-emerald-500/20 luxury-animate-fade-in">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4 flex-1">
-                      <div className="p-3 rounded-full bg-gradient-to-br from-green-500 to-green-600 shadow-lg">
-                        <Shield className="h-6 w-6 text-white" />
+                      <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10">
+                        <Shield className="h-6 w-6 text-emerald-400" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="luxury-heading-sm text-green-900">
+                        <h3 className="luxury-dark-heading-sm text-emerald-400">
                           {t('settings.trustedDeviceActive', language)}
                         </h3>
-                        <p className="luxury-text-body text-green-700 mt-2">
+                        <p className="luxury-dark-text-body text-emerald-300/60 mt-2">
                           {t('settings.trustedDeviceDescFull', language).replace('{days}', getTrustDaysRemaining().toString())}
                         </p>
-                        <div className="mt-3 space-y-2 luxury-text-small text-green-600">
+                        <div className="mt-3 space-y-2 luxury-dark-text-small text-emerald-400/60">
                           <div className="flex items-center gap-2">
                             <Laptop className="h-4 w-4" />
                             <span>{trustedDevice.deviceInfo.browser} on {trustedDevice.deviceInfo.os}</span>
@@ -693,7 +692,7 @@ export default function Settings() {
                       onClick={handleRevokeTrust}
                       variant="outline"
                       size="sm"
-                      className="luxury-glass-minimal border-red-300 text-red-700 hover:bg-red-50"
+                      className="border-red-500/30 text-red-400 hover:bg-red-500/10"
                       data-testid="button-revoke-trust"
                     >
                       <X className="h-4 w-4 mr-1" />
@@ -703,17 +702,17 @@ export default function Settings() {
                 </div>
               )}
 
-              <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-scale-in luxury-delay-1">
+              <div className="luxury-dark-card rounded-2xl p-8 luxury-animate-scale-in luxury-delay-1">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] shadow-lg">
-                      <Fingerprint className="h-6 w-6 text-white" />
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.3)] to-[rgba(201,169,110,0.1)]">
+                      <Fingerprint className="h-6 w-6 text-[#C9A96E]" />
                     </div>
                     <div>
-                      <h2 className="luxury-heading-md">
+                      <h2 className="luxury-dark-heading-lg text-lg">
                         {t('settings.passkeysDevices', language)}
                       </h2>
-                      <p className="luxury-text-small mt-1">
+                      <p className="luxury-dark-text-small mt-1">
                         {t('settings.managePasskeyDevices', language)}
                       </p>
                     </div>
@@ -723,13 +722,13 @@ export default function Settings() {
                     <button
                       onClick={handleAddPasskey}
                       disabled={addingPasskey}
-                      className="luxury-btn-primary"
+                      className="luxury-dark-btn-gold px-4 py-2.5 flex items-center gap-2"
                       data-testid="button-add-passkey"
                     >
                       {addingPasskey ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Plus className="h-4 w-4 mr-2" />
+                        <Plus className="h-4 w-4" />
                       )}
                       {t('settings.addPasskey', language)}
                     </button>
@@ -738,34 +737,34 @@ export default function Settings() {
 
                 {loadingDevices ? (
                   <div className="flex justify-center py-12">
-                    <div className="luxury-spinner"></div>
+                    <Loader2 className="h-8 w-8 animate-spin text-[#C9A96E]" />
                   </div>
                 ) : devices.length === 0 ? (
-                  <div className="text-center py-16 luxury-glass-minimal rounded-2xl luxury-animate-fade-in">
-                    <div className="p-4 rounded-full bg-gradient-to-br from-[#667eea]/10 to-[#764ba2]/10 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-                      <Fingerprint className="h-10 w-10 luxury-text-gradient" />
+                  <div className="text-center py-16 luxury-dark-surface rounded-2xl luxury-animate-fade-in">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-[rgba(201,169,110,0.2)] to-[rgba(201,169,110,0.05)] w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                      <Fingerprint className="h-10 w-10 text-[#C9A96E]" />
                     </div>
-                    <h3 className="luxury-heading-sm mb-3">
+                    <h3 className="luxury-dark-heading-sm mb-3">
                       {t('settings.noDevices', language)}
                     </h3>
-                    <p className="luxury-text-body mb-8">
+                    <p className="luxury-dark-text-body mb-8">
                       {t('settings.addPasskeyQuick', language)}
                     </p>
                     {isPasskeySupported() && (
                       <button
                         onClick={handleAddPasskey}
                         disabled={addingPasskey}
-                        className="luxury-btn-primary"
+                        className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2 mx-auto"
                         data-testid="button-add-first-passkey"
                       >
                         {addingPasskey ? (
                           <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            <Loader2 className="h-4 w-4 animate-spin" />
                             {t('settings.adding', language)}
                           </>
                         ) : (
                           <>
-                            <Plus className="h-4 w-4 mr-2" />
+                            <Plus className="h-4 w-4" />
                             {t('settings.addFirstPasskey', language)}
                           </>
                         )}
@@ -777,12 +776,12 @@ export default function Settings() {
                     {devices.map((device, index) => (
                       <div
                         key={device.credentialId}
-                        className={`luxury-glass-minimal p-6 rounded-2xl luxury-hover-lift luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}
+                        className={`luxury-dark-surface p-6 rounded-xl border border-[rgba(232,230,240,0.06)] hover:border-[rgba(201,169,110,0.2)] transition-all luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}
                         data-testid={`device-${device.credentialId}`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4 flex-1">
-                            <div className="p-3 rounded-full bg-gradient-to-br from-[#667eea] to-[#764ba2] shadow-md">
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.2)] to-[rgba(201,169,110,0.08)] text-[#C9A96E]">
                               {getDeviceIcon(device.deviceType)}
                             </div>
                             
@@ -792,13 +791,13 @@ export default function Settings() {
                                   <Input
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
-                                    className="luxury-glass-minimal border-none max-w-xs"
+                                    className="max-w-xs h-10 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white"
                                     autoFocus
                                     data-testid="input-device-name"
                                   />
                                   <button
                                     onClick={() => handleRenameDevice(device.credentialId)}
-                                    className="luxury-btn-primary p-2"
+                                    className="luxury-dark-btn-gold p-2"
                                     data-testid="button-save-device-name"
                                   >
                                     <Check className="h-4 w-4" />
@@ -810,7 +809,7 @@ export default function Settings() {
                                       setEditingDevice(null);
                                       setEditName("");
                                     }}
-                                    className="luxury-glass-minimal"
+                                    className="text-[rgba(149,144,168,0.6)] hover:text-white"
                                     data-testid="button-cancel-edit"
                                   >
                                     <X className="h-4 w-4" />
@@ -819,14 +818,14 @@ export default function Settings() {
                               ) : (
                                 <>
                                   <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="luxury-heading-sm">
+                                    <h3 className="luxury-dark-heading-sm text-white">
                                       {device.deviceName}
                                     </h3>
-                                    <span className="luxury-badge text-xs">
+                                    <span className="luxury-dark-badge-gold text-[10px]">
                                       {t('settings.passkey', language)}
                                     </span>
                                   </div>
-                                  <p className="luxury-text-small">
+                                  <p className="luxury-dark-text-small text-xs">
                                     {t('settings.created', language)}{' '}
                                     {format(new Date(device.createdAt), 'MMM dd, yyyy')}
                                     {device.lastUsedAt && (
@@ -851,7 +850,7 @@ export default function Settings() {
                                   setEditingDevice(device.credentialId);
                                   setEditName(device.deviceName);
                                 }}
-                                className="luxury-glass-minimal"
+                                className="text-[rgba(149,144,168,0.6)] hover:text-white hover:bg-[rgba(232,230,240,0.05)]"
                                 data-testid="button-edit-device"
                               >
                                 <Edit2 className="h-4 w-4" />
@@ -860,7 +859,7 @@ export default function Settings() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => setDeletingDevice(device.credentialId)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                className="text-red-400/60 hover:text-red-400 hover:bg-red-500/10"
                                 data-testid="button-delete-device"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -874,12 +873,12 @@ export default function Settings() {
                 )}
 
                 {!isPasskeySupported() && (
-                  <div className="mt-6 luxury-glass-minimal p-6 border border-amber-300 rounded-2xl flex items-start gap-3">
-                    <div className="p-2 rounded-full bg-gradient-to-br from-amber-500 to-amber-600">
-                      <AlertCircle className="h-5 w-5 text-white" />
+                  <div className="mt-6 luxury-dark-surface p-6 border border-amber-500/20 rounded-xl flex items-start gap-3">
+                    <div className="p-2 rounded-xl bg-amber-500/15">
+                      <AlertCircle className="h-5 w-5 text-amber-400" />
                     </div>
                     <div className="flex-1">
-                      <p className="luxury-text-body text-amber-800">
+                      <p className="luxury-dark-text-body text-amber-300/70">
                         {t('settings.browserNoPasskey', language)}
                       </p>
                     </div>
@@ -896,27 +895,27 @@ export default function Settings() {
 
       {/* Delete Device Confirmation Dialog */}
       <AlertDialog open={!!deletingDevice} onOpenChange={() => setDeletingDevice(null)}>
-        <AlertDialogContent className="luxury-glass-card luxury-shadow-xl border-none">
+        <AlertDialogContent className="!bg-[#12121a] !border-[rgba(232,230,240,0.1)] rounded-2xl">
           <AlertDialogHeader>
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-3 rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
-                <Trash2 className="h-6 w-6 text-white" />
+              <div className="p-3 rounded-xl bg-red-500/15">
+                <Trash2 className="h-6 w-6 text-red-400" />
               </div>
-              <AlertDialogTitle className="luxury-heading-md">
+              <AlertDialogTitle className="luxury-dark-heading-lg text-white">
                 {t('settings.removeDevice', language)}
               </AlertDialogTitle>
             </div>
-            <AlertDialogDescription className="luxury-text-body ml-14">
+            <AlertDialogDescription className="luxury-dark-text-body ml-14">
               {t('settings.removeDeviceDesc', language)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="luxury-btn-secondary" data-testid="button-cancel-delete">
+            <AlertDialogCancel className="bg-transparent border border-[rgba(232,230,240,0.1)] text-white hover:bg-[rgba(232,230,240,0.05)]" data-testid="button-cancel-delete">
               {t('settings.cancel', language)}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletingDevice && handleDeleteDevice(deletingDevice)}
-              className="luxury-btn-primary bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
               data-testid="button-confirm-delete"
             >
               {t('settings.remove', language)}
@@ -934,13 +933,13 @@ export default function Settings() {
           setConfirmText("");
         }
       }}>
-        <AlertDialogContent className="max-w-2xl luxury-glass-card luxury-shadow-xl border-2 border-red-300">
+        <AlertDialogContent className="max-w-2xl !bg-[#12121a] !border-red-500/20 rounded-2xl">
           <AlertDialogHeader>
             <div className="flex items-center gap-4 mb-2">
-              <div className="p-4 rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
-                <AlertCircle className="h-7 w-7 text-white" />
+              <div className="p-4 rounded-xl bg-red-500/15">
+                <AlertCircle className="h-7 w-7 text-red-400" />
               </div>
-              <AlertDialogTitle className="luxury-heading-lg text-red-900">
+              <AlertDialogTitle className="luxury-dark-heading-lg text-red-400">
                 {deletionStep === 1 
                   ? t('settings.deleteWarning', language)
                   : t('settings.finalConfirmation', language)}
@@ -951,59 +950,31 @@ export default function Settings() {
           {deletionStep === 1 ? (
             <>
               <AlertDialogDescription className="space-y-4">
-                <div className="luxury-glass-card p-6 border-2 border-red-300 bg-gradient-to-br from-red-50/90 to-red-100/90 backdrop-blur-xl">
-                  <p className="luxury-heading-sm text-red-900 mb-2">
+                <div className="luxury-dark-surface rounded-xl p-6 border border-red-500/20">
+                  <p className="luxury-dark-heading-sm text-red-400 mb-2">
                     {t('settings.deleteAccountWarning', language)}
                   </p>
-                  <p className="luxury-text-body text-red-800">
+                  <p className="luxury-dark-text-body text-red-300/60">
                     {t('settings.followingDeleted', language)}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-start gap-2 luxury-animate-fade-in luxury-delay-1">
-                    <div className="p-1 rounded-full bg-red-100">
-                      <X className="h-4 w-4 text-red-600" />
+                  {['personalDetails', 'washHistory', 'loyaltyVip', 'kycFiles', 'petPhotos', 'activeBenefits'].map((key, i) => (
+                    <div key={key} className={`flex items-start gap-2 luxury-animate-fade-in luxury-delay-${i + 1}`}>
+                      <div className="p-1 rounded-lg bg-red-500/15">
+                        <X className="h-4 w-4 text-red-400" />
+                      </div>
+                      <span className="luxury-dark-text-small text-[rgba(232,230,240,0.6)]">{t(`settings.${key}`, language)}</span>
                     </div>
-                    <span className="luxury-text-small">{t('settings.personalDetails', language)}</span>
-                  </div>
-                  <div className="flex items-start gap-2 luxury-animate-fade-in luxury-delay-2">
-                    <div className="p-1 rounded-full bg-red-100">
-                      <X className="h-4 w-4 text-red-600" />
-                    </div>
-                    <span className="luxury-text-small">{t('settings.washHistory', language)}</span>
-                  </div>
-                  <div className="flex items-start gap-2 luxury-animate-fade-in luxury-delay-3">
-                    <div className="p-1 rounded-full bg-red-100">
-                      <X className="h-4 w-4 text-red-600" />
-                    </div>
-                    <span className="luxury-text-small">{t('settings.loyaltyVip', language)}</span>
-                  </div>
-                  <div className="flex items-start gap-2 luxury-animate-fade-in luxury-delay-4">
-                    <div className="p-1 rounded-full bg-red-100">
-                      <X className="h-4 w-4 text-red-600" />
-                    </div>
-                    <span className="luxury-text-small">{t('settings.kycFiles', language)}</span>
-                  </div>
-                  <div className="flex items-start gap-2 luxury-animate-fade-in luxury-delay-5">
-                    <div className="p-1 rounded-full bg-red-100">
-                      <X className="h-4 w-4 text-red-600" />
-                    </div>
-                    <span className="luxury-text-small">{t('settings.petPhotos', language)}</span>
-                  </div>
-                  <div className="flex items-start gap-2 luxury-animate-fade-in luxury-delay-6">
-                    <div className="p-1 rounded-full bg-red-100">
-                      <X className="h-4 w-4 text-red-600" />
-                    </div>
-                    <span className="luxury-text-small">{t('settings.activeBenefits', language)}</span>
-                  </div>
+                  ))}
                 </div>
 
-                <div className="luxury-glass-card p-6 border-2 border-amber-300 bg-gradient-to-br from-amber-50/90 to-amber-100/90 backdrop-blur-xl">
-                  <p className="luxury-heading-sm text-amber-900 mb-3">
+                <div className="luxury-dark-surface rounded-xl p-6 border border-amber-500/20">
+                  <p className="luxury-dark-heading-sm text-amber-400 mb-3">
                     {t('settings.deletionTimeline', language)}
                   </p>
-                  <ul className="luxury-text-small text-amber-800 space-y-2">
+                  <ul className="luxury-dark-text-small text-amber-300/60 space-y-2">
                     <li>• {t('settings.immediateRevocation', language)}</li>
                     <li>• {t('settings.dataDeletion30Days', language)}</li>
                     <li>• {t('settings.noRecovery', language)}</li>
@@ -1011,7 +982,7 @@ export default function Settings() {
                 </div>
 
                 <div className="pt-4">
-                  <Label htmlFor="confirm-email" className="luxury-heading-sm">
+                  <Label htmlFor="confirm-email" className="luxury-dark-heading-sm text-white">
                     {t('settings.confirmEmailContinue', language)}
                   </Label>
                   <Input
@@ -1020,10 +991,10 @@ export default function Settings() {
                     value={confirmEmail}
                     onChange={(e) => setConfirmEmail(e.target.value)}
                     placeholder={firebaseUser?.email || ''}
-                    className="luxury-glass-minimal border-2 border-red-300 focus:border-red-500 mt-3"
+                    className="mt-3 h-12 bg-[rgba(232,230,240,0.05)] border-red-500/30 focus:border-red-500/50 text-white placeholder:text-[rgba(149,144,168,0.5)]"
                     data-testid="input-confirm-email"
                   />
-                  <p className="luxury-text-small mt-2">
+                  <p className="luxury-dark-text-small mt-2 text-[rgba(149,144,168,0.5)]">
                     {t('settings.typeEmail', language)} {firebaseUser?.email}
                   </p>
                 </div>
@@ -1036,7 +1007,7 @@ export default function Settings() {
                     setDeletionStep(1);
                     setConfirmEmail("");
                   }}
-                  className="luxury-btn-secondary"
+                  className="bg-transparent border border-[rgba(232,230,240,0.1)] text-white hover:bg-[rgba(232,230,240,0.05)]"
                   data-testid="button-cancel-account-delete-step1"
                 >
                   {t('settings.cancelKeepAccount', language)}
@@ -1044,7 +1015,7 @@ export default function Settings() {
                 <button
                   onClick={() => setDeletionStep(2)}
                   disabled={confirmEmail !== firebaseUser?.email}
-                  className="luxury-btn-primary bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-white font-medium"
                   data-testid="button-proceed-step2"
                 >
                   {t('settings.proceedDelete', language)}
@@ -1054,20 +1025,20 @@ export default function Settings() {
           ) : (
             <>
               <AlertDialogDescription className="space-y-6">
-                <div className="luxury-glass-card p-8 border-3 border-red-500 bg-gradient-to-br from-red-100/90 to-red-200/90 backdrop-blur-xl text-center">
-                  <p className="luxury-heading-lg text-red-900 mb-4">
+                <div className="luxury-dark-surface rounded-xl p-8 border border-red-500/30 text-center">
+                  <p className="luxury-dark-heading-lg text-red-400 mb-4">
                     {t('settings.lastChance', language)}
                   </p>
-                  <p className="luxury-text-body text-red-800 font-semibold">
+                  <p className="luxury-dark-text-body text-red-300/70 font-semibold">
                     {t('settings.finalWarning', language)}
                   </p>
                 </div>
 
                 <div className="pt-4">
-                  <Label htmlFor="confirm-text" className="luxury-heading-sm text-red-900">
+                  <Label htmlFor="confirm-text" className="luxury-dark-heading-sm text-red-400">
                     {t('settings.typeTextExactly', language)}
                   </Label>
-                  <p className="luxury-heading-md text-center my-4 p-4 luxury-glass-minimal border-2 border-gray-400">
+                  <p className="luxury-dark-heading-lg text-center my-4 p-4 luxury-dark-surface rounded-xl border border-[rgba(232,230,240,0.1)] text-white">
                     DELETE MY ACCOUNT
                   </p>
                   <Input
@@ -1076,7 +1047,7 @@ export default function Settings() {
                     value={confirmText}
                     onChange={(e) => setConfirmText(e.target.value)}
                     placeholder="DELETE MY ACCOUNT"
-                    className="luxury-glass-minimal mt-3 border-2 border-red-400 focus:border-red-600 text-center font-semibold"
+                    className="mt-3 h-12 bg-[rgba(232,230,240,0.05)] border-red-500/30 focus:border-red-500/50 text-white text-center font-semibold placeholder:text-[rgba(149,144,168,0.5)]"
                     data-testid="input-confirm-delete-text"
                   />
                 </div>
@@ -1088,7 +1059,7 @@ export default function Settings() {
                     setDeletionStep(1);
                     setConfirmText("");
                   }}
-                  className="luxury-btn-secondary"
+                  className="bg-transparent border border-[rgba(232,230,240,0.1)] text-white hover:bg-[rgba(232,230,240,0.05)]"
                   data-testid="button-back-step1"
                 >
                   {t('settings.goBack', language)}
@@ -1096,10 +1067,10 @@ export default function Settings() {
                 <button
                   onClick={handleDeleteAccount}
                   disabled={confirmText !== 'DELETE MY ACCOUNT'}
-                  className="luxury-btn-primary bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 disabled:opacity-50 font-bold"
+                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 disabled:opacity-50 text-white font-bold flex items-center gap-2"
                   data-testid="button-confirm-final-delete"
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="h-4 w-4" />
                   {t('settings.deletePermanently', language)}
                 </button>
               </AlertDialogFooter>

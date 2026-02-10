@@ -709,3 +709,75 @@
   margin: 0 auto 0.5rem;
   letter-spacing: -0.01em;
 }
+
+/* ============================================
+   LUXURY DARK THEME SYSTEM 2026
+   Ultra-premium dark UI for admin/settings pages
+   Brand: #0A0A0F background, #C9A96E gold accents
+   ============================================ */
+
+.luxury-dark-card {
+  background: rgba(232, 230, 240, 0.03);
+  border: 1px solid rgba(232, 230, 240, 0.08);
+  backdrop-filter: blur(20px);
+}
+
+.luxury-dark-surface {
+  background: rgba(232, 230, 240, 0.04);
+}
+
+.luxury-dark-heading-lg {
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.luxury-dark-heading-sm {
+  color: rgba(232, 230, 240, 0.9);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.luxury-dark-text-body {
+  color: rgba(149, 144, 168, 0.6);
+  line-height: 1.6;
+}
+
+.luxury-dark-text-small {
+  color: rgba(149, 144, 168, 0.5);
+  font-size: 0.8125rem;
+}
+
+.luxury-dark-btn-gold {
+  background: linear-gradient(135deg, #C9A96E, #d4af37);
+  color: #0A0A0F;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+.luxury-dark-btn-gold:hover {
+  background: linear-gradient(135deg, #d4af37, #e5c04b);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(201, 169, 110, 0.3);
+}
+.luxury-dark-btn-gold:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.luxury-dark-btn-ghost {
+  background: transparent;
+  color: rgba(232, 230, 240, 0.7);
+  font-weight: 500;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.luxury-dark-btn-ghost:hover {
+  background: rgba(232, 230, 240, 0.05);
+  color: #ffffff;
+}
