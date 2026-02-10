@@ -211,16 +211,11 @@ function WalletActionButton({
   return (
     <button 
       onClick={() => setLocation(href)}
-      className="luxury-glass-card p-4 rounded-2xl border border-white/10 text-center hover:scale-105 transition-all duration-300 group"
+      className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-center hover:shadow-md hover:border-gray-200 transition-all duration-300 group"
     >
-      <div className={cn(
-        "w-12 h-12 mx-auto mb-3 rounded-xl flex items-center justify-center",
-        "bg-gradient-to-br", color, "group-hover:shadow-lg group-hover:shadow-current/20 transition-shadow"
-      )}>
-        <Icon className="w-6 h-6 text-white" />
-      </div>
-      <p className="text-sm font-medium text-white group-hover:text-amber-300 transition-colors">{label}</p>
-      <ChevronRight className="w-4 h-4 mx-auto mt-2 text-slate-500 group-hover:text-amber-400 transition-colors" />
+      <Icon className="w-5 h-5 text-gray-400 mx-auto mb-3 group-hover:text-stone-700 transition-colors" />
+      <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">{label}</p>
+      <ChevronRight className="w-4 h-4 mx-auto mt-2 text-gray-300 group-hover:text-gray-500 transition-colors" />
     </button>
   );
 }
@@ -533,57 +528,42 @@ export default function MyAccount() {
 
   return (
     <Layout>
-      <div className="min-h-screen luxury-dark-bg py-8 px-4" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white py-8 px-4" dir={isHebrew ? 'rtl' : 'ltr'}>
         <div className="max-w-4xl mx-auto space-y-8">
           
           <div className="text-center mb-8">
-            <h1 className="luxury-heading-xl text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-200">
+            <h1 className="text-4xl font-light tracking-tight text-gray-900">
               {isHebrew ? 'החשבון שלי' : 'My Account'}
             </h1>
-            <p className="luxury-text-body text-slate-400 mt-2">
+            <p className="text-gray-500 mt-2">
               {isHebrew ? 'ניהול הפרופיל, הנקודות והזכויות שלך' : 'Manage your profile, points & privileges'}
             </p>
           </div>
 
-          <div className={cn(
-            "relative overflow-hidden rounded-3xl border border-white/10 p-8",
-            "bg-gradient-to-br", tierInfo.bgGradient,
-            "backdrop-blur-xl shadow-2xl"
-          )}>
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/20 to-transparent rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-amber-500/20 to-transparent rounded-full blur-2xl" />
-            </div>
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
 
-            <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+            <div className="flex flex-col md:flex-row items-center gap-8">
               <div className="relative">
-                <Avatar className="w-32 h-32 border-4 border-white/20 shadow-2xl">
+                <Avatar className="w-32 h-32 border-4 border-gray-200 shadow-sm">
                   <AvatarImage src={profile.photoURL} alt={profile.displayName} />
-                  <AvatarFallback className="text-4xl font-bold bg-gradient-to-br from-amber-600 to-amber-800 text-white">
+                  <AvatarFallback className="text-4xl font-bold bg-stone-100 text-stone-700">
                     {profile.displayName?.charAt(0) || 'P'}
                   </AvatarFallback>
                 </Avatar>
-                <div className={cn(
-                  "absolute -bottom-2 -right-2 p-3 rounded-full shadow-xl",
-                  "bg-gradient-to-br", tierInfo.gradient
-                )}>
-                  <TierIcon className="w-6 h-6 text-white" />
+                <div className="absolute -bottom-2 -right-2 p-2 rounded-full shadow-sm bg-stone-100 border border-gray-200">
+                  <TierIcon className="w-5 h-5 text-stone-700" />
                 </div>
               </div>
 
               <div className="flex-1 text-center md:text-start">
-                <h2 className="text-3xl font-bold text-white mb-2">{profile.displayName || 'Pet Parent'}</h2>
-                <Badge className={cn(
-                  "text-lg px-4 py-2 font-semibold bg-gradient-to-r shadow-lg",
-                  tierInfo.gradient,
-                  "text-white border-0"
-                )}>
-                  <TierIcon className="w-5 h-5 mr-2" />
+                <h2 className="text-3xl font-semibold text-gray-900 mb-2">{profile.displayName || 'Pet Parent'}</h2>
+                <Badge className="text-sm px-4 py-2 font-medium bg-stone-100 text-stone-800 border border-stone-200">
+                  <TierIcon className="w-4 h-4 mr-2" />
                   {isHebrew ? tierInfo.labelHe : tierInfo.label}
                 </Badge>
                 
                 {tierInfo.discount > 0 && (
-                  <p className="text-amber-400 mt-3 text-sm font-medium">
+                  <p className="text-stone-600 mt-3 text-sm font-medium">
                     <Sparkles className="w-4 h-4 inline mr-1" />
                     {isHebrew 
                       ? `${tierInfo.discount}% הנחה קבועה על כל השירותים`
@@ -593,11 +573,11 @@ export default function MyAccount() {
               </div>
 
               {walletLoading ? (
-                <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
               ) : (
                 <div className="text-center md:text-end">
-                  <p className="text-slate-400 text-sm mb-1">{isHebrew ? 'סך הזכויות שלך' : 'Total Credits'}</p>
-                  <p className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-100">
+                  <p className="text-gray-500 text-sm mb-1">{isHebrew ? 'סך הזכויות שלך' : 'Total Credits'}</p>
+                  <p className="text-4xl font-bold text-gray-900">
                     {formatCurrency(wallet?.totalCreditsValueCents || 0)}
                   </p>
                 </div>
@@ -605,17 +585,17 @@ export default function MyAccount() {
             </div>
 
             {nextTierInfo && (
-              <div className="relative z-10 mt-8 pt-6 border-t border-white/10">
+              <div className="mt-8 pt-6 border-t border-gray-100">
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-400">
+                  <span className="text-gray-500">
                     {isHebrew ? 'התקדמות לדרגה הבאה' : 'Progress to next tier'}
                   </span>
-                  <span className="text-amber-400 font-medium">
+                  <span className="text-stone-700 font-medium">
                     {wallet?.tierPointsThisYear || 0} / {nextTierInfo.pointsRequired} {isHebrew ? 'נקודות' : 'points'}
                   </span>
                 </div>
-                <Progress value={progressToNext} className="h-3 bg-white/10" />
-                <p className="text-xs text-slate-500 mt-2 text-center">
+                <Progress value={progressToNext} className="h-3 bg-gray-100" />
+                <p className="text-xs text-gray-500 mt-2 text-center">
                   {isHebrew 
                     ? `עוד ${pointsToNext} נקודות ל${isHebrew ? tierConfig[tierInfo.nextTier!].labelHe : tierConfig[tierInfo.nextTier!].label}`
                     : `${pointsToNext} more points to ${tierConfig[tierInfo.nextTier!].label}`}
@@ -634,16 +614,11 @@ export default function MyAccount() {
             ].map((item, idx) => (
               <div 
                 key={idx}
-                className="luxury-glass-card p-4 rounded-2xl border border-white/10 text-center hover:scale-105 transition-transform duration-300"
+                className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-center hover:shadow-md transition-shadow duration-300"
               >
-                <div className={cn(
-                  "w-12 h-12 mx-auto mb-3 rounded-xl flex items-center justify-center",
-                  "bg-gradient-to-br", item.color
-                )}>
-                  <item.icon className="w-6 h-6 text-white" />
-                </div>
-                <p className="text-2xl font-bold text-white">{item.value}</p>
-                <p className="text-xs text-slate-400 mt-1">{item.label}</p>
+                <item.icon className="w-5 h-5 text-gray-400 mx-auto mb-3" />
+                <p className="text-2xl font-semibold text-gray-900">{item.value}</p>
+                <p className="text-xs text-gray-500 mt-1">{item.label}</p>
               </div>
             ))}
           </div>
@@ -676,31 +651,31 @@ export default function MyAccount() {
           </div>
 
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="w-full bg-black/40 border border-white/10 rounded-2xl p-1 grid grid-cols-4">
+            <TabsList className="w-full bg-stone-50 border border-gray-100 rounded-2xl p-1 grid grid-cols-4">
               <TabsTrigger 
                 value="profile" 
-                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
               >
                 <User className="w-4 h-4 mr-2" />
                 {isHebrew ? 'פרופיל' : 'Profile'}
               </TabsTrigger>
               <TabsTrigger 
                 value="preferences"
-                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
               >
                 <Settings className="w-4 h-4 mr-2" />
                 {isHebrew ? 'העדפות' : 'Preferences'}
               </TabsTrigger>
               <TabsTrigger 
                 value="notifications"
-                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
               >
                 <Bell className="w-4 h-4 mr-2" />
                 {isHebrew ? 'התראות' : 'Notifications'}
               </TabsTrigger>
               <TabsTrigger 
                 value="security"
-                className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-600 data-[state=active]:to-amber-700 data-[state=active]:text-white"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
               >
                 <Shield className="w-4 h-4 mr-2" />
                 {isHebrew ? 'אבטחה' : 'Security'}
@@ -708,16 +683,16 @@ export default function MyAccount() {
             </TabsList>
 
             <TabsContent value="profile" className="mt-6">
-              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-white">
+                  <h3 className="text-xl font-semibold text-gray-900">
                     {isHebrew ? 'פרטים אישיים' : 'Personal Details'}
                   </h3>
                   {!isEditing ? (
                     <Button 
                       variant="outline" 
                       size="sm"
-                      className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+                      className="border-gray-200 text-gray-600 hover:bg-gray-50"
                       onClick={() => setIsEditing(true)}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -727,7 +702,7 @@ export default function MyAccount() {
                     <div className="flex gap-2">
                       <Button 
                         size="sm"
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 text-white"
+                        className="bg-gray-900 text-white hover:bg-gray-800"
                         onClick={handleSaveProfile}
                         disabled={updateProfileMutation.isPending}
                       >
@@ -741,7 +716,7 @@ export default function MyAccount() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                        className="border-gray-200 text-gray-500 hover:bg-gray-50"
                         onClick={() => {
                           setIsEditing(false);
                           setEditedProfile(profile);
@@ -755,7 +730,7 @@ export default function MyAccount() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-slate-400 flex items-center gap-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
                       <User className="w-4 h-4" />
                       {isHebrew ? 'שם מלא' : 'Full Name'}
                     </Label>
@@ -763,23 +738,23 @@ export default function MyAccount() {
                       <Input 
                         value={editedProfile.displayName || ''}
                         onChange={(e) => setEditedProfile({ ...editedProfile, displayName: e.target.value })}
-                        className="bg-white/5 border-white/10 text-white"
+                        className="bg-white border-gray-200 text-gray-900"
                       />
                     ) : (
-                      <p className="text-white text-lg">{profile.displayName || '-'}</p>
+                      <p className="text-gray-900 text-lg">{profile.displayName || '-'}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-slate-400 flex items-center gap-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
                       <Mail className="w-4 h-4" />
                       {isHebrew ? 'אימייל' : 'Email'}
                     </Label>
-                    <p className="text-white text-lg">{profile.email || '-'}</p>
+                    <p className="text-gray-900 text-lg">{profile.email || '-'}</p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-slate-400 flex items-center gap-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
                       <Phone className="w-4 h-4" />
                       {isHebrew ? 'טלפון' : 'Phone'}
                     </Label>
@@ -787,16 +762,16 @@ export default function MyAccount() {
                       <Input 
                         value={editedProfile.phone || ''}
                         onChange={(e) => setEditedProfile({ ...editedProfile, phone: e.target.value })}
-                        className="bg-white/5 border-white/10 text-white"
+                        className="bg-white border-gray-200 text-gray-900"
                         placeholder="+972-50-000-0000"
                       />
                     ) : (
-                      <p className="text-white text-lg">{profile.phone || '-'}</p>
+                      <p className="text-gray-900 text-lg">{profile.phone || '-'}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-slate-400 flex items-center gap-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       {isHebrew ? 'תאריך לידה' : 'Birthday'}
                     </Label>
@@ -805,15 +780,15 @@ export default function MyAccount() {
                         type="date"
                         value={editedProfile.birthdate || ''}
                         onChange={(e) => setEditedProfile({ ...editedProfile, birthdate: e.target.value })}
-                        className="bg-white/5 border-white/10 text-white"
+                        className="bg-white border-gray-200 text-gray-900"
                       />
                     ) : (
-                      <p className="text-white text-lg">{profile.birthdate || '-'}</p>
+                      <p className="text-gray-900 text-lg">{profile.birthdate || '-'}</p>
                     )}
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <Label className="text-slate-400 flex items-center gap-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
                       <MapPin className="w-4 h-4" />
                       {isHebrew ? 'כתובת' : 'Address'}
                     </Label>
@@ -821,11 +796,11 @@ export default function MyAccount() {
                       <Input 
                         value={editedProfile.address || ''}
                         onChange={(e) => setEditedProfile({ ...editedProfile, address: e.target.value })}
-                        className="bg-white/5 border-white/10 text-white"
+                        className="bg-white border-gray-200 text-gray-900"
                         placeholder={isHebrew ? 'רחוב, מספר, עיר' : 'Street, Number, City'}
                       />
                     ) : (
-                      <p className="text-white text-lg">{profile.address || '-'}</p>
+                      <p className="text-gray-900 text-lg">{profile.address || '-'}</p>
                     )}
                   </div>
                 </div>
@@ -834,17 +809,15 @@ export default function MyAccount() {
 
             <TabsContent value="preferences" className="mt-6 space-y-6">
               {/* Language Settings */}
-              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
-                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-                    <Globe className="w-5 h-5 text-white" />
-                  </div>
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
+                  <Globe className="w-5 h-5 text-gray-400" />
                   {isHebrew ? 'שפה ואזור' : 'Language & Region'}
                 </h3>
 
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-slate-300 mb-2 block">
+                    <Label className="text-gray-600 mb-2 block">
                       {isHebrew ? 'שפת ממשק' : 'Interface Language'}
                     </Label>
                     <Select 
@@ -854,10 +827,10 @@ export default function MyAccount() {
                         updateProfileMutation.mutate({ preferredLanguage: value });
                       }}
                     >
-                      <SelectTrigger className="bg-white/5 border-white/10 text-white w-full md:w-64">
+                      <SelectTrigger className="bg-white border-gray-200 text-gray-900 w-full md:w-64">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-white/10">
+                      <SelectContent className="bg-white border-gray-200">
                         <SelectItem value="he">עברית (Hebrew)</SelectItem>
                         <SelectItem value="en">English</SelectItem>
                         <SelectItem value="ar">العربية (Arabic)</SelectItem>
@@ -871,19 +844,17 @@ export default function MyAccount() {
               </div>
 
               {/* Email Change Section */}
-              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
-                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-violet-600 flex items-center justify-center">
-                    <Mail className="w-5 h-5 text-white" />
-                  </div>
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-gray-400" />
                   {isHebrew ? 'כתובת אימייל' : 'Email Address'}
                 </h3>
 
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5">
+                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50">
                     <div className="flex-1">
-                      <p className="text-white font-medium">{profile?.email || firebaseUser?.email}</p>
-                      <p className="text-slate-400 text-sm">
+                      <p className="text-gray-900 font-medium">{profile?.email || firebaseUser?.email}</p>
+                      <p className="text-gray-500 text-sm">
                         {profile?.emailVerified 
                           ? (isHebrew ? 'מאומת ✓' : 'Verified ✓')
                           : (isHebrew ? 'לא מאומת' : 'Not verified')
@@ -893,7 +864,7 @@ export default function MyAccount() {
                     <Button 
                       variant="outline"
                       size="sm"
-                      className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                      className="border-gray-200 text-gray-600 hover:bg-gray-50"
                       onClick={() => setShowEmailChangeDialog(true)}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -901,14 +872,14 @@ export default function MyAccount() {
                     </Button>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
                     <div className="flex items-start gap-3">
-                      <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <AlertTriangle className="w-5 h-5 text-stone-700 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-amber-400 text-sm font-medium">
+                        <p className="text-stone-700 text-sm font-medium">
                           {isHebrew ? 'אבטחת זהות' : 'Identity Security'}
                         </p>
-                        <p className="text-slate-400 text-sm mt-1">
+                        <p className="text-gray-500 text-sm mt-1">
                           {isHebrew 
                             ? 'שינוי כתובת אימייל דורש אימות קוד חד-פעמי לאימייל החדש. זה מגן על חשבונך מפני גישה לא מורשית.'
                             : 'Changing your email requires verification via a one-time code sent to the new email. This protects your account from unauthorized access.'}
@@ -920,21 +891,19 @@ export default function MyAccount() {
               </div>
 
               {/* Phone Verification Section */}
-              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
-                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center">
-                    <Phone className="w-5 h-5 text-white" />
-                  </div>
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
+                  <Phone className="w-5 h-5 text-gray-400" />
                   {isHebrew ? 'מספר טלפון' : 'Phone Number'}
                 </h3>
 
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5">
+                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50">
                     <div className="flex-1">
-                      <p className="text-white font-medium">
+                      <p className="text-gray-900 font-medium">
                         {phoneStatus?.phone || profile?.phone || (isHebrew ? 'לא הוגדר' : 'Not set')}
                       </p>
-                      <p className={cn("text-sm", phoneStatus?.verified ? "text-green-400" : "text-slate-400")}>
+                      <p className={cn("text-sm", phoneStatus?.verified ? "text-green-600" : "text-gray-500")}>
                         {phoneStatus?.verified 
                           ? (isHebrew ? 'מאומת ✓' : 'Verified ✓')
                           : (isHebrew ? 'לא מאומת' : 'Not verified')
@@ -944,7 +913,7 @@ export default function MyAccount() {
                     <Button 
                       variant="outline"
                       size="sm"
-                      className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+                      className="border-gray-200 text-gray-600 hover:bg-gray-50"
                       onClick={() => setShowPhoneVerifyDialog(true)}
                     >
                       <Phone className="w-4 h-4 mr-2" />
@@ -955,14 +924,14 @@ export default function MyAccount() {
                     </Button>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                  <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
                     <div className="flex items-start gap-3">
-                      <Shield className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                      <Shield className="w-5 h-5 text-stone-700 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-cyan-400 text-sm font-medium">
+                        <p className="text-stone-700 text-sm font-medium">
                           {isHebrew ? 'אימות טלפון עם Google' : 'Google Phone Verification'}
                         </p>
-                        <p className="text-slate-400 text-sm mt-1">
+                        <p className="text-gray-500 text-sm mt-1">
                           {isHebrew 
                             ? 'קוד אימות יישלח ב-SMS למספר הטלפון שלך. אימות זה מוגן על ידי Firebase Authentication של Google.'
                             : 'A verification code will be sent via SMS to your phone. This is powered by Google Firebase Authentication.'}
@@ -974,35 +943,33 @@ export default function MyAccount() {
               </div>
 
               {/* Address Settings */}
-              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
-                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-white" />
-                  </div>
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-gray-400" />
                   {isHebrew ? 'כתובת' : 'Address'}
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-slate-300 mb-2 block">
+                    <Label className="text-gray-600 mb-2 block">
                       {isHebrew ? 'רחוב וכתובת' : 'Street Address'}
                     </Label>
                     <Input
                       value={editedProfile?.address || ''}
                       onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, address: e.target.value }))}
                       placeholder={isHebrew ? 'רחוב, מספר בית, דירה' : 'Street, building, apt'}
-                      className="bg-white/5 border-white/10 text-white"
+                      className="bg-white border-gray-200 text-gray-900"
                     />
                   </div>
                   <div>
-                    <Label className="text-slate-300 mb-2 block">
+                    <Label className="text-gray-600 mb-2 block">
                       {isHebrew ? 'עיר' : 'City'}
                     </Label>
                     <Input
                       value={editedProfile?.city || ''}
                       onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, city: e.target.value }))}
                       placeholder={isHebrew ? 'שם העיר' : 'City name'}
-                      className="bg-white/5 border-white/10 text-white"
+                      className="bg-white border-gray-200 text-gray-900"
                     />
                   </div>
                 </div>
@@ -1010,7 +977,7 @@ export default function MyAccount() {
                 <Button 
                   onClick={handleSaveProfile}
                   disabled={updateProfileMutation.isPending}
-                  className="mt-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white"
+                  className="mt-4 bg-gray-900 text-white hover:bg-gray-800"
                 >
                   {updateProfileMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -1023,8 +990,8 @@ export default function MyAccount() {
             </TabsContent>
 
             <TabsContent value="notifications" className="mt-6">
-              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
-                <h3 className="text-xl font-semibold text-white mb-6">
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6">
                   {isHebrew ? 'העדפות התראות' : 'Notification Preferences'}
                 </h3>
                 
@@ -1038,14 +1005,12 @@ export default function MyAccount() {
                     { key: 'birthdayOffersEnabled', label: isHebrew ? 'הטבות יום הולדת' : 'Birthday Offers', desc: isHebrew ? 'קופון מיוחד ליום ההולדת של החיה' : 'Special coupon for pet birthdays', icon: Sparkles },
                     { key: 'loyaltyUpdatesEnabled', label: isHebrew ? 'עדכוני נאמנות' : 'Loyalty Updates', desc: isHebrew ? 'עדכונים על נקודות ודרגות' : 'Points & tier notifications', icon: Crown },
                   ].map((item) => (
-                    <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors">
+                    <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-stone-50 transition-colors">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-600 to-amber-700 flex items-center justify-center">
-                          <item.icon className="w-6 h-6 text-white" />
-                        </div>
+                        <item.icon className="w-5 h-5 text-gray-400" />
                         <div>
-                          <p className="text-white font-medium">{item.label}</p>
-                          <p className="text-slate-400 text-sm">{item.desc}</p>
+                          <p className="text-gray-900 font-medium">{item.label}</p>
+                          <p className="text-gray-500 text-sm">{item.desc}</p>
                         </div>
                       </div>
                       <Switch 
@@ -1058,7 +1023,7 @@ export default function MyAccount() {
                             }
                           });
                         }}
-                        className="data-[state=checked]:bg-amber-600"
+                        className="data-[state=checked]:bg-gray-900"
                       />
                     </div>
                   ))}
@@ -1067,94 +1032,84 @@ export default function MyAccount() {
             </TabsContent>
 
             <TabsContent value="security" className="mt-6 space-y-6">
-              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
-                <h3 className="text-xl font-semibold text-white mb-6">
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6">
                   {isHebrew ? 'אבטחה והתחברות' : 'Security & Login'}
                 </h3>
 
                 <div className="space-y-4">
                   <a 
                     href="/settings/security"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-stone-50 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
-                        <Shield className="w-6 h-6 text-white" />
-                      </div>
+                      <Shield className="w-5 h-5 text-gray-400" />
                       <div>
-                        <p className="text-white font-medium">{isHebrew ? 'Face ID / Passkeys' : 'Face ID / Passkeys'}</p>
-                        <p className="text-slate-400 text-sm">{isHebrew ? 'ניהול אימות ביומטרי' : 'Manage biometric authentication'}</p>
+                        <p className="text-gray-900 font-medium">{isHebrew ? 'Face ID / Passkeys' : 'Face ID / Passkeys'}</p>
+                        <p className="text-gray-500 text-sm">{isHebrew ? 'ניהול אימות ביומטרי' : 'Manage biometric authentication'}</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
                   </a>
 
                   <a 
                     href="/settings"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-stone-50 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-violet-600 flex items-center justify-center">
-                        <Settings className="w-6 h-6 text-white" />
-                      </div>
+                      <Settings className="w-5 h-5 text-gray-400" />
                       <div>
-                        <p className="text-white font-medium">{isHebrew ? 'הגדרות מתקדמות' : 'Advanced Settings'}</p>
-                        <p className="text-slate-400 text-sm">{isHebrew ? 'PIN, מכשירים מהימנים ועוד' : 'PIN, trusted devices & more'}</p>
+                        <p className="text-gray-900 font-medium">{isHebrew ? 'הגדרות מתקדמות' : 'Advanced Settings'}</p>
+                        <p className="text-gray-500 text-sm">{isHebrew ? 'PIN, מכשירים מהימנים ועוד' : 'PIN, trusted devices & more'}</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
                   </a>
 
                   <a 
                     href="/my-devices"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-stone-50 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center">
-                        <CreditCard className="w-6 h-6 text-white" />
-                      </div>
+                      <CreditCard className="w-5 h-5 text-gray-400" />
                       <div>
-                        <p className="text-white font-medium">{isHebrew ? 'המכשירים שלי' : 'My Devices'}</p>
-                        <p className="text-slate-400 text-sm">{isHebrew ? 'נהל מכשירים מחוברים' : 'Manage connected devices'}</p>
+                        <p className="text-gray-900 font-medium">{isHebrew ? 'המכשירים שלי' : 'My Devices'}</p>
+                        <p className="text-gray-500 text-sm">{isHebrew ? 'נהל מכשירים מחוברים' : 'Manage connected devices'}</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
                   </a>
 
                   <button
                     onClick={() => exportDataMutation.mutate()}
                     disabled={exportDataMutation.isPending}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group w-full"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-stone-50 transition-colors cursor-pointer group w-full"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-600 flex items-center justify-center">
-                        <Download className="w-6 h-6 text-white" />
-                      </div>
+                      <Download className="w-5 h-5 text-gray-400" />
                       <div className="text-start">
-                        <p className="text-white font-medium">{isHebrew ? 'הורד את הנתונים שלי' : 'Download My Data'}</p>
-                        <p className="text-slate-400 text-sm">{isHebrew ? 'ייצוא כל המידע (GDPR)' : 'Export all your data (GDPR)'}</p>
+                        <p className="text-gray-900 font-medium">{isHebrew ? 'הורד את הנתונים שלי' : 'Download My Data'}</p>
+                        <p className="text-gray-500 text-sm">{isHebrew ? 'ייצוא כל המידע (GDPR)' : 'Export all your data (GDPR)'}</p>
                       </div>
                     </div>
                     {exportDataMutation.isPending ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                      <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                     ) : (
-                      <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                      <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
                     )}
                   </button>
                 </div>
               </div>
 
               {/* E-Gift Policy Notice */}
-              <div className="luxury-glass-card rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-900/10 to-transparent p-6">
+              <div className="bg-amber-50 rounded-3xl border border-amber-100 p-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-600 to-orange-600 flex items-center justify-center flex-shrink-0">
-                    <Ban className="w-6 h-6 text-white" />
-                  </div>
+                  <Ban className="w-5 h-5 text-amber-800 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-amber-400 font-semibold mb-1">
+                    <h4 className="text-amber-800 font-semibold mb-1">
                       {isHebrew ? 'מדיניות כרטיסי מתנה' : 'E-Gift Card Policy'}
                     </h4>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-amber-700 text-sm">
                       {isHebrew 
                         ? 'כרטיסי המתנה שלך קשורים לחשבון שלך באופן קבוע ולא ניתנים להעברה לאחרים. במקרה של מחיקת חשבון, יתרת כרטיסי המתנה תפקע.'
                         : 'Your e-gift cards are permanently tied to your account and cannot be transferred to others. In case of account deletion, e-gift balances will be forfeited.'}
@@ -1164,21 +1119,21 @@ export default function MyAccount() {
               </div>
 
               {/* Account Management - Freeze & Delete */}
-              <div className="luxury-glass-card rounded-3xl border border-white/10 p-8">
-                <h3 className="text-xl font-semibold text-white mb-6">
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6">
                   {isHebrew ? 'ניהול חשבון' : 'Account Management'}
                 </h3>
 
                 {/* Account Status Banner */}
                 {accountStatus?.status === 'frozen' && (
-                  <div className="mb-6 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                  <div className="mb-6 p-4 rounded-2xl bg-blue-50 border border-blue-200">
                     <div className="flex items-center gap-3 mb-3">
-                      <Snowflake className="w-6 h-6 text-blue-400" />
-                      <span className="text-blue-400 font-semibold">
+                      <Snowflake className="w-6 h-6 text-blue-500" />
+                      <span className="text-blue-700 font-semibold">
                         {isHebrew ? 'החשבון מוקפא' : 'Account Frozen'}
                       </span>
                     </div>
-                    <p className="text-slate-400 text-sm mb-4">
+                    <p className="text-gray-500 text-sm mb-4">
                       {isHebrew 
                         ? 'החשבון שלך מוקפא זמנית. כל הזכויות והנקודות שלך נשמרות.'
                         : 'Your account is temporarily frozen. All your credits and points are preserved.'}
@@ -1186,7 +1141,7 @@ export default function MyAccount() {
                     <Button
                       onClick={() => unfreezeAccountMutation.mutate()}
                       disabled={unfreezeAccountMutation.isPending}
-                      className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white"
+                      className="bg-blue-600 text-white hover:bg-blue-700"
                     >
                       {unfreezeAccountMutation.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -1197,14 +1152,14 @@ export default function MyAccount() {
                 )}
 
                 {accountStatus?.status === 'pending_deletion' && (
-                  <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20">
+                  <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200">
                     <div className="flex items-center gap-3 mb-3">
-                      <AlertTriangle className="w-6 h-6 text-red-400" />
-                      <span className="text-red-400 font-semibold">
+                      <AlertTriangle className="w-6 h-6 text-red-500" />
+                      <span className="text-red-700 font-semibold">
                         {isHebrew ? 'החשבון ממתין למחיקה' : 'Account Pending Deletion'}
                       </span>
                     </div>
-                    <p className="text-slate-400 text-sm mb-2">
+                    <p className="text-gray-500 text-sm mb-2">
                       {isHebrew 
                         ? `החשבון שלך מתוזמן למחיקה. תוכל לבטל את הבקשה עד תום תקופת החסד.`
                         : `Your account is scheduled for deletion. You can cancel within the grace period.`}
@@ -1212,7 +1167,7 @@ export default function MyAccount() {
                     <Button
                       onClick={() => cancelDeletionMutation.mutate()}
                       disabled={cancelDeletionMutation.isPending}
-                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white"
+                      className="bg-green-600 text-white hover:bg-green-700"
                     >
                       {cancelDeletionMutation.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -1227,44 +1182,40 @@ export default function MyAccount() {
                   <button
                     onClick={() => setShowFreezeDialog(true)}
                     disabled={accountStatus?.status === 'frozen' || accountStatus?.status === 'pending_deletion'}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-blue-500/10 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-blue-50 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center">
-                        <Snowflake className="w-6 h-6 text-white" />
-                      </div>
+                      <Snowflake className="w-5 h-5 text-blue-500" />
                       <div className="text-start">
-                        <p className="text-white font-medium">{isHebrew ? 'הקפא את החשבון' : 'Freeze Account'}</p>
-                        <p className="text-slate-400 text-sm">
+                        <p className="text-gray-900 font-medium">{isHebrew ? 'הקפא את החשבון' : 'Freeze Account'}</p>
+                        <p className="text-gray-500 text-sm">
                           {isHebrew 
                             ? 'השהה את החשבון באופן זמני - כל הזכויות נשמרות'
                             : 'Temporarily suspend your account - all credits preserved'}
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
                   </button>
 
                   {/* Delete Account */}
                   <button
                     onClick={() => setShowDeleteDialog(true)}
                     disabled={accountStatus?.status === 'pending_deletion'}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-red-500/10 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-red-50 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 flex items-center justify-center">
-                        <Trash2 className="w-6 h-6 text-white" />
-                      </div>
+                      <Trash2 className="w-5 h-5 text-red-500" />
                       <div className="text-start">
-                        <p className="text-red-400 font-medium">{isHebrew ? 'מחק את החשבון' : 'Delete Account'}</p>
-                        <p className="text-slate-400 text-sm">
+                        <p className="text-red-600 font-medium">{isHebrew ? 'מחק את החשבון' : 'Delete Account'}</p>
+                        <p className="text-gray-500 text-sm">
                           {isHebrew 
                             ? 'מחיקה לצמיתות עם תקופת חסד של 30 יום'
                             : 'Permanent deletion with 30-day grace period'}
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-red-400 transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-red-400 transition-colors" />
                   </button>
                 </div>
               </div>
@@ -1272,13 +1223,13 @@ export default function MyAccount() {
 
             {/* Freeze Account Dialog */}
             <Dialog open={showFreezeDialog} onOpenChange={setShowFreezeDialog}>
-              <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-md">
+              <DialogContent className="bg-white border-gray-200 text-gray-900 max-w-md">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-3 text-xl">
-                    <Snowflake className="w-6 h-6 text-blue-400" />
+                    <Snowflake className="w-6 h-6 text-blue-500" />
                     {isHebrew ? 'הקפא את החשבון' : 'Freeze Account'}
                   </DialogTitle>
-                  <DialogDescription className="text-slate-400">
+                  <DialogDescription className="text-gray-500">
                     {isHebrew 
                       ? 'השהיית החשבון שומרת על כל הנתונים, הזכויות והנקודות שלך. לא תוכל לבצע הזמנות חדשות עד להפשרה.'
                       : 'Freezing preserves all your data, credits and points. You won\'t be able to make new bookings until unfrozen.'}
@@ -1287,14 +1238,14 @@ export default function MyAccount() {
 
                 <div className="space-y-4 py-4">
                   <div>
-                    <Label className="text-slate-300 mb-2 block">
+                    <Label className="text-gray-600 mb-2 block">
                       {isHebrew ? 'סיבה להקפאה' : 'Reason for freezing'}
                     </Label>
                     <Select value={freezeReason} onValueChange={setFreezeReason}>
-                      <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                      <SelectTrigger className="bg-white border-gray-200 text-gray-900">
                         <SelectValue placeholder={isHebrew ? 'בחר סיבה' : 'Select reason'} />
                       </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-white/10">
+                      <SelectContent className="bg-white border-gray-200">
                         <SelectItem value="vacation">{isHebrew ? 'חופשה' : 'Vacation'}</SelectItem>
                         <SelectItem value="financial">{isHebrew ? 'סיבות כלכליות' : 'Financial reasons'}</SelectItem>
                         <SelectItem value="temporary_break">{isHebrew ? 'הפסקה זמנית' : 'Temporary break'}</SelectItem>
@@ -1304,17 +1255,17 @@ export default function MyAccount() {
                   </div>
 
                   <div>
-                    <Label className="text-slate-300 mb-2 block">
+                    <Label className="text-gray-600 mb-2 block">
                       {isHebrew ? 'משך ההקפאה (אופציונלי)' : 'Freeze duration (optional)'}
                     </Label>
                     <Select 
                       value={freezeDuration?.toString() || ''} 
                       onValueChange={(v) => setFreezeDuration(v ? parseInt(v) : undefined)}
                     >
-                      <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                      <SelectTrigger className="bg-white border-gray-200 text-gray-900">
                         <SelectValue placeholder={isHebrew ? 'ללא הגבלה' : 'Indefinite'} />
                       </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-white/10">
+                      <SelectContent className="bg-white border-gray-200">
                         <SelectItem value="">{isHebrew ? 'ללא הגבלה' : 'Indefinite'}</SelectItem>
                         <SelectItem value="7">{isHebrew ? 'שבוע אחד' : '1 week'}</SelectItem>
                         <SelectItem value="30">{isHebrew ? 'חודש אחד' : '1 month'}</SelectItem>
@@ -1325,11 +1276,11 @@ export default function MyAccount() {
                     </Select>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                    <p className="text-blue-400 text-sm font-medium mb-2">
+                  <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+                    <p className="text-blue-700 text-sm font-medium mb-2">
                       {isHebrew ? 'מה נשמר:' : 'What\'s preserved:'}
                     </p>
-                    <ul className="text-slate-400 text-sm space-y-1">
+                    <ul className="text-gray-500 text-sm space-y-1">
                       <li>• {isHebrew ? 'כל יתרות כרטיסי המתנה' : 'All e-gift card balances'}</li>
                       <li>• {isHebrew ? 'נקודות נאמנות ודרגה' : 'Loyalty points & tier'}</li>
                       <li>• {isHebrew ? 'חבילות שטיפה' : 'Wash packages'}</li>
@@ -1343,7 +1294,7 @@ export default function MyAccount() {
                   <Button 
                     variant="outline" 
                     onClick={() => setShowFreezeDialog(false)}
-                    className="border-white/10 text-slate-300 hover:bg-white/5"
+                    className="border-gray-200 text-gray-600 hover:bg-gray-50"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -1353,7 +1304,7 @@ export default function MyAccount() {
                       freezeDurationDays: freezeDuration,
                     })}
                     disabled={!freezeReason || freezeAccountMutation.isPending}
-                    className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white"
+                    className="bg-blue-600 text-white hover:bg-blue-700"
                   >
                     {freezeAccountMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                     {isHebrew ? 'הקפא חשבון' : 'Freeze Account'}
@@ -1364,13 +1315,13 @@ export default function MyAccount() {
 
             {/* Delete Account Dialog */}
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-lg">
+              <DialogContent className="bg-white border-gray-200 text-gray-900 max-w-lg">
                 <DialogHeader>
-                  <DialogTitle className="flex items-center gap-3 text-xl text-red-400">
+                  <DialogTitle className="flex items-center gap-3 text-xl text-red-600">
                     <AlertTriangle className="w-6 h-6" />
                     {isHebrew ? 'מחיקת חשבון' : 'Delete Account'}
                   </DialogTitle>
-                  <DialogDescription className="text-slate-400">
+                  <DialogDescription className="text-gray-500">
                     {isHebrew 
                       ? 'פעולה זו תמחק את החשבון שלך לצמיתות לאחר תקופת חסד של 30 יום. תוכל לבטל בכל עת במהלך תקופה זו.'
                       : 'This will permanently delete your account after a 30-day grace period. You can cancel anytime during this period.'}
@@ -1378,36 +1329,36 @@ export default function MyAccount() {
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
-                  <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                    <p className="text-red-400 text-sm font-medium mb-2">
+                  <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+                    <p className="text-red-700 text-sm font-medium mb-2">
                       {isHebrew ? 'מה יימחק לצמיתות:' : 'What will be permanently deleted:'}
                     </p>
-                    <ul className="text-slate-400 text-sm space-y-1">
+                    <ul className="text-gray-500 text-sm space-y-1">
                       <li className="flex items-center gap-2">
-                        <X className="w-4 h-4 text-red-400" />
+                        <X className="w-4 h-4 text-red-500" />
                         {isHebrew ? 'כל יתרות כרטיסי המתנה (לא ניתנים להעברה!)' : 'All e-gift balances (non-transferable!)'}
                       </li>
                       <li className="flex items-center gap-2">
-                        <X className="w-4 h-4 text-red-400" />
+                        <X className="w-4 h-4 text-red-500" />
                         {isHebrew ? 'נקודות נאמנות ודרגה' : 'Loyalty points & tier'}
                       </li>
                       <li className="flex items-center gap-2">
-                        <X className="w-4 h-4 text-red-400" />
+                        <X className="w-4 h-4 text-red-500" />
                         {isHebrew ? 'חבילות שטיפה שלא נוצלו' : 'Unused wash packages'}
                       </li>
                       <li className="flex items-center gap-2">
-                        <X className="w-4 h-4 text-red-400" />
+                        <X className="w-4 h-4 text-red-500" />
                         {isHebrew ? 'קופונים והנחות' : 'Coupons & discounts'}
                       </li>
                       <li className="flex items-center gap-2">
-                        <X className="w-4 h-4 text-red-400" />
+                        <X className="w-4 h-4 text-red-500" />
                         {isHebrew ? 'כל המידע האישי' : 'All personal information'}
                       </li>
                     </ul>
                   </div>
 
                   <div className="space-y-3">
-                    <p className="text-slate-300 text-sm font-medium">
+                    <p className="text-gray-700 text-sm font-medium">
                       {isHebrew ? 'אשר שאתה מבין:' : 'Confirm you understand:'}
                     </p>
                     
@@ -1415,9 +1366,9 @@ export default function MyAccount() {
                       <Checkbox 
                         checked={deleteAcknowledgements.credits}
                         onCheckedChange={(checked) => setDeleteAcknowledgements(prev => ({ ...prev, credits: !!checked }))}
-                        className="mt-0.5 border-white/20 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                        className="mt-0.5 border-gray-300 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
                       />
-                      <span className="text-slate-400 text-sm">
+                      <span className="text-gray-500 text-sm">
                         {isHebrew 
                           ? 'אני מבין/ה שכל הזכויות, הנקודות וחבילות השטיפה יאבדו לצמיתות.'
                           : 'I understand all credits, points and wash packages will be permanently lost.'}
@@ -1428,9 +1379,9 @@ export default function MyAccount() {
                       <Checkbox 
                         checked={deleteAcknowledgements.egift}
                         onCheckedChange={(checked) => setDeleteAcknowledgements(prev => ({ ...prev, egift: !!checked }))}
-                        className="mt-0.5 border-white/20 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                        className="mt-0.5 border-gray-300 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
                       />
-                      <span className="text-slate-400 text-sm">
+                      <span className="text-gray-500 text-sm">
                         {isHebrew 
                           ? 'אני מבין/ה שכרטיסי מתנה אינם ניתנים להעברה ויפקעו עם מחיקת החשבון.'
                           : 'I understand e-gift cards are non-transferable and will be forfeited upon deletion.'}
@@ -1441,9 +1392,9 @@ export default function MyAccount() {
                       <Checkbox 
                         checked={deleteAcknowledgements.data}
                         onCheckedChange={(checked) => setDeleteAcknowledgements(prev => ({ ...prev, data: !!checked }))}
-                        className="mt-0.5 border-white/20 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                        className="mt-0.5 border-gray-300 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
                       />
-                      <span className="text-slate-400 text-sm">
+                      <span className="text-gray-500 text-sm">
                         {isHebrew 
                           ? 'אני מבין/ה שכל המידע שלי יימחק לצמיתות ולא ניתן יהיה לשחזר אותו.'
                           : 'I understand all my data will be permanently deleted and cannot be recovered.'}
@@ -1452,14 +1403,14 @@ export default function MyAccount() {
                   </div>
 
                   <div>
-                    <Label className="text-slate-300 mb-2 block">
+                    <Label className="text-gray-600 mb-2 block">
                       {isHebrew ? 'הקלד "DELETE MY ACCOUNT" לאישור:' : 'Type "DELETE MY ACCOUNT" to confirm:'}
                     </Label>
                     <Input
                       value={deleteConfirmPhrase}
                       onChange={(e) => setDeleteConfirmPhrase(e.target.value)}
                       placeholder="DELETE MY ACCOUNT"
-                      className="bg-white/5 border-white/10 text-white font-mono"
+                      className="bg-white border-gray-200 text-gray-900 font-mono"
                     />
                   </div>
                 </div>
@@ -1472,7 +1423,7 @@ export default function MyAccount() {
                       setDeleteConfirmPhrase('');
                       setDeleteAcknowledgements({ credits: false, data: false, egift: false });
                     }}
-                    className="border-white/10 text-slate-300 hover:bg-white/5"
+                    className="border-gray-200 text-gray-600 hover:bg-gray-50"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -1490,7 +1441,7 @@ export default function MyAccount() {
                       !deleteAcknowledgements.egift ||
                       deleteAccountMutation.isPending
                     }
-                    className="bg-gradient-to-r from-red-600 to-rose-600 text-white disabled:opacity-50"
+                    className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
                   >
                     {deleteAccountMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                     {isHebrew ? 'מחק את החשבון שלי' : 'Delete My Account'}
@@ -1508,13 +1459,13 @@ export default function MyAccount() {
                 setEmailChangeStep('request');
               }
             }}>
-              <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-md">
+              <DialogContent className="bg-white border-gray-200 text-gray-900 max-w-md">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-3 text-xl">
-                    <Mail className="w-6 h-6 text-purple-400" />
+                    <Mail className="w-6 h-6 text-gray-400" />
                     {isHebrew ? 'שינוי כתובת אימייל' : 'Change Email Address'}
                   </DialogTitle>
-                  <DialogDescription className="text-slate-400">
+                  <DialogDescription className="text-gray-500">
                     {emailChangeStep === 'request'
                       ? (isHebrew 
                           ? 'הזן את כתובת האימייל החדשה. נשלח קוד אימות לאימייל החדש.'
@@ -1529,17 +1480,17 @@ export default function MyAccount() {
                   {emailChangeStep === 'request' ? (
                     <>
                       <div>
-                        <Label className="text-slate-300 mb-2 block">
+                        <Label className="text-gray-600 mb-2 block">
                           {isHebrew ? 'אימייל נוכחי' : 'Current Email'}
                         </Label>
                         <Input
                           value={profile?.email || firebaseUser?.email || ''}
                           disabled
-                          className="bg-white/5 border-white/10 text-slate-400"
+                          className="bg-gray-50 border-gray-200 text-gray-400"
                         />
                       </div>
                       <div>
-                        <Label className="text-slate-300 mb-2 block">
+                        <Label className="text-gray-600 mb-2 block">
                           {isHebrew ? 'אימייל חדש' : 'New Email'}
                         </Label>
                         <Input
@@ -1547,14 +1498,14 @@ export default function MyAccount() {
                           value={newEmail}
                           onChange={(e) => setNewEmail(e.target.value)}
                           placeholder={isHebrew ? 'הזן אימייל חדש' : 'Enter new email'}
-                          className="bg-white/5 border-white/10 text-white"
+                          className="bg-white border-gray-200 text-gray-900"
                         />
                       </div>
 
-                      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                      <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
                         <div className="flex items-start gap-3">
-                          <Shield className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                          <p className="text-slate-400 text-sm">
+                          <Shield className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+                          <p className="text-gray-500 text-sm">
                             {isHebrew 
                               ? 'לאחר שינוי האימייל, תצטרך להתחבר מחדש עם הכתובת החדשה.'
                               : 'After changing your email, you\'ll need to sign in again with the new address.'}
@@ -1565,17 +1516,17 @@ export default function MyAccount() {
                   ) : (
                     <>
                       <div className="text-center mb-4">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-600 to-violet-600 flex items-center justify-center">
-                          <KeyRound className="w-8 h-8 text-white" />
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-stone-100 border border-gray-200 flex items-center justify-center">
+                          <KeyRound className="w-8 h-8 text-stone-700" />
                         </div>
-                        <p className="text-slate-400">
+                        <p className="text-gray-500">
                           {isHebrew ? 'קוד אימות נשלח אל:' : 'Verification code sent to:'}
                         </p>
-                        <p className="text-white font-medium">{newEmail}</p>
+                        <p className="text-gray-900 font-medium">{newEmail}</p>
                       </div>
 
                       <div>
-                        <Label className="text-slate-300 mb-2 block">
+                        <Label className="text-gray-600 mb-2 block">
                           {isHebrew ? 'קוד אימות (6 ספרות)' : 'Verification Code (6 digits)'}
                         </Label>
                         <Input
@@ -1584,7 +1535,7 @@ export default function MyAccount() {
                           value={emailVerificationCode}
                           onChange={(e) => setEmailVerificationCode(e.target.value.replace(/\D/g, ''))}
                           placeholder="000000"
-                          className="bg-white/5 border-white/10 text-white text-center text-2xl font-mono tracking-widest"
+                          className="bg-white border-gray-200 text-gray-900 text-center text-2xl font-mono tracking-widest"
                         />
                       </div>
                     </>
@@ -1600,7 +1551,7 @@ export default function MyAccount() {
                       setEmailVerificationCode('');
                       setEmailChangeStep('request');
                     }}
-                    className="border-white/10 text-slate-300 hover:bg-white/5"
+                    className="border-gray-200 text-gray-600 hover:bg-gray-50"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -1609,7 +1560,7 @@ export default function MyAccount() {
                     <Button
                       onClick={() => requestEmailChangeMutation.mutate({ newEmail })}
                       disabled={!newEmail || !newEmail.includes('@') || requestEmailChangeMutation.isPending}
-                      className="bg-gradient-to-r from-purple-600 to-violet-600 text-white"
+                      className="bg-gray-900 text-white hover:bg-gray-800"
                     >
                       {requestEmailChangeMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                       {isHebrew ? 'שלח קוד אימות' : 'Send Verification Code'}
@@ -1618,7 +1569,7 @@ export default function MyAccount() {
                     <Button
                       onClick={() => confirmEmailChangeMutation.mutate({ verificationCode: emailVerificationCode })}
                       disabled={emailVerificationCode.length !== 6 || confirmEmailChangeMutation.isPending}
-                      className="bg-gradient-to-r from-purple-600 to-violet-600 text-white"
+                      className="bg-gray-900 text-white hover:bg-gray-800"
                     >
                       {confirmEmailChangeMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                       {isHebrew ? 'אשר שינוי' : 'Confirm Change'}
@@ -1637,15 +1588,13 @@ export default function MyAccount() {
                 phoneVerification.reset();
               }
             }}>
-              <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-md">
+              <DialogContent className="bg-white border-gray-200 text-gray-900 max-w-md">
                 <DialogHeader>
                   <DialogTitle className="text-xl font-semibold flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center">
-                      <Phone className="w-5 h-5 text-white" />
-                    </div>
+                    <Phone className="w-5 h-5 text-gray-400" />
                     {isHebrew ? 'אימות מספר טלפון' : 'Verify Phone Number'}
                   </DialogTitle>
-                  <DialogDescription className="text-slate-400">
+                  <DialogDescription className="text-gray-500">
                     {isHebrew 
                       ? 'קוד אימות יישלח אליך ב-SMS דרך Firebase של Google.'
                       : 'A verification code will be sent via SMS through Google Firebase.'}
@@ -1656,7 +1605,7 @@ export default function MyAccount() {
                   {phoneVerification.step === 'idle' || phoneVerification.step === 'sending' || phoneVerification.step === 'error' ? (
                     <>
                       <div>
-                        <Label className="text-slate-300 mb-2 block">
+                        <Label className="text-gray-600 mb-2 block">
                           {isHebrew ? 'מספר טלפון' : 'Phone Number'}
                         </Label>
                         <div className="flex gap-2">
@@ -1665,11 +1614,11 @@ export default function MyAccount() {
                             value={phoneNumber}
                             onChange={(e) => setPhoneNumber(e.target.value)}
                             placeholder={isHebrew ? '050-123-4567' : '+972-50-123-4567'}
-                            className="bg-white/5 border-white/10 text-white flex-1"
+                            className="bg-white border-gray-200 text-gray-900 flex-1"
                             dir="ltr"
                           />
                         </div>
-                        <p className="text-slate-500 text-xs mt-2">
+                        <p className="text-gray-400 text-xs mt-2">
                           {isHebrew 
                             ? 'הזן מספר טלפון בפורמט ישראלי (לדוגמה: 0501234567)'
                             : 'Enter phone number in Israeli format (e.g., 0501234567)'}
@@ -1677,15 +1626,15 @@ export default function MyAccount() {
                       </div>
 
                       {phoneVerification.error && (
-                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                          <p className="text-red-400 text-sm">{phoneVerification.error}</p>
+                        <div className="p-3 rounded-xl bg-red-50 border border-red-200">
+                          <p className="text-red-600 text-sm">{phoneVerification.error}</p>
                         </div>
                       )}
 
-                      <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                      <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
                         <div className="flex items-start gap-3">
-                          <Shield className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                          <p className="text-slate-400 text-sm">
+                          <Shield className="w-5 h-5 text-stone-700 flex-shrink-0 mt-0.5" />
+                          <p className="text-gray-500 text-sm">
                             {isHebrew 
                               ? 'אימות טלפון מאובטח על ידי Google Firebase Authentication עם הגנת reCAPTCHA.'
                               : 'Phone verification is secured by Google Firebase Authentication with reCAPTCHA protection.'}
@@ -1696,17 +1645,17 @@ export default function MyAccount() {
                   ) : (
                     <>
                       <div className="text-center mb-4">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center">
-                          <KeyRound className="w-8 h-8 text-white" />
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-stone-100 border border-gray-200 flex items-center justify-center">
+                          <KeyRound className="w-8 h-8 text-stone-700" />
                         </div>
-                        <p className="text-slate-400">
+                        <p className="text-gray-500">
                           {isHebrew ? 'קוד אימות נשלח ב-SMS אל:' : 'Verification code sent via SMS to:'}
                         </p>
-                        <p className="text-white font-medium">{phoneNumber}</p>
+                        <p className="text-gray-900 font-medium">{phoneNumber}</p>
                       </div>
 
                       <div>
-                        <Label className="text-slate-300 mb-2 block">
+                        <Label className="text-gray-600 mb-2 block">
                           {isHebrew ? 'קוד אימות (6 ספרות)' : 'Verification Code (6 digits)'}
                         </Label>
                         <Input
@@ -1715,14 +1664,14 @@ export default function MyAccount() {
                           value={phoneVerificationCode}
                           onChange={(e) => setPhoneVerificationCode(e.target.value.replace(/\D/g, ''))}
                           placeholder="000000"
-                          className="bg-white/5 border-white/10 text-white text-center text-2xl font-mono tracking-widest"
+                          className="bg-white border-gray-200 text-gray-900 text-center text-2xl font-mono tracking-widest"
                           dir="ltr"
                         />
                       </div>
 
                       {phoneVerification.error && (
-                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                          <p className="text-red-400 text-sm">{phoneVerification.error}</p>
+                        <div className="p-3 rounded-xl bg-red-50 border border-red-200">
+                          <p className="text-red-600 text-sm">{phoneVerification.error}</p>
                         </div>
                       )}
                     </>
@@ -1738,7 +1687,7 @@ export default function MyAccount() {
                       setPhoneVerificationCode('');
                       phoneVerification.reset();
                     }}
-                    className="border-white/10 text-slate-300 hover:bg-white/5"
+                    className="border-gray-200 text-gray-600 hover:bg-gray-50"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -1747,7 +1696,7 @@ export default function MyAccount() {
                     <Button
                       onClick={handleSendPhoneCode}
                       disabled={!phoneNumber || phoneNumber.length < 9 || phoneVerification.isSending}
-                      className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white"
+                      className="bg-gray-900 text-white hover:bg-gray-800"
                     >
                       {phoneVerification.isSending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                       {isHebrew ? 'שלח קוד SMS' : 'Send SMS Code'}
@@ -1756,7 +1705,7 @@ export default function MyAccount() {
                     <Button
                       onClick={handleVerifyPhoneCode}
                       disabled={phoneVerificationCode.length !== 6 || confirmPhoneVerificationMutation.isPending}
-                      className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white"
+                      className="bg-gray-900 text-white hover:bg-gray-800"
                     >
                       {confirmPhoneVerificationMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                       {isHebrew ? 'אמת טלפון' : 'Verify Phone'}
