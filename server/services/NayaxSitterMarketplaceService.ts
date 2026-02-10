@@ -1,15 +1,16 @@
 /**
  * THE SITTER SUITE™ - Nayax Split Payment Service
- * 
- * Marketplace payment processing using NAYAX (like Booking.com/Airbnb)
+ * Israeli Tax Law 2026 Compliant - Subcontractor Broker Model (like Wolt Israel)
  * 
  * Payment Flow:
- * 1. Owner initiates booking and pays full amount via Nayax
- * 2. Platform receives payment and holds sitter payout in escrow
- * 3. Upon booking completion, sitter receives 95% payout
- * 4. Platform keeps 5% broker fee automatically
- * 
- * Apple-Level Premium Experience: Fresh, Young, Cool 🎯
+ * 1. Owner initiates booking and pays full amount including 18% VAT via Nayax
+ * 2. Platform receives payment and holds sitter payout in 72-hour escrow
+ * 3. Upon booking completion:
+ *    - Platform deducts 7.5% broker commission
+ *    - Withholding tax (ניכוי מס במקור) deducted from sitter payout
+ *    - Sitter receives net payout
+ * 4. Digital receipt (קבלה דיגיטלית) emailed to customer per Israeli law
+ * 5. Transaction recorded in internal accounting system
  */
 
 import { calculateTransparentFees, type TransparentFeeCalculation } from '../utils/sitterFeeCalculator';
@@ -79,9 +80,12 @@ export class NayaxSitterMarketplaceService {
       // Calculate transparent fees
       const fees = calculateTransparentFees(params.pricePerDayCents, params.totalDays);
       
-      logger.info('[Sitter Suite] Processing booking payment', {
+      logger.info('[Sitter Suite] Processing booking payment (Israeli law 2026)', {
         bookingId: params.bookingId,
         totalChargeCents: fees.totalChargeCents,
+        subtotalBeforeVatCents: fees.subtotalBeforeVatCents,
+        vatCents: fees.vatCents,
+        vatRate: `${(fees.vatRate * 100).toFixed(0)}%`,
         brokerCutCents: fees.brokerCutCents,
         sitterPayoutCents: fees.sitterPayoutCents,
       });

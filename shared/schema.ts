@@ -10554,3 +10554,76 @@ export const insertGoogleFormsConfigSchema = createInsertSchema(googleFormsConfi
 });
 export type InsertGoogleFormsConfig = z.infer<typeof insertGoogleFormsConfigSchema>;
 export type GoogleFormsConfig = typeof googleFormsConfig.$inferSelect;
+
+// =================== ISRAELI DIGITAL RECEIPTS (קבלה דיגיטלית) ===================
+// Israeli Tax Authority compliant digital receipts - mandatory per Israeli law 2026
+// Sent to customer via email + recorded in internal accounting system
+
+export const digitalReceipts = pgTable("digital_receipts", {
+  id: serial("id").primaryKey(),
+  receiptNumber: varchar("receipt_number", { length: 50 }).unique().notNull(),
+  receiptType: varchar("receipt_type", { length: 30 }).notNull(),
+  platform: varchar("platform", { length: 50 }).notNull(),
+  bookingId: varchar("booking_id"),
+  nayaxTransactionId: varchar("nayax_transaction_id"),
+
+  customerEmail: varchar("customer_email").notNull(),
+  customerName: varchar("customer_name"),
+  customerPhone: varchar("customer_phone"),
+
+  providerName: varchar("provider_name"),
+  providerId: varchar("provider_id"),
+  providerType: varchar("provider_type"),
+
+  serviceDescription: text("service_description").notNull(),
+  serviceDescriptionHe: text("service_description_he").notNull(),
+
+  subtotalAmount: decimal("subtotal_amount", { precision: 12, scale: 2 }).notNull(),
+  vatRate: decimal("vat_rate", { precision: 5, scale: 2 }).notNull(),
+  vatAmount: decimal("vat_amount", { precision: 12, scale: 2 }).notNull(),
+  platformFeeAmount: decimal("platform_fee_amount", { precision: 12, scale: 2 }).default("0"),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 10 }).default("ILS").notNull(),
+
+  providerPayoutAmount: decimal("provider_payout_amount", { precision: 12, scale: 2 }),
+  brokerCommissionAmount: decimal("broker_commission_amount", { precision: 12, scale: 2 }),
+  withholdingTaxAmount: decimal("withholding_tax_amount", { precision: 12, scale: 2 }),
+  withholdingTaxRate: decimal("withholding_tax_rate", { precision: 5, scale: 2 }),
+  netPaymentToProvider: decimal("net_payment_to_provider", { precision: 12, scale: 2 }),
+
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(),
+  paymentStatus: varchar("payment_status", { length: 30 }).default("completed").notNull(),
+
+  companyName: varchar("company_name").default("Pet Wash Ltd").notNull(),
+  companyTaxId: varchar("company_tax_id").default("516788400").notNull(),
+  companyAddress: varchar("company_address").default("Israel").notNull(),
+
+  emailSent: boolean("email_sent").default(false).notNull(),
+  emailSentAt: timestamp("email_sent_at"),
+  emailError: text("email_error"),
+
+  accountingRecorded: boolean("accounting_recorded").default(false).notNull(),
+  accountingEntryId: varchar("accounting_entry_id"),
+  sheetsBackupId: varchar("sheets_backup_id"),
+
+  auditHash: varchar("audit_hash", { length: 128 }).notNull(),
+  isVoided: boolean("is_voided").default(false).notNull(),
+  voidedAt: timestamp("voided_at"),
+  voidReason: text("void_reason"),
+
+  issuedAt: timestamp("issued_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_digital_receipts_number").on(table.receiptNumber),
+  index("idx_digital_receipts_customer").on(table.customerEmail),
+  index("idx_digital_receipts_booking").on(table.bookingId),
+  index("idx_digital_receipts_platform").on(table.platform),
+  index("idx_digital_receipts_issued").on(table.issuedAt),
+]);
+
+export const insertDigitalReceiptSchema = createInsertSchema(digitalReceipts).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertDigitalReceipt = z.infer<typeof insertDigitalReceiptSchema>;
+export type DigitalReceipt = typeof digitalReceipts.$inferSelect;

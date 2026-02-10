@@ -30,6 +30,9 @@ import { requireLoyaltyMember } from '../middleware/loyalty';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { advancedBookingEngine as sitterAdvancedBookingEngine } from '../services/SitterAdvancedBookingEngine';
+import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
+import { IsraeliContractorComplianceService } from '../services/IsraeliContractorCompliance';
+import VATCalculatorService from '../services/VATCalculatorService';
 import multer from 'multer';
 import { storage, auth } from '../lib/firebase-admin';
 
@@ -553,6 +556,62 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
       loyaltyDiscount: pricing.loyaltyDiscount,
       totalPrice: pricing.totalPrice,
     });
+
+    // STEP 6: Generate Israeli digital receipt (קבלה דיגיטלית) per Israeli law 2026
+    // Receipt is emailed to customer and recorded in internal accounting
+    let receiptResult;
+    try {
+      const ownerEmail = req.body.customerEmail || req.body.ownerEmail || '';
+      const ownerName = req.body.customerName || req.body.ownerName || '';
+
+      receiptResult = await IsraeliDigitalReceiptService.generateReceipt({
+        platform: 'sitter-suite',
+        bookingId,
+        nayaxTransactionId: paymentResult.nayaxTransactionId,
+        customerEmail: ownerEmail,
+        customerName: ownerName,
+        providerName: sitter.displayName || `${sitter.firstName} ${sitter.lastName}`,
+        providerId: sitterId.toString(),
+        providerType: 'sitter',
+        serviceDescription: `Pet sitting service - ${totalDays} day(s) with ${sitter.firstName}`,
+        serviceDescriptionHe: `שירות שמירה על חיית מחמד - ${totalDays} ${totalDays === 1 ? 'יום' : 'ימים'} עם ${sitter.firstName}`,
+        subtotalAmount: pricing.subtotal,
+        platformFeeAmount: pricing.platformFee,
+        totalAmount: pricing.totalPrice,
+        paymentMethod: 'Nayax Card Payment',
+        providerPayoutAmount: pricing.providerPayout,
+        brokerCommissionAmount: pricing.platformFee,
+      });
+
+      if (receiptResult.success) {
+        logger.info('[Sitter Suite] ✅ Digital receipt generated & emailed', {
+          bookingId,
+          receiptNumber: receiptResult.receiptNumber,
+          emailSent: receiptResult.emailSent,
+          accountingRecorded: receiptResult.accountingRecorded,
+        });
+      }
+    } catch (receiptError) {
+      logger.error('[Sitter Suite] Receipt generation failed (non-blocking)', receiptError);
+    }
+
+    // STEP 7: Record in P&L ledger (VAT accounting)
+    try {
+      await VATCalculatorService.recordTransaction(
+        'sitter-suite',
+        paymentResult.nayaxTransactionId || bookingId,
+        pricing.subtotal,
+        bookingId,
+        {
+          sitterId,
+          totalDays,
+          loyaltyDiscount: pricing.loyaltyDiscount,
+          receiptNumber: receiptResult?.receiptNumber,
+        }
+      );
+    } catch (vatError) {
+      logger.error('[Sitter Suite] VAT ledger recording failed (non-blocking)', vatError);
+    }
     
     // Generate navigation links to sitter's location
     let navigationLinks = undefined;
@@ -567,6 +626,10 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
     res.status(201).json({
       booking: newBooking,
       triage: triageResult,
+      receipt: receiptResult?.success ? {
+        receiptNumber: receiptResult.receiptNumber,
+        emailSent: receiptResult.emailSent,
+      } : undefined,
       pricing: {
         totalPrice: pricing.totalPrice,
         basePrice: pricing.subtotal,
@@ -632,6 +695,8 @@ router.get('/bookings', async (req, res) => {
 
 /**
  * PATCH /api/sitter-suite/bookings/:id/complete - Complete booking and trigger sitter payout
+ * Israeli Law 2026: Applies withholding tax (ניכוי מס במקור), records commission, generates settlement
+ * Subcontractor model (like Wolt Israel) - providers are independent contractors
  */
 router.patch('/bookings/:id/complete', async (req, res) => {
   try {
@@ -645,20 +710,53 @@ router.patch('/bookings/:id/complete', async (req, res) => {
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-    
-    // Process sitter payout
+
+    // Fetch sitter profile for tax info
+    const [sitter] = await db
+      .select()
+      .from(sitterProfiles)
+      .where(eq(sitterProfiles.id, booking.sitterId));
+
+    // STEP 1: Calculate provider settlement with Israeli law deductions
+    const grossPayoutCents = booking.sitterPayoutCents;
+    const grossPayoutILS = grossPayoutCents / 100;
+    const customerPaidILS = booking.totalChargeCents / 100;
+
+    const settlementResult = await IsraeliDigitalReceiptService.recordProviderSettlement({
+      bookingId: booking.bookingId,
+      providerId: booking.sitterId.toString(),
+      providerType: 'sitter',
+      grossPayoutAmount: grossPayoutILS,
+      hasWithholdingExemption: false,
+      customerPaidAmount: customerPaidILS,
+      bookingDbId: booking.id,
+      commissionRate: 7.5,
+    });
+
+    if (!settlementResult.success) {
+      logger.error('[Sitter Suite] Settlement recording failed', {
+        bookingId: booking.bookingId,
+        error: settlementResult.error,
+      });
+    }
+
+    // STEP 2: Process sitter payout (net after withholding tax)
+    const netPayoutCents = settlementResult.settlement
+      ? Math.round(settlementResult.settlement.netPaymentToProvider * 100)
+      : grossPayoutCents;
+
     const payoutResult = await nayaxSitterMarketplace.processSitterPayout({
       bookingId: booking.bookingId,
       sitterId: booking.sitterId,
-      sitterPayoutCents: booking.sitterPayoutCents,
-      sitterBankAccount: 'TBD', // Get from sitter profile
+      sitterPayoutCents: netPayoutCents,
+      sitterBankAccount: 'TBD',
     });
     
     if (!payoutResult.success) {
       return res.status(500).json({ error: 'Payout failed' });
     }
     
-    // Update booking status
+    // STEP 3: Update booking status
     const [updatedBooking] = await db
       .update(sitterBookings)
       .set({
@@ -670,12 +768,30 @@ router.patch('/bookings/:id/complete', async (req, res) => {
       .where(eq(sitterBookings.id, bookingId))
       .returning();
     
-    logger.info('[Sitter Suite] ✅ Booking completed, sitter paid', {
+    logger.info('[Sitter Suite] ✅ Booking completed - Israeli law 2026 compliant', {
       bookingId: booking.bookingId,
-      payoutCents: booking.sitterPayoutCents,
+      grossPayoutILS,
+      withholdingTaxILS: settlementResult.settlement?.withholdingTaxAmount || 0,
+      withholdingTaxRate: settlementResult.settlement?.withholdingTaxRate
+        ? `${(settlementResult.settlement.withholdingTaxRate * 100).toFixed(0)}%`
+        : 'N/A',
+      netPayoutILS: settlementResult.settlement?.netPaymentToProvider || grossPayoutILS,
+      brokerCommissionILS: settlementResult.settlement?.brokerCommission || 0,
+      commissionId: settlementResult.commissionId,
+      sitterName: sitter?.displayName || sitter?.firstName || 'Unknown',
     });
     
-    res.json(updatedBooking);
+    res.json({
+      ...updatedBooking,
+      settlement: settlementResult.settlement ? {
+        commissionId: settlementResult.commissionId,
+        grossPayout: settlementResult.settlement.grossPayout,
+        withholdingTaxDeducted: settlementResult.settlement.withholdingTaxAmount,
+        withholdingTaxRate: `${(settlementResult.settlement.withholdingTaxRate * 100).toFixed(0)}%`,
+        netPaymentToProvider: settlementResult.settlement.netPaymentToProvider,
+        brokerCommission: settlementResult.settlement.brokerCommission,
+      } : undefined,
+    });
     
   } catch (error) {
     logger.error('[Sitter Suite] Error completing booking', error);
