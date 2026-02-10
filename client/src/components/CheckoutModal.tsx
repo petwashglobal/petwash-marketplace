@@ -132,10 +132,11 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
         <div className="bg-white px-6 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
-                <Shield className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900">Pet Wash™</span>
+              <img 
+                src="/brand/petwash-logo-official.png" 
+                alt="Pet Wash™" 
+                className="h-8 w-auto object-contain"
+              />
             </div>
             
             <div className="flex items-center space-x-2">
@@ -166,7 +167,7 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
               <span className="text-lg font-bold text-gray-900">₪{pkg.price}</span>
             </div>
             <p className="text-sm text-gray-600">
-              {pkg.washCount} {currentLanguage === 'en' ? 'washes' : 'רחיצות'}
+              {pkg.washCount} {currentLanguage === 'en' ? (pkg.washCount === 1 ? 'wash' : 'washes') : 'רחיצות'}
             </p>
           </div>
 
@@ -237,7 +238,7 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
               </div>
             ) : (
               <span>
-                {currentLanguage === 'en' ? 'Pay' : 'שלם'} ₪{pkg.price}
+                {currentLanguage === 'en' ? `Complete Order • ₪${pkg.price}` : `השלם הזמנה • ₪${pkg.price}`}
               </span>
             )}
           </Button>

@@ -319,36 +319,36 @@ const translations: Record<string, Record<string, string>> = {
 
 const cardStyles = {
   rose: {
-    gradient: 'linear-gradient(145deg, #F8E8EC 0%, #E8D0D8 15%, #D4B8C4 35%, #C8A8B8 55%, #BC98AC 75%, #B088A0 100%)',
-    textColor: '#1A1A1A',
-    chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
-    shadowColor: 'rgba(180,120,140,0.35)',
-    accentColor: '#C6A664',
-    holographicGlow: 'rgba(255, 200, 220, 0.4)',
+    gradient: 'linear-gradient(165deg, #2C1A22 0%, #1A0F14 40%, #12080C 100%)',
+    textColor: '#FFFFFF',
+    chipColor: 'linear-gradient(135deg, #C9A96E 0%, #A8884A 50%, #D4B87A 100%)',
+    shadowColor: 'rgba(0,0,0,0.5)',
+    accentColor: '#E8A0B8',
+    holographicGlow: 'rgba(232, 160, 184, 0.15)',
   },
   emerald: {
-    gradient: 'linear-gradient(145deg, #E8F0E8 0%, #D0E0D0 15%, #B8D0BC 35%, #A0C0A8 55%, #88B094 75%, #70A080 100%)',
-    textColor: '#1A1A1A',
-    chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
-    shadowColor: 'rgba(100,140,100,0.35)',
-    accentColor: '#C6A664',
-    holographicGlow: 'rgba(180, 255, 200, 0.4)',
+    gradient: 'linear-gradient(165deg, #1A2E1C 0%, #0F1E10 40%, #081208 100%)',
+    textColor: '#FFFFFF',
+    chipColor: 'linear-gradient(135deg, #C9A96E 0%, #A8884A 50%, #D4B87A 100%)',
+    shadowColor: 'rgba(0,0,0,0.5)',
+    accentColor: '#7FD4A0',
+    holographicGlow: 'rgba(127, 212, 160, 0.15)',
   },
   platinum: {
-    gradient: 'linear-gradient(145deg, #F0F0F2 0%, #E4E4E8 15%, #D8D8DC 35%, #CCCCCC 55%, #C0C0C0 75%, #B4B4B8 100%)',
-    textColor: '#1A1A1A',
-    chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
-    shadowColor: 'rgba(100,100,110,0.4)',
-    accentColor: '#C6A664',
-    holographicGlow: 'rgba(200, 200, 255, 0.4)',
+    gradient: 'linear-gradient(165deg, #2A2A35 0%, #1C1C28 40%, #14141E 100%)',
+    textColor: '#FFFFFF',
+    chipColor: 'linear-gradient(135deg, #C9A96E 0%, #A8884A 50%, #D4B87A 100%)',
+    shadowColor: 'rgba(0,0,0,0.5)',
+    accentColor: '#B8C5D6',
+    holographicGlow: 'rgba(184, 197, 214, 0.15)',
   },
   gold: {
-    gradient: 'linear-gradient(145deg, #FAF6F0 0%, #F0E8DC 15%, #E8DCC8 35%, #DED0B4 55%, #D4C4A0 75%, #C6A664 100%)',
-    textColor: '#1A1A1A',
-    chipColor: 'linear-gradient(135deg, #E8E4E0 0%, #D4D0CC 50%, #C8C4C0 100%)',
-    shadowColor: 'rgba(180,150,80,0.4)',
-    accentColor: '#8B7355',
-    holographicGlow: 'rgba(255, 230, 180, 0.5)',
+    gradient: 'linear-gradient(165deg, #3A2D1A 0%, #2A1F0F 40%, #1A1408 100%)',
+    textColor: '#FFFFFF',
+    chipColor: 'linear-gradient(135deg, #E8C964 0%, #C9A96E 50%, #F0D888 100%)',
+    shadowColor: 'rgba(0,0,0,0.5)',
+    accentColor: '#E8C964',
+    holographicGlow: 'rgba(232, 201, 100, 0.2)',
   }
 };
 
@@ -414,10 +414,10 @@ function LuxuryGiftCard({
         className="relative w-full aspect-[1.586/1] overflow-hidden transition-transform duration-500 group-hover:rotate-y-[2deg] group-hover:rotate-x-[-2deg]"
         style={{ 
           background: style.gradient,
-          borderRadius: '16px',
+          borderRadius: '20px',
           boxShadow: selected 
-            ? `0 25px 50px -12px ${style.shadowColor}, 0 12px 24px -8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4)`
-            : `0 15px 35px -10px ${style.shadowColor}, 0 8px 16px -6px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)`,
+            ? `0 25px 50px -12px ${style.shadowColor}, 0 0 0 2px ${style.accentColor}80, 0 0 30px ${style.holographicGlow}`
+            : `0 15px 35px -10px ${style.shadowColor}, 0 0 0 1px rgba(255,255,255,0.08)`,
           transformStyle: 'preserve-3d',
         }}
       >
@@ -511,23 +511,29 @@ function LuxuryGiftCard({
           </div>
         </div>
 
+        <div className="absolute top-0 left-0 right-0 h-[1px]" style={{
+          background: `linear-gradient(90deg, transparent, ${style.accentColor}40, transparent)`,
+        }} />
+
         {selected && (
-          <div className="absolute top-4 right-4">
-            <div className="w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/50">
-              <Check className="w-4 h-4 text-green-600" strokeWidth={3} />
+          <div className="absolute top-3 left-3 z-10">
+            <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg" style={{
+              background: style.accentColor,
+            }}>
+              <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
             </div>
           </div>
         )}
 
-        <div className="absolute top-5 right-5">
+        <div className="absolute top-4 right-4">
           <div 
-            className="px-2.5 py-1 rounded-full backdrop-blur-sm"
+            className="px-2 py-0.5 rounded-full"
             style={{ 
-              background: 'rgba(255,255,255,0.15)', 
-              border: '1px solid rgba(255,255,255,0.2)',
+              background: 'rgba(255,255,255,0.08)', 
+              border: '1px solid rgba(255,255,255,0.12)',
             }}
           >
-            <span className="text-[9px] sm:text-[10px] font-semibold tracking-[0.1em] uppercase" style={{ color: style.textColor }}>
+            <span className="text-[8px] sm:text-[9px] font-bold tracking-[0.12em] uppercase" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {option.color === 'gold' ? 'ELITE' : option.color === 'platinum' ? 'PREMIUM' : option.color === 'emerald' ? 'PLUS' : 'CLASSIC'}
             </span>
           </div>
@@ -664,12 +670,12 @@ export default function EGift() {
       : `₪${finalPrice}`;
 
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white" dir={dir}>
+      <div className="min-h-screen bg-[#0A0A0F]" dir={dir}>
         <div className="container mx-auto px-4 py-6 sm:py-8 max-w-5xl">
           <Button 
             variant="ghost" 
             onClick={() => setStep('select')}
-            className="mb-4 sm:mb-6"
+            className="mb-4 sm:mb-6 text-gray-400 hover:text-white hover:bg-white/5"
             data-testid="button-back"
           >
             <BackIcon className="w-4 h-4" />
@@ -678,86 +684,86 @@ export default function EGift() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
             <div className="order-2 lg:order-1">
-              <Card className="border-0 shadow-xl">
+              <Card className="border-0 shadow-xl" style={{ background: '#16161E', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <CardContent className="p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">
+                  <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-white">
                     {tx('expressCheckout', lang)}
                   </h2>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="recipientName" className="text-sm">{tx('recipientName', lang)} *</Label>
+                      <Label htmlFor="recipientName" className="text-sm text-gray-300">{tx('recipientName', lang)} *</Label>
                       <Input
                         id="recipientName"
                         placeholder={tx('recipientNamePlaceholder', lang)}
                         value={formData.recipientName}
                         onChange={(e) => setFormData(prev => ({ ...prev, recipientName: e.target.value }))}
-                        className={`mt-1 ${errors.recipientName ? 'border-red-500' : ''}`}
+                        className={`mt-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#C9A96E]/50 ${errors.recipientName ? 'border-red-500' : ''}`}
                         data-testid="input-recipient-name"
                         dir={dir}
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="recipientEmail" className="text-sm">{tx('recipientEmail', lang)} *</Label>
+                      <Label htmlFor="recipientEmail" className="text-sm text-gray-300">{tx('recipientEmail', lang)} *</Label>
                       <Input
                         id="recipientEmail"
                         type="email"
                         placeholder={tx('recipientEmailPlaceholder', lang)}
                         value={formData.recipientEmail}
                         onChange={(e) => setFormData(prev => ({ ...prev, recipientEmail: e.target.value }))}
-                        className={`mt-1 ${errors.recipientEmail ? 'border-red-500' : ''}`}
+                        className={`mt-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#C9A96E]/50 ${errors.recipientEmail ? 'border-red-500' : ''}`}
                         data-testid="input-recipient-email"
                         dir="ltr"
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="senderName" className="text-sm">{tx('yourName', lang)} *</Label>
+                      <Label htmlFor="senderName" className="text-sm text-gray-300">{tx('yourName', lang)} *</Label>
                       <Input
                         id="senderName"
                         placeholder={tx('yourNamePlaceholder', lang)}
                         value={formData.senderName}
                         onChange={(e) => setFormData(prev => ({ ...prev, senderName: e.target.value }))}
-                        className={`mt-1 ${errors.senderName ? 'border-red-500' : ''}`}
+                        className={`mt-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#C9A96E]/50 ${errors.senderName ? 'border-red-500' : ''}`}
                         data-testid="input-sender-name"
                         dir={dir}
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="senderEmail" className="text-sm">{tx('yourEmail', lang)} *</Label>
+                      <Label htmlFor="senderEmail" className="text-sm text-gray-300">{tx('yourEmail', lang)} *</Label>
                       <Input
                         id="senderEmail"
                         type="email"
                         placeholder={tx('yourEmailPlaceholder', lang)}
                         value={formData.senderEmail}
                         onChange={(e) => setFormData(prev => ({ ...prev, senderEmail: e.target.value }))}
-                        className={`mt-1 ${errors.senderEmail ? 'border-red-500' : ''}`}
+                        className={`mt-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#C9A96E]/50 ${errors.senderEmail ? 'border-red-500' : ''}`}
                         data-testid="input-sender-email"
                         dir="ltr"
                       />
                     </div>
 
                     <div className="sm:col-span-2">
-                      <Label htmlFor="message" className="text-sm">{tx('personalMessage', lang)}</Label>
+                      <Label htmlFor="message" className="text-sm text-gray-300">{tx('personalMessage', lang)}</Label>
                       <Input
                         id="message"
                         placeholder={tx('messagePlaceholder', lang)}
                         value={formData.message}
                         onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                        className="mt-1"
+                        className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#C9A96E]/50"
                         data-testid="input-message"
                         dir={dir}
                       />
                     </div>
                   </div>
 
-                  <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-xl">
-                    <p className="text-sm font-medium text-gray-700 mb-2">{tx('redeemableAt', lang)}</p>
+                  <div className="mt-4 sm:mt-6 p-3 sm:p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <p className="text-sm font-medium text-gray-400 mb-2">{tx('redeemableAt', lang)}</p>
                     <div className="flex flex-wrap gap-2">
                       {platformServices.filter(s => selectedServices.includes(s.id)).map(service => (
-                        <span key={service.id} className="bg-black text-white px-2 py-1 rounded-full text-xs">
+                        <span key={service.id} className="px-2 py-1 rounded-full text-xs text-white" style={{ background: 'rgba(201,169,110,0.2)', border: '1px solid rgba(201,169,110,0.3)' }}>
                           {service.name}
                         </span>
                       ))}
@@ -765,7 +771,8 @@ export default function EGift() {
                   </div>
 
                   <Button 
-                    className="w-full bg-black hover:bg-gray-800 text-white py-5 sm:py-6 text-base sm:text-lg mt-4 sm:mt-6"
+                    className="w-full py-5 sm:py-6 text-base sm:text-lg mt-4 sm:mt-6 text-white border-0"
+                    style={{ background: 'linear-gradient(135deg, #C9A96E 0%, #A8884A 100%)' }}
                     onClick={handleCheckout}
                     data-testid="button-checkout"
                   >
@@ -777,7 +784,7 @@ export default function EGift() {
                     {tx('secureCheckout', lang)}
                   </p>
                   
-                  <div className="mt-4 sm:mt-6 pt-4 border-t border-gray-100">
+                  <div className="mt-4 sm:mt-6 pt-4 border-t border-white/10">
                     <PaymentMethods language={lang} size="sm" />
                   </div>
                 </CardContent>
@@ -790,8 +797,8 @@ export default function EGift() {
                   className="relative w-full aspect-[1.586/1] overflow-hidden"
                   style={{ 
                     background: style.gradient,
-                    borderRadius: '12px',
-                    boxShadow: '0 20px 50px -10px rgba(0,0,0,0.35), 0 8px 20px -4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)'
+                    borderRadius: '20px',
+                    boxShadow: `0 20px 50px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08), 0 0 30px ${style.holographicGlow}`
                   }}
                 >
                   <div className="absolute inset-0 opacity-15">
@@ -804,7 +811,7 @@ export default function EGift() {
                   
                   <div className="absolute top-4 left-4 flex items-center gap-2">
                     <div className="w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: `${style.accentColor}dd` }}>
-                      <Gift className="w-4 h-4" style={{ color: selectedOption.color === 'gold' ? '#8B6914' : '#333' }} />
+                      <Gift className="w-4 h-4 text-white" />
                     </div>
                     <span className="text-sm font-bold tracking-wide" style={{ color: style.textColor }}>
                       Pet Wash™
@@ -840,24 +847,28 @@ export default function EGift() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white" dir={dir}>
+    <div className="min-h-screen bg-[#0A0A0F]" dir={dir}>
       <div className="container mx-auto px-4 py-8 sm:py-12">
         <div className="text-center mb-8 sm:mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-full mb-4">
-            <Wallet className="w-4 h-4 text-amber-600" />
-            <span className="text-sm font-medium text-amber-800">{tx('platformCredit', lang)}</span>
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full mb-5" style={{
+            background: 'linear-gradient(135deg, rgba(201,169,110,0.15) 0%, rgba(201,169,110,0.05) 100%)',
+            border: '1px solid rgba(201,169,110,0.3)',
+          }}>
+            <Wallet className="w-4 h-4" style={{ color: '#C9A96E' }} />
+            <span className="text-sm font-medium" style={{ color: '#C9A96E' }}>{tx('platformCredit', lang)}</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4"
+            style={{ fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', serif" }}>
             {tx('title', lang)}
           </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto text-sm sm:text-base">
+          <p className="text-gray-400 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
             {tx('description', lang)}
           </p>
         </div>
 
         <div className="max-w-5xl mx-auto">
           <div className="mb-6 sm:mb-8">
-            <p className="text-sm font-medium text-gray-700 mb-3 text-center">
+            <p className="text-sm font-medium text-gray-400 mb-3 text-center">
               {tx('usableAt', lang)}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
@@ -868,9 +879,16 @@ export default function EGift() {
                   onClick={() => toggleService(service.id)}
                   className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all ${
                     selectedServices.includes(service.id)
-                      ? 'bg-black text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'text-white'
+                      : 'text-gray-400 hover:text-gray-200'
                   }`}
+                  style={selectedServices.includes(service.id) ? {
+                    background: 'linear-gradient(135deg, rgba(201,169,110,0.2) 0%, rgba(201,169,110,0.1) 100%)',
+                    border: '1px solid rgba(201,169,110,0.4)',
+                  } : {
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}
                   data-testid={`service-toggle-${service.id}`}
                 >
                   {service.name}
@@ -879,7 +897,7 @@ export default function EGift() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
             {giftOptions.map((option) => (
               <LuxuryGiftCard
                 key={option.value}
@@ -894,9 +912,13 @@ export default function EGift() {
           {selectedOption && (
             <div className="mt-6 sm:mt-8 text-center">
               <Button 
-                className="bg-black hover:bg-gray-800 text-white px-8 sm:px-12 py-5 sm:py-6 text-base sm:text-lg"
+                className="px-8 sm:px-12 py-5 sm:py-6 text-base sm:text-lg font-semibold rounded-xl"
                 onClick={proceedToCheckout}
                 data-testid="button-proceed-checkout"
+                style={{
+                  background: 'linear-gradient(135deg, #C9A96E, #E8C964)',
+                  color: '#1A1A1A',
+                }}
               >
                 {tx('continueCheckout', lang)}
                 <ForwardIcon className={`w-5 h-5 ${isRtl ? 'mr-2' : 'ml-2'}`} />
@@ -904,21 +926,21 @@ export default function EGift() {
             </div>
           )}
 
-          <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-600">
-            <span className="flex items-center gap-1">
-              <Check className="w-4 h-4 text-emerald-500" />
+          <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-400">
+            <span className="flex items-center gap-1.5">
+              <Check className="w-4 h-4" style={{ color: '#C9A96E' }} />
               {tx('allServices', lang)}
             </span>
-            <span className="flex items-center gap-1">
-              <Check className="w-4 h-4 text-emerald-500" />
+            <span className="flex items-center gap-1.5">
+              <Check className="w-4 h-4" style={{ color: '#C9A96E' }} />
               {tx('valid12Months', lang)}
             </span>
-            <span className="flex items-center gap-1">
-              <Check className="w-4 h-4 text-emerald-500" />
+            <span className="flex items-center gap-1.5">
+              <Check className="w-4 h-4" style={{ color: '#C9A96E' }} />
               {tx('noAccountRequired', lang)}
             </span>
-            <span className="flex items-center gap-1">
-              <Check className="w-4 h-4 text-emerald-500" />
+            <span className="flex items-center gap-1.5">
+              <Check className="w-4 h-4" style={{ color: '#C9A96E' }} />
               {tx('instantDelivery', lang)}
             </span>
           </div>
