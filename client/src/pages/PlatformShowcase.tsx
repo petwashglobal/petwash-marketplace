@@ -17,7 +17,7 @@ export default function PlatformShowcase() {
       color: "from-purple-500 to-pink-500",
       items: [
         "Pet Wash Hub™ - Premium organic washing stations",
-        "Walk My Pet™ - Real-time GPS dog walking marketplace (20%/80% split)",
+        "Walk My Pet™ - Real-time GPS dog walking marketplace (15% commission)",
         "The Sitter Suite™ - AI-powered pet sitting with urgency triage",
         "PetTrek™ - Uber-style pet transport with dynamic fare estimation",
         "K9000 IoT Stations - Cloud-managed wash bays with remote control",

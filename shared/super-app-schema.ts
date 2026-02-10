@@ -59,7 +59,7 @@ export const platforms = pgTable("platforms", {
   description: text("description"),
   descriptionHe: text("description_he"),
   isActive: boolean("is_active").default(true),
-  platformFeePercent: decimal("platform_fee_percent", { precision: 5, scale: 2 }), // 15% for sitters, 20% for walkers, etc.
+  platformFeePercent: decimal("platform_fee_percent", { precision: 5, scale: 2 }), // 15% flat commission all platforms
   stripeConnectEnabled: boolean("stripe_connect_enabled").default(false), // true for marketplaces
   nayaxEnabled: boolean("nayax_enabled").default(false), // true only for k9000
   settings: jsonb("settings"), // Platform-specific settings

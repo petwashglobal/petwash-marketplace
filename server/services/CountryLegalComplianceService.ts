@@ -86,7 +86,7 @@ export class CountryLegalComplianceService {
       backgroundCheckProvider: 'Israeli Police Criminal Record Check',
       minimumAge: 18,
       
-      maxPlatformLiability: '7.5% broker commission for specific booking',
+      maxPlatformLiability: '15% platform commission for specific booking',
       
       termsUrl: '/sitter-suite/terms-conditions',
       privacyPolicyUrl: '/sitter-suite/privacy-policy',
@@ -118,7 +118,7 @@ export class CountryLegalComplianceService {
       backgroundCheckProvider: 'FBI National Background Check',
       minimumAge: 18,
       
-      maxPlatformLiability: '7.5% broker commission for specific booking',
+      maxPlatformLiability: '15% platform commission for specific booking',
       
       termsUrl: '/sitter-suite/terms-conditions?country=USA',
       privacyPolicyUrl: '/sitter-suite/privacy-policy?country=USA',
@@ -150,7 +150,7 @@ export class CountryLegalComplianceService {
       backgroundCheckProvider: 'DBS (Disclosure and Barring Service)',
       minimumAge: 18,
       
-      maxPlatformLiability: '7.5% broker commission for specific booking',
+      maxPlatformLiability: '15% platform commission for specific booking',
       
       termsUrl: '/sitter-suite/terms-conditions?country=GBR',
       privacyPolicyUrl: '/sitter-suite/privacy-policy?country=GBR',
@@ -182,7 +182,7 @@ export class CountryLegalComplianceService {
       backgroundCheckProvider: 'Australian National Police Check',
       minimumAge: 18,
       
-      maxPlatformLiability: '7.5% broker commission for specific booking',
+      maxPlatformLiability: '15% platform commission for specific booking',
       
       termsUrl: '/sitter-suite/terms-conditions?country=AUS',
       privacyPolicyUrl: '/sitter-suite/privacy-policy?country=AUS',
@@ -214,7 +214,7 @@ export class CountryLegalComplianceService {
       backgroundCheckProvider: 'RCMP Criminal Record Check',
       minimumAge: 18,
       
-      maxPlatformLiability: '7.5% broker commission for specific booking',
+      maxPlatformLiability: '15% platform commission for specific booking',
       
       termsUrl: '/sitter-suite/terms-conditions?country=CAN',
       privacyPolicyUrl: '/sitter-suite/privacy-policy?country=CAN',

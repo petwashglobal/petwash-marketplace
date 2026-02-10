@@ -34,8 +34,7 @@ import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 import { appendFormSubmission } from './googleSheetsIntegration';
 
 const ISRAELI_VAT_RATE = 0.18;
-const PLATFORM_BROKER_RATE = 0.075;
-const PLATFORM_SERVICE_FEE_RATE = 0.10;
+const PLATFORM_COMMISSION_RATE = 0.15; // Flat 15% on all platforms
 const DEFAULT_WITHHOLDING_TAX_RATE = 0.20;
 const COMPANY_NAME = 'Pet Wash Ltd';
 const COMPANY_NAME_HE = 'פט ווש בע"מ';
@@ -182,7 +181,7 @@ export class IsraeliDigitalReceiptService {
     const withholdingTaxAmount = parseFloat((grossPayoutAmount * effectiveRate).toFixed(2));
     const netPaymentToProvider = parseFloat((grossPayoutAmount - withholdingTaxAmount).toFixed(2));
 
-    const brokerCommission = parseFloat((grossPayoutAmount * PLATFORM_BROKER_RATE / (1 - PLATFORM_BROKER_RATE)).toFixed(2));
+    const brokerCommission = parseFloat((grossPayoutAmount * PLATFORM_COMMISSION_RATE / (1 - PLATFORM_COMMISSION_RATE)).toFixed(2));
     const vatOnCommission = isVatRegistered
       ? parseFloat((brokerCommission * ISRAELI_VAT_RATE).toFixed(2))
       : 0;
@@ -315,7 +314,7 @@ export class IsraeliDigitalReceiptService {
     try {
       const settlement = this.calculateProviderSettlement(params);
 
-      const commissionRate = params.commissionRate || PLATFORM_BROKER_RATE * 100;
+      const commissionRate = params.commissionRate || PLATFORM_COMMISSION_RATE * 100;
 
       await db.insert(providerCommissions).values({
         commissionId: settlement.commissionId,

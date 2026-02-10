@@ -64,7 +64,7 @@ export interface IndependenceCalculation {
 
 export interface CommissionCalculation {
   customerPaidAmount: number;
-  commissionRate: number; // 15-25%
+  commissionRate: number; // 15% flat rate (all platforms)
   commissionAmount: number;
   providerEarnings: number;
   vatAmount?: number;
@@ -237,18 +237,16 @@ export class IsraeliContractorComplianceService {
 
   /**
    * Calculate commission for a booking
-   * Pet Wash takes 5-25% broker fee depending on platform
-   * Sitter Suite: 7.5% broker, Walk My Pet: 20%, PetTrek: 15%
+   * Pet Wash takes flat 15% commission on ALL third-party providers (unified rate)
    */
   static async calculateCommission(
     providerId: string,
     providerType: ProviderType,
     bookingId: number,
     customerPaidAmount: number,
-    commissionRate: number = 20 // Default 20%
+    commissionRate: number = 15 // Flat 15% on all platforms
   ): Promise<CommissionCalculation> {
     try {
-      // Validate commission rate (5-25% allowed per platform-specific rates)
       if (commissionRate < 5 || commissionRate > 25) {
         throw new Error('Commission rate must be between 5% and 25%');
       }
@@ -889,7 +887,7 @@ export class IsraeliContractorComplianceService {
     const vatStatus = await this.checkVatThreshold(providerId);
 
     // Calculate summary
-    const petwashCommission = grossPayoutAmount * 0.20; // 20% default commission
+    const petwashCommission = grossPayoutAmount * 0.15; // 15% flat commission (all platforms)
     const netAfterCommission = grossPayoutAmount - petwashCommission;
     const remitToTaxAuthority = withholding.withholdingTaxAmount;
     const providerTakeHome = netAfterCommission - remitToTaxAuthority;

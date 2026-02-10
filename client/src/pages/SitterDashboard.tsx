@@ -507,7 +507,7 @@ function SitterBookingCard({ booking, isHebrew }: any) {
         <div className="luxury-divider"></div>
         
         <div className="flex items-center justify-between">
-          <span className="luxury-heading-sm">{isHebrew ? 'הרווח שלך (93%):' : 'Your earnings (93%):'}</span>
+          <span className="luxury-heading-sm">{isHebrew ? 'הרווח שלך (85%):' : 'Your earnings (85%):'}</span>
           <span className="luxury-heading-lg luxury-text-gradient">₪{(booking.sitterPayoutCents / 100).toFixed(2)}</span>
         </div>
       </div>

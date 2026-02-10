@@ -63,7 +63,7 @@ class LuxuryDocumentEmailService {
           quantity: 3,
           unitPrice: 120.00,
           vatRate: 0.18,
-          commission: 27.00, // 7.5% commission
+          commission: 54.00, // 15% commission (3 nights × ₪120 × 15%)
           operationCode: 'TSS-CARE-004'
         }
       ],

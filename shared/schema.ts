@@ -3656,9 +3656,9 @@ export const sitterBookings = pgTable("sitter_bookings", {
   
   // Financial Split Payment Model - CONNECTOR PLATFORM (Like cars.com.au)
   basePriceCents: integer("base_price_cents").notNull(), // Sitter's base rate × days
-  platformServiceFeeCents: integer("platform_service_fee_cents").notNull(), // 10% visible to owner
-  brokerCutCents: integer("broker_cut_cents").notNull(), // 7% hidden (our clip/commission)
-  sitterPayoutCents: integer("sitter_payout_cents").notNull(), // 93% of base (100% - 7%)
+  platformServiceFeeCents: integer("platform_service_fee_cents").notNull(), // 15% platform commission
+  brokerCutCents: integer("broker_cut_cents").notNull(), // 15% platform commission (same as service fee)
+  sitterPayoutCents: integer("sitter_payout_cents").notNull(), // 85% of base (100% - 15%)
   totalChargeCents: integer("total_charge_cents").notNull(), // base + platform fee
   
   // Payment Integration (NAYAX ONLY - Like Booking.com/Airbnb)

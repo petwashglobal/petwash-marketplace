@@ -273,7 +273,7 @@ export class ManagementAnalyticsService {
     const totalTransactions = Number(current[0]?.totalTransactions || 0);
     const prevRevenue = Number(previous[0]?.totalRevenue || 0);
 
-    const netProfit = platformCommission; // 7.5% commission
+    const netProfit = platformCommission; // 15% commission
     const growthRate = prevRevenue > 0
       ? ((totalRevenue - prevRevenue) / prevRevenue) * 100
       : totalRevenue > 0 ? 100 : 0;

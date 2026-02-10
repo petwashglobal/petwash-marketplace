@@ -123,10 +123,10 @@ export default function TermsConditions() {
               <div className="bg-blue-50 dark:bg-gray-700 p-6 rounded-lg">
                 <p className="font-semibold mb-2">{isHebrew ? 'סיכום עמלות:' : 'Fee Breakdown:'}</p>
                 <ul className="space-y-1">
-                  <li>{isHebrew ? '• מחיר בסיס: תעריף השמרטף × ימים' : '• Base Price: Sitter\'s rate × days'}</li>
-                  <li>{isHebrew ? '• עמלת שירות פלטפורמה: 10% (נראית לבעל)' : '• Platform Service Fee: 10% (visible to owner)'}</li>
-                  <li className="font-bold">{isHebrew ? '• עמלת תיווך: 7% (מנוכה מתשלום השמרטף)' : '• Broker Commission: 7% (deducted from sitter payout)'}</li>
-                  <li>{isHebrew ? '• תשלום שמרטף: 93% מהמחיר הבסיס' : '• Sitter Payout: 93% of base price'}</li>
+                  <li>{isHebrew ? '• מחיר בסיס: תעריף הספק × ימים/שעות' : '• Base Price: Provider\'s rate × days/hours'}</li>
+                  <li>{isHebrew ? '• עמלת פלטפורמה: 15% (מחושבת על מחיר הבסיס)' : '• Platform Commission: 15% (calculated on base price)'}</li>
+                  <li>{isHebrew ? '• מע"מ: 18% על עמלת הפלטפורמה' : '• VAT: 18% on platform commission'}</li>
+                  <li className="font-bold">{isHebrew ? '• תשלום ספק: 85% מהמחיר הבסיס' : '• Provider Payout: 85% of base price'}</li>
                 </ul>
               </div>
 
