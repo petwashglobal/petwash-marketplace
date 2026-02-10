@@ -3867,3 +3867,96 @@ body {
   display: none !important;
 }
 
+/* ===== REACT-DAY-PICKER RANGE SELECTION FIX ===== */
+/* Ensures date range highlighting works on all browsers including mobile Safari */
+
+/* Range middle cells get background highlight band */
+.rdp-day_range_middle {
+  border-radius: 0 !important;
+}
+
+/* Cell-level range background for continuous highlight band */
+.rdp-cell:has(.rdp-day_range_middle),
+.rdp-cell:has(.rdp-day_range_start),
+.rdp-cell:has(.rdp-day_range_end) {
+  position: relative;
+}
+
+/* Range middle cells: full background band */
+.rdp-cell:has(.rdp-day_range_middle) {
+  background-color: rgba(219, 234, 254, 0.7);
+}
+
+/* Range start cell: half background on the end side */
+.rdp-cell:has(.rdp-day_range_start:not(.rdp-day_range_end))::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  z-index: 0;
+  background-color: rgba(219, 234, 254, 0.7);
+}
+html:not([dir="rtl"]) .rdp-cell:has(.rdp-day_range_start:not(.rdp-day_range_end))::after {
+  right: 0;
+}
+html[dir="rtl"] .rdp-cell:has(.rdp-day_range_start:not(.rdp-day_range_end))::after {
+  left: 0;
+}
+
+/* Range end cell: half background on the start side */
+.rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  z-index: 0;
+  background-color: rgba(219, 234, 254, 0.7);
+}
+html:not([dir="rtl"]) .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::after {
+  left: 0;
+}
+html[dir="rtl"] .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::after {
+  right: 0;
+}
+
+/* Non-:has() fallback for older browsers - uses rdp native classes directly */
+.rdp-day_range_middle {
+  background-color: rgba(219, 234, 254, 0.7) !important;
+  border-radius: 0 !important;
+}
+
+/* Day button sits above the cell background */
+.rdp-day {
+  position: relative;
+  z-index: 1;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Mobile: Ensure touch targets are minimum 44px */
+@media (pointer: coarse) {
+  .rdp-day {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .rdp-cell {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .rdp-head_cell {
+    min-width: 44px;
+  }
+}
+
+/* Nav buttons need touch-manipulation too */
+.rdp-nav_button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
