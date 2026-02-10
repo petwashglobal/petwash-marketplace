@@ -53,6 +53,7 @@ export function BiometricCertificateUpload() {
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
   const selfieInputRef = useRef<HTMLInputElement>(null);
+  const selfieCameraRef = useRef<HTMLInputElement>(null);
 
   // Fetch approved countries from API
   const { data: approvedCountriesData, isLoading: loadingCountries } = useQuery({
@@ -64,8 +65,9 @@ export function BiometricCertificateUpload() {
 
   const documentTypes = [
     { value: 'national_id', labelEn: 'National ID Card', labelHe: 'תעודת זהות' },
+    { value: 'passport', labelEn: 'Passport', labelHe: 'דרכון' },
     { value: 'drivers_license', labelEn: "Driver's License", labelHe: 'רשיון נהיגה' },
-    { value: 'disability_certificate', labelEn: 'Disability Certificate', labelHe: 'תעודת נכה' },
+    { value: 'disability_certificate', labelEn: 'Disability Certificate', labelHe: 'תעודת נכה 2026' },
     { value: 'retirement_certificate', labelEn: 'Retirement Certificate', labelHe: 'תעודת גימלאי' },
     { value: 'club_membership', labelEn: 'Club Membership', labelHe: 'חברות מועדון' }
   ];
@@ -304,7 +306,7 @@ export function BiometricCertificateUpload() {
                 className="flex-1"
                 data-testid="button-upload-front"
               >
-                <FileText className="mr-2 h-4 w-4" />
+                <Camera className="mr-2 h-4 w-4" />
                 {documentFront.file ? t('biometric.uploaded') : t('biometric.uploadPhoto')}
               </Button>
             </div>
@@ -359,7 +361,7 @@ export function BiometricCertificateUpload() {
             )}
           </div>
 
-          {/* Selfie Upload */}
+          {/* Selfie Upload - Camera + File Upload */}
           <div className="space-y-2">
             <Label data-testid="label-upload-selfie">
               {t('biometric.selfie')}
@@ -371,10 +373,19 @@ export function BiometricCertificateUpload() {
             </Alert>
             <div className="flex gap-2">
               <input
-                ref={selfieInputRef}
+                ref={selfieCameraRef}
                 type="file"
                 accept="image/*"
                 capture="user"
+                onChange={(e) => handleFileSelect(e, setSelfie)}
+                disabled={uploading}
+                className="hidden"
+                data-testid="input-camera-selfie"
+              />
+              <input
+                ref={selfieInputRef}
+                type="file"
+                accept="image/*"
                 onChange={(e) => handleFileSelect(e, setSelfie)}
                 disabled={uploading}
                 className="hidden"
@@ -383,13 +394,24 @@ export function BiometricCertificateUpload() {
               <Button
                 type="button"
                 variant="outline"
+                onClick={() => selfieCameraRef.current?.click()}
+                disabled={uploading}
+                className="flex-1"
+                data-testid="button-camera-selfie"
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                {selfie.file ? t('biometric.uploaded') : t('biometric.takeSelfie')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => selfieInputRef.current?.click()}
                 disabled={uploading}
                 className="flex-1"
                 data-testid="button-upload-selfie"
               >
-                <User className="mr-2 h-4 w-4" />
-                {selfie.file ? t('biometric.uploaded') : t('biometric.takeSelfie')}
+                <Upload className="mr-2 h-4 w-4" />
+                {t('biometric.uploadPhoto')}
               </Button>
             </div>
             {selfie.preview && (

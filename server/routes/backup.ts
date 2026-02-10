@@ -11,6 +11,14 @@ import { googleDriveBackupService } from '../services/googleDriveBackupService';
 import { storage } from '../storage';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
+import { db } from '../db';
+import { 
+  electronicInvoices, digitalSignatures, signedDocuments, 
+  smartWashReceipts, nayaxTransactions, transactionRecords,
+  biometricCertificateVerifications, providerApplications,
+  sitterProfiles, walkerProfiles
+} from '@shared/schema';
+import { desc } from 'drizzle-orm';
 
 const router = Router();
 
@@ -230,6 +238,96 @@ router.post('/full', validateFirebaseToken, requireBackupAdmin, async (req: Requ
       }
     } catch (e) {
       logger.warn('[Backup] Stations backup skipped');
+    }
+
+    try {
+      const invoices = await db.select().from(electronicInvoices).orderBy(desc(electronicInvoices.createdAt)).limit(1000);
+      if (invoices.length > 0) {
+        tables.push({ name: 'electronic_invoices', data: invoices });
+      }
+    } catch (e) {
+      logger.warn('[Backup] Invoices backup skipped');
+    }
+
+    try {
+      const signatures = await db.select().from(digitalSignatures).orderBy(desc(digitalSignatures.createdAt)).limit(1000);
+      if (signatures.length > 0) {
+        tables.push({ name: 'digital_signatures', data: signatures });
+      }
+    } catch (e) {
+      logger.warn('[Backup] Signatures backup skipped');
+    }
+
+    try {
+      const signedDocs = await db.select().from(signedDocuments).orderBy(desc(signedDocuments.createdAt)).limit(1000);
+      if (signedDocs.length > 0) {
+        tables.push({ name: 'signed_documents', data: signedDocs });
+      }
+    } catch (e) {
+      logger.warn('[Backup] Signed documents backup skipped');
+    }
+
+    try {
+      const receipts = await db.select().from(smartWashReceipts).orderBy(desc(smartWashReceipts.createdAt)).limit(1000);
+      if (receipts.length > 0) {
+        tables.push({ name: 'receipts', data: receipts });
+      }
+    } catch (e) {
+      logger.warn('[Backup] Receipts backup skipped');
+    }
+
+    try {
+      const transactions = await db.select().from(transactionRecords).orderBy(desc(transactionRecords.createdAt)).limit(1000);
+      if (transactions.length > 0) {
+        tables.push({ name: 'transaction_records', data: transactions });
+      }
+    } catch (e) {
+      logger.warn('[Backup] Transaction records backup skipped');
+    }
+
+    try {
+      const nayaxTxns = await db.select().from(nayaxTransactions).orderBy(desc(nayaxTransactions.createdAt)).limit(1000);
+      if (nayaxTxns.length > 0) {
+        tables.push({ name: 'nayax_transactions', data: nayaxTxns });
+      }
+    } catch (e) {
+      logger.warn('[Backup] Nayax transactions backup skipped');
+    }
+
+    try {
+      const verifications = await db.select().from(biometricCertificateVerifications).orderBy(desc(biometricCertificateVerifications.createdAt)).limit(1000);
+      if (verifications.length > 0) {
+        tables.push({ name: 'identity_verifications', data: verifications });
+      }
+    } catch (e) {
+      logger.warn('[Backup] Identity verifications backup skipped');
+    }
+
+    try {
+      const provApps = await db.select().from(providerApplications).orderBy(desc(providerApplications.createdAt)).limit(1000);
+      if (provApps.length > 0) {
+        tables.push({ name: 'provider_applications', data: provApps });
+      }
+    } catch (e) {
+      logger.warn('[Backup] Provider applications backup skipped');
+    }
+
+    try {
+      const sitters = await db.select().from(sitterProfiles).orderBy(desc(sitterProfiles.createdAt)).limit(1000);
+      if (sitters.length > 0) {
+        tables.push({ name: 'sitter_profiles', data: sitters });
+      }
+    } catch (e) {
+      logger.warn('[Backup] Sitter profiles backup skipped');
+    }
+
+    try {
+      const walkers = await db.select().from(walkerProfiles).orderBy(desc(walkerProfiles.createdAt)).limit(1000);
+      if (walkers.length > 0) {
+        tables.push({ name: 'walker_profiles', data: walkers });
+      }
+    } catch (e) {
+      logger.warn('[Backup] Walker profiles backup skipped');
     }
 
     if (tables.length === 0) {

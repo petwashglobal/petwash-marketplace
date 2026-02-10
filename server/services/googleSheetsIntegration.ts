@@ -22,6 +22,13 @@ const SHEETS = {
   FEEDBACK_REVIEWS: 'Feedback & Reviews',
   NEWSLETTER_SIGNUPS: 'Newsletter Subscriptions',
   FRANCHISE_INQUIRIES: 'Franchise Inquiries',
+  REGISTRATIONS: 'User Registrations',
+  PROVIDER_APPLICATIONS: 'Provider Applications',
+  E_SIGNATURES: 'E-Signatures & Contracts',
+  INVOICES: 'E-Invoices',
+  STATEMENTS: 'E-Statements',
+  RECEIPTS: 'Receipts & Transactions',
+  IDENTITY_VERIFICATIONS: 'Identity Verifications (KYC)',
 } as const;
 
 interface GoogleSheetsClient {
@@ -142,6 +149,37 @@ async function initializeSheetHeaders(sheets: any, spreadsheetId: string) {
     [SHEETS.FRANCHISE_INQUIRIES]: [
       'Timestamp', 'Name', 'Company', 'Email', 'Phone', 'Country', 'City', 
       'Investment Budget', 'Timeline', 'Experience', 'Message', 'Status', 'Follow-up Date'
+    ],
+    [SHEETS.REGISTRATIONS]: [
+      'Timestamp', 'User ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Country',
+      'Registration Source', 'Profile Photo URL', 'Language', 'Status'
+    ],
+    [SHEETS.PROVIDER_APPLICATIONS]: [
+      'Timestamp', 'Application ID', 'First Name', 'Last Name', 'Email', 'Phone',
+      'Provider Type', 'City', 'Country', 'Selfie Photo URL', 'Government ID URL',
+      'Biometric Status', 'Biometric Score', 'Application Status'
+    ],
+    [SHEETS.E_SIGNATURES]: [
+      'Timestamp', 'Signature ID', 'Document Title', 'Signer Name', 'Signer Email',
+      'Document Type', 'Contract Reference', 'Signature Status', 'Signed At', 'IP Address'
+    ],
+    [SHEETS.INVOICES]: [
+      'Timestamp', 'Invoice ID', 'Invoice Number', 'Customer Name', 'Customer Email',
+      'Amount (ILS)', 'VAT Amount', 'Total Amount', 'Currency', 'Due Date', 'Payment Status',
+      'Description', 'Platform'
+    ],
+    [SHEETS.STATEMENTS]: [
+      'Timestamp', 'Statement ID', 'Account Holder', 'Email', 'Period Start', 'Period End',
+      'Opening Balance', 'Closing Balance', 'Total Credits', 'Total Debits', 'Currency', 'Status'
+    ],
+    [SHEETS.RECEIPTS]: [
+      'Timestamp', 'Receipt ID', 'Transaction ID', 'Customer Name', 'Email',
+      'Amount (ILS)', 'Payment Method', 'Platform', 'Service Type', 'Description', 'Status'
+    ],
+    [SHEETS.IDENTITY_VERIFICATIONS]: [
+      'Timestamp', 'Verification ID', 'User ID', 'First Name', 'Last Name', 'Email',
+      'Document Type', 'Country', 'Selfie URL', 'ID Photo URL', 'Biometric Score',
+      'Biometric Match Status', 'Verification Status', 'Manual Review Required'
     ],
   };
 
@@ -399,6 +437,152 @@ export async function logFranchiseInquiry(inquiry: {
 }
 
 /**
+ * User Registration Logging
+ */
+export async function logRegistration(registration: {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  country: string;
+  registrationSource: string;
+  profilePhotoUrl: string;
+  language: string;
+  status?: string;
+}) {
+  return appendFormSubmission(SHEETS.REGISTRATIONS, {
+    ...registration,
+    status: registration.status || 'Active',
+  });
+}
+
+/**
+ * Provider Application Logging
+ */
+export async function logProviderApplication(application: {
+  applicationId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  providerType: string;
+  city: string;
+  country: string;
+  selfiePhotoUrl: string;
+  governmentIdUrl: string;
+  biometricStatus: string;
+  biometricScore: string;
+  applicationStatus?: string;
+}) {
+  return appendFormSubmission(SHEETS.PROVIDER_APPLICATIONS, {
+    ...application,
+    applicationStatus: application.applicationStatus || 'Pending Review',
+  });
+}
+
+/**
+ * E-Signature Recording
+ */
+export async function logESignature(signature: {
+  signatureId: string;
+  documentTitle: string;
+  signerName: string;
+  signerEmail: string;
+  documentType: string;
+  contractReference: string;
+  signatureStatus: string;
+  signedAt: string;
+  ipAddress: string;
+}) {
+  return appendFormSubmission(SHEETS.E_SIGNATURES, signature);
+}
+
+/**
+ * E-Invoice Recording
+ */
+export async function logInvoice(invoice: {
+  invoiceId: string;
+  invoiceNumber: string;
+  customerName: string;
+  customerEmail: string;
+  amount: string;
+  vatAmount: string;
+  totalAmount: string;
+  currency: string;
+  dueDate: string;
+  paymentStatus: string;
+  description: string;
+  platform: string;
+}) {
+  return appendFormSubmission(SHEETS.INVOICES, invoice);
+}
+
+/**
+ * E-Statement Recording
+ */
+export async function logStatement(statement: {
+  statementId: string;
+  accountHolder: string;
+  email: string;
+  periodStart: string;
+  periodEnd: string;
+  openingBalance: string;
+  closingBalance: string;
+  totalCredits: string;
+  totalDebits: string;
+  currency: string;
+  status?: string;
+}) {
+  return appendFormSubmission(SHEETS.STATEMENTS, {
+    ...statement,
+    status: statement.status || 'Generated',
+  });
+}
+
+/**
+ * Receipt/Transaction Recording
+ */
+export async function logReceipt(receipt: {
+  receiptId: string;
+  transactionId: string;
+  customerName: string;
+  email: string;
+  amount: string;
+  paymentMethod: string;
+  platform: string;
+  serviceType: string;
+  description: string;
+  status?: string;
+}) {
+  return appendFormSubmission(SHEETS.RECEIPTS, {
+    ...receipt,
+    status: receipt.status || 'Completed',
+  });
+}
+
+/**
+ * Identity Verification (KYC) Recording
+ */
+export async function logIdentityVerification(verification: {
+  verificationId: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  documentType: string;
+  country: string;
+  selfieUrl: string;
+  idPhotoUrl: string;
+  biometricScore: string;
+  biometricMatchStatus: string;
+  verificationStatus: string;
+  manualReviewRequired: boolean;
+}) {
+  return appendFormSubmission(SHEETS.IDENTITY_VERIFICATIONS, verification);
+}
+
+/**
  * Get spreadsheet URL for admin dashboard
  */
 export function getSpreadsheetUrl(): string | null {
@@ -420,5 +604,12 @@ export const GoogleSheetsService = {
   logFeedbackReview,
   logNewsletterSignup,
   logFranchiseInquiry,
+  logRegistration,
+  logProviderApplication,
+  logESignature,
+  logInvoice,
+  logStatement,
+  logReceipt,
+  logIdentityVerification,
   getSpreadsheetUrl,
 };
