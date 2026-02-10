@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AppleWheelDatePicker, AppleWheelSelect } from '@/components/ui/apple-wheel-picker';
 import { Card, CardContent } from '@/components/ui/card';
 import { t, type Language } from '@/lib/i18n';
 import { useToast } from '@/hooks/use-toast';
@@ -436,37 +436,31 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="dateOfBirth">
-                    {t('customerSignup.dateOfBirth', language)}
-                  </Label>
-                  <Input
-                    id="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
-                    className="mt-2 h-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 bg-white/70 backdrop-blur-sm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="country">
-                    {t('customerSignup.country', language)}
-                  </Label>
-                  <Select value={formData.country} onValueChange={(value) => updateFormData('country', value)}>
-                    <SelectTrigger className="mt-2 h-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 bg-white/70 backdrop-blur-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countries.map((country) => (
-                        <SelectItem key={country} value={country}>
-                          {country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <AppleWheelDatePicker
+                value={formData.dateOfBirth}
+                onChange={(date) => updateFormData('dateOfBirth', date)}
+                label={t('customerSignup.dateOfBirth', language)}
+                minYear={1940}
+                maxYear={new Date().getFullYear() - 13}
+                monthNames={({
+                  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+                  he: ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'],
+                  ar: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+                  ru: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+                  fr: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
+                  es: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+                } as Record<string, string[]>)[language] || ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}
+                dayLabel={({ en: 'Day', he: 'יום', ar: 'يوم', ru: 'День', fr: 'Jour', es: 'Día' } as Record<string, string>)[language] || 'Day'}
+                monthLabel={({ en: 'Month', he: 'חודש', ar: 'شهر', ru: 'Месяц', fr: 'Mois', es: 'Mes' } as Record<string, string>)[language] || 'Month'}
+                yearLabel={({ en: 'Year', he: 'שנה', ar: 'سنة', ru: 'Год', fr: 'Année', es: 'Año' } as Record<string, string>)[language] || 'Year'}
+              />
+
+              <AppleWheelSelect
+                items={countries.map(c => ({ value: c, label: c }))}
+                value={formData.country}
+                onValueChange={(val) => updateFormData('country', val)}
+                label={t('customerSignup.country', language)}
+              />
             </CardContent>
           </Card>
 

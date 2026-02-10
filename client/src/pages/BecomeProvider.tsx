@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { GooglePlacesAutocomplete, PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import { Progress } from '@/components/ui/progress';
-import { IOSDatePicker } from '@/components/ui/ios-date-picker';
+import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -488,13 +488,20 @@ export default function BecomeProvider() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div data-testid="input-dob">
-                      <IOSDatePicker
+                      <AppleWheelDatePicker
                         value={form.watch('dateOfBirth')}
                         onChange={(date) => form.setValue('dateOfBirth', date)}
                         label={isHebrew ? 'תאריך לידה' : 'Date of Birth'}
                         error={form.formState.errors.dateOfBirth?.message}
                         minYear={1940}
                         maxYear={new Date().getFullYear() - 18}
+                        monthNames={isHebrew
+                          ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר']
+                          : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+                        }
+                        dayLabel={isHebrew ? 'יום' : 'Day'}
+                        monthLabel={isHebrew ? 'חודש' : 'Month'}
+                        yearLabel={isHebrew ? 'שנה' : 'Year'}
                       />
                     </div>
                     <div>

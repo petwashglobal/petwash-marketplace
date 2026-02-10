@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { AppleWheelDatePicker, AppleWheelSelect, type WheelPickerItem } from '@/components/ui/apple-wheel-picker';
 import { useToast } from '@/hooks/use-toast';
 import type { Language } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
@@ -24,11 +25,7 @@ interface RegistrationData {
   phone: string;
   password: string;
   confirmPassword: string;
-  dateOfBirth: {
-    day: string;
-    month: string;
-    year: string;
-  };
+  dateOfBirth: string;
   country: string;
   gender: string;
   profilePicture?: File;
@@ -42,51 +39,59 @@ interface RegistrationData {
   wantsVerification: boolean; // For senior/disability discount verification
 }
 
-const countries = [
-  { code: 'IL', name: 'Israel', nameHe: 'ישראל' },
-  { code: 'US', name: 'United States', nameHe: 'ארצות הברית' },
-  { code: 'CA', name: 'Canada', nameHe: 'קנדה' },
-  { code: 'GB', name: 'United Kingdom', nameHe: 'בריטניה' },
-  { code: 'FR', name: 'France', nameHe: 'צרפת' },
-  { code: 'DE', name: 'Germany', nameHe: 'גרמניה' },
-  { code: 'AU', name: 'Other', nameHe: 'אחר' },
-  { code: 'JP', name: 'Japan', nameHe: 'יפן' },
-  { code: 'KR', name: 'South Korea', nameHe: 'דרום קוריאה' },
-  { code: 'CN', name: 'China', nameHe: 'סין' },
-];
+const MONTH_NAMES: Record<string, string[]> = {
+  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+  he: ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'],
+  ar: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+  ru: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+  fr: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
+  es: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+};
 
-const months = [
-  { value: '01', en: 'January', he: 'ינואר' },
-  { value: '02', en: 'February', he: 'פברואר' },
-  { value: '03', en: 'March', he: 'מרץ' },
-  { value: '04', en: 'April', he: 'אפריל' },
-  { value: '05', en: 'May', he: 'מאי' },
-  { value: '06', en: 'June', he: 'יוני' },
-  { value: '07', en: 'July', he: 'יולי' },
-  { value: '08', en: 'August', he: 'אוגוסט' },
-  { value: '09', en: 'September', he: 'ספטמבר' },
-  { value: '10', en: 'October', he: 'אוקטובר' },
-  { value: '11', en: 'November', he: 'נובמבר' },
-  { value: '12', en: 'December', he: 'דצמבר' },
-];
+const DATE_LABELS: Record<string, { day: string; month: string; year: string }> = {
+  en: { day: 'Day', month: 'Month', year: 'Year' },
+  he: { day: 'יום', month: 'חודש', year: 'שנה' },
+  ar: { day: 'يوم', month: 'شهر', year: 'سنة' },
+  ru: { day: 'День', month: 'Месяц', year: 'Год' },
+  fr: { day: 'Jour', month: 'Mois', year: 'Année' },
+  es: { day: 'Día', month: 'Mes', year: 'Año' },
+};
 
-const petTypes = [
-  { value: 'dog', en: 'Dog', he: 'כלב' },
-  { value: 'cat', en: 'Cat', he: 'חתול' },
-  { value: 'both', en: 'Both', he: 'שניהם' },
-  { value: 'other', en: 'Other', he: 'אחר' },
-];
+function getCountryItems(lang: Language): WheelPickerItem[] {
+  const countryData: { code: string; names: Record<string, string> }[] = [
+    { code: 'IL', names: { en: 'Israel', he: 'ישראל', ar: 'إسرائيل', ru: 'Израиль', fr: 'Israël', es: 'Israel' } },
+    { code: 'US', names: { en: 'United States', he: 'ארצות הברית', ar: 'الولايات المتحدة', ru: 'США', fr: 'États-Unis', es: 'Estados Unidos' } },
+    { code: 'CA', names: { en: 'Canada', he: 'קנדה', ar: 'كندا', ru: 'Канада', fr: 'Canada', es: 'Canadá' } },
+    { code: 'GB', names: { en: 'United Kingdom', he: 'בריטניה', ar: 'المملكة المتحدة', ru: 'Великобритания', fr: 'Royaume-Uni', es: 'Reino Unido' } },
+    { code: 'AU', names: { en: 'Australia', he: 'אוסטרליה', ar: 'أستراليا', ru: 'Австралия', fr: 'Australie', es: 'Australia' } },
+    { code: 'FR', names: { en: 'France', he: 'צרפת', ar: 'فرنسا', ru: 'Франция', fr: 'France', es: 'Francia' } },
+    { code: 'DE', names: { en: 'Germany', he: 'גרמניה', ar: 'ألمانيا', ru: 'Германия', fr: 'Allemagne', es: 'Alemania' } },
+    { code: 'JP', names: { en: 'Japan', he: 'יפן', ar: 'اليابان', ru: 'Япония', fr: 'Japon', es: 'Japón' } },
+    { code: 'KR', names: { en: 'South Korea', he: 'דרום קוריאה', ar: 'كوريا الجنوبية', ru: 'Южная Корея', fr: 'Corée du Sud', es: 'Corea del Sur' } },
+    { code: 'CN', names: { en: 'China', he: 'סין', ar: 'الصين', ru: 'Китай', fr: 'Chine', es: 'China' } },
+    { code: 'OTHER', names: { en: 'Other', he: 'אחר', ar: 'أخرى', ru: 'Другое', fr: 'Autre', es: 'Otro' } },
+  ];
+  return countryData.map(c => ({ value: c.code, label: c.names[lang] || c.names.en }));
+}
 
-// Helper to get localized text from bilingual objects
-// TODO: Extend months/countries/petTypes to support all 6 languages (AR, RU, FR, ES)
-function getLocalizedText(obj: { en: string, he?: string } | { name: string, nameHe?: string }, lang: Language): string {
-  if ('en' in obj) {
-    // For months and petTypes
-    return lang === 'he' && obj.he ? obj.he : obj.en;
-  } else {
-    // For countries
-    return lang === 'he' && obj.nameHe ? obj.nameHe : obj.name;
-  }
+function getGenderItems(lang: Language): WheelPickerItem[] {
+  const genders: { value: string; names: Record<string, string> }[] = [
+    { value: '', names: { en: 'Prefer not to say', he: 'מעדיף/ה לא לציין', ar: 'أفضل عدم القول', ru: 'Не хочу указывать', fr: 'Préfère ne pas dire', es: 'Prefiero no decir' } },
+    { value: 'male', names: { en: 'Male', he: 'זכר', ar: 'ذكر', ru: 'Мужской', fr: 'Homme', es: 'Masculino' } },
+    { value: 'female', names: { en: 'Female', he: 'נקבה', ar: 'أنثى', ru: 'Женский', fr: 'Femme', es: 'Femenino' } },
+    { value: 'other', names: { en: 'Other', he: 'אחר', ar: 'أخرى', ru: 'Другое', fr: 'Autre', es: 'Otro' } },
+  ];
+  return genders.map(g => ({ value: g.value, label: g.names[lang] || g.names.en }));
+}
+
+function getPetTypeItems(lang: Language): WheelPickerItem[] {
+  const pets: { value: string; names: Record<string, string> }[] = [
+    { value: 'dog', names: { en: 'Dog', he: 'כלב', ar: 'كلب', ru: 'Собака', fr: 'Chien', es: 'Perro' } },
+    { value: 'cat', names: { en: 'Cat', he: 'חתול', ar: 'قطة', ru: 'Кошка', fr: 'Chat', es: 'Gato' } },
+    { value: 'both', names: { en: 'Both', he: 'שניהם', ar: 'كلاهما', ru: 'Оба', fr: 'Les deux', es: 'Ambos' } },
+    { value: 'other', names: { en: 'Other', he: 'אחר', ar: 'أخرى', ru: 'Другое', fr: 'Autre', es: 'Otro' } },
+  ];
+  return pets.map(p => ({ value: p.value, label: p.names[lang] || p.names.en }));
 }
 
 export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrationComplete }: AppleStyleRegistrationProps) {
@@ -97,7 +102,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
     phone: '',
     password: '',
     confirmPassword: '',
-    dateOfBirth: { day: '', month: '', year: '' },
+    dateOfBirth: '',
     country: 'IL',
     gender: '',
     petType: 'dog',
@@ -123,7 +128,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
       // Add all form fields
       Object.entries(data).forEach(([key, value]) => {
         if (key === 'dateOfBirth') {
-          formDataToSend.append('dateOfBirth', `${value.year}-${value.month}-${value.day}`);
+          formDataToSend.append('dateOfBirth', String(value));
         } else if (key === 'profilePicture' && value) {
           formDataToSend.append('profilePicture', value);
         } else if (key === 'idDocument' && value) {
@@ -210,8 +215,11 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
 
   if (!isOpen) return null;
 
-  const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
-  const years = Array.from({ length: 80 }, (_, i) => String(2025 - i));
+  const dateLabels = DATE_LABELS[language] || DATE_LABELS.en;
+  const monthNamesList = MONTH_NAMES[language] || MONTH_NAMES.en;
+  const countryItems = getCountryItems(language);
+  const genderItems = getGenderItems(language);
+  const petTypeItems = getPetTypeItems(language);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
@@ -365,111 +373,42 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
             </div>
           </div>
 
-          {/* Apple-Style Date of Birth Selectors */}
-          <div>
-            <Label>{t('registration.dateOfBirth', language)}</Label>
-            <div className="grid grid-cols-3 gap-3 mt-2">
-              <div>
-                <Label className="text-sm text-gray-600">{t('registration.day', language)}</Label>
-                <select
-                  value={formData.dateOfBirth.day}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    dateOfBirth: { ...prev.dateOfBirth, day: e.target.value }
-                  }))}
-                  className="w-full p-3 border border-gray-300 rounded-lg text-lg bg-white"
-                >
-                  <option value="">{t('registration.day', language)}</option>
-                  {days.map(day => (
-                    <option key={day} value={day}>{day}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <Label className="text-sm text-gray-600">{t('registration.month', language)}</Label>
-                <select
-                  value={formData.dateOfBirth.month}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    dateOfBirth: { ...prev.dateOfBirth, month: e.target.value }
-                  }))}
-                  className="w-full p-3 border border-gray-300 rounded-lg text-lg bg-white"
-                >
-                  <option value="">{t('registration.month', language)}</option>
-                  {months.map(month => (
-                    <option key={month.value} value={month.value}>
-                      {getLocalizedText(month, language)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <Label className="text-sm text-gray-600">{t('registration.year', language)}</Label>
-                <select
-                  value={formData.dateOfBirth.year}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    dateOfBirth: { ...prev.dateOfBirth, year: e.target.value }
-                  }))}
-                  className="w-full p-3 border border-gray-300 rounded-lg text-lg bg-white"
-                >
-                  <option value="">{t('registration.year', language)}</option>
-                  {years.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
+          {/* Apple-Style Date of Birth Wheel Picker */}
+          <AppleWheelDatePicker
+            value={formData.dateOfBirth}
+            onChange={(date) => setFormData(prev => ({ ...prev, dateOfBirth: date }))}
+            label={t('registration.dateOfBirth', language)}
+            minYear={1940}
+            maxYear={new Date().getFullYear() - 13}
+            monthNames={monthNamesList}
+            dayLabel={dateLabels.day}
+            monthLabel={dateLabels.month}
+            yearLabel={dateLabels.year}
+          />
 
-          {/* Country Selector */}
-          <div>
-            <Label>{t('registration.country', language)}</Label>
-            <select
-              value={formData.country}
-              onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
-              className="w-full p-3 border border-gray-300 rounded-lg text-lg bg-white mt-2"
-            >
-              {countries.map(country => (
-                <option key={country.code} value={country.code}>
-                  {getLocalizedText(country, language)}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Country Wheel Selector */}
+          <AppleWheelSelect
+            items={countryItems}
+            value={formData.country}
+            onValueChange={(val) => setFormData(prev => ({ ...prev, country: val }))}
+            label={t('registration.country', language)}
+          />
 
-          {/* Gender Selector */}
-          <div>
-            <Label>{t('registration.gender', language)}</Label>
-            <select
-              value={formData.gender}
-              onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
-              className="w-full p-3 border border-gray-300 rounded-lg text-lg bg-white mt-2"
-            >
-              <option value="">{t('registration.genderPreferNot', language)}</option>
-              <option value="male">{t('registration.genderMale', language)}</option>
-              <option value="female">{t('registration.genderFemale', language)}</option>
-              <option value="other">{t('registration.genderOther', language)}</option>
-            </select>
-          </div>
+          {/* Gender Wheel Selector */}
+          <AppleWheelSelect
+            items={genderItems}
+            value={formData.gender}
+            onValueChange={(val) => setFormData(prev => ({ ...prev, gender: val }))}
+            label={t('registration.gender', language)}
+          />
 
-          {/* Pet Type */}
-          <div>
-            <Label>{t('registration.petType', language)}</Label>
-            <select
-              value={formData.petType}
-              onChange={(e) => setFormData(prev => ({ ...prev, petType: e.target.value }))}
-              className="w-full p-3 border border-gray-300 rounded-lg text-lg bg-white mt-2"
-            >
-              {petTypes.map(pet => (
-                <option key={pet.value} value={pet.value}>
-                  {getLocalizedText(pet, language)}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Pet Type Wheel Selector */}
+          <AppleWheelSelect
+            items={petTypeItems}
+            value={formData.petType}
+            onValueChange={(val) => setFormData(prev => ({ ...prev, petType: val }))}
+            label={t('registration.petType', language)}
+          />
 
           {/* ID Upload Section - Only visible if verification requested */}
           {formData.wantsVerification && (
