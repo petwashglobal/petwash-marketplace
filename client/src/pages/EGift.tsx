@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Wallet, Gift, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, Leaf, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -212,12 +212,12 @@ const translations: Record<string, Record<string, string>> = {
     es: 'Pagar y enviar regalo',
   },
   secureCheckout: {
-    en: 'Secure checkout • No account required',
-    he: 'תשלום מאובטח • ללא צורך בחשבון',
-    ar: 'دفع آمن • لا يتطلب حساب',
-    ru: 'Безопасная оплата • Без регистрации',
-    fr: 'Paiement sécurisé • Sans compte requis',
-    es: 'Pago seguro • Sin cuenta necesaria',
+    en: 'Secure checkout · No account required',
+    he: 'תשלום מאובטח · ללא צורך בחשבון',
+    ar: 'دفع آمن · لا يتطلب حساب',
+    ru: 'Безопасная оплата · Без регистрации',
+    fr: 'Paiement sécurisé · Sans compte requis',
+    es: 'Pago seguro · Sin cuenta necesaria',
   },
   worksAtAll: {
     en: 'Works at all Pet Wash™ services',
@@ -315,41 +315,14 @@ const translations: Record<string, Record<string, string>> = {
     fr: 'Crédit cadeau',
     es: 'Crédito regalo',
   },
-};
-
-const cardStyles = {
-  rose: {
-    gradient: 'linear-gradient(165deg, #2C1A22 0%, #1A0F14 40%, #12080C 100%)',
-    textColor: '#FFFFFF',
-    chipColor: 'linear-gradient(135deg, #C9A96E 0%, #A8884A 50%, #D4B87A 100%)',
-    shadowColor: 'rgba(0,0,0,0.5)',
-    accentColor: '#E8A0B8',
-    holographicGlow: 'rgba(232, 160, 184, 0.15)',
+  sendGift: {
+    en: 'Send Gift',
+    he: 'שלח מתנה',
+    ar: 'إرسال هدية',
+    ru: 'Отправить подарок',
+    fr: 'Envoyer cadeau',
+    es: 'Enviar regalo',
   },
-  emerald: {
-    gradient: 'linear-gradient(165deg, #1A2E1C 0%, #0F1E10 40%, #081208 100%)',
-    textColor: '#FFFFFF',
-    chipColor: 'linear-gradient(135deg, #C9A96E 0%, #A8884A 50%, #D4B87A 100%)',
-    shadowColor: 'rgba(0,0,0,0.5)',
-    accentColor: '#7FD4A0',
-    holographicGlow: 'rgba(127, 212, 160, 0.15)',
-  },
-  platinum: {
-    gradient: 'linear-gradient(165deg, #2A2A35 0%, #1C1C28 40%, #14141E 100%)',
-    textColor: '#FFFFFF',
-    chipColor: 'linear-gradient(135deg, #C9A96E 0%, #A8884A 50%, #D4B87A 100%)',
-    shadowColor: 'rgba(0,0,0,0.5)',
-    accentColor: '#B8C5D6',
-    holographicGlow: 'rgba(184, 197, 214, 0.15)',
-  },
-  gold: {
-    gradient: 'linear-gradient(165deg, #3A2D1A 0%, #2A1F0F 40%, #1A1408 100%)',
-    textColor: '#FFFFFF',
-    chipColor: 'linear-gradient(135deg, #E8C964 0%, #C9A96E 50%, #F0D888 100%)',
-    shadowColor: 'rgba(0,0,0,0.5)',
-    accentColor: '#E8C964',
-    holographicGlow: 'rgba(232, 201, 100, 0.2)',
-  }
 };
 
 const platformServices = [
@@ -362,11 +335,18 @@ const platformServices = [
 ];
 
 const giftOptions = [
-  { value: 100, color: 'rose' as const },
-  { value: 250, color: 'emerald' as const },
-  { value: 500, color: 'platinum' as const },
-  { value: 1000, color: 'gold' as const }
+  { value: 100, tier: 'CLASSIC' as const },
+  { value: 250, tier: 'PLUS' as const },
+  { value: 500, tier: 'PREMIUM' as const },
+  { value: 1000, tier: 'ELITE' as const }
 ];
+
+const tierLabels: Record<string, Record<string, string>> = {
+  CLASSIC: { en: 'Classic', he: 'קלאסי' },
+  PLUS: { en: 'Plus', he: 'פלוס' },
+  PREMIUM: { en: 'Premium', he: 'פרימיום' },
+  ELITE: { en: 'Maison', he: 'מזון' },
+};
 
 function tx(key: string, lang: string): string {
   const entry = translations[key];
@@ -385,127 +365,93 @@ function LuxuryGiftCard({
   selected?: boolean;
   lang: string;
 }) {
-  const style = cardStyles[option.color] as typeof cardStyles.rose;
   const formattedValue = option.value >= 1000 
-    ? `₪${(option.value / 1000).toFixed(0)},000` 
-    : `₪${option.value}`;
+    ? `${(option.value / 1000).toFixed(0)},000` 
+    : `${option.value}`;
+
+  const isElite = option.tier === 'ELITE';
+  const isPremium = option.tier === 'PREMIUM';
+  const tierLabel = tierLabels[option.tier]?.[lang] || tierLabels[option.tier]?.en || option.tier;
   
   return (
     <button 
       type="button"
-      className={`relative w-full text-left transition-all duration-500 group perspective-1000 ${
-        selected 
-          ? 'scale-[1.03]' 
-          : 'hover:scale-[1.02] hover:-translate-y-1'
-      }`}
+      className="relative w-full text-left transition-all duration-300 group"
       onClick={onClick}
       data-testid={`egift-card-${option.value}`}
-      style={{ perspective: '1000px' }}
     >
-      {option.value === 1000 && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
-          <span className="px-4 py-1.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black text-[10px] sm:text-xs font-bold rounded-full shadow-lg whitespace-nowrap tracking-wide">
-            {tx('bestValue', lang)}
-          </span>
-        </div>
-      )}
-      
-      <div 
-        className="relative w-full aspect-[1.586/1] overflow-hidden transition-transform duration-500 group-hover:rotate-y-[2deg] group-hover:rotate-x-[-2deg]"
-        style={{ 
-          background: style.gradient,
-          borderRadius: '20px',
-          boxShadow: selected 
-            ? `0 25px 50px -12px ${style.shadowColor}, 0 0 0 2px ${style.accentColor}80, 0 0 30px ${style.holographicGlow}`
-            : `0 15px 35px -10px ${style.shadowColor}, 0 0 0 1px rgba(255,255,255,0.08)`,
-          transformStyle: 'preserve-3d',
+      <div className={`relative overflow-hidden transition-all duration-500 ${
+        isElite ? 'bg-[#1a1a1a]' : 'bg-white'
+      }`}
+        style={{
+          borderRadius: '2px',
+          border: selected 
+            ? '2px solid #1a1a1a' 
+            : isPremium 
+              ? '1.5px solid #c9a96e' 
+              : isElite 
+                ? '1.5px solid #333' 
+                : '1px solid #eee',
         }}
       >
-        <div 
-          className="absolute inset-0 opacity-30 pointer-events-none"
-          style={{
-            background: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 4px)',
-          }}
-        />
-        
-        <div 
-          className="absolute inset-0 opacity-0 group-hover:opacity-60 transition-opacity duration-700 pointer-events-none"
-          style={{
-            background: `linear-gradient(125deg, transparent 0%, ${style.holographicGlow} 25%, transparent 50%, ${style.holographicGlow} 75%, transparent 100%)`,
-            backgroundSize: '200% 200%',
-            animation: 'shimmer 3s ease-in-out infinite',
-          }}
-        />
-        
-        <div className="absolute inset-0 overflow-hidden rounded-[16px] pointer-events-none">
-          <div className="absolute -top-1/2 -left-1/4 w-[150%] h-full opacity-20" style={{
-            background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%, transparent 60%)',
-            transform: 'rotate(-15deg)',
-          }} />
-        </div>
-        
-        <div className="absolute top-5 sm:top-6 left-5 sm:left-6 right-5 sm:right-6 pointer-events-none">
-          <div className="flex items-start justify-between">
-            <p className="text-base sm:text-lg font-light tracking-wide" style={{ color: style.textColor, fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', Georgia, serif" }}>
-              Pet Wash<span className="text-[8px] align-super">™</span>
-            </p>
-            <p className="text-[10px] sm:text-[11px] tracking-[0.15em] uppercase opacity-50" style={{ color: style.textColor }}>
-              {tx('eGiftCard', lang)}
-            </p>
-          </div>
-        </div>
+        {isPremium && (
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#c9a96e] via-[#e8d5b0] to-[#c9a96e]" />
+        )}
 
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-center">
-            <p 
-              className="text-3xl sm:text-4xl font-light tracking-tight"
-              style={{ color: style.textColor, fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', Georgia, serif" }}
-            >
-              {formattedValue}
-            </p>
-            <p 
-              className="text-[11px] sm:text-xs opacity-40 mt-1.5 tracking-[0.15em] uppercase"
-              style={{ color: style.textColor }}
-            >
+        <div className="px-4 sm:px-5 pt-5 sm:pt-6 pb-5">
+          <div className="flex items-center justify-between mb-5 sm:mb-6">
+            <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
+              isElite || isPremium ? 'text-[#c9a96e]' : 'text-[#999]'
+            }`}>
+              {tierLabel}
+            </span>
+            {isElite && (
+              <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2 py-0.5 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '1px' }}>
+                {tx('bestValue', lang)}
+              </span>
+            )}
+          </div>
+
+          <div className="mb-5 sm:mb-6">
+            <div className="flex items-baseline gap-1">
+              <span className={`text-[11px] sm:text-xs ${isElite ? 'text-[#888]' : 'text-[#999]'}`}>₪</span>
+              <span className={`text-4xl sm:text-5xl lg:text-[3.4rem] font-light ${
+                isElite ? 'text-white' : 'text-[#1a1a1a]'
+              }`}
+                style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
+                {formattedValue}
+              </span>
+            </div>
+            <p className={`text-[10px] sm:text-[11px] mt-2 tracking-[0.1em] uppercase ${isElite ? 'text-[#777]' : 'text-[#aaa]'}`}>
               {tx('eGiftCredit', lang)}
             </p>
           </div>
-        </div>
 
-        <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 right-5 sm:right-6 pointer-events-none">
-          <div className="w-full h-[1px] opacity-10 mb-3" style={{ background: style.textColor }} />
-          <p className="text-[10px] tracking-[0.2em] uppercase opacity-30 text-center" style={{ color: style.textColor }}>
-            Premium Organic Pet Care
-          </p>
+          <div className={`border-t ${isElite ? 'border-[#333]' : 'border-[#eee]'} pt-4`}>
+            <div className={`space-y-2 ${isElite ? 'text-[#999]' : 'text-[#888]'}`}>
+              <div className="flex items-center gap-2">
+                <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                <span className="text-[10px] sm:text-[11px]">
+                  {tx('allServices', lang)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                <span className="text-[10px] sm:text-[11px]">
+                  {tx('valid12Months', lang)}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{
-          background: `linear-gradient(90deg, transparent, ${style.accentColor}40, transparent)`,
-        }} />
 
         {selected && (
-          <div className="absolute top-3 left-3 z-10 pointer-events-none">
-            <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg" style={{
-              background: style.accentColor,
-            }}>
-              <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+          <div className="absolute top-3 end-3 z-10">
+            <div className="w-5 h-5 rounded-full flex items-center justify-center bg-[#1a1a1a]">
+              <Check className="w-3 h-3 text-white" strokeWidth={2.5} />
             </div>
           </div>
         )}
-
-        <div className="absolute top-4 right-4 pointer-events-none">
-          <div 
-            className="px-2 py-0.5 rounded-full"
-            style={{ 
-              background: 'rgba(255,255,255,0.08)', 
-              border: '1px solid rgba(255,255,255,0.12)',
-            }}
-          >
-            <span className="text-[8px] sm:text-[9px] font-bold tracking-[0.12em] uppercase" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              {option.color === 'gold' ? 'ELITE' : option.color === 'platinum' ? 'PREMIUM' : option.color === 'emerald' ? 'PLUS' : 'CLASSIC'}
-            </span>
-          </div>
-        </div>
       </div>
     </button>
   );
@@ -638,19 +584,19 @@ export default function EGift() {
   const ForwardIcon = isRtl ? ArrowLeft : ArrowRight;
 
   if (step === 'checkout' && selectedOption) {
-    const style = cardStyles[selectedOption.color];
     const finalPrice = selectedOption.value;
     const formattedValue = finalPrice >= 1000 
       ? `₪${(finalPrice / 1000).toFixed(0)},000` 
       : `₪${finalPrice}`;
+    const tierLabel = tierLabels[selectedOption.tier]?.[lang] || tierLabels[selectedOption.tier]?.en;
 
     return (
-      <div className="min-h-screen bg-[#0A0A0F]" dir={dir}>
+      <div className="min-h-screen bg-white" dir={dir}>
         <div className="container mx-auto px-4 py-6 sm:py-8 max-w-5xl">
           <Button 
             variant="ghost" 
             onClick={() => setStep('select')}
-            className="mb-4 sm:mb-6 text-gray-400 hover:text-white hover:bg-white/5"
+            className="mb-4 sm:mb-6 text-[#555] hover:text-[#1a1a1a] hover:bg-[#f5f5f5]"
             data-testid="button-back"
           >
             <BackIcon className="w-4 h-4" />
@@ -659,159 +605,142 @@ export default function EGift() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
             <div className="order-2 lg:order-1">
-              <Card className="border-0 shadow-xl" style={{ background: '#16161E', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <CardContent className="p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-white">
-                    {tx('expressCheckout', lang)}
-                  </h2>
+              <div className="border border-[#eee] p-5 sm:p-7" style={{ borderRadius: '2px' }}>
+                <h2 className="text-lg sm:text-xl font-light mb-6 text-[#1a1a1a]"
+                  style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}>
+                  {tx('expressCheckout', lang)}
+                </h2>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <Label htmlFor="recipientName" className="text-sm text-gray-300">{tx('recipientName', lang)} *</Label>
-                      <Input
-                        id="recipientName"
-                        placeholder={tx('recipientNamePlaceholder', lang)}
-                        value={formData.recipientName}
-                        onChange={(e) => setFormData(prev => ({ ...prev, recipientName: e.target.value }))}
-                        className={`mt-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#C9A96E]/50 ${errors.recipientName ? 'border-red-500' : ''}`}
-                        data-testid="input-recipient-name"
-                        dir={dir}
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="recipientEmail" className="text-sm text-gray-300">{tx('recipientEmail', lang)} *</Label>
-                      <Input
-                        id="recipientEmail"
-                        type="email"
-                        placeholder={tx('recipientEmailPlaceholder', lang)}
-                        value={formData.recipientEmail}
-                        onChange={(e) => setFormData(prev => ({ ...prev, recipientEmail: e.target.value }))}
-                        className={`mt-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#C9A96E]/50 ${errors.recipientEmail ? 'border-red-500' : ''}`}
-                        data-testid="input-recipient-email"
-                        dir="ltr"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="senderName" className="text-sm text-gray-300">{tx('yourName', lang)} *</Label>
-                      <Input
-                        id="senderName"
-                        placeholder={tx('yourNamePlaceholder', lang)}
-                        value={formData.senderName}
-                        onChange={(e) => setFormData(prev => ({ ...prev, senderName: e.target.value }))}
-                        className={`mt-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#C9A96E]/50 ${errors.senderName ? 'border-red-500' : ''}`}
-                        data-testid="input-sender-name"
-                        dir={dir}
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="senderEmail" className="text-sm text-gray-300">{tx('yourEmail', lang)} *</Label>
-                      <Input
-                        id="senderEmail"
-                        type="email"
-                        placeholder={tx('yourEmailPlaceholder', lang)}
-                        value={formData.senderEmail}
-                        onChange={(e) => setFormData(prev => ({ ...prev, senderEmail: e.target.value }))}
-                        className={`mt-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#C9A96E]/50 ${errors.senderEmail ? 'border-red-500' : ''}`}
-                        data-testid="input-sender-email"
-                        dir="ltr"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <Label htmlFor="message" className="text-sm text-gray-300">{tx('personalMessage', lang)}</Label>
-                      <Input
-                        id="message"
-                        placeholder={tx('messagePlaceholder', lang)}
-                        value={formData.message}
-                        onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                        className="mt-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#C9A96E]/50"
-                        data-testid="input-message"
-                        dir={dir}
-                      />
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="recipientName" className="text-[11px] tracking-[0.08em] uppercase text-[#888] font-medium">{tx('recipientName', lang)} *</Label>
+                    <Input
+                      id="recipientName"
+                      placeholder={tx('recipientNamePlaceholder', lang)}
+                      value={formData.recipientName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, recipientName: e.target.value }))}
+                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none ${errors.recipientName ? 'border-red-400' : ''}`}
+                      data-testid="input-recipient-name"
+                      dir={dir}
+                    />
                   </div>
 
-                  <div className="mt-4 sm:mt-6 p-3 sm:p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <p className="text-sm font-medium text-gray-400 mb-2">{tx('redeemableAt', lang)}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {platformServices.filter(s => selectedServices.includes(s.id)).map(service => (
-                        <span key={service.id} className="px-2 py-1 rounded-full text-xs text-white" style={{ background: 'rgba(201,169,110,0.2)', border: '1px solid rgba(201,169,110,0.3)' }}>
-                          {service.name}
-                        </span>
-                      ))}
-                    </div>
+                  <div>
+                    <Label htmlFor="recipientEmail" className="text-[11px] tracking-[0.08em] uppercase text-[#888] font-medium">{tx('recipientEmail', lang)} *</Label>
+                    <Input
+                      id="recipientEmail"
+                      type="email"
+                      placeholder={tx('recipientEmailPlaceholder', lang)}
+                      value={formData.recipientEmail}
+                      onChange={(e) => setFormData(prev => ({ ...prev, recipientEmail: e.target.value }))}
+                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none ${errors.recipientEmail ? 'border-red-400' : ''}`}
+                      data-testid="input-recipient-email"
+                      dir="ltr"
+                    />
                   </div>
 
-                  <Button 
-                    className="w-full py-5 sm:py-6 text-base sm:text-lg mt-4 sm:mt-6 text-white border-0"
-                    style={{ background: 'linear-gradient(135deg, #C9A96E 0%, #A8884A 100%)' }}
-                    onClick={handleCheckout}
-                    data-testid="button-checkout"
-                  >
-                    {tx('payAndSend', lang)} ₪{finalPrice}
-                    <ForwardIcon className={`w-5 h-5 ${isRtl ? 'mr-2' : 'ml-2'}`} />
-                  </Button>
-
-                  <p className="text-xs text-gray-500 text-center mt-3">
-                    {tx('secureCheckout', lang)}
-                  </p>
-                  
-                  <div className="mt-4 sm:mt-6 pt-4 border-t border-white/10">
-                    <PaymentMethods language={lang} size="sm" />
+                  <div>
+                    <Label htmlFor="senderName" className="text-[11px] tracking-[0.08em] uppercase text-[#888] font-medium">{tx('yourName', lang)} *</Label>
+                    <Input
+                      id="senderName"
+                      placeholder={tx('yourNamePlaceholder', lang)}
+                      value={formData.senderName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, senderName: e.target.value }))}
+                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none ${errors.senderName ? 'border-red-400' : ''}`}
+                      data-testid="input-sender-name"
+                      dir={dir}
+                    />
                   </div>
-                </CardContent>
-              </Card>
+
+                  <div>
+                    <Label htmlFor="senderEmail" className="text-[11px] tracking-[0.08em] uppercase text-[#888] font-medium">{tx('yourEmail', lang)} *</Label>
+                    <Input
+                      id="senderEmail"
+                      type="email"
+                      placeholder={tx('yourEmailPlaceholder', lang)}
+                      value={formData.senderEmail}
+                      onChange={(e) => setFormData(prev => ({ ...prev, senderEmail: e.target.value }))}
+                      className={`mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none ${errors.senderEmail ? 'border-red-400' : ''}`}
+                      data-testid="input-sender-email"
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="message" className="text-[11px] tracking-[0.08em] uppercase text-[#888] font-medium">{tx('personalMessage', lang)}</Label>
+                    <Input
+                      id="message"
+                      placeholder={tx('messagePlaceholder', lang)}
+                      value={formData.message}
+                      onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+                      className="mt-1.5 border-[#ddd] bg-[#FAFAF8] text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none"
+                      data-testid="input-message"
+                      dir={dir}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 p-4 bg-[#FAFAF8] border border-[#eee]" style={{ borderRadius: '2px' }}>
+                  <p className="text-[10px] tracking-[0.1em] uppercase font-medium text-[#999] mb-2">{tx('redeemableAt', lang)}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {platformServices.filter(s => selectedServices.includes(s.id)).map(service => (
+                      <span key={service.id} className="px-2.5 py-1 text-[10px] sm:text-[11px] tracking-wide text-[#555] border border-[#ddd] bg-white">
+                        {service.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  className="w-full py-4 mt-5 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 flex items-center justify-center gap-2"
+                  onClick={handleCheckout}
+                  data-testid="button-checkout"
+                  style={{ borderRadius: '2px' }}
+                >
+                  {tx('payAndSend', lang)} {formattedValue}
+                  <ForwardIcon className="w-3.5 h-3.5" />
+                </button>
+
+                <p className="text-[10px] text-[#aaa] text-center mt-3 tracking-wide">
+                  {tx('secureCheckout', lang)}
+                </p>
+                
+                <div className="mt-5 pt-5 border-t border-[#eee]">
+                  <PaymentMethods language={lang} size="sm" />
+                </div>
+              </div>
             </div>
 
             <div className="order-1 lg:order-2">
               <div className="w-full max-w-xs sm:max-w-sm mx-auto lg:sticky lg:top-8">
-                <div 
-                  className="relative w-full aspect-[1.586/1] overflow-hidden"
-                  style={{ 
-                    background: style.gradient,
-                    borderRadius: '20px',
-                    boxShadow: `0 20px 50px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08), 0 0 30px ${style.holographicGlow}`
-                  }}
-                >
-                  <div className="absolute inset-0 opacity-15">
-                    <div className="absolute top-0 left-0 w-full h-full" style={{
-                      backgroundImage: 'radial-gradient(circle at 25% 75%, rgba(255,255,255,0.4) 0%, transparent 45%), radial-gradient(circle at 75% 25%, rgba(255,255,255,0.25) 0%, transparent 35%)'
-                    }} />
-                  </div>
-                  
-                  <div className="absolute inset-[1px] rounded-[11px] border border-white/10" />
-                  
-                  <div className="absolute top-4 left-4 flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: `${style.accentColor}dd` }}>
-                      <Gift className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="text-sm font-bold tracking-wide" style={{ color: style.textColor }}>
-                      Pet Wash™
-                    </span>
+                <div className="bg-[#1a1a1a] p-6 sm:p-8" style={{ borderRadius: '2px' }}>
+                  <div className="flex items-center justify-between mb-8">
+                    <p className="text-[11px] tracking-[0.2em] uppercase text-[#c9a96e] font-medium">
+                      {tx('eGiftCard', lang)}
+                    </p>
+                    <p className="text-[10px] tracking-[0.15em] uppercase text-[#666]">
+                      {tierLabel}
+                    </p>
                   </div>
 
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <p className="text-3xl sm:text-4xl font-black tracking-tight mb-0.5" style={{ color: style.textColor, textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                  <div className="text-center py-6">
+                    <p className="text-5xl sm:text-6xl font-light text-white mb-2"
+                      style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em' }}>
                       {formattedValue}
                     </p>
-                    <p className="text-xs font-medium opacity-75 tracking-wide uppercase" style={{ color: style.textColor }}>
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-[#888]">
                       {tx('eGiftCredit', lang)}
                     </p>
                   </div>
 
-                  <div className="absolute top-4 right-4">
-                    <div className="w-10 h-7" style={{ 
-                      background: 'linear-gradient(145deg, #D4AF37 0%, #F5D76E 25%, #D4AF37 50%, #AA8C2C 100%)',
-                      borderRadius: '4px',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3)'
-                    }} />
+                  <div className="border-t border-[#333] pt-5 mt-4">
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-[#666] text-center">
+                      Pet Wash™ · Premium Organic Pet Care
+                    </p>
                   </div>
                 </div>
                 <div className="mt-4 text-center">
-                  <p className="text-xs text-amber-600 font-medium">{tx('worksAtAll', lang)}</p>
+                  <p className="text-[11px] text-[#c9a96e]">{tx('worksAtAll', lang)}</p>
                 </div>
               </div>
             </div>
@@ -822,28 +751,32 @@ export default function EGift() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F]" dir={dir}>
-      <div className="container mx-auto px-4 py-8 sm:py-12">
-        <div className="text-center mb-8 sm:mb-12">
-          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full mb-5" style={{
-            background: 'linear-gradient(135deg, rgba(201,169,110,0.15) 0%, rgba(201,169,110,0.05) 100%)',
-            border: '1px solid rgba(201,169,110,0.3)',
-          }}>
-            <Wallet className="w-4 h-4" style={{ color: '#C9A96E' }} />
-            <span className="text-sm font-medium" style={{ color: '#C9A96E' }}>{tx('platformCredit', lang)}</span>
+    <div className="min-h-screen bg-white" dir={dir}>
+      <div className="container mx-auto px-4 py-12 sm:py-16">
+        <div className="text-center mb-12 sm:mb-16">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#c9a96e]" />
+            <Gift className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
+            <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#c9a96e]" />
           </div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4"
-            style={{ fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', serif" }}>
+
+          <p className="text-[10px] sm:text-[11px] tracking-[0.35em] uppercase mb-5 font-medium"
+            style={{ color: '#c9a96e' }}>
+            {tx('platformCredit', lang)}
+          </p>
+
+          <h1 className="text-3xl sm:text-4xl lg:text-[3.2rem] text-[#1a1a1a] mb-6 px-4 font-light leading-tight"
+            style={{ fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', serif", letterSpacing: '-0.03em' }}>
             {tx('title', lang)}
           </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
+          <p className="text-sm sm:text-[15px] text-[#888] max-w-lg mx-auto leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
             {tx('description', lang)}
           </p>
         </div>
 
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-6 sm:mb-8">
-            <p className="text-sm font-medium text-gray-400 mb-3 text-center">
+        <div className="max-w-[1040px] mx-auto">
+          <div className="mb-8 sm:mb-10">
+            <p className="text-[10px] tracking-[0.15em] uppercase font-medium text-[#999] mb-3 text-center">
               {tx('usableAt', lang)}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
@@ -852,18 +785,12 @@ export default function EGift() {
                   key={service.id}
                   type="button"
                   onClick={() => toggleService(service.id)}
-                  className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all ${
+                  className={`px-3 sm:px-4 py-2 text-[10px] sm:text-[11px] tracking-[0.08em] font-medium transition-all duration-200 ${
                     selectedServices.includes(service.id)
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-gray-200'
+                      ? 'text-[#1a1a1a] border-[#1a1a1a] bg-[#FAFAF8]'
+                      : 'text-[#aaa] border-[#eee] bg-white hover:text-[#555] hover:border-[#ccc]'
                   }`}
-                  style={selectedServices.includes(service.id) ? {
-                    background: 'linear-gradient(135deg, rgba(201,169,110,0.2) 0%, rgba(201,169,110,0.1) 100%)',
-                    border: '1px solid rgba(201,169,110,0.4)',
-                  } : {
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                  }}
+                  style={{ borderRadius: '2px', border: selectedServices.includes(service.id) ? '1px solid #1a1a1a' : '1px solid #eee' }}
                   data-testid={`service-toggle-${service.id}`}
                 >
                   {service.name}
@@ -872,7 +799,7 @@ export default function EGift() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-7">
             {giftOptions.map((option) => (
               <LuxuryGiftCard
                 key={option.value}
@@ -885,39 +812,60 @@ export default function EGift() {
           </div>
 
           {selectedOption && (
-            <div className="mt-6 sm:mt-8 text-center">
-              <Button 
-                className="px-8 sm:px-12 py-5 sm:py-6 text-base sm:text-lg font-semibold rounded-xl"
+            <div className="mt-10 sm:mt-12 text-center">
+              <button
+                className="px-10 sm:px-14 py-4 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 inline-flex items-center gap-2.5"
                 onClick={proceedToCheckout}
                 data-testid="button-proceed-checkout"
-                style={{
-                  background: 'linear-gradient(135deg, #C9A96E, #E8C964)',
-                  color: '#1A1A1A',
-                }}
+                style={{ borderRadius: '2px' }}
               >
                 {tx('continueCheckout', lang)}
-                <ForwardIcon className={`w-5 h-5 ${isRtl ? 'mr-2' : 'ml-2'}`} />
-              </Button>
+                <ForwardIcon className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 
-          <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-400">
-            <span className="flex items-center gap-1.5">
-              <Check className="w-4 h-4" style={{ color: '#C9A96E' }} />
-              {tx('allServices', lang)}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Check className="w-4 h-4" style={{ color: '#C9A96E' }} />
-              {tx('valid12Months', lang)}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Check className="w-4 h-4" style={{ color: '#C9A96E' }} />
-              {tx('noAccountRequired', lang)}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Check className="w-4 h-4" style={{ color: '#C9A96E' }} />
-              {tx('instantDelivery', lang)}
-            </span>
+          <div className="mt-14 sm:mt-20">
+            <div className="flex items-center justify-center gap-4 mb-10">
+              <div className="flex-1 max-w-[80px] h-px bg-gradient-to-r from-transparent to-[#ddd]" />
+              <ShieldCheck className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
+              <div className="flex-1 max-w-[80px] h-px bg-gradient-to-l from-transparent to-[#ddd]" />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-10 max-w-xl mx-auto">
+              <div className="text-center">
+                <div className="w-9 h-9 mx-auto mb-2.5 rounded-full border border-[#e8e4de] flex items-center justify-center">
+                  <Check className="w-3.5 h-3.5 text-[#c9a96e]" strokeWidth={1.5} />
+                </div>
+                <p className="text-[10px] tracking-[0.08em] text-[#555] font-medium uppercase">
+                  {tx('allServices', lang)}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-9 h-9 mx-auto mb-2.5 rounded-full border border-[#e8e4de] flex items-center justify-center">
+                  <Check className="w-3.5 h-3.5 text-[#c9a96e]" strokeWidth={1.5} />
+                </div>
+                <p className="text-[10px] tracking-[0.08em] text-[#555] font-medium uppercase">
+                  {tx('valid12Months', lang)}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-9 h-9 mx-auto mb-2.5 rounded-full border border-[#e8e4de] flex items-center justify-center">
+                  <Check className="w-3.5 h-3.5 text-[#c9a96e]" strokeWidth={1.5} />
+                </div>
+                <p className="text-[10px] tracking-[0.08em] text-[#555] font-medium uppercase">
+                  {tx('noAccountRequired', lang)}
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-9 h-9 mx-auto mb-2.5 rounded-full border border-[#e8e4de] flex items-center justify-center">
+                  <Check className="w-3.5 h-3.5 text-[#c9a96e]" strokeWidth={1.5} />
+                </div>
+                <p className="text-[10px] tracking-[0.08em] text-[#555] font-medium uppercase">
+                  {tx('instantDelivery', lang)}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
