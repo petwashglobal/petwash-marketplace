@@ -159,9 +159,12 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
       {/* Main Chat Window - Safe-area aware positioning */}
       {isOpen && (
         <div 
-          className="chat-widget-mobile fixed left-4 right-4 md:right-6 md:left-auto md:w-[420px] z-50 flex flex-col rounded-2xl shadow-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden"
+          className="chat-widget-mobile fixed left-4 right-4 md:right-6 md:left-auto md:w-[420px] z-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden"
+          data-theme="dark"
           style={{
             maxHeight: 'min(80vh, 600px)',
+            background: '#0D0D14',
+            border: '1px solid rgba(255,255,255,0.1)',
           }}
           data-testid="chat-window"
         >
@@ -204,7 +207,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
           </div>
 
           {/* Messages Area */}
-          <ScrollArea className="flex-1 p-4 bg-gray-50 dark:bg-gray-950">
+          <ScrollArea className="flex-1 p-4" style={{ background: '#0D0D14' }}>
             <div 
               className="space-y-4"
               role="log"
@@ -219,16 +222,21 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
                   data-testid={`message-${msg.sender}`}
                 >
                   <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
-                      msg.sender === 'user'
-                        ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white'
-                        : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700'
-                    }`}
+                    className="max-w-[75%] rounded-2xl px-4 py-2.5"
+                    style={{
+                      background: msg.sender === 'user'
+                        ? 'linear-gradient(135deg, #4F46E5, #7C3AED)'
+                        : 'rgba(255,255,255,0.08)',
+                      border: msg.sender === 'user'
+                        ? 'none'
+                        : '1px solid rgba(255,255,255,0.12)',
+                      color: msg.sender === 'user' ? '#FFFFFF' : 'rgba(255,255,255,0.92)',
+                    }}
                   >
                     <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
-                    <span className={`text-[10px] mt-1 block ${
-                      msg.sender === 'user' ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
-                    }`}>
+                    <span className="text-[10px] mt-1 block" style={{
+                      color: msg.sender === 'user' ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)'
+                    }}>
                       {formatTime(msg.timestamp)}
                     </span>
                   </div>
@@ -238,11 +246,11 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
               {/* Typing Indicator */}
               {isLoading && (
                 <div className="flex justify-start" data-testid="typing-indicator">
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl px-4 py-2.5 border border-gray-200 dark:border-gray-700">
+                  <div className="rounded-2xl px-4 py-2.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
                     <div className="flex gap-1.5">
-                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <div className="h-2 w-2 rounded-full animate-bounce" style={{ background: '#C9A96E', animationDelay: '0ms' }} />
+                      <div className="h-2 w-2 rounded-full animate-bounce" style={{ background: '#C9A96E', animationDelay: '150ms' }} />
+                      <div className="h-2 w-2 rounded-full animate-bounce" style={{ background: '#C9A96E', animationDelay: '300ms' }} />
                     </div>
                   </div>
                 </div>
@@ -255,7 +263,8 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
           {/* Input Area */}
           <form
             onSubmit={handleSubmit}
-            className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700"
+            className="p-3 border-t"
+            style={{ background: '#111118', borderColor: 'rgba(255,255,255,0.1)' }}
           >
             <div className="flex gap-2">
               <Input
@@ -265,14 +274,15 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
                 onChange={(e) => setUserInput(e.target.value)}
                 placeholder="הקלד/י הודעה..."
                 disabled={isLoading}
-                className="flex-1 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                className="flex-1 border"
+                style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.9)' }}
                 data-testid="chat-input"
                 aria-label="הקלד הודעה"
               />
               <Button
                 type="submit"
                 disabled={isLoading || !userInput.trim()}
-                className="bg-gradient-to-br from-blue-600 to-purple-600 hover:opacity-90"
+                className="bg-gradient-to-br from-blue-600 to-purple-600 hover:opacity-90 text-white"
                 data-testid="chat-send-button"
                 aria-label="שלח הודעה"
               >
@@ -285,11 +295,12 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
               <button
                 type="button"
                 onClick={() => setLanguage('he')}
-                className={`text-xs px-3 py-1 rounded-full transition-colors ${
-                  language === 'he'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                }`}
+                className="text-xs px-3 py-1 rounded-full transition-colors"
+                style={{
+                  background: language === 'he' ? '#4F46E5' : 'rgba(255,255,255,0.08)',
+                  color: language === 'he' ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
+                  border: `1px solid ${language === 'he' ? '#4F46E5' : 'rgba(255,255,255,0.12)'}`,
+                }}
                 data-testid="lang-toggle-he"
               >
                 עברית
@@ -297,11 +308,12 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
               <button
                 type="button"
                 onClick={() => setLanguage('en')}
-                className={`text-xs px-3 py-1 rounded-full transition-colors ${
-                  language === 'en'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                }`}
+                className="text-xs px-3 py-1 rounded-full transition-colors"
+                style={{
+                  background: language === 'en' ? '#4F46E5' : 'rgba(255,255,255,0.08)',
+                  color: language === 'en' ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
+                  border: `1px solid ${language === 'en' ? '#4F46E5' : 'rgba(255,255,255,0.12)'}`,
+                }}
                 data-testid="lang-toggle-en"
               >
                 English
