@@ -75,7 +75,94 @@ class TwilioSMSService {
     return cleaned;
   }
 
-  async sendVerificationCode(phone: string, language: 'he' | 'en' = 'he'): Promise<{
+  private t(key: string, language: string): string {
+    const translations: Record<string, Record<string, string>> = {
+      smsUnavailable: {
+        en: 'SMS service is not available at the moment',
+        he: 'שירות ה-SMS לא זמין כרגע',
+        ar: 'خدمة الرسائل القصيرة غير متوفرة حاليًا',
+        es: 'El servicio de SMS no está disponible en este momento',
+        fr: 'Le service SMS n\'est pas disponible pour le moment',
+        ru: 'Служба SMS в настоящее время недоступна',
+      },
+      codeSent: {
+        en: 'Verification code sent successfully',
+        he: 'קוד אימות נשלח בהצלחה',
+        ar: 'تم إرسال رمز التحقق بنجاح',
+        es: 'Código de verificación enviado con éxito',
+        fr: 'Code de vérification envoyé avec succès',
+        ru: 'Код подтверждения успешно отправлен',
+      },
+      sendFailed: {
+        en: 'Failed to send verification code. Please try again.',
+        he: 'שגיאה בשליחת קוד האימות. נסו שוב.',
+        ar: 'فشل في إرسال رمز التحقق. يرجى المحاولة مرة أخرى.',
+        es: 'Error al enviar el código de verificación. Inténtelo de nuevo.',
+        fr: 'Échec de l\'envoi du code. Veuillez réessayer.',
+        ru: 'Не удалось отправить код. Попробуйте снова.',
+      },
+      noCode: {
+        en: 'No verification code found. Request a new code.',
+        he: 'לא נמצא קוד אימות. בקשו קוד חדש.',
+        ar: 'لم يتم العثور على رمز التحقق. اطلب رمزًا جديدًا.',
+        es: 'No se encontró código de verificación. Solicite uno nuevo.',
+        fr: 'Code de vérification introuvable. Demandez un nouveau code.',
+        ru: 'Код подтверждения не найден. Запросите новый код.',
+      },
+      codeExpired: {
+        en: 'Verification code expired. Request a new code.',
+        he: 'קוד האימות פג תוקף. בקשו קוד חדש.',
+        ar: 'انتهت صلاحية رمز التحقق. اطلب رمزًا جديدًا.',
+        es: 'El código de verificación expiró. Solicite uno nuevo.',
+        fr: 'Le code de vérification a expiré. Demandez un nouveau code.',
+        ru: 'Срок действия кода истёк. Запросите новый код.',
+      },
+      tooMany: {
+        en: 'Too many attempts. Request a new code.',
+        he: 'חרגתם ממספר הניסיונות המותר. בקשו קוד חדש.',
+        ar: 'محاولات كثيرة جدًا. اطلب رمزًا جديدًا.',
+        es: 'Demasiados intentos. Solicite un nuevo código.',
+        fr: 'Trop de tentatives. Demandez un nouveau code.',
+        ru: 'Слишком много попыток. Запросите новый код.',
+      },
+      verified: {
+        en: 'Phone verified successfully!',
+        he: 'הטלפון אומת בהצלחה!',
+        ar: 'تم التحقق من الهاتف بنجاح!',
+        es: 'Teléfono verificado con éxito.',
+        fr: 'Téléphone vérifié avec succès !',
+        ru: 'Телефон успешно подтверждён!',
+      },
+    };
+    return translations[key]?.[language] || translations[key]?.en || key;
+  }
+
+  private smsBody(code: string, language: string): string {
+    const mins = VERIFICATION_CODE_EXPIRY_MINUTES;
+    const bodies: Record<string, string> = {
+      en: `Your Pet Wash™ verification code is: ${code}\nValid for ${mins} minutes`,
+      he: `קוד האימות שלך ל-Pet Wash™ הוא: ${code}\nתוקף: ${mins} דקות`,
+      ar: `رمز التحقق الخاص بك لـ Pet Wash™ هو: ${code}\nصالح لمدة ${mins} دقائق`,
+      es: `Tu código de verificación de Pet Wash™ es: ${code}\nVálido por ${mins} minutos`,
+      fr: `Votre code de vérification Pet Wash™ est : ${code}\nValide pendant ${mins} minutes`,
+      ru: `Ваш код подтверждения Pet Wash™: ${code}\nДействителен ${mins} минут`,
+    };
+    return bodies[language] || bodies.en;
+  }
+
+  private invalidCodeMsg(remaining: number, language: string): string {
+    const msgs: Record<string, string> = {
+      en: `Invalid code. ${remaining} attempts remaining.`,
+      he: `קוד שגוי. נותרו ${remaining} ניסיונות.`,
+      ar: `رمز غير صالح. ${remaining} محاولات متبقية.`,
+      es: `Código inválido. ${remaining} intentos restantes.`,
+      fr: `Code invalide. ${remaining} tentatives restantes.`,
+      ru: `Неверный код. Осталось попыток: ${remaining}.`,
+    };
+    return msgs[language] || msgs.en;
+  }
+
+  async sendVerificationCode(phone: string, language: string = 'he'): Promise<{
     success: boolean;
     message: string;
     expiresIn?: number;
@@ -83,9 +170,7 @@ class TwilioSMSService {
     if (!this.isReady()) {
       return {
         success: false,
-        message: language === 'he' 
-          ? 'שירות ה-SMS לא זמין כרגע'
-          : 'SMS service is not available at the moment'
+        message: this.t('smsUnavailable', language)
       };
     }
 
@@ -100,9 +185,7 @@ class TwilioSMSService {
       attempts: 0
     });
 
-    const messageBody = language === 'he'
-      ? `קוד האימות שלך ל-Pet Wash™ הוא: ${code}\nתוקף: ${VERIFICATION_CODE_EXPIRY_MINUTES} דקות`
-      : `Your Pet Wash™ verification code is: ${code}\nValid for ${VERIFICATION_CODE_EXPIRY_MINUTES} minutes`;
+    const messageBody = this.smsBody(code, language);
 
     try {
       await this.client!.messages.create({
@@ -118,9 +201,7 @@ class TwilioSMSService {
 
       return {
         success: true,
-        message: language === 'he'
-          ? 'קוד אימות נשלח בהצלחה'
-          : 'Verification code sent successfully',
+        message: this.t('codeSent', language),
         expiresIn: VERIFICATION_CODE_EXPIRY_MINUTES * 60
       };
     } catch (error: any) {
@@ -137,14 +218,12 @@ class TwilioSMSService {
 
       return {
         success: false,
-        message: language === 'he'
-          ? 'שגיאה בשליחת קוד האימות. נסה שוב.'
-          : 'Failed to send verification code. Please try again.'
+        message: this.t('sendFailed', language)
       };
     }
   }
 
-  verifyCode(phone: string, code: string, language: 'he' | 'en' = 'he'): {
+  verifyCode(phone: string, code: string, language: string = 'he'): {
     success: boolean;
     message: string;
     verificationToken?: string;
@@ -155,9 +234,7 @@ class TwilioSMSService {
     if (!stored) {
       return {
         success: false,
-        message: language === 'he'
-          ? 'לא נמצא קוד אימות. בקש קוד חדש.'
-          : 'No verification code found. Request a new code.'
+        message: this.t('noCode', language)
       };
     }
 
@@ -165,9 +242,7 @@ class TwilioSMSService {
       verificationCodes.delete(formattedPhone);
       return {
         success: false,
-        message: language === 'he'
-          ? 'קוד האימות פג תוקף. בקש קוד חדש.'
-          : 'Verification code expired. Request a new code.'
+        message: this.t('codeExpired', language)
       };
     }
 
@@ -175,9 +250,7 @@ class TwilioSMSService {
       verificationCodes.delete(formattedPhone);
       return {
         success: false,
-        message: language === 'he'
-          ? 'חרגת ממספר הניסיונות המותר. בקש קוד חדש.'
-          : 'Too many attempts. Request a new code.'
+        message: this.t('tooMany', language)
       };
     }
 
@@ -185,9 +258,7 @@ class TwilioSMSService {
       stored.attempts++;
       return {
         success: false,
-        message: language === 'he'
-          ? `קוד שגוי. נותרו ${MAX_VERIFICATION_ATTEMPTS - stored.attempts} ניסיונות.`
-          : `Invalid code. ${MAX_VERIFICATION_ATTEMPTS - stored.attempts} attempts remaining.`
+        message: this.invalidCodeMsg(MAX_VERIFICATION_ATTEMPTS - stored.attempts, language)
       };
     }
 
@@ -209,9 +280,7 @@ class TwilioSMSService {
 
     return {
       success: true,
-      message: language === 'he'
-        ? 'הטלפון אומת בהצלחה!'
-        : 'Phone verified successfully!',
+      message: this.t('verified', language),
       verificationToken
     };
   }

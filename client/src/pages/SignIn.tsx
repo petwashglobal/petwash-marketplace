@@ -153,12 +153,62 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
           setTimeout(() => {
             window.scrollTo(0, 0);
-            navigate("/");
+            navigate("/dashboard");
           }, 1000);
         }
       } catch (error: any) {
         if (error.code !== 'auth/popup-closed-by-user') {
           logger.error('[iOS Auth] Redirect result error:', error);
+          
+          const authErrors: Record<string, Record<string, string>> = {
+            'auth/unauthorized-domain': {
+              en: 'This domain is not authorized for sign-in. Please try again.',
+              he: 'דומיין זה אינו מורשה להתחברות. אנא נסו שוב.',
+              ar: 'هذا النطاق غير مصرح به لتسجيل الدخول. يرجى المحاولة مرة أخرى.',
+              es: 'Este dominio no está autorizado para iniciar sesión. Inténtelo de nuevo.',
+              fr: 'Ce domaine n\'est pas autorisé pour la connexion. Veuillez réessayer.',
+              ru: 'Этот домен не авторизован для входа. Пожалуйста, попробуйте снова.',
+            },
+            'auth/popup-blocked': {
+              en: 'Pop-up was blocked. Please allow pop-ups and try again.',
+              he: 'החלון נחסם. אנא אפשרו חלונות קופצים ונסו שוב.',
+              ar: 'تم حظر النافذة المنبثقة. يرجى السماح بها والمحاولة مرة أخرى.',
+              es: 'La ventana emergente fue bloqueada. Permita las ventanas emergentes e inténtelo de nuevo.',
+              fr: 'Le pop-up a été bloqué. Veuillez autoriser les pop-ups et réessayer.',
+              ru: 'Всплывающее окно заблокировано. Разрешите всплывающие окна и попробуйте снова.',
+            },
+            'auth/cancelled-popup-request': {
+              en: 'Sign-in was cancelled. Please try again.',
+              he: 'ההתחברות בוטלה. אנא נסו שוב.',
+              ar: 'تم إلغاء تسجيل الدخول. يرجى المحاولة مرة أخرى.',
+              es: 'El inicio de sesión fue cancelado. Inténtelo de nuevo.',
+              fr: 'La connexion a été annulée. Veuillez réessayer.',
+              ru: 'Вход был отменён. Пожалуйста, попробуйте снова.',
+            },
+          };
+          const defaultErr: Record<string, string> = {
+            en: 'Sign-in failed. Please try again.',
+            he: 'ההתחברות נכשלה. אנא נסו שוב.',
+            ar: 'فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.',
+            es: 'Error de inicio de sesión. Inténtelo de nuevo.',
+            fr: 'La connexion a échoué. Veuillez réessayer.',
+            ru: 'Ошибка входа. Пожалуйста, попробуйте снова.',
+          };
+          const errTitle: Record<string, string> = {
+            en: 'Sign-in error',
+            he: 'שגיאה בהתחברות',
+            ar: 'خطأ في تسجيل الدخول',
+            es: 'Error de inicio de sesión',
+            fr: 'Erreur de connexion',
+            ru: 'Ошибка входа',
+          };
+
+          const msg = authErrors[error.code]?.[language] || authErrors[error.code]?.en || defaultErr[language] || defaultErr.en;
+          toast({
+            variant: "destructive",
+            title: errTitle[language] || errTitle.en,
+            description: msg,
+          });
         }
       }
     };
@@ -218,7 +268,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
           setTimeout(() => {
             window.scrollTo(0, 0);
-            navigate("/");
+            navigate("/dashboard");
           }, 1000);
         } catch (error: any) {
           logger.error("Magic link verification error:", error);
@@ -274,7 +324,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           });
           
           window.scrollTo(0, 0);
-          navigate("/");
+          navigate("/dashboard");
         }
       } catch (error) {
         logger.debug("Conditional UI: Passkey autofill not triggered (expected)", { error: error instanceof Error ? error.message : 'unknown' });
@@ -290,7 +340,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   useEffect(() => {
     if (user && !switchingAccount && !loading) {
       logger.info("User already logged in, auto-redirecting to homepage");
-      navigate("/");
+      navigate("/dashboard");
     }
   }, [user, switchingAccount, loading, navigate]);
 
@@ -348,7 +398,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         trackPasskeyToDashboard(passkeyStartTime);
 
         window.scrollTo(0, 0);
-        navigate("/");
+        navigate("/dashboard");
       } else {
         let errorDescription = result.error || t('signin.failed', language);
         
@@ -460,7 +510,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         });
 
         window.scrollTo(0, 0);
-        navigate("/");
+        navigate("/dashboard");
       } else {
         setPinError(data.error || (language === 'he' ? 'קוד PIN שגוי' : 'Invalid PIN'));
         toast({
@@ -592,28 +642,76 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       setTimeout(() => {
         window.scrollTo(0, 0);
-        navigate("/");
+        navigate("/dashboard");
       }, 1000);
     } catch (error: any) {
       logger.error("Social login error:", error);
       
-      if (error.code === 'auth/popup-closed-by-user') {
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         return;
       }
       
-      if (error.code === 'auth/popup-blocked') {
-        toast({
-          variant: "destructive",
-          title: t('signin.popupBlocked', language),
-          description: t('signin.allowPopups', language),
-        });
-        return;
-      }
+      const socialErrTitle: Record<string, string> = {
+        en: 'Sign-in error', he: 'שגיאה בהתחברות', ar: 'خطأ في تسجيل الدخول',
+        es: 'Error de inicio de sesión', fr: 'Erreur de connexion', ru: 'Ошибка входа',
+      };
+      const socialErrors: Record<string, Record<string, string>> = {
+        'auth/popup-blocked': {
+          en: 'Pop-up was blocked by your browser. Please allow pop-ups and try again.',
+          he: 'החלון נחסם על ידי הדפדפן. אנא אפשרו חלונות קופצים ונסו שוב.',
+          ar: 'تم حظر النافذة المنبثقة بواسطة المتصفح. يرجى السماح بها والمحاولة مرة أخرى.',
+          es: 'La ventana emergente fue bloqueada por el navegador. Permita las ventanas emergentes e inténtelo de nuevo.',
+          fr: 'Le pop-up a été bloqué par le navigateur. Veuillez autoriser les pop-ups et réessayer.',
+          ru: 'Всплывающее окно заблокировано браузером. Разрешите всплывающие окна и попробуйте снова.',
+        },
+        'auth/unauthorized-domain': {
+          en: 'This domain is not authorized for Google sign-in. Contact support.',
+          he: 'דומיין זה אינו מורשה להתחברות עם Google. פנו לתמיכה.',
+          ar: 'هذا النطاق غير مصرح به لتسجيل الدخول عبر Google. اتصل بالدعم.',
+          es: 'Este dominio no está autorizado para iniciar sesión con Google. Contacte soporte.',
+          fr: 'Ce domaine n\'est pas autorisé pour la connexion Google. Contactez le support.',
+          ru: 'Этот домен не авторизован для входа через Google. Обратитесь в поддержку.',
+        },
+        'auth/network-request-failed': {
+          en: 'Network error. Please check your connection and try again.',
+          he: 'שגיאת רשת. בדקו את החיבור שלכם ונסו שוב.',
+          ar: 'خطأ في الشبكة. يرجى التحقق من اتصالك والمحاولة مرة أخرى.',
+          es: 'Error de red. Verifique su conexión e inténtelo de nuevo.',
+          fr: 'Erreur réseau. Vérifiez votre connexion et réessayez.',
+          ru: 'Ошибка сети. Проверьте подключение и попробуйте снова.',
+        },
+        'auth/internal-error': {
+          en: 'An internal error occurred. Please try again later.',
+          he: 'אירעה שגיאה פנימית. אנא נסו שוב מאוחר יותר.',
+          ar: 'حدث خطأ داخلي. يرجى المحاولة لاحقًا.',
+          es: 'Ocurrió un error interno. Inténtelo más tarde.',
+          fr: 'Une erreur interne s\'est produite. Veuillez réessayer plus tard.',
+          ru: 'Произошла внутренняя ошибка. Попробуйте позже.',
+        },
+        'auth/account-exists-with-different-credential': {
+          en: 'An account already exists with the same email but different sign-in method.',
+          he: 'כבר קיים חשבון עם אותו אימייל אך שיטת התחברות שונה.',
+          ar: 'يوجد حساب بنفس البريد الإلكتروني ولكن بطريقة تسجيل دخول مختلفة.',
+          es: 'Ya existe una cuenta con el mismo correo pero un método de inicio de sesión diferente.',
+          fr: 'Un compte existe déjà avec le même e-mail mais une méthode de connexion différente.',
+          ru: 'Аккаунт с таким email уже существует, но с другим методом входа.',
+        },
+      };
+      const defaultSocialErr: Record<string, string> = {
+        en: 'Sign-in with Google failed. Please try again.',
+        he: 'ההתחברות עם Google נכשלה. אנא נסו שוב.',
+        ar: 'فشل تسجيل الدخول عبر Google. يرجى المحاولة مرة أخرى.',
+        es: 'El inicio de sesión con Google falló. Inténtelo de nuevo.',
+        fr: 'La connexion avec Google a échoué. Veuillez réessayer.',
+        ru: 'Вход через Google не удался. Попробуйте снова.',
+      };
+
+      const errMsg = socialErrors[error.code]?.[language] || socialErrors[error.code]?.en || defaultSocialErr[language] || defaultSocialErr.en;
       
       toast({
         variant: "destructive",
-        title: t('signin.error', language),
-        description: error.message || t('signin.failed', language),
+        title: socialErrTitle[language] || socialErrTitle.en,
+        description: errMsg,
       });
 
       trackEvent({
@@ -627,20 +725,74 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
 
+  const phoneErrTitle: Record<string, string> = {
+    en: 'Error', he: 'שגיאה', ar: 'خطأ', es: 'Error', fr: 'Erreur', ru: 'Ошибка',
+  };
+  const phoneInvalidNum: Record<string, string> = {
+    en: 'Please enter a valid phone number',
+    he: 'הזינו מספר טלפון תקין',
+    ar: 'يرجى إدخال رقم هاتف صالح',
+    es: 'Ingrese un número de teléfono válido',
+    fr: 'Veuillez entrer un numéro de téléphone valide',
+    ru: 'Введите действительный номер телефона',
+  };
+  const phoneCodeSentTitle: Record<string, string> = {
+    en: 'Code Sent', he: 'קוד נשלח', ar: 'تم إرسال الرمز', es: 'Código Enviado', fr: 'Code Envoyé', ru: 'Код Отправлен',
+  };
+  const phoneCodeSentDesc: Record<string, string> = {
+    en: 'Check your SMS messages',
+    he: 'בדקו את הודעות ה-SMS שלכם',
+    ar: 'تحقق من رسائل SMS الخاصة بك',
+    es: 'Revise sus mensajes SMS',
+    fr: 'Vérifiez vos messages SMS',
+    ru: 'Проверьте ваши SMS сообщения',
+  };
+  const phoneCodeFail: Record<string, string> = {
+    en: 'Failed to send verification code. Please try again.',
+    he: 'שליחת קוד האימות נכשלה. אנא נסו שוב.',
+    ar: 'فشل في إرسال رمز التحقق. يرجى المحاولة مرة أخرى.',
+    es: 'Error al enviar el código de verificación. Inténtelo de nuevo.',
+    fr: 'Échec de l\'envoi du code de vérification. Veuillez réessayer.',
+    ru: 'Не удалось отправить код подтверждения. Попробуйте снова.',
+  };
+  const phoneVerifyFail: Record<string, string> = {
+    en: 'Verification failed. Please check your code and try again.',
+    he: 'האימות נכשל. בדקו את הקוד ונסו שוב.',
+    ar: 'فشل التحقق. يرجى التحقق من الرمز والمحاولة مرة أخرى.',
+    es: 'La verificación falló. Revise el código e inténtelo de nuevo.',
+    fr: 'La vérification a échoué. Vérifiez le code et réessayez.',
+    ru: 'Верификация не удалась. Проверьте код и попробуйте снова.',
+  };
+  const phoneEnter6Digit: Record<string, string> = {
+    en: 'Enter 6-digit verification code',
+    he: 'הזינו קוד אימות בן 6 ספרות',
+    ar: 'أدخل رمز التحقق المكون من 6 أرقام',
+    es: 'Ingrese el código de verificación de 6 dígitos',
+    fr: 'Entrez le code de vérification à 6 chiffres',
+    ru: 'Введите 6-значный код подтверждения',
+  };
+  const phoneSendFirst: Record<string, string> = {
+    en: 'Send verification code first',
+    he: 'שלחו קוד אימות קודם',
+    ar: 'أرسل رمز التحقق أولاً',
+    es: 'Envíe el código de verificación primero',
+    fr: 'Envoyez d\'abord le code de vérification',
+    ru: 'Сначала отправьте код подтверждения',
+  };
+
   // Phone Auth Handlers - Twilio SMS Verification
   const handleSendPhoneCode = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
       toast({
         variant: "destructive",
-        title: language === 'he' ? 'שגיאה' : 'Error',
-        description: language === 'he' ? 'הזן מספר טלפון תקין' : 'Please enter a valid phone number',
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description: phoneInvalidNum[language] || phoneInvalidNum.en,
       });
       return;
     }
 
     setPhoneLoading(true);
     try {
-      // Format phone number with Israel country code if not present
       let formattedPhone = phoneNumber.trim();
       if (!formattedPhone.startsWith('+')) {
         formattedPhone = formattedPhone.startsWith('0') 
@@ -660,14 +812,14 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const result = await response.json();
 
       if (!result.ok) {
-        throw new Error(result.error || result.message || 'Failed to send code');
+        throw new Error(result.error || result.message || (phoneCodeFail[language] || phoneCodeFail.en));
       }
 
       setConfirmationResult({ phone: formattedPhone } as any);
 
       toast({
-        title: language === 'he' ? 'קוד נשלח' : 'Code Sent',
-        description: language === 'he' ? 'בדוק את הודעות ה-SMS שלך' : 'Check your SMS messages',
+        title: phoneCodeSentTitle[language] || phoneCodeSentTitle.en,
+        description: phoneCodeSentDesc[language] || phoneCodeSentDesc.en,
       });
 
       trackEvent({
@@ -681,8 +833,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       toast({
         variant: "destructive",
-        title: language === 'he' ? 'שגיאה' : 'Error',
-        description: error.message || (language === 'he' ? 'נכשל לשלוח קוד' : 'Failed to send code'),
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description: error.message || (phoneCodeFail[language] || phoneCodeFail.en),
       });
 
       trackEvent({
@@ -700,8 +852,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     if (!verificationCode || verificationCode.length < 6) {
       toast({
         variant: "destructive",
-        title: language === 'he' ? 'שגיאה' : 'Error',
-        description: language === 'he' ? 'הזן קוד אימות בן 6 ספרות' : 'Enter 6-digit verification code',
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description: phoneEnter6Digit[language] || phoneEnter6Digit.en,
       });
       return;
     }
@@ -709,8 +861,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     if (!confirmationResult?.phone) {
       toast({
         variant: "destructive",
-        title: language === 'he' ? 'שגיאה' : 'Error',
-        description: language === 'he' ? 'שלח קוד אימות קודם' : 'Send verification code first',
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description: phoneSendFirst[language] || phoneSendFirst.en,
       });
       return;
     }
@@ -777,15 +929,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       setTimeout(() => {
         window.scrollTo(0, 0);
-        navigate("/");
+        navigate("/dashboard");
       }, 1000);
     } catch (error: any) {
       logger.error('[PhoneAuth] Verification failed:', error);
 
       toast({
         variant: "destructive",
-        title: language === 'he' ? 'שגיאה' : 'Error',
-        description: error.message || (language === 'he' ? 'אימות נכשל' : 'Verification failed'),
+        title: phoneErrTitle[language] || phoneErrTitle.en,
+        description: error.message || (phoneVerifyFail[language] || phoneVerifyFail.en),
       });
 
       trackEvent({
@@ -844,7 +996,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       
       setTimeout(() => {
         window.scrollTo(0, 0);
-        navigate("/");
+        navigate("/dashboard");
       }, 1000);
     } catch (error: any) {
       logger.error("Email/password sign-in error:", error);
@@ -1005,7 +1157,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           </div>
           <div className="space-y-3">
             <Button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/dashboard")}
               className="bg-black hover:bg-gray-800 text-white rounded-full px-8"
               data-testid="button-go-to-dashboard"
             >
@@ -1038,7 +1190,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           <div className="luxury-glass-card p-8 space-y-8 relative border-t-4 border-t-[#0f3460] shadow-[0_8px_40px_rgba(15,52,96,0.12),0_2px_8px_rgba(0,0,0,0.06)]">
           {/* Close/Back Button */}
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/dashboard")}
             className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
             aria-label={t('common.close', language)}
             data-testid="button-close-signin"
@@ -1150,7 +1302,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                     title: language === 'he' ? 'מצב פיתוח מופעל' : 'Dev Mode Enabled',
                     description: language === 'he' ? 'משתמש בדיקה מחובר' : 'Test user logged in',
                   });
-                  setTimeout(() => navigate("/"), 500);
+                  setTimeout(() => navigate("/dashboard"), 500);
                 }}
                 className="w-full h-14 text-base font-medium bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0"
                 data-testid="button-dev-mode"
