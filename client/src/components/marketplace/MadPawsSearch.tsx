@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format, addDays, isValid } from "date-fns";
+import { format, addDays, isValid, differenceInDays } from "date-fns";
+import { he } from "date-fns/locale";
+import type { DateRange } from "react-day-picker";
 import { useLanguage } from "@/lib/languageStore";
 import { useToast } from "@/hooks/use-toast";
 
@@ -612,6 +614,8 @@ export function MadPawsSearch({
   );
   const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
   const [petTypeDropdownOpen, setPetTypeDropdownOpen] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [datePickerFocus, setDatePickerFocus] = useState<'start' | 'end'>('start');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [advancedTab, setAdvancedTab] = useState<'services' | 'profile' | 'behavior' | 'care' | 'emergency'>('services');
   const [specialServices, setSpecialServices] = useState<string[]>([]);
@@ -923,59 +927,151 @@ export function MadPawsSearch({
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
               {isHebrew ? 'תאריכים' : 'Dates'}
             </label>
-            {/* Mobile-friendly native date inputs - works on iOS/Android */}
-            <div className="flex gap-2 h-12">
-              <div className="relative flex-1">
-                <CalendarDays className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
-                <input
-                  type="date"
-                  value={startDate && isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (!val) {
-                      setStartDate(undefined);
-                      return;
-                    }
-                    const [y, m, d] = val.split('-').map(Number);
-                    const date = new Date(y, m - 1, d, 12, 0, 0);
-                    if (isValid(date)) {
-                      setStartDate(date);
-                      if (endDate && isValid(endDate) && endDate <= date) {
-                        setEndDate(addDays(date, 1));
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className="w-full h-12 px-3 flex items-center gap-2 bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors cursor-pointer"
+                  data-testid="button-date-picker"
+                >
+                  <CalendarDays className={`h-4 w-4 shrink-0 ${t.iconColor}`} />
+                  <div className="flex items-center gap-1.5 text-sm flex-1 min-w-0">
+                    <span className={`font-medium truncate ${startDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {startDate && isValid(startDate) 
+                        ? format(startDate, 'd MMM', { locale: isHebrew ? he : undefined })
+                        : (isHebrew ? 'כניסה' : 'Check-in')}
+                    </span>
+                    <span className="text-gray-300">→</span>
+                    <span className={`font-medium truncate ${endDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {endDate && isValid(endDate)
+                        ? format(endDate, 'd MMM', { locale: isHebrew ? he : undefined })
+                        : (isHebrew ? 'יציאה' : 'Check-out')}
+                    </span>
+                  </div>
+                  {startDate && endDate && (
+                    <span className={`text-xs ${t.iconColor} font-semibold shrink-0`}>
+                      {differenceInDays(endDate, startDate)}{isHebrew ? ' לילות' : ' nights'}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent 
+                className="w-auto p-0 shadow-2xl border-0 rounded-2xl overflow-hidden" 
+                align="center"
+                sideOffset={8}
+              >
+                <div className="bg-white rounded-2xl">
+                  <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-gray-100">
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => setDatePickerFocus('start')}
+                        className={`text-sm font-semibold pb-2 border-b-2 transition-colors ${
+                          datePickerFocus === 'start' 
+                            ? `${t.selectedText} border-current` 
+                            : 'text-gray-400 border-transparent hover:text-gray-600'
+                        }`}
+                      >
+                        {isHebrew ? 'כניסה' : 'Check-in'}
+                        {startDate && isValid(startDate) && (
+                          <span className="block text-xs font-normal text-gray-500 mt-0.5">
+                            {format(startDate, 'EEE, d MMM yyyy', { locale: isHebrew ? he : undefined })}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setDatePickerFocus('end')}
+                        className={`text-sm font-semibold pb-2 border-b-2 transition-colors ${
+                          datePickerFocus === 'end' 
+                            ? `${t.selectedText} border-current` 
+                            : 'text-gray-400 border-transparent hover:text-gray-600'
+                        }`}
+                      >
+                        {isHebrew ? 'יציאה' : 'Check-out'}
+                        {endDate && isValid(endDate) && (
+                          <span className="block text-xs font-normal text-gray-500 mt-0.5">
+                            {format(endDate, 'EEE, d MMM yyyy', { locale: isHebrew ? he : undefined })}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                    {(startDate || endDate) && (
+                      <button
+                        onClick={() => {
+                          setStartDate(undefined);
+                          setEndDate(undefined);
+                          setDatePickerFocus('start');
+                        }}
+                        className="text-xs text-gray-400 hover:text-gray-600 underline"
+                      >
+                        {isHebrew ? 'נקה' : 'Clear'}
+                      </button>
+                    )}
+                  </div>
+                  <Calendar
+                    mode="range"
+                    selected={{ from: startDate, to: endDate } as DateRange}
+                    onSelect={(range: DateRange | undefined) => {
+                      if (!range) {
+                        setStartDate(undefined);
+                        setEndDate(undefined);
+                        return;
                       }
-                    }
-                  }}
-                  min={format(new Date(), 'yyyy-MM-dd')}
-                  className="w-full h-12 ps-9 pe-2 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors cursor-pointer"
-                  data-testid="input-start-date"
-                />
-              </div>
-              <div className="relative flex-1">
-                <CalendarDays className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-400 pointer-events-none z-10" />
-                <input
-                  type="date"
-                  value={endDate && isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (!val) {
-                      setEndDate(undefined);
-                      return;
-                    }
-                    const [y, m, d] = val.split('-').map(Number);
-                    const date = new Date(y, m - 1, d, 12, 0, 0);
-                    if (isValid(date)) {
-                      setEndDate(date);
-                      if (startDate && isValid(startDate) && date <= startDate) {
-                        setStartDate(addDays(date, -1));
+                      setStartDate(range.from);
+                      setEndDate(range.to);
+                      if (range.from && !range.to) {
+                        setDatePickerFocus('end');
                       }
-                    }
-                  }}
-                  min={startDate && isValid(startDate) ? format(addDays(startDate, 1), 'yyyy-MM-dd') : format(addDays(new Date(), 1), 'yyyy-MM-dd')}
-                  className="w-full h-12 ps-9 pe-2 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors cursor-pointer"
-                  data-testid="input-end-date"
-                />
-              </div>
-            </div>
+                      if (range.from && range.to) {
+                        setTimeout(() => setDatePickerOpen(false), 300);
+                      }
+                    }}
+                    numberOfMonths={2}
+                    disabled={{ before: new Date() }}
+                    locale={isHebrew ? he : undefined}
+                    dir={isHebrew ? 'rtl' : 'ltr'}
+                    fromMonth={new Date()}
+                    className="p-4"
+                    classNames={{
+                      months: "flex flex-col sm:flex-row gap-4",
+                      month: "space-y-3",
+                      caption: "flex justify-center pt-2 pb-3 relative items-center",
+                      caption_label: "text-sm font-semibold text-gray-900",
+                      nav: "flex items-center",
+                      nav_button: "h-8 w-8 p-0 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors",
+                      nav_button_previous: "absolute start-1",
+                      nav_button_next: "absolute end-1",
+                      table: "w-full border-collapse",
+                      head_row: "flex",
+                      head_cell: "text-gray-400 rounded-full w-10 h-8 font-medium text-xs flex items-center justify-center",
+                      row: "flex w-full mt-0.5",
+                      cell: "h-10 w-10 text-center text-sm p-0 relative focus-within:z-20",
+                      day: "h-10 w-10 p-0 font-medium rounded-full text-gray-900 hover:bg-gray-100 transition-colors aria-selected:opacity-100",
+                      day_range_start: "!bg-pink-500 !text-white !font-bold !rounded-full hover:!bg-pink-600",
+                      day_range_end: "!bg-pink-500 !text-white !font-bold !rounded-full hover:!bg-pink-600",
+                      day_range_middle: "!bg-pink-50 !text-pink-700 !rounded-none",
+                      day_selected: "bg-pink-500 text-white font-bold hover:bg-pink-600",
+                      day_today: "bg-gray-100 text-gray-900 font-bold",
+                      day_outside: "text-gray-300 opacity-50",
+                      day_disabled: "text-gray-200 opacity-40 cursor-not-allowed line-through",
+                      day_hidden: "invisible",
+                    }}
+                  />
+                  {startDate && endDate && (
+                    <div className="px-5 pb-4 pt-1 border-t border-gray-100 flex items-center justify-between">
+                      <span className="text-sm text-gray-600">
+                        {differenceInDays(endDate, startDate)} {isHebrew ? 'לילות' : 'nights'}
+                      </span>
+                      <Button
+                        size="sm"
+                        onClick={() => setDatePickerOpen(false)}
+                        className={`rounded-full px-6 bg-gradient-to-r ${t.buttonGradient} text-white`}
+                      >
+                        {isHebrew ? 'אישור' : 'Done'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="lg:col-span-1 flex items-end">
