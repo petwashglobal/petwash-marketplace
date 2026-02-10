@@ -22,9 +22,10 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.smartHub.tagline', language),
       description: t('divisions.smartHub.description', language),
       icon: Sparkles,
-      gradientFrom: '#0ea5e9',
-      gradientTo: '#06b6d4',
-      glowColor: 'rgba(14, 165, 233, 0.4)',
+      accentFrom: '#38BDF8',
+      accentTo: '#06B6D4',
+      accentMid: '#22D3EE',
+      glowColor: 'rgba(56, 189, 248, 0.35)',
       link: '/our-service',
       features: [
         t('divisions.smartHub.feature1', language),
@@ -38,9 +39,10 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.sitterSuite.tagline', language),
       description: t('divisions.sitterSuite.description', language),
       icon: Heart,
-      gradientFrom: '#ec4899',
-      gradientTo: '#f43f5e',
-      glowColor: 'rgba(236, 72, 153, 0.4)',
+      accentFrom: '#F472B6',
+      accentTo: '#FB7185',
+      accentMid: '#F9A8D4',
+      glowColor: 'rgba(244, 114, 182, 0.35)',
       link: '/sitter-suite',
       features: [
         t('divisions.sitterSuite.feature1', language),
@@ -54,9 +56,10 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.walkMyPet.tagline', language),
       description: t('divisions.walkMyPet.description', language),
       icon: MapPin,
-      gradientFrom: '#10b981',
-      gradientTo: '#14b8a6',
-      glowColor: 'rgba(16, 185, 129, 0.4)',
+      accentFrom: '#34D399',
+      accentTo: '#2DD4BF',
+      accentMid: '#6EE7B7',
+      glowColor: 'rgba(52, 211, 153, 0.35)',
       link: '/walk-my-pet',
       features: [
         t('divisions.walkMyPet.feature1', language),
@@ -70,9 +73,10 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.petTrek.tagline', language),
       description: t('divisions.petTrek.description', language),
       icon: Zap,
-      gradientFrom: '#c6a664',
-      gradientTo: '#d4af37',
-      glowColor: 'rgba(198, 166, 100, 0.5)',
+      accentFrom: '#D4AF37',
+      accentTo: '#F5D76E',
+      accentMid: '#E8C964',
+      glowColor: 'rgba(212, 175, 55, 0.4)',
       link: '/pettrek/book',
       features: [
         t('divisions.petTrek.feature1', language),
@@ -86,9 +90,10 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       tagline: t('divisions.academy.tagline', language),
       description: t('divisions.academy.description', language),
       icon: GraduationCap,
-      gradientFrom: '#0d9488',
-      gradientTo: '#14b8a6',
-      glowColor: 'rgba(13, 148, 136, 0.4)',
+      accentFrom: '#2DD4BF',
+      accentTo: '#14B8A6',
+      accentMid: '#5EEAD4',
+      glowColor: 'rgba(45, 212, 191, 0.35)',
       link: '/academy',
       features: [
         t('divisions.academy.feature1', language),
@@ -100,47 +105,61 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   return (
     <section 
       ref={sectionRef}
-      className="relative py-8 sm:py-14 lg:py-16 bg-gradient-to-br from-slate-50 via-white to-amber-50/30 overflow-hidden"
+      className="relative py-10 sm:py-16 lg:py-20 overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, #08080D 0%, #0C0C14 30%, #0A0A12 70%, #08080D 100%)',
+      }}
     >
-      {/* Glamorous background decorations */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(198,166,100,0.08),transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(236,72,153,0.05),transparent_50%)]" />
-      <div className="absolute top-0 left-0 w-48 h-48 border-t-2 border-l-2 border-[#c6a664]/20 rounded-tl-3xl" />
-      <div className="absolute bottom-0 right-0 w-48 h-48 border-b-2 border-r-2 border-[#c6a664]/20 rounded-br-3xl" />
-      
-      {/* Floating luxury orbs */}
-      <div className="absolute top-20 right-20 w-32 h-32 bg-gradient-to-br from-amber-200/20 to-yellow-100/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-20 left-20 w-40 h-40 bg-gradient-to-br from-pink-200/15 to-rose-100/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-      
+      <div className="absolute inset-0" style={{
+        backgroundImage: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(201,169,110,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 80% 100%, rgba(56,189,248,0.04) 0%, transparent 50%), radial-gradient(ellipse 60% 40% at 20% 100%, rgba(244,114,182,0.04) 0%, transparent 50%)',
+      }} />
+
+      <div className="absolute top-0 left-0 right-0 h-[1px]" style={{
+        background: 'linear-gradient(90deg, transparent 5%, rgba(201,169,110,0.2) 30%, rgba(201,169,110,0.4) 50%, rgba(201,169,110,0.2) 70%, transparent 95%)',
+      }} />
+      <div className="absolute bottom-0 left-0 right-0 h-[1px]" style={{
+        background: 'linear-gradient(90deg, transparent 5%, rgba(201,169,110,0.2) 30%, rgba(201,169,110,0.4) 50%, rgba(201,169,110,0.2) 70%, transparent 95%)',
+      }} />
+
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Glamorous Luxury Header */}
         <div 
-          className={`text-center mb-6 sm:mb-10 transition-all duration-1000 ${
+          className={`text-center mb-8 sm:mb-12 transition-all duration-1000 ${
             isRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
         >
-          <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.35em] bg-gradient-to-r from-[#c6a664] via-[#d4af37] to-[#c6a664] bg-clip-text text-transparent font-semibold mb-3 animate-shimmer">
+          <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.4em] font-semibold mb-4" style={{
+            background: 'linear-gradient(90deg, #C9A96E, #E8D5A8, #C9A96E)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}>
             {t('divisions.groupName', language)}
           </span>
           
-          <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-medium mb-3 tracking-tight">
-            <span className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 bg-clip-text text-transparent">
+          <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-medium mb-4 tracking-tight">
+            <span className="text-white/90">
               {isHebrew ? 'עולם ' : 'The '}
             </span>
-            <span className="bg-gradient-to-r from-[#c6a664] via-[#d4af37] to-[#c6a664] bg-clip-text text-transparent font-bold">
+            <span style={{
+              background: 'linear-gradient(135deg, #C9A96E, #E8D5A8, #D4AF37)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }} className="font-bold">
               Pet Wash™
             </span>
-            <span className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 bg-clip-text text-transparent">
+            <span className="text-white/90">
               {isHebrew ? '' : ' Universe'}
             </span>
           </h2>
           
-          <div className="w-20 h-0.5 bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto rounded-full" />
+          <div className="w-24 h-[2px] mx-auto rounded-full" style={{
+            background: 'linear-gradient(90deg, transparent, #C9A96E, transparent)',
+          }} />
         </div>
 
-        {/* Glamorous 2x2 Divisions Grid */}
-        <div className="grid grid-cols-2 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5">
           {divisions.map((division, index) => {
             const Icon = division.icon;
             const isHovered = hoveredDivision === division.id;
@@ -151,105 +170,96 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                 href={division.link}
                 className={`block group transition-all duration-700 ${
                   isRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
-                }`}
-                style={{ transitionDelay: `${100 + index * 100}ms` }}
+                } ${index === divisions.length - 1 && divisions.length % 2 !== 0 ? 'col-span-2 max-w-[calc(50%-0.375rem)] sm:max-w-[calc(50%-0.625rem)] mx-auto' : ''}`}
+                style={{ transitionDelay: `${100 + index * 120}ms` }}
                 onMouseEnter={() => setHoveredDivision(division.id)}
                 onMouseLeave={() => setHoveredDivision(null)}
               >
                 <div 
-                  className={`
-                    relative p-4 sm:p-6 bg-white/80 backdrop-blur-sm rounded-2xl
-                    transition-all duration-500 ease-out h-full overflow-hidden
-                    border-2 shadow-sm
-                    ${isHovered 
-                      ? 'shadow-xl transform -translate-y-1 scale-[1.02]' 
-                      : 'hover:shadow-md border-slate-100'
-                    }
-                  `}
+                  className="relative p-4 sm:p-6 rounded-2xl sm:rounded-3xl transition-all duration-500 ease-out h-full overflow-hidden"
                   style={{
-                    borderColor: isHovered ? division.gradientFrom : undefined,
-                    boxShadow: isHovered ? `0 20px 40px -12px ${division.glowColor}` : undefined,
+                    background: isHovered 
+                      ? `linear-gradient(165deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)`
+                      : `linear-gradient(165deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)`,
+                    border: `1px solid ${isHovered ? `${division.accentFrom}50` : 'rgba(255,255,255,0.06)'}`,
+                    boxShadow: isHovered 
+                      ? `0 24px 48px -12px rgba(0,0,0,0.5), 0 0 0 1px ${division.accentFrom}30, 0 0 40px ${division.glowColor}`
+                      : '0 4px 16px -4px rgba(0,0,0,0.3)',
+                    transform: isHovered ? 'translateY(-4px) scale(1.02)' : 'translateY(0) scale(1)',
+                    backdropFilter: 'blur(20px)',
                   }}
                 >
-                  {/* Gradient glow overlay on hover */}
                   <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"
+                    className="absolute inset-0 rounded-2xl sm:rounded-3xl transition-opacity duration-700"
                     style={{
-                      background: `linear-gradient(135deg, ${division.gradientFrom}08 0%, ${division.gradientTo}05 100%)`,
+                      opacity: isHovered ? 0.12 : 0,
+                      background: `radial-gradient(ellipse at 30% 0%, ${division.accentFrom} 0%, transparent 70%)`,
                     }}
                   />
-                  
-                  {/* Glamorous Header with Icon */}
-                  <div className="relative flex items-start gap-2 sm:gap-3 mb-3">
-                    <div 
-                      className="p-2 sm:p-2.5 rounded-xl transition-all duration-500 shadow-sm flex-shrink-0"
-                      style={{
-                        background: isHovered 
-                          ? `linear-gradient(135deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`
-                          : `linear-gradient(135deg, ${division.gradientFrom}15 0%, ${division.gradientTo}10 100%)`,
-                        boxShadow: isHovered ? `0 8px 20px -6px ${division.glowColor}` : undefined,
-                      }}
+
+                  <div className="absolute top-0 left-0 right-0 h-[1px] rounded-t-2xl sm:rounded-t-3xl transition-opacity duration-500" style={{
+                    opacity: isHovered ? 1 : 0.3,
+                    background: `linear-gradient(90deg, transparent, ${isHovered ? division.accentFrom : 'rgba(255,255,255,0.15)'}, transparent)`,
+                  }} />
+
+                  <div className="relative flex flex-col h-full">
+                    <div className="flex items-start justify-between mb-3 sm:mb-4">
+                      <h3 
+                        className="font-serif text-sm sm:text-lg font-bold tracking-tight leading-tight transition-all duration-500 flex-1"
+                        style={{
+                          color: isHovered ? division.accentFrom : 'rgba(255,255,255,0.92)',
+                          textShadow: isHovered ? `0 0 30px ${division.glowColor}` : 'none',
+                        }}
+                      >
+                        {isHebrew ? division.nameHe : division.name}
+                      </h3>
+                      
+                      <div 
+                        className="flex-shrink-0 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl transition-all duration-500"
+                        style={{
+                          background: isHovered 
+                            ? `linear-gradient(135deg, ${division.accentFrom} 0%, ${division.accentTo} 100%)`
+                            : `linear-gradient(135deg, ${division.accentFrom}20 0%, ${division.accentTo}15 100%)`,
+                          boxShadow: isHovered ? `0 8px 24px -4px ${division.glowColor}, 0 0 0 1px ${division.accentFrom}40` : 'none',
+                        }}
+                      >
+                        <Icon 
+                          className="w-4 h-4 sm:w-5 sm:h-5 transition-all duration-500" 
+                          style={{ color: isHovered ? '#ffffff' : division.accentFrom }}
+                          strokeWidth={2}
+                        />
+                      </div>
+                    </div>
+
+                    <p 
+                      className="relative text-[9px] sm:text-xs font-semibold mb-2 sm:mb-3 leading-relaxed transition-colors duration-500"
+                      style={{ color: isHovered ? `${division.accentMid}` : 'rgba(255,255,255,0.45)' }}
                     >
-                      <Icon 
-                        className="w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-500" 
-                        style={{ color: isHovered ? '#ffffff' : division.gradientFrom }}
-                        strokeWidth={2}
+                      {division.tagline}
+                    </p>
+
+                    <p className="relative text-[10px] sm:text-sm leading-relaxed line-clamp-2 hidden sm:block mb-4 transition-colors duration-500"
+                      style={{ color: isHovered ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.35)' }}
+                    >
+                      {division.description}
+                    </p>
+
+                    <div className="relative flex items-center gap-1.5 mt-auto pt-2 sm:pt-3">
+                      <div className="w-full h-[1px] absolute top-0 left-0 right-0" style={{
+                        background: `linear-gradient(90deg, ${isHovered ? division.accentFrom + '40' : 'rgba(255,255,255,0.06)'}, transparent)`,
+                      }} />
+                      <span 
+                        className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.15em] transition-all duration-500"
+                        style={{ color: isHovered ? division.accentFrom : 'rgba(255,255,255,0.3)' }}
+                      >
+                        {t('divisions.learnMore', language)}
+                      </span>
+                      <ArrowRight 
+                        className={`w-3 h-3 sm:w-3.5 sm:h-3.5 transition-all duration-500 ${isHovered ? 'translate-x-1' : ''} ${isHebrew ? 'rotate-180' : ''}`}
+                        style={{ color: isHovered ? division.accentFrom : 'rgba(255,255,255,0.3)' }}
+                        strokeWidth={2.5}
                       />
                     </div>
-                    
-                    <h3 
-                      className="font-serif text-sm sm:text-base font-semibold tracking-tight leading-tight transition-all duration-300"
-                      style={{
-                        background: isHovered 
-                          ? `linear-gradient(135deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`
-                          : 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
-                      }}
-                    >
-                      {isHebrew ? division.nameHe : division.name}
-                    </h3>
-                  </div>
-
-                  {/* Tagline with gradient */}
-                  <p 
-                    className="relative text-[9px] sm:text-xs uppercase tracking-[0.1em] font-semibold mb-2 leading-tight"
-                    style={{
-                      background: `linear-gradient(90deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`,
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                    }}
-                  >
-                    {division.tagline}
-                  </p>
-
-                  {/* Description - Hidden on mobile for compactness */}
-                  <p className="relative text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-2 hidden sm:block mb-3">
-                    {division.description}
-                  </p>
-
-                  {/* Glamorous CTA with gradient */}
-                  <div className="relative flex items-center gap-1.5 mt-2 sm:mt-4">
-                    <span 
-                      className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.12em] transition-all duration-500"
-                      style={{
-                        background: isHovered 
-                          ? `linear-gradient(90deg, ${division.gradientFrom} 0%, ${division.gradientTo} 100%)`
-                          : 'linear-gradient(90deg, #94a3b8 0%, #64748b 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
-                      }}
-                    >
-                      {t('divisions.learnMore', language)}
-                    </span>
-                    <ArrowRight 
-                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all duration-500 ${isHovered ? 'translate-x-1' : ''} ${isHebrew ? 'rotate-180' : ''}`}
-                      style={{ color: isHovered ? division.gradientFrom : '#94a3b8' }}
-                      strokeWidth={2.5}
-                    />
                   </div>
                 </div>
               </Link>
