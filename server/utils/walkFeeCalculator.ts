@@ -195,10 +195,10 @@ export function validateWalkFeeCalculation(fees: WalkFeeCalculation): boolean {
     return false;
   }
   
-  // Check all amounts are positive
+  // Check all amounts are positive (owner fee is 0% by design - skip that check)
   if (
     fees.basePriceCents <= 0 ||
-    fees.platformServiceFeeOwnerCents <= 0 ||
+    fees.platformServiceFeeOwnerCents < 0 ||
     fees.walkerFeeCents <= 0 ||
     fees.walkerPayoutCents <= 0 ||
     fees.platformCommissionTotalCents <= 0 ||

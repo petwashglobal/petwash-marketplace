@@ -109,8 +109,8 @@ export class IsraeliInvoiceGenerator {
       .fontSize(10)
       .font("Helvetica")
       .moveDown(0.5)
-      .text("ח.פ: 123456789", { align: "right" })
-      .text("רח' הרצל 1, תל אביב", { align: "right" })
+      .text("ח.פ: 516788400", { align: "right" })
+      .text("ישראל", { align: "right" })
       .text("טלפון: 03-1234567", { align: "right" })
       .text("דוא\"ל: invoices@petwash.co.il", { align: "right" });
 
@@ -231,8 +231,8 @@ export class IsraeliInvoiceGenerator {
       .fontSize(10)
       .font("Helvetica")
       .moveDown(0.5)
-      .text("Company No: 123456789", { align: "left" })
-      .text("1 Herzl St, Tel Aviv, Israel", { align: "left" })
+      .text("Company No: 516788400", { align: "left" })
+      .text("Israel", { align: "left" })
       .text("Phone: +972-3-1234567", { align: "left" })
       .text("Email: invoices@petwash.co.il", { align: "left" });
 

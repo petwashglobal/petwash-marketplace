@@ -237,7 +237,8 @@ export class IsraeliContractorComplianceService {
 
   /**
    * Calculate commission for a booking
-   * Pet Wash takes 15-25% broker fee (like Airbnb/Uber)
+   * Pet Wash takes 5-25% broker fee depending on platform
+   * Sitter Suite: 7.5% broker, Walk My Pet: 20%, PetTrek: 15%
    */
   static async calculateCommission(
     providerId: string,
@@ -247,9 +248,9 @@ export class IsraeliContractorComplianceService {
     commissionRate: number = 20 // Default 20%
   ): Promise<CommissionCalculation> {
     try {
-      // Validate commission rate (15-25% allowed)
-      if (commissionRate < 15 || commissionRate > 25) {
-        throw new Error('Commission rate must be between 15% and 25%');
+      // Validate commission rate (5-25% allowed per platform-specific rates)
+      if (commissionRate < 5 || commissionRate > 25) {
+        throw new Error('Commission rate must be between 5% and 25%');
       }
 
       // Calculate amounts (Israeli VAT Law - marketplace broker model)

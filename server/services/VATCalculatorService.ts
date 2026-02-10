@@ -1,13 +1,35 @@
 /**
  * VAT Calculator Service for Israeli Tax Compliance
  * Israeli VAT Rate: 18% (effective January 1, 2025)
- * VAT applied ONLY to platform commission, NOT to base service rate
+ * 
+ * Platform-specific commission rates (aligned with fee calculators):
+ * - Sitter Suite: 7.5% broker + 10% service fee = 17.5% effective
+ * - Walk My Pet: 20% walker fee (0% owner fee)
+ * - PetTrek: 15% platform fee
+ * - Other: 15% default
+ * 
+ * Dual-save: Records to both Firestore (real-time) and PostgreSQL (legal compliance)
  */
 
 import admin from "firebase-admin";
+import { db } from '../db';
+import { digitalReceipts } from '@shared/schema';
+import { logger } from '../lib/logger';
+import { nanoid } from 'nanoid';
+import { createHash } from 'crypto';
 
 export const ISRAELI_VAT_RATE = 0.18;
 export const PLATFORM_COMMISSION_RATE = 0.15;
+
+const PLATFORM_COMMISSION_RATES: Record<string, number> = {
+  'sitter-suite': 0.175,
+  'walk-my-pet': 0.20,
+  'pettrek': 0.15,
+  'pet-wash-hub': 0.15,
+  'paw-finder': 0.15,
+  'plush-lab': 0.15,
+  'enterprise': 0.15,
+};
 
 export interface VATCalculation {
   baseAmount: number;
@@ -38,7 +60,11 @@ export interface PLedgerEntry {
 }
 
 class VATCalculatorService {
-  private db = admin.firestore();
+  private firestore = admin.firestore();
+
+  getCommissionRate(platform: string): number {
+    return PLATFORM_COMMISSION_RATES[platform] || PLATFORM_COMMISSION_RATE;
+  }
 
   calculateVAT(baseAmount: number, commissionRate: number = PLATFORM_COMMISSION_RATE): VATCalculation {
     const commission = baseAmount * commissionRate;
@@ -66,11 +92,12 @@ class VATCalculatorService {
     bookingId?: string,
     metadata?: any
   ): Promise<PLedgerEntry> {
-    const vatCalc = this.calculateVAT(baseAmount);
+    const platformRate = this.getCommissionRate(platform);
+    const vatCalc = this.calculateVAT(baseAmount, platformRate);
 
-    const ledgerRef = this.db.collection("profit_loss_ledger").doc();
+    const entryId = `PL-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
     const entry: PLedgerEntry = {
-      id: ledgerRef.id,
+      id: entryId,
       platform,
       transactionId,
       bookingId,
@@ -86,8 +113,65 @@ class VATCalculatorService {
       metadata,
     };
 
-    await ledgerRef.set(entry);
-    console.log(`[VATCalculator] Transaction recorded: ${platform} - ₪${vatCalc.totalCharged.toFixed(2)}`);
+    try {
+      const ledgerRef = this.firestore.collection("profit_loss_ledger").doc(entryId);
+      await ledgerRef.set(entry);
+    } catch (firestoreError: any) {
+      logger.warn('[VATCalculator] Firestore write failed (non-critical)', {
+        platform,
+        transactionId,
+        error: firestoreError.message,
+      });
+    }
+
+    try {
+      const receiptNumber = `PL-${entryId}`;
+      const issuedAt = new Date();
+      const auditHash = createHash('sha256').update(JSON.stringify({
+        receiptNumber,
+        totalAmount: vatCalc.totalCharged,
+        vatAmount: vatCalc.vatOnCommission,
+        customerEmail: `platform-${platform}@internal`,
+        issuedAt: issuedAt.toISOString(),
+        companyTaxId: '516788400',
+      })).digest('hex');
+
+      await db.insert(digitalReceipts).values({
+        receiptNumber,
+        receiptType: 'pl_ledger_entry',
+        platform,
+        bookingId: bookingId || transactionId,
+        customerEmail: `platform-${platform}@internal`,
+        customerName: `PetWash ${platform} Platform`,
+        serviceDescription: `P&L ledger entry - ${platform} - Transaction ${transactionId}`,
+        serviceDescriptionHe: `רשומת רווח והפסד - ${platform} - עסקה ${transactionId}`,
+        subtotalAmount: vatCalc.baseAmount.toFixed(2),
+        vatRate: (ISRAELI_VAT_RATE * 100).toFixed(2),
+        vatAmount: vatCalc.vatOnCommission.toFixed(2),
+        platformFeeAmount: vatCalc.commission.toFixed(2),
+        totalAmount: vatCalc.totalCharged.toFixed(2),
+        currency: 'ILS',
+        providerPayoutAmount: vatCalc.netToProvider.toFixed(2),
+        brokerCommissionAmount: vatCalc.commission.toFixed(2),
+        paymentMethod: 'internal_ledger',
+        paymentStatus: 'completed',
+        companyName: 'Pet Wash Ltd',
+        companyTaxId: '516788400',
+        companyAddress: 'ישראל',
+        auditHash,
+        accountingRecorded: true,
+        accountingEntryId: entryId,
+        issuedAt,
+      });
+    } catch (pgError: any) {
+      logger.error('[VATCalculator] PostgreSQL dual-save FAILED - legal compliance gap', {
+        platform,
+        transactionId,
+        error: pgError.message,
+      });
+    }
+
+    logger.info(`[VATCalculator] Transaction recorded: ${platform} - ₪${vatCalc.totalCharged.toFixed(2)} (rate: ${(platformRate * 100).toFixed(1)}%)`);
     
     return entry;
   }
@@ -103,7 +187,7 @@ class VATCalculatorService {
     netProfit: number;
     transactionCount: number;
   }> {
-    const snapshot = await this.db
+    const snapshot = await this.firestore
       .collection("profit_loss_ledger")
       .where("platform", "==", platform)
       .where("date", ">=", startDate)
