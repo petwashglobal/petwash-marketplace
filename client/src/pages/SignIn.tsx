@@ -27,6 +27,23 @@ import { trackAuthError } from "@/lib/authErrorTracker";
 import { trustDevice, isDeviceTrusted } from "@/lib/deviceTrust";
 import { motion, AnimatePresence } from "framer-motion";
 
+function getBiometricButtonLabel(language: Language): string {
+  const ua = navigator.userAgent;
+  if (/Android/.test(ua)) {
+    return language === 'he' ? 'התחבר עם טביעת אצבע' : 'Sign in with Fingerprint';
+  }
+  if (/iPhone|iPad|iPod/.test(ua)) {
+    return language === 'he' ? 'התחבר עם Face ID' : 'Sign in with Face ID';
+  }
+  if (/Macintosh|Mac OS X/.test(ua)) {
+    return language === 'he' ? 'התחבר עם Touch ID' : 'Sign in with Touch ID';
+  }
+  if (/Windows/.test(ua)) {
+    return language === 'he' ? 'התחבר עם Windows Hello' : 'Sign in with Windows Hello';
+  }
+  return language === 'he' ? 'התחבר עם Passkey' : 'Sign in with Passkey';
+}
+
 interface SignInProps {
   language: Language;
   onLanguageChange?: (lang: Language) => void;
@@ -961,7 +978,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
   // Show auto Face ID loading state
   if (autoFaceID.isLoading && !forcePasswordMode) {
-    return <FaceIDLoadingState language={language} onCancel={handleUsePasswordInstead} />;
+    return <FaceIDLoadingState state={autoFaceID.state} message={autoFaceID.message} language={language} onUsePasswordInstead={handleUsePasswordInstead} />;
   }
 
   // Show already logged in state
@@ -1085,8 +1102,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
                 ) : (
                   <>
-                    <ScanFace className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
-                    {t('signin.continueFaceID', language)}
+                    {/Android/.test(navigator.userAgent) ? (
+                      <Fingerprint className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
+                    ) : (
+                      <ScanFace className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
+                    )}
+                    {getBiometricButtonLabel(language)}
                   </>
                 )}
               </Button>
