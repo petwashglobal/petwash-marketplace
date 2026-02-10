@@ -355,7 +355,7 @@ export default function WalkBookingFlow() {
                         key={pet.id}
                         type="button"
                         onClick={() => togglePet(pet.id)}
-                        className={`rounded-full px-4 py-2 text-sm transition-all ${
+                        className={`rounded-full px-5 py-3 min-h-[44px] text-sm transition-all touch-manipulation ${
                           active
                             ? "bg-blue-500 text-white shadow-md"
                             : "bg-white text-slate-700 border border-slate-200"

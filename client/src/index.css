@@ -3837,6 +3837,19 @@ body {
   }
 }
 
+/* Static/kiosk device adjustments (touch screens without keyboard) */
+@media (pointer: coarse) {
+  .pac-item {
+    padding: 16px 18px !important;
+    min-height: 56px !important;
+  }
+  
+  .pac-icon {
+    width: 24px !important;
+    height: 24px !important;
+  }
+}
+
 /* RTL support for Google Places */
 [dir="rtl"] .pac-container {
   text-align: right !important;

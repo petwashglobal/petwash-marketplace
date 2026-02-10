@@ -194,7 +194,7 @@ export function GooglePlacesAutocomplete({
   return (
     <div className={`space-y-2 ${className}`}>
       {label && (
-        <Label htmlFor="google-places-input" className="text-base font-medium">
+        <Label className="text-base font-medium">
           {label} {required && <span className="text-red-500">*</span>}
         </Label>
       )}
@@ -205,20 +205,20 @@ export function GooglePlacesAutocomplete({
         )}
         <Input
           ref={inputRef}
-          id="google-places-input"
           type="text"
           inputMode="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className={`
-            pl-12 pr-12 py-6 text-base
-            min-h-[56px]
+            pl-12 pr-12 py-4 sm:py-6 text-base
+            min-h-[48px] sm:min-h-[56px]
             rounded-xl
             border-2
             focus:ring-2 focus:ring-blue-500
             transition-all
             text-gray-900 placeholder:text-gray-500
+            touch-manipulation
             ${error ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'}
             ${isLoading ? 'bg-blue-50' : 'bg-white'}
           `}
@@ -226,6 +226,7 @@ export function GooglePlacesAutocomplete({
             color: '#1f2937',
             fontSize: '16px',
             WebkitAppearance: 'none',
+            WebkitTapHighlightColor: 'transparent',
           }}
           required={required}
           autoComplete="off"
@@ -240,11 +241,6 @@ export function GooglePlacesAutocomplete({
       {error && (
         <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
           <span className="font-medium">⚠️</span> {error}
-        </p>
-      )}
-      {!error && !isLoading && value && (
-        <p className="text-sm text-gray-500 mt-1">
-          ✅ Start typing to see suggestions. Your address will auto-fill instantly.
         </p>
       )}
     </div>

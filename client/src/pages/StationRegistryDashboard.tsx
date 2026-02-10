@@ -225,8 +225,8 @@ export default function StationRegistryDashboard() {
             <DialogDescription>Add a new Pet Wash Hub™ to the canonical registry</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateStation} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
                 <Label htmlFor="stationId">Station ID (Canonical) *</Label>
                 <Input 
                   id="stationId" 
@@ -245,7 +245,7 @@ export default function StationRegistryDashboard() {
                 <Label htmlFor="stationNameHe">Station Name (Hebrew)</Label>
                 <Input id="stationNameHe" name="stationNameHe" dir="rtl" data-testid="input-station-name-he" />
               </div>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <Label htmlFor="address">Address *</Label>
                 <GooglePlacesAutocomplete
                   value={stationAddress}
