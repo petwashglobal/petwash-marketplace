@@ -923,7 +923,7 @@ export function MadPawsSearch({
             <label className="block text-xs font-medium text-gray-500 mb-1.5">
               {isHebrew ? 'תאריכים' : 'Dates'}
             </label>
-            {/* Mobile-friendly native date inputs - works perfectly on iOS/Android */}
+            {/* Mobile-friendly native date inputs - works on iOS/Android */}
             <div className="flex gap-2 h-12">
               <div className="relative flex-1">
                 <CalendarDays className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
@@ -931,15 +931,17 @@ export function MadPawsSearch({
                   type="date"
                   value={startDate && isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : ''}
                   onChange={(e) => {
-                    if (!e.target.value) {
+                    const val = e.target.value;
+                    if (!val) {
                       setStartDate(undefined);
                       return;
                     }
-                    const date = new Date(e.target.value + 'T12:00:00');
+                    const [y, m, d] = val.split('-').map(Number);
+                    const date = new Date(y, m - 1, d, 12, 0, 0);
                     if (isValid(date)) {
                       setStartDate(date);
-                      if (endDate && isValid(endDate) && endDate < date) {
-                        setEndDate(undefined);
+                      if (endDate && isValid(endDate) && endDate <= date) {
+                        setEndDate(addDays(date, 1));
                       }
                     }
                   }}
@@ -954,16 +956,21 @@ export function MadPawsSearch({
                   type="date"
                   value={endDate && isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : ''}
                   onChange={(e) => {
-                    if (!e.target.value) {
+                    const val = e.target.value;
+                    if (!val) {
                       setEndDate(undefined);
                       return;
                     }
-                    const date = new Date(e.target.value + 'T12:00:00');
+                    const [y, m, d] = val.split('-').map(Number);
+                    const date = new Date(y, m - 1, d, 12, 0, 0);
                     if (isValid(date)) {
                       setEndDate(date);
+                      if (startDate && isValid(startDate) && date <= startDate) {
+                        setStartDate(addDays(date, -1));
+                      }
                     }
                   }}
-                  min={startDate && isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')}
+                  min={startDate && isValid(startDate) ? format(addDays(startDate, 1), 'yyyy-MM-dd') : format(addDays(new Date(), 1), 'yyyy-MM-dd')}
                   className="w-full h-12 ps-9 pe-2 text-sm bg-white border border-gray-200 rounded-xl hover:border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors cursor-pointer"
                   data-testid="input-end-date"
                 />
