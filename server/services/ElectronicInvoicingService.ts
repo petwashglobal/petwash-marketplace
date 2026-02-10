@@ -3,6 +3,7 @@ import { electronicInvoices } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import IsraeliTaxAPIService, { type InvoiceSubmissionPayload } from './IsraeliTaxAPIService';
+import { GoogleSheetsService } from './googleSheetsIntegration';
 
 const THRESHOLD_B2B_ELECTRONIC = 25000; // ₪25,000 - B2B threshold for mandatory electronic invoicing (2025)
 
@@ -132,6 +133,21 @@ class ElectronicInvoicingService {
         complianceStatus: 'compliant',
         createdBy: params.createdBy || 'system',
       }).returning();
+
+      GoogleSheetsService.logInvoice({
+        invoiceId,
+        invoiceNumber,
+        customerName: params.customerName,
+        customerEmail: params.customerEmail || '',
+        amount: amounts.amountBeforeVat.toString(),
+        vatAmount: amounts.vatAmount.toString(),
+        totalAmount: amounts.totalAmount.toString(),
+        currency: params.currency || 'ILS',
+        dueDate: new Date().toISOString().split('T')[0],
+        paymentStatus: 'paid',
+        description: params.lineItems.map(i => i.description).join(', '),
+        platform: params.serviceType,
+      }).catch(err => logger.error('[Electronic Invoicing] Google Sheets logging failed - DB record saved', err));
 
       if (requiresElectronic && IsraeliTaxAPIService.isConfigured()) {
         logger.info('[Electronic Invoicing] Submitting to ITA API (B2B ≥ ₪25,000)', {

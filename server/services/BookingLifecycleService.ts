@@ -8,6 +8,7 @@ import {
   providerRateCards,
   providerAvailability,
   quoteRequests,
+  users,
   BOOKING_STATUS_TRANSITIONS,
   type BookingLifecycleStatus,
   PETWASH_COMMISSION_RATE
@@ -15,6 +16,7 @@ import {
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
+import { GoogleSheetsService } from './googleSheetsIntegration';
 
 const VAT_RATE = 0.18;
 const ESCROW_HOURS = 72;
@@ -312,6 +314,56 @@ class BookingLifecycleService {
     await this.recordStatusChange(bookingId, null, 'inquiry', input.customerId, 'customer', 'Booking created');
 
     logger.info('[BookingLifecycle] Booking created', { bookingId, bookingNumber });
+
+    const totalAmount = (quote.totalCents / 100).toFixed(2);
+
+    (async () => {
+      try {
+        let customerName = input.customerId;
+        let customerEmail = '';
+        let customerPhone = '';
+
+        try {
+          const [customer] = await db.select({
+            firstName: users.firstName,
+            lastName: users.lastName,
+            email: users.email,
+            phone: users.phone,
+          }).from(users).where(eq(users.id, input.customerId)).limit(1);
+
+          if (customer) {
+            customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || input.customerId;
+            customerEmail = customer.email || '';
+            customerPhone = customer.phone || '';
+          }
+        } catch { /* fallback to customerId */ }
+
+        const platformBookingLoggers: Record<string, (data: any) => Promise<any>> = {
+          sitter_suite: GoogleSheetsService.logSitterBooking,
+          walk_my_pet: GoogleSheetsService.logWalkerBooking,
+          pettrek: GoogleSheetsService.logPetTrekBooking,
+          k9000: GoogleSheetsService.logK9000Booking,
+        };
+
+        const logFn = platformBookingLoggers[input.platformId] || GoogleSheetsService.logSitterBooking;
+
+        await logFn({
+          bookingId: bookingNumber,
+          customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          petName: `${input.petIds.length} pet(s)`,
+          stationLocation: input.platformId,
+          washType: input.serviceType,
+          dateTime: input.startTime.toISOString(),
+          amount: parseFloat(totalAmount),
+          paymentStatus: 'Pending',
+          notes: input.specialRequests || '',
+        });
+      } catch (err: any) {
+        logger.error('[BookingLifecycle] Google Sheets logging failed - DB record saved', err);
+      }
+    })();
 
     return { bookingId, bookingNumber };
   }

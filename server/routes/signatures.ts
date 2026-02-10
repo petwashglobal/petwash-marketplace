@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import crypto from 'crypto';
 import { recordAuditEvent } from "../utils/auditSignature";
+import { GoogleSheetsService } from "../services/googleSheetsIntegration";
 
 const router = Router();
 
@@ -208,6 +209,18 @@ router.post("/documents/sign", verifyCEOAccess, async (req: Request, res: Respon
       documentTitle: data.documentTitle,
       signedBy: data.signedBy,
     });
+
+    GoogleSheetsService.logESignature({
+      signatureId: signedDoc.id.toString(),
+      documentTitle: data.documentTitle,
+      signerName: data.signedBy,
+      signerEmail: user.email || '',
+      documentType: data.documentType,
+      contractReference: signedDoc.documentHash || '',
+      signatureStatus: 'Signed',
+      signedAt: new Date().toISOString(),
+      ipAddress: req.ip || 'Unknown',
+    }).catch(err => logger.error('[Signatures API] Google Sheets logging failed - DB record saved', err));
     
     res.json({ document: signedDoc });
   } catch (error: any) {

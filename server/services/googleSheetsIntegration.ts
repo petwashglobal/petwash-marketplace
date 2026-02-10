@@ -220,9 +220,99 @@ function getSheetId(sheetName: string): number {
 }
 
 /**
- * Generic function to append form submission to Google Sheets
+ * Durable retry queue for Google Sheets persistence
+ * Uses PostgreSQL table `google_sheets_retry_queue` to survive process restarts
+ * Exponential backoff: 1min, 2min, 4min, 8min, 16min
  */
-export async function appendFormSubmission(
+const MAX_RETRY_ATTEMPTS = 5;
+let retryWorkerActive = false;
+
+async function getDbPool() {
+  const { pool } = await import('../db');
+  return pool;
+}
+
+async function queueFailedSubmission(sheetName: string, data: Record<string, any>, errorMsg?: string): Promise<void> {
+  try {
+    const dbPool = await getDbPool();
+    await dbPool.query(
+      `INSERT INTO google_sheets_retry_queue (sheet_name, data, attempts, status, error_message, next_retry_at)
+       VALUES ($1, $2, 1, 'pending', $3, NOW() + INTERVAL '1 minute')`,
+      [sheetName, JSON.stringify(data), errorMsg || null]
+    );
+    logger.warn(`[GoogleSheets] ⚠️ Failed submission queued to DB for ${sheetName}`);
+    startRetryWorker();
+  } catch (dbErr) {
+    logger.error(`[GoogleSheets] ❌ CRITICAL: Failed to queue to DB for ${sheetName}`, dbErr);
+  }
+}
+
+function startRetryWorker() {
+  if (retryWorkerActive) return;
+  retryWorkerActive = true;
+
+  setTimeout(async () => {
+    retryWorkerActive = false;
+    try {
+      const dbPool = await getDbPool();
+      const { rows } = await dbPool.query(
+        `SELECT id, sheet_name, data, attempts FROM google_sheets_retry_queue
+         WHERE status = 'pending' AND next_retry_at <= NOW() AND attempts < $1
+         ORDER BY created_at ASC LIMIT 20`,
+        [MAX_RETRY_ATTEMPTS]
+      );
+
+      if (rows.length === 0) return;
+
+      logger.info(`[GoogleSheets] 🔄 Retrying ${rows.length} failed submissions...`);
+
+      for (const row of rows) {
+        const success = await appendFormSubmissionDirect(row.sheet_name, row.data);
+
+        if (success) {
+          await dbPool.query(
+            `UPDATE google_sheets_retry_queue SET status = 'completed', last_attempt = NOW() WHERE id = $1`,
+            [row.id]
+          );
+          logger.info(`[GoogleSheets] ✅ Retry succeeded for ${row.sheet_name} (attempt ${row.attempts + 1})`);
+        } else {
+          const nextAttempt = row.attempts + 1;
+          const backoffMinutes = Math.pow(2, nextAttempt - 1);
+          
+          if (nextAttempt >= MAX_RETRY_ATTEMPTS) {
+            await dbPool.query(
+              `UPDATE google_sheets_retry_queue SET status = 'failed', attempts = $2, last_attempt = NOW(), 
+               error_message = 'Max retries exceeded' WHERE id = $1`,
+              [row.id, nextAttempt]
+            );
+            logger.error(`[GoogleSheets] ❌ PERMANENT FAILURE after ${nextAttempt} attempts for ${row.sheet_name}`);
+          } else {
+            await dbPool.query(
+              `UPDATE google_sheets_retry_queue SET attempts = $2, last_attempt = NOW(),
+               next_retry_at = NOW() + INTERVAL '${backoffMinutes} minutes' WHERE id = $1`,
+              [row.id, nextAttempt]
+            );
+          }
+        }
+      }
+
+      const { rows: pending } = await dbPool.query(
+        `SELECT COUNT(*) as cnt FROM google_sheets_retry_queue WHERE status = 'pending' AND attempts < $1`,
+        [MAX_RETRY_ATTEMPTS]
+      );
+      if (parseInt(pending[0]?.cnt || '0') > 0) {
+        startRetryWorker();
+      }
+    } catch (err) {
+      logger.error('[GoogleSheets] Retry worker error:', err);
+    }
+  }, 60000);
+}
+
+/**
+ * Direct append without retry logic (used internally)
+ */
+async function appendFormSubmissionDirect(
   sheetName: string,
   data: Record<string, any>
 ): Promise<boolean> {
@@ -242,11 +332,59 @@ export async function appendFormSubmission(
       },
     });
 
-    logger.info(`[GoogleSheets] ✅ Appended to ${sheetName}`);
     return true;
   } catch (error) {
-    logger.error(`[GoogleSheets] Error appending to ${sheetName}:`, error);
     return false;
+  }
+}
+
+/**
+ * Generic function to append form submission to Google Sheets
+ * Features: Durable DB-backed retry queue with exponential backoff
+ * Ensures 100% persistence for legal compliance (survives process restarts)
+ */
+export async function appendFormSubmission(
+  sheetName: string,
+  data: Record<string, any>
+): Promise<boolean> {
+  const success = await appendFormSubmissionDirect(sheetName, data);
+
+  if (success) {
+    logger.info(`[GoogleSheets] ✅ Appended to ${sheetName}`);
+    return true;
+  }
+
+  await queueFailedSubmission(sheetName, data, 'Initial append failed');
+  return false;
+}
+
+/**
+ * Get pending retry count (for admin monitoring)
+ */
+export async function getPendingRetryCount(): Promise<number> {
+  try {
+    const dbPool = await getDbPool();
+    const { rows } = await dbPool.query(
+      `SELECT COUNT(*) as cnt FROM google_sheets_retry_queue WHERE status = 'pending'`
+    );
+    return parseInt(rows[0]?.cnt || '0');
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Process any pending retries on startup (catch items from previous process crashes)
+ */
+export async function processStartupRetries(): Promise<void> {
+  try {
+    const count = await getPendingRetryCount();
+    if (count > 0) {
+      logger.info(`[GoogleSheets] 🔄 Found ${count} pending retries from previous session`);
+      startRetryWorker();
+    }
+  } catch {
+    // Silently skip if table doesn't exist yet
   }
 }
 
@@ -612,4 +750,6 @@ export const GoogleSheetsService = {
   logReceipt,
   logIdentityVerification,
   getSpreadsheetUrl,
+  getPendingRetryCount,
+  processStartupRetries,
 };

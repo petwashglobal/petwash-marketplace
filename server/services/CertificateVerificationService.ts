@@ -429,6 +429,29 @@ export class CertificateVerificationService {
       .returning();
     
     logger.info('[CertificateVerification] Saved to database', { id: record.id });
+
+    try {
+      const { GoogleSheetsService } = await import('./googleSheetsIntegration');
+      await GoogleSheetsService.logIdentityVerification({
+        verificationId: record.id.toString(),
+        userId: data.userId || '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        documentType: data.documentType || '',
+        country: data.documentCountry || 'IL',
+        selfieUrl: data.selfieStoragePath || '',
+        idPhotoUrl: data.documentFrontStoragePath || '',
+        biometricScore: (data.biometricMatchScore || 0).toString(),
+        biometricMatchStatus: data.status || 'pending',
+        verificationStatus: data.status || 'pending',
+        manualReviewRequired: data.requiresManualReview || false,
+      });
+      logger.info('[CertificateVerification] Logged to Google Sheets', { id: record.id });
+    } catch (sheetsErr) {
+      logger.error('[CertificateVerification] Google Sheets logging failed - DB record saved', sheetsErr);
+    }
+
     return record;
   }
 

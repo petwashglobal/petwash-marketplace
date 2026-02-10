@@ -10,6 +10,7 @@ import { auth, storage } from '../lib/firebase-admin';
 import { biometricVerification } from '../services/BiometricVerificationService';
 import { logger } from '../lib/logger';
 import { isSuperAdmin } from '../middleware/rbac';
+import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import multer from 'multer';
 
 const router = Router();
@@ -467,6 +468,22 @@ router.post('/apply', upload.fields([
     }
 
     logger.info(`[Provider Onboarding] Application submitted: ${applicationId} by ${authenticatedUser.uid}`);
+
+    GoogleSheetsService.logProviderApplication({
+      applicationId,
+      firstName,
+      lastName,
+      email: authenticatedUser.email || '',
+      phone: phoneNumber,
+      providerType,
+      city,
+      country: country || 'IL',
+      selfiePhotoUrl: selfieUrl || '',
+      governmentIdUrl: governmentIdUrl || '',
+      biometricStatus,
+      biometricScore: biometricMatchScore.toString(),
+      applicationStatus: 'Pending Review',
+    }).catch(err => logger.error('[Provider Onboarding] Google Sheets logging failed - DB record saved', err));
 
     res.json({
       success: true,

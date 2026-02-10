@@ -6,6 +6,7 @@ import { TIER_CONFIGS, type TierConfig } from '@shared/schema-loyalty';
 import { eq } from 'drizzle-orm';
 import type { SmartWashReceipt, InsertSmartWashReceipt, User, WashPackage } from '@shared/schema';
 import { logger } from './lib/logger';
+import { GoogleSheetsService } from './services/googleSheetsIntegration';
 
 export interface SmartReceiptRequest {
   userId?: string;
@@ -261,6 +262,19 @@ export class SmartReceiptService {
         .insert(smartWashReceipts)
         .values(receiptData)
         .returning();
+
+      GoogleSheetsService.logReceipt({
+        receiptId: createdReceipt.id.toString(),
+        transactionId,
+        customerName: request.customerName || user?.firstName || 'Customer',
+        email: request.customerEmail,
+        amount: request.finalTotal.toString(),
+        paymentMethod: request.paymentMethod,
+        platform: 'K9000',
+        serviceType: washPackage.name,
+        description: `${washPackage.name} @ ${request.locationName || 'Pet Wash™ Premium Station'}`,
+        status: 'Completed',
+      }).catch(err => logger.error('[SmartReceipt] Google Sheets logging failed - DB record saved', err));
 
       // Update user's loyalty analytics
       if (request.userId) {
