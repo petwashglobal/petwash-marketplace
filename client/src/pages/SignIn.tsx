@@ -923,7 +923,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-md"
         >
-          <div className="luxury-glass-card luxury-shadow-xl p-8 space-y-8 relative">
+          <div className="luxury-glass-card p-8 space-y-8 relative border-t-4 border-t-[#0f3460] shadow-[0_8px_40px_rgba(15,52,96,0.12),0_2px_8px_rgba(0,0,0,0.06)]">
           {/* Close/Back Button */}
           <button
             onClick={() => navigate("/")}
@@ -945,15 +945,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", duration: 0.6, delay: 0.2 }}
-              className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto flex items-center justify-center luxury-shadow-xl"
+              className="w-20 h-20 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] rounded-3xl mx-auto flex items-center justify-center shadow-[0_8px_32px_rgba(15,52,96,0.4)]"
             >
-              <Sparkles className="w-10 h-10 text-white" />
+              <Sparkles className="w-10 h-10 text-amber-400" />
             </motion.div>
             <div className="space-y-2">
-              <h1 className="luxury-heading-xl">
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-[#1a1a2e] via-[#0f3460] to-[#533483] bg-clip-text text-transparent">
                 {t('signin.welcomeBack', language)}
               </h1>
-              <p className="text-gray-600 text-base sm:text-lg md:text-lg lg:text-base">
+              <p className="text-gray-600 text-base sm:text-lg">
                 {t('signin.signInContinue', language)}
               </p>
             </div>
@@ -969,15 +969,16 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             <Button
               onClick={() => handleSocialLogin('google')}
               disabled={!!socialLoading}
-              className="luxury-btn-secondary w-full h-14 sm:h-16 md:h-16 lg:h-14 text-base font-medium"
+              variant="outline"
+              className="w-full h-14 sm:h-16 lg:h-14 text-base font-semibold border-2 border-gray-200 bg-white hover:bg-gray-50 text-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-all"
               data-testid="button-gmail-signin"
             >
               {socialLoading === 'google' ? (
                 <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
               ) : (
                 <>
-                  <SiGmail className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-red-600" />
-                  {t('signin.continueGmail', language)}
+                  <SiGmail className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-red-500" />
+                  <span className="text-gray-800">{t('signin.continueGmail', language)}</span>
                 </>
               )}
             </Button>
@@ -986,7 +987,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 onClick={handlePasskeySignIn}
                 disabled={passkeyLoading}
-                className="luxury-btn-secondary w-full h-14 sm:h-16 md:h-16 lg:h-14 text-base font-medium"
+                className="w-full h-14 sm:h-16 lg:h-14 text-base font-semibold bg-gradient-to-r from-[#1a1a2e] to-[#16213e] hover:from-[#0f3460] hover:to-[#1a1a2e] text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
                 data-testid="button-passkey-signin"
               >
                 {passkeyLoading ? (
@@ -1004,10 +1005,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             {isPinLoginAvailable && (
               <Button
                 onClick={() => setPinMode(true)}
-                className="luxury-btn-secondary w-full h-14 sm:h-16 md:h-16 lg:h-14 text-base font-medium bg-gradient-to-r from-[#000000]/10 to-[#333333]/10 hover:from-[#000000]/20 hover:to-[#333333]/20 border-[#000000]/30"
+                variant="outline"
+                className="w-full h-14 sm:h-16 lg:h-14 text-base font-semibold border-2 border-[#533483]/30 bg-[#533483]/5 hover:bg-[#533483]/10 text-[#533483] rounded-2xl shadow-sm hover:shadow-md transition-all"
                 data-testid="button-pin-signin"
               >
-                <KeyRound className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-[#000000] dark:text-[#FFFFFF]" />
+                <KeyRound className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-[#533483]" />
                 {language === 'he' ? 'התחבר עם קוד PIN' : 'Sign in with PIN'}
               </Button>
             )}
@@ -1015,11 +1017,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             {/* Phone Login Option */}
             <Button
               onClick={() => setPhoneMode(true)}
-              className="luxury-btn-secondary w-full h-14 sm:h-16 md:h-16 lg:h-14 text-base font-medium bg-gradient-to-r from-green-500/10 to-emerald-500/10 hover:from-green-500/20 hover:to-emerald-500/20 border-green-500/30"
+              variant="outline"
+              className="w-full h-14 sm:h-16 lg:h-14 text-base font-semibold border-2 border-emerald-300 bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 text-emerald-800 rounded-2xl shadow-sm hover:shadow-md transition-all"
               data-testid="button-phone-signin"
             >
-              <Phone className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-green-600" />
-              {language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}
+              <Phone className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-emerald-600" />
+              <span className="text-emerald-800">{language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}</span>
             </Button>
 
             {/* Dev Mode Button - For Testing Only */}
@@ -1050,10 +1053,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             className="relative"
           >
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-purple-200"></div>
+              <div className="w-full border-t border-[#0f3460]/20"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 luxury-glass-minimal text-gray-600 font-medium">
+              <span className="px-4 bg-white text-gray-500 font-medium">
                 {t('signin.or', language)}
               </span>
             </div>
@@ -1259,7 +1262,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   autoComplete="email"
-                  className="luxury-glass-minimal h-14 sm:h-16 md:h-16 lg:h-14 text-base sm:text-lg md:text-lg lg:text-base text-black placeholder:text-gray-400"
+                  className="h-14 sm:h-16 lg:h-14 text-base sm:text-lg lg:text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-[#0f3460] focus:bg-white focus:ring-2 focus:ring-[#0f3460]/20 text-gray-900 placeholder:text-gray-400 transition-all"
                   data-testid="input-email"
                 />
               </div>
@@ -1271,7 +1274,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                   autoComplete="current-password"
-                  className="luxury-glass-minimal h-14 sm:h-16 md:h-16 lg:h-14 text-base sm:text-lg md:text-lg lg:text-base text-black placeholder:text-gray-400"
+                  className="h-14 sm:h-16 lg:h-14 text-base sm:text-lg lg:text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-[#0f3460] focus:bg-white focus:ring-2 focus:ring-[#0f3460]/20 text-gray-900 placeholder:text-gray-400 transition-all"
                   data-testid="input-password"
                 />
               </div>
@@ -1279,7 +1282,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 type="submit"
                 disabled={loading}
-                className="luxury-btn-primary luxury-shadow-xl w-full h-14 sm:h-16 md:h-16 lg:h-14 text-base sm:text-lg md:text-lg lg:text-base font-medium"
+                className="w-full h-14 sm:h-16 lg:h-14 text-base sm:text-lg lg:text-base font-semibold bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#0f3460] hover:from-[#0f3460] hover:via-[#16213e] hover:to-[#1a1a2e] text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
                 data-testid="button-email-signin"
               >
                 {loading ? (
@@ -1296,12 +1299,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 <button
                   type="button"
                   onClick={() => setShowPasswordReset(true)}
-                  className="text-purple-600 hover:text-purple-700 font-medium transition-colors"
+                  className="text-[#0f3460] hover:text-[#533483] font-medium transition-colors"
                   data-testid="link-forgot-password"
                 >
                   {t('signin.forgotPassword', language)}
                 </button>
-                <Link href="/signup" className="text-purple-600 hover:text-purple-700 font-medium transition-colors" data-testid="link-signup">
+                <Link href="/signup" className="text-[#0f3460] hover:text-[#533483] font-medium transition-colors" data-testid="link-signup">
                   {t('signin.signUpLink', language)}
                 </Link>
               </div>
@@ -1333,7 +1336,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 type="submit"
                 disabled={loading || magicLinkSent || magicLinkResendCountdown > 0}
-                className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-base font-medium"
+                className="w-full h-14 text-base font-semibold bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#0f3460] hover:from-[#0f3460] hover:via-[#16213e] hover:to-[#1a1a2e] text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
                 data-testid="button-send-magic-link"
               >
                 {loading ? (
@@ -1395,7 +1398,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 type="submit"
                 disabled={loading || passwordResetSent}
-                className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-base font-medium"
+                className="w-full h-14 text-base font-semibold bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#0f3460] hover:from-[#0f3460] hover:via-[#16213e] hover:to-[#1a1a2e] text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
                 data-testid="button-reset-password"
               >
                 {loading ? (
@@ -1432,7 +1435,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             >
               <button
                 onClick={() => setMagicLinkMode(true)}
-                className="text-sm text-purple-600 hover:text-purple-700 font-medium transition-colors"
+                className="text-sm text-[#0f3460] hover:text-[#533483] font-medium transition-colors"
                 data-testid="link-magic-link"
               >
                 {t('signin.preferMagicLink', language)}
