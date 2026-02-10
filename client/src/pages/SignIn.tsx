@@ -24,7 +24,7 @@ import { useAutoFaceID, storePasskeyEmail, clearPasskeyEmail, storeLastAuthMetho
 import { FaceIDLoadingState } from "@/components/FaceIDLoadingState";
 import { ReCaptcha } from "@/components/ReCaptcha";
 import { trackAuthError } from "@/lib/authErrorTracker";
-import { trustDevice, isDeviceTrusted, getTrustDaysRemaining } from "@/lib/deviceTrust";
+import { trustDevice, isDeviceTrusted } from "@/lib/deviceTrust";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SignInProps {
@@ -110,7 +110,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         if (result) {
           logger.info('[iOS Auth] Redirect sign-in successful', { email: result.user.email });
           
-          // Create session
           const idToken = await result.user.getIdToken();
           const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
             method: 'POST',
@@ -121,6 +120,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
           if (!sessionResponse.ok) {
             throw new Error('Failed to create session');
+          }
+          
+          if (rememberDevice && result.user.uid && result.user.email) {
+            trustDevice(result.user.uid, result.user.email);
           }
           
           const { trackLogin } = await import('@/lib/analytics');
@@ -144,6 +147,76 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     };
     
     handleRedirectSignIn();
+  }, []);
+
+  // Handle Magic Link return - detect when user clicks magic link from email
+  useEffect(() => {
+    const handleMagicLinkReturn = async () => {
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        let email = window.localStorage.getItem('emailForSignIn');
+        
+        if (!email) {
+          email = window.prompt(language === 'he' ? 'אנא הזן את כתובת האימייל שלך לאימות:' : 'Please provide your email for confirmation:');
+        }
+        
+        if (!email) return;
+        
+        try {
+          setLoading(true);
+          const userCredential = await signInWithEmailLink(auth, email, window.location.href);
+          
+          window.localStorage.removeItem('emailForSignIn');
+          
+          const idToken = await userCredential.user.getIdToken();
+          const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ idToken }),
+          });
+
+          if (!sessionResponse.ok) {
+            throw new Error('Failed to create session');
+          }
+          
+          if (userCredential.user.uid && userCredential.user.email) {
+            trustDevice(userCredential.user.uid, userCredential.user.email);
+            storeLastAuthMethod('magic_link');
+          }
+          
+          const { trackLogin } = await import('@/lib/analytics');
+          trackLogin('magic_link', userCredential.user.uid);
+          
+          trackEvent({
+            action: 'magic_link_login_success',
+            category: 'authentication',
+            label: 'magic_link_verified',
+            language,
+          });
+          
+          toast({
+            title: t('signin.successTitle', language),
+            description: t('signin.redirecting', language),
+          });
+
+          setTimeout(() => {
+            window.scrollTo(0, 0);
+            navigate("/");
+          }, 1000);
+        } catch (error: any) {
+          logger.error("Magic link verification error:", error);
+          toast({
+            variant: "destructive",
+            title: t('signin.error_title', language),
+            description: error.message || (language === 'he' ? 'אימות קישור קסם נכשל' : 'Magic link verification failed'),
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    handleMagicLinkReturn();
   }, []);
   
   const handleUsePasswordInstead = () => {
@@ -316,7 +389,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       return;
     }
 
-    // Check if device is trusted (has previously authenticated)
+    // Check for server-issued trust token (generated via /api/pin-auth/generate-trust-token)
     const deviceTrustToken = localStorage.getItem('petwash_device_trust_token');
     if (!deviceTrustToken) {
       toast({
@@ -335,7 +408,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       setPinLoading(true);
       setPinError("");
 
-      // Use the device trust token for secure PIN verification
       const response = await fetch(getApiUrl('/api/pin-auth/trusted-device-verify'), {
         method: 'POST',
         headers: { 
@@ -376,7 +448,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           description: data.error || (language === 'he' ? 'קוד PIN שגוי' : 'Invalid PIN'),
         });
 
-        // If device trust token is invalid, clear it
         if (response.status === 401) {
           localStorage.removeItem('petwash_device_trust_token');
         }
@@ -401,7 +472,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
 
-  // Check if PIN login should be available (device is trusted)
+  // PIN login requires a server-issued trust token (from /api/pin-auth/generate-trust-token)
+  // This is separate from the client-side deviceTrust.ts which tracks 30-day device memory
   const isPinLoginAvailable = !!localStorage.getItem('petwash_device_trust_token');
 
   const handleSocialLogin = async (provider: 'google') => {
@@ -475,6 +547,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         logger.error('Failed to log OAuth consent audit:', auditError);
       }
 
+      if (rememberDevice && userCredential.user.uid && userCredential.user.email) {
+        trustDevice(userCredential.user.uid, userCredential.user.email);
+        logger.info('Device trusted after social login');
+      }
+      
+      storeLastAuthMethod('social');
+      
       const { trackLogin } = await import('@/lib/analytics');
       trackLogin(provider, userCredential.user.uid);
       
@@ -649,6 +728,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       const sessionData = await sessionResponse.json();
 
+      if (sessionData.userId) {
+        trustDevice(sessionData.userId, confirmationResult.phone);
+        storeLastAuthMethod('social');
+        logger.info('Device trusted after phone login');
+      }
+      
       const { trackLogin } = await import('@/lib/analytics');
       trackLogin('phone', sessionData.userId || confirmationResult.phone);
 
@@ -664,7 +749,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         description: t('signin.redirecting', language),
       });
 
-      // Reset phone auth state
       setPhoneMode(false);
       setPhoneNumber('');
       setVerificationCode('');
@@ -713,6 +797,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         throw new Error('Failed to create session');
       }
 
+      if (rememberDevice && userCredential.user.uid && userCredential.user.email) {
+        trustDevice(userCredential.user.uid, userCredential.user.email);
+        logger.info('Device trusted after email/password login');
+      }
+      
+      storeLastAuthMethod('password');
+      
       const { trackLogin } = await import('@/lib/analytics');
       trackLogin('email', userCredential.user.uid);
       
@@ -1078,13 +1169,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   autoComplete="email"
-                  className="luxury-glass-minimal h-14 text-base text-black placeholder:text-gray-400"
+                  className="h-14 text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-[#0f3460] focus:bg-white focus:ring-2 focus:ring-[#0f3460]/20 text-gray-900 placeholder:text-gray-400 transition-all"
                   data-testid="input-pin-email"
                 />
               </div>
               
-              <div className="luxury-glass-minimal p-6 rounded-2xl">
-                <h3 className="text-center text-lg font-medium mb-4 text-black">
+              <div className="bg-gray-50/80 border border-gray-200 p-6 rounded-2xl">
+                <h3 className="text-center text-lg font-medium mb-4 text-gray-900">
                   {language === 'he' ? 'הזן קוד PIN' : 'Enter your PIN'}
                 </h3>
                 <PinKeypad 
@@ -1106,7 +1197,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setPinError("");
                 }}
                 variant="ghost"
-                className="luxury-btn-ghost w-full h-12"
+                className="w-full h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
                 data-testid="button-back-from-pin"
               >
                 {language === 'he' ? 'חזור להתחברות רגילה' : 'Back to regular sign in'}
@@ -1122,13 +1213,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               transition={{ delay: 0.3, duration: 0.5 }}
               className="space-y-6"
             >
-              <div className="luxury-glass-minimal p-6 rounded-2xl space-y-4">
+              <div className="bg-gray-50/80 border border-gray-200 p-6 rounded-2xl space-y-4">
                 <div className="flex items-center justify-center mb-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
                     <Phone className="w-6 h-6 text-white" />
                   </div>
                 </div>
-                <h3 className="text-center text-lg font-medium text-black">
+                <h3 className="text-center text-lg font-medium text-gray-900">
                   {language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}
                 </h3>
                 
@@ -1143,7 +1234,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                         placeholder={language === 'he' ? '050-1234567' : '050-1234567'}
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="luxury-glass-minimal h-14 text-base text-black placeholder:text-gray-400"
+                        className="h-14 text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 text-gray-900 placeholder:text-gray-400 transition-all"
                         dir="ltr"
                         data-testid="input-phone-number"
                       />
@@ -1156,7 +1247,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                       type="button"
                       onClick={handleSendPhoneCode}
                       disabled={phoneLoading || !phoneNumber}
-                      className="luxury-btn-primary w-full h-14"
+                      className="w-full h-14 text-base font-semibold bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
                       data-testid="button-send-phone-code"
                     >
                       {phoneLoading ? (
@@ -1180,7 +1271,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                         placeholder="123456"
                         value={verificationCode}
                         onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        className="luxury-glass-minimal h-14 text-base text-center text-black placeholder:text-gray-400 tracking-widest font-mono"
+                        className="h-14 text-base text-center rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 text-gray-900 placeholder:text-gray-400 tracking-widest font-mono transition-all"
                         maxLength={6}
                         dir="ltr"
                         data-testid="input-verification-code"
@@ -1194,7 +1285,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                       type="button"
                       onClick={handleVerifyPhoneCode}
                       disabled={phoneLoading || verificationCode.length < 6}
-                      className="luxury-btn-primary w-full h-14"
+                      className="w-full h-14 text-base font-semibold bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
                       data-testid="button-verify-phone-code"
                     >
                       {phoneLoading ? (
@@ -1236,7 +1327,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   }
                 }}
                 variant="ghost"
-                className="luxury-btn-ghost w-full h-12"
+                className="w-full h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
                 data-testid="button-back-from-phone"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
@@ -1295,6 +1386,21 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 )}
               </Button>
 
+              {/* Remember This Device */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="remember-device"
+                  checked={rememberDevice}
+                  onChange={(e) => setRememberDevice(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-[#0f3460] focus:ring-[#0f3460]/20 cursor-pointer"
+                  data-testid="checkbox-remember-device"
+                />
+                <label htmlFor="remember-device" className="text-sm text-gray-600 cursor-pointer select-none">
+                  {language === 'he' ? 'זכור מכשיר זה ל-30 יום' : 'Remember this device for 30 days'}
+                </label>
+              </div>
+
               <div className="flex items-center justify-between text-sm">
                 <button
                   type="button"
@@ -1328,7 +1434,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   disabled={magicLinkSent}
-                  className="luxury-glass-minimal h-14 text-base text-black placeholder:text-gray-400"
+                  className="h-14 text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-[#0f3460] focus:bg-white focus:ring-2 focus:ring-[#0f3460]/20 text-gray-900 placeholder:text-gray-400 transition-all disabled:opacity-60"
                   data-testid="input-magic-link-email"
                 />
               </div>
@@ -1365,7 +1471,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setMagicLinkSent(false);
                 }}
                 variant="ghost"
-                className="luxury-btn-ghost w-full h-12"
+                className="w-full h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
                 data-testid="button-back-to-password"
               >
                 {t('signin.backToPassword', language)}
@@ -1390,7 +1496,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   disabled={passwordResetSent}
-                  className="luxury-glass-minimal h-14 text-base text-black placeholder:text-gray-400"
+                  className="h-14 text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-[#0f3460] focus:bg-white focus:ring-2 focus:ring-[#0f3460]/20 text-gray-900 placeholder:text-gray-400 transition-all disabled:opacity-60"
                   data-testid="input-reset-email"
                 />
               </div>
@@ -1417,7 +1523,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setPasswordResetSent(false);
                 }}
                 variant="ghost"
-                className="luxury-btn-ghost w-full h-12"
+                className="w-full h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
                 data-testid="button-back-to-signin"
               >
                 {t('signin.backToSignIn', language)}
