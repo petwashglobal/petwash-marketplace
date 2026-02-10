@@ -512,16 +512,16 @@ function BookingCard({ booking, isHebrew }: any) {
             {isHebrew ? 'תשלום לשמרטף:' : 'Sitter receives:'}
           </span>
           <span className="text-green-600 font-semibold text-sm">
-            ₪{(booking.totalChargeCents * 0.93 / 100).toFixed(2)}
+            ₪{(booking.totalChargeCents * 0.85 / 100).toFixed(2)}
           </span>
         </div>
         
         <div className="flex items-center justify-between">
           <span className="luxury-text-small">
-            {isHebrew ? 'עמלת פלטפורמה (7%):' : 'Platform fee (7%):'}
+            {isHebrew ? 'עמלת פלטפורמה (15%):' : 'Platform fee (15%):'}
           </span>
           <span className="text-[#333333] dark:text-[#CCCCCC] font-semibold text-sm">
-            ₪{(booking.totalChargeCents * 0.07 / 100).toFixed(2)}
+            ₪{(booking.totalChargeCents * 0.15 / 100).toFixed(2)}
           </span>
         </div>
         

@@ -133,9 +133,9 @@ All services process payments through Nayax with platform commissions:
 
 | Service | Commission Split |
 |---------|-----------------|
-| **Walk My Pet™** | 20% platform / 80% walker |
-| **PetTrek™** | 20% platform / 80% driver |
-| **The Sitter Suite™** | 17.5% platform / 82.5% sitter |
+| **Walk My Pet™** | 15% platform / 85% walker |
+| **PetTrek™** | 15% platform / 85% driver |
+| **The Sitter Suite™** | 15% platform / 85% sitter |
 | **K9000 Stations** | Full payment to PetWash Ltd |
 
 ---

@@ -38,7 +38,7 @@
 - ✅ Real-time GPS tracking with immutable check-in/check-out
 - ✅ Blockchain audit trail
 - ✅ Vital data monitoring (heart rate, steps, hydration)
-- ✅ 24% platform / 76% walker commission
+- ✅ 15% platform / 85% walker commission
 - ✅ Owner live tracking dashboard
 - ✅ "Track My Pet" widget
 
@@ -48,7 +48,7 @@
 - ✅ Real-time GPS tracking with ETA countdown
 - ✅ Job dispatch (accept/decline functionality)
 - ✅ Provider dashboard with job queue
-- ✅ 20% platform / 80% driver payout
+- ✅ 15% platform / 85% driver payout
 - ✅ Trip lifecycle management
 - ✅ Live geolocation capture
 

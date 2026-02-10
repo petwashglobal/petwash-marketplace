@@ -45,7 +45,7 @@ class LuxuryDocumentEmailService {
           quantity: 5,
           unitPrice: 80.00,
           vatRate: 0.18,
-          commission: 19.20, // 24% commission
+          commission: 12.00, // 15% commission
           operationCode: 'WMP-WALK-002'
         },
         {
@@ -54,7 +54,7 @@ class LuxuryDocumentEmailService {
           quantity: 1,
           unitPrice: 250.00,
           vatRate: 0.18,
-          commission: 50.00, // 20% commission
+          commission: 37.50, // 15% commission
           operationCode: 'PTK-TRANS-003'
         },
         {

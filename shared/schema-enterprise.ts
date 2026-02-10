@@ -1189,7 +1189,7 @@ export const divisions = pgTable("divisions", {
   
   // Platform configuration
   platformType: varchar("platform_type").notNull(), // hardware | marketplace | service | digital
-  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }), // % commission (e.g., 20% for marketplaces)
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }), // % commission (15% flat for all platforms)
   isMarketplace: boolean("is_marketplace").default(false), // True for Sitter, Walker, PetTrek, Academy
   
   // Financial tracking

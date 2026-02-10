@@ -161,9 +161,9 @@ export default function WalkerBooking() {
   const hourlyRate = walker ? parseFloat(walker.baseHourlyRate) : 0;
   const hours = duration / 60;
   const walkerRate = hourlyRate * hours;
-  const platformFeeOwner = walkerRate * 0.06; // 6% owner pays
+  const platformFeeOwner = walkerRate * 0.15; // 15% platform commission
   const totalCost = walkerRate + platformFeeOwner;
-  const walkerPayout = walkerRate * 0.82; // Walker receives 82% (base - 18%)
+  const walkerPayout = walkerRate * 0.85; // Walker receives 85% (base - 15%)
 
   if (walkerLoading) {
     return (

@@ -50,8 +50,8 @@
 
 **NEW Commission Rates (Verified in Code):**
 - Owner pays: Base price + 0% service fee (₪0!) + 18% VAT
-- Walker gets: 80% of base price (**matches Rover!**)
-- Platform keeps: 20% total commission
+- Walker gets: 85% of base price
+- Platform keeps: 15% platform commission
 
 ---
 
@@ -196,7 +196,7 @@ All endpoints are protected with rate limiting:
 **Working:** 100%  
 **Broken:** 0  
 **VAT Rate:** ✅ **18%** (corrected from 17%)  
-**Commission Rates:** ✅ **20% platform / 80% walker** (matches Rover USA)  
+**Commission Rates:** ✅ **15% platform / 85% provider** (flat rate all platforms)  
 
 ---
 

@@ -147,7 +147,7 @@ export default function WalkMyPet() {
       badge5Title: isHebrew ? 'וידאו לייב (בקרוב)' : 'Live Video (Coming Soon)',
       badge5Desc: isHebrew ? 'צפה בכלב שלך בזמן אמת עם שידור חי מהווקר' : 'Watch your dog in real-time with live streaming from walker',
       badge6Title: isHebrew ? 'תמחור שקוף' : 'Transparent Pricing',
-      badge6Desc: isHebrew ? 'אין דמי הפתעה. 24% עמלה, 76% לווקר. פשוט והוגן' : 'No surprise fees. 24% platform fee, 76% to walker. Simple and fair',
+      badge6Desc: isHebrew ? 'אין דמי הפתעה. 15% עמלה, 85% לווקר. פשוט והוגן' : 'No surprise fees. 15% platform fee, 85% to walker. Simple and fair',
     },
     featured: {
       title: isHebrew ? 'ווקרים מובילים ⭐' : 'Top Rated Walkers ⭐',
@@ -166,7 +166,7 @@ export default function WalkMyPet() {
       weeklyEarnings: isHebrew ? 'הכנסה שבועית' : 'Weekly Earnings',
       monthlyEarnings: isHebrew ? 'הכנסה חודשית' : 'Monthly Earnings',
       yearlyEarnings: isHebrew ? 'הכנסה שנתית' : 'Yearly Earnings',
-      afterPlatformFee: isHebrew ? '(אחרי 24% עמלת פלטפורמה)' : '(after 24% platform fee)',
+      afterPlatformFee: isHebrew ? '(אחרי 15% עמלת פלטפורמה)' : '(after 15% platform fee)',
     },
     howItWorks: {
       title: isHebrew ? 'איך זה עובד?' : 'How It Works',

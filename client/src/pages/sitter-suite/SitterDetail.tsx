@@ -115,7 +115,7 @@ export default function SitterDetail() {
 
     const days = Math.max(1, differenceInDays(endDate, startDate));
     const basePriceCents = (sitter?.pricePerDayCents || 0) * days;
-    const platformServiceFeeCents = Math.round(basePriceCents * 0.1);
+    const platformServiceFeeCents = Math.round(basePriceCents * 0.15);
     const totalChargeCents = basePriceCents + platformServiceFeeCents;
 
     await createBookingMutation.mutateAsync({
@@ -128,8 +128,8 @@ export default function SitterDetail() {
       totalDays: days,
       basePriceCents,
       platformServiceFeeCents,
-      brokerCutCents: Math.round(basePriceCents * 0.07),
-      sitterPayoutCents: Math.round(basePriceCents * 0.93),
+      brokerCutCents: Math.round(basePriceCents * 0.15),
+      sitterPayoutCents: Math.round(basePriceCents * 0.85),
       totalChargeCents,
       specialInstructions,
     });

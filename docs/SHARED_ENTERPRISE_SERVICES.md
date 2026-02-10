@@ -257,10 +257,10 @@ Payment Timeline:
 
 Platform Fee Structure:
 - The Sitter Suite™: 15% platform fee (85% to provider)
-- Walk My Pet™: 20% platform fee (80% to provider)  
-- PetTrek™: 25% platform fee (75% to provider)
+- Walk My Pet™: 15% platform fee (85% to provider)  
+- PetTrek™: 15% platform fee (85% to provider)
 - Grooming: 15% platform fee (85% to provider)
-- Vet On Demand: 30% platform fee (70% to provider - higher due to compliance)
+- Vet On Demand: 15% platform fee (85% to provider)
 ```
 
 **The Plush Lab™** (Stripe Standard):

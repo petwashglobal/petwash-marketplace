@@ -130,7 +130,7 @@ class WalkPricingStrategy implements PricingStrategy {
       tax: 0, // Calculated in base engine
       totalPrice: subtotal,
       currency: 'ILS',
-      providerPayout: subtotal * 0.82, // Walker gets 82% (18% platform fee)
+      providerPayout: subtotal * 0.85, // Walker gets 85% (15% platform commission)
       breakdown: [
         { description: 'Base Rate', amount: baseRate * durationHours },
         { description: 'Peak Hours Surge (20%)', amount: surgePricing },

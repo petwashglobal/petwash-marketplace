@@ -3977,8 +3977,8 @@ export const walkerProfiles = pgTable("walker_profiles", {
   bankAccountVerified: boolean("bank_account_verified").default(false),
   nayaxPayoutAccountId: varchar("nayax_payout_account_id"), // Nayax payout account
   
-  // Platform Commission (24% gross take rate split)
-  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("18.00"), // Walker pays 18%
+  // Platform Commission (flat 15% across all platforms)
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("15.00"), // 15% platform commission
   
   // Status
   isActive: boolean("is_active").default(true),
@@ -4043,9 +4043,9 @@ export const walkBookings = pgTable("walk_bookings", {
   // Pricing & Payment
   walkerRate: decimal("walker_rate", { precision: 10, scale: 2 }).notNull(), // What walker charges
   platformFeeOwner: decimal("platform_fee_owner", { precision: 10, scale: 2 }).notNull(), // 6% owner pays
-  platformFeeSitter: decimal("platform_fee_sitter", { precision: 10, scale: 2 }).notNull(), // 18% walker pays
+  platformFeeSitter: decimal("platform_fee_sitter", { precision: 10, scale: 2 }).notNull(), // 15% platform commission
   totalCost: decimal("total_cost", { precision: 10, scale: 2 }).notNull(), // What owner pays
-  walkerPayout: decimal("walker_payout", { precision: 10, scale: 2 }).notNull(), // What walker receives (82%)
+  walkerPayout: decimal("walker_payout", { precision: 10, scale: 2 }).notNull(), // What walker receives (85%)
   currency: varchar("currency").default("ILS"),
   
   // Status Tracking
@@ -4854,8 +4854,8 @@ export const pettrekTrips = pgTable("pettrek_trips", {
   distanceFare: decimal("distance_fare", { precision: 10, scale: 2 }),
   timeFare: decimal("time_fare", { precision: 10, scale: 2 }),
   surgeFare: decimal("surge_fare", { precision: 10, scale: 2 }),
-  platformCommission: decimal("platform_commission", { precision: 10, scale: 2 }), // 20% of final fare
-  driverPayout: decimal("driver_payout", { precision: 10, scale: 2 }), // 80% of final fare
+  platformCommission: decimal("platform_commission", { precision: 10, scale: 2 }), // 15% platform commission
+  driverPayout: decimal("driver_payout", { precision: 10, scale: 2 }), // 85% driver payout
   paymentStatus: varchar("payment_status").default("pending"), // pending | paid | refunded
   nayaxTransactionId: varchar("nayax_transaction_id"),
   
@@ -6281,8 +6281,8 @@ export const trainers = pgTable("trainers", {
   // Gold Badge (Certified Trainer)
   isCertified: boolean("is_certified").default(false), // Shows gold "Certified" badge
   
-  // Financial (Payout System - 80% trainer, 20% platform by default)
-  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("20.00"), // Platform commission %
+  // Financial (Payout System - 85% trainer, 15% platform commission)
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("15.00"), // Platform commission %
   totalEarnings: decimal("total_earnings", { precision: 10, scale: 2 }).default("0.00"),
   
   // Status
@@ -6339,8 +6339,8 @@ export const trainerBookings = pgTable("trainer_bookings", {
   // Pricing
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  platformFee: decimal("platform_fee", { precision: 10, scale: 2 }).notNull(), // 20% commission
-  trainerPayout: decimal("trainer_payout", { precision: 10, scale: 2 }).notNull(), // 80% to trainer
+  platformFee: decimal("platform_fee", { precision: 10, scale: 2 }).notNull(), // 15% platform commission
+  trainerPayout: decimal("trainer_payout", { precision: 10, scale: 2 }).notNull(), // 85% to trainer
   currency: varchar("currency").default("ILS"),
   
   // Payment Integration (Nayax/Pet Wash Wallet)

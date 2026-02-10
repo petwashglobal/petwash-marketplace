@@ -183,7 +183,7 @@ grep -rn "stripe" --include="*.ts" --include="*.tsx" | grep -v "striped" | grep 
 - [x] Server running with zero errors
 - [x] No hardcoded secrets
 - [x] No test data in production paths
-- [x] Commission rates verified (Walk: 20%, PetTrek: 20%, Sitter: 17.5%)
+- [x] Commission rates verified (Walk: 15%, PetTrek: 15%, Sitter: 15%)
 
 ---
 
@@ -208,7 +208,7 @@ grep -rn "stripe" --include="*.ts" --include="*.tsx" | grep -v "striped" | grep 
    - Israeli VAT: 18% (corrected system-wide)
    - Nayax Israel: Exclusive payment gateway
    - Apple Pay/Google Pay: Accepted via Nayax (not direct)
-   - Commission rates: Walk My Pet™ 20%/80% (Rover-aligned)
+   - Commission rates: Walk My Pet™ 15%/85%
 
 2. ✅ **No unwelcome code:**
    - Stripe: Completely removed

@@ -581,11 +581,11 @@ export default function PetTrekBooking() {
                   <div className="luxury-glass-panel p-4 space-y-2 luxury-text-small">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-purple-600"></div>
-                      <p>{t('booking.common.total')} (20%): ₪{fareEstimate.platformCommission.toFixed(2)}</p>
+                      <p>{t('booking.common.total')} (15%): ₪{fareEstimate.platformCommission.toFixed(2)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-purple-600"></div>
-                      <p>{t('booking.common.verified')} (80%): ₪{fareEstimate.driverPayout.toFixed(2)}</p>
+                      <p>{t('booking.common.verified')} (85%): ₪{fareEstimate.driverPayout.toFixed(2)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-purple-600"></div>

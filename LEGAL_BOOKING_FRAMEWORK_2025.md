@@ -41,7 +41,7 @@ interface WalkerServiceAgreement {
   
   // Payment Terms
   hourlyRate: MoneyAmount;
-  platformFee: MoneyAmount; // 24% split (6% owner, 18% walker)
+  platformFee: MoneyAmount; // 15% platform commission
   cancellationPolicy: 'flexible' | 'moderate' | 'strict';
   
   // Pet Information
@@ -104,7 +104,7 @@ interface SitterServiceAgreement {
   startDate: Date;
   endDate: Date;
   dailyRate: MoneyAmount;
-  platformFee: MoneyAmount; // 10% of total
+  platformFee: MoneyAmount; // 15% platform commission
   
   // Property Access (if in-home sitting)
   keyHandoverMethod: 'lockbox' | 'in_person' | 'smart_lock';

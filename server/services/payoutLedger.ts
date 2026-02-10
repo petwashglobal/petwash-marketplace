@@ -154,7 +154,7 @@ export async function calculateSitterEarnings(
     // Calculate base amount
     const baseAmount = dayCount * dailyRate + hourCount * hourlyRate;
 
-    // Platform fee: 18% for all providers (MadPaws 2026 model)
+    // Platform fee: 15% for all providers (MadPaws 2026 model)
     const feeRates = feeConfigService.getFeeRates();
     const platformFeePercent = feeRates.providerServiceFeePercent;
 
@@ -193,7 +193,7 @@ export async function calculateWalkerEarnings(
     const distanceComponent = walkDistanceKm * distanceRate;
     const baseAmount = timeComponent + distanceComponent;
 
-    // Platform fee: 18% for all providers (MadPaws 2026 model)
+    // Platform fee: 15% for all providers (MadPaws 2026 model)
     const feeRates = feeConfigService.getFeeRates();
     const platformFeePercent = feeRates.providerServiceFeePercent;
 
@@ -230,7 +230,7 @@ export async function calculateDriverEarnings(
     const distanceAmount = tripDistanceKm * perKmRate;
     const baseAmount = distanceAmount + tollCharges;
 
-    // Platform fee: 18% for all providers (MadPaws 2026 model)
+    // Platform fee: 15% for all providers (MadPaws 2026 model)
     const feeRates = feeConfigService.getFeeRates();
     const platformFeePercent = feeRates.providerServiceFeePercent;
 

@@ -1155,7 +1155,7 @@ export const translations: TranslationStrings = {
   'emergency.proceed': { en: 'Proceed to Payment', he: 'המשך לתשלום', ar: 'المتابعة إلى الدفع', ru: 'Перейти к оплате', fr: 'Procéder au paiement', es: 'Proceder al pago' },
   'emergency.surgeReasons': { en: 'Surge Reasons:', he: 'סיבות לתוספת:', ar: 'أسباب الذروة:', ru: 'Причины повышения:', fr: 'Raisons de la majoration:', es: 'Razones del aumento:' },
   'emergency.minutes': { en: 'minutes', he: 'דקות', ar: 'دقائق', ru: 'минут', fr: 'minutes', es: 'minutos' },
-  'emergency.walkerPayout': { en: 'Walker Payout (82%)', he: 'תשלום מטייל (82%)', ar: 'دفع المشي (82%)', ru: 'Выплата выгульщику (82%)', fr: 'Paiement du promeneur (82%)', es: 'Pago del paseador (82%)' },
+  'emergency.walkerPayout': { en: 'Walker Payout (85%)', he: 'תשלום מטייל (85%)', ar: 'دفع المشي (85%)', ru: 'Выплата выгульщику (85%)', fr: 'Paiement du promeneur (85%)', es: 'Pago del paseador (85%)' },
   'emergency.petNameRequired': { en: 'Pet name required', he: 'נדרש שם החיית המחמד', ar: 'اسم الحيوان الأليف مطلوب', ru: 'Требуется имя питомца', fr: 'Nom de l\'animal requis', es: 'Nombre de mascota requerido' },
   'emergency.petNameRequiredDesc': { en: 'Please enter your pet\'s name', he: 'אנא הזן את שם החיית המחמד', ar: 'يرجى إدخال اسم حيوانك الأليف', ru: 'Пожалуйста, введите имя вашего питомца', fr: 'Veuillez entrer le nom de votre animal', es: 'Por favor ingresa el nombre de tu mascota' },
   'emergency.locationError': { en: 'Location Error', he: 'שגיאת מיקום', ar: 'خطأ في الموقع', ru: 'Ошибка местоположения', fr: 'Erreur d\'emplacement', es: 'Error de ubicación' },

@@ -493,15 +493,15 @@ function SitterBookingCard({ booking, isHebrew }: any) {
           </span>
         </div>
         
-        {/* COMMISSION BREAKDOWN - Show net earnings after 7% */}
+        {/* COMMISSION BREAKDOWN - Show net earnings after 15% */}
         <div className="flex items-center justify-between">
           <span className="luxury-text-small">{isHebrew ? 'סכום ההזמנה:' : 'Booking amount:'}</span>
-          <span className="luxury-text-body">₪{((booking.sitterPayoutCents / 0.93) / 100).toFixed(2)}</span>
+          <span className="luxury-text-body">₪{((booking.sitterPayoutCents / 0.85) / 100).toFixed(2)}</span>
         </div>
         
         <div className="flex items-center justify-between">
-          <span className="luxury-text-small">{isHebrew ? 'עמלת פלטפורמה (7%):' : 'Platform fee (7%):'}</span>
-          <span className="luxury-text-body text-blue-600">-₪{((booking.sitterPayoutCents / 0.93) * 0.07 / 100).toFixed(2)}</span>
+          <span className="luxury-text-small">{isHebrew ? 'עמלת פלטפורמה (15%):' : 'Platform fee (15%):'}</span>
+          <span className="luxury-text-body text-blue-600">-₪{((booking.sitterPayoutCents / 0.85) * 0.15 / 100).toFixed(2)}</span>
         </div>
         
         <div className="luxury-divider"></div>

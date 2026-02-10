@@ -5,18 +5,18 @@
  * Features:
  * - Base fare + distance + time calculations
  * - Surge pricing for peak hours
- * - 20% platform commission split
+ * - 15% platform commission split
  * - Real-time fare estimates
  * 
  * Commission Structure:
- * - Platform: 20% of final fare
- * - Driver: 80% of final fare
+ * - Platform: 15% of final fare
+ * - Driver: 85% of final fare
  */
 
 import { logger } from '../lib/logger';
 
 // Pricing Configuration (ILS)
-const COMMISSION_RATE_TRANSPORT = 0.20; // 20% platform fee
+const COMMISSION_RATE_TRANSPORT = 0.15; // 15% platform commission
 const BASE_FARE = 15.00; // ILS base fare
 const RATE_PER_KM = 4.50; // ILS per kilometer
 const RATE_PER_MINUTE = 0.75; // ILS per minute

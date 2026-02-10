@@ -6,18 +6,18 @@
  * Payment Flow:
  * 1. Owner initiates walk booking and pays full amount via Nayax
  * 2. Platform receives payment and holds walker payout in escrow
- * 3. Upon GPS-verified walk completion, walker receives 82% payout
- * 4. Platform keeps 24% total commission (6% from owner + 18% from walker)
+ * 3. Upon GPS-verified walk completion, walker receives 85% payout
+ * 4. Platform keeps 15% commission
  * 
- * Commission Structure (Competitive with Rover/Wag):
- * - Walker receives: 82% of base price (base - 18% walker fee)
- * - Platform keeps: 24% total (6% owner fee + 18% walker fee)
- * - Owner pays: Base + 6% platform fee + 18% Israeli VAT
+ * Commission Structure (Flat 15% across all platforms):
+ * - Walker receives: 85% of base price
+ * - Platform keeps: 15% commission
+ * - Owner pays: Base + 18% Israeli VAT
  * 
  * Example (₪100 base):
- * - Owner pays: ₪100 + ₪6 (fee) + ₪18.02 (VAT) = ₪124.02 total
- * - Walker gets: ₪100 - ₪18 (fee) = ₪82
- * - Platform keeps: ₪6 + ₪18 = ₪24 (24% total)
+ * - Owner pays: ₪100 + ₪18 (VAT) = ₪118 total
+ * - Walker gets: ₪85
+ * - Platform keeps: ₪15 (15% commission)
  * 
  * Israeli Compliance:
  * - Currency: ILS (Israeli Shekel)
@@ -77,9 +77,9 @@ export class NayaxWalkMarketplaceService {
   /**
    * Process walk booking payment from owner (via Nayax Israel)
    * 
-   * Owner pays: Base Price + 6% Platform Fee + 18% VAT
+   * Owner pays: Base Price + 18% VAT
    * Platform receives: Total amount
-   * Platform splits: 24% total commission (6% + 18%), 82% held for walker payout
+   * Platform splits: 15% commission, 85% held for walker payout
    * 
    * Like Rover/Wag model but with Israeli compliance ✨
    */
@@ -124,7 +124,7 @@ export class NayaxWalkMarketplaceService {
         logger.info('[Walk My Pet™] Payment successful', {
           walkId: params.walkId,
           nayaxTransactionId: nayaxResponse.TransactionId,
-          platformRevenue: fees.platformCommissionTotal, // Our 24% total commission (6% + 18%) 💰
+          platformRevenue: fees.platformCommissionTotal, // Our 15% platform commission 💰
           ownerFee: fees.platformServiceFeeOwner,
           walkerFee: fees.walkerFee,
           vatCollected: fees.vat,
@@ -165,8 +165,8 @@ export class NayaxWalkMarketplaceService {
   /**
    * Process walker payout after GPS-verified walk completion (via Nayax Transfer)
    * 
-   * Walker receives: 82% of base price (base - 18% walker fee)
-   * Platform keeps: 24% total commission (already captured: 6% + 18%)
+   * Walker receives: 85% of base price
+   * Platform keeps: 15% commission
    * 
    * Triggered automatically after WalkSessionService.checkOut() confirms completion
    */

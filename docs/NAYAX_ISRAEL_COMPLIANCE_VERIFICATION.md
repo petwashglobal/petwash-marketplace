@@ -69,10 +69,10 @@ All transactions across every platform, service, and partner channel must be pro
 **Status:** ✅ Fully integrated
 
 **Payment Model:**
-- Owner charged: Base Price + 10% platform fee
+- Owner charged: Base Price + 15% platform commission
 - Platform receives: Total via Nayax
-- Platform keeps: 7.5% broker cut
-- Sitter receives: 92.5% after 72-hour escrow
+- Platform keeps: 15% platform commission
+- Sitter receives: 85% after 72-hour escrow
 
 ### 4. PetTrek™ (Pet Transportation)
 **Route:** `server/routes/pettrek.ts`  
@@ -125,7 +125,7 @@ Functions:
 ```
 Customer → Nayax Israel API → Pet Wash Ltd Bank Account
                 ↓
-         Platform Commission (5-15%)
+         Platform Commission (15%)
                 ↓
          72-Hour Escrow Hold
                 ↓
@@ -224,12 +224,12 @@ Customer Payment (Nayax)
 ### Revenue Split Example (Sitter Suite)
 
 **Booking:** ₪500 for 5 days  
-**Platform Fee (10%):** ₪50  
-**Total Charged to Owner:** ₪550
+**Platform Commission (15%):** ₪75  
+**Total Charged to Owner:** ₪575
 
-**Nayax Settlement to Pet Wash Ltd:** ₪550  
-**Platform Broker Cut (7.5%):** ₪41.25  
-**Sitter Payout (after 72h escrow):** ₪458.75
+**Nayax Settlement to Pet Wash Ltd:** ₪575  
+**Platform Commission (15%):** ₪75  
+**Sitter Payout (after 72h escrow):** ₪500
 
 **VAT (18% on commission):** Included in platform fee calculation
 

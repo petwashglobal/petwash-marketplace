@@ -8,7 +8,7 @@
  * - Auto-matching with nearby available walkers
  * - Surge pricing during high demand (like Uber/Lyft)
  * - WhatsApp Business notifications (Hebrew-first)
- * - Same commission: 24% total (6% owner + 18% walker, walker gets 82%)
+ * - Same commission: 15% platform commission, walker gets 85%
  * 
  * Israeli Compliance:
  * - Currency: ILS (Israeli Shekel)

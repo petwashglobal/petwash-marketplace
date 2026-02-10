@@ -108,7 +108,7 @@ Pet Wash Ltd's complete platform ecosystem is **CODE COMPLETE** and ready for pr
 ```
 Customer → Nayax Israel API → Pet Wash Ltd Bank Account
               ↓
-       Platform Commission (5-15%)
+       Platform Commission (15%)
               ↓
        72-Hour Escrow Hold
               ↓
@@ -485,8 +485,8 @@ With all 8 platforms operational:
 **Platform Commission Rates:**
 - Pet Wash Hub™: 100% revenue (owned stations)
 - Walk My Pet™: 15% commission
-- The Sitter Suite™: 7.5% broker fee
-- PetTrek™: 20% commission
+- The Sitter Suite™: 15% commission
+- PetTrek™: 15% commission
 - Paw Finder™: Freemium model
 - The Plush Lab™: 100% revenue (SaaS)
 - K9000™: Hardware sales + monitoring fee

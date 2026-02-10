@@ -115,9 +115,9 @@ IsraeliTaxService.calculateNationalInsurance({
 ✅ **ניתוח פיננסי מלא לפי 4 קווי עסק:**
 
 1. **K9000 DIY Wash Stations** (100% רווח)
-2. **The Sitter Suite™** (7.5% עמלה)
-3. **Walk My Pet™** (24% עמלה)
-4. **PetTrek™ Transport** (20% עמלה)
+2. **The Sitter Suite™** (15% עמלה)
+3. **Walk My Pet™** (15% עמלה)
+4. **PetTrek™ Transport** (15% עמלה)
 
 **מה מקבלים:**
 - הכנסות לפי שירות

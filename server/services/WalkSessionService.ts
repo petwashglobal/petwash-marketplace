@@ -161,7 +161,7 @@ export class WalkSessionService {
    * Check-out: Walker completes the walk session
    * Finalizes session, records distance/vitals, triggers payment
    * 
-   * Commission: 24% total (6% owner fee + 18% walker fee), Walker gets 82%
+   * Commission: 15% platform commission, Walker gets 85%
    */
   async checkOut(data: CheckOutData): Promise<{
     success: boolean;
@@ -174,8 +174,8 @@ export class WalkSessionService {
       earningsBreakdown: {
         totalPaid: number; // What owner paid (base + 6%)
         basePriceEstimate: number; // Estimated base price
-        platformFee: number; // Our 24% commission
-        walkerEarnings: number; // 82% to walker
+        platformFee: number; // Our 15% commission
+        walkerEarnings: number; // 85% to walker
         currency: string;
       };
     };
@@ -205,15 +205,15 @@ export class WalkSessionService {
       throw new Error('No check-in time found - cannot check out');
     }
 
-    // Calculate payment breakdown (24% total platform commission split as 6% owner + 18% walker)
-    // Walker gets 82% of base price (base - 18% walker fee)
+    // Calculate payment breakdown (15% platform commission)
+    // Walker gets 85% of base price
     const totalCostValue = walk.totalCost;
     if (!totalCostValue || isNaN(parseFloat(totalCostValue as any))) {
       throw new Error('Invalid or missing totalCost - cannot calculate payment');
     }
-    const totalPaid = parseFloat(totalCostValue as any); // What owner paid (base + 6%)
-    const basePriceEstimate = totalPaid / 1.06; // Reverse engineer base from owner payment
-    const walkerEarnings = basePriceEstimate * 0.82; // Walker gets 82% of base
+    const totalPaid = parseFloat(totalCostValue as any); // What owner paid (base + 15%)
+    const basePriceEstimate = totalPaid / 1.15; // Reverse engineer base from owner payment
+    const walkerEarnings = basePriceEstimate * 0.85; // Walker gets 85% of base
     const platformFee = totalPaid - walkerEarnings; // Platform keeps the difference
 
     // Update walk status to completed with check-out data
@@ -256,8 +256,8 @@ export class WalkSessionService {
         paymentBreakdown: {
           totalPaid: totalPaid, // What owner paid
           basePriceEstimate: basePriceEstimate, // Estimated base price
-          platformFee: platformFee, // Our total commission (6% + 18%)
-          walkerEarnings: walkerEarnings, // 82% to walker
+          platformFee: platformFee, // 15% platform commission
+          walkerEarnings: walkerEarnings, // 85% to walker
         },
       }),
       performedBy: data.walkerId,
@@ -293,8 +293,8 @@ export class WalkSessionService {
         earningsBreakdown: {
           totalPaid: totalPaid, // What owner paid (base + 6%)
           basePriceEstimate: basePriceEstimate, // Estimated base price
-          platformFee: platformFee, // Our 24% commission
-          walkerEarnings: walkerEarnings, // 82% to walker
+          platformFee: platformFee, // Our 15% commission
+          walkerEarnings: walkerEarnings, // 85% to walker
           currency: walk.currency || 'ILS',
         },
       },
@@ -709,7 +709,7 @@ export class WalkSessionService {
   }
 
   /**
-   * Process Nayax payment split (76% walker / 24% platform)
+   * Process Nayax payment split (85% walker / 15% platform)
    * TODO: Implement when Nayax API keys are available
    */
   private async processNayaxPayment(
@@ -722,14 +722,14 @@ export class WalkSessionService {
     console.log('[NAYAX PAYMENT] Split payment initiated', {
       walkId,
       grossAmount,
-      platformFee: `${platformFee} ILS (24%)`,
-      walkerEarnings: `${walkerEarnings} ILS (76%)`,
+      platformFee: `${platformFee} ILS (15%)`,
+      walkerEarnings: `${walkerEarnings} ILS (85%)`,
       provider: 'Nayax Israel',
     });
 
     // When API keys are available:
     // 1. Create Nayax payment intent for total amount
-    // 2. Split payment: 76% to walker's account, 24% to platform account
+    // 2. Split payment: 85% to walker's account, 15% to platform account
     // 3. Record transaction in blockchain audit trail
     // 4. Send payment confirmation to both parties
     // 5. Generate receipt for tax compliance
