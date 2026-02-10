@@ -28,6 +28,7 @@ import { biometricVerification } from './BiometricVerificationService';
 export type DocumentType = 
   | 'national_id' 
   | 'drivers_license' 
+  | 'passport'
   | 'disability_certificate' 
   | 'retirement_certificate' 
   | 'club_membership';
@@ -115,7 +116,8 @@ export class CertificateVerificationService {
         documentType,
         documentCountry,
         biometricResult.matchScore,
-        ocrResult.confidence
+        ocrResult.confidence,
+        countryCheck.countryRequiresManualReview ?? false
       );
 
       const verificationStatus = this.determineStatus(
@@ -179,7 +181,7 @@ export class CertificateVerificationService {
   private async validateApprovedCountry(
     countryCode: string,
     documentType: DocumentType
-  ): Promise<{ isValid: boolean; reason?: string }> {
+  ): Promise<{ isValid: boolean; reason?: string; countryRequiresManualReview?: boolean }> {
     try {
       const [country] = await db
         .select()
@@ -215,13 +217,20 @@ export class CertificateVerificationService {
         };
       }
 
+      if (documentType === 'passport' && !country.acceptsPassport) {
+        return {
+          isValid: false,
+          reason: `Country ${countryCode} does not accept passports`
+        };
+      }
+
       logger.info('[CertificateVerification] Country validation passed', {
         countryCode,
         documentType,
         requiresManualReview: country.requiresManualReview
       });
 
-      return { isValid: true };
+      return { isValid: true, countryRequiresManualReview: country.requiresManualReview ?? false };
     } catch (error: any) {
       logger.error('[CertificateVerification] Country validation error', error);
       return {
@@ -357,7 +366,8 @@ export class CertificateVerificationService {
     documentType: DocumentType,
     country: string,
     biometricScore: number,
-    ocrConfidence: number
+    ocrConfidence: number,
+    countryRequiresManualReview: boolean = false
   ): boolean {
     // Israeli disability/retirement certificates always need manual review
     if (documentType === 'disability_certificate' || documentType === 'retirement_certificate') {
@@ -374,9 +384,8 @@ export class CertificateVerificationService {
       return true;
     }
 
-    // High-risk countries (example - adjust as needed)
-    const highRiskCountries = ['XX', 'YY'];
-    if (highRiskCountries.includes(country)) {
+    // Country flagged for manual review in approved_countries table
+    if (countryRequiresManualReview) {
       return true;
     }
 
@@ -399,8 +408,8 @@ export class CertificateVerificationService {
       return 'rejected';
     }
 
-    // Automatic approval for standard IDs with good biometric match
-    if (documentType === 'national_id' || documentType === 'drivers_license') {
+    // Automatic approval for standard IDs and passports with good biometric match
+    if (documentType === 'national_id' || documentType === 'drivers_license' || documentType === 'passport') {
       return 'approved';
     }
 
@@ -458,6 +467,7 @@ export class CertificateVerificationService {
     const docTypeNames: Record<DocumentType, { en: string; he: string }> = {
       national_id: { en: 'National ID', he: 'תעודת זהות' },
       drivers_license: { en: 'Driver\'s License', he: 'רשיון נהיגה' },
+      passport: { en: 'Passport', he: 'דרכון' },
       disability_certificate: { en: 'Disability Certificate', he: 'תעודת נכה' },
       retirement_certificate: { en: 'Retirement Certificate', he: 'תעודת גימלאי' },
       club_membership: { en: 'Club Membership', he: 'חברות מועדון' }

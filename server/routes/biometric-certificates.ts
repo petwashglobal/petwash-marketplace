@@ -126,6 +126,7 @@ router.post(
       const validDocTypes: DocumentType[] = [
         'national_id',
         'drivers_license',
+        'passport',
         'disability_certificate',
         'retirement_certificate',
         'club_membership'
