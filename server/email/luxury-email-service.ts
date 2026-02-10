@@ -12,17 +12,12 @@ import { generatePartnerInvitationHebrew } from './templates/partner-invitation-
 import { generateWorkflowNotification } from './templates/workflow-notification-2025';
 import { generateLuxuryLaunchEmail } from './templates/luxury-launch-2025';
 import { generateInvestorLaunchEventEmail } from './templates/luxury-investor-launch-event-2025';
+import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 const FROM_EMAIL = 'Support@PetWash.co.il';
 const FROM_NAME = 'Pet Wash™ Team';
 
-let sgMail: MailService | null = null;
-
-if (SENDGRID_API_KEY) {
-  sgMail = new MailService();
-  sgMail.setApiKey(SENDGRID_API_KEY);
-}
+let sgMail: MailService | null = isSendGridConfigured() ? createMailService() : null;
 
 interface EmailOptions {
   to: string;

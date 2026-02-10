@@ -4,11 +4,7 @@
  */
 
 import { logger } from './lib/logger';
-import sgMail from '@sendgrid/mail';
-
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
+import sgMail from './lib/sendgrid';
 
 interface TaxReportData {
   reportDate: string;

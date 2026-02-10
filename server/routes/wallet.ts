@@ -14,16 +14,11 @@ import { logger } from '../lib/logger';
 import { db } from '../lib/firebase-admin';
 import { walletFraudProtection, WalletFraudDetection } from '../middleware/fraudDetection';
 import { WalletTelemetryService } from '../services/WalletTelemetryService';
-import sgMail from '@sendgrid/mail';
+import sgMail from '../lib/sendgrid';
 import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 
 const router = express.Router();
-
-// Initialize SendGrid
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
 
 // ✅ SECURITY: HMAC secret MUST be provided via environment variable (no fallback)
 // This prevents attackers from forging wallet links with a known default

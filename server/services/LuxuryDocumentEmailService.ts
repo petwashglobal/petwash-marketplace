@@ -7,13 +7,7 @@ import { logger } from '../lib/logger';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import LuxuryInvoiceService from './LuxuryInvoiceService';
 import GeminiEmailMonitor from './GeminiEmailMonitor';
-import sgMail from '@sendgrid/mail';
-
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-
-if (SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY);
-}
+import sgMail from '../lib/sendgrid';
 
 interface SampleDocuments {
   invoice: string;

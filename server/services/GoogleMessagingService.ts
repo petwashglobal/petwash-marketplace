@@ -6,12 +6,7 @@
 
 import { logger } from '../lib/logger';
 import { FCMService } from './FCMService';
-import sgMail from '@sendgrid/mail';
-
-// Only initialize SendGrid if API key is properly configured
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
+import sgMail from '../lib/sendgrid';
 
 interface MessagePayload {
   userId: string;

@@ -7,17 +7,12 @@
 
 import { logger } from './lib/logger';
 import { db as adminDb } from './lib/firebase-admin';
-import sgMail from '@sendgrid/mail';
+import sgMail from './lib/sendgrid';
 import { getStationAnalyticsFor24Hours } from './stationsService';
 
-// Initialize SendGrid if available
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 const ALERT_EMAIL = process.env.REPORTS_EMAIL_TO || 'admin@petwash.co.il';
-const SLACK_WEBHOOK = process.env.SLACK_WEBHOOK_URL || process.env.ALERTS_SLACK_WEBHOOK; // Optional
-
-if (SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY);
-}
+const SLACK_WEBHOOK = process.env.SLACK_WEBHOOK_URL || process.env.ALERTS_SLACK_WEBHOOK;
 
 // ============================================
 // MONITORING CONFIGURATION

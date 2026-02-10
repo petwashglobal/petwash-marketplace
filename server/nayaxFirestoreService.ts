@@ -1274,8 +1274,8 @@ async function sendAlertEmail(alertId: string, alert: Omit<StationAlert, 'id'>):
       logger.warn('[sendAlertEmail] SENDGRID_API_KEY not configured - skipping email');
       return;
     }
-    const sgMail = await import('@sendgrid/mail');
-    sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+    const { getSendGridClient } = await import('./lib/sendgrid');
+    const sgMail = { default: getSendGridClient() };
 
     const emailContent = {
       to: 'Support@PetWash.co.il',

@@ -1,5 +1,5 @@
 import { logger } from './observability';
-import sgMail from '@sendgrid/mail';
+import sgMail from './sendgrid';
 
 interface AlertConfig {
   name: string;
@@ -104,8 +104,6 @@ class AlertManager {
     }
 
     try {
-      sgMail.setApiKey(apiKey);
-
       const severityColors = {
         critical: '#ef4444',
         warning: '#f59e0b',

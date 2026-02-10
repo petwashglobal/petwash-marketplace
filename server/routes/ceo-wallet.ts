@@ -9,14 +9,9 @@ import { AppleWalletService } from '../appleWallet';
 import { GoogleWalletService } from '../googleWallet';
 import { logger } from '../lib/logger';
 import { db } from '../lib/firebase-admin';
-import sgMail from '@sendgrid/mail';
+import sgMail from '../lib/sendgrid';
 
 const router = express.Router();
-
-// Initialize SendGrid
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
 
 /**
  * GET /api/ceo/wallet/business-card

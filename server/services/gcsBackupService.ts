@@ -11,14 +11,9 @@ import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as crypto from 'crypto';
-import sgMail from '@sendgrid/mail';
+import sgMail from '../lib/sendgrid';
 
 const execAsync = promisify(exec);
-
-// Initialize SendGrid
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
 
 // Environment-driven bucket names (no hardcoding)
 const CODE_BUCKET = process.env.GCS_CODE_BUCKET || 'petwash-code-backups';

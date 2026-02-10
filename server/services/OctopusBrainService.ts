@@ -79,7 +79,9 @@ class OctopusBrainService {
   private platformHealth: Map<string, PlatformHealth> = new Map();
   private alerts: BrainAlert[] = [];
   private lastGeminiAnalysis: Date | null = null;
-  private GEMINI_ANALYSIS_INTERVAL = 5 * 60 * 1000; // Gemini analysis every 5 minutes
+  private GEMINI_ANALYSIS_INTERVAL = 2 * 60 * 60 * 1000; // Gemini analysis every 2 hours (free tier: 20 req/day)
+  private geminiQuotaExhausted = false;
+  private geminiQuotaResetTime: Date | null = null;
 
   private readonly PLATFORMS: PlatformDefinition[] = [
     {
@@ -224,8 +226,13 @@ class OctopusBrainService {
     const healthChecks = this.PLATFORMS.map(platform => this.checkPlatformHealth(platform));
     await Promise.all(healthChecks);
 
-    const shouldRunGemini = !this.lastGeminiAnalysis || 
-      (Date.now() - this.lastGeminiAnalysis.getTime()) > this.GEMINI_ANALYSIS_INTERVAL;
+    if (this.geminiQuotaExhausted && this.geminiQuotaResetTime && new Date() > this.geminiQuotaResetTime) {
+      this.geminiQuotaExhausted = false;
+      this.geminiQuotaResetTime = null;
+    }
+
+    const shouldRunGemini = !this.geminiQuotaExhausted && 
+      (!this.lastGeminiAnalysis || (Date.now() - this.lastGeminiAnalysis.getTime()) > this.GEMINI_ANALYSIS_INTERVAL);
 
     if (this.ai && shouldRunGemini) {
       await this.runGeminiAnalysis();
@@ -370,7 +377,16 @@ Respond in JSON format:
         }
       }
     } catch (error: any) {
-      logger.warn(`[🐙 Octopus Brain] Gemini analysis failed: ${error.message}`);
+      const errorMsg = typeof error.message === 'string' ? error.message : JSON.stringify(error.message || error);
+      if (errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('429') || errorMsg.includes('quota')) {
+        this.geminiQuotaExhausted = true;
+        const resetTime = new Date();
+        resetTime.setHours(resetTime.getHours() + 1);
+        this.geminiQuotaResetTime = resetTime;
+        logger.warn(`[🐙 Octopus Brain] Gemini quota exhausted - pausing AI analysis until ${resetTime.toISOString()}`);
+      } else {
+        logger.warn(`[🐙 Octopus Brain] Gemini analysis failed: ${errorMsg}`);
+      }
     }
   }
 

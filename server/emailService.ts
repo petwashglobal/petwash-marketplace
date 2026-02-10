@@ -1,4 +1,3 @@
-import { MailService } from '@sendgrid/mail';
 import type { TaxInvoice, TransactionRecord } from '@shared/israeliTax';
 import { IsraeliTaxService } from '@shared/israeliTax';
 import type { CrmEmailTemplate, CrmCommunicationLog, InsertCrmCommunicationLog } from '@shared/schema';
@@ -8,15 +7,9 @@ import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 import { logger } from './lib/logger';
 import { replaceTemplates, validateTemplate, type TemplateContext } from './lib/template-engine';
+import { createMailService, isSendGridConfigured } from './lib/sendgrid';
 
-if (!process.env.SENDGRID_API_KEY) {
-  logger.warn('SENDGRID_API_KEY not found - email functionality will be disabled');
-}
-
-const mailService = new MailService();
-if (process.env.SENDGRID_API_KEY) {
-  mailService.setApiKey(process.env.SENDGRID_API_KEY);
-}
+const mailService = createMailService();
 
 export class EmailService {
   private static readonly FROM_EMAIL = 'noreply@petwash.co.il';
@@ -44,9 +37,9 @@ export class EmailService {
     html: string;
     from?: string;
   }): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('SendGrid not configured - would send email:', params.subject);
-      return true; // Return true for development
+      return true;
     }
     
     try {
@@ -365,7 +358,7 @@ export class EmailService {
    * Send tax invoice to customer
    */
   static async sendTaxInvoice(invoice: TaxInvoice): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('SendGrid not configured - would send invoice:', invoice.invoiceNumber);
       return true; // Return true for development
     }
@@ -422,7 +415,7 @@ export class EmailService {
     transaction: TransactionRecord, 
     invoice: TaxInvoice
   ): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('SendGrid not configured - would send report for transaction:', transaction.id);
       return true; // Return true for development
     }
@@ -466,7 +459,7 @@ export class EmailService {
     csvContent: string,
     summary: { totalRevenue: number; totalTransactions: number }
   ): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info(`SendGrid not configured - would send ${reportType} revenue report for ${period}`);
       return true;
     }
@@ -599,7 +592,7 @@ export class EmailService {
     netVAT: number;
     status: 'payment_due' | 'refund_due' | 'balanced';
   }): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info(`SendGrid not configured - would send VAT notification for ${params.month}/${params.year}`);
       return true;
     }
@@ -713,7 +706,7 @@ export class EmailService {
     vendor: string;
     supervisorEmail?: string;
   }): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info(`SendGrid not configured - would send expense notification for ${params.expenseId}`);
       return true;
     }
@@ -821,7 +814,7 @@ export class EmailService {
    * Send blank expense form draft to CEO and National Operations Director
    */
   static async sendBlankExpenseFormDraft(): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('SendGrid not configured - would send blank expense form draft');
       return true;
     }
@@ -1000,7 +993,7 @@ export class EmailService {
    * Send sample VAT submission to Israeli Tax Authority (demonstration)
    */
   static async sendSampleVATSubmissionTaxAuthority(): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('SendGrid not configured - would send sample VAT submission');
       return true;
     }
@@ -1197,7 +1190,7 @@ export class EmailService {
     voucherCode: string,
     qrCode: string
   ): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('SendGrid not configured - would send gift card:', voucherCode);
       return true;
     }
@@ -1283,7 +1276,7 @@ export class EmailService {
     invoice: TaxInvoice,
     voucherCode: string
   ): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('SendGrid not configured - would send confirmation:', invoice.invoiceNumber);
       return true;
     }
@@ -1374,9 +1367,9 @@ export class EmailService {
   }): Promise<boolean> {
     const { reminderId, customerData, appointmentData, dryRun } = params;
     
-    if (!process.env.SENDGRID_API_KEY && !dryRun) {
+    if (!isSendGridConfigured() && !dryRun) {
       logger.info('SendGrid not configured - would send appointment reminder:', reminderId);
-      return true; // Return true for development
+      return true;
     }
     
     try {
@@ -1505,7 +1498,7 @@ export class EmailService {
     expiresAt: Date;
     language?: 'he' | 'en';
   }): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('SendGrid not configured - would send birthday discount:', params.voucherCode);
       return true; // Return true for development
     }
@@ -1923,7 +1916,7 @@ export class EmailService {
       vaccineDate: string;
     }>;
   }): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('SendGrid not configured - would send vaccine reminder:', params.petName);
       return true; // Return true for development
     }
@@ -2176,7 +2169,7 @@ export class EmailService {
     firstName: string = '',
     language: 'he' | 'en' = 'he'
   ): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('SendGrid not configured - would send welcome email to:', email);
       return true; // Return true for development
     }
@@ -2494,7 +2487,7 @@ export class EmailService {
     expiresAt: Date | null,
     language: 'he' | 'en' = 'he'
   ): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.warn('SendGrid API key not configured - skipping voucher purchase email');
       return false;
     }
@@ -2700,7 +2693,7 @@ export class EmailService {
     currency: string,
     language: 'he' | 'en' = 'he'
   ): Promise<boolean> {
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.warn('SendGrid API key not configured - skipping voucher claim email');
       return false;
     }
@@ -3083,7 +3076,7 @@ export class EmailService {
       }
       
       // Fallback to SendGrid if Gmail fails
-      if (process.env.SENDGRID_API_KEY) {
+      if (isSendGridConfigured()) {
         const mailService = await this.getSendGridService();
         if (mailService) {
           await mailService.send({
@@ -3142,7 +3135,7 @@ export class EmailService {
 
     const isHebrew = language === 'he';
 
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!isSendGridConfigured()) {
       logger.info('[BookingConfirmation] SendGrid not configured - would send:', { invoiceNumber, email });
       return true;
     }

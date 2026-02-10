@@ -4,15 +4,10 @@
  */
 
 import { Router } from 'express';
-import sgMail from '@sendgrid/mail';
+import sgMail from '../lib/sendgrid';
 import { logger } from '../lib/logger';
 
 const router = Router();
-
-// Initialize SendGrid
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
 
 /**
  * POST /api/send-signature-invite - Send e-signature invitation to Ido Shakarzi

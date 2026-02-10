@@ -3,18 +3,13 @@
  * Email notifications for critical security events
  */
 
-import sgMail from '@sendgrid/mail';
+import sgMail from '../lib/sendgrid';
 import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { countFailedAttempts } from './securityEvents';
 
 const FROM = process.env.ALERT_EMAIL_FROM || 'Support@PetWash.co.il';
 const TO = process.env.ALERT_EMAIL_TO || 'Support@PetWash.co.il';
-
-// Initialize SendGrid (already configured in project)
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
 
 /**
  * Send security alert email
