@@ -422,7 +422,7 @@ function LuxuryGiftCard({
         }}
       >
         <div 
-          className="absolute inset-0 opacity-30"
+          className="absolute inset-0 opacity-30 pointer-events-none"
           style={{
             background: 'repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 4px)',
           }}
@@ -437,14 +437,14 @@ function LuxuryGiftCard({
           }}
         />
         
-        <div className="absolute inset-0 overflow-hidden rounded-[16px]">
+        <div className="absolute inset-0 overflow-hidden rounded-[16px] pointer-events-none">
           <div className="absolute -top-1/2 -left-1/4 w-[150%] h-full opacity-20" style={{
             background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%, transparent 60%)',
             transform: 'rotate(-15deg)',
           }} />
         </div>
         
-        <div className="absolute top-5 sm:top-6 left-5 sm:left-6 right-5 sm:right-6">
+        <div className="absolute top-5 sm:top-6 left-5 sm:left-6 right-5 sm:right-6 pointer-events-none">
           <div className="flex items-start justify-between">
             <p className="text-base sm:text-lg font-light tracking-wide" style={{ color: style.textColor, fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', Georgia, serif" }}>
               Pet Wash<span className="text-[8px] align-super">™</span>
@@ -455,7 +455,7 @@ function LuxuryGiftCard({
           </div>
         </div>
 
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <p 
               className="text-3xl sm:text-4xl font-light tracking-tight"
@@ -472,19 +472,19 @@ function LuxuryGiftCard({
           </div>
         </div>
 
-        <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 right-5 sm:right-6">
+        <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 right-5 sm:right-6 pointer-events-none">
           <div className="w-full h-[1px] opacity-10 mb-3" style={{ background: style.textColor }} />
           <p className="text-[10px] tracking-[0.2em] uppercase opacity-30 text-center" style={{ color: style.textColor }}>
             Premium Organic Pet Care
           </p>
         </div>
 
-        <div className="absolute top-0 left-0 right-0 h-[1px]" style={{
+        <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{
           background: `linear-gradient(90deg, transparent, ${style.accentColor}40, transparent)`,
         }} />
 
         {selected && (
-          <div className="absolute top-3 left-3 z-10">
+          <div className="absolute top-3 left-3 z-10 pointer-events-none">
             <div className="w-6 h-6 rounded-full flex items-center justify-center shadow-lg" style={{
               background: style.accentColor,
             }}>
@@ -493,7 +493,7 @@ function LuxuryGiftCard({
           </div>
         )}
 
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 pointer-events-none">
           <div 
             className="px-2 py-0.5 rounded-full"
             style={{ 
@@ -517,7 +517,14 @@ export default function EGift() {
   const { language, dir } = useLanguage();
   const lang = language;
   const isRtl = dir === 'rtl';
-  const [selectedOption, setSelectedOption] = useState<typeof giftOptions[0] | null>(null);
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const preselectedValue = urlParams.get('value');
+  const preselectedOption = preselectedValue 
+    ? giftOptions.find(o => o.value === parseInt(preselectedValue)) || null
+    : null;
+
+  const [selectedOption, setSelectedOption] = useState<typeof giftOptions[0] | null>(preselectedOption);
   const [selectedServices, setSelectedServices] = useState<string[]>(['wash', 'sitter', 'walk', 'trek', 'academy', 'nayax']);
   const [step, setStep] = useState<'select' | 'checkout'>('select');
   

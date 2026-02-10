@@ -63,7 +63,7 @@ export function GiftCards({ language }: GiftCardsProps) {
             return (
               <Link
                 key={voucher.id}
-                href="/egift"
+                href={`/egift?value=${voucher.value}`}
                 className="group relative block"
                 data-testid={`gift-card-${voucher.value}`}
               >
@@ -79,13 +79,13 @@ export function GiftCards({ language }: GiftCardsProps) {
                   className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-xl transition-all duration-500 group-hover:shadow-2xl group-hover:scale-[1.03]"
                   style={{ background: style.gradient }}
                 >
-                  <div className="absolute inset-0 opacity-20">
+                  <div className="absolute inset-0 opacity-20 pointer-events-none">
                     <div className="absolute top-0 left-0 w-full h-full" style={{
                       backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 40%)'
                     }} />
                   </div>
                   
-                  <div className="absolute top-3 sm:top-4 left-3 sm:left-4 flex items-center gap-1.5 sm:gap-2">
+                  <div className="absolute top-3 sm:top-4 left-3 sm:left-4 flex items-center gap-1.5 sm:gap-2 pointer-events-none">
                     <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: style.accentColor }}>
                       <Gift className="w-3 h-3 sm:w-4 sm:h-4" style={{ color: voucher.color === 'gold' ? '#8B6914' : '#333' }} />
                     </div>
@@ -94,7 +94,7 @@ export function GiftCards({ language }: GiftCardsProps) {
                     </span>
                   </div>
 
-                  <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 right-3 sm:right-4">
+                  <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 right-3 sm:right-4 pointer-events-none">
                     <p className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight" style={{ color: style.textColor }}>
                       {formatValue(voucher.value)}
                     </p>
@@ -103,7 +103,7 @@ export function GiftCards({ language }: GiftCardsProps) {
                     </p>
                   </div>
 
-                  <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
+                  <div className="absolute top-3 sm:top-4 right-3 sm:right-4 pointer-events-none">
                     <div className="w-8 h-5 sm:w-10 sm:h-6 rounded" style={{ 
                       background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
