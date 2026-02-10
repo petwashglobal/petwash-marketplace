@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
 import { getActivePaymentMethod } from "@/lib/paymentConfig";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -200,22 +201,26 @@ export default function PetTrekBookingFlow() {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-slate-600 mb-1 block">כתובת איסוף</label>
-                  <Input
+                  <GooglePlacesAutocomplete
                     value={pickupAddress}
-                    onChange={e => setPickupAddress(e.target.value)}
+                    onChange={(value, details) => {
+                      setPickupAddress(value);
+                    }}
                     placeholder="רחוב, מספר, עיר"
-                    className="rounded-xl border-slate-200 bg-white"
-                    data-testid="input-pickup"
+                    country={['il']}
+                    className="rounded-xl"
                   />
                 </div>
                 <div>
                   <label className="text-xs text-slate-600 mb-1 block">כתובת יעד</label>
-                  <Input
+                  <GooglePlacesAutocomplete
                     value={dropoffAddress}
-                    onChange={e => setDropoffAddress(e.target.value)}
+                    onChange={(value, details) => {
+                      setDropoffAddress(value);
+                    }}
                     placeholder="רחוב, מספר, עיר"
-                    className="rounded-xl border-slate-200 bg-white"
-                    data-testid="input-dropoff"
+                    country={['il']}
+                    className="rounded-xl"
                   />
                 </div>
                 <div>

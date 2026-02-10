@@ -12,6 +12,7 @@ import { Plus, MapPin, Activity, AlertCircle, CheckCircle, XCircle, QrCode } fro
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
 export default function StationRegistryDashboard() {
   const [view, setView] = useState<"all" | "active">("all");
@@ -20,6 +21,12 @@ export default function StationRegistryDashboard() {
   const [stationType, setStationType] = useState<string>("k9000");
   const [ownershipType, setOwnershipType] = useState<string>("corporate");
   const [operatingStatus, setOperatingStatus] = useState<string>("active");
+  const [stationAddress, setStationAddress] = useState("");
+  const [stationCity, setStationCity] = useState("");
+  const [stationCountry, setStationCountry] = useState("IL");
+  const [stationPostalCode, setStationPostalCode] = useState("");
+  const [stationLat, setStationLat] = useState("");
+  const [stationLng, setStationLng] = useState("");
   const { toast } = useToast();
 
   const { data: stations, isLoading } = useQuery({
@@ -52,19 +59,21 @@ export default function StationRegistryDashboard() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const coordinates = formData.get("lat") && formData.get("lng") 
-      ? { lat: parseFloat(formData.get("lat") as string), lng: parseFloat(formData.get("lng") as string) }
-      : null;
+    const coordinates = (stationLat && stationLng)
+      ? { lat: parseFloat(stationLat), lng: parseFloat(stationLng) }
+      : (formData.get("lat") && formData.get("lng"))
+        ? { lat: parseFloat(formData.get("lat") as string), lng: parseFloat(formData.get("lng") as string) }
+        : null;
 
     const data = {
       stationId: formData.get("stationId"),
       stationName: formData.get("stationName"),
       stationNameHe: formData.get("stationNameHe"),
-      address: formData.get("address"),
-      city: formData.get("city"),
+      address: stationAddress || formData.get("address"),
+      city: stationCity || formData.get("city"),
       region: formData.get("region"),
-      country: formData.get("country"),
-      postalCode: formData.get("postalCode"),
+      country: stationCountry || formData.get("country"),
+      postalCode: stationPostalCode || formData.get("postalCode"),
       coordinates,
       stationType: stationType,
       ownershipType: ownershipType,
@@ -216,11 +225,25 @@ export default function StationRegistryDashboard() {
               </div>
               <div className="col-span-2">
                 <Label htmlFor="address">Address *</Label>
-                <Input id="address" name="address" required data-testid="input-address" />
+                <GooglePlacesAutocomplete
+                  value={stationAddress}
+                  onChange={(value, details) => {
+                    setStationAddress(value);
+                    if (details) {
+                      if (details.city) setStationCity(details.city);
+                      if (details.country) setStationCountry(details.country);
+                      if (details.postalCode) setStationPostalCode(details.postalCode);
+                      if (details.lat) setStationLat(details.lat.toString());
+                      if (details.lng) setStationLng(details.lng.toString());
+                    }
+                  }}
+                  placeholder="Start typing address..."
+                  country={['il']}
+                />
               </div>
               <div>
                 <Label htmlFor="city">City *</Label>
-                <Input id="city" name="city" required data-testid="input-city" />
+                <Input id="city" name="city" value={stationCity} onChange={e => setStationCity(e.target.value)} required data-testid="input-city" />
               </div>
               <div>
                 <Label htmlFor="region">Region/State</Label>
@@ -228,7 +251,7 @@ export default function StationRegistryDashboard() {
               </div>
               <div>
                 <Label htmlFor="country">Country *</Label>
-                <Input id="country" name="country" defaultValue="IL" required data-testid="input-country" />
+                <Input id="country" name="country" value={stationCountry} onChange={e => setStationCountry(e.target.value)} required data-testid="input-country" />
               </div>
               <div>
                 <Label htmlFor="postalCode">Postal Code</Label>

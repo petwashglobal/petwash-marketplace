@@ -108,6 +108,8 @@ import {
   supplierQualityScores,
   stationRegistry,
   boardMeetingAttendees,
+  pets,
+  bookings,
   // Enterprise HR tables
   hrEmployees,
   hrPayroll,
@@ -328,6 +330,8 @@ export interface IStorage {
   updateAdminUser(id: string, updates: Partial<AdminUser>): Promise<AdminUser>;
   getAllAdminUsers(): Promise<AdminUser[]>;
   getAllUsers(): Promise<User[]>;
+  getAllPets(): Promise<any[]>;
+  getAllBookings(): Promise<any[]>;
   
   // Admin activity logs
   createAdminActivityLog(log: InsertAdminActivityLog): Promise<AdminActivityLog>;
@@ -1896,6 +1900,14 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async getAllPets(): Promise<any[]> {
+    return await db.select().from(pets);
+  }
+
+  async getAllBookings(): Promise<any[]> {
+    return await db.select().from(bookings);
   }
 
   // Admin activity logs
