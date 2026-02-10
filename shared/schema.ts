@@ -10534,3 +10534,23 @@ export const insertConversationMessageSchema = createInsertSchema(conversationMe
 });
 export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
 export type ConversationMessage = typeof conversationMessages.$inferSelect;
+
+export const googleFormsConfig = pgTable("google_forms_config", {
+  id: serial("id").primaryKey(),
+  formType: varchar("form_type", { length: 50 }).notNull().unique(),
+  formUrl: text("form_url").notNull(),
+  formTitle: text("form_title"),
+  formTitleHe: text("form_title_he"),
+  enabled: boolean("enabled").default(true).notNull(),
+  height: integer("height").default(800),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertGoogleFormsConfigSchema = createInsertSchema(googleFormsConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGoogleFormsConfig = z.infer<typeof insertGoogleFormsConfigSchema>;
+export type GoogleFormsConfig = typeof googleFormsConfig.$inferSelect;

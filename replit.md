@@ -133,3 +133,4 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Mapping & Location**: Google Maps API.
 - **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API, Google Dialogflow CX.
 - **Business Management**: Google Business Profile API.
+- **Google Forms Integration**: Admin-configurable embedded Google Forms for user-facing pages (Contact, Franchise, Careers). Managed via `/admin/google-forms`. DB table: `google_forms_config`. Component: `client/src/components/GoogleFormEmbed.tsx`. Supports 8 form types: contact, feedback, newsletter, franchise, provider_application, careers, event_registration, support. Falls back to existing forms when no Google Form is configured.

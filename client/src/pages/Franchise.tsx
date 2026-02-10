@@ -14,6 +14,7 @@ import { useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { NavigationButton } from '@/components/LuxuryWidgets';
 import { FranchiseROICalculator } from '@/components/FranchiseROICalculator';
+import { GoogleFormEmbed } from '@/components/GoogleFormEmbed';
 
 interface FranchiseProps {
   language: Language;
@@ -754,6 +755,14 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Google Form - Franchise Inquiry */}
+            <div className="mt-12">
+              <GoogleFormEmbed
+                formType="franchise"
+                language={language}
+              />
             </div>
           </div>
         </div>

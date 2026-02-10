@@ -76,6 +76,7 @@ const OurService = lazy(() => import("@/pages/OurService"));
 const Gallery = lazy(() => import("@/pages/Gallery"));
 const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
 const AdminBackendPanel = lazy(() => import("@/pages/AdminBackendPanel"));
+const AdminGoogleForms = lazy(() => import("@/pages/AdminGoogleForms"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const AdminLoginV2 = lazy(() => import("@/pages/admin/AdminLoginV2"));
 const AdminAccessDenied = lazy(() => import("@/pages/AdminAccessDenied"));
@@ -1716,6 +1717,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminBackendPanel />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/google-forms">
+          {() => (
+            <AdminRouteGuard>
+              <AdminGoogleForms />
             </AdminRouteGuard>
           )}
         </Route>

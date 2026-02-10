@@ -35,6 +35,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { GooglePlacesAutocomplete, PlaceDetails } from '@/components/ui/google-places-autocomplete';
+import { GoogleFormEmbed } from '@/components/GoogleFormEmbed';
 import type { CareerPosition } from '@shared/schema';
 
 const roleIcons: Record<string, any> = {
@@ -671,6 +672,16 @@ export default function Careers() {
               </CardContent>
             </Card>
           )}
+        </div>
+      </section>
+
+      {/* Google Form - Career Application */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-6 max-w-3xl">
+          <GoogleFormEmbed
+            formType="careers"
+            language={isRTL ? 'he' : 'en'}
+          />
         </div>
       </section>
       

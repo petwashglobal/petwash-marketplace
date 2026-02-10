@@ -8262,6 +8262,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/ai-verification', apiLimiter, aiPayoutVerificationRoutes);
   app.use('/api/israeli-compliance', apiLimiter, israeliCompliance2025Routes);
   
+  // Google Forms Configuration - Admin-managed embedded Google Forms
+  const googleFormsRoutes = await import('./routes/google-forms');
+  app.use(apiLimiter, googleFormsRoutes.default);
+  
   // ========================================================================
   // 🌐 MULTI-PLATFORM API (Enhanced Production Server Architecture)
   // Platform-aware booking, listing, and document management
