@@ -1,18 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MapPin, Loader2 } from 'lucide-react';
 import { getApiUrl } from '@/lib/apiConfig';
-
-/**
- * 🌟 WORLD-CLASS GOOGLE PLACES AUTOCOMPLETE 🌟
- * 
- * Premium address autocomplete with instant fill for Israeli and international addresses
- * - Automatic field population (street, city, postal code, country)
- * - Mobile-optimized with large touch targets
- * - Real-time validation and feedback
- * - 7-star UX experience
- */
 
 interface GooglePlacesAutocompleteProps {
   value: string;
@@ -22,7 +11,7 @@ interface GooglePlacesAutocompleteProps {
   label?: string;
   error?: string;
   required?: boolean;
-  country?: string[]; // e.g., ['il', 'us'] for Israel and USA
+  country?: string[];
   className?: string;
 }
 
@@ -39,6 +28,148 @@ export interface PlaceDetails {
   placeId?: string;
 }
 
+let googleMapsLoadPromise: Promise<void> | null = null;
+
+function loadGoogleMapsScript(): Promise<void> {
+  if (window.google && window.google.maps && window.google.maps.places) {
+    return Promise.resolve();
+  }
+
+  if (googleMapsLoadPromise) {
+    return googleMapsLoadPromise;
+  }
+
+  googleMapsLoadPromise = new Promise<void>(async (resolve, reject) => {
+    let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+    if (!apiKey) {
+      try {
+        const response = await fetch(getApiUrl('/api/config/google-maps'));
+        if (response.ok) {
+          const data = await response.json();
+          apiKey = data.apiKey || '';
+        }
+      } catch (e) {
+        console.error('[Google Places] Failed to fetch API key from server');
+      }
+    }
+
+    if (!apiKey) {
+      console.error('[Google Places] No API key configured');
+      googleMapsLoadPromise = null;
+      reject(new Error('No API key'));
+      return;
+    }
+
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+    if (existingScript) {
+      const check = () => {
+        if (window.google && window.google.maps && window.google.maps.places) {
+          resolve();
+        } else {
+          setTimeout(check, 100);
+        }
+      };
+      check();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=en`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      const check = () => {
+        if (window.google && window.google.maps && window.google.maps.places) {
+          resolve();
+        } else {
+          setTimeout(check, 50);
+        }
+      };
+      check();
+    };
+    script.onerror = () => {
+      googleMapsLoadPromise = null;
+      reject(new Error('Failed to load Google Maps'));
+    };
+    document.head.appendChild(script);
+  });
+
+  return googleMapsLoadPromise;
+}
+
+function injectPacStyles() {
+  const styleId = 'google-pac-mobile-fix';
+  if (document.getElementById(styleId)) return;
+
+  const style = document.createElement('style');
+  style.id = styleId;
+  style.textContent = `
+    .pac-container {
+      z-index: 99999 !important;
+      background-color: #fff !important;
+      border-radius: 12px !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15) !important;
+      border: 1px solid #e5e7eb !important;
+      margin-top: 4px !important;
+      padding: 4px 0 !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      max-height: 260px !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+    .pac-item {
+      padding: 12px 16px !important;
+      font-size: 15px !important;
+      line-height: 1.4 !important;
+      cursor: pointer !important;
+      border-top: 1px solid #f3f4f6 !important;
+      min-height: 48px !important;
+      display: flex !important;
+      align-items: center !important;
+      -webkit-tap-highlight-color: transparent !important;
+      touch-action: manipulation !important;
+    }
+    .pac-item:first-child {
+      border-top: none !important;
+    }
+    .pac-item:hover,
+    .pac-item:active,
+    .pac-item.pac-item-selected {
+      background-color: #f8f9fa !important;
+    }
+    .pac-item-query {
+      font-size: 15px !important;
+      font-weight: 500 !important;
+      color: #1f2937 !important;
+    }
+    .pac-item span:last-child {
+      font-size: 13px !important;
+      color: #6b7280 !important;
+    }
+    .pac-icon {
+      display: none !important;
+    }
+    .pac-logo::after {
+      display: none !important;
+    }
+    @media (max-width: 768px) {
+      .pac-container {
+        position: fixed !important;
+        left: 8px !important;
+        right: 8px !important;
+        width: auto !important;
+        max-height: 200px !important;
+      }
+      .pac-item {
+        padding: 14px 16px !important;
+        min-height: 52px !important;
+        font-size: 16px !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export function GooglePlacesAutocomplete({
   value,
   onChange,
@@ -47,141 +178,108 @@ export function GooglePlacesAutocomplete({
   label,
   error,
   required = false,
-  country = ['il'], // Default to Israel
+  country = ['il'],
   className = '',
 }: GooglePlacesAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const isSelectingRef = useRef(false);
+  const skipNextOnChangeRef = useRef(false);
 
   useEffect(() => {
-    // Load Google Maps Script
-    const loadScript = async () => {
-      if (window.google && window.google.maps) {
-        console.log('[Google Places] ✅ Google Maps already loaded');
-        setScriptLoaded(true);
-        return;
-      }
-
-      // Fetch API key from server (secrets aren't available at build time)
-      let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-      if (!apiKey) {
-        try {
-          const response = await fetch(getApiUrl('/api/config/google-maps'));
-          if (response.ok) {
-            const data = await response.json();
-            apiKey = data.apiKey || '';
-          }
-        } catch (e) {
-          console.error('[Google Places] Failed to fetch API key from server');
-        }
-      }
-
-      if (!apiKey) {
-        console.error('[Google Places] ❌ Google Maps API key not configured');
-        return;
-      }
-      
-      console.log('[Google Places] Loading Google Maps script...');
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=en`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        console.log('[Google Places] ✅ Google Maps script loaded successfully');
-        setScriptLoaded(true);
-      };
-      script.onerror = (e) => {
-        console.error('[Google Places] ❌ Failed to load Google Maps script', e);
-      };
-      document.head.appendChild(script);
-    };
-
-    loadScript();
+    injectPacStyles();
+    loadGoogleMapsScript()
+      .then(() => setIsReady(true))
+      .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (!scriptLoaded || !inputRef.current) return;
+  const handlePlaceChanged = useCallback(() => {
+    const place = autocompleteRef.current?.getPlace();
 
-    // Initialize Google Places Autocomplete
+    if (!place?.address_components && !place?.formatted_address && !place?.name) {
+      return;
+    }
+
+    isSelectingRef.current = true;
+
+    if (!place.address_components) {
+      const addr = place.formatted_address || place.name || '';
+      const basicDetails: PlaceDetails = {
+        formattedAddress: addr,
+        placeId: place.place_id,
+        lat: place.geometry?.location?.lat(),
+        lng: place.geometry?.location?.lng(),
+      };
+      skipNextOnChangeRef.current = true;
+      onChange(addr, basicDetails);
+      onPlaceSelected?.(basicDetails);
+      isSelectingRef.current = false;
+      return;
+    }
+
+    const details: PlaceDetails = {
+      formattedAddress: place.formatted_address || '',
+      placeId: place.place_id,
+      lat: place.geometry?.location?.lat(),
+      lng: place.geometry?.location?.lng(),
+    };
+
+    place.address_components.forEach((component) => {
+      const types = component.types;
+      if (types.includes('street_number')) details.streetNumber = component.long_name;
+      if (types.includes('route')) details.street = component.long_name;
+      if (types.includes('locality')) details.city = component.long_name;
+      if (types.includes('administrative_area_level_1')) details.state = component.long_name;
+      if (types.includes('postal_code')) details.postalCode = component.long_name;
+      if (types.includes('country')) details.country = component.long_name;
+    });
+
+    if (details.streetNumber && details.street) {
+      details.street = `${details.street} ${details.streetNumber}`;
+    }
+
+    skipNextOnChangeRef.current = true;
+    onChange(details.formattedAddress, details);
+    onPlaceSelected?.(details);
+    isSelectingRef.current = false;
+  }, [onChange, onPlaceSelected]);
+
+  useEffect(() => {
+    if (!isReady || !inputRef.current) return;
+
+    if (autocompleteRef.current) {
+      google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      autocompleteRef.current = null;
+    }
+
     try {
-      autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
+      const ac = new google.maps.places.Autocomplete(inputRef.current, {
         types: ['address'],
         componentRestrictions: country.length > 0 ? { country } : undefined,
-        fields: ['address_components', 'formatted_address', 'geometry', 'place_id'],
+        fields: ['address_components', 'formatted_address', 'geometry', 'place_id', 'name'],
       });
 
-      // Listen for place selection
-      autocompleteRef.current.addListener('place_changed', () => {
-        const place = autocompleteRef.current?.getPlace();
-        
-        // Handle case where user pressed Enter without selecting from dropdown
-        // (place exists but has no address_components - only name property)
-        if (!place?.address_components) {
-          // If we have formatted_address or name, still use it
-          if (place?.formatted_address || place?.name) {
-            const basicDetails: PlaceDetails = {
-              formattedAddress: place.formatted_address || place.name || inputRef.current?.value || '',
-              placeId: place.place_id,
-              lat: place.geometry?.location?.lat(),
-              lng: place.geometry?.location?.lng(),
-            };
-            console.log('[Google Places] ✅ Basic address selected (no components):', basicDetails);
-            onChange(basicDetails.formattedAddress, basicDetails);
-            onPlaceSelected?.(basicDetails);
+      ac.addListener('place_changed', handlePlaceChanged);
+      autocompleteRef.current = ac;
+
+      const form = inputRef.current.closest('form');
+      if (form) {
+        const preventSubmit = (e: Event) => {
+          if (isSelectingRef.current) {
+            e.preventDefault();
           }
-          return;
-        }
-
-        setIsLoading(true);
-
-        // Extract address components
-        const details: PlaceDetails = {
-          formattedAddress: place.formatted_address || '',
-          placeId: place.place_id,
-          lat: place.geometry?.location?.lat(),
-          lng: place.geometry?.location?.lng(),
         };
-
-        place.address_components.forEach((component) => {
-          const types = component.types;
-
-          if (types.includes('street_number')) {
-            details.streetNumber = component.long_name;
+        form.addEventListener('submit', preventSubmit);
+        return () => {
+          form.removeEventListener('submit', preventSubmit);
+          if (autocompleteRef.current) {
+            google.maps.event.clearInstanceListeners(autocompleteRef.current);
           }
-          if (types.includes('route')) {
-            details.street = component.long_name;
-          }
-          if (types.includes('locality')) {
-            details.city = component.long_name;
-          }
-          if (types.includes('administrative_area_level_1')) {
-            details.state = component.long_name;
-          }
-          if (types.includes('postal_code')) {
-            details.postalCode = component.long_name;
-          }
-          if (types.includes('country')) {
-            details.country = component.long_name;
-          }
-        });
-
-        // Combine street number and street name
-        if (details.streetNumber && details.street) {
-          details.street = `${details.street} ${details.streetNumber}`;
-        }
-
-        console.log('[Google Places] ✅ Address selected:', details);
-
-        // Update parent component
-        onChange(details.formattedAddress, details);
-        onPlaceSelected?.(details);
-
-        setIsLoading(false);
-      });
-    } catch (error) {
-      console.error('[Google Places] Initialization error:', error);
+        };
+      }
+    } catch (err) {
+      console.error('[Google Places] Init error:', err);
     }
 
     return () => {
@@ -189,7 +287,31 @@ export function GooglePlacesAutocomplete({
         google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };
-  }, [scriptLoaded, onChange, onPlaceSelected, country]);
+  }, [isReady, country.join(','), handlePlaceChanged]);
+
+  useEffect(() => {
+    if (!inputRef.current) return;
+    if (skipNextOnChangeRef.current) {
+      skipNextOnChangeRef.current = false;
+      if (inputRef.current.value === value) return;
+    }
+    if (inputRef.current.value !== value) {
+      inputRef.current.value = value;
+    }
+  }, [value]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value);
+  }, [onChange]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const pacContainer = document.querySelector('.pac-container');
+      if (pacContainer && pacContainer.querySelectorAll('.pac-item').length > 0) {
+        e.preventDefault();
+      }
+    }
+  }, []);
 
   return (
     <div className={`space-y-2 ${className}`}>
@@ -199,20 +321,17 @@ export function GooglePlacesAutocomplete({
         </Label>
       )}
       <div className="relative">
-        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none z-10" />
-        {isLoading && (
-          <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-500 animate-spin z-10" />
-        )}
         <Input
           ref={inputRef}
           type="text"
           inputMode="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          defaultValue={value}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={`
-            pl-12 pr-12 py-4 sm:py-6 text-base
-            min-h-[48px] sm:min-h-[56px]
+            px-4 py-4 sm:py-5 text-base
+            min-h-[48px] sm:min-h-[52px]
             rounded-xl
             border-2
             focus:ring-2 focus:ring-blue-500
@@ -220,9 +339,8 @@ export function GooglePlacesAutocomplete({
             text-gray-900 placeholder:text-gray-500
             touch-manipulation
             ${error ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'}
-            ${isLoading ? 'bg-blue-50' : 'bg-white'}
           `}
-          style={{ 
+          style={{
             color: '#1f2937',
             fontSize: '16px',
             WebkitAppearance: 'none',
@@ -232,58 +350,26 @@ export function GooglePlacesAutocomplete({
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"
-          spellCheck="false"
+          spellCheck={false}
           data-form-type="other"
           data-lpignore="true"
           data-testid="input-google-places-autocomplete"
         />
       </div>
       {error && (
-        <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
-          <span className="font-medium">⚠️</span> {error}
-        </p>
+        <p className="text-sm text-red-600 mt-1">{error}</p>
       )}
     </div>
   );
 }
 
-/**
- * Hook for programmatic access to Google Places API
- */
 export function useGooglePlaces() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const loadMaps = async () => {
-      if (window.google && window.google.maps) {
-        setIsLoaded(true);
-        return;
-      }
-
-      let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-      if (!apiKey) {
-        try {
-          const response = await fetch(getApiUrl('/api/config/google-maps'));
-          if (response.ok) {
-            const data = await response.json();
-            apiKey = data.apiKey || '';
-          }
-        } catch (e) {
-          console.error('[Google Places] Failed to fetch API key');
-        }
-      }
-
-      if (!apiKey) return;
-
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=en`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => setIsLoaded(true);
-      document.head.appendChild(script);
-    };
-
-    loadMaps();
+    loadGoogleMapsScript()
+      .then(() => setIsLoaded(true))
+      .catch(() => {});
   }, []);
 
   return { isLoaded };
