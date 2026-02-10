@@ -141,7 +141,7 @@ export default function BrowseSitters() {
                 </span>
               </div>
               
-              <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-light text-gray-900 mb-4" style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif Hebrew', serif" }} data-testid="heading-main">
+              <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-light text-gray-900 mb-4" style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif Hebrew', serif", direction: 'ltr', unicodeBidi: 'isolate' }} data-testid="heading-main">
                 The Sitter Suite™
               </h1>
               
