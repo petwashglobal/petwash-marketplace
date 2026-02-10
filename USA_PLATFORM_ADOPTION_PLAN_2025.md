@@ -58,7 +58,7 @@ interface RoverBookingSystem {
 - Lower commissions (20% vs Wag 40%) = More walkers join
 - Long-term relationships (recurring bookings)
 - Full-featured website + app (we're web-first ✅)
-- **Adoption for Israel:** Keep 24% commission (6% owner / 18% walker split)
+- **Adoption for Israel:** Keep 15% flat commission
 
 ---
 
@@ -199,7 +199,7 @@ interface CitizenShipperBiddingSystem {
 **D. Adoption for PetTrek™:**
 - ✅ Keep our Uber-style instant matching (better UX)
 - ✅ Add optional "Request Bids" mode for non-urgent transport
-- ✅ Implement 20% commission (fair vs 0% CitizenShipper, sustainable)
+- ✅ Implement 15% commission (fair vs 0% CitizenShipper, sustainable)
 - ✅ Copy their $1K protection plan + 24/7 vet access
 
 ---
@@ -299,7 +299,7 @@ interface PetWashMenuStructure {
         },
         {
           title: "Pricing & Commission",
-          description: "Transparent 24% platform fee (6% owner, 18% walker)",
+          description: "Transparent 15% flat commission",
           route: "/walk-my-pet/pricing"
         },
         {
@@ -937,7 +937,7 @@ export function WalkMyPetHowItWorks() {
             <li>✅ Background-checked walkers</li>
             <li>✅ KYC-verified identities</li>
             <li>✅ $1-2M liability insurance</li>
-            <li>✅ Transparent 24% platform fee (6% owner, 18% walker)</li>
+            <li>✅ Transparent 15% flat platform commission</li>
           </ul>
         </div>
         
@@ -1087,7 +1087,7 @@ export function WalkMyPetHowItWorks() {
 
 | Metric | Rover Benchmark | Wag Benchmark | Pet Wash™ Target |
 |--------|----------------|---------------|------------------|
-| **Platform Commission** | 20% | 40% | 24% (6% owner, 18% walker) |
+| **Platform Commission** | 20% | 40% | 15% flat commission |
 | **Walker Retention** | 80% annual | 50% annual | 85% annual (better than both) |
 | **Avg Rating** | 4.8/5 | 4.97/5 | 4.9/5 |
 | **Booking Frequency** | 2.3x/month | 1.8x/month | 3x/month (recurring walks) |
@@ -1140,7 +1140,7 @@ export function WalkMyPetHowItWorks() {
 **ROI Projection:**
 - Current platform: ~100 bookings/month
 - After USA features: ~500 bookings/month (5x growth)
-- Revenue increase: ₪200K → ₪1M monthly (24% commission)
+- Revenue increase: ₪200K → ₪1M monthly (15% commission)
 - Payback period: 2 months
 
 ---

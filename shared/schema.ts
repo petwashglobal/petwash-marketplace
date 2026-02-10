@@ -4042,7 +4042,7 @@ export const walkBookings = pgTable("walk_bookings", {
   
   // Pricing & Payment
   walkerRate: decimal("walker_rate", { precision: 10, scale: 2 }).notNull(), // What walker charges
-  platformFeeOwner: decimal("platform_fee_owner", { precision: 10, scale: 2 }).notNull(), // 6% owner pays
+  platformFeeOwner: decimal("platform_fee_owner", { precision: 10, scale: 2 }).notNull(), // 15% platform commission
   platformFeeSitter: decimal("platform_fee_sitter", { precision: 10, scale: 2 }).notNull(), // 15% platform commission
   totalCost: decimal("total_cost", { precision: 10, scale: 2 }).notNull(), // What owner pays
   walkerPayout: decimal("walker_payout", { precision: 10, scale: 2 }).notNull(), // What walker receives (85%)

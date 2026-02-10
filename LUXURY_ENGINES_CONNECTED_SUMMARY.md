@@ -17,7 +17,7 @@
 
 **Before** (Basic logic):
 - Simple hourly rate calculation
-- Fixed 24% commission split
+- Fixed 15% commission split
 - No loyalty discounts
 - No surge pricing
 

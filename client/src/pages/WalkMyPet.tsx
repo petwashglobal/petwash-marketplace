@@ -979,7 +979,7 @@ function EarningsCalculator({ isHebrew, t }: { isHebrew: boolean; t: any }) {
   const [avgRate, setAvgRate] = useState(80);
   const [avgDuration, setAvgDuration] = useState(60);
 
-  const weeklyEarnings = (walksPerWeek * avgRate * (avgDuration / 60) * 0.76);
+  const weeklyEarnings = (walksPerWeek * avgRate * (avgDuration / 60) * 0.85);
   const monthlyEarnings = weeklyEarnings * 4.33;
   const yearlyEarnings = monthlyEarnings * 12;
 

@@ -172,7 +172,7 @@ export class WalkSessionService {
       distance: number;
       vitalData: any;
       earningsBreakdown: {
-        totalPaid: number; // What owner paid (base + 6%)
+        totalPaid: number; // What owner paid (base + 15%)
         basePriceEstimate: number; // Estimated base price
         platformFee: number; // Our 15% commission
         walkerEarnings: number; // 85% to walker
@@ -291,7 +291,7 @@ export class WalkSessionService {
         distance: data.totalDistance,
         vitalData: data.vitalData,
         earningsBreakdown: {
-          totalPaid: totalPaid, // What owner paid (base + 6%)
+          totalPaid: totalPaid, // What owner paid (base + 15%)
           basePriceEstimate: basePriceEstimate, // Estimated base price
           platformFee: platformFee, // Our 15% commission
           walkerEarnings: walkerEarnings, // 85% to walker

@@ -247,9 +247,9 @@ export class ContractGenerationService {
 
     const templateContent = await this.loadTemplateFromFile(templateFile);
 
-    const platformFee = data.contractorType === 'walker' ? 24 : 10;
-    const clientFee = data.contractorType === 'walker' ? 6 : 10;
-    const contractorFee = data.contractorType === 'walker' ? 18 : 0;
+    const platformFee = 15;
+    const clientFee = 15;
+    const contractorFee = 0;
 
     const variablesData = {
       contractor_name: data.contractorName,

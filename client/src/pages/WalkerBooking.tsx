@@ -492,7 +492,7 @@ export default function WalkerBooking() {
                       </div>
                       
                       <div className="flex justify-between text-sm luxury-text-body">
-                        <span>{t('walker.platformFee')} (6%)</span>
+                        <span>{t('walker.platformFee')} (15%)</span>
                         <span className="font-semibold">{walker.currency} {platformFeeOwner.toFixed(2)}</span>
                       </div>
 
