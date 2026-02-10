@@ -259,14 +259,20 @@ export async function signInWithPasskey(
       return { success: false, error: 'Passkeys not supported in this browser' };
     }
 
-    // Get authentication options from server
-    // Get user email from form or ask
     const emailInput = document.querySelector('input[type="email"]') as HTMLInputElement;
-    const email = emailInput?.value?.trim() || '';
+    let email = emailInput?.value?.trim() || '';
     
-    // Validate email before sending to backend
     if (!email && !uid) {
-      return { success: false, error: 'Please enter your email address first' };
+      try {
+        const storedEmail = localStorage.getItem('petwash_passkey_email');
+        if (storedEmail) {
+          email = storedEmail;
+        }
+      } catch {}
+    }
+    
+    if (!email && !uid) {
+      return { success: false, error: 'NO_EMAIL' };
     }
     
     // Basic email validation

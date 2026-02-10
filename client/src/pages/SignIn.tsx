@@ -352,7 +352,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       } else {
         let errorDescription = result.error || t('signin.failed', language);
         
-        if (isChromeiOS()) {
+        if (result.error === 'NO_EMAIL') {
+          errorDescription = language === 'he'
+            ? 'הזינו את כתובת האימייל שלכם כדי להתחבר עם Face ID'
+            : 'Enter your email address to sign in with Face ID';
+        } else if (isChromeiOS()) {
           errorDescription = language === 'he'
             ? `${result.error || "נכשל להתחבר"}. טיפ: נסה Safari לחווית Face ID טובה יותר.`
             : `${result.error || "Failed to sign in"}. Tip: Try Safari for better Face ID experience.`;
@@ -360,7 +364,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         
         toast({
           variant: "destructive",
-          title: t('signin.error', language),
+          title: language === 'he' ? 'שגיאה בהתחברות' : 'Sign-in error',
           description: errorDescription,
         });
 
