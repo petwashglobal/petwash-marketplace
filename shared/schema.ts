@@ -10050,7 +10050,7 @@ export const PETWASH_PLATFORMS: Record<PetWashPlatform, {
   },
   pet_trek: {
     nameEn: "PetTrek™",
-    nameHe: "פטטרק™",
+    nameHe: "פט-טרק™",
     icon: "Car",
     color: "from-blue-500 to-indigo-600",
     description: {

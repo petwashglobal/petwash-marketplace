@@ -45,7 +45,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     {
       id: 4,
       name: 'PetTrek™',
-      nameHe: 'פטטרק',
+      nameHe: 'פט-טרק',
       tagline: t('divisions.petTrek.tagline', language),
       description: t('divisions.petTrek.description', language),
       icon: Zap,

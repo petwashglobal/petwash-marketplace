@@ -55,7 +55,7 @@ const PETWASH_PLATFORMS: PlatformCreateInput[] = [
   {
     id: "PET_TREK",
     name: "PetTrek™",
-    nameHe: "פטטרק™",
+    nameHe: "פט-טרק™",
     description: "Premium pet transportation with climate-controlled vehicles",
     descriptionHe: "הסעות חיות מחמד פרימיום עם רכבים ממוזגים",
     platformFeePercent: 18,

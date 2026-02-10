@@ -58,7 +58,7 @@ const PLATFORMS = [
     id: 'pet_trek', 
     icon: Car, 
     nameEn: 'PetTrek™', 
-    nameHe: 'פטטרק™',
+    nameHe: 'פט-טרק™',
     descEn: 'Safe pet transportation',
     descHe: 'הסעות חיות מחמד בטוחות',
     color: 'from-blue-500 to-indigo-600',
