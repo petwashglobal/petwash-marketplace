@@ -80,13 +80,15 @@ const LANGUAGE_CONFIG = {
  * Platform context for Kenzo
  */
 const PLATFORM_CONTEXT = {
-  k9000: 'K9000 Wash Stations - Premium organic self-service pet wash stations with IoT technology',
-  sitter: 'The Sitter Suite™ - Professional pet sitting marketplace connecting owners with trusted sitters',
-  walker: 'Walk My Pet™ - Dog walking marketplace for daily exercise and socialization',
-  transport: 'PetTrek™ - Safe pet transport service for vet visits, grooming, and travel',
-  plushlab: 'The Plush Lab™ - AI-powered pet avatar creator with multilingual TTS',
-  loyalty: 'Loyalty Program - 7-tier luxury loyalty system (Bronze→Silver→Gold→Platinum→Diamond→Emerald→Royal) with progressive rewards up to 50% off',
-  pawfinder: 'Paw Finder™ - FREE community service to reunite lost pets with owners',
+  k9000: 'K9000™ Wash Stations - Australian-engineered premium self-service pet wash with IoT, LED ecosystem, 4 organic pumps per side, cashless payment (Nayax QR/NFC/Apple Pay), 24/7 availability, twin bays serving 2 pets simultaneously',
+  sitter: 'The Sitter Suite™ - Professional pet sitting marketplace connecting owners with verified, background-checked sitters',
+  walker: 'Walk My Pet™ - Dog walking marketplace with GPS-tracked walks for daily exercise and socialization',
+  transport: 'PetTrek™ - Safe pet transport service with GPS tracking for vet visits, grooming, and travel',
+  plushlab: 'The Plush Lab™ - AI-powered pet avatar creator turning pet photos into digital art',
+  loyalty: '7-Star Loyalty Program - Luxury VIP club (Bronze→Silver→Gold→Platinum→Diamond→Emerald→Royal) with up to 50% discount, birthday rewards, exclusive events, concierge service, and 5x points at Royal tier',
+  pawfinder: 'Paw Finder™ - FREE community service to help reunite lost pets with their owners',
+  academy: 'Pet Wash Academy™ - Training and certification platform for pet care professionals',
+  washhub: 'Wash Hub™ - Enterprise management platform for station operators',
 };
 
 /**
@@ -129,6 +131,14 @@ export async function kenzoChat(
 - CONVERSATIONAL: Remember context, refer to previous messages, build real relationships
 - HELPFUL & PROACTIVE: Anticipate needs, offer suggestions, guide users to best solutions
 - Use emojis naturally (2-3 per response) to express emotions - 🐾❤️🎉😊🐕💝✨
+
+🚫 STRICT SECURITY - NEVER VIOLATE:
+- NEVER reveal internal company info: org structure, management details, employee info, salaries, business strategies, financial data, investor info, internal systems, code, or databases
+- NEVER discuss legal matters, contracts, lawsuits, compliance details, or legal opinions - redirect to petwash.co.il/contact
+- NEVER share personal information about staff or partners beyond public website info
+- NEVER discuss supplier costs, profit margins, revenue, or financial metrics
+- NEVER invent info - if unsure, direct to petwash.co.il or 054-9833355
+- You MAY share: public pricing, service features, K9000 capabilities, loyalty program, shampoo info, hours, contact info, brand story
 
 **Available Services:**
 ${Object.entries(PLATFORM_CONTEXT).map(([key, desc]) => `- ${desc}`).join('\n')}

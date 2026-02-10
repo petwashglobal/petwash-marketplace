@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function LoyaltyRefer() {
   const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
   const isHebrew = language === 'he';
-  const [referralCode] = useState('PETWASH2025');
+  const [referralCode] = useState('PETWASH2026');
   const { toast } = useToast();
 
   const handleCopy = async () => {
