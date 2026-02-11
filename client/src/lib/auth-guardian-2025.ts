@@ -254,16 +254,14 @@ async function init(): Promise<void> {
     const opts = (app as any).options || {};
     const isProd = location.hostname.endsWith('.co.il') || location.hostname.endsWith('.com');
     
-    if (isProd) {
+    if (isProd && EXPECTED.appId && EXPECTED.apiKey) {
       const mismatch =
         opts.projectId !== EXPECTED.projectId ||
         opts.appId !== EXPECTED.appId ||
         opts.apiKey !== EXPECTED.apiKey;
       
       if (mismatch) {
-        const msg = `${EXPECTED.platformName}: configuration mismatch detected. Expected "${EXPECTED.projectId}" but got "${opts.projectId}". Sign-in may show wrong branding.`;
-        logger.warn('[Auth Guardian] Config mismatch', { actual: opts, expected: EXPECTED });
-        banner.show('Security check in progress… Please refresh in a moment.');
+        logger.warn('[Auth Guardian] Config mismatch (non-blocking)', { actual: opts.projectId, expected: EXPECTED.projectId });
         beacon('auth.config_mismatch', { actual: opts, expected: EXPECTED });
       }
     }
