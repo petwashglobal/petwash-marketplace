@@ -2,11 +2,16 @@ import { ArrowRight, Leaf, Gift } from 'lucide-react';
 import { Link } from 'wouter';
 import { t, type Language } from '@/lib/i18n';
 
-const cardGradients: Record<string, { bg: string; accent: string }> = {
-  CLASSIC: { bg: 'linear-gradient(135deg, #d4507a 0%, #c2395f 40%, #a82d50 70%, #8e2443 100%)', accent: '#ffd4e0' },
-  PLUS: { bg: 'linear-gradient(135deg, #3a8c5c 0%, #2d7a4e 40%, #1f6b3f 70%, #165a33 100%)', accent: '#c8f0d8' },
-  PREMIUM: { bg: 'linear-gradient(135deg, #1a1a1a 0%, #0e0e0e 50%, #000 100%)', accent: '#c9a96e' },
-  ELITE: { bg: 'linear-gradient(135deg, #a87b2d 0%, #e7c873 40%, #c9a355 70%, #a87b2d 100%)', accent: '#fff' },
+import pinkCard from '@assets/IMG_3094_1770825179312.png';
+import greenCard from '@assets/IMG_3091_1770824592769.png';
+import blackCard from '@assets/IMG_3090_1770824592770.png';
+import goldCard from '@assets/IMG_3089_1770824592770.png';
+
+const cardImages: Record<string, string> = {
+  CLASSIC: pinkCard,
+  PLUS: greenCard,
+  PREMIUM: blackCard,
+  ELITE: goldCard,
 };
 
 interface GiftCardsProps {
@@ -77,6 +82,7 @@ export function GiftCards({ language }: GiftCardsProps) {
             const isElite = voucher.tier === 'ELITE';
             const isPremium = voucher.tier === 'PREMIUM';
             const tierLabel = tierLabels[voucher.tier]?.[language] || tierLabels[voucher.tier]?.en || voucher.tier;
+            const cardImg = cardImages[voucher.tier] || cardImages.CLASSIC;
 
             return (
               <Link
@@ -99,22 +105,13 @@ export function GiftCards({ language }: GiftCardsProps) {
                     </div>
                   )}
 
-                  <div className="relative overflow-hidden" style={{ aspectRatio: '5 / 4' }}>
-                    <div
-                      className="absolute inset-0 flex flex-col justify-between p-3 sm:p-4 transition-transform duration-500 group-hover:scale-[1.03]"
-                      style={{ background: (cardGradients[voucher.tier] || cardGradients.CLASSIC).bg }}
-                    >
-                      <div className="flex items-start justify-between">
-                        <span className="text-white text-[10px] sm:text-xs font-semibold tracking-wide" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>PetWash™</span>
-                        <span className="text-[7px] sm:text-[8px] uppercase tracking-[0.15em] font-medium" style={{ color: (cardGradients[voucher.tier] || cardGradients.CLASSIC).accent }}>{tierLabel}</span>
-                      </div>
-                      <div>
-                        <div className="w-7 h-5 sm:w-8 sm:h-6 rounded-sm mb-2" style={{ background: 'linear-gradient(135deg, #d4a853 0%, #f0d78c 50%, #c9953c 100%)', opacity: 0.9 }} />
-                        <p className="text-white text-[9px] sm:text-[10px] font-medium tracking-wide">{language === 'he' ? voucher.labelHe : voucher.label}</p>
-                        <p className="text-[7px] sm:text-[8px] mt-0.5" style={{ color: (cardGradients[voucher.tier] || cardGradients.CLASSIC).accent }}>Pet Wash Ltd</p>
-                      </div>
-                      <p className="text-[6px] sm:text-[7px] tracking-wide" style={{ color: (cardGradients[voucher.tier] || cardGradients.CLASSIC).accent, opacity: 0.7 }}>All Platforms · כל הפלטפורמות</p>
-                    </div>
+                  <div className="relative overflow-hidden bg-[#f5f5f3]" style={{ aspectRatio: '1120 / 928' }}>
+                    <img
+                      src={cardImg}
+                      alt={`PetWash™ ${tierLabel} E-Gift Card - ₪${voucher.value}`}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      loading="lazy"
+                    />
                   </div>
 
                   <div className="px-3 sm:px-5 py-3 sm:py-5">
