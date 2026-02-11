@@ -73,37 +73,84 @@ export class AuthService {
   async createUser(data: {
     id: string;
     email: string;
-    displayName?: string;
-    phoneNumber?: string;
-    photoURL?: string;
-    role?: 'customer' | 'admin' | 'staff' | 'technician';
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    profileImageUrl?: string;
+    country?: string;
+    language?: string;
+    dateOfBirth?: string;
+    marketingConsent?: boolean;
   }) {
     try {
+      const existing = await this.getUserById(data.id);
+      if (existing) {
+        logger.info('[AuthService] User already exists in PostgreSQL, skipping create', { userId: data.id });
+        return existing;
+      }
+
       const [user] = await db.insert(users).values({
         id: data.id,
         email: data.email.toLowerCase(),
-        displayName: data.displayName || null,
-        phoneNumber: data.phoneNumber || null,
-        photoURL: data.photoURL || null,
-        role: data.role || 'customer',
+        firstName: data.firstName || null,
+        lastName: data.lastName || null,
+        phone: data.phone || null,
+        profileImageUrl: data.profileImageUrl || null,
+        country: data.country || 'IL',
+        language: data.language || 'he',
+        dateOfBirth: data.dateOfBirth || null,
         loyaltyPoints: 0,
-        loyaltyTier: 'new',
+        loyaltyTier: 'bronze',
+        marketingConsent: data.marketingConsent ?? false,
         createdAt: new Date(),
         updatedAt: new Date(),
       }).returning();
 
-      logger.info('[AuthService] User created', {
+      logger.info('[AuthService] ✅ User created in PostgreSQL', {
         userId: user.id,
         email: user.email,
-        role: user.role,
       });
 
       await this.invalidateUserCache(user.id);
 
       return user;
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === '23505') {
+        logger.info('[AuthService] User already exists (unique constraint), fetching existing', { userId: data.id });
+        return this.getUserById(data.id);
+      }
       logger.error('[AuthService] Failed to create user:', error);
       throw error;
+    }
+  }
+
+  async ensureUserInPostgres(firebaseUid: string, email: string | undefined, extraData?: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    profileImageUrl?: string;
+    country?: string;
+    language?: string;
+  }) {
+    try {
+      const existing = await this.getUserById(firebaseUid);
+      if (existing) {
+        return existing;
+      }
+
+      if (!email) {
+        logger.warn('[AuthService] Cannot create PostgreSQL user without email', { uid: firebaseUid });
+        return null;
+      }
+
+      return await this.createUser({
+        id: firebaseUid,
+        email,
+        ...extraData,
+      });
+    } catch (error) {
+      logger.error('[AuthService] ensureUserInPostgres failed:', error);
+      return null;
     }
   }
 

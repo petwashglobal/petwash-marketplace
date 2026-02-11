@@ -674,6 +674,56 @@ self.addEventListener('notificationclick', (event) => {
       const { createSessionCookie } = await import('./lib/sessionCookies');
       await createSessionCookie(idToken, res);
       
+      (async () => {
+        try {
+          const { adminAuth, db: firestoreDb } = await import('./lib/firebase-admin');
+          const decoded = await adminAuth.verifyIdToken(idToken);
+          const { authService } = await import('./services/AuthService');
+          
+          let firstName: string | undefined;
+          let lastName: string | undefined;
+          let phone: string | undefined;
+          let country: string | undefined;
+          let lang: string | undefined;
+          let dob: string | undefined;
+          let marketingConsent: boolean | undefined;
+          
+          try {
+            const profileDoc = await firestoreDb.collection('users').doc(decoded.uid).collection('profile').doc('data').get();
+            if (profileDoc.exists) {
+              const profile = profileDoc.data();
+              firstName = profile?.firstName;
+              lastName = profile?.lastName;
+              phone = profile?.phone;
+              country = profile?.country === 'Israel' ? 'IL' : profile?.country;
+              lang = profile?.lang;
+              dob = profile?.dob;
+              marketingConsent = profile?.marketing;
+            }
+          } catch (profileErr) {
+            logger.debug('[Session] Could not fetch Firestore profile for sync', profileErr);
+          }
+          
+          if (!firstName) {
+            const nameParts = (decoded.name || '').split(' ');
+            firstName = nameParts[0] || undefined;
+            lastName = nameParts.slice(1).join(' ') || undefined;
+          }
+          
+          await authService.ensureUserInPostgres(decoded.uid, decoded.email || undefined, {
+            firstName,
+            lastName,
+            phone: phone || decoded.phone_number || undefined,
+            profileImageUrl: decoded.picture || undefined,
+            country,
+            language: lang,
+          });
+          logger.info('[Session] ✅ PostgreSQL user sync complete', { uid: decoded.uid });
+        } catch (syncErr) {
+          logger.warn('[Session] PostgreSQL auto-sync failed (non-blocking)', syncErr);
+        }
+      })();
+      
       logger.info('[Session] ✅ Session cookie created successfully', {
         cookie: 'pw_session',
         domain: '.petwash.co.il',
@@ -9248,7 +9298,6 @@ self.addEventListener('notificationclick', (event) => {
       const token = authHeader.split('Bearer ')[1];
       const { adminAuth, db } = await import('./lib/firebase-admin');
       
-      // Verify Firebase token
       const decoded = await adminAuth.verifyIdToken(token);
       const uid = decoded.uid;
       
@@ -9268,18 +9317,15 @@ self.addEventListener('notificationclick', (event) => {
         consentTimestamp
       } = req.body;
       
-      // Validate required fields
       if (!firstName || !lastName || !email) {
         return res.status(400).json({ success: false, error: 'First name, last name, and email required' });
       }
       
       const now = new Date().toISOString();
       
-      // Create profile using Admin SDK (bypasses security rules)
-      // IMPORTANT: accountType: 'customer' marks this as PUBLIC sign-up
       await db.collection('users').doc(uid).collection('profile').doc('data').set({
         uid,
-        accountType: 'customer', // PUBLIC users only - internal users have 'internal'
+        accountType: 'customer',
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         name: `${firstName.trim()} ${lastName.trim()}`,
@@ -9311,7 +9357,23 @@ self.addEventListener('notificationclick', (event) => {
         updatedAt: now
       });
       
-      logger.info(`User profile created via API for ${uid}`);
+      logger.info(`[DualSave] Firestore profile created for ${uid}`);
+      
+      const { authService } = await import('./services/AuthService');
+      await authService.createUser({
+        id: uid,
+        email: email.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone?.trim() || undefined,
+        country: country || 'IL',
+        language: language || 'he',
+        dateOfBirth: dob || undefined,
+        marketingConsent: marketing ?? true,
+      });
+      
+      logger.info(`[DualSave] ✅ PostgreSQL user created for ${uid}`);
+      
       res.json({ success: true, uid });
       
     } catch (error: any) {
