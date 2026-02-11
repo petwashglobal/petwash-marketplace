@@ -11,6 +11,7 @@ import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner'
 import { t, type Language } from '@/lib/i18n';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import k9000StationImg from '@assets/D49C7A93-BA54-43A7-A3F6-5FEC96439FE3_1770820255509.png';
 
 interface LandingProps {
   language: Language;
@@ -204,6 +205,16 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             <p className="text-sm sm:text-base text-[#444] font-light max-w-2xl mx-auto leading-relaxed">
               {t('technology.description', language)}
             </p>
+            
+            <div className="mt-6 sm:mt-8 max-w-3xl mx-auto">
+              <img 
+                src={k9000StationImg}
+                alt="PetWash™ K9000 Dual Wash Station"
+                className="w-full rounded-sm"
+                style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.12))' }}
+                loading="lazy"
+              />
+            </div>
           </div>
         </section>
 
