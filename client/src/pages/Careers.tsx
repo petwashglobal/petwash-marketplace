@@ -378,7 +378,7 @@ export default function Careers() {
   return (
     <div className="min-h-screen bg-white" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 text-white py-24">
+      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 text-white py-16 sm:py-20 md:py-24">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,...')] opacity-10" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl" />
@@ -394,7 +394,7 @@ export default function Careers() {
               {isRTL ? 'הצטרפו למשפחת Pet Wash™' : 'Join the Pet Wash™ Family'}
             </Badge>
             
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight" style={{ fontFamily: 'Didot, Georgia, serif' }}>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight" style={{ fontFamily: 'Didot, Georgia, serif' }}>
               {isRTL ? 'הקריירה שלך מתחילה כאן' : 'Your Career Starts Here'}
             </h1>
             
@@ -438,7 +438,7 @@ export default function Careers() {
             </p>
           </motion.div>
           
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             {[
               {
                 icon: DollarSign,
@@ -511,7 +511,7 @@ export default function Careers() {
               </h2>
             </motion.div>
             
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {featuredPositions.map((position, index) => {
                 const Icon = roleIcons[position.roleType] || Briefcase;
                 const colorClass = roleColors[position.roleType] || 'from-gray-500 to-gray-600';
@@ -530,43 +530,43 @@ export default function Careers() {
                       data-testid={`card-position-${position.positionId}`}
                     >
                       <div className={`h-2 bg-gradient-to-r ${colorClass}`} />
-                      <CardContent className="p-6">
-                        <div className="flex items-start gap-4">
-                          <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${colorClass} flex items-center justify-center flex-shrink-0`}>
-                            <Icon className="w-7 h-7 text-white" />
+                      <CardContent className="p-4 sm:p-6">
+                        <div className="flex items-start gap-3 sm:gap-4">
+                          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br ${colorClass} flex items-center justify-center flex-shrink-0`}>
+                            <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className="text-xl font-bold text-gray-900">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
                                 {isRTL && position.titleHe ? position.titleHe : position.title}
                               </h3>
                               {position.urgencyLevel === 'urgent' && (
-                                <Badge className="bg-red-100 text-red-700 border-red-200">
+                                <Badge className="bg-red-100 text-red-700 border-red-200 flex-shrink-0">
                                   {isRTL ? 'דחוף' : 'Urgent'}
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-gray-600 mb-4 line-clamp-2">
+                            <p className="text-gray-600 mb-4 line-clamp-2 text-sm sm:text-base">
                               {isRTL && position.shortDescriptionHe ? position.shortDescriptionHe : position.shortDescription}
                             </p>
-                            <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+                            <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-gray-500">
                               <span className="flex items-center gap-1">
-                                <MapPin className="w-4 h-4" />
+                                <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 {position.location}
                               </span>
                               <span className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
+                                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 {position.employmentType}
                               </span>
                               {position.salaryRangeMin && (
                                 <span className="flex items-center gap-1">
-                                  <DollarSign className="w-4 h-4" />
+                                  <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                   ₪{position.salaryRangeMin}-{position.salaryRangeMax}/{position.salaryPeriod}
                                 </span>
                               )}
                             </div>
                           </div>
-                          <ArrowRight className="w-6 h-6 text-gray-400 group-hover:text-emerald-600 transition-colors" />
+                          <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 group-hover:text-emerald-600 transition-colors flex-shrink-0" />
                         </div>
                       </CardContent>
                     </Card>
@@ -609,7 +609,7 @@ export default function Careers() {
               ))}
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {allPositions.map((position, index) => {
                 const Icon = roleIcons[position.roleType] || Briefcase;
                 const colorClass = roleColors[position.roleType] || 'from-gray-500 to-gray-600';
@@ -627,17 +627,17 @@ export default function Careers() {
                       onClick={() => handleApply(position)}
                       data-testid={`card-position-list-${position.positionId}`}
                     >
-                      <CardContent className="p-6">
-                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClass} flex items-center justify-center mb-4`}>
-                          <Icon className="w-6 h-6 text-white" />
+                      <CardContent className="p-4 sm:p-6">
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${colorClass} flex items-center justify-center mb-3 sm:mb-4`}>
+                          <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                         </div>
-                        <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-emerald-700 transition-colors">
+                        <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2 group-hover:text-emerald-700 transition-colors">
                           {isRTL && position.titleHe ? position.titleHe : position.title}
                         </h3>
-                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                        <p className="text-gray-600 text-sm mb-3 sm:mb-4 line-clamp-2">
                           {isRTL && position.shortDescriptionHe ? position.shortDescriptionHe : position.shortDescription}
                         </p>
-                        <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2 text-xs text-gray-500">
                           <Badge variant="secondary" className="font-normal">
                             <MapPin className="w-3 h-3 me-1" />
                             {position.location}
@@ -687,7 +687,7 @@ export default function Careers() {
       
       {/* Application Modal */}
       <Dialog open={showApplicationForm} onOpenChange={setShowApplicationForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -747,7 +747,7 @@ export default function Careers() {
               <h3 className="text-lg font-semibold mb-4">
                 {isRTL ? 'פרטים אישיים' : 'Personal Information'}
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label htmlFor="firstName">{isRTL ? 'שם פרטי' : 'First Name'} *</Label>
                   <Input 
@@ -794,6 +794,8 @@ export default function Careers() {
                   type="date"
                   value={formData.dateOfBirth}
                   onChange={(e) => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 16)).toISOString().split('T')[0]}
+                  placeholder="DD/MM/YYYY"
                   data-testid="input-dob"
                 />
               </div>
@@ -821,7 +823,7 @@ export default function Careers() {
                   country={['il']}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label htmlFor="city">{isRTL ? 'עיר' : 'City'} *</Label>
                   <Input 
