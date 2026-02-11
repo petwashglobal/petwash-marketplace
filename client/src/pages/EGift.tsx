@@ -10,8 +10,8 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { useLanguage } from '@/lib/languageStore';
 
 const cardGradients: Record<string, { bg: string; accent: string }> = {
-  CLASSIC: { bg: 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 50%, #111 100%)', accent: '#999' },
-  PLUS: { bg: 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 50%, #111 100%)', accent: '#8bc5a3' },
+  CLASSIC: { bg: 'linear-gradient(135deg, #d4507a 0%, #c2395f 40%, #a82d50 70%, #8e2443 100%)', accent: '#ffd4e0' },
+  PLUS: { bg: 'linear-gradient(135deg, #3a8c5c 0%, #2d7a4e 40%, #1f6b3f 70%, #165a33 100%)', accent: '#c8f0d8' },
   PREMIUM: { bg: 'linear-gradient(135deg, #1a1a1a 0%, #0e0e0e 50%, #000 100%)', accent: '#c9a96e' },
   ELITE: { bg: 'linear-gradient(135deg, #a87b2d 0%, #e7c873 40%, #c9a355 70%, #a87b2d 100%)', accent: '#fff' },
 };
