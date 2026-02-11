@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is an enterprise platform for the pet care industry, providing a global, scalable ecosystem for luxury pet care services. It integrates IoT wash stations, pet sitting, walking, and avatar creation. The platform features shared infrastructure for authentication, payments, AI services, compliance, and franchise management, a 7-Star Loyalty System, robust security, and a Unified Control Panel. The business vision is to become the leading global provider of luxury pet care services, with initial operations focused on the Israeli market.
+Pet Wash™ is an enterprise platform designed for the luxury pet care industry, offering a global, scalable ecosystem for services such as IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. The platform centralizes authentication, payments, AI services, compliance, and franchise management, incorporating a 7-Star Loyalty System and robust security. Its core ambition is to become the leading global provider of luxury pet care, with initial market penetration focused on Israel.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -79,41 +79,36 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - The Replit "Publish" feature is for development preview only.
 
 ### Core Features & Design Decisions
-- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Focus on responsive, mobile-first, luxury designs with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts.
+- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Emphasizes responsive, mobile-first, luxury design with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
-- **Authentication & User Management**: Firebase Auth with Twilio SMS phone verification (secure token binding), WebAuthn/Passkey, RBAC, biometrics, GDPR-compliant data handling.
-- **AI Chat Assistant**: Google Dialogflow CX powered by Gemini 2.5 Flash with Kenzo mascot, bilingual Hebrew/English, WCAG 2.1 AA compliant.
-- **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™ (AI-powered pet avatar creator).
-- **Loyalty Program**: 7-tier luxury progressive system, e-gift cards, wash packages, Apple Wallet integration.
-- **E-Signature**: DocuSeal with Hebrew RTL support; custom free e-signature system for Israeli subcontractor agreements.
+- **Authentication & User Management**: Firebase Auth with Twilio SMS, WebAuthn/Passkey, RBAC, biometrics, GDPR compliance.
+- **AI Chat Assistant**: Google Dialogflow CX with Gemini 2.5 Flash, bilingual (Hebrew/English), WCAG 2.1 AA compliant.
+- **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™ (AI avatar creator).
+- **Loyalty Program**: 7-tier system, e-gift cards, wash packages, Apple Wallet integration.
+- **E-Signature**: DocuSeal with Hebrew RTL support; custom system for Israeli subcontractor agreements.
 - **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC, automated bookkeeping, Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
-- **Payment Gateway Architecture**: Nayax Israel is the mandatory and exclusive payment gateway, with 72-hour escrow.
-- **K9000 IoT Integration**: Cloud-based management, real-time status, remote control, AI predictive maintenance, 7-star luxury LED ecosystem.
-- **Passport Verification (KYC)**: Google Vision API-powered passport verification with MRZ parsing.
-- **Security & Compliance**: Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail.
-- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, booking policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts. Includes a 12-status booking lifecycle, pricing calculation engine, and audit trail.
+- **Payment Gateway Architecture**: Nayax Israel is the exclusive payment gateway, with 72-hour escrow.
+- **K9000 IoT Integration**: Cloud management, real-time status, remote control, AI predictive maintenance, 7-star luxury LED ecosystem.
+- **Passport Verification (KYC)**: Google Vision API with MRZ parsing.
+- **Security & Compliance**: Google reCAPTCHA v3, Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail.
+- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts. Includes a 12-status lifecycle, pricing engine, and audit trail.
 - **Employee Expense Management System**: Production-ready with Israeli Tax Authority compliance, OCR receipt scanning, and cryptographic audit trail.
 - **Document Management System**: Production-ready with RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
-- **Legal & Compliance Systems**: Comprehensive routes and services for privacy settings, data rights, GDPR, Israeli Privacy Law 2025, e-signature workflows, and contract management, including a unified compliance brain.
-- **HR & Employee Systems**: Routes and services for employee management, hierarchy, and onboarding, including auto-approval workflows and WhatsApp notifications.
-- **Enterprise Route Infrastructure**: Extensive set of route files covering franchise management, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
+- **Legal & Compliance Systems**: Comprehensive routes for privacy, data rights, GDPR, Israeli Privacy Law 2025, e-signature, contract management.
+- **HR & Employee Systems**: Routes for employee management, hierarchy, onboarding, auto-approval workflows, and WhatsApp notifications.
+- **Enterprise Route Infrastructure**: Extensive route files for franchise, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
 - **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments.
 - **Israeli Contractor Compliance System**: Marketplace broker model preventing employee misclassification, with tax verification, National Insurance tracking, commission calculation, independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails.
-- **Unified Talent Marketplace System 2026**: All-in-one marketplace system (`src/marketplace/petwash_talent_marketplace_system_2026.tsx`) covering 7 platforms (Sitter Suite, Walk My Pet, PetTrek, Wash Hubs, Paw Finder, K9000, Enterprise) with backend API registration, frontend React components, route wrappers, and QA validation.
+- **Unified Talent Marketplace System 2026**: All-in-one marketplace system (`src/marketplace/petwash_talent_marketplace_system_2026.tsx`) covering 7 platforms with backend API registration, frontend React components, route wrappers, and QA validation.
 - **Pet Sitter Profile Pages**: Airbnb-style luxury profile component (`src/modules/pet-sitter/PetSitterProfilePage.tsx`) with hero gallery, services toggle, reviews, and booking card.
 - **Multi-Platform Marketplace View**: Unified marketplace page (`src/modules/platforms/PetWashTalentMarketplacePage.tsx`) showing contractors across all 7 platforms with color-coded branding, responsive grid layout, and demo profiles.
-- **MadPaws-Style Provider Search**: API at `/api/marketplace-bookings/search/providers` with real-time availability filtering (by date range), platform/service type filtering, rating filters, profile enrichment from sitterProfiles/walkerProfiles tables, and proper pagination. Frontend at `/sitter-suite/browse` displays provider cards with Hebrew names, bios, locations, and pricing.
+- **MadPaws-Style Provider Search**: API at `/api/marketplace-bookings/search/providers` with real-time availability filtering, platform/service type filtering, rating filters, profile enrichment, and pagination. Frontend at `/sitter-suite/browse` displays provider cards with Hebrew names, bios, locations, and pricing.
 
-## File Storage & Admin Access
-- **Document Storage**: Google Cloud Storage bucket `petwash-secure-documents`
-  - Upload endpoint: `POST /api/documents/upload` (requires `upload_documents` permission)
-  - Max file size: 50MB
-  - Allowed types: PDF, Word docs, Excel, images (JPEG/PNG/GIF), text files
-  - Access logging: All document access is logged to `document_access_log` table with user ID, email, timestamp, IP address
-- **Biometric Storage**: Firebase Storage bucket `signinpetwash.firebasestorage.app` with prefix from `BIOMETRIC_PREFIX` secret
-  - Auto-expires files after configured retention period
-- **Admin File Access**: Admin users with `view_documents` permission can view all documents via `/api/documents` endpoint
-- **RBAC Permissions**: Document access controlled by role-based permissions (upload_documents, view_documents, delete_documents)
+### File Storage & Admin Access
+- **Document Storage**: Google Cloud Storage bucket `petwash-secure-documents`.
+- **Biometric Storage**: Firebase Storage bucket `signinpetwash.firebasestorage.app`.
+- **Admin File Access**: Admin users with `view_documents` permission can view documents via `/api/documents`.
+- **RBAC Permissions**: Document access controlled by role-based permissions.
 
 ## External Dependencies
 - **Database & ORM**: @neondatabase/serverless (PostgreSQL), drizzle-orm.
@@ -133,4 +128,4 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Mapping & Location**: Google Maps API.
 - **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API, Google Dialogflow CX.
 - **Business Management**: Google Business Profile API.
-- **Google Forms Integration**: Admin-configurable embedded Google Forms for user-facing pages (Contact, Franchise, Careers). Managed via `/admin/google-forms`. DB table: `google_forms_config`. Component: `client/src/components/GoogleFormEmbed.tsx`. Supports 8 form types: contact, feedback, newsletter, franchise, provider_application, careers, event_registration, support. Falls back to existing forms when no Google Form is configured.
+- **Google Forms Integration**: Admin-configurable embedded Google Forms for various user-facing pages, managed via `/admin/google-forms` and `client/src/components/GoogleFormEmbed.tsx`.
