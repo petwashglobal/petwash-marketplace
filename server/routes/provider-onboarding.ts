@@ -262,57 +262,30 @@ router.post('/apply', upload.fields([
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-    // Validate required fields (invite code is NOW REQUIRED)
+    // Validate required fields
     if (!firstName || !lastName || !phoneNumber || !city || !providerType) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // MANAGEMENT-ASSISTED ONBOARDING: Invite code is REQUIRED
-    // Self-registration disabled - applicants must first apply via Google Forms
-    // and receive an invite code from management after approval
-    if (!inviteCode || !inviteCode.trim()) {
-      return res.status(400).json({ 
-        error: 'Invite code required. Please apply via our application form first.',
-        code: 'INVITE_REQUIRED',
-        message: 'Provider registration requires an invite code from our management team. Please submit your application via Google Forms and we will review it within 48 hours.'
-      });
-    }
-
-    // Validate invite code (REQUIRED)
+    // AUTO-APPROVAL FLOW: No invite code required
+    // Providers who upload required documents and pass biometric verification
+    // are automatically approved without manual admin review
     let code = null;
     let referralBonus = null;
     
-    const [foundCode] = await db
-      .select()
-      .from(providerInviteCodes)
-      .where(eq(providerInviteCodes.inviteCode, inviteCode.trim()))
-      .limit(1);
+    // Optional invite code - still supported for referral tracking
+    if (inviteCode && inviteCode.trim()) {
+      const [foundCode] = await db
+        .select()
+        .from(providerInviteCodes)
+        .where(eq(providerInviteCodes.inviteCode, inviteCode.trim()))
+        .limit(1);
 
-    if (!foundCode) {
-      return res.status(400).json({ 
-        error: 'Invalid invite code',
-        code: 'INVALID_CODE',
-        message: 'This invite code does not exist. Please check the code and try again.'
-      });
+      if (foundCode && foundCode.isActive) {
+        code = foundCode;
+        referralBonus = foundCode.referralBonus;
+      }
     }
-
-    if (!foundCode.isActive) {
-      return res.status(400).json({ 
-        error: 'Invite code expired or inactive',
-        code: 'CODE_INACTIVE',
-        message: 'This invite code is no longer active. Please contact our team for a new code.'
-      });
-    }
-
-    if (foundCode.providerType !== providerType) {
-      return res.status(400).json({ 
-        error: `This invite code is for ${foundCode.providerType}, not ${providerType}`,
-        code: 'TYPE_MISMATCH'
-      });
-    }
-
-    code = foundCode;
-    referralBonus = foundCode.referralBonus;
 
     // Check for existing application
     const existingApp = await db
@@ -433,6 +406,19 @@ router.post('/apply', upload.fields([
     const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
     const applicationId = `APP-${year}-${randomNum}`;
 
+    // AUTO-APPROVAL: If biometric verification passed and required documents uploaded,
+    // automatically approve the provider without manual admin review
+    const autoApproved = biometricStatus === 'verified' && selfieUrl && governmentIdUrl;
+    const applicationStatus = autoApproved ? 'approved' : 'pending';
+    
+    // Generate provider ID for auto-approved applications
+    let providerId = null;
+    if (autoApproved) {
+      const providerPrefix = providerType.toUpperCase().substring(0, 6);
+      const randomId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      providerId = `${providerPrefix}-${randomId}`;
+    }
+
     // Create application
     const [application] = await db.insert(providerApplications).values({
       applicationId,
@@ -442,7 +428,7 @@ router.post('/apply', upload.fields([
       lastName,
       phoneNumber,
       providerType,
-      inviteCode,
+      inviteCode: inviteCode || null,
       city,
       country: country || 'IL',
       selfiePhotoUrl: selfieUrl,
@@ -453,7 +439,14 @@ router.post('/apply', upload.fields([
       biometricVerifiedAt: biometricStatus === 'verified' ? new Date() : null,
       insuranceCertUrl: insuranceCertUrl || null,
       businessLicenseUrl: businessLicenseUrl || null,
-      status: 'pending',
+      status: applicationStatus,
+      ...(autoApproved ? {
+        reviewedAt: new Date(),
+        reviewedBy: 'system-auto-approval',
+        approvedAsProviderId: providerId,
+        backgroundCheckStatus: 'passed',
+        backgroundCheckDate: new Date(),
+      } : {}),
     }).returning();
 
     // Increment invite code usage only if a valid code was used
@@ -467,7 +460,11 @@ router.post('/apply', upload.fields([
         .where(eq(providerInviteCodes.inviteCode, inviteCode));
     }
 
-    logger.info(`[Provider Onboarding] Application submitted: ${applicationId} by ${authenticatedUser.uid}`);
+    logger.info(`[Provider Onboarding] Application ${autoApproved ? 'AUTO-APPROVED' : 'submitted'}: ${applicationId} by ${authenticatedUser.uid}`, {
+      biometricStatus,
+      autoApproved,
+      providerId
+    });
 
     GoogleSheetsService.logProviderApplication({
       applicationId,
@@ -482,7 +479,7 @@ router.post('/apply', upload.fields([
       governmentIdUrl: governmentIdUrl || '',
       biometricStatus,
       biometricScore: biometricMatchScore.toString(),
-      applicationStatus: 'Pending Review',
+      applicationStatus: autoApproved ? 'Auto-Approved' : 'Pending Review',
     }).catch(err => logger.error('[Provider Onboarding] Google Sheets logging failed - DB record saved', err));
 
     res.json({
@@ -490,7 +487,11 @@ router.post('/apply', upload.fields([
       applicationId: application.applicationId,
       biometricStatus: application.biometricStatus,
       biometricMatchScore: parseFloat(application.biometricMatchScore || '0'),
-      message: 'Application submitted successfully. We will review it within 24-48 hours.'
+      status: applicationStatus,
+      providerId: providerId || undefined,
+      message: autoApproved 
+        ? 'Congratulations! Your application has been automatically approved. Welcome to Pet Wash™!'
+        : 'Application submitted. Your documents are being reviewed - we will get back to you shortly.'
     });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Application submission error', error);

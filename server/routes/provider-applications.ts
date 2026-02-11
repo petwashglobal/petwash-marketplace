@@ -237,7 +237,7 @@ router.post('/', async (req: Request, res: Response) => {
       emergencyContactName: formData.emergencyContactName,
       emergencyContactPhone: formData.emergencyContactPhone,
       emergencyContactRelation: formData.emergencyContactRelation,
-      stage: 'documents_pending', // Move to next stage immediately
+      stage: 'documents_pending',
       status: 'pending',
       privacyConsentAt: new Date(),
       privacyConsentIp: clientIp,

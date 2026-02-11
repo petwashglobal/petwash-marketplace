@@ -9,16 +9,11 @@ import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useLanguage } from '@/lib/languageStore';
 
-import pinkCardFront from '@assets/IMG_2004_1770750271081.png';
-import greenCardFront from '@assets/IMG_2002_1770750271081.png';
-import blackCardFront from '@assets/IMG_1998_1770750271081.png';
-import goldCardFront from '@assets/IMG_1996_1770750271081.png';
-
-const cardImages: Record<string, string> = {
-  CLASSIC: pinkCardFront,
-  PLUS: greenCardFront,
-  PREMIUM: blackCardFront,
-  ELITE: goldCardFront,
+const cardGradients: Record<string, { bg: string; accent: string }> = {
+  CLASSIC: { bg: 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 50%, #111 100%)', accent: '#999' },
+  PLUS: { bg: 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 50%, #111 100%)', accent: '#8bc5a3' },
+  PREMIUM: { bg: 'linear-gradient(135deg, #1a1a1a 0%, #0e0e0e 50%, #000 100%)', accent: '#c9a96e' },
+  ELITE: { bg: 'linear-gradient(135deg, #a87b2d 0%, #e7c873 40%, #c9a355 70%, #a87b2d 100%)', accent: '#fff' },
 };
 
 interface CardOccasion {
@@ -572,7 +567,7 @@ function LuxuryGiftCard({
   const isElite = option.tier === 'ELITE';
   const isPremium = option.tier === 'PREMIUM';
   const tierLabel = tierLabels[option.tier]?.[lang] || tierLabels[option.tier]?.en || option.tier;
-  const cardImage = cardImages[option.tier];
+  const gradient = cardGradients[option.tier] || cardGradients.CLASSIC;
   const occasionLabel = occasion ? (occasion.labels[lang] || occasion.labels.en) : null;
 
   return (
@@ -617,12 +612,21 @@ function LuxuryGiftCard({
               </div>
             </div>
           )}
-          <img 
-            src={cardImage} 
-            alt={`PetWash™ ${tierLabel} E-Gift Card`}
-            className="absolute inset-[-8%] w-[116%] h-[116%] object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            loading="lazy"
-          />
+          <div
+            className="absolute inset-0 flex flex-col justify-between p-3 sm:p-4 transition-transform duration-500 group-hover:scale-[1.03]"
+            style={{ background: gradient.bg, aspectRatio: '16 / 10' }}
+          >
+            <div className="flex items-start justify-between">
+              <span className="text-white text-[10px] sm:text-xs font-semibold tracking-wide" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>PetWash™</span>
+              <span className="text-[7px] sm:text-[8px] uppercase tracking-[0.15em] font-medium" style={{ color: gradient.accent }}>{tierLabel}</span>
+            </div>
+            <div>
+              <div className="w-7 h-5 sm:w-8 sm:h-6 rounded-sm mb-2" style={{ background: 'linear-gradient(135deg, #d4a853 0%, #f0d78c 50%, #c9953c 100%)', opacity: 0.9 }} />
+              <p className="text-white text-[9px] sm:text-[10px] font-medium tracking-wide">{tx('eGiftCredit', lang)}</p>
+              <p className="text-[7px] sm:text-[8px] mt-0.5" style={{ color: gradient.accent }}>Pet Wash Ltd</p>
+            </div>
+            <p className="text-[6px] sm:text-[7px] tracking-wide" style={{ color: gradient.accent, opacity: 0.7 }}>All Platforms · כל הפלטפורמות</p>
+          </div>
         </div>
 
         <div className="px-3 sm:px-4 py-2.5 sm:py-3">
@@ -1048,24 +1052,30 @@ export default function EGift() {
                       {occasionLabel}
                     </p>
                   )}
-                  <div className="relative">
-                    <img 
-                      src={cardImages[selectedOption.tier]} 
-                      alt={`PetWash™ ${tierLabel} E-Gift Card`}
-                      className="w-full h-auto rounded-lg shadow-xl"
-                      style={{ 
-                        filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))',
-                        display: 'block',
-                      }}
-                    />
-                    {formData.recipientName.trim() && (
-                      <div className="absolute bottom-[14%] start-[8%] end-[8%]">
-                        <p className="text-white font-semibold text-sm sm:text-base tracking-wide truncate drop-shadow-md"
-                          style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-                          {formData.recipientName.toUpperCase()}
-                        </p>
+                  <div className="relative rounded-lg shadow-xl overflow-hidden" style={{ filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))' }}>
+                    <div
+                      className="flex flex-col justify-between p-5 sm:p-6"
+                      style={{ background: (cardGradients[selectedOption.tier] || cardGradients.CLASSIC).bg, aspectRatio: '16 / 10' }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <span className="text-white text-sm sm:text-base font-semibold tracking-wide" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>PetWash™</span>
+                        <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.15em] font-medium" style={{ color: (cardGradients[selectedOption.tier] || cardGradients.CLASSIC).accent }}>{tierLabel}</span>
                       </div>
-                    )}
+                      <div>
+                        <div className="w-10 h-7 sm:w-11 sm:h-8 rounded-sm mb-3" style={{ background: 'linear-gradient(135deg, #d4a853 0%, #f0d78c 50%, #c9953c 100%)', opacity: 0.9 }} />
+                        <p className="text-white text-xs sm:text-sm font-medium tracking-wide">{tx('eGiftCredit', lang)}</p>
+                        <p className="text-[9px] sm:text-[10px] mt-0.5" style={{ color: (cardGradients[selectedOption.tier] || cardGradients.CLASSIC).accent }}>Pet Wash Ltd</p>
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <p className="text-[8px] sm:text-[9px] tracking-wide" style={{ color: (cardGradients[selectedOption.tier] || cardGradients.CLASSIC).accent, opacity: 0.7 }}>All Platforms · כל הפלטפורמות</p>
+                        {formData.recipientName.trim() && (
+                          <p className="text-white font-semibold text-sm sm:text-base tracking-wide truncate drop-shadow-md max-w-[60%] text-end"
+                            style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                            {formData.recipientName.toUpperCase()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="text-center mt-5">
                     <p className="text-3xl sm:text-4xl font-light text-[#1a1a1a] mb-1"

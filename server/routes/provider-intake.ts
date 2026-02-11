@@ -307,6 +307,8 @@ router.post('/submit', async (req, res) => {
     
     const intakeId = `INTAKE-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     
+    // AUTO-APPROVAL: Applications are automatically accepted when users 
+    // meet requirements. They proceed to biometric verification next.
     const [record] = await db
       .insert(providerIntakeQueue)
       .values({
@@ -329,13 +331,13 @@ router.post('/submit', async (req, res) => {
         whyJoinPetWash: data.whyJoinPetWash,
         referralSource: data.referralSource || null,
         profilePhotoUrl: data.profilePhotoBase64 || null,
-        status: 'new',
+        status: 'accepted',
         createdAt: new Date(),
         updatedAt: new Date()
       })
       .returning();
     
-    logger.info('[Provider Intake] New application submitted:', { 
+    logger.info('[Provider Intake] Application accepted:', { 
       intakeId, 
       email: data.email, 
       providerType: data.providerType,
@@ -345,9 +347,9 @@ router.post('/submit', async (req, res) => {
     
     res.json({
       success: true,
-      message: 'Application submitted successfully',
+      message: 'Application accepted! Please complete identity verification to start.',
       intakeId,
-      estimatedReviewTime: '48 business hours'
+      status: 'accepted'
     });
   } catch (error: any) {
     if (error.name === 'ZodError') {

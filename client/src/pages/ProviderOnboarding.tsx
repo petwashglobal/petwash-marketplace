@@ -39,7 +39,6 @@ export default function ProviderOnboarding() {
 
   // Form state
   const [step, setStep] = useState(1);
-  const [inviteCode, setInviteCode] = useState('');
   const [providerTypes, setProviderTypes] = useState<Array<'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer'>>([]);
   
   // Toggle a provider type in the multi-select list
@@ -108,18 +107,12 @@ export default function ProviderOnboarding() {
 
   // State
   const [loading, setLoading] = useState(false);
-  const [validatingCode, setValidatingCode] = useState(false);
-  const [codeValid, setCodeValid] = useState(false);
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const [biometricScore, setBiometricScore] = useState<number | null>(null);
 
   const t = {
     title: isHebrew ? 'הצטרפו לצוות Pet Wash' : 'Join the Pet Wash Team',
     subtitle: isHebrew ? 'הירשם כשותף עצמאי והתחל להרוויח' : 'Sign up as an independent contractor and start earning',
-    inviteCodeTitle: isHebrew ? 'קוד הזמנה' : 'Invite Code',
-    inviteCodePlaceholder: isHebrew ? 'הזן קוד הזמנה (לדוגמה: WALKER-A8F3H9K2)' : 'Enter invite code (e.g., WALKER-A8F3H9K2)',
-    validateCode: isHebrew ? 'אמת קוד' : 'Validate Code',
-    validating: isHebrew ? 'מאמת...' : 'Validating...',
     providerTypeTitle: isHebrew ? 'סוג שותף' : 'Provider Type',
     walker: isHebrew ? 'מטייל כלבים (Walk My Pet)' : 'Dog Walker (Walk My Pet)',
     sitter: isHebrew ? 'שמרטף (The Sitter Suite)' : 'Pet Sitter (The Sitter Suite)',
@@ -213,55 +206,6 @@ export default function ProviderOnboarding() {
     provider: isHebrew ? 'חברת ביטוח' : 'Insurance Provider',
   };
 
-  const validateInviteCode = async () => {
-    if (!inviteCode) {
-      toast({
-        variant: 'destructive',
-        title: t.error,
-        description: isHebrew ? 'נא להזין קוד הזמנה' : 'Please enter invite code'
-      });
-      return;
-    }
-
-    setValidatingCode(true);
-
-    try {
-      const response = await fetch(getApiUrl('/api/provider-onboarding/validate-invite-code'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inviteCode })
-      });
-
-      const data = await response.json();
-
-      if (data.valid) {
-        setCodeValid(true);
-        setProviderTypes([data.providerType]);
-        toast({
-          title: isHebrew ? 'קוד תקף!' : 'Valid Code!',
-          description: isHebrew 
-            ? `קוד זה מיועד ל${data.providerType === 'walker' ? 'מטיילי כלבים' : data.providerType === 'sitter' ? 'שמרטפים' : 'מפעילי תחנות'}`
-            : `This code is for ${data.providerType}s`
-        });
-        setStep(2);
-      } else {
-        toast({
-          variant: 'destructive',
-          title: t.error,
-          description: data.error || (isHebrew ? 'קוד לא תקף' : 'Invalid code')
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: t.error,
-        description: isHebrew ? 'שגיאה באימות קוד' : 'Error validating code'
-      });
-    } finally {
-      setValidatingCode(false);
-    }
-  };
-
   const handleSubmit = async () => {
     if (!user) {
       toast({
@@ -287,7 +231,6 @@ export default function ProviderOnboarding() {
       const idToken = await user.getIdToken();
       const formData = new FormData();
       
-      formData.append('inviteCode', inviteCode);
       formData.append('firstName', firstName);
       formData.append('lastName', lastName);
       formData.append('phoneNumber', phoneNumber);
@@ -400,11 +343,11 @@ export default function ProviderOnboarding() {
                 <ul className="space-y-2 text-gray-700 dark:text-gray-300">
                   <li className="flex items-start gap-2">
                     <Clock className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>{isHebrew ? 'הצוות שלנו יבדוק את הבקשה תוך 24-48 שעות' : 'Our team will review your application within 24-48 hours'}</span>
+                    <span>{isHebrew ? 'הזהות שלך אומתה והבקשה שלך מעובדת' : 'Your identity has been verified and your application is being processed'}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Users className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>{isHebrew ? 'תקבל מייל עם סטטוס האישור' : 'You\'ll receive an email with approval status'}</span>
+                    <span>{isHebrew ? 'תקבל מייל אישור בקרוב' : 'You\'ll receive a confirmation email shortly'}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <DollarSign className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -453,175 +396,29 @@ export default function ProviderOnboarding() {
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
               1
             </div>
-            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'קוד' : 'Code'}</span>
+            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'פלטפורמה ופרטים' : 'Platform & Info'}</span>
           </div>
           <div className={`h-0.5 w-8 ${step >= 2 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300'}`}></div>
           <div className={`flex items-center gap-2 ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
               2
             </div>
-            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'פרטים' : 'Info'}</span>
+            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'מסמכים' : 'Documents'}</span>
           </div>
           <div className={`h-0.5 w-8 ${step >= 3 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300'}`}></div>
           <div className={`flex items-center gap-2 ${step >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 3 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
               3
             </div>
-            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'מסמכים' : 'Docs'}</span>
-          </div>
-          <div className={`h-0.5 w-8 ${step >= 4 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300'}`}></div>
-          <div className={`flex items-center gap-2 ${step >= 4 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 4 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-gray-200 text-gray-500'}`}>
-              4
-            </div>
-            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'רקע' : 'Check'}</span>
+            <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'רקע' : 'Background'}</span>
           </div>
         </div>
 
         <div className="luxury-glass-card luxury-shadow-xl p-8 luxury-animate-fade-in luxury-delay-2">
-            {/* Step 1: Application Entry - Google Forms + Invite Code */}
+            {/* Step 1: Platform Selection & Personal Information */}
             {step === 1 && (
-              <div className="space-y-8">
-                {/* New Applicants - Luxury Application Form CTA */}
-                <div className="luxury-glass-card luxury-shadow-lg p-8 border-2 border-black/20 dark:border-white/20 bg-gradient-to-br from-white to-gray-50 dark:from-black/40 dark:to-gray-900/40">
-                  <div className="text-center mb-8">
-                    <div className="mx-auto w-20 h-20 bg-gradient-to-br from-black to-gray-800 dark:from-white dark:to-gray-200 rounded-full flex items-center justify-center mb-5 shadow-2xl">
-                      <Users className="h-10 w-10 text-white dark:text-black" />
-                    </div>
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-black via-gray-700 to-black dark:from-white dark:via-gray-200 dark:to-white bg-clip-text text-transparent mb-3">
-                      {isHebrew ? 'הצטרף לצוות Pet Wash™' : 'Join the Pet Wash™ Team'}
-                    </h2>
-                    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-lg mx-auto">
-                      {isHebrew 
-                        ? 'מלא את טופס הבקשה היוקרתי שלנו והפוך לחלק מפלטפורמת הפרימיום המובילה'
-                        : 'Fill out our premium application form and become part of the leading luxury platform'
-                      }
-                    </p>
-                  </div>
-                  
-                  <Link href="/apply-provider">
-                    <button
-                      className="w-full py-5 px-8 text-xl font-bold bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black rounded-2xl shadow-2xl hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3"
-                      data-testid="button-apply-now"
-                    >
-                      <Star className="h-6 w-6" />
-                      {isHebrew ? 'הגש בקשה עכשיו' : 'Apply Now'}
-                      <ArrowRight className="h-6 w-6" />
-                    </button>
-                  </Link>
-                  
-                  <div className="flex flex-wrap justify-center gap-4 mt-6">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      {isHebrew ? 'תהליך מהיר' : 'Quick Process'}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Shield className="h-4 w-4 text-blue-500" />
-                      {isHebrew ? 'אבטחה מלאה' : 'Fully Secure'}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Clock className="h-4 w-4 text-purple-500" />
-                      {isHebrew ? 'תשובה תוך 48 שעות' : '48h Response'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent dark:via-gray-600"></div>
-                  <span className="text-sm text-gray-500 font-medium">
-                    {isHebrew ? 'או' : 'OR'}
-                  </span>
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent dark:via-gray-600"></div>
-                </div>
-
-                {/* Approved Applicants - Invite Code Entry */}
-                <div className="luxury-glass-card luxury-shadow-md p-6 border-2 border-green-400/30 bg-gradient-to-br from-green-50 to-white dark:from-green-900/20 dark:to-black/20">
-                  <div className="text-center mb-4">
-                    <h3 className="luxury-heading-sm text-green-900 dark:text-green-100 flex items-center justify-center gap-2">
-                      <CheckCircle2 className="h-5 w-5" />
-                      {isHebrew ? 'כבר אושרת? הזן את קוד ההזמנה שלך' : 'Already Approved? Enter Your Invite Code'}
-                    </h3>
-                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                      {isHebrew 
-                        ? 'אם קיבלת קוד הזמנה מהצוות שלנו, הזן אותו כאן להמשך'
-                        : 'If you received an invite code from our team, enter it here to continue'
-                      }
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <Input
-                      id="inviteCode"
-                      value={inviteCode}
-                      onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                      placeholder={t.inviteCodePlaceholder}
-                      className="luxury-glass-minimal text-center text-lg font-mono"
-                      data-testid="input-invite-code"
-                    />
-                  </div>
-
-                  <button 
-                    onClick={validateInviteCode} 
-                    className="luxury-btn-primary luxury-shadow-xl w-full py-4 mt-4"
-                    disabled={validatingCode || !inviteCode}
-                    data-testid="button-validate-code"
-                  >
-                    {validatingCode ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin mr-2 inline" />
-                        {t.validating}
-                      </>
-                    ) : (
-                      <>
-                        <ArrowRight className="h-5 w-5 mr-2 inline" />
-                        {isHebrew ? 'המשך עם קוד הזמנה' : 'Continue with Invite Code'}
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Benefits & Requirements Section */}
-                <div className="grid md:grid-cols-2 gap-6 mt-4">
-                  <div className="luxury-glass-card luxury-shadow-md p-6 border-2 border-green-400/20">
-                    <h3 className="luxury-heading-sm mb-3 text-green-900 dark:text-green-200 flex items-center gap-2">
-                      <Star className="h-5 w-5" />
-                      {t.benefits}
-                    </h3>
-                    <ul className="space-y-2 text-sm luxury-text-body text-green-800 dark:text-green-300">
-                      {t.benefitsList.map((benefit, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          {benefit}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="luxury-glass-card luxury-shadow-md p-6 border-2 border-blue-400/20">
-                    <h3 className="luxury-heading-sm mb-3 text-blue-900 dark:text-blue-200 flex items-center gap-2">
-                      <Shield className="h-5 w-5" />
-                      {t.requirements}
-                    </h3>
-                    <ul className="space-y-2 text-sm luxury-text-body text-blue-800 dark:text-blue-300">
-                      {t.requirementsList.map((req, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          {req}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Personal Information */}
-            {step === 2 && (
               <div className="space-y-6">
-                {/* Provider Type Selector (shown when no invite code was used) */}
-                {!codeValid && (
-                  <div className="mb-6">
+                <div className="mb-6">
                     <Label className="luxury-heading-sm mb-3 block">{t.providerTypeTitle}</Label>
                     <p className="text-sm text-gray-500 mb-3">
                       {isHebrew ? 'ניתן לבחור יותר מפלטפורמה אחת' : 'You can select more than one platform'}
@@ -709,7 +506,6 @@ export default function ProviderOnboarding() {
                       </div>
                     </div>
                   </div>
-                )}
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
@@ -811,14 +607,11 @@ export default function ProviderOnboarding() {
                 </div>
 
                 <div className="flex gap-4">
-                  <button onClick={() => setStep(1)} className="luxury-btn-secondary" data-testid="button-back-step1">
-                    {t.back}
-                  </button>
                   <button 
-                    onClick={() => setStep(3)} 
+                    onClick={() => setStep(2)} 
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
-                    disabled={!firstName || !lastName || !phoneNumber || !idNumber || !city}
-                    data-testid="button-next-step3"
+                    disabled={!firstName || !lastName || !phoneNumber || !idNumber || !city || providerTypes.length === 0}
+                    data-testid="button-next-step2"
                   >
                     {t.next}
                     <ArrowRight className="h-5 w-5 ml-2 inline" />
@@ -827,8 +620,8 @@ export default function ProviderOnboarding() {
               </div>
             )}
 
-            {/* Step 3: Biometric KYC */}
-            {step === 3 && (
+            {/* Step 2: Biometric KYC */}
+            {step === 2 && (
               <div className="space-y-6">
                 <Alert>
                   <Shield className="h-5 w-5" />
@@ -1032,14 +825,14 @@ export default function ProviderOnboarding() {
                 </div>
 
                 <div className="flex gap-4">
-                  <button onClick={() => setStep(2)} className="luxury-btn-secondary" data-testid="button-back-step2">
+                  <button onClick={() => setStep(1)} className="luxury-btn-secondary" data-testid="button-back-step1">
                     {t.back}
                   </button>
                   <button 
-                    onClick={() => setStep(4)} 
+                    onClick={() => setStep(3)} 
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
                     disabled={!selfiePhoto || !governmentId}
-                    data-testid="button-next-step4"
+                    data-testid="button-next-step3"
                   >
                     {t.next}
                     <ArrowRight className="h-5 w-5 ml-2 inline" />
@@ -1048,8 +841,8 @@ export default function ProviderOnboarding() {
               </div>
             )}
 
-            {/* Step 4: Declarations & Background Check (2026 Spec) */}
-            {step === 4 && (
+            {/* Step 3: Declarations & Background Check (2026 Spec) */}
+            {step === 3 && (
               <div className="space-y-6">
                 <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-900/20">
                   <Shield className="h-5 w-5 text-blue-600" />
@@ -1241,7 +1034,7 @@ export default function ProviderOnboarding() {
                 </div>
 
                 <div className="flex gap-4">
-                  <button onClick={() => setStep(3)} className="luxury-btn-secondary" data-testid="button-back-step3">
+                  <button onClick={() => setStep(2)} className="luxury-btn-secondary" data-testid="button-back-step2">
                     {t.back}
                   </button>
                   <button 

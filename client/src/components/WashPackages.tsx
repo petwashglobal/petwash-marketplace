@@ -240,7 +240,8 @@ export function WashPackages({ language }: WashPackagesProps) {
                     <img 
                       src={cardImage} 
                       alt={`PetWash™ ${pkg.name} Package`}
-                      className="absolute inset-[-8%] w-[116%] h-[116%] object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      className="absolute object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      style={{ inset: '-18%', width: '136%', height: '136%' }}
                       loading="lazy"
                     />
                   </div>

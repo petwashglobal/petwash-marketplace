@@ -366,15 +366,15 @@ export default function ProviderApplicationForm() {
                 <ol className={`text-${isHebrew ? 'right' : 'left'} space-y-3 text-gray-300`}>
                   <li className="flex items-start gap-3">
                     <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
-                    <span>{isHebrew ? 'הצוות שלנו יבדוק את הבקשה' : 'Our team will review your application'}</span>
+                    <span>{isHebrew ? 'השלם את אימות הזהות הביומטרי' : 'Complete biometric identity verification'}</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
-                    <span>{isHebrew ? 'נשלח לך הזמנה להמשיך את תהליך ההרשמה' : 'We\'ll send you an invitation to complete onboarding'}</span>
+                    <span>{isHebrew ? 'העלה את המסמכים הנדרשים' : 'Upload required documents'}</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
-                    <span>{isHebrew ? 'אחרי אישור - תתחיל לקבל הזמנות!' : 'After approval - start receiving bookings!'}</span>
+                    <span>{isHebrew ? 'לאחר אימות מוצלח - תאושר אוטומטית ותתחיל לקבל הזמנות!' : 'After successful verification - get auto-approved and start receiving bookings!'}</span>
                   </li>
                 </ol>
               </div>
