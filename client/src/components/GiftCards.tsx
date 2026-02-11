@@ -2,8 +2,8 @@ import { ArrowRight, Leaf, Gift } from 'lucide-react';
 import { Link } from 'wouter';
 import { t, type Language } from '@/lib/i18n';
 
-import pinkCard from '@assets/IMG_3094_1770825179312.png';
-import greenCard from '@assets/IMG_3091_1770824592769.png';
+import pinkCard from '@assets/IMG_3094_1770832584882.png';
+import greenCard from '@assets/IMG_3091_1770832584882.png';
 import blackCard from '@assets/IMG_3090_1770824592770.png';
 import goldCard from '@assets/IMG_3089_1770824592770.png';
 
