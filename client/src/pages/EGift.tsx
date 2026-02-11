@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -822,6 +822,13 @@ export default function EGift() {
   const BackIcon = isRtl ? ChevronRight : ChevronLeft;
   const ForwardIcon = isRtl ? ArrowLeft : ArrowRight;
 
+  const previewSerial = useMemo(() => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let s = 'PWL';
+    for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }, [step]);
+
   if (step === 'checkout' && selectedOption) {
     const finalPrice = selectedOption.value;
     const formattedValue = finalPrice >= 1000 
@@ -1045,15 +1052,25 @@ export default function EGift() {
                       {occasionLabel}
                     </p>
                   )}
-                  <img 
-                    src={cardImages[selectedOption.tier]} 
-                    alt={`PetWash™ ${tierLabel} E-Gift Card`}
-                    className="w-full h-auto rounded-lg shadow-xl"
-                    style={{ 
-                      filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))',
-                      display: 'block',
-                    }}
-                  />
+                  <div className="relative">
+                    <img 
+                      src={cardImages[selectedOption.tier]} 
+                      alt={`PetWash™ ${tierLabel} E-Gift Card`}
+                      className="w-full h-auto rounded-lg shadow-xl"
+                      style={{ 
+                        filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))',
+                        display: 'block',
+                      }}
+                    />
+                    {formData.recipientName.trim() && (
+                      <div className="absolute bottom-[14%] start-[8%] end-[8%]">
+                        <p className="text-white font-semibold text-sm sm:text-base tracking-wide truncate drop-shadow-md"
+                          style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                          {formData.recipientName.toUpperCase()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                   <div className="text-center mt-5">
                     <p className="text-3xl sm:text-4xl font-light text-[#1a1a1a] mb-1"
                       style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em' }}>
@@ -1062,6 +1079,10 @@ export default function EGift() {
                     <p className="text-[10px] tracking-[0.2em] uppercase text-[#aaa]">
                       {tx('eGiftCredit', lang)}
                     </p>
+                    <div className="mt-3 flex items-center justify-between text-[9px] text-[#bbb] tracking-wide">
+                      <span>SN: {previewSerial}</span>
+                      <span>{lang === 'he' ? 'תוקף: 24 חודשים' : 'Valid: 24 months'}</span>
+                    </div>
                   </div>
                 </div>
                 <div className="mt-4 text-center">

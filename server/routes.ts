@@ -4111,6 +4111,8 @@ self.addEventListener('notificationclick', (event) => {
         senderName, 
         senderEmail, 
         message,
+        occasion,
+        messageLanguage,
         eligibleServices
       } = parseResult.data;
 
@@ -4125,7 +4127,7 @@ self.addEventListener('notificationclick', (event) => {
         senderName,
         message,
         eligibleServices,
-        expiresInMonths: 12
+        expiresInMonths: 24
       });
 
       logger.info('[Multi-Service Gift] Created', { 
@@ -4135,12 +4137,39 @@ self.addEventListener('notificationclick', (event) => {
         recipientEmail 
       });
 
+      // Send animated confirmation email to sender
+      try {
+        const { sendEGiftConfirmationEmail } = await import('./services/egiftEmailService');
+        await sendEGiftConfirmationEmail({
+          senderName,
+          senderEmail,
+          recipientName,
+          recipientEmail,
+          value,
+          currency,
+          publicCode: result.publicCode,
+          giftCardId: result.giftCardId,
+          occasion: occasion || 'justbecause',
+          messageLanguage: messageLanguage || 'he',
+          personalMessage: message,
+          eligibleServices,
+          expiresInMonths: 24
+        });
+      } catch (emailErr) {
+        logger.warn('[Multi-Service Gift] Email send failed (non-blocking):', emailErr);
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + 24);
+      
       res.json({
         success: true,
         giftCardId: result.giftCardId,
         publicCode: result.publicCode,
         qrCodeData: result.qrCodeData,
+        serialNumber: `PWL${result.giftCardId.substring(0, 8).toUpperCase()}`,
         eligibleServices,
+        expiresAt: expiresAt.toISOString(),
         message: 'Gift card created successfully'
       });
 

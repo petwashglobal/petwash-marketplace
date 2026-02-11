@@ -66,7 +66,7 @@ export class GiftOrchestrationService {
     qrCodeData: string;
   }> {
     const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + (config.expiresInMonths || 12));
+    expiresAt.setMonth(expiresAt.getMonth() + (config.expiresInMonths || 24));
 
     const result = await storage.createVoucher({
       type: 'STORED_VALUE',
