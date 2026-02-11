@@ -1,0 +1,478 @@
+/* ======================================================================
+   FULL COPY PASTE - E-GIFT LUXURY CARD (NO OUTER BORDER)
+   Front End + Back End + Firestore Model + Rules (single block)
+
+   Stack:
+   - Front end: React (works in Next.js / Vite / CRA)
+   - Back end: Firebase Functions (Node 20) + Express
+   - DB: Firestore
+   - Card render: Server generates SVG (front/back) with dynamic name + initials
+   - QR: points to redeem URL
+   - Supports Hebrew + English
+
+   Install backend deps:
+     cd functions
+     npm i express cors qrcode firebase-admin firebase-functions
+
+   Install frontend deps:
+     npm i
+
+   IMPORTANT:
+   - Replace PROJECT_DOMAIN and FIREBASE_PROJECT_ID
+   - Deploy functions + hosting
+   ====================================================================== */
+
+/* =========================
+   FILE: functions/src/index.ts
+   ========================= */
+
+import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
+import express from "express";
+import cors from "cors";
+import QRCode from "qrcode";
+
+admin.initializeApp();
+const db = admin.firestore();
+
+const app = express();
+app.use(cors({ origin: true }));
+app.use(express.json({ limit: "1mb" }));
+
+/* -------------------------
+   CONFIG - edit these
+   ------------------------- */
+const PROJECT_DOMAIN = "https://petwash.co.il"; // production domain
+const FIREBASE_PROJECT_ID = process.env.GCLOUD_PROJECT || "signinpetwash";
+
+/* -------------------------
+   Helpers
+   ------------------------- */
+
+function assertNonEmpty(v: any, name: string) {
+  if (!v || typeof v !== "string" || !v.trim()) {
+    throw new functions.https.HttpsError("invalid-argument", `${name} is required`);
+  }
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function safeUpperName(name: string) {
+  return name.trim().replace(/\s+/g, " ");
+}
+
+function getInitials(name: string, locale: "he" | "en") {
+  const parts = safeUpperName(name).split(" ").filter(Boolean);
+  if (parts.length === 0) return "";
+  if (locale === "he") {
+    // Hebrew initials: first letters, keep as is (no uppercasing)
+    const first = parts[0].slice(0, 1);
+    const last = parts.length > 1 ? parts[parts.length - 1].slice(0, 1) : "";
+    return (first + (last ? " " + last : "")).trim();
+  }
+  const first = parts[0].slice(0, 1).toUpperCase();
+  const last = parts.length > 1 ? parts[parts.length - 1].slice(0, 1).toUpperCase() : "";
+  return (first + (last ? " " + last : "")).trim();
+}
+
+function pickFont(locale: "he" | "en") {
+  // Front end can load better fonts; for SVG keep safe defaults.
+  // If you host custom fonts, you can embed via @font-face in SVG.
+  return locale === "he"
+    ? `system-ui, -apple-system, "Segoe UI", Arial, sans-serif`
+    : `system-ui, -apple-system, "Segoe UI", Inter, Arial, sans-serif`;
+}
+
+function isHebrew(locale: string) {
+  return (locale || "").toLowerCase().startsWith("he");
+}
+
+function formatText(locale: "he" | "en", en: string, he: string) {
+  return locale === "he" ? he : en;
+}
+
+function cardGradient(style: "black" | "gold" | "green" | "pink") {
+  if (style === "gold") return { a: "#a87b2d", b: "#e7c873", c: "#b8892f" };
+  if (style === "green") return { a: "#2f5d3a", b: "#4d8a5e", c: "#1f3f2a" };
+  if (style === "pink") return { a: "#c34f7b", b: "#f29db7", c: "#8b2e54" };
+  return { a: "#0e0e0e", b: "#1b1b1b", c: "#000000" };
+}
+
+function svgEscape(s: string) {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll(`"`, "&quot;")
+    .replaceAll(`'`, "&#39;");
+}
+
+function buildFrontSvg(params: {
+  cardId: string;
+  name: string;
+  initials: string;
+  locale: "he" | "en";
+  style: "black" | "gold" | "green" | "pink";
+  washes: number;
+  startsAtNis: number;
+  packageDiscountLabel: string;
+}) {
+  const { cardId, name, initials, locale, style, washes, startsAtNis, packageDiscountLabel } = params;
+
+  const font = pickFont(locale);
+  const grad = cardGradient(style);
+
+  const title = formatText(
+    locale,
+    `${washes} Washes E-Gift`,
+    `כרטיס מתנה - ${washes} רחיצות`
+  );
+
+  const sub = "PetWash Ltd";
+
+  const line1 = formatText(
+    locale,
+    `Each wash starts at ${startsAtNis} Shekel for single wash`,
+    `כל רחיצה החל מ-${startsAtNis} ₪ לרחיצה בודדת`
+  );
+
+  const line2 = formatText(
+    locale,
+    `PACKAGE DISCOUNT: ${packageDiscountLabel}`,
+    `הנחת חבילה: ${packageDiscountLabel}`
+  );
+
+  const line3 = formatText(locale, `SN: ${cardId}`, `מספר סידורי: ${cardId}`);
+
+  const displayName = locale === "en" ? safeUpperName(name).toUpperCase() : safeUpperName(name);
+  const nameLabel = svgEscape(displayName);
+  const initialsLabel = svgEscape(initials);
+
+  // Size 1586x1000 keeps card ratio.
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1586" height="1000" viewBox="0 0 1586 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="${grad.a}"/>
+      <stop offset="0.55" stop-color="${grad.b}"/>
+      <stop offset="1" stop-color="${grad.c}"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feColorMatrix type="matrix"
+        values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0 0 0 0.25 0" result="shadow"/>
+      <feBlend in="SourceGraphic" in2="shadow" mode="normal"/>
+    </filter>
+
+    <radialGradient id="shine" cx="75%" cy="0%" r="80%">
+      <stop offset="0" stop-color="rgba(255,255,255,0.35)"/>
+      <stop offset="0.5" stop-color="rgba(255,255,255,0.08)"/>
+      <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- CARD ONLY (no outer frame) -->
+  <rect x="60" y="120" rx="44" ry="44" width="1466" height="760" fill="url(#bg)" filter="url(#softGlow)"/>
+  <rect x="60" y="120" rx="44" ry="44" width="1466" height="760" fill="url(#shine)" opacity="0.9"/>
+
+  <!-- Logo text placeholder -->
+  <text x="160" y="250" fill="#ffffff" font-family="${font}" font-size="86" font-weight="700" letter-spacing="0.5">PetWash</text>
+  <text x="540" y="230" fill="#ffffff" font-family="${font}" font-size="28" font-weight="700">™</text>
+
+  <!-- Icon placeholder (top right) -->
+  <g transform="translate(1170,190)" opacity="0.95" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 18 c20 20 30 50 30 78" />
+    <path d="M70 38 c-20 0 -40 18 -40 40 0 34 22 58 54 58 h76" />
+    <circle cx="70" cy="84" r="10" fill="#fff"/>
+    <circle cx="110" cy="84" r="10" fill="#fff"/>
+    <path d="M68 130 c22 20 54 20 76 0" />
+    <path d="M155 20 l0 70" />
+    <path d="M155 20 l30 30" />
+  </g>
+
+  <!-- EMV chip (left mid) -->
+  <g transform="translate(200,370)">
+    <rect x="0" y="0" width="170" height="140" rx="18" fill="#d8b76a" opacity="0.95"/>
+    <rect x="16" y="22" width="138" height="26" rx="8" fill="#caa85b" opacity="0.9"/>
+    <rect x="16" y="58" width="138" height="26" rx="8" fill="#caa85b" opacity="0.9"/>
+    <rect x="16" y="94" width="138" height="26" rx="8" fill="#caa85b" opacity="0.9"/>
+    <rect x="72" y="0" width="26" height="140" rx="8" fill="#caa85b" opacity="0.85"/>
+  </g>
+
+  <!-- Title block -->
+  <text x="420" y="430" fill="#ffffff" font-family="${font}" font-size="64" font-weight="650">${svgEscape(title)}</text>
+  <text x="420" y="505" fill="#ffffff" font-family="${font}" font-size="44" font-weight="500" opacity="0.95">${svgEscape(sub)}</text>
+
+  <!-- Details block -->
+  <text x="210" y="655" fill="#ffffff" font-family="${font}" font-size="32" font-weight="450" opacity="0.95">${svgEscape(line1)}</text>
+  <text x="210" y="705" fill="#ffffff" font-family="${font}" font-size="32" font-weight="650" opacity="0.95">${svgEscape(line2)}</text>
+  <text x="210" y="760" fill="#ffffff" font-family="${font}" font-size="30" font-weight="450" opacity="0.9">${svgEscape(line3)}</text>
+
+  <!-- Name + initials bottom right -->
+  <text x="1340" y="760" fill="#ffffff" font-family="${font}" font-size="54" font-weight="800" text-anchor="end">${nameLabel}</text>
+  <text x="1340" y="810" fill="#ffffff" font-family="${font}" font-size="28" font-weight="600" opacity="0.9" text-anchor="end">${initialsLabel}</text>
+</svg>`;
+}
+
+async function buildBackSvg(params: {
+  cardId: string;
+  name: string;
+  initials: string;
+  locale: "he" | "en";
+  style: "black" | "gold" | "green" | "pink";
+  washes: number;
+  validUntil: string; // e.g. 12/26
+  ldLimit: string; // e.g. 05/26
+  redeemUrl: string;
+}) {
+  const { cardId, name, initials, locale, style, washes, validUntil, ldLimit, redeemUrl } = params;
+
+  const font = pickFont(locale);
+  const grad = cardGradient(style);
+
+  const displayName = locale === "en" ? safeUpperName(name).toUpperCase() : safeUpperName(name);
+
+  const untilLine = formatText(
+    locale,
+    `VALID UNTIL: ${validUntil}   LD LIMIT: ${ldLimit}`,
+    `בתוקף עד: ${validUntil}   מגבלת שימוש: ${ldLimit}`
+  );
+
+  const desc = formatText(
+    locale,
+    `This card entitles the holder to ${washes} complimentary washes`,
+    `כרטיס זה מזכה את המחזיק ב-${washes} רחיצות`
+  );
+
+  const snLine = `SN: ${cardId}`;
+
+  const qrDataUrl = await QRCode.toDataURL(redeemUrl, {
+    margin: 1,
+    width: 220,
+    errorCorrectionLevel: "M",
+    color: { dark: "#000000", light: "#ffffff" },
+  });
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1586" height="1000" viewBox="0 0 1586 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="${grad.a}"/>
+      <stop offset="0.55" stop-color="${grad.b}"/>
+      <stop offset="1" stop-color="${grad.c}"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feColorMatrix type="matrix"
+        values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0 0 0 0.25 0" result="shadow"/>
+      <feBlend in="SourceGraphic" in2="shadow" mode="normal"/>
+    </filter>
+  </defs>
+
+  <!-- CARD ONLY (no outer frame) -->
+  <rect x="60" y="120" rx="44" ry="44" width="1466" height="760" fill="url(#bg)" filter="url(#softGlow)"/>
+
+  <!-- QR + SN -->
+  <image href="${qrDataUrl}" x="160" y="210" width="220" height="220"/>
+  <text x="410" y="230" fill="#ffffff" font-family="${font}" font-size="26" font-weight="700" opacity="0.92">${svgEscape(snLine)}</text>
+
+  <!-- Magnetic strip placeholder -->
+  <rect x="460" y="200" width="900" height="160" rx="12" fill="#ffffff" opacity="0.9"/>
+
+  <!-- Text block -->
+  <text x="210" y="520" fill="#ffffff" font-family="${font}" font-size="34" font-weight="650" opacity="0.95">${svgEscape(untilLine)}</text>
+  <text x="210" y="620" fill="#ffffff" font-family="${font}" font-size="46" font-weight="700">${svgEscape(desc)}</text>
+
+  <!-- Logo bottom left -->
+  <text x="210" y="820" fill="#ffffff" font-family="${font}" font-size="70" font-weight="750" opacity="0.95">PetWash</text>
+  <text x="530" y="800" fill="#ffffff" font-family="${font}" font-size="26" font-weight="700">™</text>
+
+  <!-- Icon placeholder right -->
+  <g transform="translate(1180,560)" opacity="0.95" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 18 c20 20 30 50 30 78" />
+    <path d="M70 38 c-20 0 -40 18 -40 40 0 34 22 58 54 58 h76" />
+    <circle cx="70" cy="84" r="10" fill="#fff"/>
+    <circle cx="110" cy="84" r="10" fill="#fff"/>
+    <path d="M68 130 c22 20 54 20 76 0" />
+    <path d="M155 20 l0 70" />
+    <path d="M155 20 l30 30" />
+  </g>
+
+  <!-- Name bottom right -->
+  <text x="1340" y="820" fill="#ffffff" font-family="${font}" font-size="54" font-weight="850" text-anchor="end">${svgEscape(displayName)}</text>
+  <text x="1340" y="870" fill="#ffffff" font-family="${font}" font-size="28" font-weight="650" opacity="0.9" text-anchor="end">${svgEscape(initials)}</text>
+</svg>`;
+}
+
+/* -------------------------
+   Firestore data model
+   -------------------------
+   egifts/{cardId}:
+     cardId: string
+     name: string
+     locale: "he" | "en"
+     style: "black" | "gold" | "green" | "pink"
+     washesTotal: number
+     washesRemaining: number
+     startsAtNis: number
+     validUntil: string
+     ldLimit: string
+     createdAt: string ISO
+     redeemedCount: number
+     status: "active" | "expired" | "void"
+     lastRedeemedAt?: string
+   egiftEvents/{eventId}:
+     type: "ISSUED" | "REDEEMED" | "VOIDED"
+     cardId
+     createdAt
+     meta
+*/
+
+/* -------------------------
+   API: Create e-gift purchase
+   ------------------------- */
+app.post("/api/egift/create", async (req, res) => {
+  try {
+    const { name, locale, style, washes, startsAtNis, validUntil, ldLimit } = req.body || {};
+
+    assertNonEmpty(name, "name");
+
+    const loc: "he" | "en" = isHebrew(locale) ? "he" : "en";
+    const s: "black" | "gold" | "green" | "pink" = ["black", "gold", "green", "pink"].includes(style) ? style : "black";
+
+    const w = Number.isFinite(Number(washes)) ? Number(washes) : 1;
+    const starts = Number.isFinite(Number(startsAtNis)) ? Number(startsAtNis) : 55;
+
+    const vu = typeof validUntil === "string" && validUntil.trim() ? validUntil.trim() : "12/26";
+    const ld = typeof ldLimit === "string" && ldLimit.trim() ? ldLimit.trim() : "12/26";
+
+    const cleanName = safeUpperName(name);
+    const initials = getInitials(cleanName, loc);
+
+    // Unique cardId
+    const cardId = `PWL${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 90 + 10)}`;
+    const redeemUrl = `${PROJECT_DOMAIN}/redeem/${encodeURIComponent(cardId)}`;
+
+    const doc = {
+      cardId,
+      name: cleanName,
+      initials,
+      locale: loc,
+      style: s,
+      washesTotal: w,
+      washesRemaining: w,
+      startsAtNis: starts,
+      validUntil: vu,
+      ldLimit: ld,
+      createdAt: nowIso(),
+      redeemedCount: 0,
+      status: "active" as const,
+    };
+
+    await db.collection("egifts").doc(cardId).set(doc, { merge: false });
+
+    const eventId = `${cardId}_ISSUED_${Date.now()}`;
+    await db.collection("egiftEvents").doc(eventId).set({
+      type: "ISSUED",
+      cardId,
+      createdAt: nowIso(),
+      meta: { style: s, locale: loc, washes: w },
+    });
+
+    res.json({
+      ok: true,
+      cardId,
+      redeemUrl,
+      previewFront: `${PROJECT_DOMAIN}/api/egift/${encodeURIComponent(cardId)}/front.svg`,
+      previewBack: `${PROJECT_DOMAIN}/api/egift/${encodeURIComponent(cardId)}/back.svg`,
+    });
+  } catch (e: any) {
+    const msg = e?.message || "Unknown error";
+    res.status(400).json({ ok: false, error: msg });
+  }
+});
+
+/* -------------------------
+   API: Get Front SVG
+   ------------------------- */
+app.get("/api/egift/:cardId/front.svg", async (req, res) => {
+  try {
+    const cardId = String(req.params.cardId || "");
+    const snap = await db.collection("egifts").doc(cardId).get();
+    if (!snap.exists) return res.status(404).send("Not found");
+
+    const d = snap.data() as any;
+
+    const svg = buildFrontSvg({
+      cardId: d.cardId,
+      name: d.name,
+      initials: d.initials || getInitials(d.name, d.locale),
+      locale: d.locale,
+      style: d.style,
+      washes: d.washesTotal,
+      startsAtNis: d.startsAtNis || 55,
+      packageDiscountLabel: d.washesTotal >= 3 ? `${d.washesTotal} WASHES` : "SINGLE",
+    });
+
+    res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.send(svg);
+  } catch {
+    res.status(500).send("Server error");
+  }
+});
+
+/* -------------------------
+   API: Get Back SVG
+   ------------------------- */
+app.get("/api/egift/:cardId/back.svg", async (req, res) => {
+  try {
+    const cardId = String(req.params.cardId || "");
+    const snap = await db.collection("egifts").doc(cardId).get();
+    if (!snap.exists) return res.status(404).send("Not found");
+
+    const d = snap.data() as any;
+    const redeemUrl = `${PROJECT_DOMAIN}/redeem/${encodeURIComponent(cardId)}`;
+
+    const svg = await buildBackSvg({
+      cardId: d.cardId,
+      name: d.name,
+      initials: d.initials || getInitials(d.name, d.locale),
+      locale: d.locale,
+      style: d.style,
+      washes: d.washesTotal,
+      validUntil: d.validUntil || "12/26",
+      ldLimit: d.ldLimit || "12/26",
+      redeemUrl,
+    });
+
+    res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.send(svg);
+  } catch {
+    res.status(500).send("Server error");
+  }
+});
+
+/* -------------------------
+   API: Redeem one wash (example)
+   - Call this from station backend or admin panel
+   - Requires auth in production (add Firebase Auth checks)
+   ------------------------- */
+app.post("/api/egift/:cardId/redeem", async (req, res) => {
+  try {
+    const cardId = String(req.params.cardId || "");
+    const ref = db.collection("egifts").doc(cardId);
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);

@@ -606,7 +606,7 @@ function LuxuryGiftCard({
           </div>
         )}
 
-        <div className={`relative overflow-hidden ${occasion ? `bg-gradient-to-b ${occasion.gradient}` : 'bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]'}`}>
+        <div className="relative overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
           {occasion && (
             <div className="absolute top-2 start-2 z-[5]">
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-sm shadow-sm">
@@ -620,10 +620,7 @@ function LuxuryGiftCard({
           <img 
             src={cardImage} 
             alt={`PetWash™ ${tierLabel} E-Gift Card`}
-            className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
-            style={{ 
-              display: 'block',
-            }}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
             loading="lazy"
           />
         </div>

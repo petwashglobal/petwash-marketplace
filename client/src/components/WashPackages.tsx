@@ -236,14 +236,11 @@ export function WashPackages({ language }: WashPackagesProps) {
                     </div>
                   )}
 
-                  <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]">
+                  <div className="relative overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
                     <img 
                       src={cardImage} 
                       alt={`PetWash™ ${pkg.name} Package`}
-                      className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03]"
-                      style={{ 
-                        display: 'block',
-                      }}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
                       loading="lazy"
                     />
                   </div>
