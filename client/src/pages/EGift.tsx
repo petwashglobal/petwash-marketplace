@@ -606,7 +606,7 @@ function LuxuryGiftCard({
           </div>
         )}
 
-        <div className={`relative overflow-hidden p-4 sm:p-5 lg:p-6 ${occasion ? `bg-gradient-to-b ${occasion.gradient}` : 'bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]'}`}>
+        <div className={`relative overflow-hidden p-2.5 sm:p-4 lg:p-5 ${occasion ? `bg-gradient-to-b ${occasion.gradient}` : 'bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]'}`}>
           {occasion && (
             <div className="absolute top-2 start-2 z-[5]">
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-sm shadow-sm">
@@ -623,15 +623,13 @@ function LuxuryGiftCard({
             className="w-full h-auto rounded-lg shadow-lg transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
             style={{ 
               filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.12))',
-              maxWidth: '280px',
-              margin: '0 auto',
               display: 'block',
             }}
             loading="lazy"
           />
         </div>
 
-        <div className="px-4 sm:px-5 py-4 sm:py-5">
+        <div className="px-3 sm:px-5 py-3 sm:py-5">
           <div className="flex items-center justify-between mb-2">
             <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
               isElite || isPremium ? 'text-[#c9a96e]' : 'text-[#999]'
@@ -1032,7 +1030,7 @@ export default function EGift() {
             </div>
 
             <div className="order-1 lg:order-2">
-              <div className="w-full max-w-xs sm:max-w-sm mx-auto lg:sticky lg:top-8">
+              <div className="w-full max-w-sm sm:max-w-md mx-auto lg:sticky lg:top-8">
                 <div className={`p-5 sm:p-7 lg:p-8 ${selectedOccasion ? `bg-gradient-to-b ${selectedOccasion.gradient}` : 'bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]'}`} style={{ borderRadius: '8px', border: selectedOccasion ? `1.5px solid ${selectedOccasion.borderColor}30` : '1px solid #eee' }}>
                   <div className="flex items-center justify-center gap-2 mb-4">
                     {selectedOccasion && (
@@ -1053,8 +1051,6 @@ export default function EGift() {
                     className="w-full h-auto rounded-lg shadow-xl"
                     style={{ 
                       filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))',
-                      maxWidth: '340px',
-                      margin: '0 auto',
                       display: 'block',
                     }}
                   />
@@ -1173,7 +1169,7 @@ export default function EGift() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-7">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 lg:gap-7">
             {giftOptions.map((option) => (
               <LuxuryGiftCard
                 key={option.value}

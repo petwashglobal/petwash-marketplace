@@ -70,7 +70,7 @@ export function GiftCards({ language }: GiftCardsProps) {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-8 max-w-[1200px] mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 lg:gap-8 max-w-[1200px] mx-auto">
           {vouchers.map((voucher) => {
             const isElite = voucher.tier === 'ELITE';
             const isPremium = voucher.tier === 'PREMIUM';
@@ -97,7 +97,7 @@ export function GiftCards({ language }: GiftCardsProps) {
                     </div>
                   )}
 
-                  <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6">
+                  <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-2.5 sm:p-4 lg:p-5">
                     <div className="relative mx-auto" style={{ perspective: '1000px' }}>
                       <img 
                         src={voucher.image} 
@@ -105,8 +105,6 @@ export function GiftCards({ language }: GiftCardsProps) {
                         className="w-full h-auto rounded-lg shadow-lg transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
                         style={{ 
                           filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.12))',
-                          maxWidth: '280px',
-                          margin: '0 auto',
                           display: 'block',
                         }}
                         loading="lazy"
@@ -114,8 +112,8 @@ export function GiftCards({ language }: GiftCardsProps) {
                     </div>
                   </div>
 
-                  <div className="px-4 sm:px-5 py-4 sm:py-5">
-                    <div className="flex items-center justify-between mb-3">
+                  <div className="px-3 sm:px-5 py-3 sm:py-5">
+                    <div className="flex items-center justify-between mb-2">
                       <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
                         isElite || isPremium ? 'text-[#c9a96e]' : 'text-[#999]'
                       }`}>
@@ -123,7 +121,7 @@ export function GiftCards({ language }: GiftCardsProps) {
                       </span>
                     </div>
 
-                    <div className="mb-3">
+                    <div className="mb-2 sm:mb-3">
                       <div className="flex items-baseline gap-1">
                         <span className="text-[11px] sm:text-xs text-[#999]">₪</span>
                         <span className="text-3xl sm:text-4xl lg:text-[2.8rem] font-light text-[#1a1a1a]"
