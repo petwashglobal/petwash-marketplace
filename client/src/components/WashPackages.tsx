@@ -241,6 +241,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                       src={cardImage} 
                       alt={`PetWash™ ${pkg.name} Package`}
                       className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+                      style={{ mixBlendMode: 'multiply' }}
                       loading="lazy"
                     />
                   </div>
