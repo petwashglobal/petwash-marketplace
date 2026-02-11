@@ -9,8 +9,8 @@ import { t, type Language } from '@/lib/i18n';
 import { logger } from "@/lib/logger";
 import type { WashPackage } from '@shared/schema';
 
-import pinkCardFront from '@assets/IMG_3094_1770832584882.png';
-import greenCardFront from '@assets/IMG_3091_1770832584882.png';
+import pinkCardFront from '@assets/IMG_2004_1770750271081.png';
+import greenCardFront from '@assets/IMG_2002_1770750271081.png';
 import blackCardFront from '@assets/IMG_1998_1770750271081.png';
 import goldCardFront from '@assets/IMG_1996_1770750271081.png';
 
