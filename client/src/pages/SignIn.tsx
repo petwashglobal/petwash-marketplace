@@ -1179,70 +1179,59 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen luxury-bg-mesh">
-        <div className="flex items-center justify-center px-4 sm:px-6 md:px-8 py-16">
+      <div className="min-h-screen bg-white">
+        <div className="flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-12">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-md"
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-lg lg:max-w-xl"
         >
-          <div className="luxury-glass-card p-8 space-y-8 relative border-t-4 border-t-[#0f3460] shadow-[0_8px_40px_rgba(15,52,96,0.12),0_2px_8px_rgba(0,0,0,0.06)]">
-          {/* Close/Back Button */}
+          <div className="bg-white p-6 sm:p-10 lg:p-12 space-y-6 relative border border-neutral-200 rounded-sm shadow-[0_2px_20px_rgba(0,0,0,0.06)]">
           <button
             onClick={() => navigate("/dashboard")}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-neutral-100 transition-colors z-10"
             aria-label={t('common.close', language)}
             data-testid="button-close-signin"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-4 h-4 text-neutral-400" />
           </button>
 
-          {/* Logo */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.5 }}
-            className="text-center space-y-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="text-center space-y-3 pt-2"
           >
-            <motion.div
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", duration: 0.6, delay: 0.2 }}
-              className="w-20 h-20 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] rounded-3xl mx-auto flex items-center justify-center shadow-[0_8px_32px_rgba(15,52,96,0.4)]"
-            >
-              <Sparkles className="w-10 h-10 text-amber-400" />
-            </motion.div>
-            <div className="space-y-2">
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-[#1a1a2e] via-[#0f3460] to-[#533483] bg-clip-text text-transparent">
-                {t('signin.welcomeBack', language)}
-              </h1>
-              <p className="text-gray-600 text-base sm:text-lg">
-                {t('signin.signInContinue', language)}
-              </p>
-            </div>
+            <div className="w-[1px] h-8 bg-neutral-300 mx-auto mb-4" />
+            <h1 className="text-2xl sm:text-3xl font-light tracking-wide text-neutral-900 uppercase" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', serif", letterSpacing: '0.15em' }}>
+              {t('signin.welcomeBack', language)}
+            </h1>
+            <p className="text-neutral-500 text-sm tracking-wider uppercase" style={{ letterSpacing: '0.12em' }}>
+              {t('signin.signInContinue', language)}
+            </p>
+            <div className="w-12 h-[1px] bg-neutral-300 mx-auto mt-3" />
           </motion.div>
 
-          {/* Social Login Buttons */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
             className="space-y-3"
           >
             <Button
               onClick={() => handleSocialLogin('google')}
               disabled={!!socialLoading}
               variant="outline"
-              className="w-full h-14 sm:h-16 lg:h-14 text-base font-semibold border-2 border-gray-200 bg-white hover:bg-gray-50 text-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-all"
+              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-800 rounded-none tracking-wider uppercase transition-all"
               data-testid="button-gmail-signin"
             >
               {socialLoading === 'google' ? (
-                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <SiGmail className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-red-500" />
-                  <span className="text-gray-800">{t('signin.continueGmail', language)}</span>
+                  <SiGmail className="w-4 h-4 mr-3 text-red-500" />
+                  <span>{t('signin.continueGmail', language)}</span>
                 </>
               )}
             </Button>
@@ -1251,17 +1240,17 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 onClick={handlePasskeySignIn}
                 disabled={passkeyLoading}
-                className="w-full h-14 sm:h-16 lg:h-14 text-base font-semibold bg-gradient-to-r from-[#1a1a2e] to-[#16213e] hover:from-[#0f3460] hover:to-[#1a1a2e] text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
+                className="w-full h-13 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0"
                 data-testid="button-passkey-signin"
               >
                 {passkeyLoading ? (
-                  <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
                     {/Android/.test(navigator.userAgent) ? (
-                      <Fingerprint className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
+                      <Fingerprint className="w-4 h-4 mr-3" />
                     ) : (
-                      <ScanFace className="w-5 h-5 sm:w-6 sm:h-6 mr-3" />
+                      <ScanFace className="w-4 h-4 mr-3" />
                     )}
                     {getBiometricButtonLabel(language)}
                   </>
@@ -1269,31 +1258,28 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               </Button>
             )}
 
-            {/* PIN Login Option - Only available for trusted devices */}
             {isPinLoginAvailable && (
               <Button
                 onClick={() => setPinMode(true)}
                 variant="outline"
-                className="w-full h-14 sm:h-16 lg:h-14 text-base font-semibold border-2 border-[#533483]/30 bg-[#533483]/5 hover:bg-[#533483]/10 text-[#533483] rounded-2xl shadow-sm hover:shadow-md transition-all"
+                className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 rounded-none tracking-wider uppercase transition-all"
                 data-testid="button-pin-signin"
               >
-                <KeyRound className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-[#533483]" />
+                <KeyRound className="w-4 h-4 mr-3 text-neutral-500" />
                 {language === 'he' ? 'התחבר עם קוד PIN' : 'Sign in with PIN'}
               </Button>
             )}
 
-            {/* Phone Login Option */}
             <Button
               onClick={() => setPhoneMode(true)}
               variant="outline"
-              className="w-full h-14 sm:h-16 lg:h-14 text-base font-semibold border-2 border-emerald-300 bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 text-emerald-800 rounded-2xl shadow-sm hover:shadow-md transition-all"
+              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 rounded-none tracking-wider uppercase transition-all"
               data-testid="button-phone-signin"
             >
-              <Phone className="w-5 h-5 sm:w-6 sm:h-6 mr-3 text-emerald-600" />
-              <span className="text-emerald-800">{language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}</span>
+              <Phone className="w-4 h-4 mr-3 text-neutral-500" />
+              <span>{language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}</span>
             </Button>
 
-            {/* Dev Mode Button - For Testing Only */}
             {import.meta.env.DEV && (
               <Button
                 onClick={() => {
@@ -1304,41 +1290,39 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   });
                   setTimeout(() => navigate("/dashboard"), 500);
                 }}
-                className="w-full h-14 text-base font-medium bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0"
+                className="w-full h-13 text-sm font-medium bg-neutral-100 hover:bg-neutral-200 text-neutral-600 rounded-none border border-neutral-200 tracking-wider uppercase"
                 data-testid="button-dev-mode"
               >
-                <User className="w-5 h-5 mr-3" />
-                {language === 'he' ? '🔧 מצב פיתוח (ללא התחברות)' : '🔧 Dev Mode (Skip Login)'}
+                <User className="w-4 h-4 mr-3" />
+                {language === 'he' ? 'מצב פיתוח (ללא התחברות)' : 'Dev Mode (Skip Login)'}
               </Button>
             )}
           </motion.div>
 
-          {/* Divider */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
             className="relative"
           >
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#0f3460]/20"></div>
+              <div className="w-full border-t border-neutral-200"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500 font-medium">
+            <div className="relative flex justify-center text-xs">
+              <span className="px-4 bg-white text-neutral-400 uppercase tracking-widest">
                 {t('signin.or', language)}
               </span>
             </div>
           </motion.div>
 
-          {/* PIN Login Mode */}
           {pinMode && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className="space-y-6"
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="space-y-5"
             >
-              <div className="space-y-2">
+              <div>
                 <Input
                   type="email"
                   placeholder={t('signin.emailPlaceholder', language)}
@@ -1346,13 +1330,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   autoComplete="email"
-                  className="h-14 text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-[#0f3460] focus:bg-white focus:ring-2 focus:ring-[#0f3460]/20 text-gray-900 placeholder:text-gray-400 transition-all"
+                  className="h-12 text-sm rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 transition-all"
                   data-testid="input-pin-email"
                 />
               </div>
               
-              <div className="bg-gray-50/80 border border-gray-200 p-6 rounded-2xl">
-                <h3 className="text-center text-lg font-medium mb-4 text-gray-900">
+              <div className="bg-neutral-50 border border-neutral-200 p-6">
+                <h3 className="text-center text-sm font-medium mb-4 text-neutral-800 uppercase tracking-wider">
                   {language === 'he' ? 'הזן קוד PIN' : 'Enter your PIN'}
                 </h3>
                 <PinKeypad 
@@ -1374,48 +1358,43 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setPinError("");
                 }}
                 variant="ghost"
-                className="w-full h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
+                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-none transition-all tracking-wider uppercase"
                 data-testid="button-back-from-pin"
               >
+                <ArrowLeft className="w-3.5 h-3.5 mr-2" />
                 {language === 'he' ? 'חזור להתחברות רגילה' : 'Back to regular sign in'}
               </Button>
             </motion.div>
           )}
 
-          {/* Phone Login Mode */}
           {phoneMode && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className="space-y-6"
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="space-y-5"
             >
-              <div className="bg-gray-50/80 border border-gray-200 p-6 rounded-2xl space-y-4">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
-                    <Phone className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-                <h3 className="text-center text-lg font-medium text-gray-900">
+              <div className="bg-neutral-50 border border-neutral-200 p-6 space-y-4">
+                <h3 className="text-center text-sm font-medium text-neutral-800 uppercase tracking-wider">
                   {language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}
                 </h3>
                 
                 {!confirmationResult ? (
                   <>
                     <div className="space-y-2">
-                      <Label className="text-sm text-gray-600">
+                      <Label className="text-xs text-neutral-500 uppercase tracking-wider">
                         {language === 'he' ? 'מספר טלפון' : 'Phone Number'}
                       </Label>
                       <Input
                         type="tel"
-                        placeholder={language === 'he' ? '050-1234567' : '050-1234567'}
+                        placeholder="050-1234567"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="h-14 text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 text-gray-900 placeholder:text-gray-400 transition-all"
+                        className="h-12 text-sm rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 transition-all"
                         dir="ltr"
                         data-testid="input-phone-number"
                       />
-                      <p className="text-xs text-gray-500">
+                      <p className="text-[11px] text-neutral-400 tracking-wide">
                         {language === 'he' ? 'הזן מספר טלפון ישראלי (עם או בלי קידומת 972+)' : 'Enter Israeli phone number (with or without +972)'}
                       </p>
                     </div>
@@ -1424,15 +1403,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                       type="button"
                       onClick={handleSendPhoneCode}
                       disabled={phoneLoading || !phoneNumber}
-                      className="w-full h-14 text-base font-semibold bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
+                      className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0"
                       data-testid="button-send-phone-code"
                     >
                       {phoneLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <>
                           {language === 'he' ? 'שלח קוד אימות' : 'Send Verification Code'}
-                          <ArrowRight className="w-5 h-5 ml-2" />
+                          <ArrowRight className="w-4 h-4 ml-2" />
                         </>
                       )}
                     </Button>
@@ -1440,7 +1419,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 ) : (
                   <>
                     <div className="space-y-2">
-                      <Label className="text-sm text-gray-600">
+                      <Label className="text-xs text-neutral-500 uppercase tracking-wider">
                         {language === 'he' ? 'קוד אימות' : 'Verification Code'}
                       </Label>
                       <Input
@@ -1448,12 +1427,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                         placeholder="123456"
                         value={verificationCode}
                         onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        className="h-14 text-base text-center rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 text-gray-900 placeholder:text-gray-400 tracking-widest font-mono transition-all"
+                        className="h-12 text-sm text-center rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 tracking-[0.3em] font-mono transition-all"
                         maxLength={6}
                         dir="ltr"
                         data-testid="input-verification-code"
                       />
-                      <p className="text-xs text-gray-500 text-center">
+                      <p className="text-[11px] text-neutral-400 text-center tracking-wide">
                         {language === 'he' ? 'הזן את הקוד בן 6 הספרות שנשלח ל-SMS' : 'Enter the 6-digit code sent to your phone'}
                       </p>
                     </div>
@@ -1462,31 +1441,30 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                       type="button"
                       onClick={handleVerifyPhoneCode}
                       disabled={phoneLoading || verificationCode.length < 6}
-                      className="w-full h-14 text-base font-semibold bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
+                      className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0"
                       data-testid="button-verify-phone-code"
                     >
                       {phoneLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <>
                           {language === 'he' ? 'אמת והתחבר' : 'Verify & Sign In'}
-                          <ArrowRight className="w-5 h-5 ml-2" />
+                          <ArrowRight className="w-4 h-4 ml-2" />
                         </>
                       )}
                     </Button>
 
-                    <Button
+                    <button
                       type="button"
                       onClick={() => {
                         setConfirmationResult(null);
                         setVerificationCode('');
                       }}
-                      variant="ghost"
-                      className="w-full h-10 text-sm text-gray-500"
+                      className="w-full text-xs text-neutral-400 hover:text-neutral-700 tracking-wider uppercase py-2 transition-colors"
                       data-testid="button-resend-code"
                     >
                       {language === 'he' ? 'שלח קוד חדש' : 'Resend Code'}
-                    </Button>
+                    </button>
                   </>
                 )}
               </div>
@@ -1504,25 +1482,24 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   }
                 }}
                 variant="ghost"
-                className="w-full h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
+                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-none transition-all tracking-wider uppercase"
                 data-testid="button-back-from-phone"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
+                <ArrowLeft className="w-3.5 h-3.5 mr-2" />
                 {language === 'he' ? 'חזור להתחברות רגילה' : 'Back to regular sign in'}
               </Button>
             </motion.div>
           )}
 
-          {/* Email/Password Form */}
           {!magicLinkMode && !showPasswordReset && !pinMode && !phoneMode && (
             <motion.form
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
               onSubmit={handleEmailPasswordSignIn}
               className="space-y-4"
             >
-              <div className="space-y-2">
+              <div>
                 <Input
                   type="email"
                   placeholder={t('signin.emailPlaceholder', language)}
@@ -1530,11 +1507,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   autoComplete="email"
-                  className="h-14 sm:h-16 lg:h-14 text-base sm:text-lg lg:text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-[#0f3460] focus:bg-white focus:ring-2 focus:ring-[#0f3460]/20 text-gray-900 placeholder:text-gray-400 transition-all"
+                  className="h-12 text-sm rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 transition-all"
                   data-testid="input-email"
                 />
               </div>
-              <div className="space-y-2">
+              <div>
                 <Input
                   type="password"
                   placeholder={t('signin.passwordPlaceholder', language)}
@@ -1542,7 +1519,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                   autoComplete="current-password"
-                  className="h-14 sm:h-16 lg:h-14 text-base sm:text-lg lg:text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-[#0f3460] focus:bg-white focus:ring-2 focus:ring-[#0f3460]/20 text-gray-900 placeholder:text-gray-400 transition-all"
+                  className="h-12 text-sm rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 transition-all"
                   data-testid="input-password"
                 />
               </div>
@@ -1550,60 +1527,58 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-14 sm:h-16 lg:h-14 text-base sm:text-lg lg:text-base font-semibold bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#0f3460] hover:from-[#0f3460] hover:via-[#16213e] hover:to-[#1a1a2e] text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
+                className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0"
                 data-testid="button-email-signin"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
                     {t('signin.signInButton', language)}
-                    <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 ml-3" />
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 )}
               </Button>
 
-              {/* Remember This Device */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 pt-1">
                 <input
                   type="checkbox"
                   id="remember-device"
                   checked={rememberDevice}
                   onChange={(e) => setRememberDevice(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-[#0f3460] focus:ring-[#0f3460]/20 cursor-pointer"
+                  className="w-3.5 h-3.5 rounded-none border-neutral-300 text-neutral-900 focus:ring-neutral-400 cursor-pointer"
                   data-testid="checkbox-remember-device"
                 />
-                <label htmlFor="remember-device" className="text-sm text-gray-600 cursor-pointer select-none">
+                <label htmlFor="remember-device" className="text-xs text-neutral-500 cursor-pointer select-none tracking-wide">
                   {language === 'he' ? 'זכור מכשיר זה ל-30 יום' : 'Remember this device for 30 days'}
                 </label>
               </div>
 
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center justify-between text-xs pt-1">
                 <button
                   type="button"
                   onClick={() => setShowPasswordReset(true)}
-                  className="text-[#0f3460] hover:text-[#533483] font-medium transition-colors"
+                  className="text-neutral-500 hover:text-neutral-900 tracking-wider uppercase transition-colors"
                   data-testid="link-forgot-password"
                 >
                   {t('signin.forgotPassword', language)}
                 </button>
-                <Link href="/signup" className="text-[#0f3460] hover:text-[#533483] font-medium transition-colors" data-testid="link-signup">
+                <Link href="/signup" className="text-neutral-500 hover:text-neutral-900 tracking-wider uppercase transition-colors" data-testid="link-signup">
                   {t('signin.signUpLink', language)}
                 </Link>
               </div>
             </motion.form>
           )}
 
-          {/* Magic Link Mode */}
           {magicLinkMode && !showPasswordReset && (
             <motion.form
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
               onSubmit={handleMagicLinkSignIn}
               className="space-y-4"
             >
-              <div className="space-y-2">
+              <div>
                 <Input
                   type="email"
                   placeholder={t('signin.emailPlaceholder', language)}
@@ -1611,7 +1586,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   disabled={magicLinkSent}
-                  className="h-14 text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-[#0f3460] focus:bg-white focus:ring-2 focus:ring-[#0f3460]/20 text-gray-900 placeholder:text-gray-400 transition-all disabled:opacity-60"
+                  className="h-12 text-sm rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 transition-all disabled:opacity-50"
                   data-testid="input-magic-link-email"
                 />
               </div>
@@ -1619,23 +1594,23 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 type="submit"
                 disabled={loading || magicLinkSent || magicLinkResendCountdown > 0}
-                className="w-full h-14 text-base font-semibold bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#0f3460] hover:from-[#0f3460] hover:via-[#16213e] hover:to-[#1a1a2e] text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
+                className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0"
                 data-testid="button-send-magic-link"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : magicLinkResendCountdown > 0 ? (
                   <>
                     {t('signin.waitSeconds', language).replace('{seconds}', magicLinkResendCountdown.toString())}
                   </>
                 ) : magicLinkSent ? (
                   <>
-                    <Mail className="w-5 h-5 mr-3" />
+                    <Mail className="w-4 h-4 mr-2" />
                     {t('signin.resend', language)}
                   </>
                 ) : (
                   <>
-                    <Mail className="w-5 h-5 mr-3" />
+                    <Mail className="w-4 h-4 mr-2" />
                     {t('signin.sendMagicLink', language)}
                   </>
                 )}
@@ -1648,7 +1623,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setMagicLinkSent(false);
                 }}
                 variant="ghost"
-                className="w-full h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
+                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-none tracking-wider uppercase transition-all"
                 data-testid="button-back-to-password"
               >
                 {t('signin.backToPassword', language)}
@@ -1656,16 +1631,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.form>
           )}
 
-          {/* Password Reset Mode */}
           {showPasswordReset && (
             <motion.form
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
               onSubmit={handlePasswordReset}
               className="space-y-4"
             >
-              <div className="space-y-2">
+              <div>
                 <Input
                   type="email"
                   placeholder={t('signin.emailPlaceholder', language)}
@@ -1673,7 +1647,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   disabled={passwordResetSent}
-                  className="h-14 text-base rounded-2xl border-2 border-gray-200 bg-gray-50/50 focus:border-[#0f3460] focus:bg-white focus:ring-2 focus:ring-[#0f3460]/20 text-gray-900 placeholder:text-gray-400 transition-all disabled:opacity-60"
+                  className="h-12 text-sm rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 transition-all disabled:opacity-50"
                   data-testid="input-reset-email"
                 />
               </div>
@@ -1681,11 +1655,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 type="submit"
                 disabled={loading || passwordResetSent}
-                className="w-full h-14 text-base font-semibold bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#0f3460] hover:from-[#0f3460] hover:via-[#16213e] hover:to-[#1a1a2e] text-white rounded-2xl shadow-lg hover:shadow-xl transition-all border-0"
+                className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0"
                 data-testid="button-reset-password"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
                     {t('signin.resetPassword', language)}
@@ -1700,7 +1674,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setPasswordResetSent(false);
                 }}
                 variant="ghost"
-                className="w-full h-12 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
+                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-none tracking-wider uppercase transition-all"
                 data-testid="button-back-to-signin"
               >
                 {t('signin.backToSignIn', language)}
@@ -1708,28 +1682,29 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.form>
           )}
 
-          {/* Additional Options */}
           {!magicLinkMode && !showPasswordReset && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
+              transition={{ delay: 0.5, duration: 0.4 }}
               className="text-center"
             >
               <button
                 onClick={() => setMagicLinkMode(true)}
-                className="text-sm text-[#0f3460] hover:text-[#533483] font-medium transition-colors"
+                className="text-xs text-neutral-400 hover:text-neutral-700 tracking-wider uppercase transition-colors"
                 data-testid="link-magic-link"
               >
                 {t('signin.preferMagicLink', language)}
               </button>
             </motion.div>
           )}
+
+          <div className="pt-2 flex items-center justify-center">
+            <ReCaptcha language={language} />
+          </div>
           </div>
         </motion.div>
       </div>
-      <ReCaptcha language={language} />
-      {/* Firebase Phone Auth reCAPTCHA container - must be present in DOM */}
       <div id="recaptcha-container-signin" />
       </div>
     </Layout>
