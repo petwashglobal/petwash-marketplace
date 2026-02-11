@@ -632,6 +632,17 @@ router.post('/api/walks/:bookingId/confirm', async (req, res) => {
       isRead: false,
     });
 
+    calendarIntegrationService.createBookingEvent({
+      platform: 'walk-my-pet',
+      bookingId: booking.bookingId,
+      title: `Walk My Pet™ - Dog Walk`,
+      description: `Dog walk booking confirmed`,
+      startTime: new Date(booking.scheduledDate),
+      endTime: new Date(new Date(booking.scheduledDate).getTime() + (booking.durationMinutes || 30) * 60000),
+      location: booking.pickupAddress || undefined,
+      petName: booking.petName || undefined,
+    }).catch(() => {});
+
     res.json({ success: true, booking: updatedBooking });
   } catch (error: any) {
     console.error('[Walk My Pet] Confirm booking error:', error);
