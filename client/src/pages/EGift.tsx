@@ -606,7 +606,7 @@ function LuxuryGiftCard({
           </div>
         )}
 
-        <div className="relative overflow-hidden" style={{ aspectRatio: '3 / 2' }}>
+        <div className="relative overflow-hidden bg-white flex items-center justify-center p-3" style={{ aspectRatio: '3 / 2' }}>
           {occasion && (
             <div className="absolute top-2 start-2 z-[5]">
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-sm shadow-sm">
@@ -620,7 +620,8 @@ function LuxuryGiftCard({
           <img 
             src={cardImage} 
             alt={`PetWash™ ${tierLabel} E-Gift Card`}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+            className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-[1.05]"
+            style={{ borderRadius: '8px', filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.15))' }}
             loading="lazy"
           />
         </div>
