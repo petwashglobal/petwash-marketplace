@@ -97,14 +97,13 @@ export function GiftCards({ language }: GiftCardsProps) {
                     </div>
                   )}
 
-                  <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-2.5 sm:p-4 lg:p-5">
-                    <div className="relative mx-auto" style={{ perspective: '1000px' }}>
+                  <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]">
+                    <div className="relative mx-auto">
                       <img 
                         src={voucher.image} 
                         alt={`PetWash™ ${voucher.label} E-Gift Card`}
-                        className="w-full h-auto rounded-lg shadow-lg transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+                        className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
                         style={{ 
-                          filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.12))',
                           display: 'block',
                         }}
                         loading="lazy"

@@ -203,9 +203,9 @@ export default function Packages() {
             </div>
 
             <div className="order-1 lg:order-2">
-              <div className="w-full max-w-sm sm:max-w-md mx-auto lg:sticky lg:top-8">
-                <div className="bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-5 sm:p-7 lg:p-8" style={{ borderRadius: '8px', border: '1px solid #eee' }}>
-                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#c9a96e] font-medium mb-4 text-center">
+              <div className="w-full mx-auto lg:sticky lg:top-8">
+                <div className="bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6" style={{ borderRadius: '8px', border: '1px solid #eee' }}>
+                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#c9a96e] font-medium mb-3 text-center">
                     {tierLabel} · Pet Wash™
                   </p>
                   <img 
@@ -302,13 +302,12 @@ export default function Packages() {
                       </div>
                     )}
 
-                    <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-2.5 sm:p-4 lg:p-5">
+                    <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]">
                       <img 
                         src={pkg.image} 
                         alt={`PetWash™ ${isHe ? pkg.nameHe : pkg.name} Wash Package`}
-                        className="w-full h-auto rounded-lg shadow-lg transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+                        className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
                         style={{ 
-                          filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.12))',
                           display: 'block',
                         }}
                         loading="lazy"
