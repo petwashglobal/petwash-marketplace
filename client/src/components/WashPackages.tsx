@@ -9,8 +9,8 @@ import { t, type Language } from '@/lib/i18n';
 import { logger } from "@/lib/logger";
 import type { WashPackage } from '@shared/schema';
 
-import pinkCardFront from '@assets/IMG_3094_1770832584882.png';
-import greenCardFront from '@assets/IMG_3091_1770832584882.png';
+import pinkCardFront from '@assets/IMG_2004_1770750271081.png';
+import greenCardFront from '@assets/IMG_2002_1770750271081.png';
 import blackCardFront from '@assets/IMG_1998_1770750271081.png';
 import goldCardFront from '@assets/IMG_1996_1770750271081.png';
 
@@ -236,13 +236,12 @@ export function WashPackages({ language }: WashPackagesProps) {
                     </div>
                   )}
 
-                  <div className="relative overflow-hidden bg-white flex items-center justify-center" style={{ aspectRatio: '5 / 4' }}>
-                    <div className="absolute inset-0 bg-white z-0" />
+                  <div className="relative overflow-hidden">
                     <img 
                       src={cardImage} 
                       alt={`PetWash™ ${pkg.name} Package`}
-                      className="relative z-10 w-[75%] h-auto object-contain transition-transform duration-500 group-hover:scale-[1.03] drop-shadow-lg"
-                      style={{ borderRadius: '6px' }}
+                      className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      style={{ display: 'block' }}
                       loading="lazy"
                     />
                   </div>
