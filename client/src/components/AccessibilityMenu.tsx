@@ -157,12 +157,13 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
 
   return (
     <div 
-      className="fixed inset-0 z-60 bg-black bg-opacity-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
+      style={{ zIndex: 9200 }}
       onClick={onClose}
-      style={{ display: isOpen ? 'flex' : 'none' }}
+      role="presentation"
     >
       <div 
-        className="bg-white rounded-lg shadow-xl max-w-md w-full"
+        className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

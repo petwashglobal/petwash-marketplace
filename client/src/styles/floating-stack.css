@@ -40,6 +40,11 @@
   animation: slideInRight 200ms cubic-bezier(0.4, 0, 0.2, 1);
   /* Ensure no overlap with scrollbars */
   margin-right: max(0px, calc(100vw - 100%));
+  /* Mobile touch improvements */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Desktop - 24px from edge */

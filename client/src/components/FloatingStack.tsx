@@ -102,7 +102,8 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
           className="pw-float"
           data-base-bottom="160"
           aria-label={accessibilityLabel}
-          onClick={() => setIsAccessibilityMenuOpen(true)}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsAccessibilityMenuOpen(true); }}
+          onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); setIsAccessibilityMenuOpen(true); }}
           data-testid="fab-accessibility"
         >
           <Accessibility className="h-6 w-6" aria-hidden="true" />
@@ -115,6 +116,7 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
           data-base-bottom="88"
           aria-label={whatsappLabel}
           onClick={handleWhatsAppClick}
+          onTouchEnd={(e) => { e.preventDefault(); handleWhatsAppClick(); }}
           data-testid="fab-whatsapp"
         >
           <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
@@ -129,6 +131,7 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
           data-base-bottom="16"
           aria-label={aiLabel}
           onClick={onAIClick}
+          onTouchEnd={(e) => { e.preventDefault(); onAIClick(); }}
           data-testid="fab-ai"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
