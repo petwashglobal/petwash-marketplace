@@ -157,6 +157,7 @@ export default function ProviderApplicationForm() {
 
   const form = useForm<ApplicationForm>({
     resolver: zodResolver(applicationSchema),
+    mode: 'onChange',
     defaultValues: {
       firstName: "",
       lastName: "",

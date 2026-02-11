@@ -55,6 +55,7 @@ export default function GlobalContactForm({
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
+    mode: 'onChange',
     defaultValues: {
       name: '',
       email: '',

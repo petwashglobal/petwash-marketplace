@@ -69,6 +69,7 @@ export default function EmployeeExpenses() {
 
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseFormSchema),
+    mode: 'onChange',
     defaultValues: {
       category: "",
       subcategory: "",

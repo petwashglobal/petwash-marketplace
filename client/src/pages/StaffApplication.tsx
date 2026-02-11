@@ -85,6 +85,7 @@ export default function StaffApplication() {
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
+    mode: 'onChange',
     defaultValues: {
       applicationType: 'sitter',
       firstName: '',

@@ -257,6 +257,7 @@ export default function LeadManagement() {
   // Forms
   const leadForm = useForm({
     resolver: zodResolver(leadFormSchema),
+    mode: 'onChange' as const,
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -276,6 +277,7 @@ export default function LeadManagement() {
 
   const communicationForm = useForm({
     resolver: zodResolver(communicationFormSchema),
+    mode: 'onChange' as const,
     defaultValues: {
       communicationType: '',
       direction: 'outbound',
@@ -290,6 +292,7 @@ export default function LeadManagement() {
 
   const taskForm = useForm({
     resolver: zodResolver(taskFormSchema),
+    mode: 'onChange' as const,
     defaultValues: {
       title: '',
       description: '',
@@ -304,6 +307,7 @@ export default function LeadManagement() {
 
   const opportunityForm = useForm({
     resolver: zodResolver(opportunityFormSchema),
+    mode: 'onChange' as const,
     defaultValues: {
       name: '',
       description: '',

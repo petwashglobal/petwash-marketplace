@@ -52,6 +52,7 @@ export default function NewExpense() {
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
+    mode: 'onChange',
     defaultValues: {
       expenseDate: new Date().toISOString().split('T')[0],
       totalAmountILS: '',

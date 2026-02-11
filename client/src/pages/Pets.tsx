@@ -91,6 +91,7 @@ export default function Pets() {
 
   const form = useForm<PetFormData>({
     resolver: zodResolver(petFormSchema),
+    mode: 'onChange',
     defaultValues: {
       name: '',
       species: 'dog',

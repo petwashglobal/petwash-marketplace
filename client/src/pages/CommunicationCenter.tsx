@@ -279,6 +279,7 @@ export default function CommunicationCenter() {
   // Form hooks
   const emailTemplateForm = useForm<z.infer<typeof emailTemplateSchema>>({
     resolver: zodResolver(emailTemplateSchema),
+    mode: 'onChange',
     defaultValues: {
       name: '',
       category: '',
@@ -290,6 +291,7 @@ export default function CommunicationCenter() {
 
   const smsTemplateForm = useForm<z.infer<typeof smsTemplateSchema>>({
     resolver: zodResolver(smsTemplateSchema),
+    mode: 'onChange',
     defaultValues: {
       name: '',
       category: '',
@@ -300,6 +302,7 @@ export default function CommunicationCenter() {
 
   const appointmentReminderForm = useForm<z.infer<typeof appointmentReminderSchema>>({
     resolver: zodResolver(appointmentReminderSchema),
+    mode: 'onChange',
     defaultValues: {
       appointmentDate: '',
       reminderType: 'email',
@@ -309,6 +312,7 @@ export default function CommunicationCenter() {
 
   const bulkEmailForm = useForm<z.infer<typeof bulkEmailSchema>>({
     resolver: zodResolver(bulkEmailSchema),
+    mode: 'onChange',
     defaultValues: {
       templateId: 0,
       recipients: [],

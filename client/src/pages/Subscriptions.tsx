@@ -60,6 +60,7 @@ export default function Subscriptions() {
 
   const form = useForm<PetProfile>({
     resolver: zodResolver(petProfileSchema),
+    mode: 'onChange',
     defaultValues: {
       petName: "",
       petType: "dog",

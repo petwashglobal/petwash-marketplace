@@ -118,6 +118,7 @@ export default function BecomeProvider() {
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationFormSchema),
+    mode: 'onChange',
     defaultValues: {
       firstName: '',
       lastName: '',
