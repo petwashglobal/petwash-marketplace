@@ -584,7 +584,7 @@ function LuxuryGiftCard({
     >
       <div className="relative overflow-hidden transition-all duration-500 bg-white hover:shadow-xl hover:shadow-black/[0.06]"
         style={{
-          borderRadius: '6px',
+          borderRadius: '2px',
           border: selected 
             ? '2.5px solid #1a1a1a' 
             : '1px solid #eee',
@@ -628,8 +628,8 @@ function LuxuryGiftCard({
           />
         </div>
 
-        <div className="px-3 sm:px-5 py-3 sm:py-5">
-          <div className="flex items-center justify-between mb-2">
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3">
+          <div className="flex items-center justify-between mb-1">
             <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
               isElite || isPremium ? 'text-[#c9a96e]' : 'text-[#999]'
             }`}>
@@ -637,26 +637,26 @@ function LuxuryGiftCard({
             </span>
           </div>
 
-          <div className="flex items-baseline gap-1 mb-2">
+          <div className="flex items-baseline gap-1 mb-1">
             <span className="text-[11px] sm:text-xs text-[#999]">₪</span>
-            <span className="text-3xl sm:text-4xl lg:text-[2.8rem] font-light text-[#1a1a1a]"
+            <span className="text-2xl sm:text-3xl lg:text-[2.2rem] font-light text-[#1a1a1a]"
               style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
               {formattedValue}
             </span>
           </div>
-          <p className="text-[10px] sm:text-[11px] text-[#aaa]">
+          <p className="text-[9px] sm:text-[10px] text-[#aaa]">
             {tx('eGiftCredit', lang)}
           </p>
 
-          <div className="border-t border-[#eee] pt-3 mt-3">
-            <div className="space-y-1.5 text-[#888]">
+          <div className="border-t border-[#eee] pt-2 mt-2">
+            <div className="space-y-1 text-[#888]">
               <div className="flex items-center gap-2">
                 <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
-                <span className="text-[10px] sm:text-[11px]">{tx('allServices', lang)}</span>
+                <span className="text-[9px] sm:text-[10px]">{tx('allServices', lang)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
-                <span className="text-[10px] sm:text-[11px]">{tx('valid12Months', lang)}</span>
+                <span className="text-[9px] sm:text-[10px]">{tx('valid12Months', lang)}</span>
               </div>
             </div>
           </div>

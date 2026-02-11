@@ -224,7 +224,7 @@ export function WashPackages({ language }: WashPackagesProps) {
               >
                 <div className="relative overflow-hidden transition-all duration-500 bg-white hover:shadow-xl hover:shadow-black/[0.06]"
                   style={{ 
-                    borderRadius: '6px',
+                    borderRadius: '2px',
                     border: isPopular ? '1.5px solid #c9a96e' : '1px solid #eee',
                   }}
                 >
@@ -236,23 +236,20 @@ export function WashPackages({ language }: WashPackagesProps) {
                     </div>
                   )}
 
-                  <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6">
+                  <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]">
                     <img 
                       src={cardImage} 
                       alt={`PetWash™ ${pkg.name} Package`}
-                      className="w-full h-auto rounded-lg shadow-lg transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+                      className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03]"
                       style={{ 
-                        filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.12))',
-                        maxWidth: '280px',
-                        margin: '0 auto',
                         display: 'block',
                       }}
                       loading="lazy"
                     />
                   </div>
 
-                  <div className="px-4 sm:px-5 py-4 sm:py-5">
-                    <div className="flex items-center justify-between mb-2">
+                  <div className="px-3 sm:px-4 py-3 sm:py-4">
+                    <div className="flex items-center justify-between mb-1">
                       <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
                         isElite || isPopular ? 'text-[#c9a96e]' : 'text-[#999]'
                       }`}>
@@ -260,17 +257,17 @@ export function WashPackages({ language }: WashPackagesProps) {
                       </span>
                     </div>
 
-                    <div className="mb-2">
+                    <div className="mb-1">
                       <div className="flex items-baseline gap-1">
                         <span className="text-[11px] sm:text-xs text-[#999]">₪</span>
-                        <span className="text-3xl sm:text-4xl lg:text-[2.8rem] font-light text-[#1a1a1a]"
+                        <span className="text-2xl sm:text-3xl lg:text-[2.4rem] font-light text-[#1a1a1a]"
                           style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
                           {pkg.price}
                         </span>
                       </div>
                     </div>
 
-                    <div className="mb-3">
+                    <div className="mb-2">
                       <p className="text-xs sm:text-[13px] text-[#555] mb-0.5"
                         style={{ fontFamily: "'Inter', sans-serif" }}>
                         {pkg.washCount} {wText}
@@ -282,7 +279,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                       )}
                     </div>
 
-                    <div className="border-t border-[#eee] pt-3 space-y-1.5 text-[#888] mb-4">
+                    <div className="border-t border-[#eee] pt-2 space-y-1 text-[#888] mb-3">
                       <div className="flex items-center gap-2">
                         <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
                         <span className="text-[10px] sm:text-[11px]">

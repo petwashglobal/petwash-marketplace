@@ -1,6 +1,7 @@
 import { t, type Language } from '@/lib/i18n';
 import { Link } from 'wouter';
 import { FaWhatsapp } from 'react-icons/fa';
+import { SiVisa, SiMastercard, SiAmericanexpress, SiApplepay, SiGooglepay, SiDinersclub } from 'react-icons/si';
 import { Mail, Shield, Award, Leaf, CheckCircle2, Lock, Sparkles } from 'lucide-react';
 
 interface FooterProps {
@@ -131,18 +132,18 @@ export function Footer({ language }: FooterProps) {
                 <Sparkles className="w-4 h-4 text-amber-500" />
               </div>
               
-              {/* Metallic Payment Icons Grid */}
+              {/* Payment Icons Grid */}
               <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                 {[
-                  { name: 'Visa', src: '/assets/payments/visa-color.svg' },
-                  { name: 'Mastercard', src: '/assets/payments/mastercard-color.svg' },
-                  { name: 'American Express', src: '/assets/payments/amex-color.svg' },
-                  { name: 'Apple Pay', src: '/assets/payments/apple-pay-color.svg' },
-                  { name: 'Google Pay', src: '/assets/payments/google-pay-color.svg' },
-                  { name: 'Diners Club', src: '/assets/payments/diners-color.svg' },
-                ].map((logo) => (
+                  { name: 'Visa', icon: SiVisa, color: '#1A1F71' },
+                  { name: 'Mastercard', icon: SiMastercard, color: '#EB001B' },
+                  { name: 'American Express', icon: SiAmericanexpress, color: '#006FCF' },
+                  { name: 'Apple Pay', icon: SiApplepay, color: '#000000' },
+                  { name: 'Google Pay', icon: SiGooglepay, color: '#4285F4' },
+                  { name: 'Diners Club', icon: SiDinersclub, color: '#0079BE' },
+                ].map((item) => (
                   <div
-                    key={logo.name}
+                    key={item.name}
                     className="group relative flex items-center justify-center w-16 h-10 sm:w-20 sm:h-12 md:w-24 md:h-14 lg:w-28 lg:h-16
                       bg-gradient-to-br from-slate-50 via-white to-gray-100
                       rounded-lg sm:rounded-xl 
@@ -151,16 +152,12 @@ export function Footer({ language }: FooterProps) {
                       hover:shadow-[0_8px_24px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_0_rgba(255,255,255,1)]
                       hover:border-amber-300/50
                       hover:scale-105
-                      transition-all duration-300 ease-out
-                      before:absolute before:inset-0 before:rounded-lg sm:before:rounded-xl
-                      before:bg-gradient-to-b before:from-white/40 before:to-transparent before:pointer-events-none"
-                    data-testid={`payment-logo-${logo.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      transition-all duration-300 ease-out"
+                    data-testid={`payment-logo-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                   >
-                    <img 
-                      src={logo.src} 
-                      alt={logo.name}
-                      className="h-5 sm:h-6 md:h-7 lg:h-8 w-auto object-contain drop-shadow-sm group-hover:drop-shadow-md transition-all duration-300"
-                      loading="lazy"
+                    <item.icon 
+                      className="h-5 sm:h-6 md:h-7 lg:h-8 w-auto drop-shadow-sm group-hover:drop-shadow-md transition-all duration-300"
+                      style={{ color: item.color }}
                     />
                   </div>
                 ))}
