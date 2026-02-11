@@ -10,6 +10,7 @@ import { requireLoyaltyMember } from '../middleware/loyalty';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { petTrekChauffeurBookingEngine } from '../services/booking-engines/pettrek/PetTrekChauffeurBookingEngine';
 import { calculateDistance } from '../services/location/MapsService';
+import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 
 const router = Router();
 
@@ -177,6 +178,17 @@ router.post('/request-trip', requireAuth, requireLoyaltyMember, async (req, res)
       lng: data.pickupLongitude,
       label: `Pet Transport Pickup: ${data.petName}`,
     });
+
+    calendarIntegrationService.createBookingEvent({
+      platform: 'pettrek',
+      bookingId: tripId,
+      title: `PetTrek™ - ${data.petName} ${data.serviceType}`,
+      description: `${data.serviceType} for ${data.petName} (${data.petType}, ${data.petSize})`,
+      startTime: data.scheduledPickupTime,
+      endTime: new Date(data.scheduledPickupTime.getTime() + 60 * 60000),
+      location: data.pickupAddress,
+      petName: data.petName,
+    }).catch(() => {});
 
     res.json({
       success: true,

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import multer from 'multer';
 import { db } from '../db';
 import { 
   providerApplicants, 
@@ -16,6 +17,15 @@ import { createHash } from 'crypto';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 const router = Router();
 
@@ -165,15 +175,26 @@ async function recordStageTransition(
 // =================== PUBLIC ROUTES (Authenticated Users) ===================
 
 // POST /api/provider-applications - Submit new application
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', upload.single('profilePhoto'), async (req: Request, res: Response) => {
   try {
     const userId = (req as any).firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
     
+    let bodyData = req.body;
+    if (req.body.applicationData) {
+      try {
+        bodyData = JSON.parse(req.body.applicationData);
+      } catch {
+        return res.status(400).json({ error: 'Invalid application data format' });
+      }
+    }
+
+    const profilePhotoFile = req.file;
+    
     // Validate form data
-    const validationResult = providerApplicationFormSchema.safeParse(req.body);
+    const validationResult = providerApplicationFormSchema.safeParse(bodyData);
     if (!validationResult.success) {
       return res.status(400).json({ 
         error: 'Validation failed', 
@@ -260,6 +281,29 @@ router.post('/', async (req: Request, res: Response) => {
       req
     );
     
+    if (profilePhotoFile) {
+      try {
+        const photoBase64 = profilePhotoFile.buffer.toString('base64');
+        await db.insert(providerDocuments).values({
+          applicantId: application.id,
+          documentType: 'profile_photo',
+          fileName: profilePhotoFile.originalname,
+          fileSize: profilePhotoFile.size,
+          mimeType: profilePhotoFile.mimetype,
+          status: 'pending_review',
+          uploadedBy: userId,
+          metadata: { photoBase64Length: photoBase64.length },
+        });
+        logger.info('[ProviderApplication] Profile photo uploaded', {
+          applicationId: application.id,
+          fileName: profilePhotoFile.originalname,
+          fileSize: profilePhotoFile.size,
+        });
+      } catch (photoError) {
+        logger.error('[ProviderApplication] Failed to store profile photo', { photoError, applicationId: application.id });
+      }
+    }
+
     logger.info('[ProviderApplication] New application submitted', {
       applicationId: application.id,
       userId,

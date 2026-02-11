@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -36,7 +36,11 @@ import {
   Award,
   Heart,
   Sparkles,
-  FileCheck
+  FileCheck,
+  Camera,
+  Upload,
+  Loader2,
+  X
 } from 'lucide-react';
 
 // Form validation schema
@@ -115,6 +119,35 @@ export default function BecomeProvider() {
   const [, navigate] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: isHebrew ? 'הקובץ גדול מדי' : 'File too large',
+        description: isHebrew ? 'גודל מקסימלי 10MB' : 'Maximum size is 10MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setProfilePhoto(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setProfilePhotoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setProfilePhoto(null);
+    setProfilePhotoPreview(null);
+    setUploadedPhotoUrl(null);
+    if (photoInputRef.current) photoInputRef.current.value = '';
+  };
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationFormSchema),
@@ -150,7 +183,24 @@ export default function BecomeProvider() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: ApplicationFormData) => {
-      const response = await apiRequest('POST', '/api/provider-applications', data);
+      const formData = new FormData();
+      formData.append('applicationData', JSON.stringify(data));
+      if (profilePhoto) {
+        formData.append('profilePhoto', profilePhoto);
+      }
+      const token = firebaseUser ? await (firebaseUser as any).getIdToken?.() : null;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch('/api/provider-applications', {
+        method: 'POST',
+        headers,
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Failed' }));
+        throw new Error(err.error || err.message || 'Failed to submit');
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -564,6 +614,80 @@ export default function BecomeProvider() {
                         data-testid="input-postal"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-gray-300 font-medium mb-3 block">
+                      {isHebrew ? 'תמונת פרופיל' : 'Profile Photo'} *
+                    </Label>
+                    <p className="text-gray-500 text-xs mb-3">
+                      {isHebrew 
+                        ? 'תמונה ברורה שלך תעזור ללקוחות להכיר אותך. תמונת פנים מקצועית מומלצת.'
+                        : 'A clear photo helps clients recognize you. Professional headshot recommended.'}
+                    </p>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                      data-testid="input-profile-photo"
+                    />
+
+                    {profilePhotoPreview ? (
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <img
+                            src={profilePhotoPreview}
+                            alt="Profile preview"
+                            className="w-28 h-28 rounded-2xl object-cover border-2 border-amber-500/50 shadow-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={removePhoto}
+                            className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors"
+                            data-testid="button-remove-photo"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-emerald-400 text-sm font-medium flex items-center gap-1">
+                            <CheckCircle2 className="w-4 h-4" />
+                            {isHebrew ? 'תמונה נבחרה' : 'Photo selected'}
+                          </p>
+                          <p className="text-gray-500 text-xs mt-1">{profilePhoto?.name}</p>
+                          <button
+                            type="button"
+                            onClick={() => photoInputRef.current?.click()}
+                            className="text-amber-400 text-xs mt-2 hover:underline"
+                          >
+                            {isHebrew ? 'החלף תמונה' : 'Change photo'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        className="w-full border-2 border-dashed border-slate-600 hover:border-amber-500/50 rounded-2xl p-8 transition-all hover:bg-slate-800/30 group"
+                        data-testid="button-upload-photo"
+                      >
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-16 h-16 rounded-full bg-slate-700/50 group-hover:bg-amber-500/20 flex items-center justify-center transition-all">
+                            <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-400 transition-colors" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-gray-300 font-medium text-sm">
+                              {isHebrew ? 'לחץ להעלאת תמונה' : 'Click to upload photo'}
+                            </p>
+                            <p className="text-gray-500 text-xs mt-1">
+                              JPG, PNG {isHebrew ? 'עד' : 'up to'} 10MB
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

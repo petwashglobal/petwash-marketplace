@@ -49,6 +49,7 @@ import academyRoutes from "./routes/academy";
 import walkMyPetRoutes from "./routes/walk-my-pet";
 import walkSessionRoutes from "./routes/walk-session";
 import pettrekRoutes from "./routes/pettrek";
+import calendarRoutes from "./routes/calendar";
 import managementDashboardRoutes from "./routes/management-dashboard";
 import itaApiRoutes from "./routes/ita-api";
 import luxuryDocumentsRoutes from "./routes/luxury-documents";
@@ -8562,6 +8563,7 @@ self.addEventListener('notificationclick', (event) => {
   // Walk My Pet™ - Session Management (Check-in/Check-out, GPS, Vitals)
   app.use('/api/walk-session', apiLimiter, walkSessionRoutes);
   app.use('/api/pettrek', apiLimiter, pettrekRoutes);
+  app.use('/api/calendar', apiLimiter, calendarRoutes);
   app.use('/api/gps', apiLimiter, gpsTrackingRoutes);
   app.use('/api/fcm', apiLimiter, fcmRoutes);
   app.use('/api/gift-cards', giftCardsRoutes);

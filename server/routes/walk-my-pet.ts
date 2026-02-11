@@ -23,6 +23,7 @@ import { requireAuth } from '../customAuth';
 import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walkEliteBookingEngine } from '../services/booking-engines/walk/WalkEliteBookingEngine';
+import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 
 const router = Router();
 

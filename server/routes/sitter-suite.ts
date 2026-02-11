@@ -23,6 +23,7 @@ import {
 } from '@shared/schema';
 import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { nanoid } from 'nanoid';
 import { nayaxSitterMarketplace } from '../services/NayaxSitterMarketplaceService';
 import { sitterAITriageService } from '../services/SitterAITriageService';
@@ -695,7 +696,17 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         .where(eq(sitterBookings.bookingId, bookingId));
       
       logger.info('[Sitter Suite] ✅ Provider ACCEPTED booking - payment captured', { bookingId, sitterId: sitter.id });
-      
+
+      calendarIntegrationService.createBookingEvent({
+        platform: 'sitter-suite',
+        bookingId: booking.bookingId,
+        title: `The Sitter Suite™ - Pet Sitting (${booking.totalDays} days)`,
+        description: `Pet sitting booking confirmed for ${booking.totalDays} day(s)`,
+        startTime: new Date(booking.startDate),
+        endTime: new Date(booking.endDate),
+        providerName: `${sitter.firstName} ${sitter.lastName}`,
+      }).catch(() => {});
+
       // Generate Israeli digital receipt (non-blocking)
       try {
         await IsraeliDigitalReceiptService.generateReceipt({
