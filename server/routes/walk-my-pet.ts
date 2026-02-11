@@ -9,6 +9,7 @@ import {
   walkerReviews,
   walkAlerts,
   walkVideos,
+  users,
   type InsertWalkerProfile,
   type InsertWalkBooking,
   type InsertWalkGpsTracking,
@@ -18,6 +19,7 @@ import { eq, and, gte, lte, sql, desc, asc } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { requireLoyaltyMember } from '../middleware/loyalty';
+import { requireAuth } from '../customAuth';
 import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walkEliteBookingEngine } from '../services/booking-engines/walk/WalkEliteBookingEngine';
@@ -183,7 +185,7 @@ router.post('/api/walkers/search', async (req, res) => {
 // =================== WALK BOOKING ===================
 
 // Create walk booking (LOYALTY MEMBERS ONLY) - USING LUXURY ENGINE
-router.post('/api/walks/book', requireLoyaltyMember, async (req, res) => {
+router.post('/api/walks/book', requireAuth, requireLoyaltyMember, async (req, res) => {
   try {
     const ownerId = req.body.ownerId || (req as any).user?.uid;
     if (!ownerId) {
@@ -265,18 +267,8 @@ router.post('/api/walks/book', requireLoyaltyMember, async (req, res) => {
     // Generate bookingId
     const bookingId = `WALK-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
-    // STEP 3: Confirm booking with LUXURY ENGINE (escrow + audit trail)
-    const bookingConfirmation = await walkEliteBookingEngine.confirmBooking(
-      bookingId,
-      pricing,
-      ownerId
-    );
-
-    if (bookingConfirmation.status === 'failed') {
-      return res.status(400).json({ error: 'Booking confirmation failed - payment escrow could not be established' });
-    }
-
-    // STEP 4: Create booking using confirmed LUXURY ENGINE data
+    // UBER-STYLE: Create booking in pending_provider status
+    // Escrow and payment are NOT created until walker accepts
     const bookingData: InsertWalkBooking = {
       bookingId,
       ownerId,
@@ -295,12 +287,12 @@ router.post('/api/walks/book', requireLoyaltyMember, async (req, res) => {
       petWeight,
       petSpecialNeeds,
       walkerRate: pricing.baseRate.toFixed(2),
-      platformFeeOwner: (pricing.platformFee * 0.25).toFixed(2), // 25% owner portion
-      platformFeeSitter: (pricing.platformFee * 0.75).toFixed(2), // 75% walker portion
+      platformFeeOwner: (pricing.platformFee * 0.25).toFixed(2),
+      platformFeeSitter: (pricing.platformFee * 0.75).toFixed(2),
       totalCost: pricing.totalPrice.toFixed(2),
       walkerPayout: pricing.providerPayout.toFixed(2),
       currency: pricing.currency,
-      status: 'confirmed',
+      status: 'pending_provider',
       confirmationCode: Math.floor(100000 + Math.random() * 900000).toString(),
       isLiveTrackingActive: false,
       isVideoStreamActive: false,
@@ -312,18 +304,42 @@ router.post('/api/walks/book', requireLoyaltyMember, async (req, res) => {
 
     const [newBooking] = await db.insert(walkBookings).values(bookingData).returning();
 
-    // Create alert for walker
+    // Create alert for walker (Uber-style notification)
     await db.insert(walkAlerts).values({
       alertId: `ALERT-${crypto.randomUUID()}`,
       bookingId: newBooking.bookingId,
       alertType: 'new_booking',
       severity: 'info',
-      title: 'New Walk Request',
-      message: `You have a new walk request for ${scheduledDate} at ${scheduledStartTime}`,
+      title: 'בקשת טיול חדשה!',
+      message: `יש לך בקשת טיול חדשה ל-${scheduledDate} בשעה ${scheduledStartTime}. אנא אשר/י באפליקציה.`,
       actionRequired: true,
       sentToWalker: true,
       isRead: false,
     });
+
+    // Notify walker via SMS (fire-and-forget)
+    (async () => {
+      try {
+        const [walker] = await db.select().from(walkerProfiles).where(eq(walkerProfiles.id, parseInt(walkerId)));
+        if (walker?.userId) {
+          const [walkerUser] = await db.select().from(users).where(eq(users.firebaseUid, walker.userId));
+          const walkerPhone = walkerUser?.phone || walkerUser?.phoneNumber;
+          if (walkerPhone) {
+            const { TwilioSMSService } = await import('../services/TwilioSMSService');
+            const smsService = new TwilioSMSService();
+            await smsService.sendSMS(
+              walkerPhone,
+              `🐾 Pet Wash™ - בקשת טיול חדשה!\n` +
+              `תאריך: ${scheduledDate} בשעה ${scheduledStartTime}\n` +
+              `${durationMinutes} דקות · ₪${pricing.totalPrice.toFixed(0)}\n` +
+              `אנא אשר/י את ההזמנה באפליקציה.`
+            );
+          }
+        }
+      } catch (notifErr) {
+        console.warn('[Walk My Pet] Walker notification failed (non-blocking)', notifErr);
+      }
+    })();
 
     // Generate navigation links for pickup location
     const navigationLinks = buildAllNavigationLinks({
@@ -335,8 +351,9 @@ router.post('/api/walks/book', requireLoyaltyMember, async (req, res) => {
     res.status(201).json({ 
       success: true, 
       booking: newBooking,
+      status: 'pending_provider',
       navigation: navigationLinks,
-      message: 'Walk booked successfully! Walker will confirm shortly.'
+      message: 'הבקשה נשלחה למטייל/ת. תקבל/י עדכון כשההזמנה תאושר.'
     });
   } catch (error: any) {
     console.error('[Walk My Pet] Booking error:', error);
@@ -344,8 +361,140 @@ router.post('/api/walks/book', requireLoyaltyMember, async (req, res) => {
   }
 });
 
+/**
+ * PATCH /api/walk-my-pet/bookings/:bookingId/provider-respond
+ * Uber-style: Walker accepts or declines a walk request
+ */
+router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { action, declineReason } = req.body;
+    const providerUid = (req as any).user?.uid;
+    
+    if (!['accept', 'decline'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be accept or decline' });
+    }
+
+    const [booking] = await db
+      .select()
+      .from(walkBookings)
+      .where(eq(walkBookings.bookingId, bookingId));
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    if (booking.status !== 'pending_provider') {
+      return res.status(400).json({ error: `Booking is already ${booking.status}` });
+    }
+
+    const [walker] = await db
+      .select()
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.walkerId, booking.walkerId));
+    
+    if (!walker || walker.userId !== providerUid) {
+      return res.status(403).json({ error: 'Only the assigned walker can respond' });
+    }
+    
+    if (action === 'accept') {
+      // Confirm booking with luxury engine (escrow + audit trail)
+      try {
+        const pricing = {
+          subtotal: parseFloat(booking.walkerRate || '0'),
+          platformFee: parseFloat(booking.platformFeeOwner || '0') + parseFloat(booking.platformFeeSitter || '0'),
+          providerPayout: parseFloat(booking.walkerPayout || '0'),
+          totalPrice: parseFloat(booking.totalCost || '0'),
+          loyaltyDiscount: 0,
+          currency: booking.currency || 'ILS',
+          breakdown: [],
+          baseRate: parseFloat(booking.walkerRate || '0'),
+        };
+
+        await walkEliteBookingEngine.confirmBooking(
+          booking.bookingId,
+          pricing,
+          booking.ownerId
+        );
+      } catch (escrowErr: any) {
+        console.error(`[Walk My Pet] Escrow confirmation failed for ${bookingId}`, escrowErr);
+      }
+
+      await db
+        .update(walkBookings)
+        .set({
+          status: 'confirmed',
+          updatedAt: new Date(),
+        })
+        .where(eq(walkBookings.bookingId, bookingId));
+      
+      console.log(`[Walk My Pet] Walker ACCEPTED booking ${bookingId}`);
+      
+      res.json({
+        success: true,
+        status: 'confirmed',
+        message: 'הטיול אושר! הלקוח/ה קיבל/ה הודעה.',
+      });
+    } else {
+      await db
+        .update(walkBookings)
+        .set({
+          status: 'cancelled',
+          updatedAt: new Date(),
+        })
+        .where(eq(walkBookings.bookingId, bookingId));
+      
+      console.log(`[Walk My Pet] Walker DECLINED booking ${bookingId}, reason: ${declineReason}`);
+      
+      res.json({
+        success: true,
+        status: 'declined',
+        message: 'הטיול נדחה. הלקוח/ה יקבל/תקבל הודעה.',
+      });
+    }
+  } catch (error: any) {
+    console.error('[Walk My Pet] Provider respond error:', error);
+    res.status(500).json({ error: 'Failed to process provider response' });
+  }
+});
+
+/**
+ * GET /api/walk-my-pet/bookings/provider-pending
+ * Get all pending walk requests for the authenticated walker
+ */
+router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
+  try {
+    const providerUid = (req as any).user?.uid;
+    
+    const [walker] = await db
+      .select()
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.userId, providerUid));
+    
+    if (!walker) {
+      return res.json({ bookings: [], total: 0 });
+    }
+    
+    const pendingBookings = await db
+      .select()
+      .from(walkBookings)
+      .where(
+        and(
+          eq(walkBookings.walkerId, walker.walkerId),
+          eq(walkBookings.status, 'pending_provider')
+        )
+      )
+      .orderBy(desc(walkBookings.createdAt));
+    
+    res.json({ bookings: pendingBookings, total: pendingBookings.length });
+  } catch (error: any) {
+    console.error('[Walk My Pet] Fetch provider pending error:', error);
+    res.status(500).json({ error: 'Failed to fetch pending bookings' });
+  }
+});
+
 // EMERGENCY/ASAP WALK REQUEST (Rover/Wag "Book Now" model) - LOYALTY MEMBERS ONLY
-router.post('/api/walks/emergency-request', requireLoyaltyMember, async (req, res) => {
+router.post('/api/walks/emergency-request', requireAuth, requireLoyaltyMember, async (req, res) => {
   try {
     const ownerId = req.body.ownerId || (req as any).user?.uid;
     if (!ownerId) {

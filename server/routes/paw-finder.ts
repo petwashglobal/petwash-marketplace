@@ -1,7 +1,7 @@
 /**
  * Paw Finder™ Routes
- * LOYALTY MEMBER EXCLUSIVE SERVICE
- * Connect Lost Pets with Finders - Only for Verified Loyalty Members
+ * FREE COMMUNITY SERVICE
+ * Connect Lost Pets with Finders - Open to ALL registered users
  * NO platform fees - Pet Wash™ just facilitates the connection
  */
 
@@ -9,7 +9,7 @@ import { Router } from 'express';
 import { db as firestore } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
-import { requireLoyaltyMember } from '../middleware/loyalty';
+import { requireAuth } from '../customAuth';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import admin from 'firebase-admin';
@@ -53,12 +53,12 @@ const searchPetsSchema = z.object({
 
 /**
  * POST /api/paw-finder/reports
- * Submit a lost or found pet report (LOYALTY MEMBERS ONLY)
+ * Submit a lost or found pet report (FREE - any registered user)
  */
-router.post('/reports', requireLoyaltyMember, async (req, res) => {
+router.post('/reports', requireAuth, async (req, res) => {
   try {
     const data = reportPetSchema.parse(req.body);
-    const loyaltyUser = req.loyaltyUser;
+    const authUser = (req as any).user;
 
     // Geocode the location using Google Maps (using shared MapsService)
     let geocodedLocation = null;
@@ -72,9 +72,8 @@ router.post('/reports', requireLoyaltyMember, async (req, res) => {
       ...data,
       status: 'active', // active, resolved, expired
       reportedBy: {
-        userId: loyaltyUser.userId,
-        email: loyaltyUser.email,
-        tier: loyaltyUser.tier,
+        userId: authUser?.uid || 'anonymous',
+        email: authUser?.email || '',
       },
       location: geocodedLocation ? {
         lat: geocodedLocation.lat,
@@ -96,8 +95,7 @@ router.post('/reports', requireLoyaltyMember, async (req, res) => {
       type: data.type,
       species: data.pet.species,
       city: data.lastSeen.city,
-      userId: loyaltyUser.userId,
-      tier: loyaltyUser.tier,
+      userId: authUser?.uid,
       hasLocation: !!geocodedLocation,
     });
 
@@ -215,7 +213,7 @@ async function notifyNearbyMembers(location: { lat: number; lng: number }, type:
  * GET /api/paw-finder/reports
  * Search and list pet reports (LOYALTY MEMBERS ONLY)
  */
-router.get('/reports', requireLoyaltyMember, async (req, res) => {
+router.get('/reports', requireAuth, async (req, res) => {
   try {
     const params = searchPetsSchema.parse({
       species: req.query.species,
@@ -269,7 +267,7 @@ router.get('/reports', requireLoyaltyMember, async (req, res) => {
  * GET /api/paw-finder/reports/:id
  * Get a specific pet report (LOYALTY MEMBERS ONLY)
  */
-router.get('/reports/:id', requireLoyaltyMember, async (req, res) => {
+router.get('/reports/:id', requireAuth, async (req, res) => {
   try {
     const reportRef = firestore.collection('pawFinderReports').doc(req.params.id);
     const doc = await reportRef.get();
@@ -307,7 +305,7 @@ router.get('/reports/:id', requireLoyaltyMember, async (req, res) => {
  * POST /api/paw-finder/reports/:id/contact
  * Record contact attempt (LOYALTY MEMBERS ONLY)
  */
-router.post('/reports/:id/contact', requireLoyaltyMember, async (req, res) => {
+router.post('/reports/:id/contact', requireAuth, async (req, res) => {
   try {
     const reportRef = firestore.collection('pawFinderReports').doc(req.params.id);
     const doc = await reportRef.get();
@@ -346,7 +344,7 @@ router.post('/reports/:id/contact', requireLoyaltyMember, async (req, res) => {
  * PATCH /api/paw-finder/reports/:id/resolve
  * Mark a report as resolved (LOYALTY MEMBERS ONLY)
  */
-router.patch('/reports/:id/resolve', requireLoyaltyMember, async (req, res) => {
+router.patch('/reports/:id/resolve', requireAuth, async (req, res) => {
   try {
     const { resolved, note } = req.body;
     const reportRef = firestore.collection('pawFinderReports').doc(req.params.id);

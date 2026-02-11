@@ -20,6 +20,7 @@ import { eq, and, desc, sql, gte, lte, or, ilike } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { requireLoyaltyMember } from '../middleware/loyalty';
+import { requireAuth } from '../customAuth';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 
@@ -179,7 +180,7 @@ router.get('/specialties', async (req, res) => {
  * POST /api/academy/bookings - Create trainer booking (LOYALTY MEMBERS ONLY)
  * Authenticated endpoint - requires valid Firebase user + loyalty membership
  */
-router.post('/bookings', requireLoyaltyMember, async (req, res) => {
+router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => {
   try {
     // Check authentication (middleware should set req.user)
     if (!req.user) {

@@ -56,32 +56,32 @@ export function meetsTierRequirement(userTier: LoyaltyTier, minimumTier: Loyalty
  */
 const _getLoyaltyStatusUncached = async (userId: string): Promise<LoyaltyUser | null> => {
   try {
-    // Try PostgreSQL first
+    // Try PostgreSQL first (id column stores Firebase UID)
     const result = await db.execute(sql`
       SELECT 
-        firebase_uid as "userId",
+        id as "userId",
         email,
         loyalty_tier as tier,
         loyalty_points as points
       FROM users
-      WHERE firebase_uid = ${userId}
+      WHERE id = ${userId}
     `);
     
     if (result.rows && result.rows.length > 0) {
       const user = result.rows[0] as any;
       
-      // Verify user has at least Bronze tier
-      if (!user.tier) {
-        logger.warn('[LoyaltyService] User has no tier assigned', { userId });
-        return null;
-      }
+      // Normalize tier to uppercase (schema stores lowercase, service uses uppercase)
+      const rawTier = (user.tier || '').toUpperCase();
+      const normalizedTier = (['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'].includes(rawTier) 
+        ? rawTier 
+        : 'BRONZE') as LoyaltyTier;
       
       return {
         userId: user.userId,
         email: user.email,
-        tier: user.tier as LoyaltyTier,
+        tier: normalizedTier,
         points: parseInt(user.points) || 0,
-        discount: getTierDiscount(user.tier as LoyaltyTier),
+        discount: getTierDiscount(normalizedTier),
       };
     }
     
@@ -97,14 +97,17 @@ const _getLoyaltyStatusUncached = async (userId: string): Promise<LoyaltyUser | 
     }
     
     const userData = userDoc.data();
-    const tier = (userData?.loyaltyTier || 'BRONZE') as LoyaltyTier;
+    const rawFirestoreTier = (userData?.loyaltyTier || 'bronze').toUpperCase();
+    const firestoreTier = (['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'].includes(rawFirestoreTier) 
+      ? rawFirestoreTier 
+      : 'BRONZE') as LoyaltyTier;
     
     return {
       userId,
       email: userData?.email || '',
-      tier,
+      tier: firestoreTier,
       points: userData?.loyaltyPoints || 0,
-      discount: getTierDiscount(tier),
+      discount: getTierDiscount(firestoreTier),
     };
   } catch (error: any) {
     logger.error('[LoyaltyService] Failed to get loyalty status', {

@@ -26,7 +26,8 @@ import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { nayaxSitterMarketplace } from '../services/NayaxSitterMarketplaceService';
 import { sitterAITriageService } from '../services/SitterAITriageService';
-import { requireLoyaltyMember } from '../middleware/loyalty';
+import { requireLoyaltyMember, enrichWithLoyalty } from '../middleware/loyalty';
+import { requireAuth } from '../customAuth';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { advancedBookingEngine as sitterAdvancedBookingEngine } from '../services/SitterAdvancedBookingEngine';
@@ -407,19 +408,18 @@ router.post('/pets', async (req, res) => {
 /**
  * POST /api/sitter-suite/bookings - Create new booking with AI triage (LOYALTY MEMBERS ONLY) - USING LUXURY ENGINE
  */
-router.post('/bookings', requireLoyaltyMember, async (req, res) => {
+router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => {
   try {
     const {
-      ownerId,
       sitterId,
       petId,
       startDate,
       endDate,
       specialInstructions,
-      ownerPaymentToken,
     } = req.body;
     
-    // Fetch sitter and pet info
+    const ownerId = (req as any).user?.uid || req.body.ownerId;
+    
     const [sitter] = await db
       .select()
       .from(sitterProfiles)
@@ -434,11 +434,9 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
       return res.status(404).json({ error: 'Sitter or pet not found' });
     }
     
-    // Parse dates
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    // STEP 1: Check availability using LUXURY ENGINE
     const availability = await sitterAdvancedBookingEngine.checkAvailability({
       providerId: sitterId.toString(),
       serviceType: 'pet_sitting',
@@ -455,7 +453,6 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
       return res.status(400).json({ error: availability.message });
     }
 
-    // STEP 2: Get pricing using LUXURY ENGINE (with loyalty discounts!)
     const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
                      req.socket.remoteAddress || 
                      '127.0.0.1';
@@ -475,54 +472,26 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
       }
     });
     
-    // AI Triage Analysis
-    const triageResult = await sitterAITriageService.analyzeBookingUrgency({
-      startDate: start,
-      endDate: end,
-      petType: pet.breed,
-      specialNeeds: pet.specialNeeds || undefined,
-      allergies: pet.allergies ? JSON.stringify(pet.allergies) : undefined,
-      city: sitter.city,
-      ownerMessage: specialInstructions,
-    });
-    
-    // Generate booking ID
-    const bookingId = `SITTER_${nanoid(12)}`;
-    
-    // STEP 3: Process payment via Nayax using LUXURY ENGINE pricing
-    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    const pricePerDayCents = Math.round((pricing.totalPrice / totalDays) * 100);
-    
-    const paymentResult = await nayaxSitterMarketplace.processBookingPayment({
-      bookingId,
-      ownerId,
-      sitterId,
-      pricePerDayCents,
-      totalDays,
-      ownerPaymentToken,
-    });
-    
-    if (!paymentResult.success) {
-      logger.error('[Sitter Suite] Payment failed', {
-        bookingId,
-        error: paymentResult.error,
+    let triageResult = { urgencyScore: 1, triageNotes: '' };
+    try {
+      triageResult = await sitterAITriageService.analyzeBookingUrgency({
+        startDate: start,
+        endDate: end,
+        petType: pet.breed,
+        specialNeeds: pet.specialNeeds || undefined,
+        allergies: pet.allergies ? JSON.stringify(pet.allergies) : undefined,
+        city: sitter.city,
+        ownerMessage: specialInstructions,
       });
-      return res.status(400).json({ error: paymentResult.error });
-    }
-
-    // STEP 4: Confirm booking with LUXURY ENGINE (escrow + audit trail)
-    const bookingConfirmation = await sitterAdvancedBookingEngine.confirmBooking(
-      bookingId,
-      pricing,
-      ownerId
-    );
-
-    if (bookingConfirmation.status === 'failed') {
-      logger.error('[Sitter Suite] Booking confirmation failed', { bookingId });
-      return res.status(400).json({ error: 'Booking confirmation failed - payment escrow could not be established' });
+    } catch (triageErr) {
+      logger.warn('[Sitter Suite] AI triage failed (non-blocking)', triageErr);
     }
     
-    // STEP 5: Create booking record using confirmed LUXURY ENGINE data
+    const bookingId = `SITTER_${nanoid(12)}`;
+    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // UBER-STYLE: Create booking in pending_provider status (NOT confirmed yet)
+    // Payment is NOT captured until provider accepts
     const [newBooking] = await db
       .insert(sitterBookings)
       .values({
@@ -538,98 +507,49 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
         brokerCutCents: Math.round(pricing.platformFee * 100),
         sitterPayoutCents: Math.round(pricing.providerPayout * 100),
         totalChargeCents: Math.round(pricing.totalPrice * 100),
-        nayaxTransactionId: paymentResult.nayaxTransactionId,
-        paymentStatus: 'captured',
+        paymentStatus: 'pending',
         urgencyScore: triageResult.urgencyScore,
         aiTriageNotes: triageResult.triageNotes,
         specialInstructions,
-        status: 'confirmed',
-        confirmedAt: new Date(),
+        status: 'pending_provider',
       })
       .returning();
     
-    logger.info('[Sitter Suite] ✅ Booking created successfully with LUXURY ENGINE', {
+    logger.info('[Sitter Suite] ✅ Booking request created - awaiting provider confirmation', {
       bookingId,
-      urgencyScore: triageResult.urgencyScore,
-      brokerProfit: pricing.platformFee,
-      sitterPayout: pricing.providerPayout,
-      loyaltyDiscount: pricing.loyaltyDiscount,
+      ownerId,
+      sitterId,
+      totalDays,
       totalPrice: pricing.totalPrice,
     });
 
-    // STEP 6: Generate Israeli digital receipt (קבלה דיגיטלית) per Israeli law 2026
-    // Receipt is emailed to customer and recorded in internal accounting
-    let receiptResult;
-    try {
-      const ownerEmail = req.body.customerEmail || req.body.ownerEmail || '';
-      const ownerName = req.body.customerName || req.body.ownerName || '';
-
-      receiptResult = await IsraeliDigitalReceiptService.generateReceipt({
-        platform: 'sitter-suite',
-        bookingId,
-        nayaxTransactionId: paymentResult.nayaxTransactionId,
-        customerEmail: ownerEmail,
-        customerName: ownerName,
-        providerName: sitter.displayName || `${sitter.firstName} ${sitter.lastName}`,
-        providerId: sitterId.toString(),
-        providerType: 'sitter',
-        serviceDescription: `Pet sitting service - ${totalDays} day(s) with ${sitter.firstName}`,
-        serviceDescriptionHe: `שירות שמירה על חיית מחמד - ${totalDays} ${totalDays === 1 ? 'יום' : 'ימים'} עם ${sitter.firstName}`,
-        subtotalAmount: pricing.subtotal,
-        platformFeeAmount: pricing.platformFee,
-        totalAmount: pricing.totalPrice,
-        paymentMethod: 'Nayax Card Payment',
-        providerPayoutAmount: pricing.providerPayout,
-        brokerCommissionAmount: pricing.platformFee,
-      });
-
-      if (receiptResult.success) {
-        logger.info('[Sitter Suite] ✅ Digital receipt generated & emailed', {
-          bookingId,
-          receiptNumber: receiptResult.receiptNumber,
-          emailSent: receiptResult.emailSent,
-          accountingRecorded: receiptResult.accountingRecorded,
-        });
-      }
-    } catch (receiptError) {
-      logger.error('[Sitter Suite] Receipt generation failed (non-blocking)', receiptError);
-    }
-
-    // STEP 7: Record in P&L ledger (VAT accounting)
-    try {
-      await VATCalculatorService.recordTransaction(
-        'sitter-suite',
-        paymentResult.nayaxTransactionId || bookingId,
-        pricing.subtotal,
-        bookingId,
-        {
-          sitterId,
-          totalDays,
-          loyaltyDiscount: pricing.loyaltyDiscount,
-          receiptNumber: receiptResult?.receiptNumber,
+    // NOTIFY PROVIDER via SMS/WhatsApp (fire-and-forget)
+    (async () => {
+      try {
+        if (sitter.phone) {
+          const { TwilioSMSService } = await import('../services/TwilioSMSService');
+          const smsService = new TwilioSMSService();
+          const ownerName = (req as any).user?.email?.split('@')[0] || 'לקוח/ה';
+          await smsService.sendSMS(
+            sitter.phone,
+            `🐾 Pet Wash™ - בקשת הזמנה חדשה!\n` +
+            `לקוח/ה: ${ownerName}\n` +
+            `תאריכים: ${start.toLocaleDateString('he-IL')} - ${end.toLocaleDateString('he-IL')}\n` +
+            `${totalDays} ימים · ₪${(pricing.subtotal).toFixed(0)}\n` +
+            `אנא אשר/י את ההזמנה באפליקציה.`
+          );
+          logger.info('[Sitter Suite] ✅ Provider notification sent via SMS', { bookingId, phone: '***' });
         }
-      );
-    } catch (vatError) {
-      logger.error('[Sitter Suite] VAT ledger recording failed (non-blocking)', vatError);
-    }
-    
-    // Generate navigation links to sitter's location
-    let navigationLinks = undefined;
-    if (sitter.latitude && sitter.longitude) {
-      navigationLinks = buildAllNavigationLinks({
-        lat: parseFloat(sitter.latitude),
-        lng: parseFloat(sitter.longitude),
-        label: `Pet Sitting: ${sitter.displayName}`,
-      });
-    }
+      } catch (notifErr) {
+        logger.warn('[Sitter Suite] Provider notification failed (non-blocking)', notifErr);
+      }
+    })();
     
     res.status(201).json({
       booking: newBooking,
+      status: 'pending_provider',
+      message: 'הבקשה נשלחה לשמרטף/ית. תקבל/י עדכון כשההזמנה תאושר.',
       triage: triageResult,
-      receipt: receiptResult?.success ? {
-        receiptNumber: receiptResult.receiptNumber,
-        emailSent: receiptResult.emailSent,
-      } : undefined,
       pricing: {
         totalPrice: pricing.totalPrice,
         basePrice: pricing.subtotal,
@@ -639,12 +559,223 @@ router.post('/bookings', requireLoyaltyMember, async (req, res) => {
         currency: pricing.currency,
         breakdown: pricing.breakdown,
       },
-      navigation: navigationLinks,
     });
     
   } catch (error) {
     logger.error('[Sitter Suite] Error creating booking', error);
     res.status(500).json({ error: 'Failed to create booking' });
+  }
+});
+
+/**
+ * PATCH /api/sitter-suite/bookings/:bookingId/provider-respond
+ * Uber-style: Provider accepts or declines a booking request
+ * Both parties must confirm for the booking to proceed
+ */
+router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { action, declineReason } = req.body; // action: 'accept' | 'decline'
+    const providerUid = (req as any).user?.uid;
+    
+    if (!['accept', 'decline'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be accept or decline' });
+    }
+
+    const [booking] = await db
+      .select()
+      .from(sitterBookings)
+      .where(eq(sitterBookings.bookingId, bookingId));
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    if (booking.status !== 'pending_provider') {
+      return res.status(400).json({ error: `Booking is already ${booking.status}` });
+    }
+
+    // Verify the responder is the provider for this booking
+    const [sitter] = await db
+      .select()
+      .from(sitterProfiles)
+      .where(eq(sitterProfiles.id, booking.sitterId));
+    
+    if (!sitter || sitter.userId !== providerUid) {
+      return res.status(403).json({ error: 'Only the assigned provider can respond to this booking' });
+    }
+    
+    if (action === 'accept') {
+      // PROVIDER ACCEPTED - Process payment using owner's stored payment method
+      // Provider does NOT supply payment token - we use the owner's Nayax account
+      const pricePerDayCents = Math.round(booking.totalChargeCents / booking.totalDays);
+      
+      let paymentResult = { success: false, nayaxTransactionId: '', error: '' };
+      try {
+        paymentResult = await nayaxSitterMarketplace.processBookingPayment({
+          bookingId: booking.bookingId,
+          ownerId: booking.ownerId,
+          sitterId: booking.sitterId,
+          pricePerDayCents,
+          totalDays: booking.totalDays,
+        });
+      } catch (paymentErr: any) {
+        logger.error('[Sitter Suite] Payment capture on accept failed', { bookingId, error: paymentErr.message });
+      }
+
+      // Only confirm if payment was successful
+      if (!paymentResult.success) {
+        logger.error('[Sitter Suite] Cannot confirm booking - payment capture failed', { bookingId });
+        await db
+          .update(sitterBookings)
+          .set({
+            status: 'payment_failed',
+            paymentStatus: 'failed',
+            updatedAt: new Date(),
+          })
+          .where(eq(sitterBookings.bookingId, bookingId));
+        
+        return res.status(400).json({
+          success: false,
+          status: 'payment_failed',
+          message: 'חיוב התשלום נכשל. ההזמנה לא אושרה.',
+          error: paymentResult.error || 'Payment capture failed',
+        });
+      }
+
+      // Payment succeeded - confirm booking with escrow
+      await sitterAdvancedBookingEngine.confirmBooking(
+        booking.bookingId,
+        {
+          subtotal: booking.basePriceCents / 100,
+          platformFee: booking.platformServiceFeeCents / 100,
+          providerPayout: booking.sitterPayoutCents / 100,
+          totalPrice: booking.totalChargeCents / 100,
+          loyaltyDiscount: 0,
+          currency: 'ILS',
+          breakdown: [],
+        },
+        booking.ownerId
+      );
+
+      await db
+        .update(sitterBookings)
+        .set({
+          status: 'confirmed',
+          paymentStatus: 'captured',
+          nayaxTransactionId: paymentResult.nayaxTransactionId || null,
+          confirmedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(sitterBookings.bookingId, bookingId));
+      
+      logger.info('[Sitter Suite] ✅ Provider ACCEPTED booking - payment captured', { bookingId, sitterId: sitter.id });
+      
+      // Generate Israeli digital receipt (non-blocking)
+      try {
+        await IsraeliDigitalReceiptService.generateReceipt({
+          platform: 'sitter-suite',
+          bookingId: booking.bookingId,
+          nayaxTransactionId: paymentResult.nayaxTransactionId,
+          customerEmail: '',
+          customerName: '',
+          providerName: `${sitter.firstName} ${sitter.lastName}`,
+          providerId: sitter.id.toString(),
+          providerType: 'sitter',
+          serviceDescription: `Pet sitting - ${booking.totalDays} day(s)`,
+          serviceDescriptionHe: `שמרטפות - ${booking.totalDays} ${booking.totalDays === 1 ? 'יום' : 'ימים'}`,
+          subtotalAmount: booking.basePriceCents / 100,
+          platformFeeAmount: booking.platformServiceFeeCents / 100,
+          totalAmount: booking.totalChargeCents / 100,
+          paymentMethod: 'Nayax Card Payment',
+          providerPayoutAmount: booking.sitterPayoutCents / 100,
+          brokerCommissionAmount: booking.platformServiceFeeCents / 100,
+        });
+      } catch (receiptErr) {
+        logger.warn('[Sitter Suite] Receipt generation after accept failed (non-blocking)', receiptErr);
+      }
+
+      // Record in P&L ledger (VAT accounting - non-blocking)
+      try {
+        await VATCalculatorService.recordTransaction(
+          'sitter-suite',
+          paymentResult.nayaxTransactionId || booking.bookingId,
+          booking.basePriceCents / 100,
+          booking.bookingId,
+          {
+            sitterId: booking.sitterId,
+            totalDays: booking.totalDays,
+          }
+        );
+      } catch (vatErr) {
+        logger.warn('[Sitter Suite] VAT ledger recording after accept failed (non-blocking)', vatErr);
+      }
+      
+      res.json({
+        success: true,
+        status: 'confirmed',
+        message: 'ההזמנה אושרה! הלקוח/ה קיבל/ה הודעה.',
+        booking: { ...booking, status: 'confirmed', confirmedAt: new Date() },
+      });
+      
+    } else {
+      // PROVIDER DECLINED
+      await db
+        .update(sitterBookings)
+        .set({
+          status: 'declined',
+          cancellationReason: declineReason || 'Provider declined the booking request',
+          cancelledAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(sitterBookings.bookingId, bookingId));
+      
+      logger.info('[Sitter Suite] ❌ Provider DECLINED booking', { bookingId, reason: declineReason });
+      
+      res.json({
+        success: true,
+        status: 'declined',
+        message: 'ההזמנה נדחתה. הלקוח/ה יקבל/תקבל הודעה.',
+      });
+    }
+  } catch (error) {
+    logger.error('[Sitter Suite] Provider respond error', error);
+    res.status(500).json({ error: 'Failed to process provider response' });
+  }
+});
+
+/**
+ * GET /api/sitter-suite/bookings/provider-pending
+ * Get all pending booking requests for the authenticated provider
+ */
+router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
+  try {
+    const providerUid = (req as any).user?.uid;
+    
+    const [sitter] = await db
+      .select()
+      .from(sitterProfiles)
+      .where(eq(sitterProfiles.userId, providerUid));
+    
+    if (!sitter) {
+      return res.json({ bookings: [] });
+    }
+    
+    const pendingBookings = await db
+      .select()
+      .from(sitterBookings)
+      .where(
+        and(
+          eq(sitterBookings.sitterId, sitter.id),
+          eq(sitterBookings.status, 'pending_provider')
+        )
+      )
+      .orderBy(desc(sitterBookings.createdAt));
+    
+    res.json({ bookings: pendingBookings, total: pendingBookings.length });
+  } catch (error) {
+    logger.error('[Sitter Suite] Fetch provider pending error', error);
+    res.status(500).json({ error: 'Failed to fetch pending bookings' });
   }
 });
 
