@@ -4,6 +4,7 @@
  * 
  * Stage 1: Keyword blocklist filtering (fast, deterministic)
  * Stage 2: LLM sentiment analysis (contextual, adaptive)
+ * Stage 3: Image moderation via Gemini Vision (provider photos, uploads)
  */
 
 import { GoogleGenAI } from '@google/genai';
@@ -16,6 +17,14 @@ interface ModerationResult {
   flags: string[];
   safetyScore: number; // 0-100, higher is safer
   explanation?: string;
+}
+
+interface ImageModerationResult {
+  isApproved: boolean;
+  flags: string[];
+  safetyScore: number;
+  explanation: string;
+  category?: string;
 }
 
 class ContentModerationService {
@@ -236,6 +245,190 @@ Be strict but context-aware. Reject anything offensive, hateful, or inappropriat
       });
     } catch (error) {
       logger.error('[ContentModeration] Failed to log moderation', error);
+    }
+  }
+
+  /**
+   * Image moderation using Gemini Vision
+   * Checks uploaded images for inappropriate content:
+   * - Sexual/pornographic content
+   * - Drug paraphernalia or usage
+   * - Excessive alcohol display
+   * - Violence or weapons
+   * - Hate symbols
+   * 
+   * NOTE: This is intentionally NOT harsh - casual lifestyle photos,
+   * pets near food/drinks, normal beach photos etc. are all fine.
+   * Only truly inappropriate content gets flagged.
+   */
+  async moderateImage(
+    imageBuffer: Buffer,
+    mimeType: string,
+    context: {
+      userId: string;
+      uploadType: 'profile_photo' | 'gallery_photo' | 'document' | 'message_attachment' | 'avatar' | 'health_report';
+      platform?: string;
+    }
+  ): Promise<ImageModerationResult> {
+    logger.info('[ContentModeration] 🖼️ Analyzing image', {
+      userId: context.userId,
+      uploadType: context.uploadType,
+      sizeKB: Math.round(imageBuffer.length / 1024),
+    });
+
+    if (!this.genAI) {
+      logger.warn('[ContentModeration] Gemini unavailable - allowing image (no AI check)');
+      return {
+        isApproved: true,
+        flags: [],
+        safetyScore: 70,
+        explanation: 'AI moderation unavailable - image allowed by default',
+      };
+    }
+
+    try {
+      const base64Image = imageBuffer.toString('base64');
+
+      const prompt = `You are a content moderation AI for Pet Wash™, a family-friendly luxury pet care platform.
+
+Analyze this uploaded image and check ONLY for clearly inappropriate content:
+
+REJECT (score 0-30):
+- Explicit sexual/pornographic content or nudity
+- Hard drug use or drug paraphernalia (syringes, pipes, etc.)
+- Graphic violence, gore, or weapons being used threateningly
+- Hate symbols (swastikas, KKK imagery, etc.)
+- Child exploitation or endangerment
+
+ALLOW (score 60-100) - these are perfectly fine:
+- Normal selfies, profile photos, family photos
+- Photos with pets, animals, nature
+- Casual lifestyle photos (beach, pool, outdoor activities)
+- Photos showing food or beverages (including wine/beer in normal social settings)
+- Photos with mild/tasteful humor
+- Professional photos, certificates, documents
+- Home environment photos (for pet sitter profiles)
+- Photos with slight imperfections (blurry, poor lighting, etc.)
+
+Be RELAXED and reasonable - this is a pet care platform, not a children's app.
+Normal adult content is fine. Only flag truly harmful or explicit material.
+
+Upload type: ${context.uploadType}
+Platform: ${context.platform || 'general'}
+
+Respond in JSON:
+{
+  "isApproved": boolean,
+  "flags": ["flag1"],
+  "safetyScore": number (0-100, higher is safer),
+  "explanation": "brief friendly reason",
+  "category": "safe" | "borderline" | "inappropriate" | "explicit"
+}`;
+
+      const result = await this.genAI.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: mimeType,
+                data: base64Image,
+              }
+            }
+          ]
+        }],
+      });
+
+      const responseText = result.text || '';
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        const aiResult = JSON.parse(jsonMatch[0]);
+        const moderationResult: ImageModerationResult = {
+          isApproved: aiResult.isApproved !== false,
+          flags: Array.isArray(aiResult.flags) ? aiResult.flags : [],
+          safetyScore: typeof aiResult.safetyScore === 'number' ? aiResult.safetyScore : 70,
+          explanation: aiResult.explanation || 'Image reviewed by AI',
+          category: aiResult.category || 'safe',
+        };
+
+        try {
+          await db.insert(contentModerationLogs).values({
+            contentType: 'image',
+            contentId: 0,
+            userId: context.userId,
+            originalContent: `[IMAGE:${context.uploadType}] ${mimeType} ${Math.round(imageBuffer.length / 1024)}KB`,
+            moderationResult: moderationResult.isApproved ? 'approved' : 'rejected',
+            flags: moderationResult.flags,
+            safetyScore: moderationResult.safetyScore,
+            aiModel: 'gemini-2.0-flash',
+            notes: `${moderationResult.explanation} | category: ${moderationResult.category}`,
+          });
+        } catch (logErr) {
+          logger.warn('[ContentModeration] Failed to log image moderation', logErr);
+        }
+
+        if (moderationResult.isApproved) {
+          logger.info('[ContentModeration] ✅ Image approved', {
+            safetyScore: moderationResult.safetyScore,
+            category: moderationResult.category,
+          });
+        } else {
+          logger.warn('[ContentModeration] ❌ Image rejected', {
+            flags: moderationResult.flags,
+            category: moderationResult.category,
+            explanation: moderationResult.explanation,
+          });
+        }
+
+        return moderationResult;
+      }
+
+      logger.warn('[ContentModeration] Could not parse AI image response - allowing by default');
+      return {
+        isApproved: true,
+        flags: [],
+        safetyScore: 65,
+        explanation: 'AI response parsing issue - image allowed',
+      };
+
+    } catch (error: any) {
+      logger.error('[ContentModeration] Image moderation error (allowing by default)', error);
+      return {
+        isApproved: true,
+        flags: [],
+        safetyScore: 60,
+        explanation: 'Moderation service temporarily unavailable - image allowed',
+      };
+    }
+  }
+
+  /**
+   * Moderate image from a URL (for images already uploaded to storage)
+   * Downloads the image and runs moderation
+   */
+  async moderateImageFromUrl(
+    imageUrl: string,
+    context: {
+      userId: string;
+      uploadType: 'profile_photo' | 'gallery_photo' | 'document' | 'message_attachment' | 'avatar' | 'health_report';
+      platform?: string;
+    }
+  ): Promise<ImageModerationResult> {
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        logger.warn('[ContentModeration] Failed to fetch image for moderation', { url: imageUrl.substring(0, 50) });
+        return { isApproved: true, flags: [], safetyScore: 60, explanation: 'Could not fetch image for review' };
+      }
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      return this.moderateImage(buffer, contentType, context);
+    } catch (err) {
+      logger.error('[ContentModeration] Image URL moderation error', err);
+      return { isApproved: true, flags: [], safetyScore: 60, explanation: 'Image URL moderation failed - allowed by default' };
     }
   }
 

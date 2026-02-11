@@ -312,9 +312,33 @@ router.post('/apply', upload.fields([
     let insuranceCertUrl = '';
     let businessLicenseUrl = '';
 
-    // Upload selfie
+    // Upload selfie (with AI content moderation - relaxed, not harsh)
     if (files.selfiePhoto && files.selfiePhoto[0]) {
       const selfieFile = files.selfiePhoto[0];
+
+      // AI moderation check on selfie/profile photo
+      try {
+        const { contentModerationService } = await import('../services/ContentModerationService');
+        const moderationResult = await contentModerationService.moderateImage(
+          selfieFile.buffer,
+          selfieFile.mimetype,
+          { userId: authenticatedUser.uid, uploadType: 'profile_photo', platform: 'provider-onboarding' }
+        );
+        if (!moderationResult.isApproved) {
+          logger.warn('[Provider Onboarding] Selfie rejected by AI moderation', {
+            userId: authenticatedUser.uid,
+            flags: moderationResult.flags,
+          });
+          return res.status(400).json({
+            error: 'התמונה לא עברה בדיקת תוכן. אנא העלה תמונת פרופיל מתאימה.',
+            errorEn: 'Photo did not pass content review. Please upload an appropriate profile photo.',
+            flags: moderationResult.flags,
+          });
+        }
+      } catch (modErr) {
+        logger.warn('[Provider Onboarding] Image moderation failed (allowing upload)', modErr);
+      }
+
       const selfieFileName = `providers/${authenticatedUser.uid}/kyc/selfie_${Date.now()}.${selfieFile.mimetype.split('/')[1]}`;
       const selfieUpload = bucket.file(selfieFileName);
       await selfieUpload.save(selfieFile.buffer, {

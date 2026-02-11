@@ -319,11 +319,34 @@ router.post('/conversations/:id/messages', upload.array('attachments', 10), asyn
       return res.status(400).json({ error: 'Message content is required' });
     }
 
-    // Upload attachments to GCS
+    // Upload attachments to GCS (with AI moderation for images)
     const attachments: MessageAttachment[] = [];
     const files = req.files as Express.Multer.File[];
 
     if (files && files.length > 0) {
+      // Moderate image attachments before uploading
+      const imageFiles = files.filter(f => f.mimetype.startsWith('image/'));
+      if (imageFiles.length > 0) {
+        try {
+          const { contentModerationService } = await import('../services/ContentModerationService');
+          for (const imgFile of imageFiles) {
+            const modResult = await contentModerationService.moderateImage(
+              imgFile.buffer, imgFile.mimetype,
+              { userId: uid, uploadType: 'message_attachment', platform: 'messaging' }
+            );
+            if (!modResult.isApproved) {
+              return res.status(400).json({
+                error: 'אחת התמונות לא עברה בדיקת תוכן. אנא הסר אותה ונסה שוב.',
+                errorEn: 'One of the images did not pass content review. Please remove it and try again.',
+                rejectedFile: imgFile.originalname,
+              });
+            }
+          }
+        } catch (modErr) {
+          logger.warn('[Messaging] Image moderation failed (allowing)', modErr);
+        }
+      }
+
       const bucket = storage.bucket(MESSAGE_ATTACHMENTS_BUCKET);
 
       for (const file of files) {

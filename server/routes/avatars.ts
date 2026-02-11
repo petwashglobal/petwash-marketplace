@@ -116,6 +116,23 @@ router.post('/guest', upload.single('photo'), async (req, res) => {
     if (!petName) {
       return res.status(400).json({ error: 'Pet name is required' });
     }
+
+    // AI Image Moderation (background check - relaxed)
+    try {
+      const { contentModerationService } = await import('../services/ContentModerationService');
+      const modResult = await contentModerationService.moderateImage(
+        req.file.buffer, req.file.mimetype,
+        { userId: 'guest', uploadType: 'avatar', platform: 'plush-lab' }
+      );
+      if (!modResult.isApproved) {
+        return res.status(400).json({
+          error: 'התמונה לא עברה בדיקת תוכן. אנא העלה תמונה מתאימה.',
+          errorEn: 'Image did not pass content review. Please upload an appropriate photo.',
+        });
+      }
+    } catch (modErr) {
+      logger.warn('[Plush Lab] Image moderation failed (allowing)', modErr);
+    }
     
     // Process image (resize and create thumbnail)
     const processedImage = await sharp(req.file.buffer)
@@ -213,6 +230,23 @@ router.post('/', validateFirebaseToken, upload.single('photo'), async (req, res)
     
     if (!req.file) {
       return res.status(400).json({ error: 'Photo is required' });
+    }
+    
+    // AI Image Moderation (background check - relaxed)
+    try {
+      const { contentModerationService } = await import('../services/ContentModerationService');
+      const modResult = await contentModerationService.moderateImage(
+        req.file.buffer, req.file.mimetype,
+        { userId: uid, uploadType: 'avatar', platform: 'plush-lab' }
+      );
+      if (!modResult.isApproved) {
+        return res.status(400).json({
+          error: 'התמונה לא עברה בדיקת תוכן. אנא העלה תמונה מתאימה.',
+          errorEn: 'Image did not pass content review. Please upload an appropriate photo.',
+        });
+      }
+    } catch (modErr) {
+      logger.warn('[Plush Lab] Image moderation failed (allowing)', modErr);
     }
     
     // Validate request body

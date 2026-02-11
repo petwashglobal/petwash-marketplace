@@ -78,6 +78,31 @@ router.post('/upload/profile-photo', upload.single('photo'), async (req: Request
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    // AI Image Moderation (background check - relaxed, not harsh)
+    try {
+      const { contentModerationService } = await import('../services/ContentModerationService');
+      const moderationResult = await contentModerationService.moderateImage(
+        req.file.buffer,
+        req.file.mimetype,
+        { userId: user.uid, uploadType: 'profile_photo', platform: 'sitter-suite' }
+      );
+
+      if (!moderationResult.isApproved) {
+        logger.warn('[Sitter Suite] Profile photo rejected by AI moderation', {
+          userId: user.uid,
+          flags: moderationResult.flags,
+          explanation: moderationResult.explanation,
+        });
+        return res.status(400).json({
+          error: 'התמונה לא עברה בדיקת תוכן. אנא העלה תמונה מתאימה.',
+          errorEn: 'Image did not pass content review. Please upload an appropriate photo.',
+          flags: moderationResult.flags,
+        });
+      }
+    } catch (modErr) {
+      logger.warn('[Sitter Suite] Image moderation failed (allowing upload)', modErr);
+    }
+
     const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
     const ext = req.file.mimetype.split('/')[1] || 'jpg';
     const fileName = `providers/${user.uid}/profile/photo_${Date.now()}.${ext}`;
@@ -92,7 +117,7 @@ router.post('/upload/profile-photo', upload.single('photo'), async (req: Request
       expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
     });
 
-    logger.info('[Sitter Suite] Profile photo uploaded', { userId: user.uid, fileName });
+    logger.info('[Sitter Suite] Profile photo uploaded (AI approved)', { userId: user.uid, fileName, safetyScore: moderationResult.safetyScore });
 
     res.json({
       success: true,
