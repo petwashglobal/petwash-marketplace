@@ -19,8 +19,8 @@ export function generateCustomerWelcomeEmail(data: CustomerWelcomeEmailData): { 
   });
 
   const subject = isHebrew
-    ? `ברוכים הבאים ל-Pet Wash™, ${data.firstName}! החשבון שלך פעיל 🐾`
-    : `Welcome to Pet Wash™, ${data.firstName}! Your Account is Active 🐾`;
+    ? `\u05D1\u05E8\u05D5\u05DB\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD \u05DC\u05DE\u05E9\u05E4\u05D7\u05EA Pet Wash\u2122, ${data.firstName} \u2014 \u05D4\u05D7\u05E9\u05D1\u05D5\u05DF \u05E9\u05DC\u05DA \u05E4\u05E2\u05D9\u05DC`
+    : `Welcome to Pet Wash\u2122, ${data.firstName} \u2014 Your Account is Active`;
 
   const html = `<!DOCTYPE html>
 <html lang="${data.language}" dir="${dir}">
@@ -28,167 +28,148 @@ export function generateCustomerWelcomeEmail(data: CustomerWelcomeEmailData): { 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${subject}</title>
-  <style>
-    body { margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Georgia', 'Times New Roman', serif; }
-    .wrapper { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
-    .card { background: #ffffff; border-radius: 2px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); padding: 48px 40px; text-align: center; }
-    .header img { max-width: 160px; height: auto; margin-bottom: 20px; }
-    .header h1 { color: #ffffff; font-size: 26px; font-weight: 400; letter-spacing: 1px; margin: 0; font-family: 'Georgia', serif; }
-    .header .subtitle { color: rgba(255,255,255,0.7); font-size: 14px; margin-top: 8px; letter-spacing: 2px; text-transform: uppercase; }
-    .gold-bar { height: 3px; background: linear-gradient(90deg, #c9a96e, #e8d5a3, #c9a96e); }
-    .body { padding: 48px 40px; }
-    .greeting { font-size: 22px; color: #1a1a2e; margin: 0 0 24px; font-weight: 400; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .message { font-size: 15px; line-height: 1.8; color: #4a5568; margin: 0 0 20px; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .detail-box { background: #fafbfc; border: 1px solid #e8ecf1; border-radius: 2px; padding: 24px; margin: 28px 0; }
-    .detail-box h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: #1a1a2e; margin: 0 0 16px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f2f5; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''} }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-label { color: #718096; }
-    .detail-value { color: #1a1a2e; font-weight: 500; }
-    .services-section { margin: 32px 0; }
-    .services-section h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: #1a1a2e; margin: 0 0 20px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .service-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .service-item { background: #fafbfc; border: 1px solid #e8ecf1; border-radius: 2px; padding: 16px; text-align: center; }
-    .service-icon { font-size: 28px; margin-bottom: 8px; }
-    .service-name { font-size: 13px; color: #1a1a2e; font-weight: 500; }
-    .service-desc { font-size: 11px; color: #718096; margin-top: 4px; }
-    .cta-section { text-align: center; margin: 36px 0; }
-    .cta-button { display: inline-block; background: #1a1a2e; color: #e8d5a3; text-decoration: none; padding: 14px 40px; border-radius: 2px; font-size: 14px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
-    .cta-button.secondary { background: transparent; border: 1px solid #1a1a2e; color: #1a1a2e; margin-${isHebrew ? 'right' : 'left'}: 12px; }
-    .access-note { background: linear-gradient(135deg, #fff9e6, #fff3cc); border-${isHebrew ? 'right' : 'left'}: 3px solid #c9a96e; padding: 20px 24px; margin: 28px 0; border-radius: 2px; }
-    .access-note h4 { font-size: 14px; color: #8b6914; margin: 0 0 8px; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .access-note p { font-size: 13px; color: #92742e; line-height: 1.6; margin: 0; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .access-list { list-style: none; padding: 0; margin: 12px 0 0; }
-    .access-list li { font-size: 13px; color: #92742e; padding: 4px 0; padding-${isHebrew ? 'right' : 'left'}: 20px; position: relative; }
-    .access-list li::before { content: '✓'; position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #c9a96e; font-weight: bold; }
-    .footer { background: #1a1a2e; padding: 32px 40px; text-align: center; }
-    .footer p { color: rgba(255,255,255,0.5); font-size: 12px; line-height: 1.8; margin: 0; }
-    .footer a { color: #e8d5a3; text-decoration: none; }
-    .social-row { margin: 16px 0; }
-    .social-row a { display: inline-block; margin: 0 8px; font-size: 20px; text-decoration: none; }
-    @media (max-width: 600px) {
-      .body { padding: 32px 24px; }
-      .service-grid { grid-template-columns: 1fr; }
-      .cta-button { display: block; margin: 8px 0; }
-      .cta-button.secondary { margin: 8px 0 0; }
-    }
-  </style>
 </head>
-<body>
-  <div class="wrapper">
-    <div class="card">
-      <div class="header">
-        <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" />
-        <h1>${isHebrew ? 'ברוכים הבאים למשפחה' : 'Welcome to the Family'}</h1>
-        <div class="subtitle">${isHebrew ? 'טיפוח יוקרתי לחיות מחמד' : 'Premium Organic Pet Care'}</div>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Georgia', 'Times New Roman', 'Palatino', serif; -webkit-font-smoothing: antialiased;">
+  <div style="max-width: 640px; margin: 0 auto; padding: 32px 16px;">
+    <div style="background: #ffffff; border-radius: 2px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06);">
+      
+      <div style="background: linear-gradient(160deg, #0f172a 0%, #1e293b 50%, #334155 100%); padding: 56px 40px; text-align: center; position: relative;">
+        <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #c9a96e, #e8d5a3, #dcc07a, #c9a96e);"></div>
+        <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash\u2122" style="max-width: 150px; height: auto; margin-bottom: 24px;" />
+        <h1 style="color: #ffffff; font-size: 28px; font-weight: 400; letter-spacing: 1.5px; margin: 0; font-family: 'Georgia', serif; text-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+          ${isHebrew ? '\u05D1\u05E8\u05D5\u05DB\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD \u05DC\u05DE\u05E9\u05E4\u05D7\u05D4' : 'Welcome to the Family'}
+        </h1>
+        <div style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 10px; letter-spacing: 3px; text-transform: uppercase;">
+          ${isHebrew ? '\u05D8\u05D9\u05E4\u05D5\u05D7 \u05D9\u05D5\u05E7\u05E8\u05EA\u05D9 \u05DC\u05D7\u05D9\u05D5\u05EA \u05DE\u05D7\u05DE\u05D3' : 'Premium Organic Pet Care'}
+        </div>
       </div>
       
-      <div class="gold-bar"></div>
+      <div style="height: 2px; background: linear-gradient(90deg, #c9a96e, #e8d5a3, #dcc07a, #e8d5a3, #c9a96e);"></div>
       
-      <div class="body">
-        <h2 class="greeting">${isHebrew ? `שלום ${data.firstName},` : `Dear ${data.firstName},`}</h2>
+      <div style="padding: 52px 44px;">
+        <h2 style="font-size: 22px; color: #0f172a; margin: 0 0 28px; font-weight: 400; text-align: ${isHebrew ? 'right' : 'left'}; font-family: 'Georgia', serif;">
+          ${isHebrew ? `\u05E9\u05DC\u05D5\u05DD ${data.firstName},` : `Dear ${data.firstName},`}
+        </h2>
         
-        <p class="message">
+        <p style="font-size: 15px; line-height: 1.9; color: #475569; margin: 0 0 24px; text-align: ${isHebrew ? 'right' : 'left'};">
           ${isHebrew
-            ? `תודה שהצטרפת ל-Pet Wash™. החשבון שלך נוצר בהצלחה ומוכן לשימוש. אנחנו שמחים לקבל אותך לקהילה שלנו של אוהבי חיות מחמד.`
-            : `Thank you for joining Pet Wash™. Your account has been successfully created and is ready to use. We're delighted to welcome you to our community of pet lovers.`}
+            ? '\u05EA\u05D5\u05D3\u05D4 \u05E9\u05D4\u05E6\u05D8\u05E8\u05E4\u05EA \u05DC\u05E7\u05D4\u05D9\u05DC\u05EA Pet Wash\u2122. \u05D4\u05D7\u05E9\u05D1\u05D5\u05DF \u05E9\u05DC\u05DA \u05E0\u05D5\u05E6\u05E8 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4 \u05D5\u05DE\u05D5\u05DB\u05DF \u05DC\u05E9\u05D9\u05DE\u05D5\u05E9. \u05D0\u05E0\u05D7\u05E0\u05D5 \u05E9\u05DE\u05D7\u05D9\u05DD \u05DC\u05E7\u05D1\u05DC \u05D0\u05D5\u05EA\u05DA \u05DC\u05E7\u05D4\u05D9\u05DC\u05D4 \u05E9\u05DC\u05E0\u05D5 \u05E9\u05DC \u05D0\u05D5\u05D4\u05D1\u05D9 \u05D7\u05D9\u05D5\u05EA \u05DE\u05D7\u05DE\u05D3.'
+            : 'Thank you for joining Pet Wash\u2122. Your account has been successfully created and is ready to use. We\'re delighted to welcome you to our community of pet lovers.'}
         </p>
         
-        <div class="detail-box">
-          <h3>${isHebrew ? 'פרטי החשבון' : 'Account Details'}</h3>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'סוג חשבון:' : 'Account Type:'}</span>
-            <span class="detail-value">${isHebrew ? 'לקוח' : 'Customer'}</span>
+        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 28px; margin: 32px 0;">
+          <h3 style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #0f172a; margin: 0 0 20px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'};">
+            ${isHebrew ? '\u05E4\u05E8\u05D8\u05D9 \u05D4\u05D7\u05E9\u05D1\u05D5\u05DF' : 'Account Details'}
+          </h3>
+          <div style="border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05E1\u05D5\u05D2 \u05D7\u05E9\u05D1\u05D5\u05DF:' : 'Account Type:'}</span>
+            <span style="color: #0f172a; font-weight: 500;">${isHebrew ? '\u05DC\u05E7\u05D5\u05D7' : 'Customer'}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'שם:' : 'Name:'}</span>
-            <span class="detail-value">${data.firstName} ${data.lastName}</span>
+          <div style="border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05E9\u05DD:' : 'Name:'}</span>
+            <span style="color: #0f172a; font-weight: 500;">${data.firstName} ${data.lastName}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'אימייל:' : 'Email:'}</span>
-            <span class="detail-value">${data.email}</span>
+          <div style="border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05D0\u05D9\u05DE\u05D9\u05D9\u05DC:' : 'Email:'}</span>
+            <span style="color: #0f172a; font-weight: 500;">${data.email}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'תאריך הצטרפות:' : 'Join Date:'}</span>
-            <span class="detail-value">${joinDate}</span>
+          <div style="border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05EA\u05D0\u05E8\u05D9\u05DA \u05D4\u05E6\u05D8\u05E8\u05E4\u05D5\u05EA:' : 'Join Date:'}</span>
+            <span style="color: #0f172a; font-weight: 500;">${joinDate}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'דרגת נאמנות:' : 'Loyalty Tier:'}</span>
-            <span class="detail-value" style="color: #c9a96e;">★ ${isHebrew ? 'חדש' : 'New Member'}</span>
+          <div style="padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05D3\u05E8\u05D2\u05EA \u05E0\u05D0\u05DE\u05E0\u05D5\u05EA:' : 'Loyalty Tier:'}</span>
+            <span style="color: #c9a96e; font-weight: 600;">\u2605 ${isHebrew ? '\u05D7\u05D3\u05E9' : 'New Member'}</span>
           </div>
         </div>
         
-        <div class="access-note">
-          <h4>${isHebrew ? 'גישת הלקוח שלך כוללת:' : 'Your Customer Access Includes:'}</h4>
-          <ul class="access-list">
-            <li>${isHebrew ? 'הזמנת שירותי שטיפה בתחנות K9000™' : 'Book K9000™ wash station services'}</li>
-            <li>${isHebrew ? 'רכישת חבילות שטיפה וכרטיסי מתנה' : 'Purchase wash packages and e-gift cards'}</li>
-            <li>${isHebrew ? 'הזמנת שירותי שמרטפות, טיולים והסעות' : 'Book pet sitting, walking and transport services'}</li>
-            <li>${isHebrew ? 'צבירת נקודות נאמנות בכל שימוש' : 'Earn loyalty points with every use'}</li>
-            <li>${isHebrew ? 'ניהול החיות שלך וצפייה בהיסטוריית הזמנות' : 'Manage your pets and view booking history'}</li>
-          </ul>
-          <p style="margin-top: 12px; font-style: italic;">
+        <div style="background: linear-gradient(135deg, #fffbf0, #fef7e6); border-${isHebrew ? 'right' : 'left'}: 3px solid #c9a96e; padding: 24px 28px; margin: 32px 0; border-radius: 2px;">
+          <h4 style="font-size: 14px; color: #0f172a; margin: 0 0 12px; text-align: ${isHebrew ? 'right' : 'left'}; font-family: 'Georgia', serif; font-weight: 400;">
+            ${isHebrew ? '\u05D2\u05D9\u05E9\u05EA \u05D4\u05DC\u05E7\u05D5\u05D7 \u05E9\u05DC\u05DA \u05DB\u05D5\u05DC\u05DC\u05EA:' : 'Your Customer Access Includes:'}
+          </h4>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px 0; padding-${isHebrew ? 'right' : 'left'}: 20px; font-size: 13px; color: #78716c; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #c9a96e; font-weight: bold;">\u2713</span>
+              ${isHebrew ? '\u05D4\u05D6\u05DE\u05E0\u05EA \u05E9\u05D9\u05E8\u05D5\u05EA\u05D9 \u05E9\u05D8\u05D9\u05E4\u05D4 \u05D1\u05EA\u05D7\u05E0\u05D5\u05EA K9000\u2122' : 'Book K9000\u2122 wash station services'}
+            </td></tr>
+            <tr><td style="padding: 8px 0; padding-${isHebrew ? 'right' : 'left'}: 20px; font-size: 13px; color: #78716c; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #c9a96e; font-weight: bold;">\u2713</span>
+              ${isHebrew ? '\u05E8\u05DB\u05D9\u05E9\u05EA \u05D7\u05D1\u05D9\u05DC\u05D5\u05EA \u05E9\u05D8\u05D9\u05E4\u05D4 \u05D5\u05DB\u05E8\u05D8\u05D9\u05E1\u05D9 \u05DE\u05EA\u05E0\u05D4' : 'Purchase wash packages and e-gift cards'}
+            </td></tr>
+            <tr><td style="padding: 8px 0; padding-${isHebrew ? 'right' : 'left'}: 20px; font-size: 13px; color: #78716c; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #c9a96e; font-weight: bold;">\u2713</span>
+              ${isHebrew ? '\u05D4\u05D6\u05DE\u05E0\u05EA \u05E9\u05D9\u05E8\u05D5\u05EA\u05D9 \u05E9\u05DE\u05E8\u05D8\u05E4\u05D5\u05EA, \u05D8\u05D9\u05D5\u05DC\u05D9\u05DD \u05D5\u05D4\u05E1\u05E2\u05D5\u05EA' : 'Book pet sitting, walking and transport services'}
+            </td></tr>
+            <tr><td style="padding: 8px 0; padding-${isHebrew ? 'right' : 'left'}: 20px; font-size: 13px; color: #78716c; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #c9a96e; font-weight: bold;">\u2713</span>
+              ${isHebrew ? '\u05E6\u05D1\u05D9\u05E8\u05EA \u05E0\u05E7\u05D5\u05D3\u05D5\u05EA \u05E0\u05D0\u05DE\u05E0\u05D5\u05EA \u05D1\u05DB\u05DC \u05E9\u05D9\u05DE\u05D5\u05E9' : 'Earn loyalty points with every use'}
+            </td></tr>
+            <tr><td style="padding: 8px 0; padding-${isHebrew ? 'right' : 'left'}: 20px; font-size: 13px; color: #78716c; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #c9a96e; font-weight: bold;">\u2713</span>
+              ${isHebrew ? '\u05E0\u05D9\u05D4\u05D5\u05DC \u05D4\u05D7\u05D9\u05D5\u05EA \u05E9\u05DC\u05DA \u05D5\u05E6\u05E4\u05D9\u05D9\u05D4 \u05D1\u05D4\u05D9\u05E1\u05D8\u05D5\u05E8\u05D9\u05D9\u05EA \u05D4\u05D6\u05DE\u05E0\u05D5\u05EA' : 'Manage your pets and view booking history'}
+            </td></tr>
+          </table>
+          <p style="margin-top: 16px; font-size: 13px; font-style: italic; color: #94a3b8; text-align: ${isHebrew ? 'right' : 'left'};">
             ${isHebrew
-              ? 'מעוניין להציע שירותים? הגש בקשה להיות נותן שירות ותקבל גישה ללוח בקרה מקצועי.'
+              ? '\u05DE\u05E2\u05D5\u05E0\u05D9\u05D9\u05DF \u05DC\u05D4\u05E6\u05D9\u05E2 \u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD? \u05D4\u05D2\u05E9 \u05D1\u05E7\u05E9\u05D4 \u05DC\u05D4\u05D9\u05D5\u05EA \u05E0\u05D5\u05EA\u05DF \u05E9\u05D9\u05E8\u05D5\u05EA \u05D5\u05EA\u05E7\u05D1\u05DC \u05D2\u05D9\u05E9\u05D4 \u05DC\u05DC\u05D5\u05D7 \u05D1\u05E7\u05E8\u05D4 \u05DE\u05E7\u05E6\u05D5\u05E2\u05D9.'
               : 'Interested in offering services? Apply to become a provider and unlock your professional dashboard.'}
           </p>
         </div>
         
-        <div class="services-section">
-          <h3>${isHebrew ? 'השירותים שלנו' : 'Our Services'}</h3>
-          <div class="service-grid">
-            <div class="service-item">
-              <div class="service-icon">🚿</div>
-              <div class="service-name">${isHebrew ? 'תחנות K9000™' : 'K9000™ Stations'}</div>
-              <div class="service-desc">${isHebrew ? 'שטיפה עצמית אורגנית' : 'Organic self-wash'}</div>
-            </div>
-            <div class="service-item">
-              <div class="service-icon">🏠</div>
-              <div class="service-name">${isHebrew ? 'שמירה על חיות' : 'Pet Sitting'}</div>
-              <div class="service-desc">${isHebrew ? 'שמרטפים מקצועיים' : 'Professional sitters'}</div>
-            </div>
-            <div class="service-item">
-              <div class="service-icon">🐕</div>
-              <div class="service-name">${isHebrew ? 'טיולי כלבים' : 'Dog Walking'}</div>
-              <div class="service-desc">${isHebrew ? 'מטיילים מאומתים' : 'Verified walkers'}</div>
-            </div>
-            <div class="service-item">
-              <div class="service-icon">🚗</div>
-              <div class="service-name">${isHebrew ? 'הסעות' : 'Pet Transport'}</div>
-              <div class="service-desc">${isHebrew ? 'הסעות בטוחות' : 'Safe transport'}</div>
-            </div>
-          </div>
+        <div style="margin: 36px 0;">
+          <h3 style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #0f172a; margin: 0 0 24px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'};">
+            ${isHebrew ? '\u05D4\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD \u05E9\u05DC\u05E0\u05D5' : 'Our Services'}
+          </h3>
+          <table style="width: 100%; border-collapse: separate; border-spacing: 10px;">
+            <tr>
+              <td style="width: 50%; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 20px; text-align: center; vertical-align: top;">
+                <div style="font-size: 32px; margin-bottom: 10px; filter: saturate(0.8);">\u{1F6BF}</div>
+                <div style="font-size: 13px; color: #0f172a; font-weight: 500; letter-spacing: 0.3px;">${isHebrew ? '\u05EA\u05D7\u05E0\u05D5\u05EA K9000\u2122' : 'K9000\u2122 Stations'}</div>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">${isHebrew ? '\u05E9\u05D8\u05D9\u05E4\u05D4 \u05E2\u05E6\u05DE\u05D9\u05EA \u05D0\u05D5\u05E8\u05D2\u05E0\u05D9\u05EA' : 'Organic self-wash'}</div>
+              </td>
+              <td style="width: 50%; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 20px; text-align: center; vertical-align: top;">
+                <div style="font-size: 32px; margin-bottom: 10px; filter: saturate(0.8);">\u{1F3E0}</div>
+                <div style="font-size: 13px; color: #0f172a; font-weight: 500; letter-spacing: 0.3px;">${isHebrew ? '\u05E9\u05DE\u05D9\u05E8\u05D4 \u05E2\u05DC \u05D7\u05D9\u05D5\u05EA' : 'Pet Sitting'}</div>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">${isHebrew ? '\u05E9\u05DE\u05E8\u05D8\u05E4\u05D9\u05DD \u05DE\u05E7\u05E6\u05D5\u05E2\u05D9\u05D9\u05DD' : 'Professional sitters'}</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 50%; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 20px; text-align: center; vertical-align: top;">
+                <div style="font-size: 32px; margin-bottom: 10px; filter: saturate(0.8);">\u{1F415}</div>
+                <div style="font-size: 13px; color: #0f172a; font-weight: 500; letter-spacing: 0.3px;">${isHebrew ? '\u05D8\u05D9\u05D5\u05DC\u05D9 \u05DB\u05DC\u05D1\u05D9\u05DD' : 'Dog Walking'}</div>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">${isHebrew ? '\u05DE\u05D8\u05D9\u05D9\u05DC\u05D9\u05DD \u05DE\u05D0\u05D5\u05DE\u05EA\u05D9\u05DD' : 'Verified walkers'}</div>
+              </td>
+              <td style="width: 50%; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 20px; text-align: center; vertical-align: top;">
+                <div style="font-size: 32px; margin-bottom: 10px; filter: saturate(0.8);">\u{1F697}</div>
+                <div style="font-size: 13px; color: #0f172a; font-weight: 500; letter-spacing: 0.3px;">${isHebrew ? '\u05D4\u05E1\u05E2\u05D5\u05EA' : 'Pet Transport'}</div>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">${isHebrew ? '\u05D4\u05E1\u05E2\u05D5\u05EA \u05D1\u05D8\u05D5\u05D7\u05D5\u05EA' : 'Safe transport'}</div>
+              </td>
+            </tr>
+          </table>
         </div>
         
-        <div class="cta-section">
-          <a href="https://petwash.co.il/packages" class="cta-button">
-            ${isHebrew ? 'חבילות שטיפה' : 'Wash Packages'}
-          </a>
-          <a href="https://petwash.co.il/loyalty" class="cta-button secondary">
-            ${isHebrew ? 'מועדון נאמנות' : 'Loyalty Club'}
+        <div style="text-align: center; margin: 40px 0;">
+          <a href="https://petwash.co.il/packages" style="display: inline-block; background: linear-gradient(135deg, #0f172a, #1e293b); color: #e8d5a3; text-decoration: none; padding: 16px 44px; border-radius: 2px; font-size: 14px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; font-family: 'Georgia', serif;">
+            ${isHebrew ? '\u05D7\u05D1\u05D9\u05DC\u05D5\u05EA \u05E9\u05D8\u05D9\u05E4\u05D4' : 'Wash Packages'}
           </a>
         </div>
         
-        <p class="message" style="text-align: center; font-style: italic; color: #718096;">
+        <p style="font-size: 14px; text-align: center; font-style: italic; color: #94a3b8; line-height: 1.8; margin: 32px 0 0; font-family: 'Georgia', serif;">
           ${isHebrew
-            ? 'שאלות? צוות התמיכה שלנו כאן בשבילך תמיד.'
-            : 'Questions? Our support team is always here for you.'}
+            ? '\u05D0\u05E0\u05D7\u05E0\u05D5 \u05D0\u05D5\u05D4\u05D1\u05D9\u05DD \u05D0\u05EA \u05D7\u05D9\u05D5\u05EA \u05D4\u05DE\u05D7\u05DE\u05D3 \u05E9\u05DC\u05E0\u05D5, \u05D0\u05D1\u05DC \u05D4\u05DD \u05D0\u05D5\u05D4\u05D1\u05D9\u05DD \u05D0\u05D5\u05EA\u05E0\u05D5 \u05D9\u05D5\u05EA\u05E8.'
+            : 'We love our pets, but they actually love us more.'}
         </p>
       </div>
       
-      <div class="footer">
-        <div class="social-row">
-          <a href="https://www.facebook.com/petwash" title="Facebook">📘</a>
-          <a href="https://www.instagram.com/petwash" title="Instagram">📸</a>
-          <a href="https://www.tiktok.com/@petwash" title="TikTok">🎵</a>
-        </div>
-        <p>
-          <a href="https://petwash.co.il">petwash.co.il</a> &nbsp;|&nbsp; <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a>
+      <div style="background: linear-gradient(160deg, #0f172a, #1e293b); padding: 36px 44px; text-align: center;">
+        <p style="margin: 0;">
+          <a href="https://petwash.co.il" style="color: #e8d5a3; text-decoration: none; font-size: 13px; letter-spacing: 0.5px;">petwash.co.il</a>
+          <span style="color: rgba(255,255,255,0.2); margin: 0 8px;">\u2502</span>
+          <a href="mailto:Support@PetWash.co.il" style="color: #e8d5a3; text-decoration: none; font-size: 13px;">Support@PetWash.co.il</a>
         </p>
-        <p style="margin-top: 12px;">
-          © ${new Date().getFullYear()} Pet Wash™. ${isHebrew ? 'כל הזכויות שמורות' : 'All rights reserved'}.<br>
-          ${isHebrew ? 'מספר חברה' : 'Company No.'} 517145033 | ${isHebrew ? 'רשומה בישראל' : 'Registered in Israel'}
+        <p style="color: rgba(255,255,255,0.3); font-size: 11px; line-height: 1.8; margin: 16px 0 0; letter-spacing: 0.5px;">
+          \u00A9 ${new Date().getFullYear()} Pet Wash\u2122. ${isHebrew ? '\u05DB\u05DC \u05D4\u05D6\u05DB\u05D5\u05D9\u05D5\u05EA \u05E9\u05DE\u05D5\u05E8\u05D5\u05EA' : 'All rights reserved'}.<br>
+          ${isHebrew ? '\u05DE\u05E1\u05E4\u05E8 \u05D7\u05D1\u05E8\u05D4' : 'Company No.'} 517145033 \u2502 ${isHebrew ? '\u05E8\u05E9\u05D5\u05DE\u05D4 \u05D1\u05D9\u05E9\u05E8\u05D0\u05DC' : 'Registered in Israel'}
         </p>
       </div>
     </div>

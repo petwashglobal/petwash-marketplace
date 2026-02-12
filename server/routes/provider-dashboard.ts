@@ -302,6 +302,161 @@ router.get('/application-status', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/bookings/:bookingId/confirm', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const { bookingId } = req.params;
+    const providerRecords = await db.select().from(providers).where(eq(providers.userId, user.uid));
+    const providerIds = providerRecords.map(p => p.id);
+
+    if (providerIds.length === 0) {
+      return res.status(403).json({ error: 'Not a provider' });
+    }
+
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, parseInt(bookingId)));
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    if (!providerIds.includes(booking.providerId!)) {
+      return res.status(403).json({ error: 'Not your booking' });
+    }
+
+    if (!['pending', 'confirmed', 'owner_confirmed'].includes(booking.status)) {
+      return res.status(400).json({ error: `Cannot confirm booking with status: ${booking.status}` });
+    }
+
+    const now = new Date();
+    await db.update(bookings).set({
+      status: 'provider_confirmed',
+      confirmedAt: now,
+    }).where(eq(bookings.id, parseInt(bookingId)));
+
+    logger.info('[ProviderDashboard] Booking confirmed', {
+      bookingId,
+      bookingNumber: booking.bookingNumber,
+      providerId: booking.providerId,
+      confirmedAt: now.toISOString(),
+      confirmedByUid: user.uid,
+    });
+
+    res.json({
+      success: true,
+      action: 'confirmed',
+      bookingId: parseInt(bookingId),
+      confirmedAt: now.toISOString(),
+      stamp: `PROVIDER_CONFIRMED::${user.uid}::${now.toISOString()}`,
+    });
+  } catch (error) {
+    logger.error('[ProviderDashboard] Confirm booking error', error);
+    res.status(500).json({ error: 'Failed to confirm booking' });
+  }
+});
+
+router.post('/bookings/:bookingId/start', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const { bookingId } = req.params;
+    const providerRecords = await db.select().from(providers).where(eq(providers.userId, user.uid));
+    const providerIds = providerRecords.map(p => p.id);
+
+    if (providerIds.length === 0) {
+      return res.status(403).json({ error: 'Not a provider' });
+    }
+
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, parseInt(bookingId)));
+
+    if (!booking || !providerIds.includes(booking.providerId!)) {
+      return res.status(404).json({ error: 'Booking not found or not yours' });
+    }
+
+    if (booking.status !== 'provider_confirmed') {
+      return res.status(400).json({ error: `Cannot start booking with status: ${booking.status}. Must be provider_confirmed first.` });
+    }
+
+    const now = new Date();
+    await db.update(bookings).set({
+      status: 'in_progress',
+      startedAt: now,
+    }).where(eq(bookings.id, parseInt(bookingId)));
+
+    logger.info('[ProviderDashboard] Booking started', {
+      bookingId,
+      bookingNumber: booking.bookingNumber,
+      startedAt: now.toISOString(),
+      startedByUid: user.uid,
+    });
+
+    res.json({
+      success: true,
+      action: 'started',
+      bookingId: parseInt(bookingId),
+      startedAt: now.toISOString(),
+      stamp: `SERVICE_STARTED::${user.uid}::${now.toISOString()}`,
+    });
+  } catch (error) {
+    logger.error('[ProviderDashboard] Start booking error', error);
+    res.status(500).json({ error: 'Failed to start booking' });
+  }
+});
+
+router.post('/bookings/:bookingId/complete', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const { bookingId } = req.params;
+    const providerRecords = await db.select().from(providers).where(eq(providers.userId, user.uid));
+    const providerIds = providerRecords.map(p => p.id);
+
+    if (providerIds.length === 0) {
+      return res.status(403).json({ error: 'Not a provider' });
+    }
+
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, parseInt(bookingId)));
+
+    if (!booking || !providerIds.includes(booking.providerId!)) {
+      return res.status(404).json({ error: 'Booking not found or not yours' });
+    }
+
+    if (!['in_progress', 'started'].includes(booking.status)) {
+      return res.status(400).json({ error: `Cannot complete booking with status: ${booking.status}` });
+    }
+
+    const now = new Date();
+    await db.update(bookings).set({
+      status: 'completed',
+      completedAt: now,
+      payoutStatus: 'pending',
+    }).where(eq(bookings.id, parseInt(bookingId)));
+
+    logger.info('[ProviderDashboard] Booking completed', {
+      bookingId,
+      bookingNumber: booking.bookingNumber,
+      completedAt: now.toISOString(),
+      completedByUid: user.uid,
+      providerPayout: booking.providerPayout,
+    });
+
+    res.json({
+      success: true,
+      action: 'completed',
+      bookingId: parseInt(bookingId),
+      completedAt: now.toISOString(),
+      payoutStatus: 'pending',
+      stamp: `SERVICE_COMPLETED::${user.uid}::${now.toISOString()}`,
+    });
+  } catch (error) {
+    logger.error('[ProviderDashboard] Complete booking error', error);
+    res.status(500).json({ error: 'Failed to complete booking' });
+  }
+});
+
 router.patch('/availability', async (req: Request, res: Response) => {
   try {
     const user = await getAuthenticatedUser(req, res);

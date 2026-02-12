@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,8 +15,6 @@ import {
   Star,
   Calendar,
   Briefcase,
-  Users,
-  AlertCircle,
   ChevronLeft,
   ChevronRight,
   Wallet,
@@ -26,7 +23,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   FileText,
-  Power,
+  Play,
+  Check,
+  Zap,
+  Shield,
+  CircleDot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -98,26 +99,27 @@ interface EarningsData {
   }>;
 }
 
-const PLATFORM_LABELS: Record<string, { name: string; nameHe: string; color: string; icon: string }> = {
-  sitter_suite: { name: 'The Sitter Suite™', nameHe: 'חבילת השמרטף™', color: '#7C3AED', icon: '🏠' },
-  walk_my_pet: { name: 'Walk My Pet™', nameHe: 'טייל עם החיה™', color: '#10B981', icon: '🐕' },
-  pettrek: { name: 'PetTrek™', nameHe: 'הסעות חיות™', color: '#3B82F6', icon: '🚗' },
-  plush_lab: { name: 'The Plush Lab™', nameHe: 'מעבדת הפלאש™', color: '#EC4899', icon: '✨' },
-  k9000: { name: 'K9000™', nameHe: 'K9000™', color: '#F59E0B', icon: '🚿' },
-  groomers: { name: 'Pet Wash™ Groomers', nameHe: 'מטפחי Pet Wash™', color: '#8B5CF6', icon: '💈' },
-  trainers: { name: 'Pet Trainers', nameHe: 'מאלפים', color: '#EF4444', icon: '🎓' },
+const PLATFORM_LABELS: Record<string, { name: string; nameHe: string; color: string; gradient: string }> = {
+  sitter_suite: { name: 'The Sitter Suite\u2122', nameHe: '\u05D7\u05D1\u05D9\u05DC\u05EA \u05D4\u05E9\u05DE\u05E8\u05D8\u05E3\u2122', color: '#7C3AED', gradient: 'from-violet-500 to-purple-600' },
+  walk_my_pet: { name: 'Walk My Pet\u2122', nameHe: '\u05D8\u05D9\u05D9\u05DC \u05E2\u05DD \u05D4\u05D7\u05D9\u05D4\u2122', color: '#10B981', gradient: 'from-emerald-400 to-teal-600' },
+  pettrek: { name: 'PetTrek\u2122', nameHe: '\u05D4\u05E1\u05E2\u05D5\u05EA \u05D7\u05D9\u05D5\u05EA\u2122', color: '#3B82F6', gradient: 'from-blue-400 to-cyan-600' },
+  plush_lab: { name: 'The Plush Lab\u2122', nameHe: '\u05DE\u05E2\u05D1\u05D3\u05EA \u05D4\u05E4\u05DC\u05D0\u05E9\u2122', color: '#EC4899', gradient: 'from-pink-400 to-rose-600' },
+  k9000: { name: 'K9000\u2122', nameHe: 'K9000\u2122', color: '#F59E0B', gradient: 'from-amber-400 to-orange-500' },
+  groomers: { name: 'Pet Wash\u2122 Groomers', nameHe: '\u05DE\u05D8\u05E4\u05D7\u05D9 Pet Wash\u2122', color: '#8B5CF6', gradient: 'from-purple-400 to-indigo-600' },
+  trainers: { name: 'Pet Trainers', nameHe: '\u05DE\u05D0\u05DC\u05E4\u05D9\u05DD', color: '#EF4444', gradient: 'from-red-400 to-rose-600' },
 };
 
-const STATUS_CONFIG: Record<string, { label: string; labelHe: string; color: string; bg: string }> = {
-  draft: { label: 'Draft', labelHe: 'טיוטא', color: '#6B7280', bg: '#F3F4F6' },
-  pending: { label: 'Pending', labelHe: 'ממתין', color: '#D97706', bg: '#FEF3C7' },
-  confirmed: { label: 'Confirmed', labelHe: 'מאושר', color: '#2563EB', bg: '#DBEAFE' },
-  provider_confirmed: { label: 'Provider Confirmed', labelHe: 'אושר', color: '#2563EB', bg: '#DBEAFE' },
-  in_progress: { label: 'In Progress', labelHe: 'בתהליך', color: '#7C3AED', bg: '#EDE9FE' },
-  started: { label: 'Started', labelHe: 'התחיל', color: '#7C3AED', bg: '#EDE9FE' },
-  completed: { label: 'Completed', labelHe: 'הושלם', color: '#059669', bg: '#D1FAE5' },
-  cancelled: { label: 'Cancelled', labelHe: 'בוטל', color: '#DC2626', bg: '#FEE2E2' },
-  disputed: { label: 'Disputed', labelHe: 'במחלוקת', color: '#EA580C', bg: '#FED7AA' },
+const STATUS_CONFIG: Record<string, { label: string; labelHe: string; color: string; bg: string; border: string }> = {
+  draft: { label: 'Draft', labelHe: '\u05D8\u05D9\u05D5\u05D8\u05D0', color: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
+  pending: { label: 'Pending', labelHe: '\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8', color: '#D97706', bg: 'linear-gradient(135deg, #FFFBEB, #FEF3C7)', border: '#FDE68A' },
+  confirmed: { label: 'Confirmed', labelHe: '\u05DE\u05D0\u05D5\u05E9\u05E8', color: '#2563EB', bg: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', border: '#93C5FD' },
+  owner_confirmed: { label: 'Owner Confirmed', labelHe: '\u05D0\u05D5\u05E9\u05E8 \u05E2\u05F4\u05D9 \u05D4\u05DC\u05E7\u05D5\u05D7', color: '#2563EB', bg: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', border: '#93C5FD' },
+  provider_confirmed: { label: 'You Confirmed', labelHe: '\u05D0\u05D9\u05E9\u05E8\u05EA', color: '#0D9488', bg: 'linear-gradient(135deg, #F0FDFA, #CCFBF1)', border: '#5EEAD4' },
+  in_progress: { label: 'In Progress', labelHe: '\u05D1\u05EA\u05D4\u05DC\u05D9\u05DA', color: '#7C3AED', bg: 'linear-gradient(135deg, #F5F3FF, #EDE9FE)', border: '#C4B5FD' },
+  started: { label: 'Started', labelHe: '\u05D4\u05EA\u05D7\u05D9\u05DC', color: '#7C3AED', bg: 'linear-gradient(135deg, #F5F3FF, #EDE9FE)', border: '#C4B5FD' },
+  completed: { label: 'Completed', labelHe: '\u05D4\u05D5\u05E9\u05DC\u05DD', color: '#059669', bg: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)', border: '#6EE7B7' },
+  cancelled: { label: 'Cancelled', labelHe: '\u05D1\u05D5\u05D8\u05DC', color: '#DC2626', bg: 'linear-gradient(135deg, #FEF2F2, #FEE2E2)', border: '#FCA5A5' },
+  disputed: { label: 'Disputed', labelHe: '\u05D1\u05DE\u05D7\u05DC\u05D5\u05E7\u05EA', color: '#EA580C', bg: 'linear-gradient(135deg, #FFF7ED, #FED7AA)', border: '#FDBA74' },
 };
 
 function formatCurrency(amount: number | string, currency = 'ILS') {
@@ -126,7 +128,7 @@ function formatCurrency(amount: number | string, currency = 'ILS') {
 }
 
 function formatDate(date: string | null) {
-  if (!date) return '—';
+  if (!date) return '\u2014';
   return new Date(date).toLocaleDateString('he-IL', {
     year: 'numeric',
     month: 'short',
@@ -137,11 +139,27 @@ function formatDate(date: string | null) {
 }
 
 function formatShortDate(date: string | null) {
-  if (!date) return '—';
+  if (!date) return '\u2014';
   return new Date(date).toLocaleDateString('he-IL', {
     month: 'short',
     day: 'numeric',
   });
+}
+
+function getBookingAction(status: string): { action: 'confirm' | 'start' | 'complete' | null; labelHe: string; icon: any; gradient: string } | null {
+  switch (status) {
+    case 'pending':
+    case 'confirmed':
+    case 'owner_confirmed':
+      return { action: 'confirm', labelHe: '\u05D0\u05E9\u05E8 \u05D4\u05D6\u05DE\u05E0\u05D4', icon: Check, gradient: 'from-teal-500 to-emerald-600' };
+    case 'provider_confirmed':
+      return { action: 'start', labelHe: '\u05D4\u05EA\u05D7\u05DC \u05E9\u05D9\u05E8\u05D5\u05EA', icon: Play, gradient: 'from-blue-500 to-indigo-600' };
+    case 'in_progress':
+    case 'started':
+      return { action: 'complete', labelHe: '\u05E1\u05D9\u05D9\u05DD \u05E9\u05D9\u05E8\u05D5\u05EA', icon: CheckCircle2, gradient: 'from-emerald-500 to-green-600' };
+    default:
+      return null;
+  }
 }
 
 export default function ProviderDashboard() {
@@ -149,14 +167,23 @@ export default function ProviderDashboard() {
   const { user } = useFirebaseAuth();
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [processingBooking, setProcessingBooking] = useState<string | null>(null);
 
-  const fetchWithAuth = async (url: string) => {
+  const fetchWithAuth = async (url: string, options?: RequestInit) => {
     if (!user) throw new Error('Not authenticated');
     const token = await user.getIdToken();
     const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}` },
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...(options?.headers || {}),
+      },
     });
-    if (!res.ok) throw new Error('Request failed');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(err.error || 'Request failed');
+    }
     return res.json();
   };
 
@@ -197,25 +224,50 @@ export default function ProviderDashboard() {
 
   const toggleAvailability = useMutation({
     mutationFn: async ({ providerId, isAvailable }: { providerId: number; isAvailable: boolean }) => {
-      if (!user) throw new Error('Not authenticated');
-      const token = await user.getIdToken();
-      const res = await fetch('/api/provider-dashboard/availability', {
+      return fetchWithAuth('/api/provider-dashboard/availability', {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ providerId, isAvailable }),
       });
-      if (!res.ok) throw new Error('Failed to update');
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/stats'] });
-      toast({ title: 'הסטטוס עודכן בהצלחה' });
+      toast({ title: '\u05D4\u05E1\u05D8\u05D8\u05D5\u05E1 \u05E2\u05D5\u05D3\u05DB\u05DF \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4' });
     },
     onError: () => {
-      toast({ title: 'שגיאה בעדכון סטטוס', variant: 'destructive' });
+      toast({ title: '\u05E9\u05D2\u05D9\u05D0\u05D4 \u05D1\u05E2\u05D3\u05DB\u05D5\u05DF \u05E1\u05D8\u05D8\u05D5\u05E1', variant: 'destructive' });
+    },
+  });
+
+  const bookingAction = useMutation({
+    mutationFn: async ({ bookingId, action }: { bookingId: string; action: 'confirm' | 'start' | 'complete' }) => {
+      setProcessingBooking(bookingId);
+      return fetchWithAuth(`/api/provider-dashboard/bookings/${bookingId}/${action}`, {
+        method: 'POST',
+      });
+    },
+    onSuccess: (data) => {
+      setProcessingBooking(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/earnings'] });
+
+      const actionLabels: Record<string, string> = {
+        confirmed: '\u05D4\u05D4\u05D6\u05DE\u05E0\u05D4 \u05D0\u05D5\u05E9\u05E8\u05D4 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4',
+        started: '\u05D4\u05E9\u05D9\u05E8\u05D5\u05EA \u05D4\u05EA\u05D7\u05D9\u05DC',
+        completed: '\u05D4\u05E9\u05D9\u05E8\u05D5\u05EA \u05D4\u05D5\u05E9\u05DC\u05DD \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4',
+      };
+      toast({
+        title: actionLabels[data.action] || '\u05E4\u05E2\u05D5\u05DC\u05D4 \u05D1\u05D5\u05E6\u05E2\u05D4',
+        description: data.stamp ? `\u05D7\u05D5\u05EA\u05DE\u05EA: ${new Date(data.confirmedAt || data.startedAt || data.completedAt).toLocaleString('he-IL')}` : undefined,
+      });
+    },
+    onError: (error: any) => {
+      setProcessingBooking(null);
+      toast({
+        title: '\u05E9\u05D2\u05D9\u05D0\u05D4',
+        description: error.message || '\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D1\u05E6\u05E2 \u05D0\u05EA \u05D4\u05E4\u05E2\u05D5\u05DC\u05D4',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -233,12 +285,14 @@ export default function ProviderDashboard() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center" dir="rtl">
-        <Card className="border border-gray-200" style={{ borderRadius: '2px' }}>
-          <CardContent className="p-12 text-center">
-            <User className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <h2 className="text-xl font-serif text-gray-900 mb-2">נדרשת התחברות</h2>
-            <p className="text-gray-500 text-sm">התחבר כדי לגשת ללוח הבקרה שלך</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30 flex items-center justify-center" dir="rtl">
+        <Card className="border border-gray-200/60 shadow-lg" style={{ borderRadius: '2px' }}>
+          <CardContent className="p-16 text-center">
+            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-teal-100 to-emerald-50 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+              <User className="w-10 h-10 text-teal-600" />
+            </div>
+            <h2 className="text-xl font-serif text-gray-900 mb-2">{'\u05E0\u05D3\u05E8\u05E9\u05EA \u05D4\u05EA\u05D7\u05D1\u05E8\u05D5\u05EA'}</h2>
+            <p className="text-gray-500 text-sm">{'\u05D4\u05EA\u05D7\u05D1\u05E8 \u05DB\u05D3\u05D9 \u05DC\u05D2\u05E9\u05EA \u05DC\u05DC\u05D5\u05D7 \u05D4\u05D1\u05E7\u05E8\u05D4 \u05E9\u05DC\u05DA'}</p>
           </CardContent>
         </Card>
       </div>
@@ -246,30 +300,36 @@ export default function ProviderDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafbfc]" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/20" dir="rtl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-serif text-[#1a1a2e] tracking-tight">לוח בקרה</h1>
-            <p className="text-sm text-gray-500 mt-1 font-serif">ניהול ההזמנות והרווחים שלך</p>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-2 h-8 bg-gradient-to-b from-teal-400 to-emerald-600" style={{ borderRadius: '1px' }} />
+              <h1 className="text-3xl font-serif text-gray-900 tracking-tight">{'\u05DC\u05D5\u05D7 \u05D1\u05E7\u05E8\u05D4'}</h1>
+            </div>
+            <p className="text-sm text-gray-500 mt-1 font-serif mr-5">{'\u05E0\u05D9\u05D4\u05D5\u05DC \u05D4\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05D5\u05D4\u05E8\u05D5\u05D5\u05D7\u05D9\u05DD \u05E9\u05DC\u05DA'}</p>
           </div>
           {stats && stats.platforms.length > 0 && (
-            <div className="flex items-center gap-3">
-              {stats.platforms.map(p => (
-                <div key={p.id} className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2" style={{ borderRadius: '2px' }}>
-                  <div className={cn("w-2.5 h-2.5 rounded-full", p.isAvailable ? "bg-green-500 animate-pulse" : "bg-gray-300")} />
-                  <span className="text-xs font-medium text-gray-700">
-                    {PLATFORM_LABELS[p.platformId]?.icon} {PLATFORM_LABELS[p.platformId]?.nameHe || p.platformId}
-                  </span>
-                  <Switch
-                    checked={p.isAvailable || false}
-                    onCheckedChange={(checked) => toggleAvailability.mutate({ providerId: p.id, isAvailable: checked })}
-                    disabled={toggleAvailability.isPending}
-                    className="scale-75"
-                  />
-                </div>
-              ))}
+            <div className="flex items-center gap-3 flex-wrap">
+              {stats.platforms.map(p => {
+                const platform = PLATFORM_LABELS[p.platformId];
+                return (
+                  <div key={p.id} className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-gray-200/60 px-3 py-2 shadow-sm" style={{ borderRadius: '2px' }}>
+                    <div className={cn("w-2 h-2", p.isAvailable ? "bg-emerald-500 animate-pulse" : "bg-gray-300")} style={{ borderRadius: '50%' }} />
+                    <span className="text-xs font-medium text-gray-700">
+                      {platform?.nameHe || p.platformId}
+                    </span>
+                    <Switch
+                      checked={p.isAvailable || false}
+                      onCheckedChange={(checked) => toggleAvailability.mutate({ providerId: p.id, isAvailable: checked })}
+                      disabled={toggleAvailability.isPending}
+                      className="scale-75"
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -277,186 +337,238 @@ export default function ProviderDashboard() {
         {statsLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[...Array(4)].map((_, i) => (
-              <Card key={i} className="border border-gray-100 animate-pulse" style={{ borderRadius: '2px' }}>
-                <CardContent className="p-6"><div className="h-16 bg-gray-100" style={{ borderRadius: '2px' }} /></CardContent>
-              </Card>
+              <div key={i} className="bg-white/60 backdrop-blur-sm border border-gray-100 animate-pulse p-6" style={{ borderRadius: '2px' }}>
+                <div className="h-20 bg-gray-100/50" style={{ borderRadius: '2px' }} />
+              </div>
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-              <CardContent className="p-5">
+            <div className="relative overflow-hidden bg-white border border-gray-200/60 shadow-sm" style={{ borderRadius: '2px' }}>
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-teal-400 to-emerald-500" />
+              <div className="p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 bg-emerald-50 flex items-center justify-center" style={{ borderRadius: '2px' }}>
-                    <DollarSign className="w-5 h-5 text-emerald-600" />
+                  <div className="w-10 h-10 bg-gradient-to-br from-teal-50 to-emerald-100 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                    <DollarSign className="w-5 h-5 text-teal-600" />
                   </div>
                   {monthlyTrend === 'up' && <ArrowUpRight className="w-4 h-4 text-emerald-500" />}
                   {monthlyTrend === 'down' && <ArrowDownRight className="w-4 h-4 text-red-400" />}
                 </div>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">סה״כ הכנסות</p>
-                <p className="text-2xl font-serif text-[#1a1a2e] mt-1">{formatCurrency(stats?.totalEarnings || 0)}</p>
-              </CardContent>
-            </Card>
+                <p className="text-[11px] text-gray-400 uppercase tracking-[1.5px] font-medium">{'\u05E1\u05D4\u05F4\u05DB \u05D4\u05DB\u05E0\u05E1\u05D5\u05EA'}</p>
+                <p className="text-2xl font-serif text-gray-900 mt-1">{formatCurrency(stats?.totalEarnings || 0)}</p>
+              </div>
+            </div>
 
-            <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-              <CardContent className="p-5">
+            <div className="relative overflow-hidden bg-white border border-gray-200/60 shadow-sm" style={{ borderRadius: '2px' }}>
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-400 to-cyan-500" />
+              <div className="p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 bg-blue-50 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-50 to-cyan-100 flex items-center justify-center" style={{ borderRadius: '2px' }}>
                     <Briefcase className="w-5 h-5 text-blue-600" />
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">הזמנות שהושלמו</p>
-                <p className="text-2xl font-serif text-[#1a1a2e] mt-1">{stats?.completedBookings || 0}</p>
-                <p className="text-xs text-gray-400 mt-1">{stats?.totalBookings || 0} סה״כ</p>
-              </CardContent>
-            </Card>
+                <p className="text-[11px] text-gray-400 uppercase tracking-[1.5px] font-medium">{'\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05E9\u05D4\u05D5\u05E9\u05DC\u05DE\u05D5'}</p>
+                <p className="text-2xl font-serif text-gray-900 mt-1">{stats?.completedBookings || 0}</p>
+                <p className="text-xs text-gray-400 mt-1">{stats?.totalBookings || 0} {'\u05E1\u05D4\u05F4\u05DB'}</p>
+              </div>
+            </div>
 
-            <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-              <CardContent className="p-5">
+            <div className="relative overflow-hidden bg-white border border-gray-200/60 shadow-sm" style={{ borderRadius: '2px' }}>
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-400 to-yellow-500" />
+              <div className="p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 bg-yellow-50 flex items-center justify-center" style={{ borderRadius: '2px' }}>
-                    <Star className="w-5 h-5 text-yellow-600" />
+                  <div className="w-10 h-10 bg-gradient-to-br from-amber-50 to-yellow-100 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                    <Star className="w-5 h-5 text-amber-600" />
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">דירוג ממוצע</p>
+                <p className="text-[11px] text-gray-400 uppercase tracking-[1.5px] font-medium">{'\u05D3\u05D9\u05E8\u05D5\u05D2 \u05DE\u05DE\u05D5\u05E6\u05E2'}</p>
                 <div className="flex items-center gap-1.5 mt-1">
-                  <p className="text-2xl font-serif text-[#1a1a2e]">{stats?.averageRating || 0}</p>
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <p className="text-2xl font-serif text-gray-900">{stats?.averageRating || 0}</p>
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                 </div>
-                <p className="text-xs text-gray-400 mt-1">{stats?.totalReviews || 0} ביקורות</p>
-              </CardContent>
-            </Card>
+                <p className="text-xs text-gray-400 mt-1">{stats?.totalReviews || 0} {'\u05D1\u05D9\u05E7\u05D5\u05E8\u05D5\u05EA'}</p>
+              </div>
+            </div>
 
-            <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-              <CardContent className="p-5">
+            <div className="relative overflow-hidden bg-white border border-gray-200/60 shadow-sm" style={{ borderRadius: '2px' }}>
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-400 to-purple-500" />
+              <div className="p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 bg-purple-50 flex items-center justify-center" style={{ borderRadius: '2px' }}>
-                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                  <div className="w-10 h-10 bg-gradient-to-br from-violet-50 to-purple-100 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                    <TrendingUp className="w-5 h-5 text-violet-600" />
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">שיעור השלמה</p>
-                <p className="text-2xl font-serif text-[#1a1a2e] mt-1">{stats?.completionRate || 0}%</p>
-                <p className="text-xs text-gray-400 mt-1">{stats?.activeBookings || 0} פעיל עכשיו</p>
-              </CardContent>
-            </Card>
+                <p className="text-[11px] text-gray-400 uppercase tracking-[1.5px] font-medium">{'\u05E9\u05D9\u05E2\u05D5\u05E8 \u05D4\u05E9\u05DC\u05DE\u05D4'}</p>
+                <p className="text-2xl font-serif text-gray-900 mt-1">{stats?.completionRate || 0}%</p>
+                <p className="text-xs text-gray-400 mt-1">{stats?.activeBookings || 0} {'\u05E4\u05E2\u05D9\u05DC \u05E2\u05DB\u05E9\u05D9\u05D5'}</p>
+              </div>
+            </div>
           </div>
         )}
 
         <Tabs defaultValue="jobs" className="space-y-6">
-          <TabsList className="bg-white border border-gray-200 h-11 p-1" style={{ borderRadius: '2px' }}>
-            <TabsTrigger value="jobs" className="flex items-center gap-2 data-[state=active]:bg-[#1a1a2e] data-[state=active]:text-white text-sm font-medium" style={{ borderRadius: '2px' }}>
+          <TabsList className="bg-white/80 backdrop-blur-sm border border-gray-200/60 h-12 p-1 shadow-sm" style={{ borderRadius: '2px' }}>
+            <TabsTrigger value="jobs" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-900 data-[state=active]:to-gray-800 data-[state=active]:text-white text-sm font-medium px-4" style={{ borderRadius: '2px' }}>
               <Briefcase className="w-4 h-4" />
-              הזמנות
+              {'\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA'}
               {stats && stats.activeBookings > 0 && (
-                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 font-bold" style={{ borderRadius: '2px' }}>{stats.activeBookings}</span>
+                <span className="bg-gradient-to-r from-teal-500 to-emerald-500 text-white text-[10px] px-1.5 py-0.5 font-bold" style={{ borderRadius: '2px' }}>{stats.activeBookings}</span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="earnings" className="flex items-center gap-2 data-[state=active]:bg-[#1a1a2e] data-[state=active]:text-white text-sm font-medium" style={{ borderRadius: '2px' }}>
+            <TabsTrigger value="earnings" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-900 data-[state=active]:to-gray-800 data-[state=active]:text-white text-sm font-medium px-4" style={{ borderRadius: '2px' }}>
               <Wallet className="w-4 h-4" />
-              הכנסות
+              {'\u05D4\u05DB\u05E0\u05E1\u05D5\u05EA'}
             </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center gap-2 data-[state=active]:bg-[#1a1a2e] data-[state=active]:text-white text-sm font-medium" style={{ borderRadius: '2px' }}>
+            <TabsTrigger value="profile" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-900 data-[state=active]:to-gray-800 data-[state=active]:text-white text-sm font-medium px-4" style={{ borderRadius: '2px' }}>
               <BarChart3 className="w-4 h-4" />
-              פרופיל
+              {'\u05E4\u05E8\u05D5\u05E4\u05D9\u05DC'}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="jobs">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-serif text-[#1a1a2e]">היסטוריית הזמנות</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-serif text-gray-900">{'\u05D4\u05D9\u05E1\u05D8\u05D5\u05E8\u05D9\u05D9\u05EA \u05D4\u05D6\u05DE\u05E0\u05D5\u05EA'}</h2>
+                  {bookingsData && (
+                    <span className="text-xs text-gray-400 bg-gray-100/80 px-2 py-1" style={{ borderRadius: '2px' }}>
+                      {bookingsData.total} {'\u05E1\u05D4\u05F4\u05DB'}
+                    </span>
+                  )}
+                </div>
                 <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="w-40 border-gray-200 text-sm" style={{ borderRadius: '2px' }}>
-                    <SelectValue placeholder="סנן לפי סטטוס" />
+                  <SelectTrigger className="w-44 border-gray-200/60 text-sm bg-white/80" style={{ borderRadius: '2px' }}>
+                    <SelectValue placeholder={'\u05E1\u05E0\u05DF \u05DC\u05E4\u05D9 \u05E1\u05D8\u05D8\u05D5\u05E1'} />
                   </SelectTrigger>
                   <SelectContent style={{ borderRadius: '2px' }}>
-                    <SelectItem value="all">הכל</SelectItem>
-                    <SelectItem value="pending">ממתין</SelectItem>
-                    <SelectItem value="confirmed">מאושר</SelectItem>
-                    <SelectItem value="in_progress">בתהליך</SelectItem>
-                    <SelectItem value="completed">הושלם</SelectItem>
-                    <SelectItem value="cancelled">בוטל</SelectItem>
+                    <SelectItem value="all">{'\u05D4\u05DB\u05DC'}</SelectItem>
+                    <SelectItem value="pending">{'\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8'}</SelectItem>
+                    <SelectItem value="provider_confirmed">{'\u05D0\u05D5\u05E9\u05E8'}</SelectItem>
+                    <SelectItem value="in_progress">{'\u05D1\u05EA\u05D4\u05DC\u05D9\u05DA'}</SelectItem>
+                    <SelectItem value="completed">{'\u05D4\u05D5\u05E9\u05DC\u05DD'}</SelectItem>
+                    <SelectItem value="cancelled">{'\u05D1\u05D5\u05D8\u05DC'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {bookingsLoading ? (
-                <Card className="border border-gray-100" style={{ borderRadius: '2px' }}>
-                  <CardContent className="p-12 text-center">
-                    <div className="w-8 h-8 border-2 border-gray-300 border-t-[#1a1a2e] rounded-full animate-spin mx-auto mb-3" />
-                    <p className="text-sm text-gray-400">טוען הזמנות...</p>
-                  </CardContent>
-                </Card>
+                <div className="bg-white/60 backdrop-blur-sm border border-gray-100 p-12 text-center" style={{ borderRadius: '2px' }}>
+                  <div className="w-8 h-8 border-2 border-gray-200 border-t-teal-500 rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-sm text-gray-400">{'\u05D8\u05D5\u05E2\u05DF \u05D4\u05D6\u05DE\u05E0\u05D5\u05EA...'}</p>
+                </div>
               ) : jobsList.length > 0 ? (
                 <>
-                  <div className="bg-white border border-gray-200 overflow-hidden" style={{ borderRadius: '2px' }}>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-100 bg-gray-50/50">
-                            <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">מס׳ הזמנה</th>
-                            <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">פלטפורמה</th>
-                            <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">שירות</th>
-                            <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">מזהה לקוח</th>
-                            <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">תאריך</th>
-                            <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">סטטוס</th>
-                            <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">תשלום</th>
-                            <th className="text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">הרווח שלי</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {jobsList.map((job, idx) => {
-                            const statusCfg = STATUS_CONFIG[job.status] || STATUS_CONFIG.pending;
-                            const platform = PLATFORM_LABELS[job.platformId];
-                            return (
-                              <tr key={job.id} className={cn("border-b border-gray-50 hover:bg-gray-50/50 transition-colors", idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30')}>
-                                <td className="px-4 py-3">
-                                  <span className="text-sm font-mono font-medium text-[#1a1a2e]">{job.bookingNumber}</span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-base">{platform?.icon || '📋'}</span>
-                                    <span className="text-xs text-gray-600">{platform?.nameHe || job.platformId}</span>
+                  <div className="space-y-3">
+                    {jobsList.map((job) => {
+                      const statusCfg = STATUS_CONFIG[job.status] || STATUS_CONFIG.pending;
+                      const platform = PLATFORM_LABELS[job.platformId];
+                      const actionInfo = getBookingAction(job.status);
+                      const isProcessing = processingBooking === job.id;
+
+                      return (
+                        <div
+                          key={job.id}
+                          className="bg-white border border-gray-200/60 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden"
+                          style={{ borderRadius: '2px' }}
+                        >
+                          <div className={`h-[2px] bg-gradient-to-r ${platform?.gradient || 'from-gray-300 to-gray-400'}`} />
+                          <div className="p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-start gap-4 flex-1 min-w-0">
+                                <div
+                                  className={`w-11 h-11 flex items-center justify-center bg-gradient-to-br ${platform?.gradient || 'from-gray-200 to-gray-300'} text-white text-lg flex-shrink-0`}
+                                  style={{ borderRadius: '2px' }}
+                                >
+                                  {platform?.nameHe?.charAt(0) || '\u25CF'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-mono font-semibold text-gray-900">{job.bookingNumber}</span>
+                                    <span
+                                      className="text-[11px] font-medium px-2 py-0.5 inline-block border"
+                                      style={{
+                                        borderRadius: '2px',
+                                        background: statusCfg.bg,
+                                        color: statusCfg.color,
+                                        borderColor: statusCfg.border,
+                                      }}
+                                    >
+                                      {statusCfg.labelHe}
+                                    </span>
+                                    {job.confirmedAt && (
+                                      <span className="text-[10px] text-teal-600 bg-teal-50 px-1.5 py-0.5 border border-teal-200" style={{ borderRadius: '2px' }}>
+                                        {'\u05D0\u05D5\u05E9\u05E8'} {new Date(job.confirmedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    )}
                                   </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className="text-sm text-gray-700">{job.serviceType || '—'}</span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5" style={{ borderRadius: '2px' }}>
-                                    {job.userId.slice(0, 8)}...
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="text-sm text-gray-700">{formatShortDate(job.startTime)}</div>
-                                  <div className="text-[11px] text-gray-400">{new Date(job.startTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span
-                                    className="text-[11px] font-medium px-2 py-1 inline-block"
-                                    style={{ borderRadius: '2px', background: statusCfg.bg, color: statusCfg.color }}
+                                  <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500 flex-wrap">
+                                    <span className="font-medium text-gray-600">{platform?.nameHe || job.platformId}</span>
+                                    <span>{'\u00B7'}</span>
+                                    <span>{job.serviceType || '\u05E9\u05D9\u05E8\u05D5\u05EA \u05DB\u05DC\u05DC\u05D9'}</span>
+                                    <span>{'\u00B7'}</span>
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      {formatShortDate(job.startTime)} {new Date(job.startTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    <span>{'\u00B7'}</span>
+                                    <span className="font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5" style={{ borderRadius: '2px' }}>
+                                      {job.userId.slice(0, 8)}
+                                    </span>
+                                  </div>
+                                  {job.startedAt && (
+                                    <div className="text-[10px] text-violet-600 mt-1 flex items-center gap-1">
+                                      <Play className="w-2.5 h-2.5" />
+                                      {'\u05D4\u05EA\u05D7\u05D9\u05DC:'} {formatDate(job.startedAt)}
+                                    </div>
+                                  )}
+                                  {job.completedAt && (
+                                    <div className="text-[10px] text-emerald-600 mt-0.5 flex items-center gap-1">
+                                      <CheckCircle2 className="w-2.5 h-2.5" />
+                                      {'\u05D4\u05D5\u05E9\u05DC\u05DD:'} {formatDate(job.completedAt)}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                <div className="text-left">
+                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(job.providerPayout, job.currency)}</p>
+                                  <p className="text-[10px] text-gray-400">{'\u05DE\u05EA\u05D5\u05DA'} {formatCurrency(job.total, job.currency)}</p>
+                                </div>
+                                {actionInfo && (
+                                  <Button
+                                    size="sm"
+                                    disabled={isProcessing || bookingAction.isPending}
+                                    onClick={() => bookingAction.mutate({ bookingId: job.id, action: actionInfo.action! })}
+                                    className={cn(
+                                      "text-white text-xs font-semibold px-4 shadow-sm hover:shadow-md transition-all",
+                                      `bg-gradient-to-r ${actionInfo.gradient}`,
+                                      isProcessing && "opacity-70"
+                                    )}
+                                    style={{ borderRadius: '2px' }}
                                   >
-                                    {statusCfg.labelHe}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className="text-sm text-gray-700">{formatCurrency(job.total, job.currency)}</span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className="text-sm font-semibold text-emerald-700">{formatCurrency(job.providerPayout, job.currency)}</span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                                    {isProcessing ? (
+                                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                      <>
+                                        <actionInfo.icon className="w-3.5 h-3.5 ml-1.5" />
+                                        {actionInfo.labelHe}
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {bookingsData && bookingsData.totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center justify-between mt-6">
                       <p className="text-xs text-gray-500">
-                        עמוד {bookingsData.page} מתוך {bookingsData.totalPages} ({bookingsData.total} הזמנות)
+                        {'\u05E2\u05DE\u05D5\u05D3'} {bookingsData.page} {'\u05DE\u05EA\u05D5\u05DA'} {bookingsData.totalPages} ({bookingsData.total} {'\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA'})
                       </p>
                       <div className="flex gap-2">
                         <Button
@@ -464,6 +576,7 @@ export default function ProviderDashboard() {
                           size="sm"
                           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                           disabled={currentPage <= 1}
+                          className="border-gray-200/60 hover:bg-gray-50"
                           style={{ borderRadius: '2px' }}
                         >
                           <ChevronRight className="w-4 h-4" />
@@ -473,6 +586,7 @@ export default function ProviderDashboard() {
                           size="sm"
                           onClick={() => setCurrentPage(p => Math.min(bookingsData.totalPages, p + 1))}
                           disabled={currentPage >= bookingsData.totalPages}
+                          className="border-gray-200/60 hover:bg-gray-50"
                           style={{ borderRadius: '2px' }}
                         >
                           <ChevronLeft className="w-4 h-4" />
@@ -482,13 +596,13 @@ export default function ProviderDashboard() {
                   )}
                 </>
               ) : (
-                <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-                  <CardContent className="p-12 text-center">
-                    <Briefcase className="w-12 h-12 mx-auto text-gray-200 mb-4" />
-                    <h3 className="text-lg font-serif text-gray-700 mb-1">אין הזמנות עדיין</h3>
-                    <p className="text-sm text-gray-400">הזמנות חדשות יופיעו כאן ברגע שלקוחות יזמינו שירות</p>
-                  </CardContent>
-                </Card>
+                <div className="bg-white border border-gray-200/60 shadow-sm text-center p-16" style={{ borderRadius: '2px' }}>
+                  <div className="w-16 h-16 mx-auto mb-5 bg-gradient-to-br from-teal-50 to-emerald-100 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                    <Briefcase className="w-8 h-8 text-teal-400" />
+                  </div>
+                  <h3 className="text-lg font-serif text-gray-800 mb-1">{'\u05D0\u05D9\u05DF \u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05E2\u05D3\u05D9\u05D9\u05DF'}</h3>
+                  <p className="text-sm text-gray-400">{'\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05D7\u05D3\u05E9\u05D5\u05EA \u05D9\u05D5\u05E4\u05D9\u05E2\u05D5 \u05DB\u05D0\u05DF \u05D1\u05E8\u05D2\u05E2 \u05E9\u05DC\u05E7\u05D5\u05D7\u05D5\u05EA \u05D9\u05D6\u05DE\u05D9\u05E0\u05D5 \u05E9\u05D9\u05E8\u05D5\u05EA'}</p>
+                </div>
               )}
             </div>
           </TabsContent>
@@ -498,81 +612,94 @@ export default function ProviderDashboard() {
               {earningsLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[...Array(3)].map((_, i) => (
-                    <Card key={i} className="border border-gray-100 animate-pulse" style={{ borderRadius: '2px' }}>
-                      <CardContent className="p-6"><div className="h-20 bg-gray-100" style={{ borderRadius: '2px' }} /></CardContent>
-                    </Card>
+                    <div key={i} className="bg-white/60 border border-gray-100 animate-pulse p-6" style={{ borderRadius: '2px' }}>
+                      <div className="h-20 bg-gray-100/50" style={{ borderRadius: '2px' }} />
+                    </div>
                   ))}
                 </div>
               ) : earnings && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-                      <CardContent className="p-5">
+                    <div className="relative overflow-hidden bg-white border border-gray-200/60 shadow-sm" style={{ borderRadius: '2px' }}>
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-400 to-orange-500" />
+                      <div className="p-5">
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 bg-emerald-50 flex items-center justify-center" style={{ borderRadius: '2px' }}>
-                            <Wallet className="w-5 h-5 text-emerald-600" />
+                          <div className="w-10 h-10 bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                            <Clock className="w-5 h-5 text-amber-600" />
                           </div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wider">ממתין לתשלום</p>
+                          <p className="text-[11px] text-gray-400 uppercase tracking-[1.5px] font-medium">{'\u05DE\u05DE\u05EA\u05D9\u05DF \u05DC\u05EA\u05E9\u05DC\u05D5\u05DD'}</p>
                         </div>
-                        <p className="text-2xl font-serif text-[#1a1a2e]">{formatCurrency(earnings.pendingPayouts)}</p>
-                      </CardContent>
-                    </Card>
+                        <p className="text-2xl font-serif text-gray-900">{formatCurrency(earnings.pendingPayouts)}</p>
+                      </div>
+                    </div>
 
-                    <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-                      <CardContent className="p-5">
+                    <div className="relative overflow-hidden bg-white border border-gray-200/60 shadow-sm" style={{ borderRadius: '2px' }}>
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-400 to-cyan-500" />
+                      <div className="p-5">
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 bg-blue-50 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-50 to-cyan-100 flex items-center justify-center" style={{ borderRadius: '2px' }}>
                             <Calendar className="w-5 h-5 text-blue-600" />
                           </div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wider">החודש</p>
+                          <p className="text-[11px] text-gray-400 uppercase tracking-[1.5px] font-medium">{'\u05D4\u05D7\u05D5\u05D3\u05E9'}</p>
                         </div>
-                        <p className="text-2xl font-serif text-[#1a1a2e]">{formatCurrency(earnings.thisMonthEarnings)}</p>
+                        <p className="text-2xl font-serif text-gray-900">{formatCurrency(earnings.thisMonthEarnings)}</p>
                         <div className="flex items-center gap-1 mt-1">
                           {earnings.thisMonthEarnings > earnings.lastMonthEarnings ? (
                             <ArrowUpRight className="w-3 h-3 text-emerald-500" />
                           ) : (
                             <ArrowDownRight className="w-3 h-3 text-red-400" />
                           )}
-                          <span className="text-xs text-gray-400">לעומת {formatCurrency(earnings.lastMonthEarnings)} בחודש שעבר</span>
+                          <span className="text-xs text-gray-400">{'\u05DC\u05E2\u05D5\u05DE\u05EA'} {formatCurrency(earnings.lastMonthEarnings)} {'\u05D1\u05D7\u05D5\u05D3\u05E9 \u05E9\u05E2\u05D1\u05E8'}</span>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
 
-                    <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-                      <CardContent className="p-5">
+                    <div className="relative overflow-hidden bg-white border border-gray-200/60 shadow-sm" style={{ borderRadius: '2px' }}>
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 to-green-500" />
+                      <div className="p-5">
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 bg-green-50 flex items-center justify-center" style={{ borderRadius: '2px' }}>
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          <div className="w-10 h-10 bg-gradient-to-br from-emerald-50 to-green-100 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                           </div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wider">שולם</p>
+                          <p className="text-[11px] text-gray-400 uppercase tracking-[1.5px] font-medium">{'\u05E9\u05D5\u05DC\u05DD'}</p>
                         </div>
-                        <p className="text-2xl font-serif text-[#1a1a2e]">{formatCurrency(earnings.paidPayouts)}</p>
-                      </CardContent>
-                    </Card>
+                        <p className="text-2xl font-serif text-gray-900">{formatCurrency(earnings.paidPayouts)}</p>
+                      </div>
+                    </div>
                   </div>
 
-                  <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-serif text-[#1a1a2e]">תשלומים אחרונים</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                  <div className="bg-white border border-gray-200/60 shadow-sm overflow-hidden" style={{ borderRadius: '2px' }}>
+                    <div className="h-[2px] bg-gradient-to-r from-teal-400 via-cyan-500 to-blue-500" />
+                    <div className="px-5 py-4 border-b border-gray-100">
+                      <h3 className="text-base font-serif text-gray-900">{'\u05EA\u05E9\u05DC\u05D5\u05DE\u05D9\u05DD \u05D0\u05D7\u05E8\u05D5\u05E0\u05D9\u05DD'}</h3>
+                    </div>
+                    <div className="p-5">
                       {earnings.recentPayouts.length > 0 ? (
                         <div className="space-y-3">
                           {earnings.recentPayouts.map((payout, idx) => {
                             const platform = PLATFORM_LABELS[payout.platformId];
                             return (
-                              <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                              <div key={idx} className="flex items-center justify-between py-2.5 border-b border-gray-50/80 last:border-0">
                                 <div className="flex items-center gap-3">
-                                  <span className="text-lg">{platform?.icon || '📋'}</span>
+                                  <div
+                                    className={`w-9 h-9 flex items-center justify-center bg-gradient-to-br ${platform?.gradient || 'from-gray-200 to-gray-300'} text-white text-xs font-bold`}
+                                    style={{ borderRadius: '2px' }}
+                                  >
+                                    {platform?.nameHe?.charAt(0) || '\u25CF'}
+                                  </div>
                                   <div>
                                     <p className="text-sm font-medium text-gray-800 font-mono">{payout.bookingNumber}</p>
                                     <p className="text-xs text-gray-400">{formatDate(payout.date)}</p>
                                   </div>
                                 </div>
                                 <div className="text-left">
-                                  <p className="text-sm font-semibold text-emerald-700">{formatCurrency(payout.amount)}</p>
-                                  <p className="text-[10px] text-gray-400 uppercase">
-                                    {payout.payoutStatus === 'paid' ? '✅ שולם' : '⏳ ממתין'}
+                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(payout.amount)}</p>
+                                  <p className="text-[10px] text-gray-400 uppercase flex items-center gap-1">
+                                    {payout.payoutStatus === 'paid' ? (
+                                      <><CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" /> {'\u05E9\u05D5\u05DC\u05DD'}</>
+                                    ) : (
+                                      <><Clock className="w-2.5 h-2.5 text-amber-500" /> {'\u05DE\u05DE\u05EA\u05D9\u05DF'}</>
+                                    )}
                                   </p>
                                 </div>
                               </div>
@@ -580,20 +707,24 @@ export default function ProviderDashboard() {
                           })}
                         </div>
                       ) : (
-                        <div className="text-center py-8">
-                          <DollarSign className="w-10 h-10 mx-auto text-gray-200 mb-3" />
-                          <p className="text-sm text-gray-400">אין תשלומים עדיין</p>
+                        <div className="text-center py-10">
+                          <div className="w-14 h-14 mx-auto mb-4 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                            <DollarSign className="w-7 h-7 text-gray-300" />
+                          </div>
+                          <p className="text-sm text-gray-400">{'\u05D0\u05D9\u05DF \u05EA\u05E9\u05DC\u05D5\u05DE\u05D9\u05DD \u05E2\u05D3\u05D9\u05D9\u05DF'}</p>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
-
-                  <div className="bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800" style={{ borderRadius: '2px' }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <AlertCircle className="w-4 h-4" />
-                      <strong>מבנה עמלות</strong>
                     </div>
-                    <p>Pet Wash™ גובה עמלה קבועה של 15% על כל הזמנה. 85% מהתשלום מועבר ישירות אליך לאחר תקופת נאמנות של 72 שעות.</p>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-teal-50/50 to-emerald-50/50 border border-teal-200/60 p-5" style={{ borderRadius: '2px' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="w-4 h-4 text-teal-600" />
+                      <strong className="text-sm text-teal-800">{'\u05DE\u05D1\u05E0\u05D4 \u05E2\u05DE\u05DC\u05D5\u05EA'}</strong>
+                    </div>
+                    <p className="text-sm text-teal-700">
+                      Pet Wash\u2122 {'\u05D2\u05D5\u05D1\u05D4 \u05E2\u05DE\u05DC\u05D4 \u05E7\u05D1\u05D5\u05E2\u05D4 \u05E9\u05DC'} 15% {'\u05E2\u05DC \u05DB\u05DC \u05D4\u05D6\u05DE\u05E0\u05D4.'} 85% {'\u05DE\u05D4\u05EA\u05E9\u05DC\u05D5\u05DD \u05DE\u05D5\u05E2\u05D1\u05E8 \u05D9\u05E9\u05D9\u05E8\u05D5\u05EA \u05D0\u05DC\u05D9\u05DA \u05DC\u05D0\u05D7\u05E8 \u05EA\u05E7\u05D5\u05E4\u05EA \u05E0\u05D0\u05DE\u05E0\u05D5\u05EA \u05E9\u05DC'} 72 {'\u05E9\u05E2\u05D5\u05EA.'}
+                    </p>
                   </div>
                 </>
               )}
@@ -603,103 +734,131 @@ export default function ProviderDashboard() {
           <TabsContent value="profile">
             <div className="space-y-6">
               {appStatusData?.applications && appStatusData.applications.length > 0 && (
-                <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-serif text-[#1a1a2e]">בקשות הצטרפות</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                <div className="bg-white border border-gray-200/60 shadow-sm overflow-hidden" style={{ borderRadius: '2px' }}>
+                  <div className="h-[2px] bg-gradient-to-r from-violet-400 to-purple-500" />
+                  <div className="px-5 py-4 border-b border-gray-100">
+                    <h3 className="text-base font-serif text-gray-900">{'\u05D1\u05E7\u05E9\u05D5\u05EA \u05D4\u05E6\u05D8\u05E8\u05E4\u05D5\u05EA'}</h3>
+                  </div>
+                  <div className="p-5">
                     <div className="space-y-3">
-                      {appStatusData.applications.map((app: any) => (
-                        <div key={app.applicationId} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg">{PLATFORM_LABELS[app.providerType]?.icon || '📋'}</span>
-                            <div>
-                              <p className="text-sm font-medium text-gray-800">{PLATFORM_LABELS[app.providerType]?.nameHe || app.providerType}</p>
-                              <p className="text-xs text-gray-400">בקשה #{app.applicationId} • {formatDate(app.createdAt)}</p>
+                      {appStatusData.applications.map((app: any) => {
+                        const platform = PLATFORM_LABELS[app.providerType];
+                        return (
+                          <div key={app.applicationId} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-10 h-10 flex items-center justify-center bg-gradient-to-br ${platform?.gradient || 'from-gray-200 to-gray-300'} text-white text-sm font-bold`}
+                                style={{ borderRadius: '2px' }}
+                              >
+                                {platform?.nameHe?.charAt(0) || '\u25CF'}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-800">{platform?.nameHe || app.providerType}</p>
+                                <p className="text-xs text-gray-400">{'\u05D1\u05E7\u05E9\u05D4'} #{app.applicationId} {'\u00B7'} {formatDate(app.createdAt)}</p>
+                              </div>
                             </div>
+                            <Badge
+                              className="font-medium border"
+                              style={{
+                                borderRadius: '2px',
+                                background: app.status === 'approved'
+                                  ? 'linear-gradient(135deg, #ECFDF5, #D1FAE5)'
+                                  : app.status === 'rejected'
+                                    ? 'linear-gradient(135deg, #FEF2F2, #FEE2E2)'
+                                    : 'linear-gradient(135deg, #FFFBEB, #FEF3C7)',
+                                color: app.status === 'approved' ? '#059669' : app.status === 'rejected' ? '#DC2626' : '#D97706',
+                                borderColor: app.status === 'approved' ? '#6EE7B7' : app.status === 'rejected' ? '#FCA5A5' : '#FDE68A',
+                              }}
+                            >
+                              {app.status === 'approved' ? '\u05DE\u05D0\u05D5\u05E9\u05E8' : app.status === 'rejected' ? '\u05E0\u05D3\u05D7\u05D4' : '\u05D1\u05D1\u05D3\u05D9\u05E7\u05D4'}
+                            </Badge>
                           </div>
-                          <Badge
-                            style={{
-                              borderRadius: '2px',
-                              background: app.status === 'approved' ? '#D1FAE5' : app.status === 'rejected' ? '#FEE2E2' : '#FEF3C7',
-                              color: app.status === 'approved' ? '#059669' : app.status === 'rejected' ? '#DC2626' : '#D97706',
-                            }}
-                          >
-                            {app.status === 'approved' ? 'מאושר' : app.status === 'rejected' ? 'נדחה' : 'בבדיקה'}
-                          </Badge>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
 
               {appStatusData?.providerProfiles && appStatusData.providerProfiles.length > 0 && (
-                <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-serif text-[#1a1a2e]">פרופילים מקצועיים</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                <div className="bg-white border border-gray-200/60 shadow-sm overflow-hidden" style={{ borderRadius: '2px' }}>
+                  <div className="h-[2px] bg-gradient-to-r from-teal-400 to-emerald-500" />
+                  <div className="px-5 py-4 border-b border-gray-100">
+                    <h3 className="text-base font-serif text-gray-900">{'\u05E4\u05E8\u05D5\u05E4\u05D9\u05DC\u05D9\u05DD \u05DE\u05E7\u05E6\u05D5\u05E2\u05D9\u05D9\u05DD'}</h3>
+                  </div>
+                  <div className="p-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {appStatusData.providerProfiles.map((profile: any) => {
                         const platform = PLATFORM_LABELS[profile.platformId];
                         return (
-                          <div key={profile.id} className="border border-gray-100 p-4" style={{ borderRadius: '2px' }}>
-                            <div className="flex items-center gap-3 mb-3">
-                              <span className="text-2xl">{platform?.icon || '📋'}</span>
-                              <div>
-                                <p className="text-sm font-semibold text-[#1a1a2e]">{platform?.nameHe || profile.platformId}</p>
-                                <p className="text-xs text-gray-400">{profile.businessName || 'ללא שם עסק'}</p>
+                          <div key={profile.id} className="border border-gray-100 overflow-hidden" style={{ borderRadius: '2px' }}>
+                            <div className={`h-[2px] bg-gradient-to-r ${platform?.gradient || 'from-gray-200 to-gray-300'}`} />
+                            <div className="p-4">
+                              <div className="flex items-center gap-3 mb-4">
+                                <div
+                                  className={`w-12 h-12 flex items-center justify-center bg-gradient-to-br ${platform?.gradient || 'from-gray-200 to-gray-300'} text-white text-lg font-bold`}
+                                  style={{ borderRadius: '2px' }}
+                                >
+                                  {platform?.nameHe?.charAt(0) || '\u25CF'}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">{platform?.nameHe || profile.platformId}</p>
+                                  <p className="text-xs text-gray-400">{profile.businessName || '\u05DC\u05DC\u05D0 \u05E9\u05DD \u05E2\u05E1\u05E7'}</p>
+                                </div>
                               </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 text-center">
-                              <div className="bg-gray-50 p-2" style={{ borderRadius: '2px' }}>
-                                <p className="text-lg font-serif text-[#1a1a2e]">{profile.averageRating}</p>
-                                <p className="text-[10px] text-gray-400 uppercase">דירוג</p>
+                              <div className="grid grid-cols-3 gap-2 text-center">
+                                <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 p-3" style={{ borderRadius: '2px' }}>
+                                  <p className="text-lg font-serif text-gray-900">{profile.averageRating}</p>
+                                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">{'\u05D3\u05D9\u05E8\u05D5\u05D2'}</p>
+                                </div>
+                                <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 p-3" style={{ borderRadius: '2px' }}>
+                                  <p className="text-lg font-serif text-gray-900">{profile.totalBookings}</p>
+                                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">{'\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA'}</p>
+                                </div>
+                                <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 p-3" style={{ borderRadius: '2px' }}>
+                                  <p className="text-lg font-serif text-gray-900">{profile.totalReviews}</p>
+                                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">{'\u05D1\u05D9\u05E7\u05D5\u05E8\u05D5\u05EA'}</p>
+                                </div>
                               </div>
-                              <div className="bg-gray-50 p-2" style={{ borderRadius: '2px' }}>
-                                <p className="text-lg font-serif text-[#1a1a2e]">{profile.totalBookings}</p>
-                                <p className="text-[10px] text-gray-400 uppercase">הזמנות</p>
+                              <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-50">
+                                <span className={cn(
+                                  "text-[11px] px-2 py-0.5 font-medium border",
+                                  profile.verificationStatus === 'approved'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                )} style={{ borderRadius: '2px' }}>
+                                  {profile.verificationStatus === 'approved' ? '\u05DE\u05D0\u05D5\u05DE\u05EA' : '\u05D1\u05D1\u05D3\u05D9\u05E7\u05D4'}
+                                </span>
+                                <span className={cn(
+                                  "text-[11px] px-2 py-0.5 font-medium border",
+                                  profile.isActive
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-gray-50 text-gray-500 border-gray-200'
+                                )} style={{ borderRadius: '2px' }}>
+                                  {profile.isActive ? '\u05E4\u05E2\u05D9\u05DC' : '\u05DC\u05D0 \u05E4\u05E2\u05D9\u05DC'}
+                                </span>
                               </div>
-                              <div className="bg-gray-50 p-2" style={{ borderRadius: '2px' }}>
-                                <p className="text-lg font-serif text-[#1a1a2e]">{profile.totalReviews}</p>
-                                <p className="text-[10px] text-gray-400 uppercase">ביקורות</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-                              <span className={cn(
-                                "text-[11px] px-2 py-0.5 font-medium",
-                                profile.verificationStatus === 'approved' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
-                              )} style={{ borderRadius: '2px' }}>
-                                {profile.verificationStatus === 'approved' ? '✅ מאומת' : '⏳ בבדיקה'}
-                              </span>
-                              <span className={cn(
-                                "text-[11px] px-2 py-0.5 font-medium",
-                                profile.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
-                              )} style={{ borderRadius: '2px' }}>
-                                {profile.isActive ? 'פעיל' : 'לא פעיל'}
-                              </span>
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
 
               {(!appStatusData?.providerProfiles || appStatusData.providerProfiles.length === 0) &&
                (!appStatusData?.applications || appStatusData.applications.length === 0) && (
-                <Card className="border border-gray-200 bg-white" style={{ borderRadius: '2px' }}>
-                  <CardContent className="p-12 text-center">
-                    <FileText className="w-12 h-12 mx-auto text-gray-200 mb-4" />
-                    <h3 className="text-lg font-serif text-gray-700 mb-2">לא נמצאו פרופילים</h3>
-                    <p className="text-sm text-gray-400 mb-6">הגש בקשה להצטרפות כנותן שירות כדי להתחיל לעבוד</p>
-                    <Button asChild className="bg-[#1a1a2e] text-white hover:bg-[#2a2a3e]" style={{ borderRadius: '2px' }}>
-                      <a href="/become-provider">הצטרף כנותן שירות</a>
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div className="bg-white border border-gray-200/60 shadow-sm text-center p-16" style={{ borderRadius: '2px' }}>
+                  <div className="w-16 h-16 mx-auto mb-5 bg-gradient-to-br from-violet-50 to-purple-100 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                    <FileText className="w-8 h-8 text-violet-400" />
+                  </div>
+                  <h3 className="text-lg font-serif text-gray-800 mb-2">{'\u05DC\u05D0 \u05E0\u05DE\u05E6\u05D0\u05D5 \u05E4\u05E8\u05D5\u05E4\u05D9\u05DC\u05D9\u05DD'}</h3>
+                  <p className="text-sm text-gray-400 mb-6">{'\u05D4\u05D2\u05E9 \u05D1\u05E7\u05E9\u05D4 \u05DC\u05D4\u05E6\u05D8\u05E8\u05E4\u05D5\u05EA \u05DB\u05E0\u05D5\u05EA\u05DF \u05E9\u05D9\u05E8\u05D5\u05EA \u05DB\u05D3\u05D9 \u05DC\u05D4\u05EA\u05D7\u05D9\u05DC \u05DC\u05E2\u05D1\u05D5\u05D3'}</p>
+                  <Button asChild className="bg-gradient-to-r from-gray-900 to-gray-800 text-white hover:from-gray-800 hover:to-gray-700 shadow-sm" style={{ borderRadius: '2px' }}>
+                    <a href="/become-provider">{'\u05D4\u05E6\u05D8\u05E8\u05E3 \u05DB\u05E0\u05D5\u05EA\u05DF \u05E9\u05D9\u05E8\u05D5\u05EA'}</a>
+                  </Button>
+                </div>
               )}
             </div>
           </TabsContent>

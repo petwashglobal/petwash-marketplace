@@ -11,14 +11,14 @@ interface ProviderWelcomeEmailData {
   autoApproved?: boolean;
 }
 
-const PROVIDER_TYPE_LABELS: Record<string, { en: string; he: string; icon: string }> = {
-  pet_sitting: { en: 'Pet Sitter', he: 'שמרטף/ית', icon: '🏠' },
-  dog_walking: { en: 'Dog Walker', he: 'מטייל/ת כלבים', icon: '🐕' },
-  pet_transport: { en: 'Pet Transport Driver', he: 'נהג/ת הסעות', icon: '🚗' },
-  grooming: { en: 'Groomer', he: 'מטפח/ת', icon: '✨' },
-  training: { en: 'Pet Trainer', he: 'מאלף/ת', icon: '🎓' },
-  wash_hub_operator: { en: 'K9000™ Station Operator', he: 'מפעיל/ת תחנת K9000™', icon: '🚿' },
-  veterinary_house_calls: { en: 'Home Vet', he: 'וטרינר/ית בבית', icon: '🩺' },
+const PROVIDER_TYPE_LABELS: Record<string, { en: string; he: string }> = {
+  pet_sitting: { en: 'Pet Sitter', he: '\u05E9\u05DE\u05E8\u05D8\u05E3/\u05D9\u05EA' },
+  dog_walking: { en: 'Dog Walker', he: '\u05DE\u05D8\u05D9\u05D9\u05DC/\u05EA \u05DB\u05DC\u05D1\u05D9\u05DD' },
+  pet_transport: { en: 'Pet Transport Driver', he: '\u05E0\u05D4\u05D2/\u05EA \u05D4\u05E1\u05E2\u05D5\u05EA' },
+  grooming: { en: 'Groomer', he: '\u05DE\u05D8\u05E4\u05D7/\u05EA' },
+  training: { en: 'Pet Trainer', he: '\u05DE\u05D0\u05DC\u05E3/\u05EA' },
+  wash_hub_operator: { en: 'K9000\u2122 Station Operator', he: '\u05DE\u05E4\u05E2\u05D9\u05DC/\u05EA \u05EA\u05D7\u05E0\u05EA K9000\u2122' },
+  veterinary_house_calls: { en: 'Home Vet', he: '\u05D5\u05D8\u05E8\u05D9\u05E0\u05E8/\u05D9\u05EA \u05D1\u05D1\u05D9\u05EA' },
 };
 
 export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { subject: string; html: string } {
@@ -30,15 +30,15 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
     day: 'numeric',
   });
 
-  const providerLabel = PROVIDER_TYPE_LABELS[data.providerType] || { en: data.providerType, he: data.providerType, icon: '📋' };
+  const providerLabel = PROVIDER_TYPE_LABELS[data.providerType] || { en: data.providerType, he: data.providerType };
 
   const subject = isHebrew
-    ? `ברוכים הבאים לצוות Pet Wash™, ${data.firstName}! הבקשה שלך ${data.autoApproved ? 'אושרה' : 'התקבלה'} 🎉`
-    : `Welcome to Pet Wash™ Team, ${data.firstName}! Application ${data.autoApproved ? 'Approved' : 'Received'} 🎉`;
+    ? `\u05D1\u05E8\u05D5\u05DB\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD \u05DC\u05E6\u05D5\u05D5\u05EA Pet Wash\u2122, ${data.firstName} \u2014 ${data.autoApproved ? '\u05D4\u05D1\u05E7\u05E9\u05D4 \u05D0\u05D5\u05E9\u05E8\u05D4' : '\u05D4\u05D1\u05E7\u05E9\u05D4 \u05D4\u05EA\u05E7\u05D1\u05DC\u05D4'}`
+    : `Welcome to Pet Wash\u2122 Team, ${data.firstName} \u2014 Application ${data.autoApproved ? 'Approved' : 'Received'}`;
 
   const servicesHtml = (data.serviceTypes || [data.providerType]).map(type => {
-    const label = PROVIDER_TYPE_LABELS[type] || { en: type, he: type, icon: '📋' };
-    return `<div style="display: inline-block; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 2px; padding: 8px 16px; margin: 4px; font-size: 13px; color: #166534;">${label.icon} ${isHebrew ? label.he : label.en}</div>`;
+    const label = PROVIDER_TYPE_LABELS[type] || { en: type, he: type };
+    return `<div style="display: inline-block; background: linear-gradient(135deg, #f0fdfa, #ccfbf1); border: 1px solid #99f6e4; border-radius: 2px; padding: 10px 20px; margin: 4px; font-size: 13px; color: #0d9488; font-weight: 500; letter-spacing: 0.3px;">${isHebrew ? label.he : label.en}</div>`;
   }).join('');
 
   const html = `<!DOCTYPE html>
@@ -47,211 +47,214 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${subject}</title>
-  <style>
-    body { margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Georgia', 'Times New Roman', serif; }
-    .wrapper { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
-    .card { background: #ffffff; border-radius: 2px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    .header { background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%); padding: 48px 40px; text-align: center; }
-    .header img { max-width: 160px; height: auto; margin-bottom: 20px; }
-    .header h1 { color: #ffffff; font-size: 26px; font-weight: 400; letter-spacing: 1px; margin: 0; font-family: 'Georgia', serif; }
-    .header .subtitle { color: rgba(255,255,255,0.7); font-size: 14px; margin-top: 8px; letter-spacing: 2px; text-transform: uppercase; }
-    .header .badge { display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #ffffff; padding: 6px 20px; border-radius: 2px; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 16px; }
-    .emerald-bar { height: 3px; background: linear-gradient(90deg, #10b981, #6ee7b7, #10b981); }
-    .body { padding: 48px 40px; }
-    .greeting { font-size: 22px; color: #064e3b; margin: 0 0 24px; font-weight: 400; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .message { font-size: 15px; line-height: 1.8; color: #4a5568; margin: 0 0 20px; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .status-banner { text-align: center; padding: 20px; margin: 24px 0; border-radius: 2px; }
-    .status-approved { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1px solid #a7f3d0; }
-    .status-pending { background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fde68a; }
-    .status-banner h3 { margin: 0 0 4px; font-size: 18px; }
-    .status-banner p { margin: 0; font-size: 13px; }
-    .detail-box { background: #fafbfc; border: 1px solid #e8ecf1; border-radius: 2px; padding: 24px; margin: 28px 0; }
-    .detail-box h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: #064e3b; margin: 0 0 16px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f2f5; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''} }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-label { color: #718096; }
-    .detail-value { color: #064e3b; font-weight: 500; }
-    .dashboard-section { background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 2px; padding: 28px; margin: 32px 0; }
-    .dashboard-section h3 { font-size: 16px; color: #064e3b; margin: 0 0 16px; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .feature-list { list-style: none; padding: 0; margin: 0; }
-    .feature-list li { font-size: 14px; color: #166534; padding: 8px 0; padding-${isHebrew ? 'right' : 'left'}: 28px; position: relative; border-bottom: 1px solid #d1fae5; }
-    .feature-list li:last-child { border-bottom: none; }
-    .feature-list li::before { content: '◆'; position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #10b981; font-size: 10px; top: 12px; }
-    .commission-note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 2px; padding: 16px 20px; margin: 24px 0; font-size: 13px; color: #92400e; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .cta-section { text-align: center; margin: 36px 0; }
-    .cta-button { display: inline-block; background: #064e3b; color: #a7f3d0; text-decoration: none; padding: 14px 40px; border-radius: 2px; font-size: 14px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
-    .cta-button.secondary { background: transparent; border: 1px solid #064e3b; color: #064e3b; margin-${isHebrew ? 'right' : 'left'}: 12px; }
-    .steps-section { margin: 32px 0; }
-    .steps-section h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: #064e3b; margin: 0 0 20px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .step { display: flex; align-items: flex-start; margin-bottom: 16px; ${isHebrew ? 'flex-direction: row-reverse;' : ''} }
-    .step-number { width: 32px; height: 32px; border-radius: 50%; background: #064e3b; color: #a7f3d0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
-    .step-content { margin-${isHebrew ? 'right' : 'left'}: 16px; flex: 1; }
-    .step-content h4 { font-size: 14px; color: #064e3b; margin: 4px 0; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .step-content p { font-size: 13px; color: #718096; margin: 4px 0 0; text-align: ${isHebrew ? 'right' : 'left'}; }
-    .footer { background: #064e3b; padding: 32px 40px; text-align: center; }
-    .footer p { color: rgba(255,255,255,0.5); font-size: 12px; line-height: 1.8; margin: 0; }
-    .footer a { color: #6ee7b7; text-decoration: none; }
-    .social-row { margin: 16px 0; }
-    .social-row a { display: inline-block; margin: 0 8px; font-size: 20px; text-decoration: none; }
-    @media (max-width: 600px) {
-      .body { padding: 32px 24px; }
-      .cta-button { display: block; margin: 8px 0; }
-      .cta-button.secondary { margin: 8px 0 0; }
-    }
-  </style>
 </head>
-<body>
-  <div class="wrapper">
-    <div class="card">
-      <div class="header">
-        <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" />
-        <h1>${isHebrew ? 'ברוכים הבאים לצוות' : 'Welcome to the Team'}</h1>
-        <div class="subtitle">${isHebrew ? 'נותני שירות מקצועיים' : 'Professional Service Providers'}</div>
-        <div class="badge">${providerLabel.icon} ${isHebrew ? providerLabel.he : providerLabel.en}</div>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: 'Georgia', 'Times New Roman', 'Palatino', serif; -webkit-font-smoothing: antialiased;">
+  <div style="max-width: 640px; margin: 0 auto; padding: 32px 16px;">
+    <div style="background: #ffffff; border-radius: 2px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06);">
+      
+      <div style="background: linear-gradient(160deg, #0f172a 0%, #1e293b 40%, #0d9488 100%); padding: 56px 40px; text-align: center; position: relative;">
+        <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2dd4bf, #99f6e4, #5eead4, #14b8a6);"></div>
+        <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash\u2122" style="max-width: 150px; height: auto; margin-bottom: 24px;" />
+        <h1 style="color: #ffffff; font-size: 28px; font-weight: 400; letter-spacing: 1.5px; margin: 0; font-family: 'Georgia', serif; text-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+          ${isHebrew ? '\u05D1\u05E8\u05D5\u05DB\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD \u05DC\u05E6\u05D5\u05D5\u05EA' : 'Welcome to the Team'}
+        </h1>
+        <div style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 10px; letter-spacing: 3px; text-transform: uppercase;">
+          ${isHebrew ? '\u05E0\u05D5\u05EA\u05E0\u05D9 \u05E9\u05D9\u05E8\u05D5\u05EA \u05DE\u05E7\u05E6\u05D5\u05E2\u05D9\u05D9\u05DD' : 'Professional Service Providers'}
+        </div>
+        <div style="display: inline-block; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.15); color: #99f6e4; padding: 8px 24px; border-radius: 2px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-top: 20px;">
+          ${isHebrew ? providerLabel.he : providerLabel.en}
+        </div>
       </div>
       
-      <div class="emerald-bar"></div>
+      <div style="height: 2px; background: linear-gradient(90deg, #0d9488, #2dd4bf, #5eead4, #99f6e4, #5eead4, #2dd4bf, #0d9488);"></div>
       
-      <div class="body">
-        <h2 class="greeting">${isHebrew ? `שלום ${data.firstName},` : `Dear ${data.firstName},`}</h2>
+      <div style="padding: 52px 44px;">
+        <h2 style="font-size: 22px; color: #0f172a; margin: 0 0 28px; font-weight: 400; text-align: ${isHebrew ? 'right' : 'left'}; font-family: 'Georgia', serif;">
+          ${isHebrew ? `\u05E9\u05DC\u05D5\u05DD ${data.firstName},` : `Dear ${data.firstName},`}
+        </h2>
         
         ${data.autoApproved ? `
-        <div class="status-banner status-approved">
-          <h3 style="color: #065f46;">✅ ${isHebrew ? 'הבקשה אושרה!' : 'Application Approved!'}</h3>
-          <p style="color: #047857;">${isHebrew ? 'ברכות! החשבון שלך פעיל ומוכן לקבלת הזמנות.' : 'Congratulations! Your account is active and ready to receive bookings.'}</p>
+        <div style="text-align: center; padding: 24px; margin: 28px 0; border-radius: 2px; background: linear-gradient(135deg, #f0fdfa, #ccfbf1); border: 1px solid #99f6e4;">
+          <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #0d9488, #14b8a6); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;">
+            <span style="color: #ffffff; font-size: 20px; font-weight: bold; line-height: 40px;">\u2713</span>
+          </div>
+          <h3 style="margin: 0 0 6px; font-size: 18px; color: #0d9488; font-family: 'Georgia', serif; font-weight: 400;">
+            ${isHebrew ? '\u05D4\u05D1\u05E7\u05E9\u05D4 \u05D0\u05D5\u05E9\u05E8\u05D4' : 'Application Approved'}
+          </h3>
+          <p style="margin: 0; font-size: 13px; color: #0f766e;">
+            ${isHebrew ? '\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF \u05E9\u05DC\u05DA \u05E4\u05E2\u05D9\u05DC \u05D5\u05DE\u05D5\u05DB\u05DF \u05DC\u05E7\u05D1\u05DC\u05EA \u05D4\u05D6\u05DE\u05E0\u05D5\u05EA.' : 'Your account is active and ready to receive bookings.'}
+          </p>
         </div>
         ` : `
-        <div class="status-banner status-pending">
-          <h3 style="color: #92400e;">⏳ ${isHebrew ? 'הבקשה בבדיקה' : 'Application Under Review'}</h3>
-          <p style="color: #a16207;">${isHebrew ? 'המסמכים שלך נבדקים. נחזור אליך תוך 2-3 ימי עסקים.' : 'Your documents are being reviewed. We\'ll get back to you within 2-3 business days.'}</p>
+        <div style="text-align: center; padding: 24px; margin: 28px 0; border-radius: 2px; background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fde68a;">
+          <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #d97706, #f59e0b); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;">
+            <span style="color: #ffffff; font-size: 18px; font-weight: bold; line-height: 40px;">\u2026</span>
+          </div>
+          <h3 style="margin: 0 0 6px; font-size: 18px; color: #b45309; font-family: 'Georgia', serif; font-weight: 400;">
+            ${isHebrew ? '\u05D4\u05D1\u05E7\u05E9\u05D4 \u05D1\u05D1\u05D3\u05D9\u05E7\u05D4' : 'Application Under Review'}
+          </h3>
+          <p style="margin: 0; font-size: 13px; color: #a16207;">
+            ${isHebrew ? '\u05D4\u05DE\u05E1\u05DE\u05DB\u05D9\u05DD \u05E9\u05DC\u05DA \u05E0\u05D1\u05D3\u05E7\u05D9\u05DD. \u05E0\u05D7\u05D6\u05D5\u05E8 \u05D0\u05DC\u05D9\u05DA \u05EA\u05D5\u05DA 2\u20133 \u05D9\u05DE\u05D9 \u05E2\u05E1\u05E7\u05D9\u05DD.' : 'Your documents are being reviewed. We\'ll get back to you within 2\u20133 business days.'}
+          </p>
         </div>
         `}
         
-        <p class="message">
+        <p style="font-size: 15px; line-height: 1.9; color: #475569; margin: 0 0 24px; text-align: ${isHebrew ? 'right' : 'left'};">
           ${isHebrew
-            ? `תודה שהצטרפת לצוות נותני השירות של Pet Wash™. כנותן שירות מקצועי, תקבל גישה ללוח בקרה ייעודי עם כל הכלים שאתה צריך לנהל את העסק שלך.`
-            : `Thank you for joining the Pet Wash™ provider team. As a professional service provider, you'll get access to a dedicated dashboard with all the tools you need to manage your business.`}
+            ? '\u05EA\u05D5\u05D3\u05D4 \u05E9\u05D4\u05E6\u05D8\u05E8\u05E4\u05EA \u05DC\u05E6\u05D5\u05D5\u05EA \u05E0\u05D5\u05EA\u05E0\u05D9 \u05D4\u05E9\u05D9\u05E8\u05D5\u05EA \u05E9\u05DC Pet Wash\u2122. \u05DB\u05E0\u05D5\u05EA\u05DF \u05E9\u05D9\u05E8\u05D5\u05EA \u05DE\u05E7\u05E6\u05D5\u05E2\u05D9, \u05EA\u05E7\u05D1\u05DC \u05D2\u05D9\u05E9\u05D4 \u05DC\u05DC\u05D5\u05D7 \u05D1\u05E7\u05E8\u05D4 \u05D9\u05D9\u05E2\u05D5\u05D3\u05D9 \u05E2\u05DD \u05DB\u05DC \u05D4\u05DB\u05DC\u05D9\u05DD \u05E9\u05D0\u05EA\u05D4 \u05E6\u05E8\u05D9\u05DA \u05DC\u05E0\u05D4\u05DC \u05D0\u05EA \u05D4\u05E2\u05E1\u05E7 \u05E9\u05DC\u05DA.'
+            : 'Thank you for joining the Pet Wash\u2122 provider team. As a professional service provider, you\'ll get access to a dedicated dashboard with all the tools you need to manage your business.'}
         </p>
         
-        <div class="detail-box">
-          <h3>${isHebrew ? 'פרטי הבקשה' : 'Application Details'}</h3>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'מספר בקשה:' : 'Application ID:'}</span>
-            <span class="detail-value">#${data.applicationId}</span>
+        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 28px; margin: 32px 0;">
+          <h3 style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #0d9488; margin: 0 0 20px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'};">
+            ${isHebrew ? '\u05E4\u05E8\u05D8\u05D9 \u05D4\u05D1\u05E7\u05E9\u05D4' : 'Application Details'}
+          </h3>
+          <div style="border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05DE\u05E1\u05E4\u05E8 \u05D1\u05E7\u05E9\u05D4:' : 'Application ID:'}</span>
+            <span style="color: #0f172a; font-weight: 500; font-family: 'Courier New', monospace;">#${data.applicationId}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'שם:' : 'Name:'}</span>
-            <span class="detail-value">${data.firstName} ${data.lastName}</span>
+          <div style="border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05E9\u05DD:' : 'Name:'}</span>
+            <span style="color: #0f172a; font-weight: 500;">${data.firstName} ${data.lastName}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'אימייל:' : 'Email:'}</span>
-            <span class="detail-value">${data.email}</span>
+          <div style="border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05D0\u05D9\u05DE\u05D9\u05D9\u05DC:' : 'Email:'}</span>
+            <span style="color: #0f172a; font-weight: 500;">${data.email}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'תפקיד:' : 'Role:'}</span>
-            <span class="detail-value">${isHebrew ? providerLabel.he : providerLabel.en}</span>
+          <div style="border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05EA\u05E4\u05E7\u05D9\u05D3:' : 'Role:'}</span>
+            <span style="color: #0d9488; font-weight: 500;">${isHebrew ? providerLabel.he : providerLabel.en}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'תאריך הגשה:' : 'Submit Date:'}</span>
-            <span class="detail-value">${joinDate}</span>
+          <div style="border-bottom: 1px solid #e2e8f0; padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05EA\u05D0\u05E8\u05D9\u05DA \u05D4\u05D2\u05E9\u05D4:' : 'Submit Date:'}</span>
+            <span style="color: #0f172a; font-weight: 500;">${joinDate}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">${isHebrew ? 'סטטוס:' : 'Status:'}</span>
-            <span class="detail-value" style="color: ${data.autoApproved ? '#059669' : '#d97706'}; font-weight: 600;">
+          <div style="padding: 12px 0; display: flex; justify-content: space-between; font-size: 14px; ${isHebrew ? 'direction: rtl;' : ''}">
+            <span style="color: #64748b;">${isHebrew ? '\u05E1\u05D8\u05D8\u05D5\u05E1:' : 'Status:'}</span>
+            <span style="color: ${data.autoApproved ? '#0d9488' : '#b45309'}; font-weight: 600;">
               ${data.autoApproved
-                ? (isHebrew ? '✅ מאושר' : '✅ Approved')
-                : (isHebrew ? '⏳ בבדיקה' : '⏳ Under Review')}
+                ? (isHebrew ? '\u2713 \u05DE\u05D0\u05D5\u05E9\u05E8' : '\u2713 Approved')
+                : (isHebrew ? '\u2026 \u05D1\u05D1\u05D3\u05D9\u05E7\u05D4' : '\u2026 Under Review')}
             </span>
           </div>
         </div>
         
         ${servicesHtml ? `
-        <div style="margin: 24px 0; text-align: ${isHebrew ? 'right' : 'left'};">
-          <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: #064e3b; margin: 0 0 12px;">${isHebrew ? 'שירותים שנבחרו' : 'Selected Services'}</h3>
+        <div style="margin: 28px 0; text-align: ${isHebrew ? 'right' : 'left'};">
+          <h3 style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #0d9488; margin: 0 0 14px; font-weight: 600;">
+            ${isHebrew ? '\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD \u05E9\u05E0\u05D1\u05D7\u05E8\u05D5' : 'Selected Services'}
+          </h3>
           ${servicesHtml}
         </div>
         ` : ''}
         
-        <div class="dashboard-section">
-          <h3>${isHebrew ? '🖥️ לוח הבקרה המקצועי שלך' : '🖥️ Your Professional Dashboard'}</h3>
-          <p style="font-size: 14px; color: #047857; margin: 0 0 16px; text-align: ${isHebrew ? 'right' : 'left'};">
+        <div style="background: linear-gradient(135deg, #f0fdfa, #ccfbf1); border: 1px solid #99f6e4; border-radius: 2px; padding: 32px; margin: 36px 0;">
+          <h3 style="font-size: 16px; color: #0f172a; margin: 0 0 20px; text-align: ${isHebrew ? 'right' : 'left'}; font-family: 'Georgia', serif; font-weight: 400;">
+            ${isHebrew ? '\u05DC\u05D5\u05D7 \u05D4\u05D1\u05E7\u05E8\u05D4 \u05D4\u05DE\u05E7\u05E6\u05D5\u05E2\u05D9 \u05E9\u05DC\u05DA' : 'Your Professional Dashboard'}
+          </h3>
+          <p style="font-size: 14px; color: #0f766e; margin: 0 0 20px; text-align: ${isHebrew ? 'right' : 'left'}; line-height: 1.7;">
             ${isHebrew
-              ? 'כנותן שירות ב-Pet Wash™ תקבל גישה ללוח בקרה מקצועי הכולל:'
-              : 'As a Pet Wash™ provider you get access to a professional dashboard including:'}
+              ? '\u05DB\u05E0\u05D5\u05EA\u05DF \u05E9\u05D9\u05E8\u05D5\u05EA \u05D1\u05E4\u05DC\u05D8\u05E4\u05D5\u05E8\u05DE\u05D4 \u05EA\u05E7\u05D1\u05DC \u05D2\u05D9\u05E9\u05D4 \u05DC\u05DC\u05D5\u05D7 \u05D1\u05E7\u05E8\u05D4 \u05DE\u05E7\u05E6\u05D5\u05E2\u05D9 \u05D4\u05DB\u05D5\u05DC\u05DC:'
+              : 'As a Pet Wash\u2122 provider you get access to a professional dashboard including:'}
           </p>
-          <ul class="feature-list">
-            <li>${isHebrew ? 'קבלת הזמנות חדשות בזמן אמת עם אישור כפול' : 'Receive new bookings in real-time with dual confirmation'}</li>
-            <li>${isHebrew ? 'ניהול לוח זמנים ותאריכים' : 'Schedule and calendar management'}</li>
-            <li>${isHebrew ? 'צפייה בהיסטוריית עבודות עם תאריכים ומזהי לקוחות' : 'View job history with dates and client IDs'}</li>
-            <li>${isHebrew ? 'מעקב אחר הכנסות ותשלומים' : 'Track earnings and payments'}</li>
-            <li>${isHebrew ? 'דירוגים וביקורות מלקוחות' : 'Ratings and reviews from clients'}</li>
-            <li>${isHebrew ? 'ניהול מצב נוכחות (מקוון/לא מקוון)' : 'Manage online/offline availability status'}</li>
-            <li>${isHebrew ? 'סטטיסטיקות ביצועים ודוחות' : 'Performance statistics and reports'}</li>
-          </ul>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 10px 0; padding-${isHebrew ? 'right' : 'left'}: 24px; font-size: 14px; color: #115e59; border-bottom: 1px solid #99f6e4; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #14b8a6; font-size: 8px; top: 14px;">\u25C6</span>
+              ${isHebrew ? '\u05E7\u05D1\u05DC\u05EA \u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05D7\u05D3\u05E9\u05D5\u05EA \u05D1\u05D6\u05DE\u05DF \u05D0\u05DE\u05EA \u05E2\u05DD \u05D0\u05D9\u05E9\u05D5\u05E8 \u05DB\u05E4\u05D5\u05DC \u05D1\u05DC\u05D7\u05D9\u05E6\u05D4' : 'Receive new bookings in real-time with dual confirmation'}
+            </td></tr>
+            <tr><td style="padding: 10px 0; padding-${isHebrew ? 'right' : 'left'}: 24px; font-size: 14px; color: #115e59; border-bottom: 1px solid #99f6e4; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #14b8a6; font-size: 8px; top: 14px;">\u25C6</span>
+              ${isHebrew ? '\u05E0\u05D9\u05D4\u05D5\u05DC \u05DC\u05D5\u05D7 \u05D6\u05DE\u05E0\u05D9\u05DD \u05D5\u05EA\u05D0\u05E8\u05D9\u05DB\u05D9\u05DD' : 'Schedule and calendar management'}
+            </td></tr>
+            <tr><td style="padding: 10px 0; padding-${isHebrew ? 'right' : 'left'}: 24px; font-size: 14px; color: #115e59; border-bottom: 1px solid #99f6e4; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #14b8a6; font-size: 8px; top: 14px;">\u25C6</span>
+              ${isHebrew ? '\u05E6\u05E4\u05D9\u05D9\u05D4 \u05D1\u05D4\u05D9\u05E1\u05D8\u05D5\u05E8\u05D9\u05D9\u05EA \u05E2\u05D1\u05D5\u05D3\u05D5\u05EA \u05E2\u05DD \u05EA\u05D0\u05E8\u05D9\u05DB\u05D9\u05DD \u05D5\u05DE\u05D6\u05D4\u05D9 \u05DC\u05E7\u05D5\u05D7\u05D5\u05EA' : 'View job history with dates and client IDs'}
+            </td></tr>
+            <tr><td style="padding: 10px 0; padding-${isHebrew ? 'right' : 'left'}: 24px; font-size: 14px; color: #115e59; border-bottom: 1px solid #99f6e4; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #14b8a6; font-size: 8px; top: 14px;">\u25C6</span>
+              ${isHebrew ? '\u05DE\u05E2\u05E7\u05D1 \u05D0\u05D7\u05E8 \u05D4\u05DB\u05E0\u05E1\u05D5\u05EA \u05D5\u05EA\u05E9\u05DC\u05D5\u05DE\u05D9\u05DD' : 'Track earnings and payments'}
+            </td></tr>
+            <tr><td style="padding: 10px 0; padding-${isHebrew ? 'right' : 'left'}: 24px; font-size: 14px; color: #115e59; border-bottom: 1px solid #99f6e4; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #14b8a6; font-size: 8px; top: 14px;">\u25C6</span>
+              ${isHebrew ? '\u05D3\u05D9\u05E8\u05D5\u05D2\u05D9\u05DD \u05D5\u05D1\u05D9\u05E7\u05D5\u05E8\u05D5\u05EA \u05DE\u05DC\u05E7\u05D5\u05D7\u05D5\u05EA' : 'Ratings and reviews from clients'}
+            </td></tr>
+            <tr><td style="padding: 10px 0; padding-${isHebrew ? 'right' : 'left'}: 24px; font-size: 14px; color: #115e59; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
+              <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #14b8a6; font-size: 8px; top: 14px;">\u25C6</span>
+              ${isHebrew ? '\u05E0\u05D9\u05D4\u05D5\u05DC \u05DE\u05E6\u05D1 \u05E0\u05D5\u05DB\u05D7\u05D5\u05EA \u05D5\u05E1\u05D8\u05D8\u05D9\u05E1\u05D8\u05D9\u05E7\u05D5\u05EA \u05D1\u05D9\u05E6\u05D5\u05E2\u05D9\u05DD' : 'Manage availability status and performance statistics'}
+            </td></tr>
+          </table>
         </div>
         
-        <div class="commission-note">
-          <strong>${isHebrew ? '💰 מבנה עמלות:' : '💰 Commission Structure:'}</strong><br>
-          ${isHebrew
-            ? 'Pet Wash™ גובה עמלה קבועה של 15% על כל הזמנה. 85% מהתשלום מועבר ישירות אליך.'
-            : 'Pet Wash™ charges a flat 15% commission on every booking. 85% of the payment goes directly to you.'}
+        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-${isHebrew ? 'right' : 'left'}: 3px solid #0d9488; border-radius: 2px; padding: 20px 24px; margin: 28px 0;">
+          <strong style="font-size: 14px; color: #0f172a; display: block; margin-bottom: 6px;">
+            ${isHebrew ? '\u05DE\u05D1\u05E0\u05D4 \u05E2\u05DE\u05DC\u05D5\u05EA:' : 'Commission Structure:'}
+          </strong>
+          <span style="font-size: 13px; color: #475569; line-height: 1.7;">
+            ${isHebrew
+              ? 'Pet Wash\u2122 \u05D2\u05D5\u05D1\u05D4 \u05E2\u05DE\u05DC\u05D4 \u05E7\u05D1\u05D5\u05E2\u05D4 \u05E9\u05DC 15% \u05E2\u05DC \u05DB\u05DC \u05D4\u05D6\u05DE\u05E0\u05D4. 85% \u05DE\u05D4\u05EA\u05E9\u05DC\u05D5\u05DD \u05DE\u05D5\u05E2\u05D1\u05E8 \u05D9\u05E9\u05D9\u05E8\u05D5\u05EA \u05D0\u05DC\u05D9\u05DA.'
+              : 'Pet Wash\u2122 charges a flat 15% commission on every booking. 85% of the payment goes directly to you.'}
+          </span>
         </div>
         
         ${!data.autoApproved ? `
-        <div class="steps-section">
-          <h3>${isHebrew ? 'השלבים הבאים' : 'Next Steps'}</h3>
-          <div class="step">
-            <div class="step-number">1</div>
-            <div class="step-content">
-              <h4>${isHebrew ? 'אימות מסמכים' : 'Document Verification'}</h4>
-              <p>${isHebrew ? 'הצוות שלנו בודק את המסמכים שהגשת' : 'Our team is reviewing your submitted documents'}</p>
-            </div>
-          </div>
-          <div class="step">
-            <div class="step-number">2</div>
-            <div class="step-content">
-              <h4>${isHebrew ? 'אישור חשבון' : 'Account Approval'}</h4>
-              <p>${isHebrew ? 'נעדכן אותך במייל ו-SMS ברגע שהחשבון יאושר' : 'We\'ll notify you via email and SMS once approved'}</p>
-            </div>
-          </div>
-          <div class="step">
-            <div class="step-number">3</div>
-            <div class="step-content">
-              <h4>${isHebrew ? 'התחל לעבוד' : 'Start Working'}</h4>
-              <p>${isHebrew ? 'התחבר ללוח הבקרה, הפעל מצב מקוון והתחל לקבל הזמנות' : 'Log into your dashboard, go online, and start receiving bookings'}</p>
-            </div>
-          </div>
+        <div style="margin: 36px 0;">
+          <h3 style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #0d9488; margin: 0 0 24px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'};">
+            ${isHebrew ? '\u05D4\u05E9\u05DC\u05D1\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD' : 'Next Steps'}
+          </h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="width: 36px; vertical-align: top; padding: 8px 0;">
+                <div style="width: 32px; height: 32px; border-radius: 2px; background: linear-gradient(135deg, #0f172a, #1e293b); color: #99f6e4; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">1</div>
+              </td>
+              <td style="padding: 8px 0 8px ${isHebrew ? '0' : '12px'}; padding-${isHebrew ? 'right' : 'left'}: 12px; vertical-align: top;">
+                <h4 style="font-size: 14px; color: #0f172a; margin: 4px 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? '\u05D0\u05D9\u05DE\u05D5\u05EA \u05DE\u05E1\u05DE\u05DB\u05D9\u05DD' : 'Document Verification'}</h4>
+                <p style="font-size: 13px; color: #64748b; margin: 4px 0 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? '\u05D4\u05E6\u05D5\u05D5\u05EA \u05E9\u05DC\u05E0\u05D5 \u05D1\u05D5\u05D3\u05E7 \u05D0\u05EA \u05D4\u05DE\u05E1\u05DE\u05DB\u05D9\u05DD \u05E9\u05D4\u05D2\u05E9\u05EA' : 'Our team is reviewing your submitted documents'}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 36px; vertical-align: top; padding: 8px 0;">
+                <div style="width: 32px; height: 32px; border-radius: 2px; background: linear-gradient(135deg, #0f172a, #1e293b); color: #99f6e4; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">2</div>
+              </td>
+              <td style="padding: 8px 0 8px ${isHebrew ? '0' : '12px'}; padding-${isHebrew ? 'right' : 'left'}: 12px; vertical-align: top;">
+                <h4 style="font-size: 14px; color: #0f172a; margin: 4px 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? '\u05D0\u05D9\u05E9\u05D5\u05E8 \u05D7\u05E9\u05D1\u05D5\u05DF' : 'Account Approval'}</h4>
+                <p style="font-size: 13px; color: #64748b; margin: 4px 0 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? '\u05E0\u05E2\u05D3\u05DB\u05DF \u05D0\u05D5\u05EA\u05DA \u05D1\u05DE\u05D9\u05D9\u05DC \u05D5\u05D1\u05D4\u05D5\u05D3\u05E2\u05EA \u05D8\u05E7\u05E1\u05D8 \u05D1\u05E8\u05D2\u05E2 \u05E9\u05D4\u05D7\u05E9\u05D1\u05D5\u05DF \u05D9\u05D0\u05D5\u05E9\u05E8' : 'We\'ll notify you via email and SMS once approved'}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 36px; vertical-align: top; padding: 8px 0;">
+                <div style="width: 32px; height: 32px; border-radius: 2px; background: linear-gradient(135deg, #0f172a, #1e293b); color: #99f6e4; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">3</div>
+              </td>
+              <td style="padding: 8px 0 8px ${isHebrew ? '0' : '12px'}; padding-${isHebrew ? 'right' : 'left'}: 12px; vertical-align: top;">
+                <h4 style="font-size: 14px; color: #0f172a; margin: 4px 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? '\u05D4\u05EA\u05D7\u05DC \u05DC\u05E2\u05D1\u05D5\u05D3' : 'Start Working'}</h4>
+                <p style="font-size: 13px; color: #64748b; margin: 4px 0 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? '\u05D4\u05EA\u05D7\u05D1\u05E8 \u05DC\u05DC\u05D5\u05D7 \u05D4\u05D1\u05E7\u05E8\u05D4, \u05D4\u05E4\u05E2\u05DC \u05DE\u05E6\u05D1 \u05DE\u05E7\u05D5\u05D5\u05DF \u05D5\u05D4\u05EA\u05D7\u05DC \u05DC\u05E7\u05D1\u05DC \u05D4\u05D6\u05DE\u05E0\u05D5\u05EA' : 'Log into your dashboard, go online, and start receiving bookings'}</p>
+              </td>
+            </tr>
+          </table>
         </div>
         ` : ''}
         
-        <div class="cta-section">
-          <a href="https://petwash.co.il/provider/dashboard" class="cta-button">
-            ${isHebrew ? 'לוח הבקרה שלי' : 'My Dashboard'}
-          </a>
-          <a href="https://petwash.co.il/my-account" class="cta-button secondary">
-            ${isHebrew ? 'החשבון שלי' : 'My Account'}
+        <div style="text-align: center; margin: 40px 0;">
+          <a href="https://petwash.co.il/provider/dashboard" style="display: inline-block; background: linear-gradient(135deg, #0f172a, #1e293b); color: #99f6e4; text-decoration: none; padding: 16px 44px; border-radius: 2px; font-size: 14px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; font-family: 'Georgia', serif;">
+            ${isHebrew ? '\u05DC\u05D5\u05D7 \u05D4\u05D1\u05E7\u05E8\u05D4 \u05E9\u05DC\u05D9' : 'My Dashboard'}
           </a>
         </div>
         
-        <p class="message" style="text-align: center; font-style: italic; color: #718096;">
+        <p style="font-size: 14px; text-align: center; font-style: italic; color: #94a3b8; line-height: 1.8; margin: 32px 0 0; font-family: 'Georgia', serif;">
           ${isHebrew
-            ? 'צוות Pet Wash™ כאן לתמוך בך בכל צעד. בהצלחה!'
-            : 'The Pet Wash™ team is here to support you every step of the way. Good luck!'}
+            ? '\u05D0\u05E0\u05D7\u05E0\u05D5 \u05D0\u05D5\u05D4\u05D1\u05D9\u05DD \u05D0\u05EA \u05D7\u05D9\u05D5\u05EA \u05D4\u05DE\u05D7\u05DE\u05D3 \u05E9\u05DC\u05E0\u05D5, \u05D0\u05D1\u05DC \u05D4\u05DD \u05D0\u05D5\u05D4\u05D1\u05D9\u05DD \u05D0\u05D5\u05EA\u05E0\u05D5 \u05D9\u05D5\u05EA\u05E8.'
+            : 'We love our pets, but they actually love us more.'}
         </p>
       </div>
       
-      <div class="footer">
-        <div class="social-row">
-          <a href="https://www.facebook.com/petwash" title="Facebook">📘</a>
-          <a href="https://www.instagram.com/petwash" title="Instagram">📸</a>
-          <a href="https://www.tiktok.com/@petwash" title="TikTok">🎵</a>
-        </div>
-        <p>
-          <a href="https://petwash.co.il">petwash.co.il</a> &nbsp;|&nbsp; <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a>
+      <div style="background: linear-gradient(160deg, #0f172a, #1e293b); padding: 36px 44px; text-align: center;">
+        <p style="margin: 0;">
+          <a href="https://petwash.co.il" style="color: #5eead4; text-decoration: none; font-size: 13px; letter-spacing: 0.5px;">petwash.co.il</a>
+          <span style="color: rgba(255,255,255,0.2); margin: 0 8px;">\u2502</span>
+          <a href="mailto:Support@PetWash.co.il" style="color: #5eead4; text-decoration: none; font-size: 13px;">Support@PetWash.co.il</a>
         </p>
-        <p style="margin-top: 12px;">
-          © ${new Date().getFullYear()} Pet Wash™. ${isHebrew ? 'כל הזכויות שמורות' : 'All rights reserved'}.<br>
-          ${isHebrew ? 'מספר חברה' : 'Company No.'} 517145033 | ${isHebrew ? 'רשומה בישראל' : 'Registered in Israel'}
+        <p style="color: rgba(255,255,255,0.3); font-size: 11px; line-height: 1.8; margin: 16px 0 0; letter-spacing: 0.5px;">
+          \u00A9 ${new Date().getFullYear()} Pet Wash\u2122. ${isHebrew ? '\u05DB\u05DC \u05D4\u05D6\u05DB\u05D5\u05D9\u05D5\u05EA \u05E9\u05DE\u05D5\u05E8\u05D5\u05EA' : 'All rights reserved'}.<br>
+          ${isHebrew ? '\u05DE\u05E1\u05E4\u05E8 \u05D7\u05D1\u05E8\u05D4' : 'Company No.'} 517145033 \u2502 ${isHebrew ? '\u05E8\u05E9\u05D5\u05DE\u05D4 \u05D1\u05D9\u05E9\u05E8\u05D0\u05DC' : 'Registered in Israel'}
         </p>
       </div>
     </div>
