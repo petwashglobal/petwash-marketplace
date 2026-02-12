@@ -157,11 +157,11 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               }`}
               style={{ transitionDelay: '750ms' }}
             >
-              <div className="relative inline-block">
+              <div className="relative mx-auto max-w-sm sm:max-w-lg lg:max-w-2xl">
                 <img 
                   src="/hero-image.jpeg"
                   alt="Professional pet washing service with adorable dogs and cats"
-                  className="w-full max-w-sm sm:max-w-lg lg:max-w-2xl mx-auto rounded-lg shadow-2xl object-cover h-60 sm:h-80 lg:h-96"
+                  className="w-full rounded-lg shadow-2xl object-contain h-60 sm:h-80 lg:h-96 mx-auto"
                   loading="eager"
                   decoding="async"
                 />
