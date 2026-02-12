@@ -191,11 +191,41 @@ export default function BrowseDrivers() {
 
   const { data, isLoading } = useQuery<{ drivers: Driver[] }>({
     queryKey: ["/api/providers/drivers", filters, sortBy],
+    queryFn: async () => {
+      try {
+        const { getApiUrl } = await import('@/lib/apiConfig');
+        const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?platform=pet_trek&city=${encodeURIComponent(filters.location || '')}`));
+        if (!response.ok) return { drivers: DEMO_DRIVERS };
+        const result = await response.json();
+        if (result.providers && result.providers.length > 0) {
+          return { drivers: result.providers.map((p: any) => ({
+            id: p.id || p.odId,
+            name: p.displayName || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+            bio: p.bio || '',
+            photoUrl: p.profilePhotoUrl || '',
+            serviceArea: p.location || p.city || '',
+            vehicleType: 'SUV',
+            vehicleMake: '',
+            vehicleModel: '',
+            pricePerKm: p.pricing?.perKm ? parseFloat(p.pricing.perKm) : 4.5,
+            averageRating: p.rating || 4.5,
+            totalTrips: p.totalBookings || 0,
+            yearsExperience: p.yearsExperience || 0,
+            currentlyAvailable: true,
+            specialFeatures: p.badges || [],
+            languages: [],
+            verified: p.isVerified || false,
+            featured: false,
+          })) };
+        }
+        return { drivers: DEMO_DRIVERS };
+      } catch {
+        return { drivers: DEMO_DRIVERS };
+      }
+    },
   });
 
-  // Use demo drivers if API returns empty
-  const apiDrivers = data?.drivers || [];
-  const drivers = apiDrivers.length > 0 ? apiDrivers : DEMO_DRIVERS;
+  const drivers = (data?.drivers && data.drivers.length > 0) ? data.drivers : DEMO_DRIVERS;
   const featuredDrivers = drivers.filter(d => d.featured).slice(0, 4);
   const regularDrivers = drivers.filter(d => !d.featured);
   

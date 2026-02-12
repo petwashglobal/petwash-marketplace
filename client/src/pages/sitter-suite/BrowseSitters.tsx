@@ -107,19 +107,22 @@ export default function BrowseSitters() {
   const { data, isLoading, refetch } = useQuery<SearchResponse>({
     queryKey: ["/api/marketplace-bookings/search/providers", searchParams],
     queryFn: async () => {
-      const queryString = buildQueryString();
-      const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?${queryString}`));
-      if (!response.ok) throw new Error('Failed to fetch providers');
-      return response.json();
+      try {
+        const queryString = buildQueryString();
+        const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?${queryString}`));
+        if (!response.ok) return { success: false, providers: [], pagination: { page: 1, limit: 20, total: 0, hasMore: false } };
+        return response.json();
+      } catch {
+        return { success: false, providers: [], pagination: { page: 1, limit: 20, total: 0, hasMore: false } };
+      }
     },
-    enabled: true, // Always fetch to show available providers
+    enabled: true,
   });
 
   const providers = data?.providers || [];
 
   const handleSearch = (params: SearchParams) => {
     setSearchParams(params);
-    refetch();
   };
 
   return (

@@ -731,12 +731,43 @@ export function MadPawsSearch({
     };
 
     const route = getRouteForService(selectedService);
-    const currentPath = window.location.pathname;
     const targetPath = `${route}?location=${encodeURIComponent(location)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString() || ''}&end=${endDate?.toISOString() || ''}`;
     
-    if (currentPath === route || currentPath.startsWith(route)) {
-      searchMutation.mutate(backendFilters);
-    } else {
+    if (onSearch) {
+      onSearch({
+        location,
+        service: selectedService,
+        petType,
+        petCount,
+        startDate,
+        endDate,
+        specialServices,
+        specialRequests,
+        allergies,
+        petName,
+        petBreed,
+        petSize,
+        petAge,
+        petGender,
+        energyLevel,
+        isDesexed,
+        isMicrochipped,
+        isToiletTrained,
+        hasSeparationAnxiety,
+        socialWithDogs,
+        socialWithCats,
+        socialWithChildren,
+        feedingInstructions,
+        walkingPreferences,
+        vetName,
+        vetPhone,
+        emergencyContactName,
+        emergencyContactPhone,
+      });
+    }
+    
+    const currentPath = window.location.pathname;
+    if (!currentPath.startsWith(route)) {
       navigate(targetPath);
     }
   };

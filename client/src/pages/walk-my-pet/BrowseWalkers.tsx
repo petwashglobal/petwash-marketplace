@@ -10,6 +10,7 @@ import { useSEO, pageSEO } from "@/lib/seo";
 import { useLanguage } from "@/lib/languageStore";
 import { MadPawsSearch, MadPawsProviderCard, type SearchParams } from "@/components/marketplace/MadPawsSearch";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
+import { getApiUrl } from "@/lib/apiConfig";
 import { PetWalkWeatherAdvisor, CompactWeatherWidget } from "@/components/weather/CompactWeatherWidget";
 
 interface Walker {
@@ -112,13 +113,57 @@ export default function BrowseWalkers() {
   const [, setLocation] = useLocation();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
-  const [searchParams, setSearchParams] = useState<SearchParams | null>(null);
+  
+  const getInitialSearchParams = (): SearchParams | null => {
+    if (typeof window === 'undefined') return null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const location = urlParams.get('location');
+    const pet = urlParams.get('pet');
+    const start = urlParams.get('start');
+    const end = urlParams.get('end');
+    if (!location && !pet && !start && !end) return null;
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+    if (start) { const d = new Date(start); if (!isNaN(d.getTime())) startDate = d; }
+    if (end) { const d = new Date(end); if (!isNaN(d.getTime())) endDate = d; }
+    return { location: location || '', petType: pet || undefined, startDate, endDate, service: undefined };
+  };
+  
+  const [searchParams, setSearchParams] = useState<SearchParams | null>(getInitialSearchParams);
 
-  const { data: walkers = [], isLoading } = useQuery<Walker[]>({
-    queryKey: ['/api/platforms/walk_my_pet/providers', searchParams?.location],
+  const { data, isLoading } = useQuery<{ providers: any[]; pagination: any }>({
+    queryKey: ['/api/marketplace-bookings/search/providers', 'walk_my_pet', searchParams?.location],
+    queryFn: async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set('platform', 'walk_my_pet');
+        if (searchParams?.location) params.set('city', searchParams.location);
+        if (searchParams?.petType) params.set('petTypes', searchParams.petType);
+        const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?${params.toString()}`));
+        if (!response.ok) return { providers: [], pagination: { page: 1, limit: 20, total: 0, hasMore: false } };
+        return response.json();
+      } catch {
+        return { providers: [], pagination: { page: 1, limit: 20, total: 0, hasMore: false } };
+      }
+    },
   });
 
-  const displayWalkers = (walkers && walkers.length > 0) ? walkers : DEMO_WALKERS;
+  const apiWalkers = data?.providers || [];
+  const displayWalkers = apiWalkers.length > 0
+    ? apiWalkers.map((p: any) => ({
+        id: p.id || Math.random(),
+        businessName: p.displayName || '',
+        displayName: p.displayName || 'Walker',
+        serviceArea: p.location || '',
+        bio: p.bio || '',
+        hourlyRate: p.pricing?.perHour ? parseFloat(p.pricing.perHour) : 50,
+        rating: p.rating || 4.5,
+        totalReviews: p.reviewCount || 0,
+        yearsExperience: 0,
+        verified: true,
+        photoUrl: p.profilePhotoUrl || null,
+      }))
+    : DEMO_WALKERS;
 
   const handleSearch = (params: SearchParams) => {
     setSearchParams(params);
@@ -160,6 +205,10 @@ export default function BrowseWalkers() {
                 onSearch={handleSearch} 
                 platform="walk-my-pet"
                 theme="emerald"
+                initialLocation={searchParams?.location}
+                initialPetType={searchParams?.petType}
+                initialStartDate={searchParams?.startDate}
+                initialEndDate={searchParams?.endDate}
               />
             </div>
           </div>
