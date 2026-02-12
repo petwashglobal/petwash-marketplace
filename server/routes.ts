@@ -12748,7 +12748,9 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   
   // Only register this fallback route in production mode
   // ============================================
-  // TWO-FACTOR AUTHENTICATION (2FA) ENDPOINTS
+  // ============================================
+  // TWO-FACTOR AUTHENTICATION (2FA) - OCTOPUS BRAIN PATTERN
+  // Single OTP per session, Redis TTL, Firestore session stamping
   // ============================================
   app.post('/api/auth/2fa/send', async (req: Request, res: Response) => {
     try {
@@ -12761,7 +12763,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const decoded = await adminAuth.verifyIdToken(token);
       const uid = decoded.uid;
       
-      const { method, phone, email, firstName, language } = req.body;
+      const { method, phone, email, firstName, language, deviceId, meta } = req.body;
       if (!method || !['sms', 'email', 'both'].includes(method)) {
         return res.status(400).json({ success: false, error: 'Method must be sms, email, or both' });
       }
@@ -12772,12 +12774,52 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         return res.status(400).json({ success: false, error: 'Email required for email verification' });
       }
 
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+
       const { twoFactorAuth } = await import('./services/TwoFactorAuthService');
       const result = await twoFactorAuth.sendCode(uid, method, { phone, email, firstName }, language || 'he');
       res.json(result);
     } catch (error: any) {
       logger.error('[2FA] Send code error', error);
       res.status(500).json({ success: false, error: 'Failed to send verification code' });
+    }
+  });
+
+  app.post('/api/auth/2fa/request', async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ ok: false, error: 'Authorization required' });
+      }
+      const token = authHeader.split('Bearer ')[1];
+      const { adminAuth } = await import('./lib/firebase-admin');
+      const decoded = await adminAuth.verifyIdToken(token);
+      const uid = decoded.uid;
+
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+      const { method, phone, email, firstName, locale, deviceId, meta } = req.body;
+
+      const { twoFactorAuth } = await import('./services/TwoFactorAuthService');
+      const result = await twoFactorAuth.requestOtp({
+        userId: uid,
+        method,
+        phone,
+        email,
+        firstName,
+        locale,
+        deviceId,
+        ip,
+        meta,
+      });
+
+      if (!result.ok) {
+        const statusCode = result.error === 'rate_limited_ip' || result.error === 'cooldown_active' ? 429 : 400;
+        return res.status(statusCode).json(result);
+      }
+      res.json(result);
+    } catch (error: any) {
+      logger.error('[2FA] Request OTP error', error);
+      res.status(500).json({ ok: false, error: 'server_error' });
     }
   });
 
@@ -12792,18 +12834,35 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const decoded = await adminAuth.verifyIdToken(token);
       const uid = decoded.uid;
 
-      const { code, channel, phone, language } = req.body;
-      if (!code || !channel || !['sms', 'email'].includes(channel)) {
-        return res.status(400).json({ success: false, error: 'Code and channel (sms/email) required' });
-      }
+      const { code, channel, phone, language, sessionId, trustThisDevice, deviceId } = req.body;
 
       const { twoFactorAuth } = await import('./services/TwoFactorAuthService');
+
+      if (sessionId) {
+        const result = await twoFactorAuth.verifyOtp({
+          userId: uid,
+          sessionId,
+          code,
+          trustThisDevice,
+          deviceId,
+        });
+        if (!result.ok) {
+          const statusCode = result.error === 'too_many_attempts' ? 429 : 401;
+          return res.status(statusCode).json({ success: false, error: result.error, fullyVerified: false });
+        }
+        return res.json({ success: true, fullyVerified: true, message: 'Two-factor verification complete' });
+      }
+
+      if (!code || !channel || !['sms', 'email'].includes(channel)) {
+        return res.status(400).json({ success: false, error: 'Code and channel (sms/email) required, or provide sessionId' });
+      }
+
       let result;
       if (channel === 'sms') {
         if (!phone) return res.status(400).json({ success: false, error: 'Phone required for SMS verification' });
-        result = twoFactorAuth.verifySmsCode(uid, phone, code, language || 'he');
+        result = await twoFactorAuth.verifySmsCode(uid, sessionId || '', code, language || 'he');
       } else {
-        result = twoFactorAuth.verifyEmailCode(uid, code, language || 'he');
+        result = await twoFactorAuth.verifyEmailCode(uid, sessionId || '', code, language || 'he');
       }
       res.json(result);
     } catch (error: any) {
@@ -12823,8 +12882,9 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const decoded = await adminAuth.verifyIdToken(token);
       const uid = decoded.uid;
 
+      const sessionId = req.query.sessionId as string;
       const { twoFactorAuth } = await import('./services/TwoFactorAuthService');
-      const status = twoFactorAuth.getSessionStatus(uid);
+      const status = await twoFactorAuth.getSessionStatus(uid, sessionId);
       res.json({ success: true, ...status });
     } catch (error: any) {
       logger.error('[2FA] Status check error', error);

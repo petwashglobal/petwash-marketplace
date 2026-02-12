@@ -116,6 +116,52 @@ class RedisService {
     }
   }
 
+  async getRaw(key: string): Promise<string | null> {
+    if (!this.isEnabled || !this.client) return null;
+    try {
+      return await this.client.get(key);
+    } catch (error) {
+      logger.error(`[Redis] getRaw error for key ${key}:`, error);
+      return null;
+    }
+  }
+
+  async setRaw(key: string, value: string, ttlSeconds?: number): Promise<boolean> {
+    if (!this.isEnabled || !this.client) return false;
+    try {
+      if (ttlSeconds) {
+        await this.client.set(key, value, 'EX', ttlSeconds);
+      } else {
+        await this.client.set(key, value);
+      }
+      return true;
+    } catch (error) {
+      logger.error(`[Redis] setRaw error for key ${key}:`, error);
+      return false;
+    }
+  }
+
+  async incr(key: string): Promise<number> {
+    if (!this.isEnabled || !this.client) return 0;
+    try {
+      return await this.client.incr(key);
+    } catch (error) {
+      logger.error(`[Redis] INCR error for key ${key}:`, error);
+      return 0;
+    }
+  }
+
+  async expire(key: string, ttlSeconds: number): Promise<boolean> {
+    if (!this.isEnabled || !this.client) return false;
+    try {
+      await this.client.expire(key, ttlSeconds);
+      return true;
+    } catch (error) {
+      logger.error(`[Redis] EXPIRE error for key ${key}:`, error);
+      return false;
+    }
+  }
+
   async disconnect(): Promise<void> {
     if (this.client) {
       await this.client.quit();
