@@ -706,11 +706,13 @@ export function MadPawsSearch({
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: isHebrew ? 'שגיאה בחיפוש' : 'Search Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      if (!error.message?.includes('abort') && !error.message?.includes('cancel')) {
+        toast({
+          title: isHebrew ? 'שגיאה בחיפוש' : 'Search Error',
+          description: isHebrew ? 'לא הצלחנו לחפש ספקים. נסו שוב.' : error.message,
+          variant: 'destructive',
+        });
+      }
     },
   });
 
@@ -728,10 +730,15 @@ export function MadPawsSearch({
       specialNeeds: hasSeparationAnxiety,
     };
 
-    searchMutation.mutate(backendFilters);
-
     const route = getRouteForService(selectedService);
-    navigate(`${route}?location=${encodeURIComponent(location)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString() || ''}&end=${endDate?.toISOString() || ''}`);
+    const currentPath = window.location.pathname;
+    const targetPath = `${route}?location=${encodeURIComponent(location)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString() || ''}&end=${endDate?.toISOString() || ''}`;
+    
+    if (currentPath === route || currentPath.startsWith(route)) {
+      searchMutation.mutate(backendFilters);
+    } else {
+      navigate(targetPath);
+    }
   };
 
   const toggleSpecialService = (serviceId: string) => {
@@ -855,13 +862,13 @@ export function MadPawsSearch({
                     className="flex-1 h-12 px-3 flex items-center justify-between bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
                     data-testid="dropdown-pet-type"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{selectedPetTypeData?.emoji}</span>
-                      <span className="text-gray-900 font-medium text-sm">
+                    <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                      <span className="text-lg shrink-0">{selectedPetTypeData?.emoji}</span>
+                      <span className="text-gray-900 font-medium text-sm truncate">
                         {isHebrew ? selectedPetTypeData?.nameHe : selectedPetTypeData?.name}
                       </span>
                     </div>
-                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                    <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-2" align="start">

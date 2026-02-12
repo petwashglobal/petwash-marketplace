@@ -198,11 +198,27 @@ export default function SitterBookingFlow() {
         description: "השמרטף/ית יקבל/תקבל הודעה. התשלום יתואם לאחר ההזמנה.",
       });
     } catch (error: any) {
-      toast({
-        title: "שגיאה ביצירת הזמנה",
-        description: error.message || "אירעה שגיאה. אין חיוב. נסו שוב.",
-        variant: "destructive",
-      });
+      const errorMsg = error.message || "";
+      if (errorMsg.includes("Authentication") || errorMsg.includes("401") || errorMsg.includes("sign in")) {
+        toast({
+          title: "יש להתחבר תחילה",
+          description: "כדי לבצע הזמנה, יש להתחבר לחשבון שלך.",
+          variant: "destructive",
+        });
+        setTimeout(() => setLocation("/signin"), 2000);
+      } else if (errorMsg.includes("loyalty") || errorMsg.includes("403")) {
+        toast({
+          title: "נדרשת חברות במועדון",
+          description: "שירות זה זמין לחברי מועדון Pet Wash™. הצטרפו עכשיו!",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "שגיאה ביצירת הזמנה",
+          description: errorMsg || "אירעה שגיאה. אין חיוב. נסו שוב.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
