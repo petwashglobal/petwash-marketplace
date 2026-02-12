@@ -301,6 +301,9 @@ const PetTrekBooking = lazy(() => import("@/pages/pettrek/BookTrip")); // Alias
 const PetTrekTracking = lazy(() => import("@/pages/pettrek/TrackTrip")); // Alias
 const PetTrekProviderDashboard = lazy(() => import("@/pages/pettrek/ProviderDashboard")); // Alias
 
+// Unified Provider Dashboard (Uber/MadPaws style)
+const UnifiedProviderDashboard = lazy(() => import("@/pages/ProviderDashboard"));
+
 // E-Signature System
 const DocumentSigning = lazy(() => import("@/pages/DocumentSigning"));
 
@@ -888,6 +891,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* Unified Provider Dashboard (Uber/MadPaws style) */}
+        <Route path="/provider/dashboard">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <UnifiedProviderDashboard />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+
         {/* PetTrek™ - Provider/Driver Dashboard */}
         <Route path="/pettrek/provider/dashboard">
           {() => (

@@ -7,6 +7,8 @@ import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { logger } from './lib/logger';
+import { sendLuxuryEmail } from './email/luxury-email-service';
+import { generateCustomerWelcomeEmail } from './email/templates/welcome-customer-signup-2026';
 
 const scryptAsync = promisify(scrypt);
 
@@ -106,6 +108,19 @@ export function setupCustomerAuth(app: Express) {
 
       const customer = await storage.createCustomer(customerData);
       
+      const welcomeEmail = generateCustomerWelcomeEmail({
+        firstName,
+        lastName,
+        email,
+        language: country === 'Israel' ? 'he' : 'en',
+        petType: petType || undefined,
+      });
+      sendLuxuryEmail({
+        to: email,
+        subject: welcomeEmail.subject,
+        html: welcomeEmail.html,
+      }).catch(err => logger.error('[CustomerAuth] Welcome email failed', err));
+
       // Auto-login the customer after registration
       req.login(customer, (err) => {
         if (err) {

@@ -12,6 +12,8 @@ import { logger } from '../lib/logger';
 import { isSuperAdmin } from '../middleware/rbac';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import multer from 'multer';
+import { sendLuxuryEmail } from '../email/luxury-email-service';
+import { generateProviderWelcomeEmail } from '../email/templates/welcome-provider-signup-2026';
 
 const router = Router();
 
@@ -505,6 +507,24 @@ router.post('/apply', upload.fields([
       biometricScore: biometricMatchScore.toString(),
       applicationStatus: autoApproved ? 'Auto-Approved' : 'Pending Review',
     }).catch(err => logger.error('[Provider Onboarding] Google Sheets logging failed - DB record saved', err));
+
+    if (authenticatedUser.email) {
+      const providerEmail = generateProviderWelcomeEmail({
+        firstName,
+        lastName,
+        email: authenticatedUser.email,
+        language: (country === 'IL' || country === 'Israel') ? 'he' : 'en',
+        providerType,
+        applicationId: applicationId.toString(),
+        serviceTypes: [providerType],
+        autoApproved: autoApproved || false,
+      });
+      sendLuxuryEmail({
+        to: authenticatedUser.email,
+        subject: providerEmail.subject,
+        html: providerEmail.html,
+      }).catch(err => logger.error('[Provider Onboarding] Welcome email failed', err));
+    }
 
     res.json({
       success: true,

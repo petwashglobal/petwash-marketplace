@@ -8697,6 +8697,11 @@ self.addEventListener('notificationclick', (event) => {
   // Provider Onboarding (Uber-style invite codes & KYC verification)
   const providerOnboardingRoutes = (await import('./routes/provider-onboarding')).default;
   app.use('/api/provider-onboarding', apiLimiter, providerOnboardingRoutes);
+
+  // Provider Dashboard (Uber-style provider dashboard with jobs, earnings, client IDs)
+  const providerDashboardRoutes = (await import('./routes/provider-dashboard')).default;
+  app.use('/api/provider-dashboard', apiLimiter, providerDashboardRoutes);
+
   app.use('/api/onboarding-verification', onboardingVerificationRoutes);
   app.use('/api/provider-applications', validateFirebaseToken, apiLimiter, providerApplicationsRoutes);
   
