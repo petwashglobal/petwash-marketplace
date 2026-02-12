@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Shield, Mail, Phone, User, Calendar, Globe, Eye, EyeOff, Apple, Chrome, Facebook, Sparkles, Crown, Star } from 'lucide-react';
+import { OnboardingVerification } from './OnboardingVerification';
 
 interface CustomerSignupModalProps {
   isOpen: boolean;
@@ -45,6 +46,8 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
   const [signupMethod, setSignupMethod] = useState<'email' | 'phone' | 'google' | 'apple' | 'facebook'>('email');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationTokens, setVerificationTokens] = useState<{ emailToken: string; smsToken: string } | null>(null);
   
   const [formData, setFormData] = useState<SignupFormData>({
     firstName: '',
@@ -106,7 +109,21 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
       return;
     }
 
-    signupMutation.mutate(formData);
+    if (!verificationTokens) {
+      setShowVerification(true);
+      return;
+    }
+
+    signupMutation.mutate({ ...formData, ...verificationTokens } as any);
+  };
+
+  const handleVerified = (tokens: { emailToken: string; smsToken: string; email: string; phone: string }) => {
+    const updatedTokens = { emailToken: tokens.emailToken, smsToken: tokens.smsToken };
+    const updatedFormData = { ...formData, email: tokens.email, phone: tokens.phone };
+    setVerificationTokens(updatedTokens);
+    setFormData(updatedFormData);
+    setShowVerification(false);
+    signupMutation.mutate({ ...updatedFormData, ...updatedTokens } as any);
   };
 
   const updateFormData = (field: keyof SignupFormData, value: any) => {
@@ -127,6 +144,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
 
   if (step === 'method') {
     return (
+      <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-lg mx-auto bg-gradient-to-br from-slate-50 via-white to-blue-50 rounded-3xl border-0 shadow-2xl backdrop-blur-sm overflow-hidden sm:max-w-md md:max-w-lg" style={{ zIndex: 1000 }}>
           {/* Luxury Background Pattern */}
@@ -267,10 +285,21 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
           </div>
         </DialogContent>
       </Dialog>
+      <OnboardingVerification
+        isOpen={showVerification}
+        onClose={() => setShowVerification(false)}
+        onVerified={handleVerified}
+        language={language}
+        initialEmail={formData.email}
+        initialPhone={formData.phone}
+        mode="customer"
+      />
+      </>
     );
   }
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl mx-auto bg-gradient-to-br from-slate-50 via-white to-blue-50 rounded-3xl border-0 shadow-2xl max-h-[95vh] overflow-y-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
         {/* Luxury Background Effects */}
@@ -560,5 +589,16 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
         </div>
       </DialogContent>
     </Dialog>
+
+    <OnboardingVerification
+      isOpen={showVerification}
+      onClose={() => setShowVerification(false)}
+      onVerified={handleVerified}
+      language={language}
+      initialEmail={formData.email}
+      initialPhone={formData.phone}
+      mode="customer"
+    />
+    </>
   );
 }
