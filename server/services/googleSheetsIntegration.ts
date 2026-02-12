@@ -3,15 +3,14 @@
  * 
  * Centralized form submission tracking across all 8 Pet Wash platforms
  * All form submissions are logged to Google Sheets for easy management and analysis
+ * Uses Replit Google Sheets connector for OAuth token management
  */
 
 import { google } from 'googleapis';
 import { logger } from '../lib/logger';
 
-const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-
 // Google Sheets Configuration
-const SPREADSHEET_ID = process.env.GOOGLE_FORMS_SPREADSHEET_ID || 'CREATE_NEW'; // User can configure this
+const SPREADSHEET_ID = process.env.GOOGLE_FORMS_SPREADSHEET_ID || 'CREATE_NEW';
 const SHEETS = {
   K9000_BOOKINGS: 'K9000 Wash Bookings',
   SITTER_BOOKINGS: 'Sitter Suite Bookings',
@@ -38,44 +37,71 @@ interface GoogleSheetsClient {
 
 let sheetsClient: GoogleSheetsClient | null = null;
 
+// Replit connector - Google Sheets OAuth token management
+let connectionSettings: any;
+
+async function getAccessToken(): Promise<string> {
+  if (connectionSettings && connectionSettings.settings?.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
+    return connectionSettings.settings.access_token;
+  }
+
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const xReplitToken = process.env.REPL_IDENTITY
+    ? 'repl ' + process.env.REPL_IDENTITY
+    : process.env.WEB_REPL_RENEWAL
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL
+    : null;
+
+  if (!xReplitToken) {
+    throw new Error('Replit connector token not available');
+  }
+
+  connectionSettings = await fetch(
+    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-sheet',
+    {
+      headers: {
+        'Accept': 'application/json',
+        'X_REPLIT_TOKEN': xReplitToken
+      }
+    }
+  ).then(res => res.json()).then(data => data.items?.[0]);
+
+  const accessToken = connectionSettings?.settings?.access_token || connectionSettings?.settings?.oauth?.credentials?.access_token;
+
+  if (!connectionSettings || !accessToken) {
+    throw new Error('Google Sheets not connected via Replit connector');
+  }
+  return accessToken;
+}
+
+async function getUncachableGoogleSheetsClient() {
+  const accessToken = await getAccessToken();
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({ access_token: accessToken });
+  return google.sheets({ version: 'v4', auth: oauth2Client });
+}
+
 /**
- * Initialize Google Sheets API client
+ * Initialize Google Sheets API client via Replit connector
  */
 async function initializeSheetsClient(): Promise<GoogleSheetsClient | null> {
   if (sheetsClient) return sheetsClient;
 
-  if (!GOOGLE_SERVICE_ACCOUNT_JSON) {
-    logger.warn('[GoogleSheets] Service account not configured');
-    return null;
-  }
-
   try {
-    const credentials = JSON.parse(GOOGLE_SERVICE_ACCOUNT_JSON);
-    
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive.file',
-      ],
-    });
+    const sheets = await getUncachableGoogleSheetsClient();
 
-    const authClient = await auth.getClient();
-    const sheets = google.sheets({ version: 'v4', auth: authClient as any });
-
-    // Check if spreadsheet exists, or create new one
     let spreadsheetId = SPREADSHEET_ID;
-    
+
     if (spreadsheetId === 'CREATE_NEW') {
       spreadsheetId = await createMasterSpreadsheet(sheets);
     }
 
     sheetsClient = { spreadsheetId, sheets };
-    logger.info('[GoogleSheets] ✅ Initialized successfully');
-    
+    logger.info('[GoogleSheets] ✅ Initialized via Replit connector');
+
     return sheetsClient;
-  } catch (error) {
-    logger.error('[GoogleSheets] Initialization error:', error);
+  } catch (error: any) {
+    logger.warn('[GoogleSheets] Connector not available:', error.message);
     return null;
   }
 }
@@ -311,20 +337,36 @@ function startRetryWorker() {
 
 /**
  * Direct append without retry logic (used internally)
+ * Gets fresh OAuth token via Replit connector for each attempt
  */
 async function appendFormSubmissionDirect(
   sheetName: string,
   data: Record<string, any>
 ): Promise<boolean> {
-  const client = await initializeSheetsClient();
-  if (!client) return false;
-
   try {
+    const sheets = await getUncachableGoogleSheetsClient();
+    const spreadsheetId = SPREADSHEET_ID;
+
+    if (spreadsheetId === 'CREATE_NEW') {
+      const client = await initializeSheetsClient();
+      if (!client) return false;
+      
+      const timestamp = new Date().toISOString();
+      const values = [timestamp, ...Object.values(data)];
+      await client.sheets.spreadsheets.values.append({
+        spreadsheetId: client.spreadsheetId,
+        range: `${sheetName}!A:Z`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [values] },
+      });
+      return true;
+    }
+
     const timestamp = new Date().toISOString();
     const values = [timestamp, ...Object.values(data)];
 
-    await client.sheets.spreadsheets.values.append({
-      spreadsheetId: client.spreadsheetId,
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
       range: `${sheetName}!A:Z`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
