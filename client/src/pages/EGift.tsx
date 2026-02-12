@@ -1300,6 +1300,7 @@ export default function EGift() {
             </div>
           </div>
         </div>
+        </div>
       </div>
     </Layout>
   );

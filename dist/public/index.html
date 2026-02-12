@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta name="data-test-build" content="TEST_BUILD_1769349993374">
+    <meta name="data-test-build" content="BUILD_2026_FEB12_CACHE_KILL">
     <meta charset="UTF-8">
 
     <!-- iOS & Chrome Optimized Viewport - FIXED for compatibility -->
@@ -157,8 +157,8 @@
         line-height: 1.8;
       }
     </style>
-    <script type="module" crossorigin src="/assets/index-nl91mPuA.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BeXObTKK.css">
+    <script type="module" crossorigin src="/assets/index-ikPa83RC.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CFQSNhb1.css">
   </head>
   <body>
     <!-- Progressive Enhancement: Graceful Fallback for JavaScript Disabled -->
@@ -297,6 +297,33 @@
         "worstRating": "1"
       }
     }
+    </script>
+
+    <!-- Kill zombie service workers and clear stale caches -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (var i = 0; i < registrations.length; i++) {
+            registrations[i].unregister().then(function() {
+              console.log('[SW-Kill] Unregistered zombie service worker');
+            });
+          }
+        });
+        navigator.serviceWorker.register('/sw-kill.js').then(function(reg) {
+          console.log('[SW-Kill] Kill switch deployed');
+        }).catch(function() {});
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+        }
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (var i = 0; i < names.length; i++) {
+            caches.delete(names[i]);
+            console.log('[Cache-Kill] Deleted cache: ' + names[i]);
+          }
+        });
+      }
     </script>
 
     <!-- HubSpot Tracking Script -->
