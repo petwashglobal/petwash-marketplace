@@ -128,7 +128,6 @@ export async function syncUserToHubSpot(data: {
     try {
       const hubspotClient = await getUncachableHubSpotClient();
       
-      // Use standard HubSpot properties
       const contactProperties: any = {
         email: data.email,
         lifecyclestage: 'subscriber'
@@ -137,40 +136,34 @@ export async function syncUserToHubSpot(data: {
       if (data.firstname) contactProperties.firstname = data.firstname;
       if (data.lastname) contactProperties.lastname = data.lastname;
       if (data.phone) contactProperties.phone = data.phone;
-      
-      // Standard fields
-      if (data.uid) contactProperties.company = `Pet Wash User ${data.uid}`;
+      if (data.uid) contactProperties.company = `Pet Wash™`;
       if (data.lang) contactProperties.hs_language = data.lang === 'he' ? 'he' : 'en';
       if (data.dob) contactProperties.date_of_birth = data.dob;
       if (data.country) contactProperties.country = data.country;
-      
-      // Custom properties (these need to be created in HubSpot first)
-      if (data.uid) contactProperties.petwash_uid = data.uid;
-      if (data.loyaltyProgram !== undefined) contactProperties.petwash_loyalty = data.loyaltyProgram;
-      if (data.reminders !== undefined) contactProperties.petwash_reminders = data.reminders;
-      if (data.marketing !== undefined) contactProperties.petwash_marketing = data.marketing;
-      if (data.consent !== undefined) contactProperties.petwash_consent = data.consent;
-      if (data.consentTimestamp) contactProperties.consent_timestamp = data.consentTimestamp;
-      
-      // Pet information custom properties
-      if (data.petName) contactProperties.petwash_pet_name = data.petName;
-      if (data.petBreed) contactProperties.petwash_pet_breed = data.petBreed;
-      if (data.petAge) contactProperties.petwash_pet_age = data.petAge;
-      if (data.petWeight) contactProperties.petwash_pet_weight = data.petWeight;
 
-      // Try to create contact
-      try {
-        const response = await hubspotClient.crm.contacts.basicApi.create({
-          properties: contactProperties,
-          associations: []
-        });
+      const customProperties: any = {};
+      if (data.uid) customProperties.petwash_uid = data.uid;
+      if (data.loyaltyProgram !== undefined) customProperties.petwash_loyalty = String(data.loyaltyProgram);
+      if (data.reminders !== undefined) customProperties.petwash_reminders = String(data.reminders);
+      if (data.marketing !== undefined) customProperties.petwash_marketing = String(data.marketing);
+      if (data.consent !== undefined) customProperties.petwash_consent = String(data.consent);
+      if (data.consentTimestamp) customProperties.consent_timestamp = data.consentTimestamp;
+      if (data.petName) customProperties.petwash_pet_name = data.petName;
+      if (data.petBreed) customProperties.petwash_pet_breed = data.petBreed;
+      if (data.petAge) customProperties.petwash_pet_age = data.petAge;
+      if (data.petWeight) customProperties.petwash_pet_weight = data.petWeight;
 
-        logger.info('HubSpot contact created', { correlationId, contactId: response.id });
-        return response;
-      } catch (createError: any) {
-        // If contact already exists (409), update it
-        if (createError.code === 409 || createError.body?.category === 'CONFLICT') {
-          logger.info('Contact exists, updating', { correlationId });
+      async function createOrUpdateContact(props: any) {
+        try {
+          const response = await hubspotClient.crm.contacts.basicApi.create({
+            properties: props,
+            associations: []
+          });
+          logger.info('HubSpot contact created', { correlationId, contactId: response.id });
+          return response;
+        } catch (createError: any) {
+          if (createError.code === 409 || createError.body?.category === 'CONFLICT') {
+            logger.info('Contact exists, updating', { correlationId });
           
           // Extract existing contact ID from error message
           const errorBody = createError.body;
@@ -180,13 +173,12 @@ export async function syncUserToHubSpot(data: {
             const existingId = existingIdMatch[1];
             const response = await hubspotClient.crm.contacts.basicApi.update(
               existingId,
-              { properties: contactProperties }
+              { properties: props }
             );
             logger.info('HubSpot contact updated via error ID', { correlationId, contactId: response.id });
             return response;
           }
           
-          // Fallback: search by email and update
           const searchResponse = await hubspotClient.crm.contacts.searchApi.doSearch({
             filterGroups: [{
               filters: [{
@@ -202,23 +194,33 @@ export async function syncUserToHubSpot(data: {
           if (searchResponse.results.length > 0) {
             const response = await hubspotClient.crm.contacts.basicApi.update(
               searchResponse.results[0].id,
-              { properties: contactProperties }
+              { properties: props }
             );
             logger.info('HubSpot contact updated via search', { correlationId, contactId: response.id });
             return response;
           }
         }
         throw createError;
+        }
+      }
+
+      const allProperties = { ...contactProperties, ...customProperties };
+      try {
+        return await createOrUpdateContact(allProperties);
+      } catch (error: any) {
+        if (error.body?.category === 'VALIDATION_ERROR' && error.body?.message?.includes('PROPERTY_DOESNT_EXIST')) {
+          logger.warn('HubSpot custom properties not created yet, syncing standard fields only', { correlationId });
+          return await createOrUpdateContact(contactProperties);
+        }
+        throw error;
       }
     } catch (error: any) {
       logger.error('HubSpot sync failed', error, { correlationId });
       
-      // Retry on rate limit or server errors
       if (error.statusCode === 429 || error.statusCode >= 500) {
-        throw error; // Let retry queue handle it
+        throw error;
       }
       
-      // Don't retry on other errors
       throw error;
     }
   };

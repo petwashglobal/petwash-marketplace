@@ -209,40 +209,30 @@ async function initializeSheetHeaders(sheets: any, spreadsheetId: string) {
     ],
   };
 
-  const requests = Object.entries(headerConfigs).map(([sheetName, headers]) => ({
-    appendCells: {
-      sheetId: getSheetId(sheetName),
-      rows: [{
-        values: headers.map(header => ({
-          userEnteredValue: { stringValue: header },
-          userEnteredFormat: {
-            backgroundColor: { red: 0.2, green: 0.6, blue: 1.0 },
-            textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } },
-          },
-        })),
-      }],
-      fields: 'userEnteredValue,userEnteredFormat',
-    },
-  }));
-
   try {
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      requestBody: { requests },
-    });
+    for (const [sheetName, headers] of Object.entries(headerConfigs)) {
+      const existing = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${sheetName}'!A1:A1`,
+      }).catch(() => null);
+
+      if (existing?.data?.values?.length) {
+        continue;
+      }
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `'${sheetName}'!A1`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [headers],
+        },
+      });
+    }
     logger.info('[GoogleSheets] ✅ Initialized all sheet headers');
   } catch (error) {
     logger.error('[GoogleSheets] Error initializing headers:', error);
   }
-}
-
-/**
- * Helper to get sheet ID by name (placeholder - would need actual mapping)
- */
-function getSheetId(sheetName: string): number {
-  // Sheet IDs are assigned sequentially starting from 0
-  const sheetNames = Object.values(SHEETS);
-  return sheetNames.indexOf(sheetName as any);
 }
 
 /**
