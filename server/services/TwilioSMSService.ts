@@ -23,6 +23,12 @@ const VERIFICATION_CODE_EXPIRY_MINUTES = 10;
 const MAX_VERIFICATION_ATTEMPTS = 3;
 const VERIFICATION_TOKEN_EXPIRY_MINUTES = 5;
 
+const ALPHA_SENDER_ID = 'PetWash';
+
+const ALPHA_SENDER_BLOCKED_COUNTRIES = new Set([
+  '1',
+]);
+
 class TwilioSMSService {
   private client: twilio.Twilio | null = null;
   private fromPhone: string | null = null;
@@ -51,6 +57,16 @@ class TwilioSMSService {
       logger.warn('[TwilioSMS] ⚠️ Not configured - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_PHONE_NUMBER missing');
       this.isConfigured = false;
     }
+  }
+
+  private getSenderForDestination(toPhone: string): string {
+    const cleaned = toPhone.replace(/[^0-9]/g, '');
+    for (const prefix of ALPHA_SENDER_BLOCKED_COUNTRIES) {
+      if (cleaned.startsWith(prefix)) {
+        return this.fromPhone!;
+      }
+    }
+    return ALPHA_SENDER_ID;
   }
 
   isReady(): boolean {
@@ -188,14 +204,31 @@ class TwilioSMSService {
     const messageBody = this.smsBody(code, language);
 
     try {
-      await this.client!.messages.create({
-        body: messageBody,
-        from: this.fromPhone!,
-        to: formattedPhone
-      });
+      const sender = this.getSenderForDestination(formattedPhone);
+      let usedSender = sender;
+      try {
+        await this.client!.messages.create({
+          body: messageBody,
+          from: sender,
+          to: formattedPhone
+        });
+      } catch (alphaErr: any) {
+        if (sender !== this.fromPhone! && (alphaErr.code === 21612 || alphaErr.code === 21659)) {
+          logger.warn('[TwilioSMS] Alphanumeric sender not supported, falling back to phone number');
+          usedSender = this.fromPhone!;
+          await this.client!.messages.create({
+            body: messageBody,
+            from: this.fromPhone!,
+            to: formattedPhone
+          });
+        } else {
+          throw alphaErr;
+        }
+      }
 
       logger.info('[TwilioSMS] Verification code sent', { 
         phone: formattedPhone.slice(0, 6) + '****',
+        from: usedSender,
         expiresAt 
       });
 
@@ -327,14 +360,31 @@ class TwilioSMSService {
     const formattedPhone = this.formatPhoneNumber(to);
 
     try {
-      const message = await this.client!.messages.create({
-        body,
-        from: this.fromPhone!,
-        to: formattedPhone
-      });
+      const sender = this.getSenderForDestination(formattedPhone);
+      let message;
+      let usedSender = sender;
+      try {
+        message = await this.client!.messages.create({
+          body,
+          from: sender,
+          to: formattedPhone
+        });
+      } catch (alphaErr: any) {
+        if (sender !== this.fromPhone! && (alphaErr.code === 21612 || alphaErr.code === 21659)) {
+          usedSender = this.fromPhone!;
+          message = await this.client!.messages.create({
+            body,
+            from: this.fromPhone!,
+            to: formattedPhone
+          });
+        } else {
+          throw alphaErr;
+        }
+      }
 
       logger.info('[TwilioSMS] SMS sent', { 
         to: formattedPhone.slice(0, 6) + '****',
+        from: usedSender,
         messageId: message.sid
       });
 
