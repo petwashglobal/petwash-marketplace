@@ -272,6 +272,7 @@ import {
   generateLoyaltyEnrollmentEmail,
   generateProviderEnrollmentEmail
 } from './templates/registration-confirmation-2025';
+import { generateFranchiseApplicationEmail } from './templates/welcome-franchise-application-2026';
 
 /**
  * Send New User Registration Confirmation Email
@@ -339,5 +340,32 @@ export async function sendProviderEnrollmentConfirmation(
     applicationId,
     serviceTypes 
   });
+  return sendLuxuryEmail({ to: email, subject, html });
+}
+
+export async function sendFranchiseApplicationConfirmation(
+  email: string,
+  firstName: string,
+  lastName: string,
+  options?: {
+    companyName?: string;
+    country?: string;
+    investmentRange?: string;
+    applicationId?: string | number;
+    language?: 'he' | 'en';
+  }
+): Promise<boolean> {
+  const { subject, html } = generateFranchiseApplicationEmail({
+    firstName,
+    lastName,
+    email,
+    language: options?.language || 'he',
+    companyName: options?.companyName,
+    country: options?.country,
+    investmentRange: options?.investmentRange,
+    applicationId: options?.applicationId,
+  });
+
+  logger.info('[Registration Email] Sending franchise application confirmation', { email, firstName });
   return sendLuxuryEmail({ to: email, subject, html });
 }

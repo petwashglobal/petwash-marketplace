@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is an enterprise platform designed for the luxury pet care industry, offering a global, scalable ecosystem for services such as IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. The platform centralizes authentication, payments, AI services, compliance, and franchise management, incorporating a 7-Star Loyalty System and robust security. Its core ambition is to become the leading global provider of luxury pet care, with initial market penetration focused on Israel.
+Pet Wash™ is an enterprise platform for the luxury pet care industry, offering a global, scalable ecosystem for services such as IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. It centralizes authentication, payments, AI services, compliance, and franchise management, incorporating a 7-Star Loyalty System and robust security. The platform's ambition is to become the leading global provider of luxury pet care, with an initial focus on the Israeli market.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -89,21 +89,21 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC, automated bookkeeping, Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
 - **Payment Gateway Architecture**: Nayax Israel is the exclusive payment gateway, with 72-hour escrow.
 - **K9000 IoT Integration**: Cloud management, real-time status, remote control, AI predictive maintenance, 7-star luxury LED ecosystem.
-- **Passport Verification (KYC)**: Google Vision API with MRZ parsing.
-- **Security & Compliance**: Google reCAPTCHA v3, Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail.
-- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts. Includes a 12-status lifecycle, pricing engine, and audit trail.
-- **Employee Expense Management System**: Production-ready with Israeli Tax Authority compliance, OCR receipt scanning, and cryptographic audit trail.
-- **Document Management System**: Production-ready with RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
-- **Legal & Compliance Systems**: Comprehensive routes for privacy, data rights, GDPR, Israeli Privacy Law 2025, e-signature, contract management.
+- **Security & Compliance**: Google reCAPTCHA v3, Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail. Optional Two-Factor Authentication (2FA) via SMS + Email.
+- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts.
+- **Employee Expense Management System**: Israeli Tax Authority compliant with OCR receipt scanning and cryptographic audit trail.
+- **Document Management System**: RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
+- **Legal & Compliance Systems**: Routes for privacy, data rights, GDPR, Israeli Privacy Law 2025, e-signature, contract management.
 - **HR & Employee Systems**: Routes for employee management, hierarchy, onboarding, auto-approval workflows, and WhatsApp notifications.
 - **Enterprise Route Infrastructure**: Extensive route files for franchise, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
-- **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments.
+- **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments. Optional 2FA (SMS + Email OTP) for management and providers.
+- **Registration Confirmation Emails**: Luxury confirmation emails from support@petwash.co.il for all registration types.
 - **Israeli Contractor Compliance System**: Marketplace broker model preventing employee misclassification, with tax verification, National Insurance tracking, commission calculation, independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails.
 - **Unified Talent Marketplace System 2026**: All-in-one marketplace system (`src/marketplace/petwash_talent_marketplace_system_2026.tsx`) covering 7 platforms with backend API registration, frontend React components, route wrappers, and QA validation.
 - **Pet Sitter Profile Pages**: Airbnb-style luxury profile component (`src/modules/pet-sitter/PetSitterProfilePage.tsx`) with hero gallery, services toggle, reviews, and booking card.
 - **Multi-Platform Marketplace View**: Unified marketplace page (`src/modules/platforms/PetWashTalentMarketplacePage.tsx`) showing contractors across all 7 platforms with color-coded branding, responsive grid layout, and demo profiles.
-- **MadPaws-Style Provider Search**: API at `/api/marketplace-bookings/search/providers` with real-time availability filtering, platform/service type filtering, rating filters, profile enrichment, and pagination. Frontend at `/sitter-suite/browse` displays provider cards with Hebrew names, bios, locations, and pricing.
-- **Octopus Global Brain Engine**: Unified backend booking/financial engine at `/api/octopus/v1/*`. All financial writes flow through Octopus Brain. Features: unified booking creation with 15% flat platform fee, atomic wallet debit/credit with race-safe conditional updates, immutable financial ledger (BOOKING_CREATED, PAYMENT_CAPTURED, WALLET_DEBIT, WALLET_CREDIT, PROVIDER_EARNING, PLATFORM_FEE, INVOICE_ISSUED), invoice stub generation, provider search with KYC enforcement, idempotency protection on bookings and wallet ops, multi-platform separation (PETSITTER, PETTREK, ACADEMY, PETWASH_HUB). Tables: octopus_providers, octopus_wallets, octopus_bookings, octopus_ledger, octopus_invoices. DB-level CHECK constraints enforce valid platform/status values.
+- **MadPaws-Style Provider Search**: API at `/api/marketplace-bookings/search/providers` with real-time availability filtering, profile enrichment, and pagination. Frontend at `/sitter-suite/browse` displays provider cards with Hebrew names, bios, locations, and pricing.
+- **Octopus Global Brain Engine**: Unified backend booking/financial engine at `/api/octopus/v1/*`. All financial writes flow through Octopus Brain. Features: unified booking creation with 15% flat platform fee, atomic wallet debit/credit with race-safe conditional updates, immutable financial ledger, invoice stub generation, provider search with KYC enforcement, idempotency protection on bookings and wallet ops, multi-platform separation.
 
 ### File Storage & Admin Access
 - **Document Storage**: Google Cloud Storage bucket `petwash-secure-documents`.
@@ -129,4 +129,4 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Mapping & Location**: Google Maps API.
 - **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API, Google Dialogflow CX.
 - **Business Management**: Google Business Profile API.
-- **Google Forms Integration**: Admin-configurable embedded Google Forms for various user-facing pages, managed via `/admin/google-forms` and `client/src/components/GoogleFormEmbed.tsx`.
+- **Google Forms Integration**: Admin-configurable embedded Google Forms.

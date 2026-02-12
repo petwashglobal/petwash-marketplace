@@ -12,6 +12,7 @@ import { logger } from '../lib/logger';
 import { validateFirebaseToken } from '../franchiseAuth';
 import { requireAdminRole } from '../lib/adminCheck';
 import { EmailService } from '../emailService';
+import { sendFranchiseApplicationConfirmation } from '../email/luxury-email-service';
 
 const router = Router();
 
@@ -180,6 +181,21 @@ router.post('/franchise-inquiry', async (req, res) => {
         <p><small>Follow up within 48 hours to maintain lead quality.</small></p>
       `,
     }).catch(err => logger.error('[GlobalForms] Failed to send franchise inquiry email', err));
+
+    const nameParts = data.name.trim().split(' ');
+    const firstName = nameParts[0] || data.name;
+    const lastName = nameParts.slice(1).join(' ') || '';
+    sendFranchiseApplicationConfirmation(
+      data.email,
+      firstName,
+      lastName,
+      {
+        companyName: data.company,
+        country: data.country,
+        investmentRange: data.investmentBudget,
+        language: 'en',
+      }
+    ).catch(err => logger.error('[GlobalForms] Failed to send franchise confirmation to applicant', err));
 
     res.json({
       success: true,

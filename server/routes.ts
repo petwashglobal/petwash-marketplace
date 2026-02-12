@@ -9411,6 +9411,25 @@ self.addEventListener('notificationclick', (event) => {
       
       logger.info(`[DualSave] ✅ PostgreSQL user created for ${uid}`);
       
+      try {
+        const { sendLuxuryEmail } = await import('./email/luxury-email-service');
+        const { generateCustomerWelcomeEmail } = await import('./email/templates/welcome-customer-signup-2026');
+        const welcomeEmail = generateCustomerWelcomeEmail({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          language: (language === 'he' || country === 'Israel' || country === 'IL') ? 'he' : 'en',
+          loyaltyTier: 'new',
+        });
+        sendLuxuryEmail({
+          to: email.trim(),
+          subject: welcomeEmail.subject,
+          html: welcomeEmail.html,
+        }).catch(err => logger.error('[CreateProfile] Welcome email failed', err));
+      } catch (emailErr) {
+        logger.error('[CreateProfile] Email generation error', emailErr);
+      }
+      
       res.json({ success: true, uid });
       
     } catch (error: any) {
@@ -12728,6 +12747,91 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Must be BEFORE error handler, AFTER all API routes
   
   // Only register this fallback route in production mode
+  // ============================================
+  // TWO-FACTOR AUTHENTICATION (2FA) ENDPOINTS
+  // ============================================
+  app.post('/api/auth/2fa/send', async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: 'Authorization required' });
+      }
+      const token = authHeader.split('Bearer ')[1];
+      const { adminAuth } = await import('./lib/firebase-admin');
+      const decoded = await adminAuth.verifyIdToken(token);
+      const uid = decoded.uid;
+      
+      const { method, phone, email, firstName, language } = req.body;
+      if (!method || !['sms', 'email', 'both'].includes(method)) {
+        return res.status(400).json({ success: false, error: 'Method must be sms, email, or both' });
+      }
+      if ((method === 'sms' || method === 'both') && !phone) {
+        return res.status(400).json({ success: false, error: 'Phone number required for SMS verification' });
+      }
+      if ((method === 'email' || method === 'both') && !email) {
+        return res.status(400).json({ success: false, error: 'Email required for email verification' });
+      }
+
+      const { twoFactorAuth } = await import('./services/TwoFactorAuthService');
+      const result = await twoFactorAuth.sendCode(uid, method, { phone, email, firstName }, language || 'he');
+      res.json(result);
+    } catch (error: any) {
+      logger.error('[2FA] Send code error', error);
+      res.status(500).json({ success: false, error: 'Failed to send verification code' });
+    }
+  });
+
+  app.post('/api/auth/2fa/verify', async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: 'Authorization required' });
+      }
+      const token = authHeader.split('Bearer ')[1];
+      const { adminAuth } = await import('./lib/firebase-admin');
+      const decoded = await adminAuth.verifyIdToken(token);
+      const uid = decoded.uid;
+
+      const { code, channel, phone, language } = req.body;
+      if (!code || !channel || !['sms', 'email'].includes(channel)) {
+        return res.status(400).json({ success: false, error: 'Code and channel (sms/email) required' });
+      }
+
+      const { twoFactorAuth } = await import('./services/TwoFactorAuthService');
+      let result;
+      if (channel === 'sms') {
+        if (!phone) return res.status(400).json({ success: false, error: 'Phone required for SMS verification' });
+        result = twoFactorAuth.verifySmsCode(uid, phone, code, language || 'he');
+      } else {
+        result = twoFactorAuth.verifyEmailCode(uid, code, language || 'he');
+      }
+      res.json(result);
+    } catch (error: any) {
+      logger.error('[2FA] Verify code error', error);
+      res.status(500).json({ success: false, error: 'Verification failed' });
+    }
+  });
+
+  app.get('/api/auth/2fa/status', async (req: Request, res: Response) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: 'Authorization required' });
+      }
+      const token = authHeader.split('Bearer ')[1];
+      const { adminAuth } = await import('./lib/firebase-admin');
+      const decoded = await adminAuth.verifyIdToken(token);
+      const uid = decoded.uid;
+
+      const { twoFactorAuth } = await import('./services/TwoFactorAuthService');
+      const status = twoFactorAuth.getSessionStatus(uid);
+      res.json({ success: true, ...status });
+    } catch (error: any) {
+      logger.error('[2FA] Status check error', error);
+      res.status(500).json({ success: false, error: 'Status check failed' });
+    }
+  });
+
   // In dev mode, Vite's middleware (registered in server/index.ts) handles all routing
   if (process.env.NODE_ENV === 'production' || 
       process.env.REPLIT_DEPLOYMENT === '1' || 

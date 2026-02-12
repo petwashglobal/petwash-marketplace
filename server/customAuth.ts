@@ -7,6 +7,8 @@ import { storage } from './storage';
 import { insertCustomerSchema } from '@shared/schema';
 import { z } from 'zod';
 import { logger } from './lib/logger';
+import { sendLuxuryEmail } from './email/luxury-email-service';
+import { generateCustomerWelcomeEmail } from './email/templates/welcome-customer-signup-2026';
 
 async function verifyRecaptchaToken(token: string, action: string, ip?: string): Promise<{ success: boolean; score?: number }> {
   const secretKey = process.env.RECAPTCHA_SECRET_KEY;
@@ -138,6 +140,20 @@ export function setupCustomAuth(app: Express) {
 
       // Set session
       (req.session as any).customerId = newCustomer.id;
+
+      const welcomeEmail = generateCustomerWelcomeEmail({
+        firstName: newCustomer.firstName || '',
+        lastName: newCustomer.lastName || '',
+        email: newCustomer.email,
+        language: (newCustomer.country === 'Israel' || newCustomer.country === 'IL') ? 'he' : 'en',
+        loyaltyTier: newCustomer.loyaltyTier || 'new',
+        petType: newCustomer.petType || undefined,
+      });
+      sendLuxuryEmail({
+        to: newCustomer.email,
+        subject: welcomeEmail.subject,
+        html: welcomeEmail.html,
+      }).catch(err => logger.error('[Auth Register] Welcome email failed', err));
 
       // Return customer data (without password)
       const { password, ...customerResponse } = newCustomer;
