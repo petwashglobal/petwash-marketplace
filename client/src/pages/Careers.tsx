@@ -37,7 +37,6 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { GooglePlacesAutocomplete, PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import { GoogleFormEmbed } from '@/components/GoogleFormEmbed';
 import { PhoneInput } from '@/components/PhoneInput';
-import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
 import type { CareerPosition } from '@shared/schema';
 
 const roleIcons: Record<string, any> = {
@@ -716,8 +715,15 @@ export default function Careers() {
       
       {/* Application Modal */}
       <Dialog open={showApplicationForm} onOpenChange={setShowApplicationForm}>
-        <DialogContent className="max-w-2xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="max-w-2xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6" style={{ WebkitOverflowScrolling: 'touch' }}>
           <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <img 
+                src="/brand/petwash-logo-official.png" 
+                alt="PetWash™" 
+                className="h-10 w-auto object-contain"
+              />
+            </div>
             <div className="flex items-center justify-between">
               <div>
                 <DialogTitle className="text-2xl font-bold">
@@ -817,16 +823,63 @@ export default function Careers() {
               </div>
               <div>
                 <Label>{isRTL ? 'תאריך לידה' : 'Date of Birth'} *</Label>
-                <AppleWheelDatePicker
-                  value={formData.dateOfBirth}
-                  onChange={(date) => setFormData(prev => ({ ...prev, dateOfBirth: date }))}
-                  minYear={1940}
-                  maxYear={new Date().getFullYear() - 16}
-                  label=""
-                  dayLabel={isRTL ? 'יום' : 'Day'}
-                  monthLabel={isRTL ? 'חודש' : 'Month'}
-                  yearLabel={isRTL ? 'שנה' : 'Year'}
-                />
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1 text-center">{isRTL ? 'יום' : 'Day'}</label>
+                    <Select
+                      value={formData.dateOfBirth ? formData.dateOfBirth.split('-')[2] : ''}
+                      onValueChange={(day) => {
+                        const parts = (formData.dateOfBirth || `${new Date().getFullYear() - 25}-01-01`).split('-');
+                        setFormData(prev => ({ ...prev, dateOfBirth: `${parts[0]}-${parts[1]}-${day}` }));
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="--" /></SelectTrigger>
+                      <SelectContent className="max-h-[200px]">
+                        {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map(d => (
+                          <SelectItem key={d} value={d}>{parseInt(d)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1 text-center">{isRTL ? 'חודש' : 'Month'}</label>
+                    <Select
+                      value={formData.dateOfBirth ? formData.dateOfBirth.split('-')[1] : ''}
+                      onValueChange={(month) => {
+                        const parts = (formData.dateOfBirth || `${new Date().getFullYear() - 25}-01-01`).split('-');
+                        setFormData(prev => ({ ...prev, dateOfBirth: `${parts[0]}-${month}-${parts[2]}` }));
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="--" /></SelectTrigger>
+                      <SelectContent className="max-h-[200px]">
+                        {(isRTL
+                          ? ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר']
+                          : ['January','February','March','April','May','June','July','August','September','October','November','December']
+                        ).map((name, i) => {
+                          const val = String(i + 1).padStart(2, '0');
+                          return <SelectItem key={val} value={val}>{name}</SelectItem>;
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1 text-center">{isRTL ? 'שנה' : 'Year'}</label>
+                    <Select
+                      value={formData.dateOfBirth ? formData.dateOfBirth.split('-')[0] : ''}
+                      onValueChange={(year) => {
+                        const parts = (formData.dateOfBirth || `${new Date().getFullYear() - 25}-01-01`).split('-');
+                        setFormData(prev => ({ ...prev, dateOfBirth: `${year}-${parts[1]}-${parts[2]}` }));
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="--" /></SelectTrigger>
+                      <SelectContent className="max-h-[200px]">
+                        {Array.from({ length: new Date().getFullYear() - 16 - 1940 + 1 }, (_, i) => String(new Date().getFullYear() - 16 - i)).map(y => (
+                          <SelectItem key={y} value={y}>{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
               <div>
                 <Label htmlFor="address">{isRTL ? 'כתובת' : 'Address'} *</Label>
