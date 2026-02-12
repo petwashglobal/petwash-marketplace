@@ -1,0 +1,165 @@
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
+import { PrismaClient, Platform, LedgerType, BookingStatus } from "@prisma/client";
+import { z } from "zod";
+
+const prisma = new PrismaClient();
+const app = Fastify({ logger: true });
+
+await app.register(cors, { origin: true });
+await app.register(helmet);
+await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });
+
+function now() { return new Date(); }
+
+function calculateSplit(price: number) {
+  const platformFee = Math.round(price * 0.2);
+  const providerShare = price - platformFee;
+  return { platformFee, providerShare };
+}
+
+/* CREATE BOOKING */
+app.post("/v1/bookings", async (req, reply) => {
+  const body = z.object({
+    userId: z.string(),
+    platform: z.nativeEnum(Platform),
+    price: z.number().int().positive()
+  }).parse(req.body);
+
+  const split = calculateSplit(body.price);
+
+  const booking = await prisma.booking.create({
+    data: {
+      userId: body.userId,
+      platform: body.platform,
+      price: body.price,
+      platformFee: split.platformFee,
+      providerShare: split.providerShare,
+      status: BookingStatus.CONFIRMED
+    }
+  });
+
+  await prisma.ledger.create({
+    data: {
+      type: LedgerType.BOOKING_CREATED,
+      bookingId: booking.id,
+      amount: body.price,
+      platform: body.platform
+    }
+  });
+
+  return booking;
+});
+
+/* WALLET REDEEM */
+app.post("/v1/wallet/redeem", async (req, reply) => {
+  const body = z.object({
+    userId: z.string(),
+    platform: z.nativeEnum(Platform),
+    amount: z.number().int().positive()
+  }).parse(req.body);
+
+  return prisma.$transaction(async (tx) => {
+    const wallet = await tx.wallet.findUnique({ where: { userId: body.userId } });
+    if (!wallet) throw new Error("Wallet not found");
+    if (wallet.balance < body.amount) throw new Error("Insufficient balance");
+
+    await tx.wallet.update({
+      where: { userId: body.userId },
+      data: { balance: { decrement: body.amount } }
+    });
+
+    await tx.ledger.create({
+      data: {
+        type: LedgerType.WALLET_DEBIT,
+        walletId: wallet.id,
+        amount: body.amount,
+        platform: body.platform
+      }
+    });
+
+    return { success: true };
+  });
+});
+
+/* COMPLETE BOOKING */
+app.post("/v1/bookings/:id/complete", async (req, reply) => {
+  const id = req.params.id as string;
+
+  const booking = await prisma.booking.findUnique({ where: { id } });
+  if (!booking) throw new Error("Booking not found");
+
+  await prisma.$transaction(async (tx) => {
+
+    await tx.booking.update({
+      where: { id },
+      data: { status: BookingStatus.COMPLETED }
+    });
+
+    await tx.ledger.create({
+      data: {
+        type: LedgerType.PAYMENT_CAPTURED,
+        bookingId: id,
+        amount: booking.price,
+        platform: booking.platform
+      }
+    });
+
+    await tx.ledger.create({
+      data: {
+        type: LedgerType.PROVIDER_EARNING,
+        bookingId: id,
+        amount: booking.providerShare,
+        platform: booking.platform
+      }
+    });
+
+    await tx.ledger.create({
+      data: {
+        type: LedgerType.PLATFORM_FEE,
+        bookingId: id,
+        amount: booking.platformFee,
+        platform: booking.platform
+      }
+    });
+
+    const invoice = await tx.invoice.create({
+      data: {
+        bookingId: id,
+        docNumber: "INV-" + Date.now()
+      }
+    });
+
+    await tx.ledger.create({
+      data: {
+        type: LedgerType.INVOICE_ISSUED,
+        bookingId: id,
+        amount: booking.price,
+        platform: booking.platform
+      }
+    });
+
+  });
+
+  return { success: true };
+});
+
+/* PROVIDER SEARCH */
+app.get("/v1/providers/search", async (req, reply) => {
+  const { city, service } = req.query as any;
+
+  const providers = await prisma.provider.findMany({
+    where: {
+      cityNormalized: city?.toLowerCase(),
+      services: { has: service },
+      approved: true,
+      visible: true
+    }
+  });
+
+  return providers;
+});
+
+app.listen({ port: 3000 });

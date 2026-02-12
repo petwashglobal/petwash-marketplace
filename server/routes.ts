@@ -178,6 +178,7 @@ import walletTelemetryRoutes from "./routes/wallet-telemetry";
 import weatherTestRoutes from "./routes/weather-test";
 import productionMonitorRoutes from "./routes/production-monitor";
 import octopusBrainRoutes from "./routes/octopus-brain";
+import octopusEngineRoutes from "./routes/octopus-engine";
 import { publicAuthRouter } from "./routes/publicAuthRoutes";
 // SSL certificate endpoints removed - handled by Replit platform
 import { 
@@ -8463,6 +8464,8 @@ self.addEventListener('notificationclick', (event) => {
   
   // 🐙 Octopus Brain - Central platform orchestration with Gemini AI monitoring
   app.use('/api/octopus-brain', apiLimiter, octopusBrainRoutes);
+  app.use('/api/octopus', apiLimiter, octopusEngineRoutes);
+  logger.info('[Routes] Octopus Global Brain Engine registered (unified booking, wallet, ledger, provider search)');
   
   // Mobile Authentication (iOS/Android Google Sign-In with OAuth2 + Biometric)
   app.use('/api/mobile-auth', apiLimiter, mobileAuthRoutes);

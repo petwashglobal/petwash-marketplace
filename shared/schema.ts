@@ -10627,3 +10627,149 @@ export const insertDigitalReceiptSchema = createInsertSchema(digitalReceipts).om
 });
 export type InsertDigitalReceipt = z.infer<typeof insertDigitalReceiptSchema>;
 export type DigitalReceipt = typeof digitalReceipts.$inferSelect;
+
+// =================== OCTOPUS GLOBAL BRAIN ===================
+// Unified booking engine, wallet, ledger, provider search, KYC enforcement
+// ALL financial writes flow through the Octopus Brain — no platform writes directly
+
+export const octopusRoleEnum = pgEnum("octopus_role", [
+  "CUSTOMER",
+  "PROVIDER",
+  "ADMIN",
+  "FINANCE",
+]);
+
+export const octopusPlatformEnum = pgEnum("octopus_platform", [
+  "PETSITTER",
+  "PETTREK",
+  "ACADEMY",
+  "PETWASH_HUB",
+]);
+
+export const octopusBookingStatusEnum = pgEnum("octopus_booking_status", [
+  "DRAFT",
+  "CONFIRMED",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "CANCELLED",
+]);
+
+export const octopusLedgerTypeEnum = pgEnum("octopus_ledger_type", [
+  "BOOKING_CREATED",
+  "PAYMENT_CAPTURED",
+  "WALLET_DEBIT",
+  "WALLET_CREDIT",
+  "PROVIDER_EARNING",
+  "PLATFORM_FEE",
+  "INVOICE_ISSUED",
+]);
+
+export const octopusProviders = pgTable("octopus_providers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").unique().notNull(),
+  city: varchar("city").notNull(),
+  cityNormalized: varchar("city_normalized").notNull(),
+  services: jsonb("services").default(sql`'[]'::jsonb`).notNull(),
+  rating: real("rating").default(5),
+  approved: boolean("approved").default(false).notNull(),
+  visible: boolean("visible").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_octopus_provider_city").on(table.cityNormalized),
+  index("idx_octopus_provider_approved").on(table.approved),
+  index("idx_octopus_provider_user").on(table.userId),
+]);
+
+export const octopusWallets = pgTable("octopus_wallets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").unique().notNull(),
+  balance: integer("balance").default(0).notNull(),
+  petwashCredits: integer("petwash_credits").default(0).notNull(),
+  petsitterCredits: integer("petsitter_credits").default(0).notNull(),
+  pettrekCredits: integer("pettrek_credits").default(0).notNull(),
+  academyCredits: integer("academy_credits").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const octopusBookings = pgTable("octopus_bookings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  platform: varchar("platform").notNull(),
+  status: varchar("status").default("DRAFT").notNull(),
+  userId: varchar("user_id").notNull(),
+  providerId: varchar("provider_id"),
+  price: integer("price").notNull(),
+  platformFee: integer("platform_fee").notNull(),
+  providerShare: integer("provider_share").notNull(),
+  idempotencyKey: varchar("idempotency_key").unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_octopus_booking_user").on(table.userId),
+  index("idx_octopus_booking_provider").on(table.providerId),
+  index("idx_octopus_booking_platform").on(table.platform),
+  index("idx_octopus_booking_status").on(table.status),
+]);
+
+export const octopusLedger = pgTable("octopus_ledger", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: varchar("type").notNull(),
+  bookingId: varchar("booking_id"),
+  walletId: varchar("wallet_id"),
+  amount: integer("amount").notNull(),
+  platform: varchar("platform"),
+  metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_octopus_ledger_booking").on(table.bookingId),
+  index("idx_octopus_ledger_wallet").on(table.walletId),
+  index("idx_octopus_ledger_type").on(table.type),
+  index("idx_octopus_ledger_platform").on(table.platform),
+]);
+
+export const octopusInvoices = pgTable("octopus_invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingId: varchar("booking_id").unique().notNull(),
+  docNumber: varchar("doc_number"),
+  allocationNumber: varchar("allocation_number"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_octopus_invoice_booking").on(table.bookingId),
+]);
+
+export const insertOctopusProviderSchema = createInsertSchema(octopusProviders).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertOctopusProvider = z.infer<typeof insertOctopusProviderSchema>;
+export type OctopusProvider = typeof octopusProviders.$inferSelect;
+
+export const insertOctopusWalletSchema = createInsertSchema(octopusWallets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertOctopusWallet = z.infer<typeof insertOctopusWalletSchema>;
+export type OctopusWallet = typeof octopusWallets.$inferSelect;
+
+export const insertOctopusBookingSchema = createInsertSchema(octopusBookings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertOctopusBooking = z.infer<typeof insertOctopusBookingSchema>;
+export type OctopusBooking = typeof octopusBookings.$inferSelect;
+
+export const insertOctopusLedgerSchema = createInsertSchema(octopusLedger).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertOctopusLedger = z.infer<typeof insertOctopusLedgerSchema>;
+export type OctopusLedger = typeof octopusLedger.$inferSelect;
+
+export const insertOctopusInvoiceSchema = createInsertSchema(octopusInvoices).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertOctopusInvoice = z.infer<typeof insertOctopusInvoiceSchema>;
+export type OctopusInvoice = typeof octopusInvoices.$inferSelect;
