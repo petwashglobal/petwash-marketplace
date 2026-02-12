@@ -302,6 +302,12 @@ router.get('/application-status', async (req: Request, res: Response) => {
   }
 });
 
+function providerOwnsBooking(providerIds: number[], bookingProviderId: string | number | null | undefined): boolean {
+  if (!bookingProviderId) return false;
+  const bookingPid = typeof bookingProviderId === 'string' ? parseInt(bookingProviderId, 10) : bookingProviderId;
+  return providerIds.includes(bookingPid);
+}
+
 router.post('/bookings/:bookingId/confirm', async (req: Request, res: Response) => {
   try {
     const user = await getAuthenticatedUser(req, res);
@@ -315,13 +321,13 @@ router.post('/bookings/:bookingId/confirm', async (req: Request, res: Response) 
       return res.status(403).json({ error: 'Not a provider' });
     }
 
-    const [booking] = await db.select().from(bookings).where(eq(bookings.id, parseInt(bookingId)));
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId));
 
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    if (!providerIds.includes(booking.providerId!)) {
+    if (!providerOwnsBooking(providerIds, booking.providerId)) {
       return res.status(403).json({ error: 'Not your booking' });
     }
 
@@ -333,7 +339,7 @@ router.post('/bookings/:bookingId/confirm', async (req: Request, res: Response) 
     await db.update(bookings).set({
       status: 'provider_confirmed',
       confirmedAt: now,
-    }).where(eq(bookings.id, parseInt(bookingId)));
+    }).where(eq(bookings.id, bookingId));
 
     logger.info('[ProviderDashboard] Booking confirmed', {
       bookingId,
@@ -346,7 +352,7 @@ router.post('/bookings/:bookingId/confirm', async (req: Request, res: Response) 
     res.json({
       success: true,
       action: 'confirmed',
-      bookingId: parseInt(bookingId),
+      bookingId,
       confirmedAt: now.toISOString(),
       stamp: `PROVIDER_CONFIRMED::${user.uid}::${now.toISOString()}`,
     });
@@ -369,9 +375,9 @@ router.post('/bookings/:bookingId/start', async (req: Request, res: Response) =>
       return res.status(403).json({ error: 'Not a provider' });
     }
 
-    const [booking] = await db.select().from(bookings).where(eq(bookings.id, parseInt(bookingId)));
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId));
 
-    if (!booking || !providerIds.includes(booking.providerId!)) {
+    if (!booking || !providerOwnsBooking(providerIds, booking.providerId)) {
       return res.status(404).json({ error: 'Booking not found or not yours' });
     }
 
@@ -383,7 +389,7 @@ router.post('/bookings/:bookingId/start', async (req: Request, res: Response) =>
     await db.update(bookings).set({
       status: 'in_progress',
       startedAt: now,
-    }).where(eq(bookings.id, parseInt(bookingId)));
+    }).where(eq(bookings.id, bookingId));
 
     logger.info('[ProviderDashboard] Booking started', {
       bookingId,
@@ -395,7 +401,7 @@ router.post('/bookings/:bookingId/start', async (req: Request, res: Response) =>
     res.json({
       success: true,
       action: 'started',
-      bookingId: parseInt(bookingId),
+      bookingId,
       startedAt: now.toISOString(),
       stamp: `SERVICE_STARTED::${user.uid}::${now.toISOString()}`,
     });
@@ -418,9 +424,9 @@ router.post('/bookings/:bookingId/complete', async (req: Request, res: Response)
       return res.status(403).json({ error: 'Not a provider' });
     }
 
-    const [booking] = await db.select().from(bookings).where(eq(bookings.id, parseInt(bookingId)));
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId));
 
-    if (!booking || !providerIds.includes(booking.providerId!)) {
+    if (!booking || !providerOwnsBooking(providerIds, booking.providerId)) {
       return res.status(404).json({ error: 'Booking not found or not yours' });
     }
 
@@ -433,7 +439,7 @@ router.post('/bookings/:bookingId/complete', async (req: Request, res: Response)
       status: 'completed',
       completedAt: now,
       payoutStatus: 'pending',
-    }).where(eq(bookings.id, parseInt(bookingId)));
+    }).where(eq(bookings.id, bookingId));
 
     logger.info('[ProviderDashboard] Booking completed', {
       bookingId,
@@ -446,7 +452,7 @@ router.post('/bookings/:bookingId/complete', async (req: Request, res: Response)
     res.json({
       success: true,
       action: 'completed',
-      bookingId: parseInt(bookingId),
+      bookingId,
       completedAt: now.toISOString(),
       payoutStatus: 'pending',
       stamp: `SERVICE_COMPLETED::${user.uid}::${now.toISOString()}`,
