@@ -10773,3 +10773,72 @@ export const insertOctopusInvoiceSchema = createInsertSchema(octopusInvoices).om
 });
 export type InsertOctopusInvoice = z.infer<typeof insertOctopusInvoiceSchema>;
 export type OctopusInvoice = typeof octopusInvoices.$inferSelect;
+
+export const egiftEventTypeEnum = pgEnum("egift_event_type", [
+  "PURCHASED",
+  "CREDITED_TO_WALLET",
+  "REDEEM_STARTED",
+  "REDEEMED",
+  "REDEEM_FAILED",
+  "REFUNDED",
+  "EXPIRED",
+  "VOIDED",
+]);
+
+export const egiftEvents = pgTable("egift_events", {
+  id: serial("id").primaryKey(),
+  eventId: varchar("event_id", { length: 64 }).unique().notNull(),
+  egiftId: varchar("egift_id", { length: 64 }).notNull(),
+  eventType: egiftEventTypeEnum("event_type").notNull(),
+  userId: varchar("user_id", { length: 255 }),
+  walletId: varchar("wallet_id", { length: 64 }),
+  amountCents: integer("amount_cents"),
+  currency: varchar("currency", { length: 8 }).default("ILS"),
+  platform: varchar("platform", { length: 50 }),
+  product: varchar("product", { length: 50 }),
+  stationId: varchar("station_id", { length: 100 }),
+  baySide: varchar("bay_side", { length: 20 }),
+  bookingId: varchar("booking_id", { length: 64 }),
+  kioskTxnId: varchar("kiosk_txn_id", { length: 64 }),
+  ledgerEntryId: varchar("ledger_entry_id", { length: 64 }),
+  invoiceId: varchar("invoice_id", { length: 64 }),
+  idempotencyKey: varchar("idempotency_key", { length: 128 }),
+  metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+  sha256Hash: varchar("sha256_hash", { length: 64 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_egift_events_egift_id").on(table.egiftId),
+  index("idx_egift_events_user_id").on(table.userId),
+  index("idx_egift_events_type").on(table.eventType),
+  index("idx_egift_events_idempotency").on(table.idempotencyKey),
+  index("idx_egift_events_created").on(table.createdAt),
+]);
+
+export const egiftRedeemAttempts = pgTable("egift_redeem_attempts", {
+  id: serial("id").primaryKey(),
+  egiftId: varchar("egift_id", { length: 64 }).notNull(),
+  stationId: varchar("station_id", { length: 100 }),
+  userId: varchar("user_id", { length: 255 }),
+  success: boolean("success").default(false),
+  failureReason: varchar("failure_reason", { length: 255 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  attemptedAt: timestamp("attempted_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_redeem_attempts_egift").on(table.egiftId),
+  index("idx_redeem_attempts_station").on(table.stationId),
+  index("idx_redeem_attempts_time").on(table.attemptedAt),
+]);
+
+export const insertEgiftEventSchema = createInsertSchema(egiftEvents).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertEgiftEvent = z.infer<typeof insertEgiftEventSchema>;
+export type EgiftEvent = typeof egiftEvents.$inferSelect;
+
+export const insertEgiftRedeemAttemptSchema = createInsertSchema(egiftRedeemAttempts).omit({
+  id: true,
+  attemptedAt: true,
+});
+export type InsertEgiftRedeemAttempt = z.infer<typeof insertEgiftRedeemAttemptSchema>;
+export type EgiftRedeemAttempt = typeof egiftRedeemAttempts.$inferSelect;

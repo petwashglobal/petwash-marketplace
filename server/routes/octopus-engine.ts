@@ -7,10 +7,12 @@ import {
   octopusBookings,
   octopusLedger,
   octopusInvoices,
+  egiftEvents,
   users,
 } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { egiftFinancialService } from "../services/EgiftFinancialService";
 const router = Router();
 
 const PLATFORM_FEE_RATE = 0.15;
@@ -587,15 +589,133 @@ router.get("/v1/ledger", async (req: Request, res: Response) => {
   }
 });
 
+// =================== BRAIN REDEEM (Single atomic e-gift redeem) ===================
+const brainRedeemSchema = z.object({
+  platform: z.string().min(1),
+  product: z.string().min(1),
+  stationId: z.string().optional(),
+  baySide: z.string().optional(),
+  egiftId: z.string().min(1),
+  userId: z.string().min(1),
+  amountCents: z.number().int().positive(),
+  idempotencyKey: z.string().min(1),
+});
+
+router.post("/v1/brain/redeem", async (req: Request, res: Response) => {
+  try {
+    const body = brainRedeemSchema.parse(req.body);
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || '';
+
+    const result = await egiftFinancialService.brainRedeem({
+      ...body,
+      ipAddress,
+    });
+
+    logger.info("[Brain] E-gift redeemed", {
+      egiftId: body.egiftId,
+      bookingId: result.bookingId,
+      platform: body.platform,
+      product: body.product,
+      stationId: body.stationId,
+      amountCents: body.amountCents,
+      idempotent: result.idempotent,
+    });
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: err.errors });
+    }
+    if (err.message?.includes('Rate limit')) {
+      return res.status(429).json({ error: err.message });
+    }
+    if (err.message?.includes('Insufficient')) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (err.message?.includes('not found')) {
+      return res.status(404).json({ error: err.message });
+    }
+    logger.error("[Brain] Redeem failed", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// =================== EGIFT PURCHASE (Idempotent) ===================
+const egiftPurchaseSchema = z.object({
+  userId: z.string().min(1),
+  egiftId: z.string().min(1),
+  amountCents: z.number().int().positive(),
+  currency: z.string().optional(),
+  paymentMethodRef: z.string().optional(),
+  recipientEmail: z.string().email().optional(),
+  recipientName: z.string().optional(),
+  senderName: z.string().optional(),
+  message: z.string().optional(),
+  idempotencyKey: z.string().min(1),
+});
+
+router.post("/v1/egift/purchase", async (req: Request, res: Response) => {
+  try {
+    const body = egiftPurchaseSchema.parse(req.body);
+    const result = await egiftFinancialService.purchaseEgift(body);
+
+    logger.info("[Egift] Purchase completed", {
+      egiftId: body.egiftId,
+      amountCents: body.amountCents,
+      userId: body.userId,
+      idempotent: result.idempotent,
+    });
+
+    return res.status(result.idempotent ? 200 : 201).json({
+      success: true,
+      data: result,
+    });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: "Validation failed", details: err.errors });
+    }
+    logger.error("[Egift] Purchase failed", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// =================== EGIFT AUDIT TRAIL ===================
+router.get("/v1/egift/:egiftId/events", async (req: Request, res: Response) => {
+  try {
+    const { egiftId } = req.params;
+    const events = await egiftFinancialService.getEgiftAuditTrail(egiftId);
+    return res.json({ success: true, egiftId, events, total: events.length });
+  } catch (err: any) {
+    logger.error("[Egift] Audit trail fetch failed", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/v1/egift/user/:userId/events", async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const events = await egiftFinancialService.getUserEgiftEvents(userId, limit);
+    return res.json({ success: true, userId, events, total: events.length });
+  } catch (err: any) {
+    logger.error("[Egift] User events fetch failed", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // =================== HEALTH CHECK ===================
 router.get("/health", async (_req: Request, res: Response) => {
   return res.json({
     status: "ok",
     service: "octopus-global-brain-engine",
-    version: "1.0.0",
+    version: "1.1.0",
     timestamp: new Date().toISOString(),
     platforms: VALID_PLATFORMS,
     feeRate: `${PLATFORM_FEE_RATE * 100}%`,
+    features: ["brain-redeem", "idempotent-purchase", "egift-audit-trail", "rate-limiting"],
   });
 });
 
