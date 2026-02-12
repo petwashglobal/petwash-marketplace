@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
 import { Link, useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
+import { PhoneInput } from '@/components/PhoneInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -524,12 +525,11 @@ export default function BecomeProvider() {
                     </div>
                     <div>
                       <Label className="text-gray-300 font-medium">{isHebrew ? 'טלפון' : 'Phone'} *</Label>
-                      <Input 
-                        type="tel"
-                        {...form.register('phoneNumber')}
-                        placeholder="050-123-4567"
-                        className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
-                        data-testid="input-phone"
+                      <PhoneInput
+                        value={form.watch('phoneNumber')}
+                        onChange={(value) => form.setValue('phoneNumber', value)}
+                        language={isHebrew ? 'he' : 'en'}
+                        defaultCountryCode="+972"
                       />
                       {form.formState.errors.phoneNumber && (
                         <p className="text-red-400 text-sm mt-1">{form.formState.errors.phoneNumber.message}</p>

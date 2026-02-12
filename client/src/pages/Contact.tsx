@@ -13,6 +13,7 @@ import { logger } from "@/lib/logger";
 import { useToast } from '@/hooks/use-toast';
 import { getApiUrl } from '@/lib/apiConfig';
 import { GoogleFormEmbed } from '@/components/GoogleFormEmbed';
+import { PhoneInput } from '@/components/PhoneInput';
 
 interface ContactProps {
   language: Language;
@@ -298,14 +299,11 @@ export default function Contact({ language }: ContactProps) {
                           <label className="block luxury-text-small mb-1">
                             {currentLanguage === 'en' ? 'Phone Number' : 'מספר טלפון'}
                           </label>
-                          <Input
-                            name="phone"
-                            type="tel"
+                          <PhoneInput
                             value={formData.phone}
-                            onChange={handleChange}
-                            placeholder="+972-50-123-4567"
-                            className="w-full"
-                            data-testid="input-phone"
+                            onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+                            language={currentLanguage === 'he' ? 'he' : 'en'}
+                            defaultCountryCode="+972"
                           />
                         </div>
                         

@@ -79,6 +79,9 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { usePhoneVerification } from '@/hooks/usePhoneVerification';
+import { PhoneInput } from '@/components/PhoneInput';
+import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
+import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import '@/styles/luxury-dark-2025.css';
 
 interface WalletSummary {
@@ -954,11 +957,11 @@ export default function MyAccount() {
                       {isHebrew ? 'טלפון' : 'Phone'}
                     </Label>
                     {isEditing ? (
-                      <Input 
+                      <PhoneInput
                         value={editedProfile.phone || ''}
-                        onChange={(e) => setEditedProfile({ ...editedProfile, phone: e.target.value })}
-                        className="bg-white border-gray-200 text-gray-900"
-                        placeholder="+972-50-000-0000"
+                        onChange={(value) => setEditedProfile({ ...editedProfile, phone: value })}
+                        language={isHebrew ? 'he' : 'en'}
+                        defaultCountryCode="+972"
                       />
                     ) : (
                       <p className="text-gray-900 text-lg">{profile.phone || '-'}</p>
@@ -971,11 +974,15 @@ export default function MyAccount() {
                       {isHebrew ? 'תאריך לידה' : 'Birthday'}
                     </Label>
                     {isEditing ? (
-                      <Input 
-                        type="date"
+                      <AppleWheelDatePicker
                         value={editedProfile.birthdate || ''}
-                        onChange={(e) => setEditedProfile({ ...editedProfile, birthdate: e.target.value })}
-                        className="bg-white border-gray-200 text-gray-900"
+                        onChange={(date) => setEditedProfile({ ...editedProfile, birthdate: date })}
+                        minYear={1930}
+                        maxYear={new Date().getFullYear() - 13}
+                        label=""
+                        dayLabel={isHebrew ? 'יום' : 'Day'}
+                        monthLabel={isHebrew ? 'חודש' : 'Month'}
+                        yearLabel={isHebrew ? 'שנה' : 'Year'}
                       />
                     ) : (
                       <p className="text-gray-900 text-lg">{profile.birthdate || '-'}</p>
@@ -988,11 +995,24 @@ export default function MyAccount() {
                       {isHebrew ? 'כתובת' : 'Address'}
                     </Label>
                     {isEditing ? (
-                      <Input 
+                      <GooglePlacesAutocomplete
                         value={editedProfile.address || ''}
-                        onChange={(e) => setEditedProfile({ ...editedProfile, address: e.target.value })}
-                        className="bg-white border-gray-200 text-gray-900"
-                        placeholder={isHebrew ? 'רחוב, מספר, עיר' : 'Street, Number, City'}
+                        onChange={(value, details) => {
+                          setEditedProfile({ 
+                            ...editedProfile, 
+                            address: value,
+                            city: details?.city || editedProfile.city
+                          });
+                        }}
+                        onPlaceSelected={(place) => {
+                          setEditedProfile({ 
+                            ...editedProfile, 
+                            address: place.formattedAddress,
+                            city: place.city || editedProfile.city
+                          });
+                        }}
+                        placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
+                        country={['il']}
                       />
                     ) : (
                       <p className="text-gray-900 text-lg">{profile.address || '-'}</p>
@@ -1149,11 +1169,24 @@ export default function MyAccount() {
                     <Label className="text-gray-600 mb-2 block">
                       {isHebrew ? 'רחוב וכתובת' : 'Street Address'}
                     </Label>
-                    <Input
+                    <GooglePlacesAutocomplete
                       value={editedProfile?.address || ''}
-                      onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, address: e.target.value }))}
-                      placeholder={isHebrew ? 'רחוב, מספר בית, דירה' : 'Street, building, apt'}
-                      className="bg-white border-gray-200 text-gray-900"
+                      onChange={(value, details) => {
+                        setEditedProfile((prev: any) => ({ 
+                          ...prev, 
+                          address: value,
+                          city: details?.city || prev?.city
+                        }));
+                      }}
+                      onPlaceSelected={(place) => {
+                        setEditedProfile((prev: any) => ({ 
+                          ...prev, 
+                          address: place.formattedAddress,
+                          city: place.city || prev?.city
+                        }));
+                      }}
+                      placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
+                      country={['il']}
                     />
                   </div>
                   <div>

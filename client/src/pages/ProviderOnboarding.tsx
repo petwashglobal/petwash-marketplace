@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { getApiUrl } from '@/lib/apiConfig';
+import { PhoneInput } from '@/components/PhoneInput';
 
 export default function ProviderOnboarding() {
   const { user } = useFirebaseAuth();
@@ -532,13 +533,11 @@ export default function ProviderOnboarding() {
 
                 <div>
                   <Label htmlFor="phone">{t.phone}</Label>
-                  <Input
-                    id="phone"
+                  <PhoneInput
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+972-XX-XXXXXXX"
-                    className="luxury-glass-minimal"
-                    data-testid="input-phone"
+                    onChange={setPhoneNumber}
+                    language={isHebrew ? 'he' : 'en'}
+                    defaultCountryCode="+972"
                   />
                 </div>
 

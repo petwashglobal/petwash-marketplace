@@ -27,6 +27,7 @@ import {
 import { registerPasskey, isPasskeySupported, getBiometricMethodName } from "@/auth/passkey";
 import { motion } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
+import { PhoneInput } from '@/components/PhoneInput';
 
 interface SignUpProps {
   language: Language;
@@ -532,18 +533,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
             <div>
               <Label htmlFor="phone" className="text-gray-700 font-medium">{t('register.phone', language)}</Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                required
+              <PhoneInput
                 value={formData.phone}
-                onChange={handleChange}
-                placeholder="+972-50-123-4567"
-                pattern="^\+?[1-9]\d{1,14}$"
-                title={t('signUp.enterPhoneFormat', language)}
-                className="luxury-glass-minimal"
-                data-testid="input-phone"
+                onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+                language={language}
+                defaultCountryCode="+972"
               />
             </div>
 

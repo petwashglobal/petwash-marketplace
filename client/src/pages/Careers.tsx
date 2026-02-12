@@ -109,6 +109,7 @@ export default function Careers() {
     address: '',
     city: '',
     country: 'Israel',
+    postalCode: '',
     yearsExperience: 0,
     previousEmployer: '',
     relevantSkills: [] as string[],
@@ -187,6 +188,7 @@ export default function Careers() {
             address: step.data.address || prev.address,
             city: step.data.city || prev.city,
             country: step.data.country || prev.country,
+            postalCode: step.data.postalCode || prev.postalCode,
           }));
         } else if (step.stepNumber === 2) {
           setFormData(prev => ({
@@ -245,6 +247,7 @@ export default function Careers() {
         address: '',
         city: '',
         country: 'Israel',
+        postalCode: '',
         yearsExperience: 0,
         previousEmployer: '',
         relevantSkills: [],
@@ -283,6 +286,7 @@ export default function Careers() {
         address: formData.address,
         city: formData.city,
         country: formData.country,
+        postalCode: formData.postalCode,
       },
       2: {
         yearsExperience: formData.yearsExperience,
@@ -833,7 +837,8 @@ export default function Careers() {
                       ...prev, 
                       address: value,
                       city: details?.city || prev.city,
-                      country: details?.country || prev.country
+                      country: details?.country || prev.country,
+                      postalCode: details?.postalCode || prev.postalCode
                     }));
                   }}
                   onPlaceSelected={(place: PlaceDetails) => {
@@ -841,7 +846,8 @@ export default function Careers() {
                       ...prev, 
                       address: place.formattedAddress,
                       city: place.city || prev.city,
-                      country: place.country || prev.country
+                      country: place.country || prev.country,
+                      postalCode: place.postalCode || prev.postalCode
                     }));
                   }}
                   placeholder={isRTL ? 'הקלד כתובת...' : 'Start typing your address...'}
@@ -873,6 +879,19 @@ export default function Careers() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <Label htmlFor="postalCode">{isRTL ? 'מיקוד' : 'Postal Code'}</Label>
+                  <Input 
+                    id="postalCode"
+                    value={formData.postalCode}
+                    onChange={(e) => setFormData(prev => ({ ...prev, postalCode: e.target.value }))}
+                    placeholder={isRTL ? 'מיקוד (אופציונלי)' : 'Postal code (optional)'}
+                    data-testid="input-postal"
+                  />
                 </div>
               </div>
               

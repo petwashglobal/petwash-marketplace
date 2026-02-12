@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Gift, MapPin, Mail, User, Calendar, DollarSign } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PhoneInput } from '@/components/PhoneInput';
 
 interface BuyGiftCardProps {
   language: Language;
@@ -211,13 +213,11 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
 
                 <div>
                   <Label>{t('giftCards.recipientPhone', language)}</Label>
-                  <Input
-                    type="tel"
+                  <PhoneInput
                     value={formData.recipientPhone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, recipientPhone: e.target.value }))}
-                    placeholder="050-123-4567"
-                    autoComplete="tel"
-                    data-testid="input-recipient-phone"
+                    onChange={(value) => setFormData(prev => ({ ...prev, recipientPhone: value }))}
+                    language={language === 'he' ? 'he' : 'en'}
+                    defaultCountryCode="+972"
                   />
                 </div>
               </CardContent>
@@ -309,13 +309,15 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Input
-                  type="date"
+                <AppleWheelDatePicker
                   value={formData.deliveryDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, deliveryDate: e.target.value }))}
-                  min={new Date().toISOString().split('T')[0]}
-                  required
-                  data-testid="input-delivery-date"
+                  onChange={(date) => setFormData(prev => ({ ...prev, deliveryDate: date }))}
+                  minYear={new Date().getFullYear()}
+                  maxYear={new Date().getFullYear() + 1}
+                  label=""
+                  dayLabel={language === 'he' ? 'יום' : 'Day'}
+                  monthLabel={language === 'he' ? 'חודש' : 'Month'}
+                  yearLabel={language === 'he' ? 'שנה' : 'Year'}
                 />
               </CardContent>
             </Card>

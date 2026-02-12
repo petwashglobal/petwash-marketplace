@@ -10,6 +10,7 @@ import { AppleWheelDatePicker, AppleWheelSelect, type WheelPickerItem } from '@/
 import { useToast } from '@/hooks/use-toast';
 import type { Language } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
+import { PhoneInput } from '@/components/PhoneInput';
 
 interface AppleStyleRegistrationProps {
   isOpen: boolean;
@@ -315,14 +316,11 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
             </div>
             <div>
               <Label htmlFor="phone">{t('registration.phoneNumber', language)} *</Label>
-              <Input
-                id="phone"
-                type="tel"
+              <PhoneInput
                 value={formData.phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                className="text-lg p-3 mt-1"
-                placeholder={t('registration.phonePlaceholder', language)}
-                required
+                onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+                language={language === 'he' ? 'he' : 'en'}
+                defaultCountryCode="+972"
               />
             </div>
           </div>

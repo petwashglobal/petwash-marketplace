@@ -13,6 +13,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Shield, Mail, Phone, User, Calendar, Globe, Eye, EyeOff, Apple, Chrome, Facebook, Sparkles, Crown, Star } from 'lucide-react';
 import { OnboardingVerification } from './OnboardingVerification';
+import { PhoneInput } from '@/components/PhoneInput';
 
 interface CustomerSignupModalProps {
   isOpen: boolean;
@@ -407,13 +408,11 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                   <Label htmlFor="phone">
                     {t('customerSignup.phoneNumberField', language)}
                   </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
+                  <PhoneInput
                     value={formData.phone}
-                    onChange={(e) => updateFormData('phone', e.target.value)}
-                    required
-                    className="mt-2 h-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 bg-white/70 backdrop-blur-sm"
+                    onChange={(value) => updateFormData('phone', value)}
+                    language={language === 'he' ? 'he' : 'en'}
+                    defaultCountryCode="+972"
                   />
                 </div>
               </div>
