@@ -630,12 +630,21 @@ router.post('/start-application', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Position is no longer available' });
     }
     
-    // Create draft application
+    // Create draft application with placeholder values for required fields
     const [application] = await db
       .insert(staffApplications)
       .values({
         applicationType: position.roleType,
+        firstName: '',
+        lastName: '',
         email: email || `draft_${sessionId}@pending.petwash.co.il`,
+        phone: '',
+        dateOfBirth: '2000-01-01',
+        address: '',
+        city: '',
+        country: 'Israel',
+        positionId,
+        sessionId,
         status: 'draft',
         notes: JSON.stringify({
           positionId,
