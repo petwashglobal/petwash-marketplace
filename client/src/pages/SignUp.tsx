@@ -28,6 +28,7 @@ import { registerPasskey, isPasskeySupported, getBiometricMethodName } from "@/a
 import { motion } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
 import { PhoneInput } from '@/components/PhoneInput';
+import { SecurityCheckpoint } from '@/components/ReCaptcha';
 
 interface SignUpProps {
   language: Language;
@@ -46,6 +47,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -162,7 +164,15 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     // Clear any previous terms error
     setTermsError(false);
     
-    // Validate terms
+    if (!captchaToken) {
+      toast({
+        variant: "destructive",
+        title: language === 'he' ? 'נדרש אימות אבטחה' : 'Security verification required',
+        description: language === 'he' ? 'אנא השלם את אימות האבטחה לפני ההרשמה' : 'Please complete the security verification before registering'
+      });
+      return;
+    }
+
     if (!formData.acceptedTerms) {
       logger.warn("Terms not accepted");
       setTermsError(true);
@@ -262,7 +272,8 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           marketing: formData.marketing,
           pushNotifications: formData.pushNotifications,
           acceptedTerms: formData.acceptedTerms,
-          consentTimestamp
+          consentTimestamp,
+          captchaToken
         })
       });
       
@@ -687,11 +698,20 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               </div>
             </div>
 
+            <div className="pt-2">
+              <SecurityCheckpoint
+                onVerified={(token) => setCaptchaToken(token)}
+                onFailed={() => setCaptchaToken(null)}
+                language={language}
+                action="register"
+              />
+            </div>
+
             <Button
               id="createBtn"
               type="submit" 
               className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-base font-medium"
-              disabled={loading || !formData.acceptedTerms}
+              disabled={loading || !formData.acceptedTerms || !captchaToken}
               data-testid="button-createAccount"
             >
               {loading ? (

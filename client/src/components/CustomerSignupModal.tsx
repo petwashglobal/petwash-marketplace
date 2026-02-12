@@ -14,6 +14,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { Shield, Mail, Phone, User, Calendar, Globe, Eye, EyeOff, Apple, Chrome, Facebook, Sparkles, Crown, Star } from 'lucide-react';
 import { OnboardingVerification } from './OnboardingVerification';
 import { PhoneInput } from '@/components/PhoneInput';
+import { SecurityCheckpoint } from '@/components/ReCaptcha';
 
 interface CustomerSignupModalProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
   const [showVerification, setShowVerification] = useState(false);
   const [verificationTokens, setVerificationTokens] = useState<{ emailToken: string; smsToken: string } | null>(null);
   
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [formData, setFormData] = useState<SignupFormData>({
     firstName: '',
     lastName: '',
@@ -61,10 +63,10 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
     country: 'Israel',
     gender: '',
     petType: '',
-    loyaltyProgram: true, // Pre-checked (legally allowed)
-    reminders: true, // Pre-checked (legally allowed)
-    marketing: false, // Not pre-checked (privacy law compliant)
-    termsAccepted: false // Not pre-checked (privacy law compliant)
+    loyaltyProgram: true,
+    reminders: true,
+    marketing: false,
+    termsAccepted: false
   });
 
   const signupMutation = useMutation({
@@ -92,6 +94,15 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!captchaToken) {
+      toast({
+        title: language === 'he' ? 'נדרש אימות אבטחה' : 'Security verification required',
+        description: language === 'he' ? 'אנא השלם את אימות האבטחה לפני ההרשמה' : 'Please complete the security verification before registering',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!formData.termsAccepted) {
       toast({
         title: t('customerSignup.pleaseAcceptTerms', language),
@@ -115,7 +126,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
       return;
     }
 
-    signupMutation.mutate({ ...formData, ...verificationTokens } as any);
+    signupMutation.mutate({ ...formData, ...verificationTokens, captchaToken } as any);
   };
 
   const handleVerified = (tokens: { emailToken: string; smsToken: string; email: string; phone: string }) => {
@@ -124,7 +135,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
     setVerificationTokens(updatedTokens);
     setFormData(updatedFormData);
     setShowVerification(false);
-    signupMutation.mutate({ ...updatedFormData, ...updatedTokens } as any);
+    signupMutation.mutate({ ...updatedFormData, ...updatedTokens, captchaToken } as any);
   };
 
   const updateFormData = (field: keyof SignupFormData, value: any) => {
@@ -553,11 +564,21 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
             </CardContent>
           </Card>
 
+          {/* Security Checkpoint */}
+          <div className="pt-2">
+            <SecurityCheckpoint
+              onVerified={(token) => setCaptchaToken(token)}
+              onFailed={() => setCaptchaToken(null)}
+              language={language}
+              action="register"
+            />
+          </div>
+
           {/* Premium Submit Button */}
           <div className="pt-4">
             <Button
               type="submit"
-              disabled={signupMutation.isPending}
+              disabled={signupMutation.isPending || !captchaToken}
               className="w-full h-16 bg-gradient-to-r from-[#0a2540] via-[#1a365d] to-[#0a2540] hover:from-[#081c30] hover:via-[#152d4d] hover:to-[#081c30] text-white rounded-2xl text-xl font-bold shadow-2xl transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3"
             >
               {signupMutation.isPending ? (

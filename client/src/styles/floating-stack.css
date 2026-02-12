@@ -11,21 +11,22 @@
 
 .pw-float-stack {
   position: fixed;
-  right: 16px; /* CLOSER TO EDGE ON MOBILE */
+  right: 16px;
   bottom: 0;
-  z-index: 9050; /* FAB layer - below AI chat */
+  z-index: 9050;
   transition: opacity 0.2s ease;
   pointer-events: none;
-  /* Prevent overlap with bottom navigation or footer */
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 .pw-float {
   position: fixed;
-  right: 16px; /* CLOSER TO EDGE ON MOBILE */
-  z-index: 9050; /* FAB layer - below AI chat */
+  right: 16px;
+  z-index: 9050;
   width: 56px;
   height: 56px;
+  min-width: 48px;
+  min-height: 48px;
   border-radius: 50%;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
   border: none;
@@ -35,16 +36,16 @@
   align-items: center;
   justify-content: center;
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
-              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: auto;
+              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+  pointer-events: auto !important;
   animation: slideInRight 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  /* Ensure no overlap with scrollbars */
   margin-right: max(0px, calc(100vw - 100%));
-  /* Mobile touch improvements */
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Desktop - 24px from edge */
@@ -70,12 +71,13 @@
 }
 
 .pw-float:hover {
-  transform: scale(1.05); /* SMOOTH HOVER SCALE */
+  transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .pw-float:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
+  opacity: 0.9;
 }
 
 /* Accessibility - Top (160px from bottom) - Solid Black */
@@ -121,12 +123,12 @@
 /* RTL Support */
 [dir="rtl"] .pw-float {
   right: auto;
-  left: 16px; /* CLOSER TO EDGE ON MOBILE */
+  left: 16px;
 }
 
 [dir="rtl"] .pw-float-stack {
   right: auto;
-  left: 16px; /* CLOSER TO EDGE ON MOBILE */
+  left: 16px;
 }
 
 /* Desktop RTL - 24px from edge */

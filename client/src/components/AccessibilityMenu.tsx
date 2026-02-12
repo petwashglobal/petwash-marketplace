@@ -158,7 +158,7 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
   return (
     <div 
       className="fixed inset-0 bg-black/50 flex items-center justify-center p-4"
-      style={{ zIndex: 9200 }}
+      style={{ zIndex: 9200, touchAction: 'auto', WebkitTapHighlightColor: 'transparent' }}
       onClick={onClose}
       role="presentation"
     >

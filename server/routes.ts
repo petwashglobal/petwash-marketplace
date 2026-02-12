@@ -9326,8 +9326,33 @@ self.addEventListener('notificationclick', (event) => {
         marketing,
         pushNotifications,
         acceptedTerms,
-        consentTimestamp
+        consentTimestamp,
+        captchaToken
       } = req.body;
+
+      if (captchaToken) {
+        const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
+        if (RECAPTCHA_SECRET_KEY) {
+          try {
+            const params = new URLSearchParams({ secret: RECAPTCHA_SECRET_KEY, response: captchaToken });
+            if (req.ip) params.append('remoteip', req.ip);
+            const captchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: params.toString(),
+            });
+            const captchaResult = await captchaResponse.json();
+            if (!captchaResult.success || (captchaResult.score !== undefined && captchaResult.score < 0.3)) {
+              logger.warn('[ReCaptcha] Create-profile verification failed', { score: captchaResult.score, ip: req.ip });
+              return res.status(403).json({ success: false, error: 'Security verification failed' });
+            }
+          } catch (captchaErr) {
+            logger.error('[ReCaptcha] Create-profile verification error', captchaErr);
+          }
+        }
+      } else if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ success: false, error: 'Security verification required' });
+      }
       
       if (!firstName || !lastName || !email) {
         return res.status(400).json({ success: false, error: 'First name, last name, and email required' });

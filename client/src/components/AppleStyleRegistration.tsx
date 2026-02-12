@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Language } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
 import { PhoneInput } from '@/components/PhoneInput';
+import { SecurityCheckpoint } from '@/components/ReCaptcha';
 
 interface AppleStyleRegistrationProps {
   isOpen: boolean;
@@ -96,6 +97,7 @@ function getPetTypeItems(lang: Language): WheelPickerItem[] {
 }
 
 export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrationComplete }: AppleStyleRegistrationProps) {
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [formData, setFormData] = useState<RegistrationData>({
     firstName: '',
     lastName: '',
@@ -126,7 +128,6 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
     mutationFn: async (data: RegistrationData) => {
       const formDataToSend = new FormData();
       
-      // Add all form fields
       Object.entries(data).forEach(([key, value]) => {
         if (key === 'dateOfBirth') {
           formDataToSend.append('dateOfBirth', String(value));
@@ -138,6 +139,10 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
           formDataToSend.append(key, String(value));
         }
       });
+
+      if (captchaToken) {
+        formDataToSend.append('captchaToken', captchaToken);
+      }
 
       const response = await fetch(getApiUrl('/api/auth/register'), {
         method: 'POST',
@@ -184,6 +189,15 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
     e.preventDefault();
     
     // Validation
+    if (!captchaToken) {
+      toast({
+        title: language === 'he' ? 'נדרש אימות אבטחה' : 'Security verification required',
+        description: language === 'he' ? 'אנא השלם את אימות האבטחה לפני ההרשמה' : 'Please complete the security verification before registering',
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {
       toast({
         title: t('registration.missingInfoTitle', language),
@@ -522,10 +536,20 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
             </div>
           </div>
 
+          {/* Security Checkpoint */}
+          <div className="pt-2">
+            <SecurityCheckpoint
+              onVerified={(token) => setCaptchaToken(token)}
+              onFailed={() => setCaptchaToken(null)}
+              language={language}
+              action="register"
+            />
+          </div>
+
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={registrationMutation.isPending}
+            disabled={registrationMutation.isPending || !captchaToken}
             className="w-full bg-black text-white hover:bg-gray-800 py-4 text-xl font-semibold rounded-xl transition-colors shadow-lg"
           >
             {registrationMutation.isPending

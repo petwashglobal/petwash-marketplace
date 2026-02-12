@@ -10,6 +10,32 @@ import { logger } from './lib/logger';
 import { sendLuxuryEmail } from './email/luxury-email-service';
 import { generateCustomerWelcomeEmail } from './email/templates/welcome-customer-signup-2026';
 
+async function verifyRecaptchaToken(token: string, action: string, ip?: string): Promise<{ success: boolean; score?: number }> {
+  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+  if (!secretKey) {
+    logger.warn('[ReCaptcha] No secret key - passing through in dev');
+    return { success: true, score: 1.0 };
+  }
+  try {
+    const params = new URLSearchParams({ secret: secretKey, response: token });
+    if (ip) params.append('remoteip', ip);
+    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    const result = await response.json();
+    if (!result.success || (result.score !== undefined && result.score < 0.3)) {
+      logger.warn('[ReCaptcha] Verification failed for registration', { success: result.success, score: result.score, ip });
+      return { success: false, score: result.score };
+    }
+    return { success: true, score: result.score };
+  } catch (err) {
+    logger.error('[ReCaptcha] Server error during verification', err);
+    return { success: true, score: 0.5 };
+  }
+}
+
 const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string): Promise<string> {
@@ -64,10 +90,19 @@ export function setupCustomerAuth(app: Express) {
         loyaltyProgram,
         reminders,
         marketing,
-        termsAccepted
+        termsAccepted,
+        captchaToken
       } = req.body;
 
-      // Validate required fields
+      if (captchaToken) {
+        const captchaResult = await verifyRecaptchaToken(captchaToken, 'register', req.ip || undefined);
+        if (!captchaResult.success) {
+          return res.status(403).json({ message: "Security verification failed. Please try again." });
+        }
+      } else if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ message: "Security verification required" });
+      }
+
       if (!firstName || !lastName || !email || !phone || !password || !termsAccepted) {
         return res.status(400).json({
           message: "Missing required fields"

@@ -1,12 +1,20 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { Shield, CheckCircle2 } from 'lucide-react';
+import { Shield, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface ReCaptchaProps {
   onVerify?: (token: string) => void;
   onError?: (error: Error) => void;
   action?: string;
   language?: string;
+}
+
+interface SecurityCheckpointProps {
+  onVerified: (token: string) => void;
+  onFailed?: () => void;
+  language?: string;
+  action?: string;
+  required?: boolean;
 }
 
 declare global {
@@ -89,6 +97,154 @@ export async function verifyReCaptchaOnServer(token: string, action: string): Pr
     logger.error('[ReCaptcha] Server verification error:', err);
     return { success: false };
   }
+}
+
+export function SecurityCheckpoint({ 
+  onVerified, 
+  onFailed,
+  language = 'en',
+  action = 'register',
+  required = true
+}: SecurityCheckpointProps) {
+  const [status, setStatus] = useState<'idle' | 'verifying' | 'verified' | 'failed'>('idle');
+  const [animating, setAnimating] = useState(false);
+  const isHebrew = language === 'he';
+
+  const handleClick = useCallback(async () => {
+    if (status === 'verified' || status === 'verifying') return;
+    
+    setStatus('verifying');
+    setAnimating(true);
+
+    try {
+      const token = await executeReCaptcha(action);
+
+      if (token) {
+        const serverResult = await verifyReCaptchaOnServer(token, action);
+        
+        if (serverResult.success) {
+          setStatus('verified');
+          onVerified(token);
+        } else {
+          setStatus('failed');
+          onFailed?.();
+        }
+      } else {
+        setStatus('verified');
+        onVerified('bypass-no-key');
+      }
+    } catch (error) {
+      logger.error('[SecurityCheckpoint] Verification failed:', error);
+      setStatus('failed');
+      onFailed?.();
+    } finally {
+      setAnimating(false);
+    }
+  }, [status, action, onVerified, onFailed]);
+
+  const handleRetry = useCallback(() => {
+    setStatus('idle');
+  }, []);
+
+  return (
+    <div className="w-full" data-testid="security-checkpoint">
+      <div 
+        className={`
+          flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 cursor-pointer select-none
+          ${status === 'idle' ? 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-gray-100' : ''}
+          ${status === 'verifying' ? 'border-blue-200 bg-blue-50' : ''}
+          ${status === 'verified' ? 'border-green-200 bg-green-50' : ''}
+          ${status === 'failed' ? 'border-red-200 bg-red-50' : ''}
+        `}
+        onClick={status === 'failed' ? handleRetry : handleClick}
+        role="checkbox"
+        aria-checked={status === 'verified'}
+        aria-label={isHebrew ? 'אימות אבטחה - אני לא רובוט' : 'Security verification - I am not a robot'}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (status === 'failed') handleRetry();
+            else handleClick();
+          }
+        }}
+        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+      >
+        <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
+          {status === 'idle' && (
+            <div className="w-6 h-6 rounded-sm border-2 border-gray-400 bg-white transition-colors" />
+          )}
+          {status === 'verifying' && (
+            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+          )}
+          {status === 'verified' && (
+            <div className="w-6 h-6 rounded-sm bg-green-500 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-white" />
+            </div>
+          )}
+          {status === 'failed' && (
+            <div className="w-6 h-6 rounded-sm border-2 border-red-400 bg-white flex items-center justify-center">
+              <span className="text-red-500 text-sm font-bold">!</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium ${
+            status === 'verified' ? 'text-green-700' :
+            status === 'failed' ? 'text-red-700' :
+            status === 'verifying' ? 'text-blue-700' :
+            'text-gray-700'
+          }`}>
+            {status === 'idle' && (isHebrew ? 'אני לא רובוט' : "I'm not a robot")}
+            {status === 'verifying' && (isHebrew ? 'מאמת...' : 'Verifying...')}
+            {status === 'verified' && (isHebrew ? 'אומת בהצלחה' : 'Verified')}
+            {status === 'failed' && (isHebrew ? 'האימות נכשל - לחץ לניסיון נוסף' : 'Verification failed - click to retry')}
+          </p>
+        </div>
+
+        <div className="flex-shrink-0 flex flex-col items-center">
+          <Shield className={`w-5 h-5 ${
+            status === 'verified' ? 'text-green-500' :
+            status === 'failed' ? 'text-red-400' :
+            'text-gray-400'
+          }`} />
+          <span className="text-[8px] text-gray-400 mt-0.5 leading-tight">reCAPTCHA</span>
+        </div>
+      </div>
+      
+      {required && status === 'idle' && (
+        <p className="text-[11px] text-gray-400 mt-1 px-1">
+          {isHebrew ? 'נדרש אימות אבטחה לפני הרשמה' : 'Security verification required before registration'}
+        </p>
+      )}
+
+      <div className="flex items-center justify-center gap-1 mt-2">
+        <span className="text-[9px] text-gray-400">
+          {isHebrew ? 'מוגן על ידי' : 'Protected by'} Google reCAPTCHA
+        </span>
+        <a 
+          href="https://policies.google.com/privacy" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-[9px] text-blue-400 hover:text-blue-500"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {isHebrew ? 'פרטיות' : 'Privacy'}
+        </a>
+        <span className="text-[9px] text-gray-300">|</span>
+        <a 
+          href="https://policies.google.com/terms" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-[9px] text-blue-400 hover:text-blue-500"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {isHebrew ? 'תנאים' : 'Terms'}
+        </a>
+      </div>
+    </div>
+  );
 }
 
 export function ReCaptcha({ 

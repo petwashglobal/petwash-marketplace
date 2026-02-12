@@ -8,6 +8,32 @@ import { insertCustomerSchema } from '@shared/schema';
 import { z } from 'zod';
 import { logger } from './lib/logger';
 
+async function verifyRecaptchaToken(token: string, action: string, ip?: string): Promise<{ success: boolean; score?: number }> {
+  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+  if (!secretKey) {
+    logger.warn('[ReCaptcha] No secret key - passing through in dev');
+    return { success: true, score: 1.0 };
+  }
+  try {
+    const params = new URLSearchParams({ secret: secretKey, response: token });
+    if (ip) params.append('remoteip', ip);
+    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    const result = await response.json();
+    if (!result.success || (result.score !== undefined && result.score < 0.3)) {
+      logger.warn('[ReCaptcha] Verification failed for registration', { success: result.success, score: result.score, ip });
+      return { success: false, score: result.score };
+    }
+    return { success: true, score: result.score };
+  } catch (err) {
+    logger.error('[ReCaptcha] Server error during verification', err);
+    return { success: true, score: 0.5 };
+  }
+}
+
 const PostgresStore = connectPgSimple(session);
 
 declare global {
@@ -63,6 +89,16 @@ export function setupCustomAuth(app: Express) {
   // Register endpoint
   app.post('/api/auth/register', async (req: Request, res: Response) => {
     try {
+      const { captchaToken } = req.body;
+      if (captchaToken) {
+        const captchaResult = await verifyRecaptchaToken(captchaToken, 'register', req.ip || undefined);
+        if (!captchaResult.success) {
+          return res.status(403).json({ message: "Security verification failed. Please try again." });
+        }
+      } else if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ message: "Security verification required" });
+      }
+
       const registerSchema = insertCustomerSchema.omit({ 
         id: true, 
         createdAt: true, 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Accessibility } from 'lucide-react';
 import { AccessibilityMenu } from './AccessibilityMenu';
 import { Language, t } from '@/lib/i18n';
@@ -14,7 +14,7 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
   const { trackWhatsAppClick } = useAnalytics();
   const stackRef = useRef<HTMLDivElement>(null);
 
-  const handleWhatsAppClick = () => {
+  const handleWhatsAppClick = useCallback(() => {
     try {
       trackWhatsAppClick(language);
       
@@ -26,10 +26,17 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
     } catch (error) {
       window.location.href = `https://wa.me/972549833355`;
     }
-  };
+  }, [language, trackWhatsAppClick]);
+
+  const handleAccessibilityClick = useCallback(() => {
+    setIsAccessibilityMenuOpen(true);
+  }, []);
+
+  const handleAIClick = useCallback(() => {
+    onAIClick();
+  }, [onAIClick]);
 
   useEffect(() => {
-    // Singleton guard - prevent double-mounting
     if ((window as any).__PW_FLOAT_STACK_LOADED__) {
       return;
     }
@@ -37,7 +44,6 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
 
     const stack = stackRef.current;
 
-    // Keyboard avoidance for mobile
     function adjustForKeyboard() {
       if (!window.visualViewport || !stack) return;
       
@@ -45,7 +51,6 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
       const keyboardHeight = Math.max(0, window.innerHeight - vv.height);
       const extraOffset = keyboardHeight > 120 ? keyboardHeight - 8 : 0;
       
-      // Adjust all buttons together
       const buttons = stack.querySelectorAll('.pw-float');
       buttons.forEach((btn: Element) => {
         const htmlBtn = btn as HTMLElement;
@@ -60,16 +65,17 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
       adjustForKeyboard();
     }
 
-    // Dim FABs when input is focused
     const handleFocusIn = (e: FocusEvent) => {
       if (stack && (e.target as HTMLElement).matches('input, select, textarea')) {
-        stack.style.opacity = '0.15';
+        stack.style.opacity = '0.4';
+        stack.style.pointerEvents = 'auto';
       }
     };
 
     const handleFocusOut = () => {
       if (stack) {
         stack.style.opacity = '1';
+        stack.style.pointerEvents = '';
       }
     };
 
@@ -83,9 +89,6 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
       }
       document.removeEventListener('focusin', handleFocusIn);
       document.removeEventListener('focusout', handleFocusOut);
-      
-      // Keep singleton flag persistent - don't reset on unmount
-      // This prevents duplicates on soft reload/navigation
     };
   }, []);
 
@@ -96,27 +99,25 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
   return (
     <>
       <div ref={stackRef} className="pw-float-stack" dir="ltr">
-        {/* Accessibility - (160px from bottom: 16 + 56 + 16 + 56 + 16) */}
         <button
           id="pw-a11y"
           className="pw-float"
+          type="button"
           data-base-bottom="160"
           aria-label={accessibilityLabel}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsAccessibilityMenuOpen(true); }}
-          onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); setIsAccessibilityMenuOpen(true); }}
+          onClick={handleAccessibilityClick}
           data-testid="fab-accessibility"
         >
           <Accessibility className="h-6 w-6" aria-hidden="true" />
         </button>
 
-        {/* WhatsApp - Middle (88px from bottom: 16 + 56 + 16) */}
         <button
           id="pw-wa"
           className="pw-float"
+          type="button"
           data-base-bottom="88"
           aria-label={whatsappLabel}
           onClick={handleWhatsAppClick}
-          onTouchEnd={(e) => { e.preventDefault(); handleWhatsAppClick(); }}
           data-testid="fab-whatsapp"
         >
           <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
@@ -124,14 +125,13 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
           </svg>
         </button>
 
-        {/* PetWash AI (Kenzo) - Bottom (16px from bottom) */}
         <button
           id="pw-ai"
           className="pw-float pw-ai-btn"
+          type="button"
           data-base-bottom="16"
           aria-label={aiLabel}
-          onClick={onAIClick}
-          onTouchEnd={(e) => { e.preventDefault(); onAIClick(); }}
+          onClick={handleAIClick}
           data-testid="fab-ai"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
@@ -141,7 +141,6 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
         </button>
       </div>
 
-      {/* Skip to Content Link */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[10000] focus:bg-black focus:text-white focus:px-4 focus:py-2 focus:rounded-md focus:outline-none focus:ring-4 focus:ring-blue-500"
@@ -149,7 +148,6 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
         {language === 'he' ? 'דלג לתוכן הראשי' : 'Skip to main content'}
       </a>
 
-      {/* Accessibility Menu */}
       <AccessibilityMenu
         language={language}
         isOpen={isAccessibilityMenuOpen}
