@@ -31,6 +31,26 @@ import { nanoid } from 'nanoid';
 import EscrowService from '../services/EscrowService';
 import { createEarningRecord } from '../services/payoutLedger';
 import NotificationService from '../services/NotificationService';
+import { logBookingEvent, type BookingEventPayload } from '../services/bookingEventLogger';
+
+function buildEventPayload(booking: any): BookingEventPayload {
+  return {
+    requestId: booking.requestId,
+    providerType: booking.providerType,
+    serviceType: booking.serviceType,
+    ownerId: booking.ownerId,
+    providerId: booking.providerId,
+    startDate: booking.startDate?.toISOString?.() || String(booking.startDate),
+    endDate: booking.endDate?.toISOString?.() || String(booking.endDate),
+    totalDays: booking.totalDays || 1,
+    totalCents: booking.totalCents,
+    subtotalCents: booking.subtotalCents,
+    serviceFeeCents: booking.serviceFeeCents,
+    currency: booking.currency || 'ILS',
+    status: booking.status,
+    message: booking.ownerMessage || undefined,
+  };
+}
 
 const router = Router();
 
@@ -133,6 +153,10 @@ router.post('/', async (req, res) => {
       serviceType: data.serviceType,
       totalCents,
     });
+
+    logBookingEvent('created', buildEventPayload(booking), {
+      customerRequestedAt: new Date().toISOString(),
+    }).catch(() => {});
     
     res.status(201).json({
       success: true,
@@ -316,6 +340,13 @@ router.post('/:requestId/respond', async (req, res) => {
       action: data.action,
       newStatus,
     });
+
+    const eventType = data.action === 'accept' ? 'provider_accepted' : 'provider_declined';
+    const updatedBooking = { ...booking, status: newStatus, requestId };
+    logBookingEvent(eventType as any, buildEventPayload(updatedBooking), {
+      customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
+      providerRespondedAt: new Date().toISOString(),
+    }).catch(() => {});
     
     res.json({
       success: true,
@@ -377,6 +408,10 @@ router.post('/:requestId/meet-greet', async (req, res) => {
         })
         .where(eq(bookingRequests.requestId, requestId));
       
+      logBookingEvent('meet_greet_scheduled', buildEventPayload({ ...booking, status: 'meet_greet_scheduled' }), {
+        customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
+      }).catch(() => {});
+
       res.json({ success: true, message: 'Meet & Greet scheduled!' });
       
     } else if (action === 'complete') {
@@ -401,6 +436,10 @@ router.post('/:requestId/meet-greet', async (req, res) => {
         })
         .where(eq(bookingRequests.requestId, requestId));
       
+      logBookingEvent('meet_greet_completed', buildEventPayload({ ...booking, status: 'meet_greet_completed' }), {
+        customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
+      }).catch(() => {});
+
       res.json({ 
         success: true, 
         message: 'Meet & Greet completed! Awaiting payment from owner.',
@@ -502,6 +541,11 @@ router.post('/:requestId/pay', async (req, res) => {
       paymentMethod,
       escrowHoldHours: 72,
     });
+
+    logBookingEvent('payment_held', buildEventPayload({ ...booking, status: 'confirmed' }), {
+      customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
+      paymentHeldAt: new Date().toISOString(),
+    }).catch(() => {});
     
     res.json({
       success: true,
@@ -555,6 +599,11 @@ router.post('/:requestId/start', async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(bookingRequests.requestId, requestId));
+
+    logBookingEvent('service_started', buildEventPayload({ ...booking, status: 'in_progress' }), {
+      customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
+      serviceStartedAt: new Date().toISOString(),
+    }).catch(() => {});
     
     res.json({ success: true, message: 'Service started!' });
   } catch (error: any) {
@@ -603,6 +652,12 @@ router.post('/:requestId/complete', async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(bookingRequests.requestId, requestId));
+
+    logBookingEvent('service_completed', buildEventPayload({ ...booking, status: 'completed' }), {
+      customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
+      serviceStartedAt: booking.serviceStartedAt?.toISOString() || undefined,
+      serviceCompletedAt: new Date().toISOString(),
+    }).catch(() => {});
     
     res.json({ 
       success: true, 
@@ -731,6 +786,13 @@ router.post('/:requestId/confirm', async (req, res) => {
       paymentReleased: booking.subtotalCents,
       platformFee: booking.serviceFeeCents,
     });
+
+    logBookingEvent('owner_confirmed', buildEventPayload({ ...booking, status: finalStatus }), {
+      customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
+      serviceCompletedAt: booking.serviceCompletedAt?.toISOString() || undefined,
+      ownerConfirmedAt: new Date().toISOString(),
+      paymentReleasedAt: new Date().toISOString(),
+    }, { rating, review }).catch(() => {});
     
     res.json({
       success: true,
@@ -809,6 +871,11 @@ router.post('/:requestId/cancel', async (req, res) => {
       cancelledBy,
       refundCents,
     });
+
+    logBookingEvent('cancelled', buildEventPayload({ ...booking, status: 'cancelled' }), {
+      customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
+      cancelledAt: new Date().toISOString(),
+    }, { cancelledBy, reason, refundCents }).catch(() => {});
     
     res.json({
       success: true,

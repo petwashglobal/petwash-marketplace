@@ -1,0 +1,131 @@
+I can’t “click through” the real onboarding screens from here because your site is SPA-only and shows the JavaScript Required fallback to non-interactive clients.  ￼
+
+So I’ll do the next best thing: a deep logic audit of where KYC onboarding and “become provider” flows usually fail, and the exact checks your devs should run to pinpoint if it’s front end or back end.
+
+1) The 2 most common reasons “register fails at the end”
+
+A) Back end rejects the final submit
+
+Typical causes:
+	•	Missing required field after UI change (frontend sends undefined, API expects string)
+	•	Firebase rules deny write (permission denied) after auth state changes
+	•	Cloud Function timeout or unhandled exception (500) after file upload step
+	•	Twilio verification not completed, but UI still allows “Finish”
+
+What to do:
+	•	Open browser DevTools on iPad/iPhone (or desktop) and watch Network on the final submit:
+	•	If status is 4xx/5xx, it’s back end.
+	•	If no request is sent, it’s front end state or validation.
+
+B) Front end state resets right before final submit
+
+Typical causes:
+	•	auth token refresh causes React state reset
+	•	route change triggers unmount, losing form state
+	•	using localStorage on iOS Safari private mode (can fail silently)
+	•	multi-step form uses “staged data” but never persisted
+
+What to do:
+	•	Add one console log before submit:
+	•	log full payload you send
+	•	log current user.uid
+	•	log current step id
+
+2) Provider onboarding flow should be a strict state machine
+
+You want this in DB:
+
+providerApplications/{uid}
+	•	status: draft | kyc_pending | kyc_verified | approved | rejected
+	•	requiredMissing: array of missing items
+	•	lastStepCompleted
+	•	lastErrorCode
+	•	updatedAt
+
+Then UI always renders from status, not from local state.
+
+If you don’t do this, the user can reach “finish” but the back end thinks they are still missing something.
+
+3) KYC onboarding: where it breaks most
+
+If you do ID upload + selfie + address:
+	•	File upload fails (CORS, size limit, signed URL expired)
+	•	You store file ref in Firestore before upload finishes
+	•	You depend on Cloud Function to move the file and it times out
+
+Quick hard rules:
+	•	Upload first to Storage
+	•	Only after upload success, write Firestore record with the final Storage path
+	•	Cloud Function validates file exists before marking kyc_pending
+
+4) Searching for existing providers: why search shows empty
+
+Usually one of these:
+	•	Providers saved under wrong collection name or tenant path
+	•	Search page queries “approved providers”, but onboarding only creates “draft”
+	•	Firestore index missing, query fails in production (needs composite index)
+	•	Geo search mismatch (lat/lng not saved, city stored in Hebrew vs English)
+	•	Caching: client still reading old snapshot
+
+Minimum fix:
+	•	Make search query depend on status == approved
+	•	Ensure approval step sets:
+	•	status: approved
+	•	publicProfile: true
+	•	searchKey fields (cityNormalized, serviceTags, availability flags)
+
+5) One simple debug plan that finds the bug fast
+
+Tell your devs to do this in order:
+	1.	Reproduce on smallest iPhone and Safari
+
+	•	sign out
+	•	sign up
+	•	do full provider flow
+	•	screen record the last step
+
+	2.	Check final submit request
+
+	•	payload content
+	•	response code
+	•	response body
+
+	3.	Check server logs for that request
+
+	•	Cloud Functions logs (or Cloud Run logs)
+	•	Look for: permission denied, missing field, timeout, invalid argument
+
+	4.	Check Firestore writes
+
+	•	did providerApplications/{uid} write succeed?
+	•	did providers/{uid} write happen or fail?
+	•	did rules allow it?
+
+If you want, paste here the exact error message from the Network response or the Firebase logs, and I’ll tell you exactly which line is failing and the clean fix.
+
+6) Prevent this forever: add 3 telemetry points
+	•	Sentry (front end) to catch “end of flow” crashes
+	•	Server error codes with a stable dictionary (ex: PREG-012 missing_city)
+	•	An onboardingEvents log collection:
+	•	uid, step, ok, errorCode, ts, device, locale
+
+That makes bugs visible in 1 day instead of guessing.
+
+⸻
+
+Fast thing you can do now
+
+On the failing device, do:
+	•	open the last step
+	•	try submit
+	•	take screenshot of:
+	1.	Network request URL
+	2.	response status
+	3.	response JSON
+
+Send those 3 screenshots here and I’ll pinpoint whether it’s:
+	•	frontend validation
+	•	auth / rules
+	•	function crash
+	•	DB schema mismatch
+	•	KYC provider callback not returning success

@@ -265,6 +265,22 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
           displayName: `User ${formattedPhone.slice(-4)}`,
         });
         logger.info('[PhoneAuth] Created new user for phone:', formattedPhone.slice(0, 6) + '****');
+
+        try {
+          const { logNewUserRegistration } = await import('../services/bookingEventLogger');
+          logNewUserRegistration({
+            userId: user.uid,
+            firstName: `User`,
+            lastName: formattedPhone.slice(-4),
+            email: user.email || '',
+            phone: formattedPhone,
+            country: 'IL',
+            registrationSource: 'phone_auth',
+            language: 'he',
+          }).catch(() => {});
+        } catch (logErr) {
+          logger.warn('[PhoneAuth] Registration logging failed (non-blocking)', logErr);
+        }
       } else {
         throw error;
       }

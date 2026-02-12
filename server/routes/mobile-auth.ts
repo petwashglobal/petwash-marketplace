@@ -89,6 +89,23 @@ router.post('/google', async (req: Request, res: Response) => {
           emailVerified: payload.email_verified || false,
         });
         logger.info(`[Mobile Auth] New Firebase user created: ${email}`);
+
+        try {
+          const { logNewUserRegistration } = await import('../services/bookingEventLogger');
+          logNewUserRegistration({
+            userId: firebaseUser.uid,
+            firstName: name?.split(' ')[0] || '',
+            lastName: name?.split(' ').slice(1).join(' ') || '',
+            email: email || '',
+            phone: '',
+            country: 'IL',
+            registrationSource: 'mobile_google_auth',
+            profilePhotoUrl: picture || '',
+            language: 'he',
+          }).catch(() => {});
+        } catch (logErr) {
+          logger.warn('[Mobile Auth] Registration logging failed (non-blocking)', logErr);
+        }
       } else {
         throw error;
       }
