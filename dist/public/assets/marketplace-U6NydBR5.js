@@ -1,1 +1,0 @@
-import{c as r,l as s}from"./App-kfMc-Z5f.js";function t(e){return r({queryKey:["/api/marketplace/search",e],queryFn:async()=>(await s("POST","/api/marketplace/search",e)).json(),enabled:!!e.platform,staleTime:1e3*60*5})}function u(e,a){return r({queryKey:[`/api/marketplace/provider/${e}/${a}`],enabled:!!e&&!!a,staleTime:1e3*60*10})}export{t as a,u};

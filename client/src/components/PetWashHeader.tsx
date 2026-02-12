@@ -92,194 +92,133 @@ async function detectCountry(): Promise<string> {
   return "";
 }
 
-// Octopus platforms model
-const PLATFORM_GROUPS = [
-  {
-    id: "customer-experience",
-    title: "Customer platforms",
-    items: [
-      {
-        id: "hub",
-        label: "Pet Wash Hub",
-        description: "One 7 star account for all your pets and services",
-        href: "/hub",
-        frozen: false,
-      },
-      {
-        id: "stations",
-        label: "Pet Wash Stations",
-        description: "Self service K9000 organic wash locations",
-        href: "/stations",
-        frozen: false,
-      },
-      {
-        id: "sitter",
-        label: "Pet Sitter",
-        description: "Trusted pet and home sitting like Airbnb for pets",
-        href: "/sitter-suite",
-        frozen: false,
-      },
-      {
-        id: "walker",
-        label: "Pet Walker",
-        description: "Walks, play time and outdoor activities",
-        href: "/walk-my-pet",
-        frozen: false,
-      },
-      {
-        id: "transport",
-        label: "Pet Transport",
-        description: "Pet taxi between home, sitter and stations",
-        href: "/pettrek/book",
-        frozen: false,
-      },
-    ],
-  },
-  {
-    id: "partners-and-growth",
-    title: "Partners, academy and future",
-    items: [
-      {
-        id: "academy",
-        label: "Pet Wash Academy",
-        description: "Training, certification and education for pros",
-        href: "/academy",
-        frozen: false,
-      },
-      {
-        id: "shop",
-        label: "Pet Wash Shop",
-        description: "Organic care products and accessories (coming soon)",
-        href: "/shop",
-        frozen: true,
-      },
-      {
-        id: "avatar",
-        label: "Avatar Studio",
-        description: "AI pet avatar builder (frozen for now)",
-        href: "#",
-        frozen: true,
-      },
-    ],
-  },
+const T: Record<string, Record<string, string>> = {
+  "section.platforms": { en: "PLATFORMS", he: "פלטפורמות", ru: "ПЛАТФОРМЫ", fr: "PLATEFORMES", es: "PLATAFORMAS", ar: "المنصات" },
+  "group.customer": { en: "Customer platforms", he: "פלטפורמות לקוחות", ru: "Платформы для клиентов", fr: "Plateformes clients", es: "Plataformas para clientes", ar: "منصات العملاء" },
+  "group.partners": { en: "Partners, academy and future", he: "שותפים, אקדמיה ועתיד", ru: "Партнёры, академия и будущее", fr: "Partenaires, académie et avenir", es: "Socios, academia y futuro", ar: "شركاء، أكاديمية ومستقبل" },
+  "hub.label": { en: "Pet Wash Hub", he: "מרכז Pet Wash™", ru: "Центр Pet Wash™", fr: "Centre Pet Wash™", es: "Centro Pet Wash™", ar: "مركز Pet Wash™" },
+  "hub.desc": { en: "One 7 star account for all your pets and services", he: "חשבון אחד ב-7 כוכבים לכל חיות המחמד והשירותים שלך", ru: "Один аккаунт 7 звёзд для всех ваших питомцев и услуг", fr: "Un compte 7 étoiles pour tous vos animaux et services", es: "Una cuenta 7 estrellas para todas tus mascotas y servicios", ar: "حساب واحد بسبع نجوم لجميع حيواناتك وخدماتك" },
+  "stations.label": { en: "Pet Wash Stations", he: "תחנות Pet Wash™", ru: "Станции Pet Wash™", fr: "Stations Pet Wash™", es: "Estaciones Pet Wash™", ar: "محطات Pet Wash™" },
+  "stations.desc": { en: "Self service K9000 organic wash locations", he: "תחנות שטיפה אורגנית K9000™ בשירות עצמי", ru: "Станции органической мойки K9000™ самообслуживания", fr: "Stations de lavage organique K9000™ en libre-service", es: "Estaciones de lavado orgánico K9000™ de autoservicio", ar: "محطات غسيل عضوي K9000™ ذاتية الخدمة" },
+  "sitter.label": { en: "Pet Sitter", he: "שמרטף לחיות מחמד", ru: "Няня для питомцев", fr: "Garde d'animaux", es: "Cuidador de mascotas", ar: "جليس حيوانات أليفة" },
+  "sitter.desc": { en: "Trusted pet and home sitting like Airbnb for pets", he: "שמרטפות אמינות לחיות מחמד ולבית", ru: "Надёжный присмотр за питомцами и домом", fr: "Garde de confiance pour animaux et maison", es: "Cuidado confiable de mascotas y hogar", ar: "رعاية موثوقة للحيوانات الأليفة والمنزل" },
+  "walker.label": { en: "Pet Walker", he: "מטייל עם חיות מחמד", ru: "Выгул питомцев", fr: "Promeneur d'animaux", es: "Paseador de mascotas", ar: "مشّاي حيوانات أليفة" },
+  "walker.desc": { en: "Walks, play time and outdoor activities", he: "טיולים, משחקים ופעילויות חוץ", ru: "Прогулки, игры и активный отдых", fr: "Promenades, jeux et activités en plein air", es: "Paseos, juegos y actividades al aire libre", ar: "نزهات، وقت لعب وأنشطة خارجية" },
+  "transport.label": { en: "Pet Transport", he: "הסעות חיות מחמד", ru: "Перевозка питомцев", fr: "Transport d'animaux", es: "Transporte de mascotas", ar: "نقل حيوانات أليفة" },
+  "transport.desc": { en: "Pet taxi between home, sitter and stations", he: "מונית לחיות מחמד בין הבית, המטפל והתחנות", ru: "Такси для питомцев между домом, няней и станциями", fr: "Taxi pour animaux entre domicile, gardien et stations", es: "Taxi para mascotas entre hogar, cuidador y estaciones", ar: "تاكسي حيوانات بين المنزل والجليس والمحطات" },
+  "academy.label": { en: "Pet Wash Academy", he: "אקדמיית Pet Wash™", ru: "Академия Pet Wash™", fr: "Académie Pet Wash™", es: "Academia Pet Wash™", ar: "أكاديمية Pet Wash™" },
+  "academy.desc": { en: "Training, certification and education for pros", he: "הכשרה, הסמכה וחינוך למקצוענים", ru: "Обучение, сертификация и образование для профессионалов", fr: "Formation, certification et éducation pour professionnels", es: "Formación, certificación y educación para profesionales", ar: "تدريب وشهادات وتعليم للمحترفين" },
+  "shop.label": { en: "Pet Wash Shop", he: "חנות Pet Wash™", ru: "Магазин Pet Wash™", fr: "Boutique Pet Wash™", es: "Tienda Pet Wash™", ar: "متجر Pet Wash™" },
+  "shop.desc": { en: "Organic care products and accessories (coming soon)", he: "מוצרי טיפוח אורגניים ואביזרים (בקרוב)", ru: "Органические средства ухода и аксессуары (скоро)", fr: "Produits de soin bio et accessoires (bientôt)", es: "Productos de cuidado orgánico y accesorios (próximamente)", ar: "منتجات عناية عضوية وإكسسوارات (قريبًا)" },
+  "avatar.label": { en: "Avatar Studio", he: "סטודיו אווטאר", ru: "Студия аватаров", fr: "Studio Avatar", es: "Estudio Avatar", ar: "استوديو أفاتار" },
+  "avatar.desc": { en: "AI pet avatar builder (frozen for now)", he: "יוצר אווטאר בינה מלאכותית לחיות מחמד (מוקפא)", ru: "Создание аватаров питомцев с ИИ (заморожено)", fr: "Créateur d'avatars IA pour animaux (gelé)", es: "Creador de avatares IA para mascotas (congelado)", ar: "صانع صور رمزية بالذكاء الاصطناعي (مجمّد)" },
+  "frozen": { en: "FROZEN", he: "מוקפא", ru: "ЗАМОРОЖ.", fr: "GELÉ", es: "CONGELADO", ar: "مجمّد" },
+  "section.loyalty": { en: "LOYALTY, BOOKING AND CLUB", he: "נאמנות, הזמנות ומועדון", ru: "ЛОЯЛЬНОСТЬ, БРОНИРОВАНИЕ И КЛУБ", fr: "FIDÉLITÉ, RÉSERVATION ET CLUB", es: "FIDELIDAD, RESERVAS Y CLUB", ar: "الولاء والحجز والنادي" },
+  "booking.label": { en: "Smart booking", he: "הזמנה חכמה", ru: "Умное бронирование", fr: "Réservation intelligente", es: "Reserva inteligente", ar: "حجز ذكي" },
+  "loyalty-club.label": { en: "Loyalty & VIP Club", he: "מועדון נאמנות ו-VIP", ru: "Клуб лояльности и VIP", fr: "Club fidélité et VIP", es: "Club de fidelidad y VIP", ar: "نادي الولاء وكبار العملاء" },
+  "loyalty-tiers.label": { en: "Tiers: Member, Silver, Gold, VIP Elite", he: "דרגות: חבר, כסף, זהב, VIP Elite", ru: "Уровни: Участник, Серебро, Золото, VIP Elite", fr: "Niveaux : Membre, Argent, Or, VIP Elite", es: "Niveles: Miembro, Plata, Oro, VIP Elite", ar: "المستويات: عضو، فضي، ذهبي، VIP Elite" },
+  "loyalty-benefits.label": { en: "Benefits and perks", he: "הטבות ויתרונות", ru: "Привилегии и бонусы", fr: "Avantages et privilèges", es: "Beneficios y ventajas", ar: "مزايا وامتيازات" },
+  "loyalty-birthday.label": { en: "Birthday & special rewards", he: "הטבות יום הולדת ומיוחדות", ru: "Подарки на день рождения и специальные награды", fr: "Récompenses d'anniversaire et spéciales", es: "Recompensas de cumpleaños y especiales", ar: "مكافآت أعياد الميلاد والمكافآت الخاصة" },
+  "refer.label": { en: "Refer a friend", he: "הפנה חבר", ru: "Пригласите друга", fr: "Parrainez un ami", es: "Recomienda a un amigo", ar: "أحل صديقًا" },
+  "egift.label": { en: "eGift cards", he: "כרטיסי מתנה דיגיטליים", ru: "Электронные подарочные карты", fr: "Cartes cadeaux numériques", es: "Tarjetas de regalo digitales", ar: "بطاقات هدايا إلكترونية" },
+  "map.label": { en: "Find a station", he: "מצא תחנה", ru: "Найти станцию", fr: "Trouver une station", es: "Encontrar una estación", ar: "ابحث عن محطة" },
+  "section.partners": { en: "PARTNERS & FRANCHISE", he: "שותפים וזכיינות", ru: "ПАРТНЁРЫ И ФРАНШИЗА", fr: "PARTENAIRES ET FRANCHISE", es: "SOCIOS Y FRANQUICIA", ar: "الشركاء والامتياز" },
+  "franchise.label": { en: "Franchise & city partners", he: "זכיינות ושותפויות עירוניות", ru: "Франшиза и городские партнёры", fr: "Franchise et partenaires municipaux", es: "Franquicia y socios municipales", ar: "امتياز وشركاء بلديات" },
+  "business-locations.label": { en: "Business locations & landlords", he: "מיקומים עסקיים ובעלי נכסים", ru: "Бизнес-площадки и арендодатели", fr: "Emplacements commerciaux et propriétaires", es: "Ubicaciones comerciales y propietarios", ar: "مواقع تجارية وملّاك عقارات" },
+  "suppliers.label": { en: "Suppliers & brands", he: "ספקים ומותגים", ru: "Поставщики и бренды", fr: "Fournisseurs et marques", es: "Proveedores y marcas", ar: "موردون وعلامات تجارية" },
+  "municipal.label": { en: "Municipal & council projects", he: "פרויקטים עירוניים ומועצתיים", ru: "Муниципальные проекты", fr: "Projets municipaux et communaux", es: "Proyectos municipales", ar: "مشاريع بلدية ومحلية" },
+  "section.company": { en: "COMPANY", he: "חברה", ru: "КОМПАНИЯ", fr: "ENTREPRISE", es: "EMPRESA", ar: "الشركة" },
+  "about.label": { en: "About Pet Wash", he: "אודות Pet Wash™", ru: "О Pet Wash™", fr: "À propos de Pet Wash™", es: "Acerca de Pet Wash™", ar: "حول Pet Wash™" },
+  "story.label": { en: "Our story and mission", he: "הסיפור והמשימה שלנו", ru: "Наша история и миссия", fr: "Notre histoire et mission", es: "Nuestra historia y misión", ar: "قصتنا ومهمتنا" },
+  "media.label": { en: "Media, photos and videos", he: "מדיה, תמונות וסרטונים", ru: "Медиа, фото и видео", fr: "Médias, photos et vidéos", es: "Medios, fotos y vídeos", ar: "وسائط، صور وفيديوهات" },
+  "gallery.label": { en: "Gallery", he: "גלריה", ru: "Галерея", fr: "Galerie", es: "Galería", ar: "معرض" },
+  "careers.label": { en: "Careers", he: "קריירה", ru: "Карьера", fr: "Carrières", es: "Empleo", ar: "وظائف" },
+  "section.legal": { en: "LEGAL", he: "משפטי", ru: "ЮРИДИЧЕСКАЯ ИНФОРМАЦИЯ", fr: "MENTIONS LÉGALES", es: "LEGAL", ar: "قانوني" },
+  "terms.label": { en: "Terms and conditions", he: "תנאים והגבלות", ru: "Условия использования", fr: "Conditions générales", es: "Términos y condiciones", ar: "الشروط والأحكام" },
+  "privacy.label": { en: "Privacy & data protection", he: "פרטיות והגנת מידע", ru: "Конфиденциальность и защита данных", fr: "Confidentialité et protection des données", es: "Privacidad y protección de datos", ar: "الخصوصية وحماية البيانات" },
+  "egift-policy.label": { en: "eGift and refund policy", he: "מדיניות כרטיסי מתנה והחזרים", ru: "Политика подарочных карт и возврата", fr: "Politique de cartes cadeaux et remboursement", es: "Política de tarjetas regalo y reembolso", ar: "سياسة بطاقات الهدايا والاسترداد" },
+  "loyalty-terms.label": { en: "Loyalty & VIP Club terms", he: "תנאי מועדון נאמנות ו-VIP", ru: "Условия клуба лояльности и VIP", fr: "Conditions du club fidélité et VIP", es: "Términos del club de fidelidad y VIP", ar: "شروط نادي الولاء وكبار العملاء" },
+  "cookies.label": { en: "Cookies & tracking", he: "עוגיות ומעקב", ru: "Файлы cookie и отслеживание", fr: "Cookies et suivi", es: "Cookies y seguimiento", ar: "ملفات تعريف الارتباط والتتبع" },
+  "accessibility.label": { en: "Accessibility statement", he: "הצהרת נגישות", ru: "Заявление о доступности", fr: "Déclaration d'accessibilité", es: "Declaración de accesibilidad", ar: "بيان إمكانية الوصول" },
+  "section.support": { en: "SUPPORT", he: "תמיכה", ru: "ПОДДЕРЖКА", fr: "ASSISTANCE", es: "SOPORTE", ar: "الدعم" },
+  "faq.label": { en: "Help center & FAQ", he: "מרכז עזרה ושאלות נפוצות", ru: "Центр помощи и ЧЗВ", fr: "Centre d'aide et FAQ", es: "Centro de ayuda y preguntas frecuentes", ar: "مركز المساعدة والأسئلة الشائعة" },
+  "contact.label": { en: "Contact & WhatsApp", he: "צור קשר ו-WhatsApp", ru: "Контакты и WhatsApp", fr: "Contact et WhatsApp", es: "Contacto y WhatsApp", ar: "اتصل بنا وواتساب" },
+  "status.label": { en: "System status", he: "סטטוס מערכת", ru: "Статус системы", fr: "État du système", es: "Estado del sistema", ar: "حالة النظام" },
+  "nav.platforms": { en: "Platforms", he: "פלטפורמות", ru: "Платформы", fr: "Plateformes", es: "Plataformas", ar: "المنصات" },
+  "nav.loyalty": { en: "Loyalty & VIP Club", he: "מועדון נאמנות ו-VIP", ru: "Клуб лояльности", fr: "Club fidélité et VIP", es: "Club de fidelidad", ar: "نادي الولاء" },
+  "nav.about": { en: "About", he: "אודות", ru: "О нас", fr: "À propos", es: "Acerca de", ar: "حول" },
+  "nav.legal": { en: "Legal", he: "משפטי", ru: "Юридическое", fr: "Légal", es: "Legal", ar: "قانوني" },
+  "nav.support": { en: "Support", he: "תמיכה", ru: "Поддержка", fr: "Assistance", es: "Soporte", ar: "الدعم" },
+  "account": { en: "Account", he: "חשבון", ru: "Аккаунт", fr: "Compte", es: "Cuenta", ar: "الحساب" },
+  "signin": { en: "Sign in", he: "התחברות", ru: "Войти", fr: "Se connecter", es: "Iniciar sesión", ar: "تسجيل الدخول" },
+  "signup": { en: "Sign up", he: "הרשמה", ru: "Регистрация", fr: "S'inscrire", es: "Registrarse", ar: "إنشاء حساب" },
+  "myaccount": { en: "My account", he: "החשבון שלי", ru: "Мой аккаунт", fr: "Mon compte", es: "Mi cuenta", ar: "حسابي" },
+  "logout": { en: "Log out", he: "התנתק", ru: "Выйти", fr: "Déconnexion", es: "Cerrar sesión", ar: "تسجيل الخروج" },
+};
+
+function t(key: string, lang: string): string {
+  return T[key]?.[lang] || T[key]?.en || key;
+}
+
+const PLATFORM_ITEMS = [
+  { id: "hub", labelKey: "hub.label", descKey: "hub.desc", href: "/hub", frozen: false },
+  { id: "stations", labelKey: "stations.label", descKey: "stations.desc", href: "/stations", frozen: false },
+  { id: "sitter", labelKey: "sitter.label", descKey: "sitter.desc", href: "/sitter-suite", frozen: false },
+  { id: "walker", labelKey: "walker.label", descKey: "walker.desc", href: "/walk-my-pet", frozen: false },
+  { id: "transport", labelKey: "transport.label", descKey: "transport.desc", href: "/pettrek/book", frozen: false },
 ];
 
-// Global menu structure
-const MENU_STRUCTURE = {
-  // Main user flows
-  forUsers: [
-    {
-      id: "booking",
-      label: "Smart booking",
-      href: "/booking",
-      description: "Pet Wash style booking engine for all platforms",
-    },
-    {
-      id: "loyalty-club",
-      label: "Loyalty & VIP Club",
-      href: "/loyalty",
-      description: "Free to join. Earn points and climb tiers.",
-    },
-    {
-      id: "loyalty-tiers",
-      label: "Tiers: Member, Silver, Gold, VIP Elite",
-      href: "/loyalty/tiers",
-      description: "Luxury 4 tier structure for our best members.",
-    },
-    {
-      id: "loyalty-benefits",
-      label: "Benefits and perks",
-      href: "/loyalty/benefits",
-      description: "Discounted washes, early access, VIP events.",
-    },
-    {
-      id: "loyalty-birthday",
-      label: "Birthday & special rewards",
-      href: "/loyalty/birthday",
-      description: "Automatic surprises for pets and humans.",
-    },
-    {
-      id: "refer",
-      label: "Refer a friend",
-      href: "/loyalty/refer",
-      description: "Invite friends and earn wash credits.",
-    },
-    {
-      id: "egift",
-      label: "eGift cards",
-      href: "/egift",
-      description: "Digital Pet Wash gifts for friends and family.",
-    },
-    {
-      id: "map",
-      label: "Find a station",
-      href: "/map",
-      description: "Live map of all K9000 locations.",
-    },
-  ],
+const PARTNER_ITEMS = [
+  { id: "academy", labelKey: "academy.label", descKey: "academy.desc", href: "/academy", frozen: false },
+  { id: "shop", labelKey: "shop.label", descKey: "shop.desc", href: "/shop", frozen: true },
+  { id: "avatar", labelKey: "avatar.label", descKey: "avatar.desc", href: "#", frozen: true },
+];
 
-  // Partners and franchise
-  forPartners: [
-    {
-      id: "franchise",
-      label: "Franchise & city partners",
-      href: "/partners/franchise",
-    },
-    {
-      id: "business-locations",
-      label: "Business locations & landlords",
-      href: "/partners/locations",
-    },
-    {
-      id: "suppliers",
-      label: "Suppliers & brands",
-      href: "/partners/suppliers",
-    },
-    {
-      id: "municipal",
-      label: "Municipal & council projects",
-      href: "/partners/municipal",
-    },
-  ],
+const PLATFORM_GROUPS = [
+  { id: "customer-experience", titleKey: "group.customer", items: PLATFORM_ITEMS },
+  { id: "partners-and-growth", titleKey: "group.partners", items: PARTNER_ITEMS },
+];
 
-  // Company
-  company: [
-    { id: "about", label: "About Pet Wash", href: "/about" },
-    { id: "story", label: "Our story and mission", href: "/story" },
-    { id: "media", label: "Media, photos and videos", href: "/media" },
-    { id: "gallery", label: "Gallery", href: "/gallery" },
-    { id: "careers", label: "Careers", href: "/careers" },
-  ],
+const USER_MENU_ITEMS = [
+  { id: "booking", labelKey: "booking.label", href: "/booking" },
+  { id: "loyalty-club", labelKey: "loyalty-club.label", href: "/loyalty" },
+  { id: "loyalty-tiers", labelKey: "loyalty-tiers.label", href: "/loyalty/tiers" },
+  { id: "loyalty-benefits", labelKey: "loyalty-benefits.label", href: "/loyalty/benefits" },
+  { id: "loyalty-birthday", labelKey: "loyalty-birthday.label", href: "/loyalty/birthday" },
+  { id: "refer", labelKey: "refer.label", href: "/loyalty/refer" },
+  { id: "egift", labelKey: "egift.label", href: "/egift" },
+  { id: "map", labelKey: "map.label", href: "/map" },
+];
 
-  // Legal and compliance
-  legal: [
-    { id: "terms", label: "Terms and conditions", href: "/legal/terms" },
-    { id: "privacy", label: "Privacy & data protection", href: "/legal/privacy" },
-    {
-      id: "egift-policy",
-      label: "eGift and refund policy",
-      href: "/legal/egift-policy",
-    },
-    {
-      id: "loyalty-terms",
-      label: "Loyalty & VIP Club terms",
-      href: "/legal/loyalty-terms",
-    },
-    { id: "cookies", label: "Cookies & tracking", href: "/legal/cookies" },
-    {
-      id: "accessibility",
-      label: "Accessibility statement",
-      href: "/legal/accessibility",
-    },
-  ],
+const PARTNER_MENU_ITEMS = [
+  { id: "franchise", labelKey: "franchise.label", href: "/partners/franchise" },
+  { id: "business-locations", labelKey: "business-locations.label", href: "/partners/locations" },
+  { id: "suppliers", labelKey: "suppliers.label", href: "/partners/suppliers" },
+  { id: "municipal", labelKey: "municipal.label", href: "/partners/municipal" },
+];
 
-  // Support
-  support: [
-    { id: "faq", label: "Help center & FAQ", href: "/support" },
-    { id: "contact", label: "Contact & WhatsApp", href: "/contact" },
-    { id: "status", label: "System status", href: "/status" },
-  ],
-};
+const COMPANY_MENU_ITEMS = [
+  { id: "about", labelKey: "about.label", href: "/about" },
+  { id: "story", labelKey: "story.label", href: "/story" },
+  { id: "media", labelKey: "media.label", href: "/media" },
+  { id: "gallery", labelKey: "gallery.label", href: "/gallery" },
+  { id: "careers", labelKey: "careers.label", href: "/careers" },
+];
+
+const LEGAL_MENU_ITEMS = [
+  { id: "terms", labelKey: "terms.label", href: "/legal/terms" },
+  { id: "privacy", labelKey: "privacy.label", href: "/legal/privacy" },
+  { id: "egift-policy", labelKey: "egift-policy.label", href: "/legal/egift-policy" },
+  { id: "loyalty-terms", labelKey: "loyalty-terms.label", href: "/legal/loyalty-terms" },
+  { id: "cookies", labelKey: "cookies.label", href: "/legal/cookies" },
+  { id: "accessibility", labelKey: "accessibility.label", href: "/legal/accessibility" },
+];
+
+const SUPPORT_MENU_ITEMS = [
+  { id: "faq", labelKey: "faq.label", href: "/support" },
+  { id: "contact", labelKey: "contact.label", href: "/contact" },
+  { id: "status", labelKey: "status.label", href: "/status" },
+];
 
 // Optional props for controlled component mode
 interface PetWashHeaderProps {
@@ -451,14 +390,14 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                     setIsPlatformsOpen((prev) => !prev);
                   }}
                 >
-                  Platforms
+                  {t("nav.platforms", currentLanguage)}
                 </button>
                 {isPlatformsOpen && (
                   <div className="pw-mega-menu">
                     <div className="pw-mega-inner">
                       {PLATFORM_GROUPS.map((group) => (
                         <div className="pw-mega-column" key={group.id}>
-                          <div className="pw-mega-title">{group.title}</div>
+                          <div className="pw-mega-title">{t(group.titleKey, currentLanguage)}</div>
                           {group.items.map((item) => (
                             <button
                               key={item.id}
@@ -471,9 +410,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                                 handleNavigate(item.href);
                               }}
                             >
-                              <span>{item.label}</span>
+                              <span>{t(item.labelKey, currentLanguage)}</span>
                               {item.frozen ? (
-                                <span className="pw-pill-frozen">Frozen</span>
+                                <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
                               ) : (
                                 <span
                                   style={{
@@ -482,7 +421,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                                     marginLeft: 8,
                                   }}
                                 >
-                                  {item.description}
+                                  {t(item.descKey, currentLanguage)}
                                 </span>
                               )}
                             </button>
@@ -500,7 +439,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                   className="pw-nav-link"
                   onClick={() => handleNavigate("/loyalty")}
                 >
-                  Loyalty & VIP Club
+                  {t("nav.loyalty", currentLanguage)}
                 </button>
               </div>
 
@@ -510,7 +449,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                   className="pw-nav-link"
                   onClick={() => handleNavigate("/about")}
                 >
-                  About
+                  {t("nav.about", currentLanguage)}
                 </button>
               </div>
 
@@ -520,7 +459,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                   className="pw-nav-link"
                   onClick={() => handleNavigate("/legal/terms")}
                 >
-                  Legal
+                  {t("nav.legal", currentLanguage)}
                 </button>
               </div>
 
@@ -530,7 +469,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                   className="pw-nav-link"
                   onClick={() => handleNavigate("/support")}
                 >
-                  Support
+                  {t("nav.support", currentLanguage)}
                 </button>
               </div>
             </nav>
@@ -634,10 +573,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
         <div className="pw-mobile-menu-scroll">
           {/* Platforms */}
           <div className="pw-mobile-section">
-            <div className="pw-mobile-section-title">Platforms</div>
+            <div className="pw-mobile-section-title">{t("section.platforms", currentLanguage)}</div>
             {PLATFORM_GROUPS.map((group) => (
               <div className="pw-mobile-group" key={group.id}>
-                <div className="pw-mobile-group-title">{group.title}</div>
+                <div className="pw-mobile-group-title">{t(group.titleKey, currentLanguage)}</div>
                 <div className="pw-mobile-group-items">
                   {group.items.map((item) => (
                     <button
@@ -651,9 +590,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                         handleNavigate(item.href);
                       }}
                     >
-                      <span>{item.label}</span>
+                      <span>{t(item.labelKey, currentLanguage)}</span>
                       {item.frozen && (
-                        <span className="pw-pill-frozen">Frozen</span>
+                        <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
                       )}
                     </button>
                   ))}
@@ -665,71 +604,71 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           {/* Loyalty & VIP Club + user items */}
           <div className="pw-mobile-section">
             <div className="pw-mobile-section-title">
-              Loyalty, booking and club
+              {t("section.loyalty", currentLanguage)}
             </div>
-            {MENU_STRUCTURE.forUsers.map((item) => (
+            {USER_MENU_ITEMS.map((item) => (
               <button
                 key={item.id}
                 className="pw-mobile-link"
                 onClick={() => handleNavigate(item.href)}
               >
-                <span>{item.label}</span>
+                <span>{t(item.labelKey, currentLanguage)}</span>
               </button>
             ))}
           </div>
 
           {/* Partners */}
           <div className="pw-mobile-section">
-            <div className="pw-mobile-section-title">Partners & franchise</div>
-            {MENU_STRUCTURE.forPartners.map((item) => (
+            <div className="pw-mobile-section-title">{t("section.partners", currentLanguage)}</div>
+            {PARTNER_MENU_ITEMS.map((item) => (
               <button
                 key={item.id}
                 className="pw-mobile-link"
                 onClick={() => handleNavigate(item.href)}
               >
-                {item.label}
+                {t(item.labelKey, currentLanguage)}
               </button>
             ))}
           </div>
 
           {/* Company */}
           <div className="pw-mobile-section">
-            <div className="pw-mobile-section-title">Company</div>
-            {MENU_STRUCTURE.company.map((item) => (
+            <div className="pw-mobile-section-title">{t("section.company", currentLanguage)}</div>
+            {COMPANY_MENU_ITEMS.map((item) => (
               <button
                 key={item.id}
                 className="pw-mobile-link"
                 onClick={() => handleNavigate(item.href)}
               >
-                {item.label}
+                {t(item.labelKey, currentLanguage)}
               </button>
             ))}
           </div>
 
           {/* Legal */}
           <div className="pw-mobile-section">
-            <div className="pw-mobile-section-title">Legal</div>
-            {MENU_STRUCTURE.legal.map((item) => (
+            <div className="pw-mobile-section-title">{t("section.legal", currentLanguage)}</div>
+            {LEGAL_MENU_ITEMS.map((item) => (
               <button
                 key={item.id}
                 className="pw-mobile-link"
                 onClick={() => handleNavigate(item.href)}
               >
-                {item.label}
+                {t(item.labelKey, currentLanguage)}
               </button>
             ))}
           </div>
 
           {/* Support */}
           <div className="pw-mobile-section">
-            <div className="pw-mobile-section-title">Support</div>
-            {MENU_STRUCTURE.support.map((item) => (
+            <div className="pw-mobile-section-title">{t("section.support", currentLanguage)}</div>
+            {SUPPORT_MENU_ITEMS.map((item) => (
               <button
                 key={item.id}
                 className="pw-mobile-link"
                 onClick={() => handleNavigate(item.href)}
               >
-                {item.label}
+                {t(item.labelKey, currentLanguage)}
               </button>
             ))}
           </div>
@@ -737,7 +676,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           {/* Account / Sign in / Sign out */}
           <div className="pw-mobile-section">
             <div className="pw-mobile-section-title">
-              {user ? (currentLanguage === "he" || currentLanguage === "ar" ? "חשבון" : "Account") : (currentLanguage === "he" || currentLanguage === "ar" ? "התחברות" : "Sign in")}
+              {user ? t("account", currentLanguage) : t("signin", currentLanguage)}
             </div>
             {user ? (
               <>
@@ -745,7 +684,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                   className="pw-mobile-link"
                   onClick={() => handleNavigate("/my-account")}
                 >
-                  {currentLanguage === "he" ? "החשבון שלי" : currentLanguage === "ar" ? "حسابي" : currentLanguage === "ru" ? "Мой аккаунт" : currentLanguage === "fr" ? "Mon compte" : currentLanguage === "es" ? "Mi cuenta" : "My account"}
+                  {t("myaccount", currentLanguage)}
                 </button>
                 <button
                   className="pw-mobile-link pw-logout-btn"
@@ -755,7 +694,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                     window.location.assign("/");
                   }}
                 >
-                  {currentLanguage === "he" ? "התנתק" : currentLanguage === "ar" ? "تسجيل الخروج" : currentLanguage === "ru" ? "Выйти" : currentLanguage === "fr" ? "Déconnexion" : currentLanguage === "es" ? "Cerrar sesión" : "Log out"}
+                  {t("logout", currentLanguage)}
                 </button>
               </>
             ) : (
@@ -764,13 +703,13 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                   className="pw-mobile-link"
                   onClick={() => handleNavigate("/signin")}
                 >
-                  {currentLanguage === "he" ? "התחברות" : currentLanguage === "ar" ? "تسجيل الدخول" : currentLanguage === "ru" ? "Войти" : currentLanguage === "fr" ? "Se connecter" : currentLanguage === "es" ? "Iniciar sesión" : "Sign in"}
+                  {t("signin", currentLanguage)}
                 </button>
                 <button
                   className="pw-mobile-link"
                   onClick={() => handleNavigate("/signup")}
                 >
-                  {currentLanguage === "he" ? "הרשמה" : currentLanguage === "ar" ? "إنشاء حساب" : currentLanguage === "ru" ? "Регистрация" : currentLanguage === "fr" ? "S'inscrire" : currentLanguage === "es" ? "Registrarse" : "Sign up"}
+                  {t("signup", currentLanguage)}
                 </button>
               </>
             )}
