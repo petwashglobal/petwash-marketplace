@@ -59,8 +59,10 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
 
   const tier = getTier(config.value);
   const colors = tierColors[tier] || tierColors.CLASSIC;
+  const rtlLanguages = ['he', 'ar'];
   const isHe = config.messageLanguage === 'he' || config.messageLanguage === 'ar';
   const direction = isHe ? 'rtl' : 'ltr';
+  const msgDirection = rtlLanguages.includes(config.messageLanguage) ? 'rtl' : 'ltr';
   const emoji = occasionEmoji[config.occasion] || '🎁';
   const formattedValue = formatCurrency(config.value, config.currency);
   
@@ -251,11 +253,11 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
       <p style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#999;margin:0 0 8px;font-weight:500;">
         ${t.yourMessage}
       </p>
-      <div style="padding:16px;background:white;border-radius:6px;border-${isHe ? 'right' : 'left'}:3px solid ${colors.accent};">
-        <p style="font-size:14px;color:#444;margin:0;line-height:1.6;font-style:italic;">
+      <div dir="${msgDirection}" style="padding:16px;background:white;border-radius:6px;border-${msgDirection === 'rtl' ? 'right' : 'left'}:3px solid ${colors.accent};">
+        <p style="font-size:14px;color:#444;margin:0;line-height:1.6;font-style:italic;text-align:${msgDirection === 'rtl' ? 'right' : 'left'};">
           "${config.personalMessage}"
         </p>
-        <p style="font-size:11px;color:#aaa;margin:8px 0 0;text-align:${isHe ? 'left' : 'right'};">
+        <p style="font-size:11px;color:#aaa;margin:8px 0 0;text-align:${msgDirection === 'rtl' ? 'left' : 'right'};">
           — ${config.senderName}
         </p>
       </div>
@@ -280,16 +282,18 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
 </body>
 </html>`;
 
+  const recipientHeading = isHe ? 'קיבלת כרטיס מתנה!' : "You've Received a Gift Card!";
+  const recipientSubheading = isHe 
+    ? `${config.senderName} שלח/ה לך כרטיס מתנה של Pet Wash™`
+    : `${config.senderName} sent you a Pet Wash™ gift card`;
   const recipientHtml = html
-    .replace(t.heading, isHe ? 'קיבלת כרטיס מתנה!' : "You've Received a Gift Card!")
-    .replace(t.subheading, isHe 
-      ? `${config.senderName} שלח/ה לך כרטיס מתנה של Pet Wash™`
-      : `${config.senderName} sent you a Pet Wash™ gift card`);
+    .replace(`>${t.heading}<`, `>${recipientHeading}<`)
+    .replace(`>${t.subheading}<`, `>${recipientSubheading}<`);
 
   try {
     await sgMail.send({
       to: config.senderEmail,
-      from: { email: 'gifts@petwash.co.il', name: 'Pet Wash™ Gifts' },
+      from: { email: 'support@petwash.co.il', name: 'Pet Wash™' },
       subject: t.subject,
       html,
     });
@@ -305,7 +309,7 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
     
     await sgMail.send({
       to: config.recipientEmail,
-      from: { email: 'gifts@petwash.co.il', name: 'Pet Wash™ Gifts' },
+      from: { email: 'support@petwash.co.il', name: 'Pet Wash™' },
       subject: recipientSubject,
       html: recipientHtml,
     });

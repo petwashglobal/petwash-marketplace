@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -17,7 +15,6 @@ import { format, addDays, isValid, differenceInDays } from "date-fns";
 import { he } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
 import { useLanguage } from "@/lib/languageStore";
-import { useToast } from "@/hooks/use-toast";
 
 type ServiceType = 
   | 'boarding' 
@@ -643,93 +640,11 @@ export function MadPawsSearch({
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
   const [requestMeetAndGreet, setRequestMeetAndGreet] = useState(false);
 
-  const { toast } = useToast();
+
   const selectedServiceData = SERVICES.find(s => s.id === selectedService);
   const selectedPetTypeData = PET_TYPES.find(p => p.id === petType);
 
-  const mapServiceToBackend = (service: ServiceType): string => {
-    const serviceMap: Record<ServiceType, string> = {
-      'boarding': 'pet_sitting',
-      'house-sitting': 'pet_sitting',
-      'daycare': 'daycare',
-      'drop-in': 'pet_sitting',
-      'dog-walking': 'dog_walking',
-      'pet-taxi': 'pet_taxi',
-      'training': 'training',
-      'grooming': 'grooming',
-    };
-    return serviceMap[service];
-  };
-
-  const mapPetTypeToBackend = (pet: PetType): string => {
-    if (pet === 'puppy') return 'dog';
-    return pet;
-  };
-
-  const searchMutation = useMutation({
-    mutationFn: async (searchData: object) => {
-      const response = await apiRequest('POST', '/api/booking-search', searchData);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (onSearch) {
-        onSearch({
-          location,
-          service: selectedService,
-          petType,
-          petCount,
-          startDate,
-          endDate,
-          specialServices,
-          specialRequests,
-          allergies,
-          petName,
-          petBreed,
-          petSize,
-          petAge,
-          petGender,
-          energyLevel,
-          isDesexed,
-          isMicrochipped,
-          isToiletTrained,
-          hasSeparationAnxiety,
-          socialWithDogs,
-          socialWithCats,
-          socialWithChildren,
-          feedingInstructions,
-          walkingPreferences,
-          vetName,
-          vetPhone,
-          emergencyContactName,
-          emergencyContactPhone,
-        }, data);
-      }
-    },
-    onError: (error: Error) => {
-      if (!error.message?.includes('abort') && !error.message?.includes('cancel')) {
-        toast({
-          title: isHebrew ? 'שגיאה בחיפוש' : 'Search Error',
-          description: isHebrew ? 'לא הצלחנו לחפש ספקים. נסו שוב.' : error.message,
-          variant: 'destructive',
-        });
-      }
-    },
-  });
-
   const handleSearch = () => {
-    const backendFilters = {
-      serviceType: mapServiceToBackend(selectedService),
-      petCount,
-      petTypes: [mapPetTypeToBackend(petType)],
-      petSizes: petSize ? [petSize] : undefined,
-      city: location || undefined,
-      area: location || undefined,
-      startDate: startDate?.toISOString(),
-      endDate: endDate?.toISOString(),
-      medicationAdmin: specialServices.includes('medication'),
-      specialNeeds: hasSeparationAnxiety,
-    };
-
     const route = getRouteForService(selectedService);
     const targetPath = `${route}?location=${encodeURIComponent(location)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString() || ''}&end=${endDate?.toISOString() || ''}`;
     
@@ -1115,19 +1030,11 @@ export function MadPawsSearch({
           <div className="lg:col-span-1 flex items-end">
             <Button
               onClick={handleSearch}
-              disabled={searchMutation.isPending}
               className={`w-full h-12 bg-gradient-to-r ${t.buttonGradient} text-white rounded-xl font-semibold shadow-lg ${t.buttonShadow} transition-all hover:shadow-xl disabled:opacity-50`}
               data-testid="button-search"
             >
-              {searchMutation.isPending ? (
-                <Loader2 className="h-5 w-5 me-2 animate-spin" />
-              ) : (
-                <Search className="h-5 w-5 me-2" />
-              )}
-              {searchMutation.isPending 
-                ? (isHebrew ? 'מחפש...' : 'Searching...') 
-                : (isHebrew ? 'חיפוש' : 'Search')
-              }
+              <Search className="h-5 w-5 me-2" />
+              {isHebrew ? 'חיפוש' : 'Search'}
             </Button>
           </div>
         </div>
