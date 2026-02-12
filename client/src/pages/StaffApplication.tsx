@@ -26,7 +26,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { PhoneInput } from '@/components/PhoneInput';
-import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
+import { NativeDateSelect } from '@/components/ui/native-date-select';
 
 const applicationSchema = z.object({
   applicationType: z.enum(['sitter', 'walker', 'driver', 'trainer', 'host']),
@@ -338,15 +338,12 @@ export default function StaffApplication() {
                     <FormItem>
                       <FormLabel>Date of Birth *</FormLabel>
                       <FormControl>
-                        <AppleWheelDatePicker
+                        <NativeDateSelect
                           value={field.value}
                           onChange={field.onChange}
+                          language="en"
                           minYear={1940}
                           maxYear={new Date().getFullYear() - 18}
-                          label=""
-                          dayLabel="Day"
-                          monthLabel="Month"
-                          yearLabel="Year"
                         />
                       </FormControl>
                       <FormDescription>You must be 18+ to apply</FormDescription>

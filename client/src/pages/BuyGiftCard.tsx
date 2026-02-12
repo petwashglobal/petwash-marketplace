@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
-import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
+import { NativeDateSelect } from '@/components/ui/native-date-select';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Gift, MapPin, Mail, User, Calendar, DollarSign } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -309,15 +309,12 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <AppleWheelDatePicker
+                <NativeDateSelect
                   value={formData.deliveryDate}
                   onChange={(date) => setFormData(prev => ({ ...prev, deliveryDate: date }))}
+                  language={language}
                   minYear={new Date().getFullYear()}
                   maxYear={new Date().getFullYear() + 1}
-                  label=""
-                  dayLabel={language === 'he' ? 'יום' : 'Day'}
-                  monthLabel={language === 'he' ? 'חודש' : 'Month'}
-                  yearLabel={language === 'he' ? 'שנה' : 'Year'}
                 />
               </CardContent>
             </Card>

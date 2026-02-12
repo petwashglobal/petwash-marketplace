@@ -80,7 +80,7 @@ import {
 import { cn } from '@/lib/utils';
 import { usePhoneVerification } from '@/hooks/usePhoneVerification';
 import { PhoneInput } from '@/components/PhoneInput';
-import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
+import { NativeDateSelect } from '@/components/ui/native-date-select';
 import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import '@/styles/luxury-dark-2025.css';
 
@@ -974,15 +974,12 @@ export default function MyAccount() {
                       {isHebrew ? 'תאריך לידה' : 'Birthday'}
                     </Label>
                     {isEditing ? (
-                      <AppleWheelDatePicker
+                      <NativeDateSelect
                         value={editedProfile.birthdate || ''}
                         onChange={(date) => setEditedProfile({ ...editedProfile, birthdate: date })}
+                        language={isHebrew ? 'he' : 'en'}
                         minYear={1930}
                         maxYear={new Date().getFullYear() - 13}
-                        label=""
-                        dayLabel={isHebrew ? 'יום' : 'Day'}
-                        monthLabel={isHebrew ? 'חודש' : 'Month'}
-                        yearLabel={isHebrew ? 'שנה' : 'Year'}
                       />
                     ) : (
                       <p className="text-gray-900 text-lg">{profile.birthdate || '-'}</p>

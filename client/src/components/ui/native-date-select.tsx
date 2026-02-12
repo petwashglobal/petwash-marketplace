@@ -43,13 +43,15 @@ export function NativeDateSelect({
   const labels = DATE_LABELS[language] || DATE_LABELS.en;
   const months = MONTH_NAMES[language] || MONTH_NAMES.en;
   const parts = value ? value.split('-') : ['', '', ''];
-  const defaultDate = `${Math.max(minYear, maxYear - 25)}-01-01`;
 
   const updatePart = (index: number, val: string) => {
-    const current = value || defaultDate;
-    const p = current.split('-');
+    const p = [...parts];
     p[index] = val;
-    onChange(p.join('-'));
+    if (p[0] && p[1] && p[2]) {
+      onChange(p.join('-'));
+    } else {
+      onChange(p.join('-'));
+    }
   };
 
   return (

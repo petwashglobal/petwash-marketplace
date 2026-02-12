@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { AppleWheelDatePicker, AppleWheelSelect, type WheelPickerItem } from '@/components/ui/apple-wheel-picker';
+import { NativeDateSelect } from '@/components/ui/native-date-select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Language } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
@@ -41,60 +42,34 @@ interface RegistrationData {
   wantsVerification: boolean; // For senior/disability discount verification
 }
 
-const MONTH_NAMES: Record<string, string[]> = {
-  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-  he: ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'],
-  ar: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
-  ru: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
-  fr: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
-  es: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
-};
 
-const DATE_LABELS: Record<string, { day: string; month: string; year: string }> = {
-  en: { day: 'Day', month: 'Month', year: 'Year' },
-  he: { day: 'יום', month: 'חודש', year: 'שנה' },
-  ar: { day: 'يوم', month: 'شهر', year: 'سنة' },
-  ru: { day: 'День', month: 'Месяц', year: 'Год' },
-  fr: { day: 'Jour', month: 'Mois', year: 'Année' },
-  es: { day: 'Día', month: 'Mes', year: 'Año' },
-};
+const COUNTRY_DATA = [
+  { code: 'IL', names: { en: 'Israel', he: 'ישראל', ar: 'إسرائيل', ru: 'Израиль', fr: 'Israël', es: 'Israel' } },
+  { code: 'US', names: { en: 'United States', he: 'ארצות הברית', ar: 'الولايات المتحدة', ru: 'США', fr: 'États-Unis', es: 'Estados Unidos' } },
+  { code: 'CA', names: { en: 'Canada', he: 'קנדה', ar: 'كندا', ru: 'Канада', fr: 'Canada', es: 'Canadá' } },
+  { code: 'GB', names: { en: 'United Kingdom', he: 'בריטניה', ar: 'المملكة المتحدة', ru: 'Великобритания', fr: 'Royaume-Uni', es: 'Reino Unido' } },
+  { code: 'AU', names: { en: 'Australia', he: 'אוסטרליה', ar: 'أستراليا', ru: 'Австралия', fr: 'Australie', es: 'Australia' } },
+  { code: 'FR', names: { en: 'France', he: 'צרפת', ar: 'فرنسا', ru: 'Франция', fr: 'France', es: 'Francia' } },
+  { code: 'DE', names: { en: 'Germany', he: 'גרמניה', ar: 'ألمانيا', ru: 'Германия', fr: 'Allemagne', es: 'Alemania' } },
+  { code: 'JP', names: { en: 'Japan', he: 'יפן', ar: 'اليابان', ru: 'Япония', fr: 'Japon', es: 'Japón' } },
+  { code: 'KR', names: { en: 'South Korea', he: 'דרום קוריאה', ar: 'كوريا الجنوبية', ru: 'Южная Корея', fr: 'Corée du Sud', es: 'Corea del Sur' } },
+  { code: 'CN', names: { en: 'China', he: 'סין', ar: 'الصين', ru: 'Китай', fr: 'Chine', es: 'China' } },
+  { code: 'OTHER', names: { en: 'Other', he: 'אחר', ar: 'أخرى', ru: 'Другое', fr: 'Autre', es: 'Otro' } },
+];
 
-function getCountryItems(lang: Language): WheelPickerItem[] {
-  const countryData: { code: string; names: Record<string, string> }[] = [
-    { code: 'IL', names: { en: 'Israel', he: 'ישראל', ar: 'إسرائيل', ru: 'Израиль', fr: 'Israël', es: 'Israel' } },
-    { code: 'US', names: { en: 'United States', he: 'ארצות הברית', ar: 'الولايات المتحدة', ru: 'США', fr: 'États-Unis', es: 'Estados Unidos' } },
-    { code: 'CA', names: { en: 'Canada', he: 'קנדה', ar: 'كندا', ru: 'Канада', fr: 'Canada', es: 'Canadá' } },
-    { code: 'GB', names: { en: 'United Kingdom', he: 'בריטניה', ar: 'المملكة المتحدة', ru: 'Великобритания', fr: 'Royaume-Uni', es: 'Reino Unido' } },
-    { code: 'AU', names: { en: 'Australia', he: 'אוסטרליה', ar: 'أستراليا', ru: 'Австралия', fr: 'Australie', es: 'Australia' } },
-    { code: 'FR', names: { en: 'France', he: 'צרפת', ar: 'فرنسا', ru: 'Франция', fr: 'France', es: 'Francia' } },
-    { code: 'DE', names: { en: 'Germany', he: 'גרמניה', ar: 'ألمانيا', ru: 'Германия', fr: 'Allemagne', es: 'Alemania' } },
-    { code: 'JP', names: { en: 'Japan', he: 'יפן', ar: 'اليابان', ru: 'Япония', fr: 'Japon', es: 'Japón' } },
-    { code: 'KR', names: { en: 'South Korea', he: 'דרום קוריאה', ar: 'كوريا الجنوبية', ru: 'Южная Корея', fr: 'Corée du Sud', es: 'Corea del Sur' } },
-    { code: 'CN', names: { en: 'China', he: 'סין', ar: 'الصين', ru: 'Китай', fr: 'Chine', es: 'China' } },
-    { code: 'OTHER', names: { en: 'Other', he: 'אחר', ar: 'أخرى', ru: 'Другое', fr: 'Autre', es: 'Otro' } },
-  ];
-  return countryData.map(c => ({ value: c.code, label: c.names[lang] || c.names.en }));
-}
+const GENDER_DATA = [
+  { value: 'unspecified', names: { en: 'Prefer not to say', he: 'מעדיף/ה לא לציין', ar: 'أفضل عدم القول', ru: 'Не хочу указывать', fr: 'Préfère ne pas dire', es: 'Prefiero no decir' } },
+  { value: 'male', names: { en: 'Male', he: 'זכר', ar: 'ذكر', ru: 'Мужской', fr: 'Homme', es: 'Masculino' } },
+  { value: 'female', names: { en: 'Female', he: 'נקבה', ar: 'أنثى', ru: 'Женский', fr: 'Femme', es: 'Femenino' } },
+  { value: 'other', names: { en: 'Other', he: 'אחר', ar: 'أخرى', ru: 'Другое', fr: 'Autre', es: 'Otro' } },
+];
 
-function getGenderItems(lang: Language): WheelPickerItem[] {
-  const genders: { value: string; names: Record<string, string> }[] = [
-    { value: '', names: { en: 'Prefer not to say', he: 'מעדיף/ה לא לציין', ar: 'أفضل عدم القول', ru: 'Не хочу указывать', fr: 'Préfère ne pas dire', es: 'Prefiero no decir' } },
-    { value: 'male', names: { en: 'Male', he: 'זכר', ar: 'ذكر', ru: 'Мужской', fr: 'Homme', es: 'Masculino' } },
-    { value: 'female', names: { en: 'Female', he: 'נקבה', ar: 'أنثى', ru: 'Женский', fr: 'Femme', es: 'Femenino' } },
-    { value: 'other', names: { en: 'Other', he: 'אחר', ar: 'أخرى', ru: 'Другое', fr: 'Autre', es: 'Otro' } },
-  ];
-  return genders.map(g => ({ value: g.value, label: g.names[lang] || g.names.en }));
-}
-
-function getPetTypeItems(lang: Language): WheelPickerItem[] {
-  const pets: { value: string; names: Record<string, string> }[] = [
-    { value: 'dog', names: { en: 'Dog', he: 'כלב', ar: 'كلب', ru: 'Собака', fr: 'Chien', es: 'Perro' } },
-    { value: 'cat', names: { en: 'Cat', he: 'חתול', ar: 'قطة', ru: 'Кошка', fr: 'Chat', es: 'Gato' } },
-    { value: 'both', names: { en: 'Both', he: 'שניהם', ar: 'كلاهما', ru: 'Оба', fr: 'Les deux', es: 'Ambos' } },
-    { value: 'other', names: { en: 'Other', he: 'אחר', ar: 'أخرى', ru: 'Другое', fr: 'Autre', es: 'Otro' } },
-  ];
-  return pets.map(p => ({ value: p.value, label: p.names[lang] || p.names.en }));
-}
+const PET_TYPE_DATA = [
+  { value: 'dog', names: { en: 'Dog', he: 'כלב', ar: 'كلب', ru: 'Собака', fr: 'Chien', es: 'Perro' } },
+  { value: 'cat', names: { en: 'Cat', he: 'חתול', ar: 'قطة', ru: 'Кошка', fr: 'Chat', es: 'Gato' } },
+  { value: 'both', names: { en: 'Both', he: 'שניהם', ar: 'كلاهما', ru: 'Оба', fr: 'Les deux', es: 'Ambos' } },
+  { value: 'other', names: { en: 'Other', he: 'אחר', ar: 'أخرى', ru: 'Другое', fr: 'Autre', es: 'Otro' } },
+];
 
 export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrationComplete }: AppleStyleRegistrationProps) {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -230,11 +205,6 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
 
   if (!isOpen) return null;
 
-  const dateLabels = DATE_LABELS[language] || DATE_LABELS.en;
-  const monthNamesList = MONTH_NAMES[language] || MONTH_NAMES.en;
-  const countryItems = getCountryItems(language);
-  const genderItems = getGenderItems(language);
-  const petTypeItems = getPetTypeItems(language);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
@@ -385,42 +355,50 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
             </div>
           </div>
 
-          {/* Apple-Style Date of Birth Wheel Picker */}
-          <AppleWheelDatePicker
+          <NativeDateSelect
             value={formData.dateOfBirth}
             onChange={(date) => setFormData(prev => ({ ...prev, dateOfBirth: date }))}
             label={t('registration.dateOfBirth', language)}
+            language={language}
             minYear={1940}
             maxYear={new Date().getFullYear() - 13}
-            monthNames={monthNamesList}
-            dayLabel={dateLabels.day}
-            monthLabel={dateLabels.month}
-            yearLabel={dateLabels.year}
           />
 
-          {/* Country Wheel Selector */}
-          <AppleWheelSelect
-            items={countryItems}
-            value={formData.country}
-            onValueChange={(val) => setFormData(prev => ({ ...prev, country: val }))}
-            label={t('registration.country', language)}
-          />
+          <div>
+            <Label>{t('registration.country', language)}</Label>
+            <Select value={formData.country} onValueChange={(val) => setFormData(prev => ({ ...prev, country: val }))}>
+              <SelectTrigger className="h-10 mt-1"><SelectValue placeholder="--" /></SelectTrigger>
+              <SelectContent className="max-h-[200px]">
+                {COUNTRY_DATA.map(c => (
+                  <SelectItem key={c.code} value={c.code}>{(c.names as Record<string, string>)[language] || c.names.en}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          {/* Gender Wheel Selector */}
-          <AppleWheelSelect
-            items={genderItems}
-            value={formData.gender}
-            onValueChange={(val) => setFormData(prev => ({ ...prev, gender: val }))}
-            label={t('registration.gender', language)}
-          />
+          <div>
+            <Label>{t('registration.gender', language)}</Label>
+            <Select value={formData.gender} onValueChange={(val) => setFormData(prev => ({ ...prev, gender: val }))}>
+              <SelectTrigger className="h-10 mt-1"><SelectValue placeholder="--" /></SelectTrigger>
+              <SelectContent className="max-h-[200px]">
+                {GENDER_DATA.map(g => (
+                  <SelectItem key={g.value} value={g.value}>{(g.names as Record<string, string>)[language] || g.names.en}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          {/* Pet Type Wheel Selector */}
-          <AppleWheelSelect
-            items={petTypeItems}
-            value={formData.petType}
-            onValueChange={(val) => setFormData(prev => ({ ...prev, petType: val }))}
-            label={t('registration.petType', language)}
-          />
+          <div>
+            <Label>{t('registration.petType', language)}</Label>
+            <Select value={formData.petType} onValueChange={(val) => setFormData(prev => ({ ...prev, petType: val }))}>
+              <SelectTrigger className="h-10 mt-1"><SelectValue placeholder="--" /></SelectTrigger>
+              <SelectContent className="max-h-[200px]">
+                {PET_TYPE_DATA.map(p => (
+                  <SelectItem key={p.value} value={p.value}>{(p.names as Record<string, string>)[language] || p.names.en}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* ID Upload Section - Only visible if verification requested */}
           {formData.wantsVerification && (
