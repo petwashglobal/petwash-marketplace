@@ -17,6 +17,7 @@ import { createHash } from 'crypto';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
+import { logProviderApplication } from '../services/googleSheetsIntegration';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -309,6 +310,28 @@ router.post('/', upload.single('profilePhoto'), async (req: Request, res: Respon
       userId,
       serviceTypes: formData.serviceTypes
     });
+    
+    // Log to Google Sheets for external backup (legal compliance)
+    try {
+      await logProviderApplication({
+        applicationId: String(application.id),
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phoneNumber,
+        providerType: Array.isArray(formData.serviceTypes) ? formData.serviceTypes.join(', ') : formData.serviceTypes,
+        city: formData.city,
+        country: 'Israel',
+        selfiePhotoUrl: '',
+        governmentIdUrl: '',
+        biometricStatus: 'pending',
+        biometricScore: '0',
+        applicationStatus: 'Pending Review',
+      });
+      logger.info('[ProviderApplication] Logged to Google Sheets', { applicationId: application.id });
+    } catch (sheetsError) {
+      logger.error('[ProviderApplication] Failed to log to Google Sheets', { sheetsError, applicationId: application.id });
+    }
     
     // Send confirmation email
     try {

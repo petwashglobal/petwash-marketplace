@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { eq, and, or, desc, gte, sql } from "drizzle-orm";
 import { requireAuth } from "./customAuth";
-import { requireAdmin } from "./adminAuth";
+import { requireAdmin, requireAuthenticatedRole } from "./adminAuth";
 import { VoucherService } from "./voucherService";
 import { QRCodeService } from "./qrCode";
 // Nayax Firestore service now loaded dynamically in routes (no static import needed)
@@ -12571,7 +12571,9 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   // ==================== ADMIN BACKEND PANEL API ====================
   // Mobile-friendly admin endpoints for viewing members, providers, staff
-  app.get('/api/admin-panel/stats', requireAdmin, async (req: Request, res: Response) => {
+  // Restricted to HR, Finance, Directors, and Super Admins only
+  const requireAdminPanelAccess = requireAuthenticatedRole(['super_admin', 'admin', 'hr', 'finance', 'director']);
+  app.get('/api/admin-panel/stats', requireAdminPanelAccess, async (req: Request, res: Response) => {
     try {
       const usersResult = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
       const providersResult = await db.execute(sql`SELECT COUNT(*) as count FROM providers`);
@@ -12593,7 +12595,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
-  app.get('/api/admin-panel/members', requireAdmin, async (req: Request, res: Response) => {
+  app.get('/api/admin-panel/members', requireAdminPanelAccess, async (req: Request, res: Response) => {
     try {
       const search = (req.query.search as string) || '';
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
@@ -12621,7 +12623,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
-  app.get('/api/admin-panel/providers', requireAdmin, async (req: Request, res: Response) => {
+  app.get('/api/admin-panel/providers', requireAdminPanelAccess, async (req: Request, res: Response) => {
     try {
       const search = (req.query.search as string) || '';
       const status = (req.query.status as string) || '';
@@ -12657,7 +12659,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
-  app.get('/api/admin-panel/staff', requireAdmin, async (req: Request, res: Response) => {
+  app.get('/api/admin-panel/staff', requireAdminPanelAccess, async (req: Request, res: Response) => {
     try {
       const search = (req.query.search as string) || '';
       const status = (req.query.status as string) || '';

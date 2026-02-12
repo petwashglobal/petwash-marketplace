@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useLanguage } from '@/lib/languageStore';
+import { Layout } from '@/components/Layout';
 
 import pinkCard from '@assets/IMG_3094_1770832584882.png';
 import greenCard from '@assets/IMG_3091_1770832584882.png';
@@ -835,6 +836,7 @@ export default function EGift() {
     const suggestions = selectedOccasion?.messageSuggestions[messageLang.code] || selectedOccasion?.messageSuggestions.en || [];
 
     return (
+      <Layout>
       <div className="min-h-screen bg-white" dir={dir}>
         <div className="container mx-auto px-4 py-6 sm:py-8 max-w-5xl">
           <Button 
@@ -1085,10 +1087,12 @@ export default function EGift() {
           </div>
         </div>
       </div>
+      </Layout>
     );
   }
 
   return (
+    <Layout>
     <div className="min-h-screen bg-white" dir={dir}>
       <div className="container mx-auto px-4 py-12 sm:py-16">
         <div className="text-center mb-12 sm:mb-16">
@@ -1297,6 +1301,6 @@ export default function EGift() {
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }

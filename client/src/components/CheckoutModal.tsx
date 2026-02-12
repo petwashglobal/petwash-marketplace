@@ -126,8 +126,15 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 ltr"
-         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
-      <div className="bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl overflow-hidden">
+         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+         onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+         role="dialog"
+         aria-modal="true"
+         tabIndex={-1}
+         ref={(el) => el?.focus()}
+    >
+      <div className="bg-white w-full max-w-md mx-4 rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* Minimalist Header - Apple Style */}
         <div className="bg-white px-6 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between">
