@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -43,7 +43,11 @@ import {
   Globe,
   KeyRound,
   QrCode,
-  Award
+  Award,
+  Camera,
+  CheckCircle2,
+  Lock,
+  ImagePlus,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import {
@@ -249,6 +253,8 @@ export default function MyAccount() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
   const phoneVerification = usePhoneVerification();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const { data: walletData, isLoading: walletLoading } = useQuery<{ success: boolean; wallet: WalletSummary }>({
     queryKey: ['/api/credit-wallet/summary'],
@@ -259,6 +265,102 @@ export default function MyAccount() {
     queryKey: ['/api/user/profile'],
     enabled: !!user,
   });
+
+  const { data: verificationStatus } = useQuery<{
+    emailVerified: boolean;
+    phoneVerified: boolean;
+    isFullyVerified: boolean;
+    canUploadPhoto: boolean;
+    hasProfilePhoto: boolean;
+  }>({
+    queryKey: ['/api/user/settings/verification-status'],
+    enabled: !!user,
+    queryFn: async () => {
+      if (!user) return null;
+      const token = await user.getIdToken();
+      const res = await fetch('/api/user/settings/verification-status', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to fetch verification status');
+      return res.json();
+    },
+  });
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!user) return;
+    setIsUploadingPhoto(true);
+    try {
+      const token = await user.getIdToken();
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const res = await fetch('/api/user/settings/profile/photo', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 403) {
+          toast({
+            title: isHebrew ? 'נדרש אימות' : 'Verification Required',
+            description: isHebrew
+              ? 'יש לאמת אימייל וטלפון לפני העלאת תמונת פרופיל'
+              : 'Please verify your email and phone before uploading a profile photo',
+            variant: 'destructive',
+          });
+          return;
+        }
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings/verification-status'] });
+      toast({
+        title: isHebrew ? 'תמונה עודכנה' : 'Photo Updated',
+        description: isHebrew ? 'תמונת הפרופיל שלך עודכנה בהצלחה' : 'Your profile photo has been updated',
+      });
+    } catch (error: any) {
+      toast({
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: error.message || (isHebrew ? 'העלאת התמונה נכשלה' : 'Photo upload failed'),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handlePhotoDelete = async () => {
+    if (!user) return;
+    setIsUploadingPhoto(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/user/settings/profile/photo', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error('Delete failed');
+
+      queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings/verification-status'] });
+      toast({
+        title: isHebrew ? 'תמונה הוסרה' : 'Photo Removed',
+        description: isHebrew ? 'תמונת הפרופיל הוסרה' : 'Your profile photo has been removed',
+      });
+    } catch (error: any) {
+      toast({
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: isHebrew ? 'הסרת התמונה נכשלה' : 'Failed to remove photo',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const updateProfileMutation = useMutation({
     mutationFn: async (updates: Partial<UserProfile>) => {
@@ -543,13 +645,65 @@ export default function MyAccount() {
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
 
             <div className="flex flex-col md:flex-row items-center gap-8">
-              <div className="relative">
+              <div className="relative group">
                 <Avatar className="w-32 h-32 border-4 border-gray-200 shadow-sm">
                   <AvatarImage src={profile.photoURL} alt={profile.displayName} />
                   <AvatarFallback className="text-4xl font-bold bg-stone-100 text-stone-700">
                     {profile.displayName?.charAt(0) || 'P'}
                   </AvatarFallback>
                 </Avatar>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast({
+                          title: isHebrew ? 'קובץ גדול מדי' : 'File Too Large',
+                          description: isHebrew ? 'גודל מקסימלי: 5MB' : 'Maximum size: 5MB',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                      handlePhotoUpload(file);
+                    }
+                    e.target.value = '';
+                  }}
+                />
+                {verificationStatus?.canUploadPhoto ? (
+                  <button
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                    className="absolute -bottom-2 -left-2 p-2.5 rounded-full shadow-md bg-gray-900 text-white border-2 border-white hover:bg-gray-800 transition-all duration-200 cursor-pointer"
+                    title={isHebrew ? 'שנה תמונת פרופיל' : 'Change profile photo'}
+                  >
+                    {isUploadingPhoto ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Camera className="w-4 h-4" />
+                    )}
+                  </button>
+                ) : (
+                  <div
+                    className="absolute -bottom-2 -left-2 p-2.5 rounded-full shadow-md bg-gray-400 text-white border-2 border-white cursor-not-allowed"
+                    title={isHebrew ? 'אמתו אימייל וטלפון כדי להוסיף תמונה' : 'Verify email & phone to add photo'}
+                  >
+                    <Lock className="w-4 h-4" />
+                  </div>
+                )}
+                {profile.photoURL && verificationStatus?.canUploadPhoto && (
+                  <button
+                    onClick={handlePhotoDelete}
+                    disabled={isUploadingPhoto}
+                    className="absolute -top-1 -left-1 p-1.5 rounded-full shadow-sm bg-white text-red-500 border border-gray-200 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                    title={isHebrew ? 'הסר תמונה' : 'Remove photo'}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
                 <div className="absolute -bottom-2 -right-2 p-2 rounded-full shadow-sm bg-stone-100 border border-gray-200">
                   <TierIcon className="w-5 h-5 text-stone-700" />
                 </div>
@@ -682,7 +836,48 @@ export default function MyAccount() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="profile" className="mt-6">
+            <TabsContent value="profile" className="mt-6 space-y-6">
+              {verificationStatus && !verificationStatus.isFullyVerified && (
+                <div className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 rounded-full bg-amber-100">
+                      <Shield className="w-5 h-5 text-amber-700" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-amber-900 mb-1">
+                        {isHebrew ? 'אמתו את חשבונכם' : 'Verify Your Account'}
+                      </h4>
+                      <p className="text-amber-700 text-sm mb-3">
+                        {isHebrew
+                          ? 'אמתו את האימייל והטלפון שלכם כדי לפתוח את כל התכונות כולל תמונת פרופיל, הזמנות ושירותים'
+                          : 'Verify your email and phone to unlock all features including profile photo, bookings and services'}
+                      </p>
+                      <div className="flex flex-wrap gap-3">
+                        <div className={cn("flex items-center gap-2 text-sm px-3 py-1.5 rounded-full", verificationStatus.emailVerified ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600")}>
+                          {verificationStatus.emailVerified ? <CheckCircle2 className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+                          {isHebrew ? 'אימייל' : 'Email'} {verificationStatus.emailVerified ? '✓' : ''}
+                        </div>
+                        <div className={cn("flex items-center gap-2 text-sm px-3 py-1.5 rounded-full", verificationStatus.phoneVerified ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600")}>
+                          {verificationStatus.phoneVerified ? <CheckCircle2 className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
+                          {isHebrew ? 'טלפון' : 'Phone'} {verificationStatus.phoneVerified ? '✓' : ''}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {verificationStatus?.isFullyVerified && (
+                <div className="bg-green-50 rounded-2xl border border-green-200 p-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <p className="text-green-800 font-medium text-sm">
+                      {isHebrew ? 'החשבון שלכם מאומת - כל התכונות פתוחות' : 'Your account is verified - all features unlocked'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-semibold text-gray-900">

@@ -6,8 +6,21 @@ import admin from 'firebase-admin';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import crypto from 'crypto';
+import multer from 'multer';
 
 const router = Router();
+const photoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, and WebP images are allowed'));
+    }
+  },
+});
 
 const profileUpdateSchema = z.object({
   firstName: z.string().min(1).max(50).optional(),
@@ -500,6 +513,187 @@ router.get('/settings/phone/status', async (req, res) => {
   } catch (error: any) {
     logger.error('[ProfileSettings] Phone status error:', error);
     res.status(500).json({ error: 'Failed to get phone status' });
+  }
+});
+
+router.get('/settings/verification-status', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const uid = decodedToken.uid;
+
+    const firebaseUser = await admin.auth().getUser(uid);
+    const [dbUser] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+
+    const emailVerified = firebaseUser.emailVerified || dbUser?.emailVerified || false;
+    const phoneVerified = !!firebaseUser.phoneNumber || dbUser?.phoneVerified || false;
+    const isFullyVerified = emailVerified && phoneVerified;
+
+    res.json({
+      emailVerified,
+      phoneVerified,
+      isFullyVerified,
+      canUploadPhoto: isFullyVerified,
+      hasProfilePhoto: !!(dbUser?.profileImageUrl),
+    });
+  } catch (error: any) {
+    logger.error('[ProfileSettings] Verification status error:', error);
+    res.status(500).json({ error: 'Failed to get verification status' });
+  }
+});
+
+router.post('/settings/profile/photo', (req, res, next) => {
+  photoUpload.single('photo')(req, res, (err: any) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
+        }
+        return res.status(400).json({ error: `Upload error: ${err.message}` });
+      }
+      return res.status(400).json({ error: err.message || 'Invalid file type' });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const uid = decodedToken.uid;
+
+    const firebaseUser = await admin.auth().getUser(uid);
+    const [dbUser] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+
+    const emailVerified = firebaseUser.emailVerified || dbUser?.emailVerified || false;
+    const phoneVerified = !!firebaseUser.phoneNumber || dbUser?.phoneVerified || false;
+
+    if (!emailVerified || !phoneVerified) {
+      return res.status(403).json({
+        error: 'Verification required',
+        message: 'You must verify both email and phone before uploading a profile photo',
+        emailVerified,
+        phoneVerified,
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No photo file provided' });
+    }
+
+    const bucket = admin.storage().bucket();
+    const fileName = `profile-photos/${uid}/${Date.now()}_${crypto.randomBytes(8).toString('hex')}.${req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/webp' ? 'webp' : 'jpg'}`;
+    const file = bucket.file(fileName);
+
+    await file.save(req.file.buffer, {
+      metadata: {
+        contentType: req.file.mimetype,
+        metadata: {
+          uploadedBy: uid,
+          uploadedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+    try {
+      await file.makePublic();
+    } catch (e) {
+      logger.warn('[ProfileSettings] Could not make file public, using storage URL:', e);
+    }
+
+    if (dbUser) {
+      await db.update(users).set({ profileImageUrl: publicUrl }).where(eq(users.id, uid));
+    } else {
+      await db.insert(users).values({
+        id: uid,
+        email: firebaseUser.email || '',
+        firstName: firebaseUser.displayName?.split(' ')[0] || '',
+        lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+        profileImageUrl: publicUrl,
+      });
+    }
+
+    try {
+      await admin.auth().updateUser(uid, { photoURL: publicUrl });
+    } catch (e) {
+      logger.warn('[ProfileSettings] Failed to update Firebase photoURL:', e);
+    }
+
+    try {
+      const firestore = admin.firestore();
+      await firestore.collection('profile_change_audit').add({
+        userId: uid,
+        changedFields: ['profilePhoto'],
+        changeType: 'photo_upload',
+        newPhotoUrl: publicUrl,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+      });
+    } catch (e) {
+      logger.warn('[ProfileSettings] Failed to log photo audit:', e);
+    }
+
+    logger.info('[ProfileSettings] Profile photo uploaded for user:', uid);
+    res.json({
+      success: true,
+      photoURL: publicUrl,
+      message: 'Profile photo updated successfully',
+    });
+  } catch (error: any) {
+    logger.error('[ProfileSettings] Photo upload error:', error);
+    res.status(500).json({ error: 'Failed to upload profile photo' });
+  }
+});
+
+router.delete('/settings/profile/photo', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const uid = decodedToken.uid;
+
+    const [dbUser] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+
+    if (dbUser?.profileImageUrl) {
+      try {
+        const bucket = admin.storage().bucket();
+        const urlParts = dbUser.profileImageUrl.split(`${bucket.name}/`);
+        if (urlParts[1]) {
+          await bucket.file(urlParts[1]).delete().catch(() => {});
+        }
+      } catch (e) {
+        logger.warn('[ProfileSettings] Failed to delete old photo from storage:', e);
+      }
+    }
+
+    await db.update(users).set({ profileImageUrl: null }).where(eq(users.id, uid));
+
+    try {
+      await admin.auth().updateUser(uid, { photoURL: '' });
+    } catch (e) {
+      logger.warn('[ProfileSettings] Failed to clear Firebase photoURL:', e);
+    }
+
+    logger.info('[ProfileSettings] Profile photo removed for user:', uid);
+    res.json({ success: true, message: 'Profile photo removed' });
+  } catch (error: any) {
+    logger.error('[ProfileSettings] Photo delete error:', error);
+    res.status(500).json({ error: 'Failed to remove profile photo' });
   }
 });
 
