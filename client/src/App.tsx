@@ -54,6 +54,7 @@ const AccountingDashboard = lazy(() => import("@/pages/AccountingDashboard"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
+const VitoLoyaltySignup = lazy(() => import("@/pages/VitoLoyaltySignup"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
 const LoyaltyTiers = lazy(() => import("@/pages/LoyaltyTiers"));
@@ -421,6 +422,14 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* Vito™ Loyalty Club - Public registration */}
+        <Route path="/vito">
+          {() => <VitoLoyaltySignup language={language} onLanguageChange={handleLanguageChange} />}
+        </Route>
+        <Route path="/loyalty/join">
+          {() => <VitoLoyaltySignup language={language} onLanguageChange={handleLanguageChange} />}
+        </Route>
+
         {/* Protected route - Loyalty Program */}
         <Route path="/loyalty">
           {() => (
