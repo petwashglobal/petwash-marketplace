@@ -848,7 +848,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                   <Lock className="w-3 h-3" /><span>{t('privilege.secureNote', language)}</span>
                 </div>
                 <div className="text-center text-sm text-gray-400 pt-2">
-                  {t('privilege.alreadyMember', language)}{' '}
+                  {t('privilege.alreadyMemberForm', language)}{' '}
                   <Link href="/login" className="underline font-medium text-gray-600">{t('privilege.signInHere', language)}</Link>
                 </div>
               </motion.div>
