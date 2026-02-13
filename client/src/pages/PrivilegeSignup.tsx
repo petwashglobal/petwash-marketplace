@@ -441,40 +441,6 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
           </div>
         </section>
 
-        {/* MILESTONES */}
-        <section className="py-16 bg-white">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
-              <p className="text-sm uppercase tracking-[0.2em] font-medium text-gray-400 mb-3">{t('privilege.milestones', language)}</p>
-            </motion.div>
-            <div className="grid sm:grid-cols-4 gap-4">
-              {[
-                { date: t('privilege.milestone1Date', language), text: t('privilege.milestone1', language), icon: <Zap className="w-5 h-5" />, done: true },
-                { date: t('privilege.milestone2Date', language), text: t('privilege.milestone2', language), icon: <Crown className="w-5 h-5" />, done: true },
-                { date: t('privilege.milestone3Date', language), text: t('privilege.milestone3', language), icon: <Globe className="w-5 h-5" />, done: false },
-                { date: t('privilege.milestone4Date', language), text: t('privilege.milestone4', language), icon: <Sparkles className="w-5 h-5" />, done: false },
-              ].map((m, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className={`p-5 ${m.done ? 'bg-gray-50' : 'bg-white border border-dashed border-gray-200'}`}
-                  style={{ borderRadius: '2px' }}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`w-8 h-8 flex items-center justify-center ${m.done ? 'bg-white shadow-sm' : 'bg-gray-50'}`} style={{ borderRadius: '2px', color: m.done ? gold : '#d1d5db' }}>{m.icon}</div>
-                    {m.done && <Check className="w-3.5 h-3.5 text-green-500" />}
-                  </div>
-                  <span className={`text-[10px] uppercase tracking-wider font-bold ${m.done ? 'text-gray-900' : 'text-gray-400'}`}>{m.date}</span>
-                  <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{m.text}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* 7-STAR TIER SYSTEM */}
         <section className="py-16 bg-[#fafafa]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
