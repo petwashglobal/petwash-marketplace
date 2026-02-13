@@ -13,6 +13,7 @@ packages = ["openssl", "pngquant", "optipng", "k6", "dig", "jq", "psmisc", "git-
 deploymentTarget = "cloudrun"
 build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
+publicDir = "dist/public"
 
 [workflows]
 runButton = "Project"
