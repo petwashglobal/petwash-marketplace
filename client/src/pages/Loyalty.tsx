@@ -23,6 +23,274 @@ import { useLocation, Link } from "wouter";
 
 const gold = '#C9A96E';
 
+function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL: boolean }) {
+  const [, setLocation] = useLocation();
+
+  const benefits = [
+    { icon: <Star className="w-5 h-5" />, key: 'privilege.benefit1' },
+    { icon: <Sparkles className="w-5 h-5" />, key: 'privilege.benefit2' },
+    { icon: <Calendar className="w-5 h-5" />, key: 'privilege.benefit3' },
+    { icon: <Gift className="w-5 h-5" />, key: 'privilege.benefit4' },
+    { icon: <Heart className="w-5 h-5" />, key: 'privilege.benefit5' },
+    { icon: <Zap className="w-5 h-5" />, key: 'privilege.benefit6' },
+  ];
+
+  const tiers: { tier: LoyaltyTier; emoji: string }[] = [
+    { tier: 'new', emoji: '🌟' },
+    { tier: 'silver', emoji: '🥈' },
+    { tier: 'gold', emoji: '🥇' },
+    { tier: 'platinum', emoji: '💎' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#fafafa]" dir={isRTL ? 'rtl' : 'ltr'}>
+
+      {/* HERO - Bright white luxury */}
+      <section className="relative bg-white pt-16 sm:pt-24 pb-20 sm:pb-32 overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.012]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #000 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="text-center space-y-6 mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-2 mx-auto" style={{ background: `${gold}10`, borderRadius: '2px' }}>
+              <Shield className="w-3.5 h-3.5" style={{ color: gold }} />
+              <span className="text-[10px] uppercase tracking-[0.25em] font-bold" style={{ color: gold }}>{t('privilege.verifiedBadge', language)}</span>
+            </div>
+            <h1 className="text-4xl sm:text-6xl font-bold text-gray-900 leading-tight" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+              {t('privilege.heroTitle', language)}
+            </h1>
+            <p className="text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
+              {t('privilege.heroSubtitle', language)}
+            </p>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-gray-400">{t('privilege.freeExclusive', language)}</p>
+          </motion.div>
+
+          {/* FLOATING SHOWCASE CARD - Dark metallic */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="relative mx-auto max-w-lg"
+          >
+            <div
+              className="relative p-7 sm:p-9 text-white overflow-hidden"
+              style={{
+                background: 'radial-gradient(circle at 10% -10%, rgba(255,255,255,0.24), transparent 55%), radial-gradient(circle at 95% 110%, rgba(201,169,110,0.15), transparent 55%), linear-gradient(135deg, #05070a, #121b2a 60%, #1a2e3a 100%)',
+                borderRadius: '2px',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 30px 70px rgba(0,0,0,0.2), 0 12px 25px rgba(0,0,0,0.1)'
+              }}
+            >
+              <div className="absolute -top-20 -right-20 w-48 h-48 rounded-full bg-white/5 blur-3xl" />
+              <div className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-3xl" style={{ background: `${gold}08` }} />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <div className="text-[12px] tracking-[0.2em] uppercase text-white/50">Pet Wash™</div>
+                    <div className="text-[11px] tracking-[0.15em] uppercase mt-0.5" style={{ color: gold }}>PRIVILEGE CARD</div>
+                  </div>
+                  <div className="w-12 h-12 flex items-center justify-center" style={{ background: `${gold}15`, borderRadius: '2px' }}>
+                    <Crown className="w-6 h-6" style={{ color: gold }} />
+                  </div>
+                </div>
+
+                <div className="space-y-1 mb-8">
+                  <div className="text-[10px] uppercase tracking-wider text-white/40">{t('loyalty.currentTier', language)}</div>
+                  <div className="text-3xl sm:text-4xl font-bold" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: gold }}>
+                    {getTierDisplay('platinum', language as any)}
+                  </div>
+                </div>
+
+                <div className="h-1.5 bg-white/10 overflow-hidden mb-6" style={{ borderRadius: '1px' }}>
+                  <motion.div
+                    className="h-full"
+                    style={{ background: `linear-gradient(90deg, ${gold}, #e8d5a3)` }}
+                    initial={{ width: 0 }}
+                    animate={{ width: '85%' }}
+                    transition={{ delay: 0.8, duration: 1.5, ease: "easeOut" }}
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 pt-4 border-t border-white/10">
+                  <span className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-white/80" style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '2px' }}>
+                    {t('privilege.upTo50Off', language)}
+                  </span>
+                  <span className="px-3 py-1.5 text-[10px] uppercase tracking-wider" style={{ background: `${gold}15`, color: gold, borderRadius: '2px' }}>
+                    {t('privilege.exclusivePerks', language)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between mt-5 pt-3 border-t border-white/5">
+                  <div className="text-[9px] uppercase tracking-widest text-white/30">Member ID</div>
+                  <div className="text-[11px] font-mono tracking-wider text-white/40">PWP-XXXX-XXXX</div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* CTA Buttons under card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, duration: 0.6 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10"
+          >
+            <Button
+              className="w-full sm:w-auto px-10 py-4 text-sm font-bold text-white"
+              style={{ borderRadius: '2px', background: '#0a0a0a' }}
+              onClick={() => setLocation('/privilege')}
+            >
+              <ArrowRight className="w-4 h-4 mr-2" />
+              {t('loyalty.signUp', language)}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto px-10 py-4 text-sm font-medium border-gray-200 text-gray-700"
+              style={{ borderRadius: '2px' }}
+              onClick={() => setLocation('/signin')}
+            >
+              {t('privilege.alreadyMember', language)}
+            </Button>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* BENEFITS GRID */}
+      <section className="bg-[#fafafa] py-16 sm:py-20 border-t border-gray-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
+            <p className="text-[11px] uppercase tracking-[0.2em] font-medium text-gray-400 mb-3">PetWash™ Privilege</p>
+            <h2 className="text-2xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+              {t('privilege.benefitsTitle', language)}
+            </h2>
+          </motion.div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {benefits.map((benefit, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+                className="flex items-start gap-4 p-5 bg-white hover:bg-gray-50 transition-colors"
+                style={{ borderRadius: '2px', border: '1px solid #f0f0f0' }}
+              >
+                <div className="w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ background: `${gold}10`, borderRadius: '2px' }}>
+                  <div style={{ color: gold }}>{benefit.icon}</div>
+                </div>
+                <span className="text-sm font-medium text-gray-700 pt-2">{t(benefit.key, language)}</span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* TIER JOURNEY */}
+      <section className="bg-white py-16 sm:py-20 border-t border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
+            <h2 className="text-2xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+              {t('loyalty.allTiers', language)}
+            </h2>
+          </motion.div>
+          <div className="space-y-3">
+            {tiers.map((item, i) => {
+              const config = getTierConfig(item.tier);
+              const tierColors: Record<LoyaltyTier, { accent: string }> = {
+                new: { accent: '#6B7280' },
+                silver: { accent: '#94A3B8' },
+                gold: { accent: '#D4AF37' },
+                platinum: { accent: '#7C3AED' },
+              };
+
+              return (
+                <motion.div
+                  key={item.tier}
+                  initial={{ opacity: 0, x: isRTL ? -10 : 10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex items-center justify-between p-5 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  style={{ borderRadius: '2px', border: '1px solid #f0f0f0' }}
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-2xl">{item.emoji}</span>
+                    <div>
+                      <div className="text-sm font-bold text-gray-900">{getTierDisplay(item.tier, language as any)}</div>
+                      <div className="text-[11px] text-gray-400">{config.minWashes}+ {t('loyalty.washes', language)} · {config.discount}% {t('loyalty.discount', language)}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400">{config.perks.length} {t('loyalty.yourPerks', language)}</span>
+                    <div className="w-3 h-3 rounded-full" style={{ background: tierColors[item.tier].accent }} />
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* STATS ROW */}
+      <section className="bg-[#fafafa] border-t border-gray-100 py-14">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+            {[
+              { value: '24/7', label: t('privilege.stationAccess', language), icon: <Clock className="w-5 h-5" /> },
+              { value: '50%', label: t('privilege.maxDiscount', language), icon: <Gift className="w-5 h-5" /> },
+              { value: '100%', label: t('privilege.organicShampoo', language), icon: <Heart className="w-5 h-5" /> },
+              { value: '4', label: t('privilege.loyaltyTiers', language), icon: <Crown className="w-5 h-5" /> },
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+              >
+                <div className="flex justify-center mb-3 text-gray-300">{stat.icon}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{stat.value}</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">{stat.label}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="bg-white py-20 border-t border-gray-100">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="space-y-6">
+            <div className="w-16 h-16 mx-auto flex items-center justify-center" style={{ background: '#0a0a0a', borderRadius: '2px' }}>
+              <Diamond className="w-8 h-8" style={{ color: gold }} />
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+              {t('loyalty.title', language)}
+            </h2>
+            <p className="text-gray-500 max-w-lg mx-auto text-lg">{t('loyalty.subtitle', language)}</p>
+            <Button
+              className="px-12 py-4 text-sm font-bold text-white"
+              style={{ borderRadius: '2px', background: '#0a0a0a' }}
+              onClick={() => setLocation('/privilege')}
+            >
+              <Crown className="w-4 h-4 mr-2" />
+              {t('loyalty.signUp', language)}
+            </Button>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* FOOTER NOTE */}
+      <section className="bg-[#fafafa] border-t border-gray-100 py-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-300">
+            <Shield className="w-3.5 h-3.5" />
+            <span>Pet Wash™ Privilege · {t('privilege.dataProtected', language)}</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function Loyalty() {
   const { user: firebaseUser, loading: authLoading } = useFirebaseAuth();
   const { trackEvent } = useAnalytics();
@@ -69,7 +337,7 @@ export default function Loyalty() {
 
   const isRTL = language === 'he' || language === 'ar';
 
-  if (authLoading || loading) {
+  if (authLoading || (firebaseUser && loading)) {
     return (
       <Layout language={language} onLanguageChange={setLanguage}>
         <div className="min-h-screen flex items-center justify-center bg-[#fafafa]">
@@ -85,6 +353,14 @@ export default function Loyalty() {
             <p className="text-gray-400 text-sm uppercase tracking-[0.2em]">{t('loyalty.loading', language)}</p>
           </motion.div>
         </div>
+      </Layout>
+    );
+  }
+
+  if (!firebaseUser) {
+    return (
+      <Layout language={language} onLanguageChange={setLanguage}>
+        <PublicPrivilegeLanding language={language} isRTL={isRTL} />
       </Layout>
     );
   }
@@ -117,16 +393,6 @@ export default function Loyalty() {
     };
     const i18nKey = perkMap[perkKey];
     return i18nKey ? t(i18nKey, language) : perkKey;
-  };
-
-  const tierCardGradient = (tier: LoyaltyTier) => {
-    const map = {
-      new: { bg: '#f8f9fa', border: '#e5e7eb', accent: '#6B7280' },
-      silver: { bg: '#f1f3f5', border: '#d1d5db', accent: '#94A3B8' },
-      gold: { bg: '#fffbeb', border: '#fcd34d', accent: '#D4AF37' },
-      platinum: { bg: '#f5f3ff', border: '#c4b5fd', accent: '#7C3AED' },
-    };
-    return map[tier] || map.new;
   };
 
   const tierEmoji = (tier: LoyaltyTier) => {
@@ -181,7 +447,6 @@ export default function Loyalty() {
                     </div>
                   </div>
 
-                  {/* Tier & Wash Count */}
                   <div className="flex items-end justify-between mb-6">
                     <div>
                       <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">{t('loyalty.currentTier', language)}</div>
@@ -197,7 +462,6 @@ export default function Loyalty() {
                     </div>
                   </div>
 
-                  {/* Progress Bar to Next Tier */}
                   {tierProgress.nextTier && (
                     <div className="mb-5">
                       <div className="flex justify-between text-[10px] uppercase tracking-wider text-white/50 mb-2">
@@ -224,7 +488,6 @@ export default function Loyalty() {
                     </div>
                   )}
 
-                  {/* Card Footer Stats */}
                   <div className="flex items-center gap-4 pt-4 border-t border-white/10">
                     <span className="px-3 py-1 text-[10px] uppercase tracking-wider text-white/80" style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '2px' }}>
                       {currentTierConfig.discount}% {t('loyalty.discount', language)}
@@ -234,7 +497,6 @@ export default function Loyalty() {
                     </span>
                   </div>
 
-                  {/* Member ID */}
                   <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
                     <div className="text-[9px] uppercase tracking-widest text-white/30">Member ID</div>
                     <div className="text-[11px] font-mono tracking-wider text-white/40">{firebaseUser?.uid.slice(0, 12).toUpperCase()}</div>
@@ -305,7 +567,6 @@ export default function Loyalty() {
         <section className="bg-white py-14 border-t border-gray-100">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid md:grid-cols-2 gap-8 items-start">
-              {/* Premium Services List */}
               <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="space-y-5">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                   {t('loyalty.premiumServices', language)}
@@ -314,7 +575,7 @@ export default function Loyalty() {
                   {[
                     { icon: <Zap className="w-5 h-5" />, title: t('loyalty.prioritySupport', language), desc: t('loyalty.support247', language) },
                     { icon: <Heart className="w-5 h-5" />, title: t('loyalty.exclusiveAccess', language), desc: t('loyalty.earlyAccessProducts', language) },
-                    { icon: <Calendar className="w-5 h-5" />, title: t('loyalty.perk.birthdayBonus', language), desc: language === 'he' ? 'מתנות ליום הולדת שלך ושל חיית המחמד' : 'Birthday gifts for you and your pet' },
+                    { icon: <Calendar className="w-5 h-5" />, title: t('loyalty.perk.birthdayBonus', language), desc: t('privilege.benefit3', language) },
                   ].map((service, i) => (
                     <motion.div
                       key={i}
@@ -382,7 +643,12 @@ export default function Loyalty() {
                   {(['new', 'silver', 'gold', 'platinum'] as LoyaltyTier[]).map((tier, i) => {
                     const config = getTierConfig(tier);
                     const isCurrent = tier === tierProgress.currentTier;
-                    const tierColors = tierCardGradient(tier);
+                    const tierColors: Record<LoyaltyTier, { accent: string }> = {
+                      new: { accent: '#6B7280' },
+                      silver: { accent: '#94A3B8' },
+                      gold: { accent: '#D4AF37' },
+                      platinum: { accent: '#7C3AED' },
+                    };
 
                     return (
                       <motion.div
@@ -395,7 +661,7 @@ export default function Loyalty() {
                         style={{
                           borderRadius: '2px',
                           background: isCurrent ? 'white' : '#fafafa',
-                          border: isCurrent ? `2px solid ${tierColors.accent}` : '1px solid #f0f0f0',
+                          border: isCurrent ? `2px solid ${tierColors[tier].accent}` : '1px solid #f0f0f0',
                         }}
                       >
                         <div className="flex items-center gap-3">
@@ -404,15 +670,15 @@ export default function Loyalty() {
                             <div className="text-sm font-bold text-gray-900">
                               {getTierDisplay(tier, language as any)}
                               {isCurrent && (
-                                <span className="inline-block ml-2 px-2 py-0.5 text-[9px] uppercase tracking-wider font-bold text-white" style={{ background: tierColors.accent, borderRadius: '2px' }}>
-                                  {language === 'he' ? 'נוכחי' : 'Current'}
+                                <span className="inline-block ml-2 px-2 py-0.5 text-[9px] uppercase tracking-wider font-bold text-white" style={{ background: tierColors[tier].accent, borderRadius: '2px' }}>
+                                  {t('loyalty.currentTier', language)}
                                 </span>
                               )}
                             </div>
                             <div className="text-[11px] text-gray-400">{config.minWashes}+ {t('loyalty.washes', language)} · {config.discount}% {t('loyalty.discount', language)}</div>
                           </div>
                         </div>
-                        <div className="text-xs text-gray-400">{config.perks.length} {language === 'he' ? 'הטבות' : 'perks'}</div>
+                        <div className="text-xs text-gray-400">{config.perks.length} {t('loyalty.yourPerks', language)}</div>
                       </motion.div>
                     );
                   })}
@@ -442,7 +708,7 @@ export default function Loyalty() {
                 </Link>
                 <Link href="/loyalty/dashboard">
                   <Button variant="outline" className="px-8 py-3 text-sm font-medium border-gray-200 text-gray-700" style={{ borderRadius: '2px' }}>
-                    {language === 'he' ? 'לוח בקרה מתקדם' : 'Advanced Dashboard'}
+                    {t('loyalty.advancedDashboard', language)}
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 </Link>
@@ -456,7 +722,7 @@ export default function Loyalty() {
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div className="flex items-center justify-center gap-2 text-xs text-gray-300">
               <Shield className="w-3.5 h-3.5" />
-              <span>Pet Wash™ Privilege · {language === 'he' ? 'הנתונים שלך מוגנים ומוצפנים' : 'Your data is protected and encrypted'}</span>
+              <span>Pet Wash™ Privilege · {t('privilege.dataProtected', language)}</span>
             </div>
           </div>
         </section>
