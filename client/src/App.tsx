@@ -434,13 +434,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
 
-        {/* Protected route - Loyalty Program */}
+        {/* Loyalty Program - Public landing + member dashboard */}
         <Route path="/loyalty">
-          {() => (
-            <RequireAuth>
-              <Loyalty />
-            </RequireAuth>
-          )}
+          {() => <Loyalty />}
         </Route>
         
         {/* Protected route - Premium Loyalty Dashboard */}
