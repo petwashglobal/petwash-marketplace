@@ -146,6 +146,7 @@ const T: Record<string, Record<string, string>> = {
   "status.label": { en: "System status", he: "סטטוס מערכת", ru: "Статус системы", fr: "État du système", es: "Estado del sistema", ar: "حالة النظام" },
   "nav.platforms": { en: "Platforms", he: "פלטפורמות", ru: "Платформы", fr: "Plateformes", es: "Plataformas", ar: "المنصات" },
   "nav.loyalty": { en: "PetWash Privilege", he: "PetWash Privilege", ru: "PetWash Privilege", fr: "PetWash Privilege", es: "PetWash Privilege", ar: "PetWash Privilege" },
+  "nav.giftCards": { en: "e-Gift", he: "תווי שי דיגיטליים", ru: "Электронные ваучеры", fr: "Bons cadeaux", es: "Vales regalo", ar: "قسائم رقمية" },
   "nav.about": { en: "About", he: "אודות", ru: "О нас", fr: "À propos", es: "Acerca de", ar: "حول" },
   "nav.legal": { en: "Legal", he: "משפטי", ru: "Юридическое", fr: "Légal", es: "Legal", ar: "قانوني" },
   "nav.support": { en: "Support", he: "תמיכה", ru: "Поддержка", fr: "Assistance", es: "Soporte", ar: "الدعم" },

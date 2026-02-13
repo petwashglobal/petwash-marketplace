@@ -156,11 +156,11 @@ const translations: Record<string, Record<string, string>> = {
   },
   title: {
     en: 'Gift Card Credit',
-    he: 'כרטיס מתנה דיגיטלי',
-    ar: 'بطاقة هدايا رقمية',
-    ru: 'Подарочная карта',
-    fr: 'Carte cadeau numérique',
-    es: 'Tarjeta de regalo digital',
+    he: 'תווי שי דיגיטליים',
+    ar: 'قسائم رقمية',
+    ru: 'Электронные ваучеры',
+    fr: 'Bons cadeaux numériques',
+    es: 'Vales regalo digitales',
   },
   description: {
     en: 'Give the gift of premium pet care credit. Use anywhere across \u2066Pet Wash™\u2069 platforms - from self-service washes to pet sitting, dog walking, adventures, and more!',

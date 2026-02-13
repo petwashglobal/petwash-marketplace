@@ -16,7 +16,7 @@ export const translations: TranslationStrings = {
   // Navigation
   'nav.home': { en: 'Home', he: 'בית', ar: 'الرئيسية', ru: 'Главная', fr: 'Accueil', es: 'Inicio' },
   'nav.packages': { en: 'Wash Packages', he: 'חבילות רחיצה', ar: 'باقات الغسيل', ru: 'Пакеты мойки', fr: 'Forfaits de lavage', es: 'Paquetes de lavado' },
-  'nav.giftCards': { en: 'Luxe E-Vouchers', he: 'שוברים יוקרתיים', ar: 'قسائم فاخرة', ru: 'Роскошные ваучеры', fr: 'Bons de luxe', es: 'Vales de lujo' },
+  'nav.giftCards': { en: 'e-Gift', he: 'תווי שי דיגיטליים', ar: 'قسائم رقمية', ru: 'Электронные ваучеры', fr: 'Bons cadeaux', es: 'Vales regalo' },
   'nav.loyalty': { en: 'PetWash Privilege', he: 'PetWash Privilege', ar: 'PetWash Privilege', ru: 'PetWash Privilege', fr: 'PetWash Privilege', es: 'PetWash Privilege' },
   'nav.gallery': { en: 'Gallery', he: 'גלריה', ar: 'معرض', ru: 'Галерея', fr: 'Galerie', es: 'Galería' },
   'nav.contact': { en: 'Contact', he: 'צור קשר', ar: 'اتصل', ru: 'Контакт', fr: 'Contact', es: 'Contacto' },
