@@ -366,14 +366,14 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
                   <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                     <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" strokeWidth={1.5} />
                     <h4 className="text-lg sm:text-xl md:text-2xl font-serif font-light text-gray-900">
-                      {isHebrew ? 'כרטיס מתנה אלקטרוני' : 'E-Gift Card'}
+                      {isHebrew ? 'תו שי דיגיטלי' : 'E-Gift Card'}
                     </h4>
                     <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" strokeWidth={1.5} />
                   </div>
                   
                   <p className="text-sm sm:text-base text-gray-700 font-light mb-4 sm:mb-6 leading-relaxed max-w-2xl mx-auto">
                     {isHebrew 
-                      ? 'רכשו כרטיס מתנה דיגיטלי ושלחו אותו באופן מיידי לאהוביכם. משלוח מיידי למייל או WhatsApp.'
+                      ? 'רכשו תו שי דיגיטלי ושלחו אותו באופן מיידי לאהוביכם. משלוח מיידי למייל או WhatsApp.'
                       : 'Purchase a digital gift card and send it instantly to your loved ones. Immediate delivery via email or WhatsApp.'}
                   </p>
 
@@ -386,7 +386,7 @@ export function LoyaltyWelcomeModal({ language }: LoyaltyWelcomeModalProps) {
                     className="px-8 sm:px-10 md:px-12 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-light tracking-wider bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-600 hover:via-yellow-600 hover:to-amber-700 text-white shadow-[0_15px_45px_rgba(217,119,6,0.3)] hover:shadow-[0_20px_55px_rgba(217,119,6,0.4)] transition-all duration-500 hover:scale-105 rounded-full"
                     data-testid="button-express-egift"
                   >
-                    {isHebrew ? '⚡ קנייה מהירה - כרטיס מתנה' : '⚡ Express Checkout - Gift Card'}
+                    {isHebrew ? '⚡ קנייה מהירה - תו שי' : '⚡ Express Checkout - Gift Card'}
                   </Button>
 
                   <div className="flex items-center justify-center gap-3 sm:gap-4 mt-4 sm:mt-5 text-xs sm:text-sm text-gray-600 font-light">

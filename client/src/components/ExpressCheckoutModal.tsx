@@ -61,7 +61,7 @@ const tx = (key: string, lang: string): string => {
     privacyLink: { he: 'מדיניות פרטיות', en: 'Privacy Policy', ar: 'سياسة الخصوصية', ru: 'Политикой конфиденциальности', fr: 'Politique de confidentialité', es: 'Política de Privacidad' },
     orderSummary: { he: 'סיכום הזמנה', en: 'Order summary', ar: 'ملخص الطلب', ru: 'Сводка заказа', fr: 'Résumé de la commande', es: 'Resumen del pedido' },
     total: { he: 'סה"כ לתשלום', en: 'Total', ar: 'المجموع', ru: 'Итого', fr: 'Total', es: 'Total' },
-    digitalGift: { he: 'כרטיס מתנה דיגיטלי', en: 'Digital gift card', ar: 'بطاقة هدية رقمية', ru: 'Цифровая подарочная карта', fr: 'Carte cadeau numérique', es: 'Tarjeta regalo digital' },
+    digitalGift: { he: 'תו שי דיגיטלי', en: 'Digital gift card', ar: 'قسيمة رقمية', ru: 'Электронный ваучер', fr: 'Bon cadeau numérique', es: 'Vale regalo digital' },
     washes: { he: 'שטיפות', en: 'washes', ar: 'غسلات', ru: 'моек', fr: 'lavages', es: 'lavados' },
     platformCredit: { he: 'קרדיט פלטפורמה', en: 'Platform credit', ar: 'رصيد المنصة', ru: 'Кредит платформы', fr: 'Crédit plateforme', es: 'Crédito plataforma' },
     encryptedData: { he: 'נתונים מוצפנים SSL 256-bit', en: 'SSL 256-bit encrypted', ar: 'تشفير SSL 256-bit', ru: 'SSL 256-bit шифрование', fr: 'Chiffrement SSL 256-bit', es: 'Cifrado SSL 256-bit' },
