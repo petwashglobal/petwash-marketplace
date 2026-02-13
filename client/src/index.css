@@ -3960,3 +3960,80 @@ html[dir="rtl"] .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::aft
   cursor: pointer;
 }
 
+/* ============================================
+   ACCESSIBILITY FEATURES (a11y-*)
+   ============================================ */
+
+:root {
+  --a11y-font-scale: 1;
+}
+
+/* Font scale - applied to body content, NOT root (prevents layout breakage) */
+.a11y-large-text body,
+html[style*="--a11y-font-scale"] body {
+  font-size: calc(1rem * var(--a11y-font-scale, 1));
+}
+
+.a11y-large-text body {
+  font-size: 1.2rem;
+}
+
+/* High contrast */
+.a11y-high-contrast body {
+  filter: contrast(1.4);
+}
+.a11y-high-contrast img,
+.a11y-high-contrast video {
+  filter: contrast(1);
+}
+
+/* Reduced motion */
+.a11y-reduced-motion *,
+.a11y-reduced-motion *::before,
+.a11y-reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Focus outline */
+.a11y-focus-outline *:focus {
+  outline: 3px solid #2563eb !important;
+  outline-offset: 2px !important;
+}
+
+/* Link highlight */
+.a11y-link-highlight a,
+.a11y-link-highlight button {
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+}
+.a11y-link-highlight a:hover,
+.a11y-link-highlight button:hover {
+  outline: 2px solid currentColor !important;
+  outline-offset: 2px !important;
+}
+
+/* Increased line spacing */
+.a11y-line-spacing body {
+  line-height: 2 !important;
+}
+.a11y-line-spacing p,
+.a11y-line-spacing li,
+.a11y-line-spacing span,
+.a11y-line-spacing div {
+  line-height: 2 !important;
+}
+
+/* Color blindness filters */
+.a11y-protanopia body {
+  filter: url('#protanopia-filter');
+}
+.a11y-deuteranopia body {
+  filter: url('#deuteranopia-filter');
+}
+.a11y-tritanopia body {
+  filter: url('#tritanopia-filter');
+}
+
