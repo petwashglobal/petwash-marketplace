@@ -8284,9 +8284,11 @@ self.addEventListener('notificationclick', (event) => {
   // KYC Verification routes
   app.use('/api/kyc', uploadLimiter, kycRoutes);
 
-  // Vito™ Loyalty Club registration - Public (no auth required to join)
-  const vitoLoyaltyRoutes = await import('./routes/vito-loyalty');
-  app.use('/api/vito', apiLimiter, vitoLoyaltyRoutes.default);
+  // PetWash Privilege registration - Public (no auth required to join)
+  const privilegeLoyaltyRoutes = await import('./routes/privilege-loyalty');
+  app.use('/api/privilege', apiLimiter, privilegeLoyaltyRoutes.default);
+  // Backward compatibility redirect for old /api/vito routes
+  app.use('/api/vito', apiLimiter, privilegeLoyaltyRoutes.default);
 
   // Loyalty & Rewards routes - Protected with Firebase auth
   const { validateFirebaseToken } = await import('./middleware/firebase-auth');

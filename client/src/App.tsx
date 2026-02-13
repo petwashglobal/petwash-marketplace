@@ -54,7 +54,7 @@ const AccountingDashboard = lazy(() => import("@/pages/AccountingDashboard"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
-const VitoLoyaltySignup = lazy(() => import("@/pages/VitoLoyaltySignup"));
+const PrivilegeSignup = lazy(() => import("@/pages/PrivilegeSignup"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
 const LoyaltyTiers = lazy(() => import("@/pages/LoyaltyTiers"));
@@ -422,12 +422,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Vito™ Loyalty Club - Public registration */}
-        <Route path="/vito">
-          {() => <VitoLoyaltySignup language={language} onLanguageChange={handleLanguageChange} />}
+        {/* PetWash Privilege - Public registration */}
+        <Route path="/privilege">
+          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/loyalty/join">
-          {() => <VitoLoyaltySignup language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
+        </Route>
+        {/* Backward compatibility - old /vito URL redirects */}
+        <Route path="/vito">
+          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
 
         {/* Protected route - Loyalty Program */}
