@@ -49,19 +49,22 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  
+  const prefilledEmail = new URLSearchParams(window.location.search).get('email') || '';
+  
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    email: "",
+    email: prefilledEmail,
     phone: "",
     password: "",
     dob: "",
     country: "Israel",
-    loyaltyProgram: true, // ✅ Pre-ticked by default
-    reminders: true, // ✅ Pre-ticked by default
-    marketing: true, // ✅ Pre-ticked by default
-    pushNotifications: true, // ✅ Pre-ticked by default - mobile push notifications
-    acceptedTerms: true, // ✅ Pre-ticked by default
+    loyaltyProgram: true,
+    reminders: true,
+    marketing: true,
+    pushNotifications: true,
+    acceptedTerms: true,
   });
   
   logger.debug("SignUp component rendered", { acceptedTerms: formData.acceptedTerms });
@@ -286,7 +289,22 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       
       logger.info("User profile created via server API");
 
-      // Track sign-up in GA4
+      try {
+        const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ idToken }),
+        });
+        if (sessionResponse.ok) {
+          logger.info("Session cookie created after signup");
+        } else {
+          logger.warn("Session cookie creation failed after signup", { status: sessionResponse.status });
+        }
+      } catch (sessionErr) {
+        logger.warn("Session cookie creation error after signup", sessionErr);
+      }
+
       trackSignUp('email', user.uid);
 
       logger.debug("Syncing to HubSpot");

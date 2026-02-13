@@ -561,20 +561,31 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const deviceInfo = getDeviceInfo();
       logger.info('[Auth] Device info:', deviceInfo);
       
+      const isEmbeddedWebview = /Replit-Bonsai|wv|WebView/i.test(navigator.userAgent);
+      const isIOSDevice = isIOS();
+      
       let userCredential: import('firebase/auth').UserCredential | null = null;
+      
+      if (isEmbeddedWebview || isIOSDevice) {
+        logger.info('[Auth] iOS/webview detected, using redirect auth');
+        await signInWithBestMethod(auth, authProvider, 'redirect');
+        return;
+      }
+      
       try {
         userCredential = await signInWithPopup(auth, authProvider);
       } catch (popupErr: any) {
-        if (popupErr.code === 'auth/popup-blocked') {
-          logger.info('[Auth] Popup blocked, falling back to redirect');
-          userCredential = await signInWithBestMethod(auth, authProvider);
+        if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user') {
+          logger.info('[Auth] Popup blocked/closed, falling back to redirect');
+          await signInWithBestMethod(auth, authProvider, 'redirect');
+          return;
         } else {
           throw popupErr;
         }
       }
       
       if (!userCredential) {
-        logger.info('[iOS Auth] Redirect initiated, waiting for return...');
+        logger.info('[Auth] Redirect initiated, waiting for return...');
         return;
       }
       
@@ -1011,7 +1022,24 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       setPasswordFailureCount(prev => prev + 1);
       
       let errorMessage = t('signin.failed', language);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        const noAccountMsg: Record<string, string> = {
+          en: 'No account found with this email. Redirecting to sign up...',
+          he: 'לא נמצא חשבון עם כתובת דואר אלקטרוני זו. מעביר להרשמה...',
+          ar: 'لم يتم العثور على حساب بهذا البريد الإلكتروني. جاري التحويل للتسجيل...',
+          es: 'No se encontró una cuenta con este correo. Redirigiendo al registro...',
+          fr: 'Aucun compte trouvé avec cet email. Redirection vers l\'inscription...',
+          ru: 'Аккаунт с этим email не найден. Перенаправление на регистрацию...',
+        };
+        toast({
+          title: t('signin.error', language),
+          description: noAccountMsg[language] || noAccountMsg.en,
+        });
+        setTimeout(() => {
+          navigate(`/signup?email=${encodeURIComponent(formData.email)}`);
+        }, 1500);
+        return;
+      } else if (error.code === 'auth/wrong-password') {
         errorMessage = t('signin.invalidCredentials', language);
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = t('signin.tooManyAttempts', language);

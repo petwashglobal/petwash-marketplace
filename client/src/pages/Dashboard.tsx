@@ -237,6 +237,11 @@ export default function Dashboard() {
     );
   }
 
+  if (!firebaseUser) {
+    setLocation('/signin');
+    return null;
+  }
+
   return (
     <Layout>
       <div className="min-h-screen bg-white">
