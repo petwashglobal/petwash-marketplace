@@ -1,0 +1,1120 @@
+/* =====================================================================================
+   PETWASH LOYALTY + DIGITAL WALLET + KIOSK REDEEM + TIERS + REWARDS + NOTIFICATIONS (2026)
+   FULL COPY PASTE MONOREPO SKELETON (Web + Mobile + Firebase)
+
+   Goals
+   - One customer wallet across all platforms (wash packages, e-gift, sitter bookings, walkers, academy, driving, etc)
+   - Event sourced ledger (never mutate balances directly)
+   - Kiosk and station redemption via signed tokens
+   - Card payments centralized, wallets credited by events
+   - Tiers, stamps, rewards, push notifications, receipts, audit trail
+   - Works on tiny phones and huge screens, ultra modern UI (metallic), widgets and animations
+
+   Stack
+   - Firebase: Auth, Firestore, Cloud Functions (Node 20), Cloud Messaging (FCM)
+   - Web: Next.js (or Vite React) + Tailwind
+   - Mobile: Expo React Native + Reanimated + Lottie
+   - Payments: Stripe (example) or your PSP. Keep payment processing centralized.
+
+   IMPORTANT RULES (to prevent developer mistakes)
+   1) Wallet balances are derived from ledger events (event driven). Do not write balances from client.
+   2) Provider onboarding writes are server side only.
+   3) Payment processing is centralized in one service.
+   4) Booking transitions are validated on backend state machine.
+
+   Replace
+   - PROJECT_DOMAIN
+   - FIREBASE_PROJECT_ID
+   - STRIPE keys (or your provider)
+   - Station/Kiosk shared secret
+
+   Folder Map
+   /functions
+   /shared
+   /apps/web
+   /apps/mobile
+
+   ===================================================================================== */
+
+
+/* =====================================================================================
+   FILE: shared/types.ts
+   ===================================================================================== */
+
+export type Platform =
+  | "wash"
+  | "sitter"
+  | "walker"
+  | "academy"
+  | "pettrek"
+  | "driving"
+  | "admin"
+  | "kiosk"
+  | "station";
+
+export type Currency = "ILS" | "AUD" | "USD";
+
+export type WalletEventType =
+  | "WALLET_CREATED"
+  | "TOPUP"
+  | "PURCHASE"
+  | "REFUND"
+  | "ADJUSTMENT"
+  | "REDEEM"
+  | "TRANSFER"
+  | "EXPIRE"
+  | "TIER_CHANGED"
+  | "STAMP_EARNED"
+  | "REWARD_GRANTED";
+
+export type RewardType =
+  | "PERCENT_OFF"
+  | "FIXED_CREDIT"
+  | "FREE_WASH"
+  | "FREE_ADDON"
+  | "VIP_PERK";
+
+export type TierId = "BRONZE" | "SILVER" | "GOLD" | "BLACK";
+
+export type WalletSummary = {
+  uid: string;
+  currency: Currency;
+  balanceCents: number;            // derived server side
+  availableCents: number;          // derived server side
+  pendingCents: number;            // derived server side
+  lifetimeSpentCents: number;      // derived server side
+  stamps: number;                  // derived server side
+  tier: TierId;                    // derived server side
+  tierPoints: number;              // derived server side
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WalletEvent = {
+  id: string;
+  uid: string;
+  type: WalletEventType;
+  platform: Platform;
+  currency: Currency;
+  amountCents: number;             // positive or negative depending on type
+  refId?: string;                  // paymentId, bookingId, kioskTxId, stationTxId
+  meta?: Record<string, any>;
+  createdAt: string;
+  createdBy: "system" | "user" | "admin" | "kiosk" | "station";
+};
+
+export type Reward = {
+  id: string;
+  uid: string;
+  type: RewardType;
+  title: string;
+  description?: string;
+  value: { percent?: number; cents?: number; washes?: number };
+  minTier?: TierId;
+  expiresAt?: string;
+  status: "active" | "used" | "expired";
+  createdAt: string;
+  usedAt?: string;
+};
+
+export type NotificationPrefs = {
+  pushEnabled: boolean;
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  marketingEnabled: boolean;
+};
+
+export type TwoFactorMode = "none" | "email" | "sms" | "both";
+
+export type UserProfile = {
+  uid: string;
+  email?: string;
+  phone?: string;
+  displayName?: string;
+  locale: "he" | "en";
+  twoFactorMode: TwoFactorMode;
+  notificationPrefs: NotificationPrefs;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type KioskRedeemRequest = {
+  uid: string;
+  sku: string;             // "WASH_SINGLE" | "WASH_5" | etc or "WALLET_CREDIT_500"
+  amountCents?: number;    // optional for credit based sku
+  stationId?: string;
+  kioskId?: string;
+  nonce: string;
+  ts: number;
+  signature: string;       // HMAC signature
+};
+
+export type KioskRedeemResponse = {
+  ok: boolean;
+  redeemId?: string;
+  newBalanceCents?: number;
+  error?: string;
+};
+
+
+/* =====================================================================================
+   FILE: functions/src/config.ts
+   ===================================================================================== */
+
+export const CONFIG = {
+  PROJECT_DOMAIN: "https://petwash.co.il",
+  FIREBASE_PROJECT_ID: process.env.GCLOUD_PROJECT || "signinpetwash",
+
+  // Station/Kiosk HMAC secret (store in Firebase env config or Secret Manager)
+  KIOSK_HMAC_SECRET: process.env.KIOSK_HMAC_SECRET || "REPLACE_ME",
+
+  // Stripe (example). Replace with your PSP.
+  STRIPE_SECRET: process.env.STRIPE_SECRET || "REPLACE_ME",
+
+  // Tier thresholds (points), stamps and rewards policy
+  TIERS: [
+    { id: "BRONZE", minPoints: 0 },
+    { id: "SILVER", minPoints: 2000 },
+    { id: "GOLD", minPoints: 6000 },
+    { id: "BLACK", minPoints: 12000 },
+  ] as const,
+
+  // Earn rules
+  POINTS_PER_ILS_1: 10,                 // spend 1 ILS => 10 points
+  STAMP_EVERY_CENTS_SPENT: 5500,        // 55 ILS example
+  REWARD_ON_STAMPS: 10,                 // every 10 stamps => reward
+};
+
+
+/* =====================================================================================
+   FILE: functions/src/utils.ts
+   ===================================================================================== */
+
+import crypto from "crypto";
+
+export function nowIso() {
+  return new Date().toISOString();
+}
+
+export function assert(condition: any, message: string) {
+  if (!condition) throw new Error(message);
+}
+
+export function hmacSha256Hex(secret: string, payload: string) {
+  return crypto.createHmac("sha256", secret).update(payload).digest("hex");
+}
+
+export function stablePayload(obj: Record<string, any>) {
+  // stable stringify for signatures
+  const keys = Object.keys(obj).sort();
+  const stable: Record<string, any> = {};
+  for (const k of keys) stable[k] = obj[k];
+  return JSON.stringify(stable);
+}
+
+export function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+export function toInt(n: any, fallback = 0) {
+  const v = Number(n);
+  return Number.isFinite(v) ? Math.trunc(v) : fallback;
+}
+
+
+/* =====================================================================================
+   FILE: functions/src/firestoreModel.md (documentation only)
+   =====================================================================================
+
+   users/{uid}:
+     UserProfile
+
+   wallets/{uid}:
+     WalletSummary (server derived)
+
+   walletEvents/{uid}/events/{eventId}:
+     WalletEvent (append only)
+
+   rewards/{uid}/items/{rewardId}:
+     Reward
+
+   devices/{uid}/tokens/{tokenHash}:
+     { token: string, platform: "ios"|"android"|"web", createdAt }
+
+   kiosks/{kioskId}:
+     { kioskId, name, status, allowedStationIds, createdAt }
+
+   stations/{stationId}:
+     { stationId, name, status, city, createdAt }
+
+   auditLogs/{logId}:
+     { actorUid?, actorRole, action, targetId, meta, createdAt }
+
+   bookings/{bookingId}:
+     { bookingId, platform, state, priceCents, uid, providerId, createdAt, updatedAt }
+
+   payments/{paymentId}:
+     { paymentId, uid, amountCents, currency, status, provider, meta, createdAt }
+
+   IMPORTANT
+   - Client never writes wallets balance.
+   - Client appends only safe data (ex: device token) and reads.
+   - All money changes happen via Cloud Functions that append walletEvents and update wallet summary.
+
+*/
+
+
+/* =====================================================================================
+   FILE: functions/src/index.ts
+   ===================================================================================== */
+
+import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
+import express from "express";
+import cors from "cors";
+import { CONFIG } from "./config";
+import { nowIso, assert, hmacSha256Hex, stablePayload, toInt, clamp } from "./utils";
+import type { WalletEvent, WalletSummary, TierId, Platform, KioskRedeemRequest } from "../../shared/types";
+
+admin.initializeApp();
+const db = admin.firestore();
+
+const app = express();
+app.use(cors({ origin: true }));
+app.use(express.json({ limit: "2mb" }));
+
+/* -------------------------
+   Auth helper (Firebase ID token)
+   ------------------------- */
+async function requireAuth(req: any) {
+  const header = String(req.headers.authorization || "");
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  assert(token, "Missing Authorization Bearer token");
+  const decoded = await admin.auth().verifyIdToken(token);
+  assert(decoded?.uid, "Invalid token");
+  return decoded;
+}
+
+/* -------------------------
+   Wallet engine (event sourced)
+   ------------------------- */
+
+function tierForPoints(points: number): TierId {
+  const tiers = CONFIG.TIERS.slice().sort((a, b) => a.minPoints - b.minPoints);
+  let current: TierId = "BRONZE";
+  for (const t of tiers) {
+    if (points >= t.minPoints) current = t.id as TierId;
+  }
+  return current;
+}
+
+function computeSummaryFromEvents(input: {
+  uid: string;
+  currency: "ILS";
+  events: WalletEvent[];
+  prev?: WalletSummary | null;
+}): WalletSummary {
+  const { uid, currency, events, prev } = input;
+
+  // Start from previous derived summary if provided
+  let balance = prev?.balanceCents ?? 0;
+  let available = prev?.availableCents ?? 0;
+  let pending = prev?.pendingCents ?? 0;
+  let lifetimeSpent = prev?.lifetimeSpentCents ?? 0;
+  let stamps = prev?.stamps ?? 0;
+  let points = prev?.tierPoints ?? 0;
+  let tier: TierId = (prev?.tier as TierId) ?? "BRONZE";
+
+  for (const e of events) {
+    // Amount conventions:
+    // TOPUP => +amount
+    // PURCHASE => -amount (spend wallet), also add points/stamps based on spend
+    // REDEEM => -amount (wallet spend) OR 0 if redeem uses package, decide by meta
+    // ADJUSTMENT => +/-amount
+    balance += e.amountCents;
+    available += e.amountCents;
+
+    if (e.type === "PURCHASE" || e.type === "REDEEM") {
+      const spent = Math.max(0, -e.amountCents);
+      lifetimeSpent += spent;
+
+      // points and stamps
+      const ilsSpent = spent / 100;
+      points += Math.floor(ilsSpent * CONFIG.POINTS_PER_ILS_1);
+      const earnedStamps = Math.floor(spent / CONFIG.STAMP_EVERY_CENTS_SPENT);
+      if (earnedStamps > 0) stamps += earnedStamps;
+    }
+
+    if (e.type === "STAMP_EARNED") {
+      const add = Math.max(0, e.meta?.count || 0);
+      stamps += add;
+    }
+  }
+
+  tier = tierForPoints(points);
+
+  const now = nowIso();
+  return {
+    uid,
+    currency,
+    balanceCents: clamp(balance, -999999999, 999999999),
+    availableCents: clamp(available, -999999999, 999999999),
+    pendingCents: clamp(pending, 0, 999999999),
+    lifetimeSpentCents: clamp(lifetimeSpent, 0, 999999999),
+    stamps: clamp(stamps, 0, 999999999),
+    tier,
+    tierPoints: clamp(points, 0, 999999999),
+    createdAt: prev?.createdAt || now,
+    updatedAt: now,
+  };
+}
+
+async function appendWalletEvent(params: {
+  uid: string;
+  type: WalletEvent["type"];
+  platform: Platform;
+  currency: "ILS";
+  amountCents: number;
+  createdBy: WalletEvent["createdBy"];
+  refId?: string;
+  meta?: Record<string, any>;
+}) {
+  const { uid, currency } = params;
+
+  const walletRef = db.collection("wallets").doc(uid);
+  const eventsCol = db.collection("walletEvents").doc(uid).collection("events");
+
+  return await db.runTransaction(async (tx) => {
+    const walletSnap = await tx.get(walletRef);
+    const prev = walletSnap.exists ? (walletSnap.data() as WalletSummary) : null;
+
+    // create wallet if missing
+    if (!walletSnap.exists) {
+      const base: WalletSummary = {
+        uid,
+        currency,
+        balanceCents: 0,
+        availableCents: 0,
+        pendingCents: 0,
+        lifetimeSpentCents: 0,
+        stamps: 0,
+        tier: "BRONZE",
+        tierPoints: 0,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      };
+      tx.set(walletRef, base, { merge: false });
+    }
+
+    const eventId = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const event: WalletEvent = {
+      id: eventId,
+      uid,
+      type: params.type,
+      platform: params.platform,
+      currency: params.currency,
+      amountCents: params.amountCents,
+      refId: params.refId,
+      meta: params.meta || {},
+      createdAt: nowIso(),
+      createdBy: params.createdBy,
+    };
+
+    tx.set(eventsCol.doc(eventId), event, { merge: false });
+
+    // recompute summary using only this appended event on top of prev
+    const next = computeSummaryFromEvents({
+      uid,
+      currency,
+      events: [event],
+      prev: prev || undefined,
+    });
+
+    // tier change event (optional)
+    if (prev && prev.tier !== next.tier) {
+      const tierEventId = `${Date.now()}_${Math.random().toString(16).slice(2)}_tier`;
+      const tierEvent: WalletEvent = {
+        id: tierEventId,
+        uid,
+        type: "TIER_CHANGED",
+        platform: "admin",
+        currency,
+        amountCents: 0,
+        createdAt: nowIso(),
+        createdBy: "system",
+        meta: { from: prev.tier, to: next.tier, points: next.tierPoints },
+      };
+      tx.set(eventsCol.doc(tierEventId), tierEvent, { merge: false });
+    }
+
+    tx.set(walletRef, next, { merge: true });
+
+    return { event, wallet: next };
+  });
+}
+
+/* -------------------------
+   Push notifications (FCM)
+   ------------------------- */
+
+async function sendPushToUser(uid: string, title: string, body: string, data?: Record<string, string>) {
+  const tokensSnap = await db.collection("devices").doc(uid).collection("tokens").get();
+  const tokens = tokensSnap.docs.map((d) => d.data().token).filter(Boolean);
+  if (tokens.length === 0) return;
+
+  await admin.messaging().sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+    data: data || {},
+  });
+}
+
+/* -------------------------
+   API: Wallet summary
+   ------------------------- */
+app.get("/api/wallet/summary", async (req, res) => {
+  try {
+    const auth = await requireAuth(req);
+    const uid = auth.uid;
+    const snap = await db.collection("wallets").doc(uid).get();
+    if (!snap.exists) return res.json({ ok: true, wallet: null });
+    return res.json({ ok: true, wallet: snap.data() });
+  } catch (e: any) {
+    return res.status(401).json({ ok: false, error: e?.message || "Unauthorized" });
+  }
+});
+
+/* -------------------------
+   API: Wallet topup (centralized payment)
+   This is a placeholder. Replace with your PSP flow.
+   Flow:
+   - client calls createPaymentIntent
+   - PSP confirms payment
+   - webhook calls /api/payments/webhook
+   - webhook appends TOPUP event
+   ------------------------- */
+app.post("/api/payments/topup-intent", async (req, res) => {
+  try {
+    const auth = await requireAuth(req);
+    const uid = auth.uid;
+
+    const amountCents = clamp(toInt(req.body?.amountCents, 0), 500, 5000000);
+    const currency: "ILS" = "ILS";
+
+    // Create a payment record (pending)
+    const paymentId = `pay_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    await db.collection("payments").doc(paymentId).set({
+      paymentId,
+      uid,
+      amountCents,
+      currency,
+      status: "pending",
+      provider: "stripe",
+      createdAt: nowIso(),
+      meta: {},
+    });
+
+    // Return a fake clientSecret for now
+    return res.json({ ok: true, paymentId, clientSecret: "REPLACE_WITH_PROVIDER_SECRET" });
+  } catch (e: any) {
+    return res.status(400).json({ ok: false, error: e?.message || "error" });
+  }
+});
+
+/* -------------------------
+   API: Payment webhook (server only)
+   This endpoint should be locked down by verifying provider signature.
+   When paid, append TOPUP event and update payment status.
+   ------------------------- */
+app.post("/api/payments/webhook", async (req, res) => {
+  try {
+    const { paymentId, status } = req.body || {};
+    assert(typeof paymentId === "string", "paymentId required");
+
+    const payRef = db.collection("payments").doc(paymentId);
+    const snap = await payRef.get();
+    assert(snap.exists, "payment not found");
+    const pay = snap.data() as any;
+
+    if (pay.status === "paid") return res.json({ ok: true });
+
+    if (status !== "paid") {
+      await payRef.set({ status: "failed", updatedAt: nowIso() }, { merge: true });
+      return res.json({ ok: true });
+    }
+
+    await payRef.set({ status: "paid", updatedAt: nowIso() }, { merge: true });
+
+    const r = await appendWalletEvent({
+      uid: pay.uid,
+      type: "TOPUP",
+      platform: "admin",
+      currency: "ILS",
+      amountCents: pay.amountCents,
+      createdBy: "system",
+      refId: paymentId,
+      meta: { provider: pay.provider },
+    });
+
+    await sendPushToUser(pay.uid, "Wallet topped up", `+₪${(pay.amountCents / 100).toFixed(0)}`, {
+      kind: "wallet",
+      paymentId,
+    });
+
+    return res.json({ ok: true, wallet: r.wallet });
+  } catch (e: any) {
+    return res.status(400).json({ ok: false, error: e?.message || "webhook error" });
+  }
+});
+
+/* -------------------------
+   API: Redeem at Kiosk/Station (signed request)
+   This is what kiosk or station calls.
+   - Uses HMAC signature so kiosk does not need Firebase Auth.
+   - Prevent replay using nonce + ts and store used nonces.
+   ------------------------- */
+app.post("/api/kiosk/redeem", async (req, res) => {
+  try {
+    const body = req.body as KioskRedeemRequest;
+
+    const required = ["uid", "sku", "nonce", "ts", "signature"];
+    for (const k of required) assert((body as any)[k], `${k} required`);
+
+    const { uid, sku, amountCents, stationId, kioskId, nonce, ts, signature } = body;
+
+    // time window
+    const now = Date.now();
+    assert(Math.abs(now - ts) < 2 * 60 * 1000, "Request expired");
+
+    // replay protection
+    const nonceId = `${uid}_${nonce}`;
+    const nonceRef = db.collection("redeemNonces").doc(nonceId);
+    const nonceSnap = await nonceRef.get();
+    assert(!nonceSnap.exists, "Replay detected");
+
+    // verify signature
+    const payload = stablePayload({ uid, sku, amountCents: amountCents || 0, stationId: stationId || "", kioskId: kioskId || "", nonce, ts });
+    const expected = hmacSha256Hex(CONFIG.KIOSK_HMAC_SECRET, payload);
+    assert(expected === signature, "Bad signature");
+
+    // map SKU to debit amount
+    let debitCents = 0;
+    if (sku === "WASH_SINGLE") debitCents = 5500;
+    else if (sku === "WASH_5") debitCents = 27500;
+    else if (sku === "WASH_10") debitCents = 55000;
+    else if (sku === "WALLET_CREDIT_CUSTOM") debitCents = clamp(toInt(amountCents, 0), 500, 5000000);
+    else assert(false, "Unknown sku");
+
+    // store nonce first in transaction style approach
+    await nonceRef.set({ uid, nonce, ts, createdAt: nowIso() }, { merge: false });
+
+    // redeem means spend wallet
+    const result = await appendWalletEvent({
+      uid,
+      type: "REDEEM",
+      platform: kioskId ? "kiosk" : "station",
+      currency: "ILS",
+      amountCents: -debitCents,
+      createdBy: kioskId ? "kiosk" : "station",
+      refId: `${kioskId || stationId || "unknown"}_${Date.now()}`,
+      meta: { sku, kioskId, stationId },
+    });
+
+    await sendPushToUser(uid, "Redeemed", `-₪${(debitCents / 100).toFixed(0)} at ${kioskId ? "kiosk" : "station"}`, {
+      kind: "redeem",
+      sku,
+    });
+
+    return res.json({ ok: true, redeemId: result.event.id, newBalanceCents: result.wallet.balanceCents });
+  } catch (e: any) {
+    return res.status(400).json({ ok: false, error: e?.message || "redeem error" });
+  }
+});
+
+/* -------------------------
+   API: Earn reward from stamps (server side)
+   Can be called after purchase flow or by cron
+   ------------------------- */
+app.post("/api/rewards/claim-stamps", async (req, res) => {
+  try {
+    const auth = await requireAuth(req);
+    const uid = auth.uid;
+
+    const walletSnap = await db.collection("wallets").doc(uid).get();
+    assert(walletSnap.exists, "wallet missing");
+    const w = walletSnap.data() as WalletSummary;
+
+    const claimable = Math.floor(w.stamps / CONFIG.REWARD_ON_STAMPS);
+    assert(claimable > 0, "No rewards available");
+
+    const rewardId = `rw_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+    await db.collection("rewards").doc(uid).collection("items").doc(rewardId).set(
+      {
+        id: rewardId,
+        uid,
+        type: "FREE_WASH",
+        title: "Free Wash",
+        description: "Reward unlocked from stamps",
+        value: { washes: 1 },
+        status: "active",
+        createdAt: nowIso(),
+      },
+      { merge: false }
+    );
+
+    // optional: consume stamps by adjustment event
+    await appendWalletEvent({
+      uid,
+      type: "STAMP_EARNED",
+      platform: "admin",
+      currency: "ILS",
+      amountCents: 0,
+      createdBy: "system",
+      meta: { count: -claimable * CONFIG.REWARD_ON_STAMPS, reason: "CLAIM_REWARD" },
+    });
+
+    await sendPushToUser(uid, "Reward unlocked", "You unlocked a free wash", { kind: "reward", rewardId });
+
+    return res.json({ ok: true, rewardId });
+  } catch (e: any) {
+    return res.status(400).json({ ok: false, error: e?.message || "reward error" });
+  }
+});
+
+/* -------------------------
+   API: Register device token for push notifications
+   - Safe client write via function (recommended)
+   ------------------------- */
+app.post("/api/devices/register", async (req, res) => {
+  try {
+    const auth = await requireAuth(req);
+    const uid = auth.uid;
+
+    const token = String(req.body?.token || "").trim();
+    const platform = String(req.body?.platform || "unknown").slice(0, 20);
+    assert(token.length > 30, "Bad token");
+
+    const tokenHash = admin.firestore().collection("_").doc().id + "_" + token.slice(-10);
+    await db.collection("devices").doc(uid).collection("tokens").doc(tokenHash).set(
+      { token, platform, createdAt: nowIso() },
+      { merge: false }
+    );
+
+    return res.json({ ok: true });
+  } catch (e: any) {
+    return res.status(400).json({ ok: false, error: e?.message || "device error" });
+  }
+});
+
+export const api = functions.https.onRequest(app);
+
+
+/* =====================================================================================
+   FILE: firestore.rules
+   ===================================================================================== */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function isAdmin() { return isSignedIn() && request.auth.token.admin == true; }
+
+    // Users can read their profile, update only safe fields
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          "displayName","locale","twoFactorMode","notificationPrefs","phone"
+        ]);
+      allow delete: if false;
+    }
+
+    // Wallet summary is read only for user, write only by server
+    match /wallets/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // Wallet events are read only for user, write only by server
+    match /walletEvents/{uid}/events/{eventId} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // Rewards read for user, write only by server
+    match /rewards/{uid}/items/{rewardId} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // Device tokens: user can write their own tokens
+    match /devices/{uid}/tokens/{tokenId} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid);
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    // Stations and kiosks: read public, write admin
+    match /stations/{stationId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /kiosks/{kioskId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Payments: user can read their own, write only server/admin
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && request.auth.uid == resource.data.uid || isAdmin();
+      allow write: if false;
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /redeemNonces/{nonceId} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}
+
+
+/* =====================================================================================
+   FILE: apps/web/src/lib/api.ts
+   ===================================================================================== */
+
+export async function apiGet(path: string, token?: string) {
+  const r = await fetch(path, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return await r.json();
+}
+
+export async function apiPost(path: string, body: any, token?: string) {
+  const r = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  return await r.json();
+}
+
+
+/* =====================================================================================
+   FILE: apps/web/src/components/MetalCardWidget.tsx
+   Ultra modern responsive wallet widget (tiny to huge)
+   ===================================================================================== */
+
+import React from "react";
+
+type Props = {
+  balanceNis: number;
+  tier: "BRONZE" | "SILVER" | "GOLD" | "BLACK";
+  stamps: number;
+  onTopup?: () => void;
+  onRedeem?: () => void;
+};
+
+const tierLabel: Record<string, string> = {
+  BRONZE: "Bronze",
+  SILVER: "Silver",
+  GOLD: "Gold",
+  BLACK: "Black",
+};
+
+export function MetalCardWidget(props: Props) {
+  const { balanceNis, tier, stamps, onTopup, onRedeem } = props;
+
+  return (
+    <div
+      className="
+        relative w-full max-w-2xl
+        rounded-3xl p-6 sm:p-8
+        bg-gradient-to-br from-zinc-950 via-zinc-900 to-black
+        text-white shadow-2xl overflow-hidden
+      "
+    >
+      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
+      <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_10%,rgba(255,255,255,0.25),transparent_45%)]" />
+
+      <div className="relative flex items-start justify-between gap-4">
+        <div>
+          <div className="text-xs tracking-widest text-white/70">DIGITAL WALLET</div>
+          <div className="mt-1 text-3xl sm:text-4xl font-semibold">
+            ₪{Math.round(balanceNis).toLocaleString()}
+          </div>
+          <div className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 bg-white/10">
+            <span className="text-xs uppercase tracking-wider">{tierLabel[tier]}</span>
+            <span className="w-1 h-1 rounded-full bg-white/60" />
+            <span className="text-xs">{stamps} stamps</span>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={onTopup}
+            className="rounded-xl px-4 py-2 bg-white text-black text-sm font-medium hover:bg-white/90 active:bg-white/80"
+          >
+            Top up
+          </button>
+          <button
+            onClick={onRedeem}
+            className="rounded-xl px-4 py-2 bg-white/10 text-white text-sm font-medium hover:bg-white/15 active:bg-white/20"
+          >
+            Redeem
+          </button>
+        </div>
+      </div>
+
+      <div className="relative mt-6 grid grid-cols-3 gap-3 text-center">
+        <Stat label="Instant rewards" value="Live" />
+        <Stat label="Security" value="Ledger" />
+        <Stat label="Devices" value="All" />
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/5 p-3">
+      <div className="text-[11px] text-white/60">{label}</div>
+      <div className="mt-1 text-sm font-semibold">{value}</div>
+    </div>
+  );
+}
+
+
+/* =====================================================================================
+   FILE: apps/mobile/App.tsx (Expo RN)
+   Ultra modern wallet screen, responsive, animations ready
+   ===================================================================================== */
+
+import React, { useEffect, useState } from "react";
+import { SafeAreaView, View, Text, Pressable, Dimensions } from "react-native";
+import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
+import Animated, { FadeInDown } from "react-native-reanimated";
+
+const API_BASE = "https://us-central1-signinpetwash.cloudfunctions.net/api"; // replace
+
+async function registerForPushToken() {
+  const perm = await Notifications.requestPermissionsAsync();
+  if (!perm.granted) return null;
+  const token = (await Notifications.getExpoPushTokenAsync()).data;
+  return token;
+}
+
+export default function App() {
+  const [balance, setBalance] = useState(0);
+  const [tier, setTier] = useState("BRONZE");
+  const [stamps, setStamps] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      // 1) register device token (call your backend with Firebase ID token)
+      const pushToken = await registerForPushToken();
+      if (pushToken) {
+        // POST /api/devices/register with auth in real app
+      }
+
+      // 2) fetch wallet summary (call your backend with Firebase ID token)
+      // Here we mock:
+      setBalance(275);
+      setTier("GOLD");
+      setStamps(7);
+    })();
+  }, []);
+
+  const w = Dimensions.get("window").width;
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
+      <View style={{ padding: 16 }}>
+        <Animated.View entering={FadeInDown.duration(450)}>
+          <Text style={{ color: "rgba(255,255,255,0.7)", letterSpacing: 2, fontSize: 12 }}>
+            DIGITAL WALLET
+          </Text>
+
+          <View
+            style={{
+              marginTop: 12,
+              borderRadius: 28,
+              padding: 18,
+              backgroundColor: "#0f0f10",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.10)",
+              overflow: "hidden",
+            }}
+          >
+            <View
+              style={{
+                position: "absolute",
+                width: w,
+                height: w,
+                top: -w / 2,
+                right: -w / 3,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                borderRadius: w,
+              }}
+            />
+            <Text style={{ color: "white", fontSize: 40, fontWeight: "600" }}>
+              ₪{Math.round(balance).toLocaleString()}
+            </Text>
+            <View style={{ flexDirection: "row", marginTop: 10, gap: 8 }}>
+              <Pill text={tier} />
+              <Pill text={`${stamps} stamps`} />
+              <Pill text="Ledger" />
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <PrimaryButton title="Top up" onPress={() => {}} />
+              <GhostButton title="Redeem" onPress={() => {}} />
+            </View>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(450).delay(120)} style={{ marginTop: 18 }}>
+          <Text style={{ color: "white", fontSize: 18, fontWeight: "600" }}>Quick actions</Text>
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+            <Tile title="Packages" subtitle="Wash deals" />
+            <Tile title="Rewards" subtitle="Claim perks" />
+          </View>
+        </Animated.View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+function Pill({ text }: { text: string }) {
+  return (
+    <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)" }}>
+      <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 12 }}>{text}</Text>
+    </View>
+  );
+}
+
+function PrimaryButton({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{ flex: 1, backgroundColor: "white", paddingVertical: 12, borderRadius: 16, alignItems: "center" }}
+    >
+      <Text style={{ color: "black", fontWeight: "700" }}>{title}</Text>
+    </Pressable>
+  );
+}
+
+function GhostButton({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        flex: 1,
+        backgroundColor: "rgba(255,255,255,0.08)",
+        paddingVertical: 12,
+        borderRadius: 16,
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.12)",
+      }}
+    >
+      <Text style={{ color: "white", fontWeight: "700" }}>{title}</Text>
+    </Pressable>
+  );
+}
+
+function Tile({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <View style={{ flex: 1, borderRadius: 18, padding: 14, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.10)" }}>
+      <Text style={{ color: "white", fontWeight: "700" }}>{title}</Text>
+      <Text style={{ color: "rgba(255,255,255,0.7)", marginTop: 6 }}>{subtitle}</Text>
+    </View>
+  );
+}
+
+
+/* =====================================================================================
+   FILE: SECURITY + ARCHITECTURE NOTES (paste to developer)
+   =====================================================================================
+
+   A) Wallet is event driven (ledger)
+   - Do not store "balance" as user editable
+   - Append WalletEvent then compute WalletSummary in transaction
+   - Any direct balance mutation is a bug
+
+   B) Centralized payment
+   - One payments service handles card, Apple Pay, Google Pay
+   - Webhooks append TOPUP or PURCHASE to wallet
+   - Per platform UI uses same wallet API
+
+   C) Kiosk/Station redeem
+   - Use HMAC signatures + nonce + timestamp
+   - Store nonce to prevent replay
+   - Kiosk does not need Firebase Auth
+
+   D) Booking state machine backend validated
+   - Example states: created -> pending_payment -> confirmed -> in_progress -> completed -> settled
+   - Reject invalid transitions server side
+
+   E) Rewards
+   - Tier based perks plus stamp cycle rewards
+   - Rewards stored server side, redeemed by server
+
+   F) Notifications
+   - FCM tokens per device
+   - Notify on topup, redeem, tier upgrade, booking updates
+
+   G) Responsive UI
+   - Web: Tailwind, container queries optional
+   - Mobile: RN layout, avoid fixed widths, use scaling, minimal text overflow
+
+*/
+
+
+/* =====================================================================================
+   FILE: 2FA BEST PRACTICE (iOS + Android)
+   =====================================================================================
+
+   Best approach in 2026 with Firebase:
+   - Passwordless or OAuth for primary
+   - Optional 2FA:
+     - SMS via Firebase Phone Auth (best on mobile)
+     - Email OTP via SendGrid (best for web + fallback)
+   - Store user preference users/{uid}.twoFactorMode = none|email|sms|both
+   - For "both", challenge with either (user chooses) or require both for high risk actions
+
+   High risk actions that should require 2FA:
+   - Change phone/email
+   - Withdraw wallet credit (if allowed)
+   - Add new payout method for providers
+   - Admin actions
+
+   Implementation:
+   - Step 1: user signs in
+   - Step 2: server checks twoFactorMode and risk score
+   - Step 3: server issues short lived "challengeId" (Firestore doc with TTL)
+   - Step 4: user submits OTP, server returns "2faVerifiedUntil" claim or session token
+
+   Keep OTP codes server side hashed (never store plain).
+   Rate limit by uid + IP + device fingerprint.
+
+*/
+
+
+/* =====================================================================================
+   END
+   ===================================================================================== */
