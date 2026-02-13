@@ -118,6 +118,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
       description: t('divisions.petTrek.description', language),
       icon: Zap,
       link: '/pettrek/book',
+      comingSoon: true,
     },
     {
       id: 5,
@@ -170,13 +171,18 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
             const style = platformStyles[index];
             const isLastOdd = index === divisions.length - 1 && divisions.length % 3 === 2;
             
+            const CardWrapper = division.comingSoon ? 'div' : Link;
+            const cardProps = division.comingSoon 
+              ? {} 
+              : { href: division.link };
+            
             return (
-              <Link
+              <CardWrapper
                 key={division.id}
-                href={division.link}
+                {...cardProps as any}
                 className={`block group transition-all duration-700 ${
                   isRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
-                } ${isLastOdd ? 'sm:col-span-2 lg:col-span-1 sm:max-w-[calc(50%-0.75rem)] lg:max-w-none sm:mx-auto lg:mx-0' : ''}`}
+                } ${isLastOdd ? 'sm:col-span-2 lg:col-span-1 sm:max-w-[calc(50%-0.75rem)] lg:max-w-none sm:mx-auto lg:mx-0' : ''} ${division.comingSoon ? 'cursor-default' : ''}`}
                 style={{ transitionDelay: `${100 + index * 120}ms` }}
                 onMouseEnter={() => setHoveredDivision(division.id)}
                 onMouseLeave={() => setHoveredDivision(null)}
@@ -222,15 +228,22 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                       </div>
                     </div>
 
-                    <h3 
-                      className="text-lg sm:text-xl font-semibold tracking-tight leading-tight mb-2 sm:mb-3"
-                      style={{ 
-                        color: style.textColor,
-                        fontFamily: "'Playfair Display', 'Didot', Georgia, serif",
-                      }}
-                    >
-                      {isHebrew ? division.nameHe : division.name}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                      <h3 
+                        className="text-lg sm:text-xl font-semibold tracking-tight leading-tight"
+                        style={{ 
+                          color: style.textColor,
+                          fontFamily: "'Playfair Display', 'Didot', Georgia, serif",
+                        }}
+                      >
+                        {isHebrew ? division.nameHe : division.name}
+                      </h3>
+                      {division.comingSoon && (
+                        <span className="px-2 py-0.5 text-[9px] tracking-[0.15em] uppercase font-semibold rounded-full bg-white/30 backdrop-blur-sm" style={{ color: style.textColor, border: `1px solid ${style.borderColor}` }}>
+                          {isHebrew ? 'בקרוב' : 'Coming Soon'}
+                        </span>
+                      )}
+                    </div>
 
                     <p 
                       className="text-xs sm:text-sm mb-3 sm:mb-4 leading-relaxed font-medium"
@@ -254,16 +267,21 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                         className="inline-flex items-center gap-2 text-xs sm:text-[13px] font-semibold uppercase tracking-[0.12em] transition-all duration-300"
                         style={{ color: style.ctaColor }}
                       >
-                        {t('divisions.learnMore', language)}
-                        <ArrowRight 
-                          className={`w-4 h-4 transition-transform duration-300 ${isHovered ? (isHebrew ? '-translate-x-1.5' : 'translate-x-1.5') : ''} ${isHebrew ? 'rotate-180' : ''}`}
-                          strokeWidth={2.5}
-                        />
+                        {division.comingSoon 
+                          ? (isHebrew ? 'בקרוב...' : 'Coming Soon...')
+                          : t('divisions.learnMore', language)
+                        }
+                        {!division.comingSoon && (
+                          <ArrowRight 
+                            className={`w-4 h-4 transition-transform duration-300 ${isHovered ? (isHebrew ? '-translate-x-1.5' : 'translate-x-1.5') : ''} ${isHebrew ? 'rotate-180' : ''}`}
+                            strokeWidth={2.5}
+                          />
+                        )}
                       </span>
                     </div>
                   </div>
                 </div>
-              </Link>
+              </CardWrapper>
             );
           })}
         </div>

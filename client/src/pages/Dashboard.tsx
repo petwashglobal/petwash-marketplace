@@ -348,15 +348,19 @@ export default function Dashboard() {
                 </p>
                 <p className="text-xs text-gray-400">⁦Walk My Pet™⁩</p>
               </button>
-              <button
-                onClick={() => setLocation('/pettrek')}
-                className="bg-white p-6 sm:p-8 text-left hover:bg-[#FAFAF9] transition-colors group"
+              <div
+                className="bg-white p-6 sm:p-8 text-left opacity-60 cursor-default"
               >
-                <p className="text-sm sm:text-base text-black font-normal mb-1 group-hover:text-gray-700 transition-colors">
-                  {tx('petTransport', language)}
-                </p>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-sm sm:text-base text-black font-normal">
+                    {tx('petTransport', language)}
+                  </p>
+                  <span className="px-1.5 py-0.5 text-[8px] tracking-[0.12em] uppercase font-semibold rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+                    {language === 'he' ? 'בקרוב' : 'Soon'}
+                  </span>
+                </div>
                 <p className="text-xs text-gray-400">⁦PetTrek™⁩</p>
-              </button>
+              </div>
             </div>
           </motion.div>
 
