@@ -100,13 +100,13 @@ const services = [
   {
     id: 'wash',
     icon: Droplets,
-    name: 'K9000™ Smart Hub',
-    nameHe: 'K9000™ עמדה חכמה',
+    name: '⁦K9000™⁩ Smart Hub',
+    nameHe: '⁦K9000™⁩ עמדה חכמה',
     desc: 'Outdoor DIY pet wash station 24/7',
     descHe: 'עמדת שטיפה חיצונית בשירות עצמי 24/7',
     path: '/k9000',
     image: 'https://images.unsplash.com/photo-1581888227599-779811939961?w=600&h=400&fit=crop',
-    badge: 'K9000™',
+    badge: '⁦K9000™⁩',
     isPhysical: true,
   },
 ];
@@ -717,7 +717,7 @@ export default function PlatformHub() {
             </div>
             
             <p className="text-xs font-light text-gray-300 mt-8 tracking-wider">
-              © 2025 Pet Wash™ · Israel
+              © 2025 ⁦Pet Wash™⁩ · Israel
             </p>
           </div>
         </section>

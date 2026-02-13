@@ -2,8 +2,8 @@
  * Smart Weather Notification Service
  * 
  * Sends intelligent weather alerts to platform users:
- * - Dog walkers (Walk My Pet™)
- * - Drivers (PetTrek™)  
+ * - Dog walkers (⁦Walk My Pet™⁩)
+ * - Drivers (⁦PetTrek™⁩)  
  * - Pet wash hub users
  * 
  * Rules: NOT TOO MANY notifications (intelligent timing)
@@ -171,14 +171,14 @@ export async function sendWeatherNotification(
     // Get target users based on audience
     const targetUsers: string[] = [];
 
-    // Dog Walkers (Walk My Pet™)
+    // Dog Walkers (⁦Walk My Pet™⁩)
     if (alert.targetAudience.includes('walkers')) {
       // Query active walkers from walk_my_pet_providers table
       // TODO: Add query when table structure is finalized
       logger.info('[WeatherNotifications] Targeting dog walkers');
     }
 
-    // Drivers (PetTrek™)
+    // Drivers (⁦PetTrek™⁩)
     if (alert.targetAudience.includes('drivers')) {
       // Query active drivers from pettrek_drivers table
       // TODO: Add query when table structure is finalized

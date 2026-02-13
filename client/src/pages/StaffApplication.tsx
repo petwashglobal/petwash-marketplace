@@ -98,7 +98,7 @@ const positionTypes = [
     value: 'host',
     label: 'Station Host',
     icon: Home,
-    description: 'Operate a Pet Wash™ station',
+    description: 'Operate a ⁦Pet Wash™⁩ station',
   },
 ];
 
@@ -168,7 +168,7 @@ export default function StaffApplication() {
               Application Submitted Successfully!
             </CardTitle>
             <CardDescription className="text-base" data-testid="success-message">
-              Thank you for applying to join Pet Wash™!
+              Thank you for applying to join ⁦Pet Wash™⁩!
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -191,7 +191,7 @@ export default function StaffApplication() {
                     <li>• Background check authorization (if applicable)</li>
                   </ul>
                 </li>
-                <li>Check your spam folder for emails from Pet Wash™</li>
+                <li>Check your spam folder for emails from ⁦Pet Wash™⁩</li>
               </ul>
             </div>
 
@@ -216,7 +216,7 @@ export default function StaffApplication() {
           <Briefcase className="w-10 h-10 text-white" />
         </div>
         <h1 className="luxury-heading-xl mb-4" data-testid="page-title">
-          Join Pet Wash™ Team
+          Join ⁦Pet Wash™⁩ Team
         </h1>
         <p className="text-gray-600 text-lg" data-testid="page-subtitle">
           Apply to become a contractor for premium pet care services
@@ -482,7 +482,7 @@ export default function StaffApplication() {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Why do you want to join Pet Wash™?</FormLabel>
+                      <FormLabel>Why do you want to join ⁦Pet Wash™⁩?</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="Tell us about your experience with pets, why you're interested in this position, and what makes you a great fit..."

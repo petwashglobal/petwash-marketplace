@@ -1,5 +1,5 @@
 /**
- * PetWash™ Enterprise Operations System 2025
+ * ⁦PetWash™⁩ Enterprise Operations System 2025
  * 
  * Comprehensive operational logic covering:
  * - Booking Engine (unified across all platforms)
@@ -35,7 +35,7 @@ export const PLATFORMS = {
   },
   PET_SITTER: {
     id: "pet_sitter",
-    name: "The Sitter Suite™",
+    name: "⁦The Sitter Suite™⁩",
     nameHe: "פנסיון לחיות מחמד",
     modes: ["overnight", "in_home", "daycare"],
     requiresProvider: true,
@@ -44,7 +44,7 @@ export const PLATFORMS = {
   },
   WALK_MY_PET: {
     id: "walk_my_pet",
-    name: "Walk My Pet™",
+    name: "⁦Walk My Pet™⁩",
     nameHe: "טיול לכלבים",
     modes: ["walk_30", "walk_60", "group_walk"],
     requiresProvider: true,
@@ -53,7 +53,7 @@ export const PLATFORMS = {
   },
   PET_TREK: {
     id: "pet_trek",
-    name: "PetTrek™ Transport",
+    name: "⁦PetTrek™⁩ Transport",
     nameHe: "הסעות חיות מחמד",
     modes: ["one_way", "round_trip", "airport"],
     requiresProvider: true,
@@ -62,7 +62,7 @@ export const PLATFORMS = {
   },
   ACADEMY: {
     id: "academy",
-    name: "Pet Wash Academy™",
+    name: "⁦Pet Wash Academy™⁩",
     nameHe: "אקדמיה לאילוף",
     modes: ["private_training", "group_training", "behavior_consult"],
     requiresProvider: true,

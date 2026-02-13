@@ -255,16 +255,16 @@ export const validationMessages = {
 export const emailTemplates = {
   passwordSetup: {
     subject: {
-      en: 'Set up your Pet Wash™ admin account',
-      he: 'הגדר את חשבון המנהל שלך ב-Pet Wash™'
+      en: 'Set up your ⁦Pet Wash™⁩ admin account',
+      he: 'הגדר את חשבון המנהל שלך ב-⁦Pet Wash™⁩'
     },
     greeting: {
       en: (name: string) => `Hi ${name},`,
       he: (name: string) => `שלום ${name},`
     },
     body: {
-      en: 'Your Pet Wash™ admin account has been created. Click the link below to set your password and activate your account:',
-      he: 'חשבון המנהל שלך ב-Pet Wash™ נוצר. לחץ על הקישור למטה כדי להגדיר את הסיסמה שלך ולהפעיל את החשבון:'
+      en: 'Your ⁦Pet Wash™⁩ admin account has been created. Click the link below to set your password and activate your account:',
+      he: 'חשבון המנהל שלך ב-⁦Pet Wash™⁩ נוצר. לחץ על הקישור למטה כדי להגדיר את הסיסמה שלך ולהפעיל את החשבון:'
     },
     buttonText: {
       en: 'Set Your Password',
@@ -287,14 +287,14 @@ export const emailTemplates = {
       he: 'אם לא ביקשת חשבון זה, אנא התעלם מאימייל זה.'
     },
     signature: {
-      en: 'Pet Wash™ Admin Team',
-      he: 'צוות המנהלים של Pet Wash™'
+      en: '⁦Pet Wash™⁩ Admin Team',
+      he: 'צוות המנהלים של ⁦Pet Wash™⁩'
     }
   },
   passwordReset: {
     subject: {
-      en: 'Reset your Pet Wash™ password',
-      he: 'אפס את הסיסמה שלך ב-Pet Wash™'
+      en: 'Reset your ⁦Pet Wash™⁩ password',
+      he: 'אפס את הסיסמה שלך ב-⁦Pet Wash™⁩'
     },
     greeting: {
       en: (name: string) => `Hi ${name},`,

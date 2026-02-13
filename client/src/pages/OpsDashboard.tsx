@@ -80,7 +80,7 @@ export default function OpsDashboard({ language, onLanguageChange }: OpsDashboar
         <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">Operations Dashboard</h1>
-          <p className="text-zinc-400">Real-time monitoring and health checks for Pet Wash™</p>
+          <p className="text-zinc-400">Real-time monitoring and health checks for ⁦Pet Wash™⁩</p>
           
           <div className="mt-4 flex gap-2 items-center">
             <label className="text-sm text-zinc-400">Refresh:</label>

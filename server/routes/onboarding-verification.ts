@@ -64,7 +64,7 @@ function getEmailHtml(code: string, language: string): string {
         <tr><td align="center">
           <table width="100%" style="max-width:480px;background:#ffffff;border-radius:2px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
             <tr><td style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);padding:32px;text-align:center;">
-              <h1 style="margin:0;color:#c9a96e;font-size:24px;font-weight:600;letter-spacing:0.5px;">Pet Wash™</h1>
+              <h1 style="margin:0;color:#c9a96e;font-size:24px;font-weight:600;letter-spacing:0.5px;">⁦Pet Wash™⁩</h1>
             </td></tr>
             <tr><td style="padding:40px 32px;text-align:center;">
               <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:22px;font-weight:600;">${title}</h2>
@@ -105,7 +105,7 @@ router.post('/send-email-code', verificationLimiter, async (req: Request, res: R
     });
 
     const isHebrew = language === 'he';
-    const subject = isHebrew ? `Pet Wash™ - קוד אימות: ${code}` : `Pet Wash™ - Verification Code: ${code}`;
+    const subject = isHebrew ? `⁦Pet Wash™⁩ - קוד אימות: ${code}` : `⁦Pet Wash™⁩ - Verification Code: ${code}`;
 
     const sent = await EmailService.send({
       to: normalizedEmail,

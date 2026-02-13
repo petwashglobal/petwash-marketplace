@@ -149,7 +149,7 @@ export function PersonalizedGreeting() {
                     transition={{ delay: 0.4 }}
                     className="text-sm text-gray-600 dark:text-gray-400 mt-1"
                   >
-                    — Kenzo, Pet Wash™ 🐾
+                    — Kenzo, ⁦Pet Wash™⁩ 🐾
                   </motion.p>
                 </div>
               </div>

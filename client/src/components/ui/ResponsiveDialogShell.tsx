@@ -1,7 +1,7 @@
 /**
  * Responsive Dialog Shell - Universal Modal Component
  * 
- * Production-quality responsive wrapper for ALL Pet Wash™ modals.
+ * Production-quality responsive wrapper for ALL ⁦Pet Wash™⁩ modals.
  * Ensures flawless display across:
  * - All mobile devices (iPhone, Samsung, etc.)
  * - All tablets (iPad, iPad Pro, etc.)

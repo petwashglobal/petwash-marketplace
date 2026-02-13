@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ Launch Invitation Email Template
+ * ⁦Pet Wash™⁩ Launch Invitation Email Template
  * Pure white background with 7-star metallic luxury design
  */
 
@@ -7,7 +7,7 @@ export function generateLaunchInvitationEmail(
   recipientName: string,
   petName: string
 ): { subject: string; html: string } {
-  const subject = `🌟 ${recipientName} & ${petName} - You're Invited to Pet Wash™ Grand Launch!`;
+  const subject = `🌟 ${recipientName} & ${petName} - You're Invited to ⁦Pet Wash™⁩ Grand Launch!`;
 
   const html = `
 <!DOCTYPE html>
@@ -15,7 +15,7 @@ export function generateLaunchInvitationEmail(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pet Wash™ Launch Invitation</title>
+  <title>⁦Pet Wash™⁩ Launch Invitation</title>
   <style>
     * {
       margin: 0;
@@ -216,7 +216,7 @@ export function generateLaunchInvitationEmail(
 
       <div class="message">
         We are thrilled to personally invite you to the <strong>Grand Launch</strong> of 
-        <strong>Pet Wash™</strong> - Israel's first <em>7-star premium organic pet care platform</em>!
+        <strong>⁦Pet Wash™⁩</strong> - Israel's first <em>7-star premium organic pet care platform</em>!
       </div>
 
       <div class="message">
@@ -226,7 +226,7 @@ export function generateLaunchInvitationEmail(
 
       <div class="highlight-box">
         <div class="launch-title">
-          🎉 What Makes Pet Wash™ Special?
+          🎉 What Makes ⁦Pet Wash™⁩ Special?
         </div>
 
         <div class="feature-grid">
@@ -240,7 +240,7 @@ export function generateLaunchInvitationEmail(
           </div>
           <div class="feature-item">
             <div class="feature-icon">🚿</div>
-            <div class="feature-text">K9000™ IoT<br>Smart Stations</div>
+            <div class="feature-text">⁦K9000™⁩ IoT<br>Smart Stations</div>
           </div>
           <div class="feature-item">
             <div class="feature-icon">📱</div>
@@ -253,7 +253,7 @@ export function generateLaunchInvitationEmail(
         <strong>Exclusive Launch Benefits:</strong><br><br>
         ✨ <strong>50% OFF</strong> your first wash<br>
         ✨ Free membership in our <strong>Platinum Loyalty Program</strong><br>
-        ✨ Priority access to <strong>Pet Wash Academy™</strong> training<br>
+        ✨ Priority access to <strong>⁦Pet Wash Academy™⁩</strong> training<br>
         ✨ Complimentary <strong>Apple Wallet</strong> digital pass<br>
         ✨ Meet our team and tour our facilities
       </div>
@@ -267,17 +267,17 @@ export function generateLaunchInvitationEmail(
       <div class="message" style="font-size: 16px;">
         <strong>Our 8 Premium Platforms:</strong><br><br>
         🐕 <strong>Main Wash Services</strong> - Premium organic washing<br>
-        🎓 <strong>Pet Wash Academy™</strong> - Certified professional trainers<br>
-        🚶 <strong>Walk My Pet™</strong> - GPS-tracked dog walking<br>
-        🚗 <strong>PetTrek™</strong> - Real-time pet transport<br>
-        🏠 <strong>The Sitter Suite™</strong> - Trusted pet sitting<br>
-        🎨 <strong>The Plush Lab™</strong> - AI avatar creator<br>
+        🎓 <strong>⁦Pet Wash Academy™⁩</strong> - Certified professional trainers<br>
+        🚶 <strong>⁦Walk My Pet™⁩</strong> - GPS-tracked dog walking<br>
+        🚗 <strong>⁦PetTrek™⁩</strong> - Real-time pet transport<br>
+        🏠 <strong>⁦The Sitter Suite™⁩</strong> - Trusted pet sitting<br>
+        🎨 <strong>⁦The Plush Lab™⁩</strong> - AI avatar creator<br>
         🏢 <strong>Franchise Opportunities</strong> - Global expansion<br>
         🤖 <strong>K9000 IoT Stations</strong> - Smart wash technology
       </div>
 
       <div class="message" style="margin-top: 40px; font-size: 16px; font-style: italic; color: #6A6A6A;">
-        "${petName} deserves the very best. Pet Wash™ delivers 7-star luxury, 
+        "${petName} deserves the very best. ⁦Pet Wash™⁩ delivers 7-star luxury, 
         powered by Israeli innovation and genuine care for every pet."
       </div>
     </div>
@@ -285,7 +285,7 @@ export function generateLaunchInvitationEmail(
     <!-- Footer -->
     <div class="footer">
       <div class="footer-text">
-        <strong>Pet Wash™ Ltd</strong><br>
+        <strong>⁦Pet Wash™⁩ Ltd</strong><br>
         Israel's Premium Organic Pet Care Platform<br>
         <a href="https://www.petwash.co.il" style="color: #5A5A5A;">www.petwash.co.il</a>
       </div>
@@ -299,9 +299,9 @@ export function generateLaunchInvitationEmail(
       <div class="divider" style="margin: 30px 0;"></div>
 
       <div class="footer-text" style="font-size: 12px; color: #AAAAAA;">
-        This is a personal invitation from Pet Wash™.<br>
+        This is a personal invitation from ⁦Pet Wash™⁩.<br>
         You received this email because you're awesome! 🌟<br>
-        © 2025 Pet Wash™ Ltd. All rights reserved.
+        © 2025 ⁦Pet Wash™⁩ Ltd. All rights reserved.
       </div>
     </div>
   </div>

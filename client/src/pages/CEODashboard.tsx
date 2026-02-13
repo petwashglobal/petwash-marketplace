@@ -164,7 +164,7 @@ export default function CEODashboard() {
     <LuxuryPageWrapper
       variant="dashboard"
       title="CEO Dashboard"
-      subtitle="Welcome back, Nir Hadad - Founder & CEO of PetWash™"
+      subtitle="Welcome back, Nir Hadad - Founder & CEO of ⁦PetWash™⁩"
       icon={<Crown className="w-12 h-12" />}
     >
 
@@ -179,7 +179,7 @@ export default function CEODashboard() {
                 <div>
                   <CardTitle className="text-white text-2xl">Issue Complimentary Gift Card</CardTitle>
                   <CardDescription className="text-gray-400">
-                    Send free PetWash™ gift cards to anyone
+                    Send free ⁦PetWash™⁩ gift cards to anyone
                   </CardDescription>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ Payment Configuration
+ * ⁦Pet Wash™⁩ Payment Configuration
  * Central configuration for all payment methods across the platform
  * 
  * CRITICAL: Nayax is currently DISABLED pending API key configuration

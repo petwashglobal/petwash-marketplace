@@ -72,7 +72,7 @@ const SERVICE_TYPE_LABELS: Record<string, { en: string; he: string; icon: string
   pet_transport: { en: 'Pet Transport', he: 'הסעות חיות מחמד', icon: '🚗' },
   grooming: { en: 'Grooming Services', he: 'שירותי טיפוח', icon: '✨' },
   training: { en: 'Pet Training', he: 'אילוף חיות מחמד', icon: '🎓' },
-  wash_hub_operator: { en: 'K9000™ Station Operator', he: 'מפעיל תחנת K9000™', icon: '🚿' },
+  wash_hub_operator: { en: '⁦K9000™⁩ Station Operator', he: 'מפעיל תחנת ⁦K9000™⁩', icon: '🚿' },
   veterinary_house_calls: { en: 'Home Vet Visits', he: 'ביקורי וטרינר בבית', icon: '🩺' },
 };
 
@@ -85,8 +85,8 @@ export function generateNewUserConfirmationEmail(params: NewUserEmailParams): { 
   const dir = isHebrew ? 'rtl' : 'ltr';
 
   const subject = isHebrew 
-    ? `ברוכים הבאים ל-Pet Wash™, ${firstName}! 🐾`
-    : `Welcome to Pet Wash™, ${firstName}! 🐾`;
+    ? `ברוכים הבאים ל-⁦Pet Wash™⁩, ${firstName}! 🐾`
+    : `Welcome to ⁦Pet Wash™⁩, ${firstName}! 🐾`;
 
   const html = `
 <!DOCTYPE html>
@@ -100,7 +100,7 @@ export function generateNewUserConfirmationEmail(params: NewUserEmailParams): { 
 <body>
   <div class="container">
     <div class="header">
-      <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" class="logo" />
+      <img src="${PETWASH_LOGO_BASE64}" alt="⁦Pet Wash™⁩" class="logo" />
       <h1>${isHebrew ? 'ברוכים הבאים!' : 'Welcome!'}</h1>
     </div>
     
@@ -108,8 +108,8 @@ export function generateNewUserConfirmationEmail(params: NewUserEmailParams): { 
       <h2>${isHebrew ? `שלום ${firstName}!` : `Hello ${firstName}!`}</h2>
       
       <p>${isHebrew 
-        ? 'אנחנו שמחים שהצטרפת למשפחת Pet Wash™. החשבון שלך פעיל ומוכן לשימוש.'
-        : 'We\'re thrilled to have you join the Pet Wash™ family. Your account is now active and ready to use.'
+        ? 'אנחנו שמחים שהצטרפת למשפחת ⁦Pet Wash™⁩. החשבון שלך פעיל ומוכן לשימוש.'
+        : 'We\'re thrilled to have you join the ⁦Pet Wash™⁩ family. Your account is now active and ready to use.'
       }</p>
       
       <div class="highlight-box">
@@ -131,8 +131,8 @@ export function generateNewUserConfirmationEmail(params: NewUserEmailParams): { 
       </div>
       
       <p>${isHebrew 
-        ? 'עכשיו תוכל לגשת לכל השירותים שלנו: תחנות שטיפה K9000™, שירותי Pet Sitting, הליכות כלבים, הסעות חיות מחמד ועוד!'
-        : 'You now have access to all our services: K9000™ wash stations, Pet Sitting, Dog Walking, Pet Transport, and more!'
+        ? 'עכשיו תוכל לגשת לכל השירותים שלנו: תחנות שטיפה ⁦K9000™⁩, שירותי Pet Sitting, הליכות כלבים, הסעות חיות מחמד ועוד!'
+        : 'You now have access to all our services: ⁦K9000™⁩ wash stations, Pet Sitting, Dog Walking, Pet Transport, and more!'
       }</p>
       
       <center>
@@ -143,9 +143,9 @@ export function generateNewUserConfirmationEmail(params: NewUserEmailParams): { 
     </div>
     
     <div class="footer">
-      <p>${isHebrew ? 'תודה שבחרת ב-Pet Wash™' : 'Thank you for choosing Pet Wash™'}</p>
+      <p>${isHebrew ? 'תודה שבחרת ב-⁦Pet Wash™⁩' : 'Thank you for choosing ⁦Pet Wash™⁩'}</p>
       <p><a href="https://petwash.co.il">petwash.co.il</a> | <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
-      <p style="font-size: 12px; margin-top: 16px;">© ${new Date().getFullYear()} Pet Wash™. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
+      <p style="font-size: 12px; margin-top: 16px;">© ${new Date().getFullYear()} ⁦Pet Wash™⁩. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
     </div>
   </div>
 </body>
@@ -175,8 +175,8 @@ export function generateLoyaltyEnrollmentEmail(params: LoyaltyEnrollmentEmailPar
   const tierLabel = tierLabels[tier] || tierLabels.bronze;
 
   const subject = isHebrew 
-    ? `🌟 ברוכים הבאים למועדון הנאמנות של Pet Wash™!`
-    : `🌟 Welcome to Pet Wash™ Loyalty Club!`;
+    ? `🌟 ברוכים הבאים למועדון הנאמנות של ⁦Pet Wash™⁩!`
+    : `🌟 Welcome to ⁦Pet Wash™⁩ Loyalty Club!`;
 
   const html = `
 <!DOCTYPE html>
@@ -190,7 +190,7 @@ export function generateLoyaltyEnrollmentEmail(params: LoyaltyEnrollmentEmailPar
 <body>
   <div class="container">
     <div class="header" style="background: linear-gradient(135deg, #F59E0B, #EF4444);">
-      <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" class="logo" />
+      <img src="${PETWASH_LOGO_BASE64}" alt="⁦Pet Wash™⁩" class="logo" />
       <h1>${isHebrew ? 'מועדון הנאמנות' : 'Loyalty Club'}</h1>
     </div>
     
@@ -198,8 +198,8 @@ export function generateLoyaltyEnrollmentEmail(params: LoyaltyEnrollmentEmailPar
       <h2>${isHebrew ? `${firstName}, הצטרפת למועדון!` : `${firstName}, You're In!`}</h2>
       
       <p>${isHebrew 
-        ? 'ברוכים הבאים למועדון הנאמנות היוקרתי של Pet Wash™ עם מערכת 7 הכוכבים שלנו.'
-        : 'Welcome to Pet Wash™\'s exclusive 7-Star Loyalty Club.'
+        ? 'ברוכים הבאים למועדון הנאמנות היוקרתי של ⁦Pet Wash™⁩ עם מערכת 7 הכוכבים שלנו.'
+        : 'Welcome to ⁦Pet Wash™⁩\'s exclusive 7-Star Loyalty Club.'
       }</p>
       
       <div class="highlight-box" style="background: linear-gradient(135deg, #FEF3C7, #FDE68A); text-align: center;">
@@ -245,9 +245,9 @@ export function generateLoyaltyEnrollmentEmail(params: LoyaltyEnrollmentEmailPar
     </div>
     
     <div class="footer">
-      <p>${isHebrew ? 'תודה שבחרת ב-Pet Wash™' : 'Thank you for choosing Pet Wash™'}</p>
+      <p>${isHebrew ? 'תודה שבחרת ב-⁦Pet Wash™⁩' : 'Thank you for choosing ⁦Pet Wash™⁩'}</p>
       <p><a href="https://petwash.co.il">petwash.co.il</a> | <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
-      <p style="font-size: 12px; margin-top: 16px;">© ${new Date().getFullYear()} Pet Wash™. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
+      <p style="font-size: 12px; margin-top: 16px;">© ${new Date().getFullYear()} ⁦Pet Wash™⁩. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
     </div>
   </div>
 </body>
@@ -265,8 +265,8 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
   const dir = isHebrew ? 'rtl' : 'ltr';
 
   const subject = isHebrew 
-    ? `✅ הבקשה שלך התקבלה - Pet Wash™ Provider`
-    : `✅ Application Received - Pet Wash™ Provider`;
+    ? `✅ הבקשה שלך התקבלה - ⁦Pet Wash™⁩ Provider`
+    : `✅ Application Received - ⁦Pet Wash™⁩ Provider`;
 
   const servicesHtml = serviceTypes.map(type => {
     const label = SERVICE_TYPE_LABELS[type] || { en: type, he: type, icon: '📋' };
@@ -290,7 +290,7 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
 <body>
   <div class="container">
     <div class="header" style="background: linear-gradient(135deg, #10B981, #059669);">
-      <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" class="logo" />
+      <img src="${PETWASH_LOGO_BASE64}" alt="⁦Pet Wash™⁩" class="logo" />
       <h1>${isHebrew ? 'הבקשה התקבלה!' : 'Application Received!'}</h1>
     </div>
     
@@ -298,8 +298,8 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
       <h2>${isHebrew ? `שלום ${firstName}!` : `Hello ${firstName}!`}</h2>
       
       <p>${isHebrew 
-        ? 'תודה על הגשת הבקשה להצטרף לצוות נותני השירות של Pet Wash™. קיבלנו את הבקשה שלך ונבדוק אותה בקרוב.'
-        : 'Thank you for applying to join the Pet Wash™ provider team. We\'ve received your application and will review it shortly.'
+        ? 'תודה על הגשת הבקשה להצטרף לצוות נותני השירות של ⁦Pet Wash™⁩. קיבלנו את הבקשה שלך ונבדוק אותה בקרוב.'
+        : 'Thank you for applying to join the ⁦Pet Wash™⁩ provider team. We\'ve received your application and will review it shortly.'
       }</p>
       
       <div class="highlight-box" style="background: linear-gradient(135deg, #D1FAE5, #A7F3D0);">
@@ -348,9 +348,9 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
     </div>
     
     <div class="footer">
-      <p>${isHebrew ? 'תודה שבחרת להצטרף לצוות Pet Wash™' : 'Thank you for joining the Pet Wash™ team'}</p>
+      <p>${isHebrew ? 'תודה שבחרת להצטרף לצוות ⁦Pet Wash™⁩' : 'Thank you for joining the ⁦Pet Wash™⁩ team'}</p>
       <p><a href="https://petwash.co.il">petwash.co.il</a> | <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
-      <p style="font-size: 12px; margin-top: 16px;">© ${new Date().getFullYear()} Pet Wash™. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
+      <p style="font-size: 12px; margin-top: 16px;">© ${new Date().getFullYear()} ⁦Pet Wash™⁩. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
     </div>
   </div>
 </body>

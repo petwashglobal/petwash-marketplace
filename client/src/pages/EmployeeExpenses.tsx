@@ -132,7 +132,7 @@ export default function EmployeeExpenses() {
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12 luxury-animate-fade-in">
           <h1 className="luxury-heading-xl mb-4">
-            PetWash™ Expense Center
+            ⁦PetWash™⁩ Expense Center
           </h1>
           <p className="luxury-text-small uppercase tracking-widest text-gray-500">
             7-Star Employee Expense Management

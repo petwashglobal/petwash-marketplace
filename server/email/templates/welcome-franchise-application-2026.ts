@@ -21,8 +21,8 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
   });
 
   const subject = isHebrew
-    ? `בקשת הזכיינות שלך התקבלה, ${data.firstName} — Pet Wash™ Global Franchise`
-    : `Franchise Application Received, ${data.firstName} — Pet Wash™ Global Franchise`;
+    ? `בקשת הזכיינות שלך התקבלה, ${data.firstName} — ⁦Pet Wash™⁩ Global Franchise`
+    : `Franchise Application Received, ${data.firstName} — ⁦Pet Wash™⁩ Global Franchise`;
 
   const html = `<!DOCTYPE html>
 <html lang="${data.language}" dir="${dir}">
@@ -37,7 +37,7 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
       
       <div style="background: linear-gradient(160deg, #0f172a 0%, #1e293b 40%, #7c3aed 100%); padding: 56px 40px; text-align: center; position: relative;">
         <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #c9a96e, #e8d5a3, #c084fc, #c9a96e);"></div>
-        <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" style="max-width: 150px; height: auto; margin-bottom: 24px;" />
+        <img src="${PETWASH_LOGO_BASE64}" alt="⁦Pet Wash™⁩" style="max-width: 150px; height: auto; margin-bottom: 24px;" />
         <h1 style="color: #ffffff; font-size: 28px; font-weight: 400; letter-spacing: 1.5px; margin: 0; font-family: 'Georgia', serif; text-shadow: 0 2px 8px rgba(0,0,0,0.15);">
           ${isHebrew ? 'בקשת זכיינות התקבלה' : 'Franchise Application Received'}
         </h1>
@@ -70,8 +70,8 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
         
         <p style="font-size: 15px; line-height: 1.9; color: #475569; margin: 0 0 24px; text-align: ${isHebrew ? 'right' : 'left'};">
           ${isHebrew
-            ? 'תודה על העניין שלך בתוכנית הזכיינות הבינלאומית של Pet Wash™. אנו מעריכים את ההזדמנות לשתף פעולה איתך ולהרחיב את הרשת הגלובלית שלנו.'
-            : 'Thank you for your interest in the Pet Wash™ Global Franchise Program. We value the opportunity to partner with you and expand our global network.'}
+            ? 'תודה על העניין שלך בתוכנית הזכיינות הבינלאומית של ⁦Pet Wash™⁩. אנו מעריכים את ההזדמנות לשתף פעולה איתך ולהרחיב את הרשת הגלובלית שלנו.'
+            : 'Thank you for your interest in the ⁦Pet Wash™⁩ Global Franchise Program. We value the opportunity to partner with you and expand our global network.'}
         </p>
         
         <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 28px; margin: 32px 0;">
@@ -127,11 +127,11 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 10px 0; padding-${isHebrew ? 'right' : 'left'}: 24px; font-size: 14px; color: #581c87; border-bottom: 1px solid #e9d5ff; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
               <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #a855f7; font-size: 8px; top: 14px;">◆</span>
-              ${isHebrew ? 'זכות שימוש בלעדית במותג Pet Wash™ באזור שלך' : 'Exclusive Pet Wash™ brand rights in your territory'}
+              ${isHebrew ? 'זכות שימוש בלעדית במותג ⁦Pet Wash™⁩ באזור שלך' : 'Exclusive ⁦Pet Wash™⁩ brand rights in your territory'}
             </td></tr>
             <tr><td style="padding: 10px 0; padding-${isHebrew ? 'right' : 'left'}: 24px; font-size: 14px; color: #581c87; border-bottom: 1px solid #e9d5ff; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
               <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #a855f7; font-size: 8px; top: 14px;">◆</span>
-              ${isHebrew ? 'תחנות K9000™ מתקדמות עם ניטור מרחוק' : 'Advanced K9000™ stations with remote monitoring'}
+              ${isHebrew ? 'תחנות ⁦K9000™⁩ מתקדמות עם ניטור מרחוק' : 'Advanced ⁦K9000™⁩ stations with remote monitoring'}
             </td></tr>
             <tr><td style="padding: 10px 0; padding-${isHebrew ? 'right' : 'left'}: 24px; font-size: 14px; color: #581c87; border-bottom: 1px solid #e9d5ff; position: relative; text-align: ${isHebrew ? 'right' : 'left'}; vertical-align: top;">
               <span style="position: absolute; ${isHebrew ? 'right: 0;' : 'left: 0;'} color: #a855f7; font-size: 8px; top: 14px;">◆</span>
@@ -208,7 +208,7 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
           <a href="mailto:franchise@petwash.co.il" style="color: #c4b5fd; text-decoration: none; font-size: 13px;">franchise@petwash.co.il</a>
         </p>
         <p style="color: rgba(255,255,255,0.3); font-size: 11px; line-height: 1.8; margin: 16px 0 0; letter-spacing: 0.5px;">
-          © ${new Date().getFullYear()} Pet Wash™. ${isHebrew ? 'כל הזכויות שמורות' : 'All rights reserved'}.<br>
+          © ${new Date().getFullYear()} ⁦Pet Wash™⁩. ${isHebrew ? 'כל הזכויות שמורות' : 'All rights reserved'}.<br>
           ${isHebrew ? 'מספר חברה' : 'Company No.'} 517145033 │ ${isHebrew ? 'רשומה בישראל' : 'Registered in Israel'}
         </p>
       </div>

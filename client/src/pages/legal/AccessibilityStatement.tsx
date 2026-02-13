@@ -19,7 +19,7 @@ export default function AccessibilityStatementPage() {
           <div className="prose dark:prose-invert max-w-none">
             <h2>1. Our Commitment</h2>
             <p>
-              Pet Wash™ is committed to ensuring digital accessibility for people with disabilities.
+              ⁦Pet Wash™⁩ is committed to ensuring digital accessibility for people with disabilities.
               We continually improve the user experience for everyone and apply relevant accessibility standards.
             </p>
 

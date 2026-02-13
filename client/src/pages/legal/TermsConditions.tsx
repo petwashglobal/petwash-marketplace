@@ -12,7 +12,7 @@ export default function TermsConditions() {
         <Link href="/sitter-suite">
           <button className="mb-6 flex items-center gap-2 luxury-btn-primary">
             <ArrowLeft className="h-4 w-4" />
-            {isHebrew ? 'חזרה ל-The Sitter Suite™' : 'Back to The Sitter Suite™'}
+            {isHebrew ? 'חזרה ל-⁦The Sitter Suite™⁩' : 'Back to ⁦The Sitter Suite™⁩'}
           </button>
         </Link>
 
@@ -32,9 +32,9 @@ export default function TermsConditions() {
               </h2>
               <p className="leading-relaxed">
                 {isHebrew ? (
-                  <>על ידי גישה או שימוש ב-The Sitter Suite™ המופעלת על ידי Pet Wash Ltd ("הפלטפורמה"), אתה מסכים להיות מחויב לתנאים אלה. אם אינך מסכים לכל התנאים, אל תשתמש בפלטפורמה.</>
+                  <>על ידי גישה או שימוש ב-⁦The Sitter Suite™⁩ המופעלת על ידי Pet Wash Ltd ("הפלטפורמה"), אתה מסכים להיות מחויב לתנאים אלה. אם אינך מסכים לכל התנאים, אל תשתמש בפלטפורמה.</>
                 ) : (
-                  <>By accessing or using The Sitter Suite™ operated by Pet Wash Ltd ("the Platform"), you agree to be bound by these Terms. If you do not agree to all Terms, do not use the Platform.</>
+                  <>By accessing or using ⁦The Sitter Suite™⁩ operated by Pet Wash Ltd ("the Platform"), you agree to be bound by these Terms. If you do not agree to all Terms, do not use the Platform.</>
                 )}
               </p>
             </section>

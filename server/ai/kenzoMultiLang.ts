@@ -37,42 +37,42 @@ const LANGUAGE_CONFIG = {
     direction: 'rtl',
     locale: 'he-IL',
     greetings: ['שלום', 'היי', 'מה נשמע'],
-    contextPrefix: 'דבר עברית. אתה קנזו, המסקוט הכלבי החכם של Pet Wash™.',
+    contextPrefix: 'דבר עברית. אתה קנזו, המסקוט הכלבי החכם של ⁦Pet Wash™⁩.',
   },
   en: {
     name: 'English',
     direction: 'ltr',
     locale: 'en-US',
     greetings: ['Hello', 'Hi', 'Hey there'],
-    contextPrefix: 'Speak English. You are Kenzo, the smart dog mascot of Pet Wash™.',
+    contextPrefix: 'Speak English. You are Kenzo, the smart dog mascot of ⁦Pet Wash™⁩.',
   },
   ar: {
     name: 'Arabic',
     direction: 'rtl',
     locale: 'ar-SA',
     greetings: ['مرحبا', 'أهلا', 'كيف حالك'],
-    contextPrefix: 'تحدث بالعربية. أنت كينزو، التميمة الذكية لشركة Pet Wash™.',
+    contextPrefix: 'تحدث بالعربية. أنت كينزو، التميمة الذكية لشركة ⁦Pet Wash™⁩.',
   },
   ru: {
     name: 'Russian',
     direction: 'ltr',
     locale: 'ru-RU',
     greetings: ['Привет', 'Здравствуйте', 'Как дела'],
-    contextPrefix: 'Говори по-русски. Ты Кензо, умный пёс-талисман Pet Wash™.',
+    contextPrefix: 'Говори по-русски. Ты Кензо, умный пёс-талисман ⁦Pet Wash™⁩.',
   },
   fr: {
     name: 'French',
     direction: 'ltr',
     locale: 'fr-FR',
     greetings: ['Bonjour', 'Salut', 'Comment ça va'],
-    contextPrefix: 'Parle français. Tu es Kenzo, la mascotte canine intelligente de Pet Wash™.',
+    contextPrefix: 'Parle français. Tu es Kenzo, la mascotte canine intelligente de ⁦Pet Wash™⁩.',
   },
   es: {
     name: 'Spanish',
     direction: 'ltr',
     locale: 'es-ES',
     greetings: ['Hola', 'Qué tal', 'Cómo estás'],
-    contextPrefix: 'Habla español. Eres Kenzo, la mascota perro inteligente de Pet Wash™.',
+    contextPrefix: 'Habla español. Eres Kenzo, la mascota perro inteligente de ⁦Pet Wash™⁩.',
   },
 };
 
@@ -80,15 +80,15 @@ const LANGUAGE_CONFIG = {
  * Platform context for Kenzo
  */
 const PLATFORM_CONTEXT = {
-  k9000: 'K9000™ Wash Stations - Australian-engineered premium self-service pet wash with IoT, LED ecosystem, 4 organic pumps per side, cashless payment (Nayax QR/NFC/Apple Pay), 24/7 availability, twin bays serving 2 pets simultaneously',
-  sitter: 'The Sitter Suite™ - Professional pet sitting marketplace connecting owners with verified, background-checked sitters',
-  walker: 'Walk My Pet™ - Dog walking marketplace with GPS-tracked walks for daily exercise and socialization',
-  transport: 'PetTrek™ - Safe pet transport service with GPS tracking for vet visits, grooming, and travel',
-  plushlab: 'The Plush Lab™ - AI-powered pet avatar creator turning pet photos into digital art',
+  k9000: '⁦K9000™⁩ Wash Stations - Australian-engineered premium self-service pet wash with IoT, LED ecosystem, 4 organic pumps per side, cashless payment (Nayax QR/NFC/Apple Pay), 24/7 availability, twin bays serving 2 pets simultaneously',
+  sitter: '⁦The Sitter Suite™⁩ - Professional pet sitting marketplace connecting owners with verified, background-checked sitters',
+  walker: '⁦Walk My Pet™⁩ - Dog walking marketplace with GPS-tracked walks for daily exercise and socialization',
+  transport: '⁦PetTrek™⁩ - Safe pet transport service with GPS tracking for vet visits, grooming, and travel',
+  plushlab: '⁦The Plush Lab™⁩ - AI-powered pet avatar creator turning pet photos into digital art',
   loyalty: '7-Star Loyalty Program - Luxury VIP club (Bronze→Silver→Gold→Platinum→Diamond→Emerald→Royal) with up to 50% discount, birthday rewards, exclusive events, concierge service, and 5x points at Royal tier',
-  pawfinder: 'Paw Finder™ - FREE community service to help reunite lost pets with their owners',
-  academy: 'Pet Wash Academy™ - Training and certification platform for pet care professionals',
-  washhub: 'Wash Hub™ - Enterprise management platform for station operators',
+  pawfinder: '⁦Paw Finder™⁩ - FREE community service to help reunite lost pets with their owners',
+  academy: '⁦Pet Wash Academy™⁩ - Training and certification platform for pet care professionals',
+  washhub: '⁦Wash Hub™⁩ - Enterprise management platform for station operators',
 };
 
 /**

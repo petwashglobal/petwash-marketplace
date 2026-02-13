@@ -83,7 +83,7 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
     <LuxuryPageWrapper
       variant="dashboard"
       title="Franchisee Dashboard"
-      subtitle="Manage your Pet Wash™ station network"
+      subtitle="Manage your ⁦Pet Wash™⁩ station network"
     >
       <div className="max-w-7xl mx-auto space-y-8 luxury-bg-mesh min-h-screen p-8">
         {/* Key Metrics - Luxury Grid */}
@@ -140,7 +140,7 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
               <div className="p-6">
                 <h2 className="luxury-heading-lg luxury-text-gradient mb-2">My Stations</h2>
                 <p className="luxury-text-body mb-6">
-                  Overview of your {stations?.length || 0} Pet Wash™ locations
+                  Overview of your {stations?.length || 0} ⁦Pet Wash™⁩ locations
                 </p>
                 <div className="space-y-3">
                   {stations?.map((station: any) => (

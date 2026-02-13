@@ -1,5 +1,5 @@
 /**
- * Spotify Integration - Pet Wash™
+ * Spotify Integration - ⁦Pet Wash™⁩
  * Uses Replit Spotify connector for OAuth
  */
 

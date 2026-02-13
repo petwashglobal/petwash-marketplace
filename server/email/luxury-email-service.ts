@@ -15,7 +15,7 @@ import { generateInvestorLaunchEventEmail } from './templates/luxury-investor-la
 import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 
 const FROM_EMAIL = 'Support@PetWash.co.il';
-const FROM_NAME = 'Pet Wash™ Team';
+const FROM_NAME = '⁦Pet Wash™⁩ Team';
 
 let sgMail: MailService | null = isSendGridConfigured() ? createMailService() : null;
 
@@ -204,7 +204,7 @@ export async function sendWorkflowNotification(
     actionBody,
     priority: options?.priority || 'medium',
     deadline: options?.deadline,
-    originator: options?.originator || 'Pet Wash™ System',
+    originator: options?.originator || '⁦Pet Wash™⁩ System',
     approvalLink,
     logoUrl: options?.logoUrl
   });

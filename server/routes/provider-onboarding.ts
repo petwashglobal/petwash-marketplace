@@ -534,7 +534,7 @@ router.post('/apply', upload.fields([
       status: applicationStatus,
       providerId: providerId || undefined,
       message: autoApproved 
-        ? 'Congratulations! Your application has been automatically approved. Welcome to Pet Wash™!'
+        ? 'Congratulations! Your application has been automatically approved. Welcome to ⁦Pet Wash™⁩!'
         : 'Application submitted. Your documents are being reviewed - we will get back to you shortly.'
     });
   } catch (error: any) {

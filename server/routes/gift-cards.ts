@@ -157,8 +157,8 @@ async function sendGiftCardToRecipient(
   deliveryMethod: string
 ) {
   const emailSubject = senderName 
-    ? `🎁 You received a PetWash™ E-Gift Card from ${senderName}!`
-    : `🎁 You received a PetWash™ E-Gift Card!`;
+    ? `🎁 You received a ⁦PetWash™⁩ E-Gift Card from ${senderName}!`
+    : `🎁 You received a ⁦PetWash™⁩ E-Gift Card!`;
 
   // Generate secure wallet pass tokens (valid for 72 hours)
   // SECURITY: Will be null if secret not properly configured (fail closed)
@@ -210,7 +210,7 @@ async function sendGiftCardToRecipient(
           
           <div class="gift-amount">₪${voucher.initialAmount}</div>
           
-          <p style="text-align: center; font-size: 18px; color: #6b7280;">PetWash™ E-Gift Card</p>
+          <p style="text-align: center; font-size: 18px; color: #6b7280;">⁦PetWash™⁩ E-Gift Card</p>
           
           <div class="qr-code">
             <img src="${qrCodeDataURL}" alt="Gift Card QR Code" />
@@ -256,13 +256,13 @@ async function sendGiftCardToRecipient(
         </div>
         
         <div class="footer">
-          <p><strong>PetWash™</strong> - Premium Organic Pet Care</p>
+          <p><strong>⁦PetWash™⁩</strong> - Premium Organic Pet Care</p>
           <p>petwash.co.il</p>
           <div class="legal">
             <p>This e-gift card is issued by PetWash Ltd. (Israel Company #516458396)</p>
             <p>Non-refundable. Non-transferable. Cannot be redeemed for cash. Single-use only.</p>
             <p>Blockchain-secured transaction with immutable audit trail.</p>
-            <p>© ${new Date().getFullYear()} PetWash™. All rights reserved.</p>
+            <p>© ${new Date().getFullYear()} ⁦PetWash™⁩. All rights reserved.</p>
           </div>
         </div>
       </div>
@@ -283,7 +283,7 @@ async function sendGiftCardToRecipient(
   // Send via WhatsApp
   if ((deliveryMethod === 'whatsapp' || deliveryMethod === 'both') && recipientPhone) {
     const whatsappMessage = `
-🎁 *PetWash™ E-Gift Card Received!*
+🎁 *⁦PetWash™⁩ E-Gift Card Received!*
 
 Hi ${recipientName}!
 
@@ -306,7 +306,7 @@ ${process.env.BASE_URL || 'https://petwash.co.il'}/my-wallet
 ⚠️ This card is non-transferable and can only be used once.
 
 ---
-PetWash™ - Premium Organic Pet Care
+⁦PetWash™⁩ - Premium Organic Pet Care
 petwash.co.il
     `.trim();
 
@@ -328,7 +328,7 @@ async function sendPurchaseConfirmationToBuyer(
   voucherId: string,
   transactionHash: string
 ) {
-  const emailSubject = `✅ Your PetWash™ E-Gift Card Purchase Confirmation`;
+  const emailSubject = `✅ Your ⁦PetWash™⁩ E-Gift Card Purchase Confirmation`;
 
   const emailHtml = `
     <!DOCTYPE html>
@@ -396,7 +396,7 @@ async function sendPurchaseConfirmationToBuyer(
         </div>
         
         <div class="footer">
-          <p><strong>PetWash™</strong> - Premium Organic Pet Care</p>
+          <p><strong>⁦PetWash™⁩</strong> - Premium Organic Pet Care</p>
           <p>Company Registration: 516458396 (Israel)</p>
           <p style="font-size: 10px; color: #9ca3af; margin-top: 10px;">
             This is a legal receipt for your records. Non-refundable.<br>
@@ -633,7 +633,7 @@ router.post('/redeem', paymentLimiter, async (req, res) => {
     if (voucher.recipientEmail) {
       const confirmationHtml = `
         <h2>✅ Gift Card Redeemed Successfully</h2>
-        <p>Your PetWash™ e-gift card of ₪${voucher.initialAmount} has been redeemed.</p>
+        <p>Your ⁦PetWash™⁩ e-gift card of ₪${voucher.initialAmount} has been redeemed.</p>
         <p><strong>Station:</strong> ${stationId}</p>
         <p><strong>Date:</strong> ${new Date().toLocaleString('en-US')}</p>
         <p><strong>Transaction ID:</strong> ${redemption.id}</p>
@@ -643,7 +643,7 @@ router.post('/redeem', paymentLimiter, async (req, res) => {
       try {
         await EmailService.sendEmail(
           voucher.recipientEmail,
-          '✅ PetWash™ Gift Card Redeemed',
+          '✅ ⁦PetWash™⁩ Gift Card Redeemed',
           confirmationHtml
         );
       } catch (error) {
@@ -761,7 +761,7 @@ router.get('/:voucherId/wallet/apple', walletPassLimiter, async (req, res) => {
       currency: voucher.currency,
       expiryDate: voucher.expiresAt ? new Date(voucher.expiresAt) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       qrCode: qrData,
-      description: `₪${voucher.initialAmount} PetWash™ E-Gift Card`
+      description: `₪${voucher.initialAmount} ⁦PetWash™⁩ E-Gift Card`
     });
     
     logger.info('[E-Gift Wallet] Apple pass generated', { 
@@ -851,7 +851,7 @@ router.get('/:voucherId/wallet/google', walletPassLimiter, async (req, res) => {
       currency: voucher.currency,
       expiryDate: voucher.expiresAt ? new Date(voucher.expiresAt) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       qrCode: qrData,
-      description: `₪${voucher.initialAmount} PetWash™ E-Gift Card`
+      description: `₪${voucher.initialAmount} ⁦PetWash™⁩ E-Gift Card`
     });
     
     // Construct Google Wallet save URL

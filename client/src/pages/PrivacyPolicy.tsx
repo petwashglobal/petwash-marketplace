@@ -45,7 +45,7 @@ export default function PrivacyPolicy() {
                   <CardTitle className="luxury-heading-sm">1. בקר המידע</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 luxury-text-body">
-                <p><strong>שם החברה:</strong> Pet Wash™ Israel</p>
+                <p><strong>שם החברה:</strong> ⁦Pet Wash™⁩ Israel</p>
                 <p><strong>כתובת:</strong> ישראל</p>
                 <p><strong>אימייל:</strong> Support@PetWash.co.il</p>
                 <p><strong>אתר:</strong> https://petwash.co.il</p>
@@ -351,7 +351,7 @@ export default function PrivacyPolicy() {
                 <CardTitle className="luxury-heading-sm">1. Data Controller</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 luxury-text-body">
-              <p><strong>Company Name:</strong> Pet Wash™ Israel</p>
+              <p><strong>Company Name:</strong> ⁦Pet Wash™⁩ Israel</p>
               <p><strong>Address:</strong> Israel</p>
               <p><strong>Email:</strong> Support@PetWash.co.il</p>
               <p><strong>Website:</strong> https://petwash.co.il</p>

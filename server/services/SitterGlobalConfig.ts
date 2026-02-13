@@ -1,5 +1,5 @@
 /**
- * Global Configuration Service for The Sitter Suite™
+ * Global Configuration Service for ⁦The Sitter Suite™⁩
  * Manages multi-country operations, regulatory compliance, and localization
  * Like Booking.com - supports USA, ISR, UK, AUS, CAN with country-specific rules
  */

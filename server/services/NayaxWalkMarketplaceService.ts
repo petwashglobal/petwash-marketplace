@@ -98,7 +98,7 @@ export class NayaxWalkMarketplaceService {
         throw new Error('Fee calculation validation failed');
       }
       
-      logger.info('[Walk My Pet™] Processing walk payment', {
+      logger.info('[⁦Walk My Pet™⁩] Processing walk payment', {
         walkId: params.walkId,
         bookingId: params.bookingId,
         basePriceILS: fees.basePrice,
@@ -114,14 +114,14 @@ export class NayaxWalkMarketplaceService {
         Currency: this.CURRENCY,
         Token: params.ownerPaymentToken,
         ExternalTransactionId: `WALK_${params.walkId}_${nanoid(10)}`,
-        Description: `Walk My Pet™ - Walk #${params.walkId}`,
+        Description: `⁦Walk My Pet™⁩ - Walk #${params.walkId}`,
       };
       
       // Call Nayax Israel API to authorize and capture payment
       const nayaxResponse = await this.callNayaxPaymentAPI(paymentRequest);
       
       if (nayaxResponse.Status === 'SUCCESS' && nayaxResponse.TransactionId) {
-        logger.info('[Walk My Pet™] Payment successful', {
+        logger.info('[⁦Walk My Pet™⁩] Payment successful', {
           walkId: params.walkId,
           nayaxTransactionId: nayaxResponse.TransactionId,
           platformRevenue: fees.platformCommissionTotal, // Our 15% platform commission 💰
@@ -136,7 +136,7 @@ export class NayaxWalkMarketplaceService {
           fees,
         };
       } else {
-        logger.error('[Walk My Pet™] Payment failed', {
+        logger.error('[⁦Walk My Pet™⁩] Payment failed', {
           walkId: params.walkId,
           status: nayaxResponse.Status,
           reason: nayaxResponse.DeclineReason || nayaxResponse.Message,
@@ -150,7 +150,7 @@ export class NayaxWalkMarketplaceService {
       }
       
     } catch (error) {
-      logger.error('[Walk My Pet™] Payment processing error', error);
+      logger.error('[⁦Walk My Pet™⁩] Payment processing error', error);
       
       const fees = calculateWalkFees(params.basePriceCents);
       
@@ -176,7 +176,7 @@ export class NayaxWalkMarketplaceService {
     error?: string;
   }> {
     try {
-      logger.info('[Walk My Pet™] Processing walker payout', {
+      logger.info('[⁦Walk My Pet™⁩] Processing walker payout', {
         walkId: params.walkId,
         walkerId: params.walkerId,
         payoutCents: params.walkerPayoutCents,
@@ -185,7 +185,7 @@ export class NayaxWalkMarketplaceService {
       
       // TODO: Integrate with Nayax payout/transfer API when API keys are provided
       // For now, log the payout request for manual processing
-      logger.info('[Walk My Pet™] Walker payout queued (awaiting Nayax API keys)', {
+      logger.info('[⁦Walk My Pet™⁩] Walker payout queued (awaiting Nayax API keys)', {
         walkId: params.walkId,
         walkerId: params.walkerId,
         amountILS: (params.walkerPayoutCents / 100).toFixed(2),
@@ -199,7 +199,7 @@ export class NayaxWalkMarketplaceService {
       };
       
     } catch (error) {
-      logger.error('[Walk My Pet™] Payout processing error', error);
+      logger.error('[⁦Walk My Pet™⁩] Payout processing error', error);
       
       return {
         success: false,
@@ -218,7 +218,7 @@ export class NayaxWalkMarketplaceService {
     try {
       // In development, simulate successful payment until API keys are provided
       if (process.env.NODE_ENV === 'development' || !this.NAYAX_API_KEY) {
-        logger.info('[Walk My Pet™ - DEV MODE] Simulating Nayax payment', {
+        logger.info('[⁦Walk My Pet™⁩ - DEV MODE] Simulating Nayax payment', {
           amount: request.Amount,
           amountILS: (request.Amount / 100).toFixed(2),
           currency: request.Currency,
@@ -254,7 +254,7 @@ export class NayaxWalkMarketplaceService {
       return result;
       
     } catch (error) {
-      logger.error('[Walk My Pet™] Nayax Israel API call failed', error);
+      logger.error('[⁦Walk My Pet™⁩] Nayax Israel API call failed', error);
       
       return {
         Status: 'FAILED',
@@ -279,14 +279,14 @@ export class NayaxWalkMarketplaceService {
     error?: string;
   }> {
     try {
-      logger.info('[Walk My Pet™] Processing refund', {
+      logger.info('[⁦Walk My Pet™⁩] Processing refund', {
         nayaxTransactionId,
         amountCents,
         amountILS: (amountCents / 100).toFixed(2),
       });
       
       // TODO: Integrate with Nayax Israel refund API when keys available
-      logger.info('[Walk My Pet™] Refund queued (awaiting Nayax API keys)', {
+      logger.info('[⁦Walk My Pet™⁩] Refund queued (awaiting Nayax API keys)', {
         transactionId: nayaxTransactionId,
         amountILS: (amountCents / 100).toFixed(2),
         gateway: 'Nayax Israel',
@@ -298,7 +298,7 @@ export class NayaxWalkMarketplaceService {
       };
       
     } catch (error) {
-      logger.error('[Walk My Pet™] Refund processing error', error);
+      logger.error('[⁦Walk My Pet™⁩] Refund processing error', error);
       
       return {
         success: false,

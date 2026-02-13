@@ -94,7 +94,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     },
     {
       id: 2,
-      name: 'The Sitter Suite™',
+      name: '⁦The Sitter Suite™⁩',
       nameHe: 'סוויטת השמרטפים',
       tagline: t('divisions.sitterSuite.tagline', language),
       description: t('divisions.sitterSuite.description', language),
@@ -103,7 +103,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     },
     {
       id: 3,
-      name: 'Walk My Pet™',
+      name: '⁦Walk My Pet™⁩',
       nameHe: 'טיילו את חיית המחמד שלי',
       tagline: t('divisions.walkMyPet.tagline', language),
       description: t('divisions.walkMyPet.description', language),
@@ -112,7 +112,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     },
     {
       id: 4,
-      name: 'PetTrek™',
+      name: '⁦PetTrek™⁩',
       nameHe: 'פט-טרק',
       tagline: t('divisions.petTrek.tagline', language),
       description: t('divisions.petTrek.description', language),
@@ -121,7 +121,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     },
     {
       id: 5,
-      name: 'Pet Wash Academy™',
+      name: '⁦Pet Wash Academy™⁩',
       nameHe: 'אקדמיית פט ווש',
       tagline: t('divisions.academy.tagline', language),
       description: t('divisions.academy.description', language),
@@ -155,7 +155,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
               {isHebrew ? 'עולם ' : 'The '}
             </span>
             <span className="font-medium">
-              Pet Wash™
+              ⁦Pet Wash™⁩
             </span>
             <span>
               {isHebrew ? '' : ' Universe'}

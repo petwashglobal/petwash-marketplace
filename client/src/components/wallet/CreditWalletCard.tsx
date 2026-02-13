@@ -234,7 +234,7 @@ export function CreditWalletCard({
                 <Wallet className="w-5 h-5 text-[#d4af37]" />
               </div>
               <div>
-                <h3 className="luxury-dark-heading-sm text-lg">Pet Wash™ Wallet</h3>
+                <h3 className="luxury-dark-heading-sm text-lg">⁦Pet Wash™⁩ Wallet</h3>
                 <p className="luxury-dark-text-small text-xs mt-0.5">Premium Credits</p>
               </div>
             </div>

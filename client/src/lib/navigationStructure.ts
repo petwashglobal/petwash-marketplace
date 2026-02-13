@@ -210,12 +210,12 @@ export const navigationTree: MenuItem[] = [
   },
 
   // =============================================
-  // 🐕 Walk My Pet™
+  // 🐕 ⁦Walk My Pet™⁩
   // =============================================
   {
     id: 'walk-my-pet',
-    label: 'Walk My Pet™',
-    labelHe: 'Walk My Pet™',
+    label: '⁦Walk My Pet™⁩',
+    labelHe: '⁦Walk My Pet™⁩',
     icon: Dog,
     children: [
       {
@@ -311,12 +311,12 @@ export const navigationTree: MenuItem[] = [
   },
 
   // =============================================
-  // 🏡 The Sitter Suite™
+  // 🏡 ⁦The Sitter Suite™⁩
   // =============================================
   {
     id: 'sitter-suite',
-    label: 'The Sitter Suite™',
-    labelHe: 'The Sitter Suite™',
+    label: '⁦The Sitter Suite™⁩',
+    labelHe: '⁦The Sitter Suite™⁩',
     icon: HomeIcon,
     children: [
       {
@@ -400,12 +400,12 @@ export const navigationTree: MenuItem[] = [
   },
 
   // =============================================
-  // 🚗 PetTrek™ (Pet Transport)
+  // 🚗 ⁦PetTrek™⁩ (Pet Transport)
   // =============================================
   {
     id: 'pettrek',
-    label: 'PetTrek™',
-    labelHe: 'PetTrek™',
+    label: '⁦PetTrek™⁩',
+    labelHe: '⁦PetTrek™⁩',
     icon: Car,
     children: [
       {

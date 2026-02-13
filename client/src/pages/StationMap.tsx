@@ -16,7 +16,7 @@ export default function StationMap() {
         <div className="text-center mb-12 luxury-animate-fade-in">
           <div className="inline-flex items-center gap-3 mb-6">
             <MapPin className="w-10 h-10 text-purple-600" />
-            <h1 className="luxury-heading-xl">Find a K9000™ Station</h1>
+            <h1 className="luxury-heading-xl">Find a ⁦K9000™⁩ Station</h1>
           </div>
           <p className="luxury-text-body max-w-2xl mx-auto">
             Locate self-service pet wash stations near you

@@ -99,7 +99,7 @@ export default function StatusDashboard() {
   return (
     <LuxuryPageWrapper
       variant="dashboard"
-      title="Pet Wash™ System Status"
+      title="⁦Pet Wash™⁩ System Status"
       subtitle="Real-time platform health monitoring"
       icon={<Activity className="w-8 h-8 text-purple-600" />}
     >
@@ -291,7 +291,7 @@ export default function StatusDashboard() {
 
         {/* Footer */}
         <div className="text-center text-sm text-gray-500 pb-6">
-          <p>PetWash™ Enterprise Platform • Powered by Replit</p>
+          <p>⁦PetWash™⁩ Enterprise Platform • Powered by Replit</p>
           <p className="mt-1">
             Monitoring infrastructure for petwash.co.il (Israel) and future petwash.app (Global)
           </p>

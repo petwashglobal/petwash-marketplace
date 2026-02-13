@@ -40,8 +40,8 @@ class LuxuryDocumentEmailService {
           operationCode: 'K9K-PREM-001'
         },
         {
-          description: 'Walk My Pet™ - 1 Hour Premium Walk',
-          descriptionHe: 'Walk My Pet™ - טיול פרמיום שעה',
+          description: '⁦Walk My Pet™⁩ - 1 Hour Premium Walk',
+          descriptionHe: '⁦Walk My Pet™⁩ - טיול פרמיום שעה',
           quantity: 5,
           unitPrice: 80.00,
           vatRate: 0.18,
@@ -49,8 +49,8 @@ class LuxuryDocumentEmailService {
           operationCode: 'WMP-WALK-002'
         },
         {
-          description: 'PetTrek™ Transport - Airport to Home',
-          descriptionHe: 'PetTrek™ הובלה - שדה תעופה לבית',
+          description: '⁦PetTrek™⁩ Transport - Airport to Home',
+          descriptionHe: '⁦PetTrek™⁩ הובלה - שדה תעופה לבית',
           quantity: 1,
           unitPrice: 250.00,
           vatRate: 0.18,
@@ -58,8 +58,8 @@ class LuxuryDocumentEmailService {
           operationCode: 'PTK-TRANS-003'
         },
         {
-          description: 'The Sitter Suite™ - Overnight Care',
-          descriptionHe: 'The Sitter Suite™ - שמירה ללילה',
+          description: '⁦The Sitter Suite™⁩ - Overnight Care',
+          descriptionHe: '⁦The Sitter Suite™⁩ - שמירה ללילה',
           quantity: 3,
           unitPrice: 120.00,
           vatRate: 0.18,
@@ -67,7 +67,7 @@ class LuxuryDocumentEmailService {
           operationCode: 'TSS-CARE-004'
         }
       ],
-      notesHe: 'תודה שבחרתם ב-Pet Wash™ - המובילה בישראל בשירותי טיפול פרמיום לחיות מחמד. כל השירותים שלנו כוללים ביטוח מלא ומעקב GPS בזמן אמת.'
+      notesHe: 'תודה שבחרתם ב-⁦Pet Wash™⁩ - המובילה בישראל בשירותי טיפול פרמיום לחיות מחמד. כל השירותים שלנו כוללים ביטוח מלא ומעקב GPS בזמן אמת.'
     };
 
     const invoice = LuxuryInvoiceService.generateInvoice(sampleInvoiceData);
@@ -116,7 +116,7 @@ class LuxuryDocumentEmailService {
 
         await sendLuxuryEmail({
           to: emailAddress,
-          subject: '✨ Pet Wash™ - דוגמת חשבונית מס פרמיום (Sample Tax Invoice)',
+          subject: '✨ ⁦Pet Wash™⁩ - דוגמת חשבונית מס פרמיום (Sample Tax Invoice)',
           html: fixedHtml
         });
 
@@ -136,7 +136,7 @@ class LuxuryDocumentEmailService {
 
         await sendLuxuryEmail({
           to: emailAddress,
-          subject: '✨ Pet Wash™ - דוגמת קבלה פרמיום (Sample Receipt)',
+          subject: '✨ ⁦Pet Wash™⁩ - דוגמת קבלה פרמיום (Sample Receipt)',
           html: fixedHtml
         });
 
@@ -154,7 +154,7 @@ class LuxuryDocumentEmailService {
 
         await sendLuxuryEmail({
           to: emailAddress,
-          subject: '✨ Pet Wash™ - דוגמת דוח הכנסות ומע"מ (Sample Income & VAT Statement)',
+          subject: '✨ ⁦Pet Wash™⁩ - דוגמת דוח הכנסות ומע"מ (Sample Income & VAT Statement)',
           html: fixedHtml
         });
 

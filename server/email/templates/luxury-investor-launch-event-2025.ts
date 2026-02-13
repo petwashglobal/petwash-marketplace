@@ -1,5 +1,5 @@
 /**
- * Luxury Investor Launch Event Email - Pet Wash™ 2025
+ * Luxury Investor Launch Event Email - ⁦Pet Wash™⁩ 2025
  * Special event invitation with pure white background and premium design
  */
 
@@ -14,11 +14,11 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
   
   const content = {
     he: {
-      subject: '🚀 Pet Wash™ - הזמנה מיוחדת לאירוע השקה | 7 בנובמבר 2025',
+      subject: '🚀 ⁦Pet Wash™⁩ - הזמנה מיוחדת לאירוע השקה | 7 בנובמבר 2025',
       greeting: `${data.recipientName} שלום,`,
       headline: 'אירוע השקה מיוחד',
-      subheadline: 'Pet Wash™ Ltd - הפלטפורמה הפרמיום הראשונה לטיפול אורגני בחיות מחמד בישראל',
-      intro: 'אנו מתכבדים להזמין אותך לאירוע ההשקה המיוחד של Pet Wash™ - רגע היסטורי בתעשיית הטיפול בחיות המחמד בישראל.',
+      subheadline: '⁦Pet Wash™⁩ Ltd - הפלטפורמה הפרמיום הראשונה לטיפול אורגני בחיות מחמד בישראל',
+      intro: 'אנו מתכבדים להזמין אותך לאירוע ההשקה המיוחד של ⁦Pet Wash™⁩ - רגע היסטורי בתעשיית הטיפול בחיות המחמד בישראל.',
       eventDate: '7 בנובמבר 2025',
       eventTime: '18:00',
       eventLocation: 'פארק וולד, כפר סבא',
@@ -34,14 +34,14 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
       mapTitle: 'מפה למיקום האירוע',
       mapDesc: 'פארק וולד ממוקם בלב כפר סבא',
       cta: 'אשר הגעה',
-      footer: 'Pet Wash™ Ltd | טיפול אורגני פרמיום בחיות מחמד | תוצרת ישראל 🇮🇱'
+      footer: '⁦Pet Wash™⁩ Ltd | טיפול אורגני פרמיום בחיות מחמד | תוצרת ישראל 🇮🇱'
     },
     en: {
-      subject: '🚀 Pet Wash™ - Special Launch Event Invitation | November 7, 2025',
+      subject: '🚀 ⁦Pet Wash™⁩ - Special Launch Event Invitation | November 7, 2025',
       greeting: `Dear ${data.recipientName},`,
       headline: 'Exclusive Launch Event',
-      subheadline: 'Pet Wash™ Ltd - Israel\'s First Premium Organic Pet Care Platform',
-      intro: 'We are honored to invite you to the special launch event of Pet Wash™ - a historic moment in Israel\'s pet care industry.',
+      subheadline: '⁦Pet Wash™⁩ Ltd - Israel\'s First Premium Organic Pet Care Platform',
+      intro: 'We are honored to invite you to the special launch event of ⁦Pet Wash™⁩ - a historic moment in Israel\'s pet care industry.',
       eventDate: 'November 7, 2025',
       eventTime: '18:00',
       eventLocation: 'World Park, Kfar Saba',
@@ -57,7 +57,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
       mapTitle: 'Event Location Map',
       mapDesc: 'World Park is located in the heart of Kfar Saba',
       cta: 'Confirm Attendance',
-      footer: 'Pet Wash™ Ltd | Premium Organic Pet Care | Made in Israel 🇮🇱'
+      footer: '⁦Pet Wash™⁩ Ltd | Premium Organic Pet Care | Made in Israel 🇮🇱'
     }
   };
 
@@ -304,7 +304,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
     <div class="container">
         <div class="header">
             <div class="logo">🐾</div>
-            <div class="brand">Pet Wash™</div>
+            <div class="brand">⁦Pet Wash™⁩</div>
         </div>
         
         <div class="content">
@@ -367,7 +367,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
         <div class="footer">
             <p class="footer-text">${c.footer}</p>
             <p class="footer-text" style="margin-top: 15px; font-size: 12px;">
-                © 2025 Pet Wash™ Ltd. All rights reserved.
+                © 2025 ⁦Pet Wash™⁩ Ltd. All rights reserved.
             </p>
         </div>
     </div>

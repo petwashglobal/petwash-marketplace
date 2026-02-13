@@ -1,7 +1,7 @@
 /**
  * Accessibility Checker 2025
  * 
- * Runtime accessibility validation for Pet Wash™:
+ * Runtime accessibility validation for ⁦Pet Wash™⁩:
  * - Missing alt text on images
  * - Links without href
  * - Form inputs without labels

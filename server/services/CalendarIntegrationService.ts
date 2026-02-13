@@ -204,14 +204,14 @@ class CalendarIntegrationService {
 
   private buildDescription(event: BookingCalendarEvent): string {
     const lines = [
-      `🐾 Pet Wash™ - ${event.platform}`,
+      `🐾 ⁦Pet Wash™⁩ - ${event.platform}`,
       `📋 Booking: ${event.bookingId}`,
     ];
     if (event.petName) lines.push(`🐕 Pet: ${event.petName}`);
     if (event.customerName) lines.push(`👤 Customer: ${event.customerName}`);
     if (event.providerName) lines.push(`✅ Provider: ${event.providerName}`);
     if (event.description) lines.push('', event.description);
-    lines.push('', '---', 'Managed by Pet Wash™ | petwash.co.il');
+    lines.push('', '---', 'Managed by ⁦Pet Wash™⁩ | petwash.co.il');
     return lines.join('\n');
   }
 

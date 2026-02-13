@@ -1,5 +1,5 @@
 /**
- * PetTrek™ Fare Estimation Service
+ * ⁦PetTrek™⁩ Fare Estimation Service
  * Dynamic pricing for pet transport with surge multipliers
  * 
  * Features:

@@ -54,7 +54,7 @@ ${pages.map(page => `  <url>
 router.get('/robots.txt', (req, res) => {
   const baseUrl = process.env.BASE_URL || 'https://petwash.co.il';
   
-  const robots = `# Pet Wash™ - Robots.txt
+  const robots = `# ⁦Pet Wash™⁩ - Robots.txt
 User-agent: *
 Allow: /
 Disallow: /admin/
@@ -103,7 +103,7 @@ Canonical: ${baseUrl}/.well-known/security.txt
 Policy: ${baseUrl}/security-policy
 Hiring: ${baseUrl}/careers
 
-# Pet Wash™ Security Team
+# ⁦Pet Wash™⁩ Security Team
 # We appreciate responsible disclosure of security vulnerabilities
 # Response time: Within 48 hours
 `;

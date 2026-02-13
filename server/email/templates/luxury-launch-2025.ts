@@ -1,5 +1,5 @@
 /**
- * Luxury Brand Launch Email - Pet Wash™ 2025
+ * Luxury Brand Launch Email - ⁦Pet Wash™⁩ 2025
  * Ultra-premium design with animations, pure white background, and luxury imagery
  */
 
@@ -14,11 +14,11 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
   
   const content = {
     en: {
-      subject: '🚀 Pet Wash™ Premium - Official Launch November 7, 2025',
+      subject: '🚀 ⁦Pet Wash™⁩ Premium - Official Launch November 7, 2025',
       greeting: `Dear ${data.recipientName},`,
       headline: 'The Future of Pet Care',
       subheadline: 'Officially Launching November 7, 2025',
-      intro: 'We are thrilled to invite you to witness the official launch of Pet Wash™ - Israel\'s first premium organic pet care platform.',
+      intro: 'We are thrilled to invite you to witness the official launch of ⁦Pet Wash™⁩ - Israel\'s first premium organic pet care platform.',
       features: [
         '11 Advanced Authentication Methods',
         '6-Language Global Platform',
@@ -29,15 +29,15 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         'Enterprise-Grade Security'
       ],
       quote: '"Excellence is not a destination; it is a continuous journey that never ends."',
-      cta: 'Experience Pet Wash™',
+      cta: 'Experience ⁦Pet Wash™⁩',
       footer: 'Premium Organic Pet Care | Made in Israel 🇮🇱'
     },
     he: {
-      subject: '🚀 Pet Wash™ פרמיום - השקה רשמית 7 בנובמבר 2025',
+      subject: '🚀 ⁦Pet Wash™⁩ פרמיום - השקה רשמית 7 בנובמבר 2025',
       greeting: `${data.recipientName} שלום,`,
       headline: 'עתיד הטיפול בחיות מחמד',
       subheadline: 'השקה רשמית ב-7 בנובמבר 2025',
-      intro: 'אנו שמחים להזמין אותך לחזות בהשקה הרשמית של Pet Wash™ - פלטפורמת הטיפול האורגני הפרמיום הראשונה בישראל.',
+      intro: 'אנו שמחים להזמין אותך לחזות בהשקה הרשמית של ⁦Pet Wash™⁩ - פלטפורמת הטיפול האורגני הפרמיום הראשונה בישראל.',
       features: [
         '11 שיטות אימות מתקדמות',
         'פלטפורמה רב-לשונית (6 שפות)',
@@ -48,7 +48,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         'אבטחה ברמה ארגונית'
       ],
       quote: '"מצוינות אינה יעד; היא מסע מתמשך שאינו נגמר."',
-      cta: 'חוו את Pet Wash™',
+      cta: 'חוו את ⁦Pet Wash™⁩',
       footer: 'טיפול אורגני פרמיום בחיות מחמד | תוצרת ישראל 🇮🇱'
     }
   };
@@ -382,7 +382,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         <!-- Animated Header -->
         <div class="header">
             <div class="logo">🐾</div>
-            <div class="brand-name">Pet Wash™</div>
+            <div class="brand-name">⁦Pet Wash™⁩</div>
             <div class="tagline">Premium Organic Pet Care</div>
         </div>
         
@@ -442,7 +442,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
             </div>
             <p class="footer-text">${c.footer}</p>
             <p class="footer-text" style="margin-top: 15px; font-size: 12px;">
-                © 2025 Pet Wash™ Ltd. All rights reserved.
+                © 2025 ⁦Pet Wash™⁩ Ltd. All rights reserved.
             </p>
         </div>
     </div>

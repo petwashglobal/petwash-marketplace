@@ -1,10 +1,10 @@
 /**
  * WALK MY PET™ - Financial Fee Calculator
  * 
- * FLAT 15% COMMISSION MODEL (unified across all PetWash™ platforms):
+ * FLAT 15% COMMISSION MODEL (unified across all ⁦PetWash™⁩ platforms):
  * - Owner pays: Base Price + 15% Platform Fee + VAT on platform fee
  * - Walker receives: 85% of Base Price (after 15% commission)
- * - PetWash™ keeps: 15% commission (matches MadPaws industry standard)
+ * - ⁦PetWash™⁩ keeps: 15% commission (matches MadPaws industry standard)
  * 
  * Payment Flow (Airbnb-style escrow):
  * 1. Owner pays base + 15% platform fee + VAT to PetWash via Nayax
@@ -21,7 +21,7 @@
  * - MadPaws: 15% platform commission (acquired by Rover for $40.5M) ✓
  * - Rover: 20% platform commission (USA market leader)
  * - Wag: 40% platform commission (USA on-demand)
- * - Walk My Pet™: 15% platform commission (MATCHES MADPAWS) ✓
+ * - ⁦Walk My Pet™⁩: 15% platform commission (MATCHES MADPAWS) ✓
  * 
  * Israeli Market Adaptations:
  * - Currency: ILS (Israeli Shekel)
@@ -52,8 +52,8 @@ export interface WalkFeeCalculation {
 }
 
 /**
- * Calculate transparent fees for Walk My Pet™ booking
- * FLAT 15% commission (unified across all PetWash™ platforms)
+ * Calculate transparent fees for ⁦Walk My Pet™⁩ booking
+ * FLAT 15% commission (unified across all ⁦PetWash™⁩ platforms)
  * 
  * @param basePriceCents - Walker's rate for this walk in agorot (Israeli cents)
  * @returns Complete fee breakdown with all amounts
@@ -127,7 +127,7 @@ export function calculateWalkFeesByDuration(
 }
 
 /**
- * Validate fee calculation integrity for Walk My Pet™
+ * Validate fee calculation integrity for ⁦Walk My Pet™⁩
  * 
  * Ensures that:
  * 1. Walker payout + walker fee = base price (85% + 15% = 100%)

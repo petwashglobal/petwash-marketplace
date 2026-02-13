@@ -50,7 +50,7 @@ export class SitterAITriageService {
       const hoursUntilStart = this.calculateHoursUntilStart(request.startDate);
       const durationDays = this.calculateBookingDays(request.startDate, request.endDate);
       
-      const prompt = `You are an AI triage assistant for The Sitter Suite™ pet sitting marketplace.
+      const prompt = `You are an AI triage assistant for ⁦The Sitter Suite™⁩ pet sitting marketplace.
 
 Analyze this booking request and provide:
 1. Urgency Score (1-3):

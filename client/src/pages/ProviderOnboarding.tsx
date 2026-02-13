@@ -191,8 +191,8 @@ export default function ProviderOnboarding() {
     addAddress: isHebrew ? 'הוסף כתובת נוספת' : 'Add Another Address',
     consentTitle: isHebrew ? 'הסכמה לבדיקת רקע' : 'Background Check Consent',
     consentText: isHebrew 
-      ? 'אני מסכים/ה שחברת Pet Wash™ תבצע בדיקת רקע פלילי מקיפה כולל היסטוריית מגורים של 10 שנים. אני מבין/ה שהמידע ישמש אך ורק למטרות אימות זהות ובטיחות.'
-      : 'I consent to Pet Wash™ conducting a comprehensive criminal background check including 10-year residential history. I understand this information will be used solely for identity verification and safety purposes.',
+      ? 'אני מסכים/ה שחברת ⁦Pet Wash™⁩ תבצע בדיקת רקע פלילי מקיפה כולל היסטוריית מגורים של 10 שנים. אני מבין/ה שהמידע ישמש אך ורק למטרות אימות זהות ובטיחות.'
+      : 'I consent to ⁦Pet Wash™⁩ conducting a comprehensive criminal background check including 10-year residential history. I understand this information will be used solely for identity verification and safety purposes.',
     // Role-specific certifications
     petFirstAidCert: isHebrew ? 'תעודת עזרה ראשונה לחיות מחמד' : 'Pet First Aid Certificate',
     petFirstAidRequired: isHebrew ? 'נדרש לשמרטפים ומטיילים' : 'Required for sitters and walkers',

@@ -12,7 +12,7 @@ export default function PrivacyPolicy() {
         <Link href="/sitter-suite">
           <button className="mb-8 flex items-center gap-2 luxury-btn-ghost luxury-animate-fade-in">
             <ArrowLeft className="h-4 w-4" />
-            {isHebrew ? 'חזרה ל-The Sitter Suite™' : 'Back to The Sitter Suite™'}
+            {isHebrew ? 'חזרה ל-⁦The Sitter Suite™⁩' : 'Back to ⁦The Sitter Suite™⁩'}
           </button>
         </Link>
 
@@ -40,9 +40,9 @@ export default function PrivacyPolicy() {
               </div>
               <p className="luxury-text-body mb-4">
                 {isHebrew ? (
-                  <>Pet Wash Ltd ("אנחנו", "שלנו", או "Pet Wash") מפעילה פלטפורמת מרקטפלייס מקוונת המחברת בין בעלי חיות מחמד לשמרטפי חיות מחמד מקצועיים באמצעות "The Sitter Suite™" ("הפלטפורמה"). אנו מתחייבים להגן על פרטיות המשתמשים שלנו ולעמוד בחוקי הגנת המידע של ישראל, GDPR, ותקני פרטיות בינלאומיים.</>
+                  <>Pet Wash Ltd ("אנחנו", "שלנו", או "Pet Wash") מפעילה פלטפורמת מרקטפלייס מקוונת המחברת בין בעלי חיות מחמד לשמרטפי חיות מחמד מקצועיים באמצעות "⁦The Sitter Suite™⁩" ("הפלטפורמה"). אנו מתחייבים להגן על פרטיות המשתמשים שלנו ולעמוד בחוקי הגנת המידע של ישראל, GDPR, ותקני פרטיות בינלאומיים.</>
                 ) : (
-                  <>Pet Wash Ltd ("we", "our", or "Pet Wash") operates an online marketplace platform connecting pet owners with professional pet sitters through The Sitter Suite™ ("the Platform"). We are committed to protecting the privacy of our users and complying with Israeli privacy laws, GDPR, and international privacy standards.</>
+                  <>Pet Wash Ltd ("we", "our", or "Pet Wash") operates an online marketplace platform connecting pet owners with professional pet sitters through ⁦The Sitter Suite™⁩ ("the Platform"). We are committed to protecting the privacy of our users and complying with Israeli privacy laws, GDPR, and international privacy standards.</>
                 )}
               </p>
               <p className="luxury-text-body">

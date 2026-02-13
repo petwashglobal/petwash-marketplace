@@ -36,7 +36,7 @@ export default function FounderMember() {
         <div className="text-center mb-8 luxury-animate-fade-in luxury-delay-1">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Crown className="w-8 h-8 text-yellow-500 drop-shadow-lg" />
-            <h1 className="luxury-heading-lg luxury-text-gradient">Pet Wash™ Founder Member</h1>
+            <h1 className="luxury-heading-lg luxury-text-gradient">⁦Pet Wash™⁩ Founder Member</h1>
           </div>
           <p className="luxury-text-body">Welcome to the exclusive founder's club</p>
         </div>
@@ -164,7 +164,7 @@ export default function FounderMember() {
 
         {/* Footer */}
         <div className="text-center mt-8 luxury-animate-fade-in luxury-delay-3">
-          <p className="luxury-text-body">Thank you for being the foundation of Pet Wash™</p>
+          <p className="luxury-text-body">Thank you for being the foundation of ⁦Pet Wash™⁩</p>
           <p className="luxury-text-small mt-2">Your vision made this premium pet care platform possible</p>
         </div>
       </div>

@@ -1,6 +1,6 @@
 /**
  * Google Dialogflow CX AI Chat Service
- * Production-grade Gemini-powered chatbot for Pet Wash™
+ * Production-grade Gemini-powered chatbot for ⁦Pet Wash™⁩
  * 
  * Security: API keys stored in environment variables, never exposed to frontend
  * Supports: Hebrew/English bilingual conversations, pet care expertise

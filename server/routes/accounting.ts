@@ -722,7 +722,7 @@ router.get("/monthly-package/:packageId/export", async (req: Request, res: Respo
     
     // Create Excel workbook
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Pet Wash™ Accounting System';
+    workbook.creator = '⁦Pet Wash™⁩ Accounting System';
     workbook.created = new Date();
     
     // Summary sheet

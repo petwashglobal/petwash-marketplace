@@ -22,8 +22,8 @@ export default function StandaloneDivisions() {
 
   const divisions = [
     {
-      name: 'Pet Wash Hub™',
-      nameHe: 'Pet Wash Hub™',
+      name: 'Pet ⁦Wash Hub™⁩',
+      nameHe: 'Pet ⁦Wash Hub™⁩',
       icon: Building2,
       color: 'from-blue-500 to-cyan-500',
       description: 'Premium organic wash stations - Our flagship self-service pet washing division',
@@ -37,8 +37,8 @@ export default function StandaloneDivisions() {
       revenueHe: 'דמי תחנה, מנויי נאמנות, מכירת מוצרים',
     },
     {
-      name: 'Walk My Pet™',
-      nameHe: 'Walk My Pet™',
+      name: '⁦Walk My Pet™⁩',
+      nameHe: '⁦Walk My Pet™⁩',
       icon: Footprints,
       color: 'from-green-500 to-emerald-500',
       description: 'Premium dog walking marketplace with real-time GPS tracking - Complete standalone business',
@@ -52,8 +52,8 @@ export default function StandaloneDivisions() {
       revenueHe: 'עמלה להליכה, מנויים למטיילים, תכונות פרימיום',
     },
     {
-      name: 'The Sitter Suite™',
-      nameHe: 'The Sitter Suite™',
+      name: '⁦The Sitter Suite™⁩',
+      nameHe: '⁦The Sitter Suite™⁩',
       icon: Heart,
       color: 'from-pink-500 to-rose-500',
       description: 'Pet sitting marketplace with AI triage and split payments - Fully independent operation',
@@ -67,8 +67,8 @@ export default function StandaloneDivisions() {
       revenueHe: 'עמלות הזמנה, דמי שמרטף, חבילות ביטוח',
     },
     {
-      name: 'PetTrek™',
-      nameHe: 'PetTrek™',
+      name: '⁦PetTrek™⁩',
+      nameHe: '⁦PetTrek™⁩',
       icon: Car,
       color: 'from-purple-500 to-indigo-500',
       description: 'Advanced pet transport with Uber-style matching and live tracking - Complete rideshare platform',
@@ -82,8 +82,8 @@ export default function StandaloneDivisions() {
       revenueHe: 'דמי נסיעה, שותפויות נהגים, תמחור שיא',
     },
     {
-      name: 'The Plush Lab™',
-      nameHe: 'The Plush Lab™',
+      name: '⁦The Plush Lab™⁩',
+      nameHe: '⁦The Plush Lab™⁩',
       icon: Wand2,
       color: 'from-amber-500 to-yellow-500',
       description: 'FREE public avatar creator with AI - Customer acquisition tool and standalone creative platform',

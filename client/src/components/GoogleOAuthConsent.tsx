@@ -25,10 +25,10 @@ export function GoogleOAuthConsent({ language, userEmail, onContinue, onCancel }
 
   const text = {
     en: {
-      title: 'Pet Wash™ wants to access your Google Account',
+      title: '⁦Pet Wash™⁩ wants to access your Google Account',
       email: userEmail || 'your account',
-      selectWhat: 'Select what Pet Wash™ can access',
-      becauseUsing: "Because you're using Sign in with Google, Pet Wash™ will be able to",
+      selectWhat: 'Select what ⁦Pet Wash™⁩ can access',
+      becauseUsing: "Because you're using Sign in with Google, ⁦Pet Wash™⁩ will be able to",
       permissions: [
         {
           icon: User,
@@ -46,12 +46,12 @@ export function GoogleOAuthConsent({ language, userEmail, onContinue, onCancel }
           description: 'Used for login, notifications, and service communications',
         },
       ],
-      makeSure: 'Make sure you trust Pet Wash™',
+      makeSure: 'Make sure you trust ⁦Pet Wash™⁩',
       trustMessage: 'You may be sharing sensitive info with this site or app. You can always see or remove access in your',
       googleAccount: 'Google Account',
       learnHow: 'Learn how Google helps you',
       shareDataSafely: 'share data safely',
-      seePolicy: "See Pet Wash™'s",
+      seePolicy: "See ⁦Pet Wash™⁩'s",
       privacyPolicy: 'Privacy Policy',
       and: 'and',
       termsOfService: 'Terms of Service',
@@ -61,10 +61,10 @@ export function GoogleOAuthConsent({ language, userEmail, onContinue, onCancel }
       dataUsageDesc: 'We only use your Google data to create and manage your Pet Wash account. We never share your personal information with third parties without your explicit consent.',
     },
     he: {
-      title: 'Pet Wash™ רוצה לגשת לחשבון Google שלך',
+      title: '⁦Pet Wash™⁩ רוצה לגשת לחשבון Google שלך',
       email: userEmail || 'החשבון שלך',
-      selectWhat: 'בחר למה Pet Wash™ יכולה לגשת',
-      becauseUsing: 'מכיוון שאתה משתמש בכניסה עם Google, Pet Wash™ תוכל ל',
+      selectWhat: 'בחר למה ⁦Pet Wash™⁩ יכולה לגשת',
+      becauseUsing: 'מכיוון שאתה משתמש בכניסה עם Google, ⁦Pet Wash™⁩ תוכל ל',
       permissions: [
         {
           icon: User,
@@ -82,7 +82,7 @@ export function GoogleOAuthConsent({ language, userEmail, onContinue, onCancel }
           description: 'משמש להתחברות, התראות ותקשורת שירות',
         },
       ],
-      makeSure: 'ודא שאתה סומך על Pet Wash™',
+      makeSure: 'ודא שאתה סומך על ⁦Pet Wash™⁩',
       trustMessage: 'ייתכן שאתה משתף מידע רגיש עם אתר או אפליקציה זו. תמיד תוכל לראות או להסיר גישה ב',
       googleAccount: 'חשבון Google',
       learnHow: 'למד כיצד Google עוזרת לך',

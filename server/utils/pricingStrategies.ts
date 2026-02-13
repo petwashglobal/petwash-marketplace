@@ -1,6 +1,6 @@
 /**
  * 🏆 MICROSOFT-STYLE PRICING STRATEGIES
- * Flexible pricing models for Pet Wash™ enterprise platform
+ * Flexible pricing models for ⁦Pet Wash™⁩ enterprise platform
  * Adopted from Microsoft Azure's usage-based pricing approach
  */
 
@@ -86,7 +86,7 @@ export const PRICING_TIERS: PricingTier[] = [
       'Supply chain integration',
     ],
     savings: 'Volume pricing + franchise support',
-    targetCustomer: 'Pet Wash™ franchisees with multiple stations',
+    targetCustomer: '⁦Pet Wash™⁩ franchisees with multiple stations',
   },
 ];
 

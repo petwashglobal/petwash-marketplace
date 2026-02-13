@@ -41,7 +41,7 @@ const COMPANY_NAME_HE = 'פט ווש בע"מ';
 const COMPANY_TAX_ID = '516788400';
 const COMPANY_ADDRESS = 'ישראל';
 const FROM_EMAIL = 'noreply@petwash.co.il';
-const FROM_NAME = 'Pet Wash™';
+const FROM_NAME = '⁦Pet Wash™⁩';
 
 export interface ReceiptGenerationParams {
   platform: string;
@@ -417,14 +417,14 @@ export class IsraeliDigitalReceiptService {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>קבלה דיגיטלית - Pet Wash™</title>
+  <title>קבלה דיגיטלית - ⁦Pet Wash™⁩</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8f9fa;font-family:Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;">
     <!-- Header -->
     <tr>
       <td style="background:#000000;padding:30px 40px;text-align:center;">
-        <h1 style="color:#ffffff;margin:0;font-size:24px;letter-spacing:2px;">Pet Wash™</h1>
+        <h1 style="color:#ffffff;margin:0;font-size:24px;letter-spacing:2px;">⁦Pet Wash™⁩</h1>
         <p style="color:#999999;margin:8px 0 0;font-size:12px;letter-spacing:1px;">${COMPANY_NAME_HE} | ח.פ ${COMPANY_TAX_ID}</p>
       </td>
     </tr>
@@ -530,7 +530,7 @@ export class IsraeliDigitalReceiptService {
     <!-- Footer -->
     <tr>
       <td style="background:#000000;padding:20px 40px;text-align:center;">
-        <p style="margin:0;color:#ffffff;font-size:12px;">Pet Wash™ | ${COMPANY_NAME_HE}</p>
+        <p style="margin:0;color:#ffffff;font-size:12px;">⁦Pet Wash™⁩ | ${COMPANY_NAME_HE}</p>
         <p style="margin:4px 0;color:#666666;font-size:11px;">petwash.co.il</p>
       </td>
     </tr>
@@ -541,7 +541,7 @@ export class IsraeliDigitalReceiptService {
       await mailService.send({
         to: receipt.customerEmail,
         from: { email: FROM_EMAIL, name: FROM_NAME },
-        subject: `קבלה דיגיטלית ${receipt.receiptNumber} | Pet Wash™`,
+        subject: `קבלה דיגיטלית ${receipt.receiptNumber} | ⁦Pet Wash™⁩`,
         html: emailHtml,
       });
 

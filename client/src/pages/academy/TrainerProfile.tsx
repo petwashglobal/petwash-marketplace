@@ -410,7 +410,7 @@ export default function TrainerProfile() {
                           latitude={trainer.location.lat}
                           longitude={trainer.location.lng}
                           address={trainer.city}
-                          placeName={`${trainer.fullName} - Pet Wash Academy™`}
+                          placeName={`${trainer.fullName} - ⁦Pet Wash Academy™⁩`}
                           variant="outline"
                           className="w-full"
                           testId="button-navigate-trainer"
@@ -463,7 +463,7 @@ export default function TrainerProfile() {
                         </div>
                         <div className="flex items-start gap-2">
                           <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5" />
-                          <span>{t('All payments processed by Pet Wash™ Ltd')}</span>
+                          <span>{t('All payments processed by ⁦Pet Wash™⁩ Ltd')}</span>
                         </div>
                         <div className="flex items-start gap-2">
                           <BookOpen className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5" />

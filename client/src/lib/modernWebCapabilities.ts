@@ -111,7 +111,7 @@ export class BackgroundSyncService {
   }
 
   /**
-   * Common sync tags for Pet Wash™
+   * Common sync tags for ⁦Pet Wash™⁩
    */
   static readonly SYNC_TAGS = {
     BOOKING: 'sync-booking',

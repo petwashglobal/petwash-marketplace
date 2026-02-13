@@ -197,7 +197,7 @@ router.get('/insights', async (req, res) => {
 router.get('/health', (req, res) => {
   res.json({
     ok: true,
-    service: 'Pet Wash™ Environment API',
+    service: '⁦Pet Wash™⁩ Environment API',
     features: [
       'Air Quality (Google Air Quality API)',
       'Pollen Forecast (Google Pollen API)',

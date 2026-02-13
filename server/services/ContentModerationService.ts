@@ -289,7 +289,7 @@ Be strict but context-aware. Reject anything offensive, hateful, or inappropriat
     try {
       const base64Image = imageBuffer.toString('base64');
 
-      const prompt = `You are a content moderation AI for Pet Wash™, a family-friendly luxury pet care platform.
+      const prompt = `You are a content moderation AI for ⁦Pet Wash™⁩, a family-friendly luxury pet care platform.
 
 Analyze this uploaded image and check ONLY for clearly inappropriate content:
 

@@ -264,7 +264,7 @@ export default function BecomeProvider() {
                 </div>
                 
                 <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                  {isHebrew ? 'הצטרף לצוות Pet Wash™' : 'Join Pet Wash™ Team'}
+                  {isHebrew ? 'הצטרף לצוות ⁦Pet Wash™⁩' : 'Join ⁦Pet Wash™⁩ Team'}
                 </h2>
                 
                 <p className="text-gray-300 text-lg mb-8 leading-relaxed">
@@ -344,8 +344,8 @@ export default function BecomeProvider() {
                 
                 <p className="text-gray-300 text-lg mb-8 leading-relaxed">
                   {isHebrew 
-                    ? 'תודה על הבקשה שלך להצטרף לצוות Pet Wash™. נבדוק את הפרטים שלך ונחזור אליך תוך 2-3 ימי עסקים.'
-                    : 'Thank you for applying to join the Pet Wash™ team. We will review your details and get back to you within 2-3 business days.'}
+                    ? 'תודה על הבקשה שלך להצטרף לצוות ⁦Pet Wash™⁩. נבדוק את הפרטים שלך ונחזור אליך תוך 2-3 ימי עסקים.'
+                    : 'Thank you for applying to join the ⁦Pet Wash™⁩ team. We will review your details and get back to you within 2-3 business days.'}
                 </p>
                 
                 <div className="space-y-4">
@@ -398,7 +398,7 @@ export default function BecomeProvider() {
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4">
                 {isHebrew ? 'הפוך לספק ' : 'Become a '}
                 <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
-                  Pet Wash™
+                  ⁦Pet Wash™⁩
                 </span>
               </h1>
               

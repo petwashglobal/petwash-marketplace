@@ -155,7 +155,7 @@ export default function PetTrekBookingFlow() {
           </button>
 
           <h1 className="luxury-heading-md luxury-text-gradient" data-testid="page-title">
-            הזמנת הסעה - PetTrek™
+            הזמנת הסעה - ⁦PetTrek™⁩
           </h1>
         </div>
       </div>
@@ -345,7 +345,7 @@ export default function PetTrekBookingFlow() {
             
             <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6 space-y-3">
               <div className="luxury-heading-sm">
-                הסעה - PetTrek™
+                הסעה - ⁦PetTrek™⁩
               </div>
               <div className="luxury-text-body">
                 מועד איסוף: {selectedDate ? selectedDate.toLocaleString("he-IL") : "-"}

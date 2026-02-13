@@ -48,7 +48,7 @@ export default function UnifiedControlPanel() {
               Unified Control Panel
             </h1>
             <p className="text-muted-foreground mt-2">
-              Enterprise orchestration for all Pet Wash™ platforms
+              Enterprise orchestration for all ⁦Pet Wash™⁩ platforms
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -187,10 +187,10 @@ export default function UnifiedControlPanel() {
                 <div className="space-y-3">
                   {[
                     { name: "The Hub™", status: "operational", uptime: "99.9%" },
-                    { name: "The Sitter Suite™", status: "operational", uptime: "99.8%" },
-                    { name: "Walk My Pet™", status: "operational", uptime: "99.7%" },
-                    { name: "PetTrek™", status: "operational", uptime: "99.9%" },
-                    { name: "The Plush Lab™", status: "maintenance", uptime: "98.5%" },
+                    { name: "⁦The Sitter Suite™⁩", status: "operational", uptime: "99.8%" },
+                    { name: "⁦Walk My Pet™⁩", status: "operational", uptime: "99.7%" },
+                    { name: "⁦PetTrek™⁩", status: "operational", uptime: "99.9%" },
+                    { name: "⁦The Plush Lab™⁩", status: "maintenance", uptime: "98.5%" },
                     { name: "Franchise Portal", status: "operational", uptime: "100%" },
                   ].map((platform, index) => (
                     <div

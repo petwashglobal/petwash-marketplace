@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ Platform Copy Email Service
+ * ⁦Pet Wash™⁩ Platform Copy Email Service
  * LUXURY COUTURE EDITION - Fashion-Brand Aesthetics
  * November 2025
  */
@@ -18,7 +18,7 @@ const generatePlatformCopyEmail = () => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Pet Wash™ — Luxury Platform Collection 2025</title>
+  <title>⁦Pet Wash™⁩ — Luxury Platform Collection 2025</title>
   <!--[if mso]>
   <noscript>
     <xml>
@@ -302,7 +302,7 @@ const generatePlatformCopyEmail = () => {
                 <tr>
                   <td style="padding: 40px;">
                     <p style="margin: 0 0 16px 0; font-family: 'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif; font-size: 12px; font-weight: 400; color: #00C569; letter-spacing: 3px;">
-                      07 — K9000™ SMART HUB
+                      07 — ⁦K9000™⁩ SMART HUB
                     </p>
                     <h3 style="margin: 0 0 20px 0; font-family: 'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif; font-size: 24px; font-weight: 400; color: #1a1a1a; letter-spacing: 1px;">
                       Outdoor DIY Pet Wash
@@ -584,7 +584,7 @@ const generatePlatformCopyEmail = () => {
                       <tr>
                         <td style="padding: 12px 0;">
                           <span style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 400; color: #aaaaaa; letter-spacing: 2px; text-transform: uppercase;">Inspiration</span>
-                          <span style="float: right; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; color: #1a1a1a;">Pet Wash™ Premium Design</span>
+                          <span style="float: right; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; color: #1a1a1a;">⁦Pet Wash™⁩ Premium Design</span>
                         </td>
                       </tr>
                     </table>
@@ -639,7 +639,7 @@ const generatePlatformCopyEmail = () => {
 `;
 
   return {
-    subject: 'Pet Wash™ — Platform Collection 2025',
+    subject: '⁦Pet Wash™⁩ — Platform Collection 2025',
     html
   };
 };
@@ -663,7 +663,7 @@ router.post('/send-platform-copy', async (req: Request, res: Response) => {
       html,
       from: {
         email: 'Support@PetWash.co.il',
-        name: 'Pet Wash™'
+        name: '⁦Pet Wash™⁩'
       }
     });
 

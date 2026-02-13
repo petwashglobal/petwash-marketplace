@@ -1,5 +1,5 @@
 /**
- * Security & Vetting Manager for The Sitter Suite™
+ * Security & Vetting Manager for ⁦The Sitter Suite™⁩
  * Handles ID verification, background checks, fraud detection
  * Enterprise-grade security like Airbnb/Uber
  */

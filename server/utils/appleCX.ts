@@ -164,7 +164,7 @@ export function createPremiumOnboarding(userId: string): {
   conciergeIntro: boolean;
 } {
   return {
-    welcomeMessage: 'Welcome to Pet Wash™. We are thrilled to have you join our family of pet parents who demand nothing but the best.',
+    welcomeMessage: 'Welcome to ⁦Pet Wash™⁩. We are thrilled to have you join our family of pet parents who demand nothing but the best.',
     personalizedSetup: [
       'Tell us about your pet',
       'Set your wash preferences',

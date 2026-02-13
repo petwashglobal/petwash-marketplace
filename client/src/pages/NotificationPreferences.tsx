@@ -103,7 +103,7 @@ export default function NotificationPreferences() {
               Notification Preferences
             </h1>
             <p className="luxury-text-body mt-1">
-              Manage how you receive updates from Pet Wash™
+              Manage how you receive updates from ⁦Pet Wash™⁩
             </p>
           </div>
           <Link href="/settings">

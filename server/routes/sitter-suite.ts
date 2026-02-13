@@ -558,7 +558,7 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
           const ownerName = (req as any).user?.email?.split('@')[0] || 'לקוח/ה';
           await smsService.sendSMS(
             sitter.phone,
-            `🐾 Pet Wash™ - בקשת הזמנה חדשה!\n` +
+            `🐾 ⁦Pet Wash™⁩ - בקשת הזמנה חדשה!\n` +
             `לקוח/ה: ${ownerName}\n` +
             `תאריכים: ${start.toLocaleDateString('he-IL')} - ${end.toLocaleDateString('he-IL')}\n` +
             `${totalDays} ימים · ₪${(pricing.subtotal).toFixed(0)}\n` +
@@ -700,7 +700,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       calendarIntegrationService.createBookingEvent({
         platform: 'sitter-suite',
         bookingId: booking.bookingId,
-        title: `The Sitter Suite™ - Pet Sitting (${booking.totalDays} days)`,
+        title: `⁦The Sitter Suite™⁩ - Pet Sitting (${booking.totalDays} days)`,
         description: `Pet sitting booking confirmed for ${booking.totalDays} day(s)`,
         startTime: new Date(booking.startDate),
         endTime: new Date(booking.endDate),

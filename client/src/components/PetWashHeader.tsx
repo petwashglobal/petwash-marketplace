@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ Global Header 2025
+ * ⁦Pet Wash™⁩ Global Header 2025
  * Octopus model + Loyalty & VIP Club + 6 languages + luxury menus
  *
  * Platforms:
@@ -96,19 +96,19 @@ const T: Record<string, Record<string, string>> = {
   "section.platforms": { en: "PLATFORMS", he: "פלטפורמות", ru: "ПЛАТФОРМЫ", fr: "PLATEFORMES", es: "PLATAFORMAS", ar: "المنصات" },
   "group.customer": { en: "Customer platforms", he: "פלטפורמות לקוחות", ru: "Платформы для клиентов", fr: "Plateformes clients", es: "Plataformas para clientes", ar: "منصات العملاء" },
   "group.partners": { en: "Partners, academy and future", he: "שותפים, אקדמיה ועתיד", ru: "Партнёры, академия и будущее", fr: "Partenaires, académie et avenir", es: "Socios, academia y futuro", ar: "شركاء، أكاديمية ومستقبل" },
-  "hub.label": { en: "Pet Wash Hub", he: "מרכז Pet Wash™", ru: "Центр Pet Wash™", fr: "Centre Pet Wash™", es: "Centro Pet Wash™", ar: "مركز Pet Wash™" },
+  "hub.label": { en: "Pet Wash Hub", he: "מרכז ⁦Pet Wash™⁩", ru: "Центр ⁦Pet Wash™⁩", fr: "Centre ⁦Pet Wash™⁩", es: "Centro ⁦Pet Wash™⁩", ar: "مركز ⁦Pet Wash™⁩" },
   "hub.desc": { en: "One 7 star account for all your pets and services", he: "חשבון אחד ב-7 כוכבים לכל חיות המחמד והשירותים שלך", ru: "Один аккаунт 7 звёзд для всех ваших питомцев и услуг", fr: "Un compte 7 étoiles pour tous vos animaux et services", es: "Una cuenta 7 estrellas para todas tus mascotas y servicios", ar: "حساب واحد بسبع نجوم لجميع حيواناتك وخدماتك" },
-  "stations.label": { en: "Pet Wash Stations", he: "תחנות Pet Wash™", ru: "Станции Pet Wash™", fr: "Stations Pet Wash™", es: "Estaciones Pet Wash™", ar: "محطات Pet Wash™" },
-  "stations.desc": { en: "Self service K9000 organic wash locations", he: "תחנות שטיפה אורגנית K9000™ בשירות עצמי", ru: "Станции органической мойки K9000™ самообслуживания", fr: "Stations de lavage organique K9000™ en libre-service", es: "Estaciones de lavado orgánico K9000™ de autoservicio", ar: "محطات غسيل عضوي K9000™ ذاتية الخدمة" },
+  "stations.label": { en: "Pet Wash Stations", he: "תחנות ⁦Pet Wash™⁩", ru: "Станции ⁦Pet Wash™⁩", fr: "Stations ⁦Pet Wash™⁩", es: "Estaciones ⁦Pet Wash™⁩", ar: "محطات ⁦Pet Wash™⁩" },
+  "stations.desc": { en: "Self service K9000 organic wash locations", he: "תחנות שטיפה אורגנית ⁦K9000™⁩ בשירות עצמי", ru: "Станции органической мойки ⁦K9000™⁩ самообслуживания", fr: "Stations de lavage organique ⁦K9000™⁩ en libre-service", es: "Estaciones de lavado orgánico ⁦K9000™⁩ de autoservicio", ar: "محطات غسيل عضوي ⁦K9000™⁩ ذاتية الخدمة" },
   "sitter.label": { en: "Pet Sitter", he: "שמרטף לחיות מחמד", ru: "Няня для питомцев", fr: "Garde d'animaux", es: "Cuidador de mascotas", ar: "جليس حيوانات أليفة" },
   "sitter.desc": { en: "Trusted pet and home sitting like Airbnb for pets", he: "שמרטפות אמינות לחיות מחמד ולבית", ru: "Надёжный присмотр за питомцами и домом", fr: "Garde de confiance pour animaux et maison", es: "Cuidado confiable de mascotas y hogar", ar: "رعاية موثوقة للحيوانات الأليفة والمنزل" },
   "walker.label": { en: "Pet Walker", he: "מטייל עם חיות מחמד", ru: "Выгул питомцев", fr: "Promeneur d'animaux", es: "Paseador de mascotas", ar: "مشّاي حيوانات أليفة" },
   "walker.desc": { en: "Walks, play time and outdoor activities", he: "טיולים, משחקים ופעילויות חוץ", ru: "Прогулки, игры и активный отдых", fr: "Promenades, jeux et activités en plein air", es: "Paseos, juegos y actividades al aire libre", ar: "نزهات، وقت لعب وأنشطة خارجية" },
   "transport.label": { en: "Pet Transport", he: "הסעות חיות מחמד", ru: "Перевозка питомцев", fr: "Transport d'animaux", es: "Transporte de mascotas", ar: "نقل حيوانات أليفة" },
   "transport.desc": { en: "Pet taxi between home, sitter and stations", he: "מונית לחיות מחמד בין הבית, המטפל והתחנות", ru: "Такси для питомцев между домом, няней и станциями", fr: "Taxi pour animaux entre domicile, gardien et stations", es: "Taxi para mascotas entre hogar, cuidador y estaciones", ar: "تاكسي حيوانات بين المنزل والجليس والمحطات" },
-  "academy.label": { en: "Pet Wash Academy", he: "אקדמיית Pet Wash™", ru: "Академия Pet Wash™", fr: "Académie Pet Wash™", es: "Academia Pet Wash™", ar: "أكاديمية Pet Wash™" },
+  "academy.label": { en: "Pet Wash Academy", he: "אקדמיית ⁦Pet Wash™⁩", ru: "Академия ⁦Pet Wash™⁩", fr: "Académie ⁦Pet Wash™⁩", es: "Academia ⁦Pet Wash™⁩", ar: "أكاديمية ⁦Pet Wash™⁩" },
   "academy.desc": { en: "Training, certification and education for pros", he: "הכשרה, הסמכה וחינוך למקצוענים", ru: "Обучение, сертификация и образование для профессионалов", fr: "Formation, certification et éducation pour professionnels", es: "Formación, certificación y educación para profesionales", ar: "تدريب وشهادات وتعليم للمحترفين" },
-  "shop.label": { en: "Pet Wash Shop", he: "חנות Pet Wash™", ru: "Магазин Pet Wash™", fr: "Boutique Pet Wash™", es: "Tienda Pet Wash™", ar: "متجر Pet Wash™" },
+  "shop.label": { en: "Pet Wash Shop", he: "חנות ⁦Pet Wash™⁩", ru: "Магазин ⁦Pet Wash™⁩", fr: "Boutique ⁦Pet Wash™⁩", es: "Tienda ⁦Pet Wash™⁩", ar: "متجر ⁦Pet Wash™⁩" },
   "shop.desc": { en: "Organic care products and accessories (coming soon)", he: "מוצרי טיפוח אורגניים ואביזרים (בקרוב)", ru: "Органические средства ухода и аксессуары (скоро)", fr: "Produits de soin bio et accessoires (bientôt)", es: "Productos de cuidado orgánico y accesorios (próximamente)", ar: "منتجات عناية عضوية وإكسسوارات (قريبًا)" },
   "avatar.label": { en: "Avatar Studio", he: "סטודיו אווטאר", ru: "Студия аватаров", fr: "Studio Avatar", es: "Estudio Avatar", ar: "استوديو أفاتار" },
   "avatar.desc": { en: "AI pet avatar builder (frozen for now)", he: "יוצר אווטאר בינה מלאכותית לחיות מחמד (מוקפא)", ru: "Создание аватаров питомцев с ИИ (заморожено)", fr: "Créateur d'avatars IA pour animaux (gelé)", es: "Creador de avatares IA para mascotas (congelado)", ar: "صانع صور رمزية بالذكاء الاصطناعي (مجمّد)" },
@@ -128,7 +128,7 @@ const T: Record<string, Record<string, string>> = {
   "suppliers.label": { en: "Suppliers & brands", he: "ספקים ומותגים", ru: "Поставщики и бренды", fr: "Fournisseurs et marques", es: "Proveedores y marcas", ar: "موردون وعلامات تجارية" },
   "municipal.label": { en: "Municipal & council projects", he: "פרויקטים עירוניים ומועצתיים", ru: "Муниципальные проекты", fr: "Projets municipaux et communaux", es: "Proyectos municipales", ar: "مشاريع بلدية ومحلية" },
   "section.company": { en: "COMPANY", he: "חברה", ru: "КОМПАНИЯ", fr: "ENTREPRISE", es: "EMPRESA", ar: "الشركة" },
-  "about.label": { en: "About Pet Wash", he: "אודות Pet Wash™", ru: "О Pet Wash™", fr: "À propos de Pet Wash™", es: "Acerca de Pet Wash™", ar: "حول Pet Wash™" },
+  "about.label": { en: "About Pet Wash", he: "אודות ⁦Pet Wash™⁩", ru: "О ⁦Pet Wash™⁩", fr: "À propos de ⁦Pet Wash™⁩", es: "Acerca de ⁦Pet Wash™⁩", ar: "حول ⁦Pet Wash™⁩" },
   "story.label": { en: "Our story and mission", he: "הסיפור והמשימה שלנו", ru: "Наша история и миссия", fr: "Notre histoire et mission", es: "Nuestra historia y misión", ar: "قصتنا ومهمتنا" },
   "media.label": { en: "Media, photos and videos", he: "מדיה, תמונות וסרטונים", ru: "Медиа, фото и видео", fr: "Médias, photos et vidéos", es: "Medios, fotos y vídeos", ar: "وسائط، صور وفيديوهات" },
   "gallery.label": { en: "Gallery", he: "גלריה", ru: "Галерея", fr: "Galerie", es: "Galería", ar: "معرض" },
@@ -372,7 +372,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             >
               <img 
                 src="/brand/petwash-logo-official.png" 
-                alt="PetWash™" 
+                alt="⁦PetWash™⁩" 
                 className="pw-header-logo-img"
               />
             </button>
@@ -513,7 +513,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           >
             <img 
               src="/brand/petwash-logo-official.png" 
-              alt="PetWash™" 
+              alt="⁦PetWash™⁩" 
               className="pw-mobile-logo-img"
             />
           </button>

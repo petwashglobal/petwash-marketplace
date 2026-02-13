@@ -66,7 +66,7 @@ async function classifyExpenseWithAI(receiptText: string): Promise<ReceiptData> 
       }
     });
     
-    const prompt = `You are a professional Israeli bookkeeper for PetWash™ franchise.
+    const prompt = `You are a professional Israeli bookkeeper for ⁦PetWash™⁩ franchise.
 
 Analyze the following receipt text and extract expense information.
 

@@ -50,24 +50,24 @@ const platformConfig: Record<Platform, {
   detailPath: string;
 }> = {
   sitter: {
-    title: 'The Sitter Suite™',
-    titleHe: 'The Sitter Suite™',
+    title: '⁦The Sitter Suite™⁩',
+    titleHe: '⁦The Sitter Suite™⁩',
     subtitle: 'Premium pet sitting by verified hosts',
     subtitleHe: 'שמרטוף חיות מחמד פרימיום על ידי מארחים מאומתים',
     icon: '🏠',
     detailPath: '/sitter-suite/sitters',
   },
   walker: {
-    title: 'Walk My Pet™',
-    titleHe: 'Walk My Pet™',
+    title: '⁦Walk My Pet™⁩',
+    titleHe: '⁦Walk My Pet™⁩',
     subtitle: 'Professional dog walking services',
     subtitleHe: 'שירותי הליכת כלבים מקצועיים',
     icon: '🐕',
     detailPath: '/walk-my-pet/walkers',
   },
   driver: {
-    title: 'PetTrek™',
-    titleHe: 'PetTrek™',
+    title: '⁦PetTrek™⁩',
+    titleHe: '⁦PetTrek™⁩',
     subtitle: 'Safe & comfortable pet transport',
     subtitleHe: 'הסעות חיות מחמד בטוחות ונוחות',
     icon: '🚗',

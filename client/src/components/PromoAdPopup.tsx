@@ -24,8 +24,8 @@ interface PromoAdConfig {
 const DEFAULT_PROMO: PromoAdConfig = {
   id: 'petwash-elite-2026',
   template: 'elite-gold',
-  title: 'Pet Wash™',
-  titleHe: 'Pet Wash™',
+  title: '⁦Pet Wash™⁩',
+  titleHe: '⁦Pet Wash™⁩',
   subtitle: 'Private Membership',
   subtitleHe: 'חברות פרטית',
   ctaText: 'Request Access',
@@ -364,7 +364,7 @@ function EliteGoldTemplate({ config, title, subtitle, ctaText, onCta }: Template
           className="text-4xl md:text-5xl font-light mb-2 tracking-tight"
           style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", color: '#2C2C2C' }}
         >
-          {title || 'Pet Wash™'}
+          {title || '⁦Pet Wash™⁩'}
         </h1>
       )}
       

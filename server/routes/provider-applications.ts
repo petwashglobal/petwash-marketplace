@@ -736,14 +736,14 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
       await EmailService.send({
         to: application.email,
         subject: application.preferredLanguage === 'he' 
-          ? '!ברוכים הבאים למשפחת Pet Wash™ - הזמנה להצטרפות'
-          : 'Welcome to Pet Wash™ - Your Provider Invitation',
+          ? '!ברוכים הבאים למשפחת ⁦Pet Wash™⁩ - הזמנה להצטרפות'
+          : 'Welcome to ⁦Pet Wash™⁩ - Your Provider Invitation',
         html: application.preferredLanguage === 'he' 
           ? `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: rtl;">
               <h1 style="color: #7c3aed;">מזל טוב, ${application.firstName}!</h1>
               <p style="font-size: 16px; line-height: 1.6;">
-                אנו שמחים לעדכן אותך שבקשתך להצטרף לצוות Pet Wash™ <strong>אושרה!</strong>
+                אנו שמחים לעדכן אותך שבקשתך להצטרף לצוות ⁦Pet Wash™⁩ <strong>אושרה!</strong>
               </p>
               <p style="font-size: 16px; line-height: 1.6;">
                 כדי להשלים את תהליך ההצטרפות שלך, לחץ על הכפתור למטה:
@@ -756,7 +756,7 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
               </p>
               <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
               <p style="font-size: 12px; color: #999;">
-                Pet Wash™ - טיפוח פרימיום לחיית המחמד שלך
+                ⁦Pet Wash™⁩ - טיפוח פרימיום לחיית המחמד שלך
               </p>
             </div>
           `
@@ -764,7 +764,7 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h1 style="color: #7c3aed;">Congratulations, ${application.firstName}!</h1>
               <p style="font-size: 16px; line-height: 1.6;">
-                We're excited to let you know that your application to join the Pet Wash™ team has been <strong>approved!</strong>
+                We're excited to let you know that your application to join the ⁦Pet Wash™⁩ team has been <strong>approved!</strong>
               </p>
               <p style="font-size: 16px; line-height: 1.6;">
                 To complete your onboarding, please click the button below:
@@ -777,7 +777,7 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
               </p>
               <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
               <p style="font-size: 12px; color: #999;">
-                Pet Wash™ - Premium care for your furry friends
+                ⁦Pet Wash™⁩ - Premium care for your furry friends
               </p>
             </div>
           `

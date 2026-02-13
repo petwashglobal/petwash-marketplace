@@ -136,7 +136,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
               <div className="p-2 rounded-xl bg-white/10 backdrop-blur-sm">
                 <Building2 className="h-5 w-5" />
               </div>
-              <span className="luxury-heading-sm text-white">Pet Wash™ Enterprise Control Panel</span>
+              <span className="luxury-heading-sm text-white">⁦Pet Wash™⁩ Enterprise Control Panel</span>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm opacity-90">{user?.displayName || user?.email}</span>
@@ -196,7 +196,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
               Global HQ Dashboard
             </h1>
             <p className="luxury-text-body mt-2">
-              Pet Wash™ 2026 Enterprise Command Center
+              ⁦Pet Wash™⁩ 2026 Enterprise Command Center
             </p>
           </div>
           
@@ -330,7 +330,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
               <div className="mb-6">
                 <h2 className="luxury-heading-md mb-2 luxury-text-gradient">Station Directory</h2>
                 <p className="luxury-text-body">
-                  Comprehensive list of all Pet Wash™ stations
+                  Comprehensive list of all ⁦Pet Wash™⁩ stations
                 </p>
               </div>
               <div className="space-y-3">

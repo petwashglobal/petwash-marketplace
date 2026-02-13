@@ -42,7 +42,7 @@ export default function BackendTeam() {
           </CardHeader>
           <CardContent>
             <p className="text-green-800 leading-relaxed">
-              Thank you for considering joining the Pet Wash™ backend engineering team. 
+              Thank you for considering joining the ⁦Pet Wash™⁩ backend engineering team. 
               We're excited to have you explore this opportunity. Please review the details below 
               and reach out to Nir Hadad at <strong>Nir.H@PetWash.co.il</strong> to proceed.
             </p>
@@ -115,7 +115,7 @@ export default function BackendTeam() {
               Our Culture
             </CardTitle>
             <CardDescription className="luxury-text-small">
-              What makes Pet Wash™ special
+              What makes ⁦Pet Wash™⁩ special
             </CardDescription>
           </CardHeader>
           <CardContent>

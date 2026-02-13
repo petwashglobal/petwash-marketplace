@@ -376,7 +376,7 @@ export async function awardBackgroundCheckBadges(contractorId: string): Promise<
         badgeType: 'certification',
         badgeCategory: 'verified_identity',
         badgeName: 'Verified Identity',
-        description: 'Identity verified by PetWash™ security team',
+        description: 'Identity verified by ⁦PetWash™⁩ security team',
         iconUrl: '/badges/verified-identity.png',
       });
     }
@@ -392,7 +392,7 @@ export async function awardBackgroundCheckBadges(contractorId: string): Promise<
         iconUrl: '/badges/background-cleared.png',
         metadata: {
           clearanceDate: contractor.backgroundCheckCompletedAt,
-          verifiedBy: 'PetWash™ Security Team',
+          verifiedBy: '⁦PetWash™⁩ Security Team',
         },
       });
     }

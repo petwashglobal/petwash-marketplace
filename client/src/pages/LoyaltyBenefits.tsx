@@ -80,7 +80,7 @@ export default function LoyaltyBenefits() {
         </Link>
 
         <div className="text-center mb-12">
-          <img src="/brand/petwash-logo-black-bg.png" alt="Pet Wash™" className="h-12 mx-auto mb-6 opacity-90" />
+          <img src="/brand/petwash-logo-black-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
           <div className="inline-flex items-center gap-2 mb-4">
             <Sparkles className="w-6 h-6 text-[#C9A96E]" />
           </div>

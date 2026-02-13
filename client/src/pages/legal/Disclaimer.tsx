@@ -12,7 +12,7 @@ export default function Disclaimer() {
         <Link href="/sitter-suite">
           <button className="mb-6 flex items-center gap-2 luxury-btn-primary">
             <ArrowLeft className="h-4 w-4" />
-            {isHebrew ? 'חזרה ל-The Sitter Suite™' : 'Back to The Sitter Suite™'}
+            {isHebrew ? 'חזרה ל-⁦The Sitter Suite™⁩' : 'Back to ⁦The Sitter Suite™⁩'}
           </button>
         </Link>
 
@@ -213,9 +213,9 @@ export default function Disclaimer() {
                 <p className="font-bold mb-2">{isHebrew ? 'הצהרה חשובה:' : 'Important Declaration:'}</p>
                 <p className="leading-relaxed">
                   {isHebrew ? (
-                    <>כל השמרטפים ב-The Sitter Suite™ הם <strong>קבלנים עצמאיים</strong> - לא עובדים, סוכנים, או נציגים של Pet Wash Ltd. אנו לא:</>
+                    <>כל השמרטפים ב-⁦The Sitter Suite™⁩ הם <strong>קבלנים עצמאיים</strong> - לא עובדים, סוכנים, או נציגים של Pet Wash Ltd. אנו לא:</>
                   ) : (
-                    <>All sitters on The Sitter Suite™ are <strong>independent contractors</strong> - NOT employees, agents, or representatives of Pet Wash Ltd. We do NOT:</>
+                    <>All sitters on ⁦The Sitter Suite™⁩ are <strong>independent contractors</strong> - NOT employees, agents, or representatives of Pet Wash Ltd. We do NOT:</>
                   )}
                 </p>
                 <ul className="list-disc list-inside space-y-2 mr-6 mt-2">
@@ -320,9 +320,9 @@ export default function Disclaimer() {
               <div className="bg-blue-50 dark:bg-gray-700 p-6 rounded-lg">
                 <p className="leading-relaxed font-bold">
                   {isHebrew ? (
-                    <>על ידי שימוש ב-The Sitter Suite™, אתה מאשר ומקבל את כל תנאי כתב הויתור הזה. אם אינך מסכים, אל תשתמש בפלטפורמה.</>
+                    <>על ידי שימוש ב-⁦The Sitter Suite™⁩, אתה מאשר ומקבל את כל תנאי כתב הויתור הזה. אם אינך מסכים, אל תשתמש בפלטפורמה.</>
                   ) : (
-                    <>By using The Sitter Suite™, you acknowledge and accept ALL terms of this Disclaimer. If you do not agree, do NOT use the Platform.</>
+                    <>By using ⁦The Sitter Suite™⁩, you acknowledge and accept ALL terms of this Disclaimer. If you do not agree, do NOT use the Platform.</>
                   )}
                 </p>
               </div>

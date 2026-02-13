@@ -343,7 +343,7 @@ export default function PlushLab() {
                 <Sparkles className="w-10 h-10 text-white" />
               </div>
               <h1 className="luxury-heading-xl">
-                The Plush Lab™
+                ⁦The Plush Lab™⁩
               </h1>
               <div className="p-3 bg-gradient-to-br from-pink-500 to-purple-500 rounded-2xl luxury-shadow-xl">
                 <Wand2 className="w-10 h-10 text-white" />

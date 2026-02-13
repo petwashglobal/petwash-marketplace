@@ -144,7 +144,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
               <div className="relative z-10 h-full flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-[13px] tracking-[0.2em] font-medium text-white/60" style={{ fontFamily: serif }}>PetWash™</div>
+                    <div className="text-[13px] tracking-[0.2em] font-medium text-white/60" style={{ fontFamily: serif }}>⁦PetWash™⁩</div>
                     <div className="text-[11px] tracking-[0.25em] uppercase mt-1 font-light" style={{ color: gold }}>PRIVILEGE</div>
                   </div>
                   <div className="w-8 h-8 flex items-center justify-center" style={{ border: `1px solid ${gold}30`, borderRadius: '4px' }}>
@@ -228,7 +228,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                   <div className="relative z-10 h-full flex flex-col justify-between">
                     <div className="text-start">
                       <div className="text-[9px] sm:text-[10px] tracking-[0.15em] font-medium" style={{ color: tier.labelColor, opacity: 0.8, fontFamily: serif }}>
-                        PetWash™
+                        ⁦PetWash™⁩
                       </div>
                     </div>
                     <div className="text-start">
@@ -469,7 +469,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center gap-2 text-xs text-gray-300">
             <Shield className="w-3.5 h-3.5" />
-            <span>Pet Wash™ Privilege · {t('privilege.dataProtected', language)}</span>
+            <span>⁦Pet Wash™⁩ Privilege · {t('privilege.dataProtected', language)}</span>
           </div>
         </div>
       </section>
@@ -595,7 +595,7 @@ export default function Loyalty() {
           <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #000 1px, transparent 0)', backgroundSize: '40px 40px' }} />
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="text-center space-y-5 mb-12">
-              <p className="text-[11px] uppercase tracking-[0.3em] font-medium text-gray-400">PetWash™ Privilege</p>
+              <p className="text-[11px] uppercase tracking-[0.3em] font-medium text-gray-400">⁦PetWash™⁩ Privilege</p>
               <h1 className="text-3xl sm:text-5xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                 {t('loyalty.welcome', language)} <span style={{ color: gold }}>{firstName}</span>
               </h1>
@@ -625,7 +625,7 @@ export default function Loyalty() {
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <div className="text-[11px] tracking-[0.2em] uppercase text-white/50">Pet Wash™</div>
+                      <div className="text-[11px] tracking-[0.2em] uppercase text-white/50">⁦Pet Wash™⁩</div>
                       <div className="text-[10px] tracking-[0.15em] uppercase mt-0.5" style={{ color: gold }}>PRIVILEGE CARD</div>
                     </div>
                     <div className="w-10 h-10 flex items-center justify-center" style={{ background: `${gold}15`, borderRadius: '2px' }}>
@@ -723,7 +723,7 @@ export default function Loyalty() {
         <section className="bg-[#fafafa] py-14 border-t border-gray-100">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-8">
-              <p className="text-[11px] uppercase tracking-[0.2em] font-medium text-gray-400 mb-2">PetWash™ Privilege</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] font-medium text-gray-400 mb-2">⁦PetWash™⁩ Privilege</p>
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                 {t('loyalty.yourPerks', language)}
               </h2>
@@ -908,7 +908,7 @@ export default function Loyalty() {
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div className="flex items-center justify-center gap-2 text-xs text-gray-300">
               <Shield className="w-3.5 h-3.5" />
-              <span>Pet Wash™ Privilege · {t('privilege.dataProtected', language)}</span>
+              <span>⁦Pet Wash™⁩ Privilege · {t('privilege.dataProtected', language)}</span>
             </div>
           </div>
         </section>

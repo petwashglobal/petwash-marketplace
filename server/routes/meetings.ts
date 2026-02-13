@@ -192,7 +192,7 @@ async function sendMeetingInvitations(
                 ${meeting.location ? `<p><strong>מיקום:</strong> ${meeting.location}</p>` : ''}
               </div>
               
-              <p style="color: #666; font-size: 14px;">פגישה זו נוצרה על ידי Pet Wash™ CRM</p>
+              <p style="color: #666; font-size: 14px;">פגישה זו נוצרה על ידי ⁦Pet Wash™⁩ CRM</p>
             </div>
           `
           : `
@@ -209,7 +209,7 @@ async function sendMeetingInvitations(
                 ${meeting.location ? `<p><strong>Location:</strong> ${meeting.location}</p>` : ''}
               </div>
               
-              <p style="color: #666; font-size: 14px;">This meeting was created by Pet Wash™ CRM</p>
+              <p style="color: #666; font-size: 14px;">This meeting was created by ⁦Pet Wash™⁩ CRM</p>
             </div>
           `;
         

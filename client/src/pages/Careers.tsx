@@ -419,7 +419,7 @@ export default function Careers() {
             className="text-center max-w-4xl mx-auto"
           >
             <Badge className="bg-white/20 text-white border-white/30 mb-6 text-sm px-4 py-1">
-              {isRTL ? 'הצטרפו למשפחת Pet Wash™' : 'Join the Pet Wash™ Family'}
+              {isRTL ? 'הצטרפו למשפחת ⁦Pet Wash™⁩' : 'Join the ⁦Pet Wash™⁩ Family'}
             </Badge>
             
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight" style={{ fontFamily: 'Didot, Georgia, serif' }}>
@@ -457,7 +457,7 @@ export default function Careers() {
             className="text-center mb-16"
           >
             <h2 className="text-4xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Didot, Georgia, serif' }}>
-              {isRTL ? 'למה לעבוד איתנו?' : 'Why Join Pet Wash™?'}
+              {isRTL ? 'למה לעבוד איתנו?' : 'Why Join ⁦Pet Wash™⁩?'}
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               {isRTL 
@@ -720,7 +720,7 @@ export default function Careers() {
             <div className="flex items-center gap-3 mb-2">
               <img 
                 src="/brand/petwash-logo-official.png" 
-                alt="PetWash™" 
+                alt="⁦PetWash™⁩" 
                 className="h-10 w-auto object-contain"
               />
             </div>

@@ -1,4 +1,4 @@
-// PetWash™ Premium Loyalty System
+// ⁦PetWash™⁩ Premium Loyalty System
 // Tier calculation and reward logic
 
 export type LoyaltyTier = 'new' | 'silver' | 'gold' | 'platinum';

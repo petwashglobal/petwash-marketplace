@@ -563,7 +563,7 @@ export function createLedRouter(deps: LedRouterDeps): Router {
  * ===================================================================
  * EVENT BUS AUTOMATION WIRING (A + C Integration)
  * ===================================================================
- * Wire LED automation to Pet Wash™ EventBus for smart triggers
+ * Wire LED automation to ⁦Pet Wash™⁩ EventBus for smart triggers
  */
 
 export function wireLedAutomation(eventBus: EventBus): void {

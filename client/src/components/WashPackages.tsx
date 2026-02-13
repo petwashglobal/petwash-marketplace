@@ -239,7 +239,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                   <div className="relative overflow-hidden">
                     <img 
                       src={cardImage} 
-                      alt={`PetWash™ ${pkg.name} Package`}
+                      alt={`⁦PetWash™⁩ ${pkg.name} Package`}
                       className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                       style={{ display: 'block' }}
                       loading="lazy"

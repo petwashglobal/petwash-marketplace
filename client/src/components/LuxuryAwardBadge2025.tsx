@@ -100,7 +100,7 @@ export function LuxuryAwardBadge2025() {
         <div className="luxury-medallion">
           <img 
             src="/award-medallion-2025.png" 
-            alt="Pet Wash™ LTD - 2025 Award Winner - Best Pet Hub Platforms"
+            alt="⁦Pet Wash™⁩ LTD - 2025 Award Winner - Best Pet Hub Platforms"
             loading="eager"
           />
         </div>

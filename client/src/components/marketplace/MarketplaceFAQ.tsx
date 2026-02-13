@@ -14,8 +14,8 @@ const platformFAQs: Record<Platform, FAQItem[]> = {
   sitter: [
     {
       id: 'sitter-1',
-      question: 'How does pet sitting work with PetWash™?',
-      questionHe: 'איך עובד שמרטוף חיות מחמד עם PetWash™?',
+      question: 'How does pet sitting work with ⁦PetWash™⁩?',
+      questionHe: 'איך עובד שמרטוף חיות מחמד עם ⁦PetWash™⁩?',
       answer: 'Our verified pet sitters offer two options: your pet can stay at their home, or they can come to your home while you\'re away. All sitters pass background checks, are insured, and follow our 7-star care standards. You\'ll receive daily photo updates and can message your sitter anytime.',
       answerHe: 'השמרטפים המאומתים שלנו מציעים שתי אפשרויות: חיית המחמד שלך יכולה להישאר בבית שלהם, או שהם יכולים לבוא לבית שלך בזמן שאתה בחופשה. כל השמרטפים עוברים בדיקות רקע, מבוטחים ועומדים בתקני הטיפול 7 כוכבים שלנו. תקבל עדכוני תמונות יומיים ותוכל לשלוח הודעות לשמרטף בכל עת.'
     },
@@ -30,8 +30,8 @@ const platformFAQs: Record<Platform, FAQItem[]> = {
       id: 'sitter-3',
       question: 'How are sitters verified?',
       questionHe: 'איך מאמתים את השמרטפים?',
-      answer: 'All PetWash™ sitters undergo ID verification, criminal background checks, reference checks, and a video interview. We verify their home environment and require proof of pet care experience. Only top-rated sitters earn our 7-star badge.',
-      answerHe: 'כל שמרטפי PetWash™ עוברים אימות זהות, בדיקות רקע פלילי, בדיקות המלצות וראיון וידאו. אנחנו מאמתים את סביבת הבית שלהם ודורשים הוכחה לניסיון בטיפול בחיות מחמד. רק שמרטפים מדורגים גבוה מקבלים את התג 7 כוכבים שלנו.'
+      answer: 'All ⁦PetWash™⁩ sitters undergo ID verification, criminal background checks, reference checks, and a video interview. We verify their home environment and require proof of pet care experience. Only top-rated sitters earn our 7-star badge.',
+      answerHe: 'כל שמרטפי ⁦PetWash™⁩ עוברים אימות זהות, בדיקות רקע פלילי, בדיקות המלצות וראיון וידאו. אנחנו מאמתים את סביבת הבית שלהם ודורשים הוכחה לניסיון בטיפול בחיות מחמד. רק שמרטפים מדורגים גבוה מקבלים את התג 7 כוכבים שלנו.'
     },
     {
       id: 'sitter-4',
@@ -129,8 +129,8 @@ const platformFAQs: Record<Platform, FAQItem[]> = {
       id: 'trainer-1',
       question: 'What training methods do you use?',
       questionHe: 'באילו שיטות אימון אתם משתמשים?',
-      answer: 'All PetWash™ trainers use positive reinforcement methods only. We focus on reward-based training that builds trust and communication between you and your dog. No aversive tools or punishment-based techniques.',
-      answerHe: 'כל מאלפי PetWash™ משתמשים רק בשיטות חיזוק חיובי. אנחנו מתמקדים באימון מבוסס תגמול שבונה אמון ותקשורת בינך לבין הכלב שלך. ללא כלים אברסיביים או טכניקות מבוססות ענישה.'
+      answer: 'All ⁦PetWash™⁩ trainers use positive reinforcement methods only. We focus on reward-based training that builds trust and communication between you and your dog. No aversive tools or punishment-based techniques.',
+      answerHe: 'כל מאלפי ⁦PetWash™⁩ משתמשים רק בשיטות חיזוק חיובי. אנחנו מתמקדים באימון מבוסס תגמול שבונה אמון ותקשורת בינך לבין הכלב שלך. ללא כלים אברסיביים או טכניקות מבוססות ענישה.'
     },
     {
       id: 'trainer-2',

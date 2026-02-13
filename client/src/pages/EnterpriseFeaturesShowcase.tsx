@@ -101,7 +101,7 @@ export default function EnterpriseFeaturesShowcase() {
     <LuxuryPageWrapper
       variant="dashboard"
       title="🌟 Enterprise Features Showcase"
-      subtitle="Production-ready APIs & integrations powering Pet Wash™ global platform"
+      subtitle="Production-ready APIs & integrations powering ⁦Pet Wash™⁩ global platform"
     >
       <div className="luxury-bg-mesh p-8 md:p-12 space-y-8">
         {/* Hero Section */}
@@ -110,7 +110,7 @@ export default function EnterpriseFeaturesShowcase() {
             Enterprise-Grade APIs
           </h1>
           <p className="luxury-text-body max-w-3xl mx-auto">
-            Production-ready integrations powering Pet Wash™ global platform with real-time data and AI insights
+            Production-ready integrations powering ⁦Pet Wash™⁩ global platform with real-time data and AI insights
           </p>
         </div>
 

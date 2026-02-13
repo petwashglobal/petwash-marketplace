@@ -1,5 +1,5 @@
 /**
- * PetTrek™ Dispatch Service
+ * ⁦PetTrek™⁩ Dispatch Service
  * Driver matching and job dispatch with geo-indexed search
  * 
  * Features:

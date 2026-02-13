@@ -95,7 +95,7 @@ export default function LoyaltyRefer() {
         </Link>
 
         <div className="text-center mb-12">
-          <img src="/brand/petwash-logo-black-bg.png" alt="Pet Wash™" className="h-12 mx-auto mb-6 opacity-90" />
+          <img src="/brand/petwash-logo-black-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
           <div className="w-16 h-16 rounded-2xl bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.2)] flex items-center justify-center mx-auto mb-4">
             <Share2 className="w-8 h-8 text-purple-400" />
           </div>

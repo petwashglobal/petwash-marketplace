@@ -227,7 +227,7 @@ export function Kenzo3DRealistic({
             {/* Premium Collar */}
             <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-4 bg-gradient-to-r from-gray-800 to-black dark:from-gray-200 dark:to-white rounded-full shadow-lg border border-white dark:border-black" />
             
-            {/* PetWash™ Tag */}
+            {/* ⁦PetWash™⁩ Tag */}
             <div className="absolute top-5 left-1/2 -translate-x-1/2 w-6 h-6 bg-white dark:bg-black rounded-full shadow-xl flex items-center justify-center text-[10px] font-bold border-2 border-black dark:border-white">
               <span className="text-black dark:text-white">K</span>
             </div>

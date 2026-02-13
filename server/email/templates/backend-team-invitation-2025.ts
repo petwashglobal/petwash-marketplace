@@ -12,7 +12,7 @@ interface BackendInvitationData {
 }
 
 export function generateBackendTeamInvitation(data: BackendInvitationData): { subject: string; html: string } {
-  const subject = '🚀 Join the Pet Wash™ Backend Revolution';
+  const subject = '🚀 Join the ⁦Pet Wash™⁩ Backend Revolution';
   
   const html = `
 <!DOCTYPE html>
@@ -314,7 +314,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
       <h1 class="greeting">Welcome to the Revolution, ${data.recipientName}!</h1>
       
       <p class="message">
-        We're absolutely <strong>thrilled</strong> to invite you to join the <strong>Pet Wash™ Backend Engineering Team</strong> — 
+        We're absolutely <strong>thrilled</strong> to invite you to join the <strong>⁦Pet Wash™⁩ Backend Engineering Team</strong> — 
         where cutting-edge technology meets the love and care of millions of pets worldwide.
       </p>
       
@@ -339,7 +339,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
         <h3>🎯 Why You're Perfect for This</h3>
         <p>
           Over the past few months, your contributions have been nothing short of <strong>extraordinary</strong>. 
-          Your dedication, innovation, and passion for excellence perfectly embody the Pet Wash™ spirit. 
+          Your dedication, innovation, and passion for excellence perfectly embody the ⁦Pet Wash™⁩ spirit. 
           We've watched you elevate every project you touch, and we know you're ready for this next chapter.
         </p>
       </div>
@@ -400,7 +400,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
     <!-- Footer -->
     <div class="footer">
       <p class="footer-text">
-        🐾 Pet Wash™ — Where Technology Meets Unconditional Love<br>
+        🐾 ⁦Pet Wash™⁩ — Where Technology Meets Unconditional Love<br>
         Serving pet families across Israel and expanding globally
       </p>
       

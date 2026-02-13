@@ -136,7 +136,7 @@ export async function syncUserToHubSpot(data: {
       if (data.firstname) contactProperties.firstname = data.firstname;
       if (data.lastname) contactProperties.lastname = data.lastname;
       if (data.phone) contactProperties.phone = data.phone;
-      if (data.uid) contactProperties.company = `Pet Wash™`;
+      if (data.uid) contactProperties.company = `⁦Pet Wash™⁩`;
       if (data.lang) contactProperties.hs_language = data.lang === 'he' ? 'he' : 'en';
       if (data.dob) contactProperties.date_of_birth = data.dob;
       if (data.country) contactProperties.country = data.country;

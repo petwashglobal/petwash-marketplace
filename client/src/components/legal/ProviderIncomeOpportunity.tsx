@@ -30,14 +30,14 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
   const isRTL = isHebrew;
 
   const earningPotential = {
-    title: isHebrew ? "הזדמנות הכנסה עם Pet Wash™" : "Earning Opportunity with Pet Wash™",
+    title: isHebrew ? "הזדמנות הכנסה עם ⁦Pet Wash™⁩" : "Earning Opportunity with ⁦Pet Wash™⁩",
     subtitle: isHebrew 
       ? "הפוך את אהבתך לחיות למקור הכנסה נוסף - בשעות שמתאימות לך"
       : "Turn your love for pets into extra income - on your own schedule",
     platforms: [
       {
         icon: Home,
-        name: isHebrew ? "The Sitter Suite™" : "The Sitter Suite™",
+        name: isHebrew ? "⁦The Sitter Suite™⁩" : "⁦The Sitter Suite™⁩",
         service: isHebrew ? "אירוח לילה" : "Overnight Stays",
         rateRange: "₪120 - ₪350",
         perUnit: isHebrew ? "ללילה" : "per night",
@@ -48,7 +48,7 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
       },
       {
         icon: Dog,
-        name: isHebrew ? "Walk My Pet™" : "Walk My Pet™",
+        name: isHebrew ? "⁦Walk My Pet™⁩" : "⁦Walk My Pet™⁩",
         service: isHebrew ? "הליכות כלבים" : "Dog Walking",
         rateRange: "₪40 - ₪80",
         perUnit: isHebrew ? "להליכה (30-60 דק')" : "per walk (30-60 min)",
@@ -59,7 +59,7 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
       },
       {
         icon: Car,
-        name: isHebrew ? "PetTrek™" : "PetTrek™",
+        name: isHebrew ? "⁦PetTrek™⁩" : "⁦PetTrek™⁩",
         service: isHebrew ? "הסעות חיות מחמד" : "Pet Transport",
         rateRange: "₪50 - ₪150",
         perUnit: isHebrew ? "לנסיעה" : "per trip",
@@ -302,7 +302,7 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-blue-400" />
-            {isHebrew ? "למה להצטרף ל-Pet Wash™?" : "Why Join Pet Wash™?"}
+            {isHebrew ? "למה להצטרף ל-⁦Pet Wash™⁩?" : "Why Join ⁦Pet Wash™⁩?"}
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">

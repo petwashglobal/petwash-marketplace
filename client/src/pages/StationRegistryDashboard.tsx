@@ -116,7 +116,7 @@ export default function StationRegistryDashboard() {
     <LuxuryPageWrapper
       variant="dashboard"
       title="Station Registry"
-      subtitle="Pet Wash Hub™ Canonical ID Management"
+      subtitle="Pet ⁦Wash Hub™⁩ Canonical ID Management"
     >
       <div className="p-6 space-y-6">
       <div className="flex justify-end items-center luxury-animate-fade-in">
@@ -155,7 +155,7 @@ export default function StationRegistryDashboard() {
             <MapPin className="w-10 h-10 text-purple-600" />
           </div>
           <h3 className="luxury-heading-md mb-3">No stations registered</h3>
-          <p className="luxury-text-body mb-6">Get started by registering your first Pet Wash Hub™</p>
+          <p className="luxury-text-body mb-6">Get started by registering your first Pet ⁦Wash Hub™⁩</p>
           <button onClick={() => setShowCreateDialog(true)} className="luxury-btn-primary">
             <Plus className="w-4 h-4 mr-2" />
             Register Station
@@ -222,7 +222,7 @@ export default function StationRegistryDashboard() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-station">
           <DialogHeader>
             <DialogTitle>Register New Station</DialogTitle>
-            <DialogDescription>Add a new Pet Wash Hub™ to the canonical registry</DialogDescription>
+            <DialogDescription>Add a new Pet ⁦Wash Hub™⁩ to the canonical registry</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateStation} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

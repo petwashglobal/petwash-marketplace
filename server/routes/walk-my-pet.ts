@@ -330,7 +330,7 @@ router.post('/api/walks/book', requireAuth, requireLoyaltyMember, async (req, re
             const smsService = new TwilioSMSService();
             await smsService.sendSMS(
               walkerPhone,
-              `🐾 Pet Wash™ - בקשת טיול חדשה!\n` +
+              `🐾 ⁦Pet Wash™⁩ - בקשת טיול חדשה!\n` +
               `תאריך: ${scheduledDate} בשעה ${scheduledStartTime}\n` +
               `${durationMinutes} דקות · ₪${pricing.totalPrice.toFixed(0)}\n` +
               `אנא אשר/י את ההזמנה באפליקציה.`
@@ -635,7 +635,7 @@ router.post('/api/walks/:bookingId/confirm', async (req, res) => {
     calendarIntegrationService.createBookingEvent({
       platform: 'walk-my-pet',
       bookingId: booking.bookingId,
-      title: `Walk My Pet™ - Dog Walk`,
+      title: `⁦Walk My Pet™⁩ - Dog Walk`,
       description: `Dog walk booking confirmed`,
       startTime: new Date(booking.scheduledDate),
       endTime: new Date(new Date(booking.scheduledDate).getTime() + (booking.durationMinutes || 30) * 60000),

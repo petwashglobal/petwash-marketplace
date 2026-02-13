@@ -1,8 +1,8 @@
 /**
- * Paw Finder™ Routes
+ * ⁦Paw Finder™⁩ Routes
  * FREE COMMUNITY SERVICE
  * Connect Lost Pets with Finders - Open to ALL registered users
- * NO platform fees - Pet Wash™ just facilitates the connection
+ * NO platform fees - ⁦Pet Wash™⁩ just facilitates the connection
  */
 
 import { Router } from 'express';

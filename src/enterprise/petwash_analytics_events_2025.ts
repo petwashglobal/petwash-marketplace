@@ -1,5 +1,5 @@
 /**
- * PetWash™ Analytics Events Schema 2025
+ * ⁦PetWash™⁩ Analytics Events Schema 2025
  * 
  * Centralized event tracking for:
  * - Google Analytics 4

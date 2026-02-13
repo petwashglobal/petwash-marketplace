@@ -294,7 +294,7 @@ export default function Academy() {
                   <GraduationCap className="h-5 w-5 text-white" />
                 </div>
                 <span className="text-sm font-semibold">
-                  {t('Pet Wash Academy™')}
+                  {t('⁦Pet Wash Academy™⁩')}
                 </span>
               </div>
               

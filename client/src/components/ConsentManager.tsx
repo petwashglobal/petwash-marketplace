@@ -75,7 +75,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
   const text = {
     en: {
       title: 'We Value Your Privacy',
-      description: 'Pet Wash™ uses cookies and similar technologies to provide essential services, improve your experience, and analyze usage. We comply with Israeli Privacy Protection Law and GDPR.',
+      description: '⁦Pet Wash™⁩ uses cookies and similar technologies to provide essential services, improve your experience, and analyze usage. We comply with Israeli Privacy Protection Law and GDPR.',
       necessary: 'Necessary',
       necessaryDesc: 'Essential for website functionality, security, and authentication. These cannot be disabled.',
       functional: 'Functional',
@@ -93,7 +93,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
       vaccinationReminders: '💉 Vaccination Reminders',
       vaccinationRemindersDesc: 'Receive timely reminders for your pet\'s vaccination appointments.',
       promotionalNotifications: '🎁 Promotional Offers',
-      promotionalNotificationsDesc: 'Get special discounts, offers, and news from Pet Wash™.',
+      promotionalNotificationsDesc: 'Get special discounts, offers, and news from ⁦Pet Wash™⁩.',
       acceptAll: 'Accept All',
       acceptNecessary: 'Necessary Only',
       customize: 'Customize',
@@ -104,7 +104,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
     },
     he: {
       title: 'אנו מעריכים את פרטיותך',
-      description: 'Pet Wash™ משתמשת בעוגיות וטכנולוגיות דומות לאספקת שירותים חיוניים, שיפור החוויה וניתוח השימוש. אנו עומדים בחוק הגנת הפרטיות הישראלי ו-GDPR.',
+      description: '⁦Pet Wash™⁩ משתמשת בעוגיות וטכנולוגיות דומות לאספקת שירותים חיוניים, שיפור החוויה וניתוח השימוש. אנו עומדים בחוק הגנת הפרטיות הישראלי ו-GDPR.',
       necessary: 'נחוצות',
       necessaryDesc: 'חיוניות לתפקוד האתר, אבטחה ואימות. לא ניתן לבטל.',
       functional: 'פונקציונליות',
@@ -122,7 +122,7 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
       vaccinationReminders: '💉 תזכורות חיסונים',
       vaccinationRemindersDesc: 'קבל תזכורות בזמן למועדי החיסונים של חיית המחמד שלך.',
       promotionalNotifications: '🎁 הצעות מבצעים',
-      promotionalNotificationsDesc: 'קבל הנחות מיוחדות, הצעות וחדשות מ-Pet Wash™.',
+      promotionalNotificationsDesc: 'קבל הנחות מיוחדות, הצעות וחדשות מ-⁦Pet Wash™⁩.',
       acceptAll: 'אישור הכל',
       acceptNecessary: 'נחוצות בלבד',
       customize: 'התאמה אישית',

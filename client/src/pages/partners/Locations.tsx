@@ -19,7 +19,7 @@ export default function LocationPartners() {
           </div>
           <h1 className="luxury-heading-xl mb-4">Business Locations & Landlords</h1>
           <p className="luxury-text-body max-w-2xl mx-auto">
-            Partner with Pet Wash™ to add premium pet care amenities to your property
+            Partner with ⁦Pet Wash™⁩ to add premium pet care amenities to your property
           </p>
         </div>
 
@@ -37,7 +37,7 @@ export default function LocationPartners() {
         </div>
 
         <div className="luxury-glass-card luxury-shadow-xl p-8 text-center bg-gradient-to-r from-purple-500/10 to-pink-500/10 luxury-animate-fade-in luxury-delay-6">
-          <h2 className="luxury-heading-lg mb-4">Interested in Hosting a K9000™ Station?</h2>
+          <h2 className="luxury-heading-lg mb-4">Interested in Hosting a ⁦K9000™⁩ Station?</h2>
           <p className="luxury-text-body mb-6">
             Add value to your property with premium pet care amenities
           </p>

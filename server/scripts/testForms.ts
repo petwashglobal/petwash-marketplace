@@ -162,7 +162,7 @@ async function testImageUpload() {
 }
 
 async function runAllTests() {
-  console.log('\n🧪 AUTOMATED FORM TESTING - Pet Wash™\n');
+  console.log('\n🧪 AUTOMATED FORM TESTING - ⁦Pet Wash™⁩\n');
   console.log('Testing all forms and verifying log integrity...\n');
 
   await testSignupForm();

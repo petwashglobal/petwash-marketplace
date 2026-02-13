@@ -1,8 +1,8 @@
 /**
- * Admin Provider Review Service - Pet Wash™
+ * Admin Provider Review Service - ⁦Pet Wash™⁩
  * 
  * Provider approval workflow with checklist verification
- * for Pet Wash™ service providers.
+ * for ⁦Pet Wash™⁩ service providers.
  * 
  * Hebrew-dominant with English brand touches
  * Israeli Law 2025 compliance

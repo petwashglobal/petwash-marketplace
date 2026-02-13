@@ -3,7 +3,7 @@
  * ========================
  * AI-driven compliance monitoring and enforcement system
  * 
- * Protects Pet Wash™ from legal issues with:
+ * Protects ⁦Pet Wash™⁩ from legal issues with:
  * - Employees, subcontractors, partners, JV, franchising
  * - Government agencies (Israeli ministries, municipalities)
  * - Customers, service providers

@@ -139,7 +139,7 @@ export class WhatsAppMetaService {
   }): Promise<boolean> {
     // Bilingual message - Hebrew primary with English brand touches
     const messageHebrew = `
-🐾 *PetWash™ - אישור הוצאה נדרש*
+🐾 *⁦PetWash™⁩ - אישור הוצאה נדרש*
 
 שלום! הוצאה חדשה ממתינה לאישורך.
 
@@ -156,7 +156,7 @@ _PetWash Ltd - Premium Organic Pet Care Platform_ 🐕
     `.trim();
 
     const messageEnglish = `
-🐾 *PetWash™ - Expense Approval Required*
+🐾 *⁦PetWash™⁩ - Expense Approval Required*
 
 Hello! A new expense is awaiting your approval.
 
@@ -208,7 +208,7 @@ _PetWash Ltd - Premium Organic Pet Care Platform_ 🐕
     const statusTextEn = params.status === 'approved' ? 'Approved' : 'Rejected';
 
     const messageHebrew = `
-${statusEmoji} *PetWash™ - עדכון סטטוס הוצאה*
+${statusEmoji} *⁦PetWash™⁩ - עדכון סטטוס הוצאה*
 
 ההוצאה שלך ${statusTextHe}!
 
@@ -220,7 +220,7 @@ _PetWash Ltd - Premium Organic Pet Care Platform_ 🐕
     `.trim();
 
     const messageEnglish = `
-${statusEmoji} *PetWash™ - Expense Status Update*
+${statusEmoji} *⁦PetWash™⁩ - Expense Status Update*
 
 Your expense has been ${statusTextEn.toLowerCase()}!
 
@@ -292,7 +292,7 @@ _PetWash Ltd - Premium Organic Pet Care Platform_ 🐕
     const name = params.recipientName || '';
 
     const messageHebrew = `
-🎉 *PetWash™ - אירוע השקה חגיגי!* 🐾
+🎉 *⁦PetWash™⁩ - אירוע השקה חגיגי!* 🐾
 
 שלום ${name},
 
@@ -322,7 +322,7 @@ _PetWash Ltd - Where Innovation Meets Pet Care_ 🐕
     `.trim();
 
     const messageEnglish = `
-🎉 *PetWash™ - Grand Launch Event!* 🐾
+🎉 *⁦PetWash™⁩ - Grand Launch Event!* 🐾
 
 Hello ${name},
 

@@ -206,11 +206,11 @@ export default function Packages() {
               <div className="w-full mx-auto lg:sticky lg:top-8">
                 <div className="bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6" style={{ borderRadius: '8px', border: '1px solid #eee' }}>
                   <p className="text-[10px] tracking-[0.25em] uppercase text-[#c9a96e] font-medium mb-3 text-center">
-                    {tierLabel} · Pet Wash™
+                    {tierLabel} · ⁦Pet Wash™⁩
                   </p>
                   <img 
                     src={selectedPackage.image} 
-                    alt={`PetWash™ ${isHe ? selectedPackage.nameHe : selectedPackage.name} Wash Package`}
+                    alt={`⁦PetWash™⁩ ${isHe ? selectedPackage.nameHe : selectedPackage.name} Wash Package`}
                     className="w-full h-auto rounded-lg shadow-xl"
                     style={{ 
                       filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))',
@@ -305,7 +305,7 @@ export default function Packages() {
                     <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]">
                       <img 
                         src={pkg.image} 
-                        alt={`PetWash™ ${isHe ? pkg.nameHe : pkg.name} Wash Package`}
+                        alt={`⁦PetWash™⁩ ${isHe ? pkg.nameHe : pkg.name} Wash Package`}
                         className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
                         style={{ 
                           display: 'block',

@@ -25,7 +25,7 @@ router.post('/add-booking', requireAuth, async (req, res) => {
     const event: BookingCalendarEvent = {
       platform: platform || 'Pet Wash',
       bookingId,
-      title: title || `Pet Wash™ Booking ${bookingId}`,
+      title: title || `⁦Pet Wash™⁩ Booking ${bookingId}`,
       description: description || '',
       startTime: new Date(startTime),
       endTime: new Date(endTime),
@@ -76,7 +76,7 @@ router.post('/generate-links', requireAuth, async (req, res) => {
     const event: BookingCalendarEvent = {
       platform: platform || 'Pet Wash',
       bookingId: bookingId || 'new',
-      title: title || 'Pet Wash™ Booking',
+      title: title || '⁦Pet Wash™⁩ Booking',
       description: description || '',
       startTime: new Date(startTime),
       endTime: new Date(endTime),

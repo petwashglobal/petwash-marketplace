@@ -134,7 +134,7 @@ export function setupWebSocket(server: Server) {
       type: 'welcome',
       clientId,
       timestamp: new Date().toISOString(),
-      message: 'Connected to PetWash™ Enterprise real-time telemetry',
+      message: 'Connected to ⁦PetWash™⁩ Enterprise real-time telemetry',
       authenticated: false,
       note: 'Send auth token to access protected data'
     }));

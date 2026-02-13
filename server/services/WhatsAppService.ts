@@ -69,13 +69,13 @@ export class WhatsAppService {
     language?: 'he' | 'en';
   }): Promise<boolean> {
     const message = params.language === 'he'
-      ? `🐾 *Pet Wash™ - אישור הוצאה נדרש*\n\n` +
+      ? `🐾 *⁦Pet Wash™⁩ - אישור הוצאה נדרש*\n\n` +
         `עובד: ${params.employeeName}\n` +
         `קטגוריה: ${params.category}\n` +
         `סכום: ₪${params.amount.toFixed(2)}\n` +
         `תיאור: ${params.description}\n\n` +
         `מזהה הוצאה: ${params.expenseId}`
-      : `🐾 *Pet Wash™ - Expense Approval Required*\n\n` +
+      : `🐾 *⁦Pet Wash™⁩ - Expense Approval Required*\n\n` +
         `Employee: ${params.employeeName}\n` +
         `Category: ${params.category}\n` +
         `Amount: ₪${params.amount.toFixed(2)}\n` +
@@ -107,14 +107,14 @@ export class WhatsAppService {
     });
     
     const message = params.language === 'he'
-      ? `🐾 *Pet Wash™ - אישור הזמנה*\n\n` +
+      ? `🐾 *⁦Pet Wash™⁩ - אישור הזמנה*\n\n` +
         `תודה על ההזמנה!\n\n` +
         `שירות: ${params.serviceType}\n` +
         `תאריך: ${formattedDate}\n` +
         `שעה: ${formattedTime}\n` +
         `מיקום: ${params.location}\n\n` +
         `מספר הזמנה: ${params.bookingId}`
-      : `🐾 *Pet Wash™ - Booking Confirmation*\n\n` +
+      : `🐾 *⁦Pet Wash™⁩ - Booking Confirmation*\n\n` +
         `Thank you for your booking!\n\n` +
         `Service: ${params.serviceType}\n` +
         `Date: ${formattedDate}\n` +
@@ -140,14 +140,14 @@ export class WhatsAppService {
     language?: 'he' | 'en';
   }): Promise<boolean> {
     const message = params.language === 'he'
-      ? `🚨 *Pet Wash™ - תזכורת ביטוח*\n\n` +
+      ? `🚨 *⁦Pet Wash™⁩ - תזכורת ביטוח*\n\n` +
         `שלום ${params.contractorName},\n\n` +
         `פוליסת הביטוח שלך (${params.policyNumber}) תפוג בעוד ${params.daysUntilExpiry} ימים.\n\n` +
-        `אנא חדש את הביטוח מיד כדי להמשיך לעבוד עם Pet Wash™.`
-      : `🚨 *Pet Wash™ - Insurance Reminder*\n\n` +
+        `אנא חדש את הביטוח מיד כדי להמשיך לעבוד עם ⁦Pet Wash™⁩.`
+      : `🚨 *⁦Pet Wash™⁩ - Insurance Reminder*\n\n` +
         `Hello ${params.contractorName},\n\n` +
         `Your insurance policy (${params.policyNumber}) expires in ${params.daysUntilExpiry} days.\n\n` +
-        `Please renew immediately to continue working with Pet Wash™.`;
+        `Please renew immediately to continue working with ⁦Pet Wash™⁩.`;
     
     return await this.sendMessage({
       to: params.contractorPhone,

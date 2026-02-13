@@ -209,7 +209,7 @@ export async function sendFeatureApprovalEmail(
         <hr style="margin: 30px 0; border: none; border-top: 1px solid #E5E7EB;">
         
         <p style="color: #6B7280; font-size: 12px;">
-          אימייל זה נשלח אוטומטית על ידי מערכת AI Learning של Pet Wash™<br>
+          אימייל זה נשלח אוטומטית על ידי מערכת AI Learning של ⁦Pet Wash™⁩<br>
           רק אתה יכול לאשר פיצ'רים חדשים.<br>
           ID אישור: ${approvalId}
         </p>
@@ -248,7 +248,7 @@ export async function sendFeatureApprovalEmail(
         <hr style="margin: 30px 0; border: none; border-top: 1px solid #E5E7EB;">
         
         <p style="color: #6B7280; font-size: 12px;">
-          This email was sent automatically by Pet Wash™ AI Learning System.<br>
+          This email was sent automatically by ⁦Pet Wash™⁩ AI Learning System.<br>
           Only you can approve new features.<br>
           Approval ID: ${approvalId}
         </p>

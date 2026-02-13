@@ -131,7 +131,7 @@ export class SmartWeatherAdvisorService {
 
     const targetLanguage = LANGUAGE_MAP[lang];
 
-    return `You are an expert pet care weather advisor for Pet Wash™ - a premium organic pet washing service.
+    return `You are an expert pet care weather advisor for ⁦Pet Wash™⁩ - a premium organic pet washing service.
 
 **IMPORTANT: Respond in ${targetLanguage} language. ALL text fields (title, message, action, recommendations) must be in ${targetLanguage}.**
 

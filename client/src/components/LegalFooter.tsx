@@ -122,16 +122,16 @@ PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
 **עדכון אחרון: אוקטובר 2025**
 
 ### 1. קבלת התנאים
-שימוש באתר ובשירותי PetWash™ מהווה הסכמה לתנאים אלה.
+שימוש באתר ובשירותי ⁦PetWash™⁩ מהווה הסכמה לתנאים אלה.
 
 ### 2. השירותים
 PetWash Ltd מספקת:
 - עמדות שטיפה חכמות K9000 Twin
 - שירותי שטיפה אורגניים פרימיום
 - תכנית נאמנות 5 דרגות
-- שירותי The Sitter Suite™ (שמרטפות)
-- שירותי Walk My Pet™ (הליכה עם כלבים)
-- שירותי PetTrek™ (הסעות חיות מחמד)
+- שירותי ⁦The Sitter Suite™⁩ (שמרטפות)
+- שירותי ⁦Walk My Pet™⁩ (הליכה עם כלבים)
+- שירותי ⁦PetTrek™⁩ (הסעות חיות מחמד)
 
 ### 3. תשלומים
 - כל התשלומים מעובדים באמצעות Nayax Israel בלבד
@@ -167,16 +167,16 @@ PetWash Ltd לא תהיה אחראית לנזקים עקיפים או תוצאת
 **Last Updated: October 2025**
 
 ### 1. Acceptance of Terms
-Use of the PetWash™ website and services constitutes acceptance of these terms.
+Use of the ⁦PetWash™⁩ website and services constitutes acceptance of these terms.
 
 ### 2. Services
 PetWash Ltd provides:
 - K9000 Twin smart wash stations
 - Premium organic washing services
 - 7-tier luxury loyalty program (Bronze→Royal)
-- The Sitter Suite™ (pet sitting services)
-- Walk My Pet™ (dog walking services)
-- PetTrek™ (pet transport services)
+- ⁦The Sitter Suite™⁩ (pet sitting services)
+- ⁦Walk My Pet™⁩ (dog walking services)
+- ⁦PetTrek™⁩ (pet transport services)
 
 ### 3. Payments
 - All payments processed via Nayax Israel ONLY
@@ -215,7 +215,7 @@ PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
 **עדכון אחרון: אוקטובר 2025**
 
 ### 1. כללי
-השימוש בשירותי PetWash™ הוא באחריות המשתמש בלבד.
+השימוש בשירותי ⁦PetWash™⁩ הוא באחריות המשתמש בלבד.
 
 ### 2. אחריות לחיית מחמד
 - בעלי חיות מחמד אחראים באופן בלעדי לבריאות ובטיחות חיית המחמד שלהם
@@ -232,7 +232,7 @@ PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
 - PetWash Ltd שומרת את הזכות לשנות או לבטל מבצעים בכל עת
 
 ### 5. שירותים חיצוניים
-- The Sitter Suite™, Walk My Pet™, PetTrek™ מופעלים על ידי ספקי שירות מאומתים
+- ⁦The Sitter Suite™⁩, ⁦Walk My Pet™⁩, ⁦PetTrek™⁩ מופעלים על ידי ספקי שירות מאומתים
 - PetWash Ltd פועלת כפלטפורמה ואינה אחראית ישירות למעשי נותני השירות
 
 ### 6. דיוק מידע
@@ -247,7 +247,7 @@ PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
 - האתר עשוי להכיל קישורים לאתרים חיצוניים
 - PetWash Ltd לא אחראית לתוכן או למדיניות של אתרים חיצוניים
 
-**שימו לב:** שירותי PetWash™ מיועדים לשטיפה וטיפול בסיסי בחיות מחמד בלבד. למקרי חירום וטרינריים, פנו לוטרינר בהקדם.
+**שימו לב:** שירותי ⁦PetWash™⁩ מיועדים לשטיפה וטיפול בסיסי בחיות מחמד בלבד. למקרי חירום וטרינריים, פנו לוטרינר בהקדם.
 
 פט וואש בע"מ • רחוב עוזי חיטמן 8, ראש העין • מס' ח.פ: 517145033  
 טלפון תמיכה: 1-700-700-PET (738)
@@ -261,7 +261,7 @@ PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033
 **Last Updated: October 2025**
 
 ### 1. General
-Use of PetWash™ services is at the user's sole risk.
+Use of ⁦PetWash™⁩ services is at the user's sole risk.
 
 ### 2. Pet Responsibility
 - Pet owners are solely responsible for their pet's health and safety
@@ -278,7 +278,7 @@ Use of PetWash™ services is at the user's sole risk.
 - PetWash Ltd reserves the right to modify or cancel promotions at any time
 
 ### 5. Third-Party Services
-- The Sitter Suite™, Walk My Pet™, PetTrek™ operated by verified service providers
+- ⁦The Sitter Suite™⁩, ⁦Walk My Pet™⁩, ⁦PetTrek™⁩ operated by verified service providers
 - PetWash Ltd acts as a platform and is not directly responsible for provider actions
 
 ### 6. Information Accuracy
@@ -293,7 +293,7 @@ Use of PetWash™ services is at the user's sole risk.
 - The website may contain links to external sites
 - PetWash Ltd is not responsible for content or policies of external sites
 
-**Note:** PetWash™ services are intended for basic pet washing and care only. For veterinary emergencies, contact a veterinarian immediately.
+**Note:** ⁦PetWash™⁩ services are intended for basic pet washing and care only. For veterinary emergencies, contact a veterinarian immediately.
 
 PetWash Ltd • 8 Uzi Hitman St, Rosh HaAyin • Company ID: 517145033  
 Support Phone: 1-700-700-PET (738)

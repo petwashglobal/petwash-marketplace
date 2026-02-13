@@ -260,7 +260,7 @@ export default function AdminStations() {
             <div className="luxury-glass-panel luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-2">
               <div className="mb-6">
                 <h2 className="luxury-heading-sm luxury-text-gradient">Stations Registry</h2>
-                <p className="luxury-text-small mt-1">Search and filter all Pet Wash™ stations</p>
+                <p className="luxury-text-small mt-1">Search and filter all ⁦Pet Wash™⁩ stations</p>
               </div>
               <div className="flex flex-wrap gap-4">
                 <div className="flex-1 min-w-[250px]">

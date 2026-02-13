@@ -267,7 +267,7 @@ class LinkChecker {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pet Wash™ - Link & Asset Verification Report</title>
+  <title>⁦Pet Wash™⁩ - Link & Asset Verification Report</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -347,7 +347,7 @@ class LinkChecker {
   <div class="container">
     <div class="header">
       <h1>🔗 Link & Asset Verification</h1>
-      <p>Pet Wash™ - Comprehensive URL & Resource Check</p>
+      <p>⁦Pet Wash™⁩ - Comprehensive URL & Resource Check</p>
       <p style="margin-top: 10px; font-size: 14px;">${new Date().toLocaleString()}</p>
     </div>
     

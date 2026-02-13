@@ -305,7 +305,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     res.set('Cache-Control', 'no-store').json({
       ok: true,
       status: 'healthy',
-      service: 'Pet Wash™ API',
+      service: '⁦Pet Wash™⁩ API',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
@@ -316,7 +316,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     res.set('Cache-Control', 'no-store').json({
       ok: true,
       status: 'healthy',
-      service: 'Pet Wash™ API',
+      service: '⁦Pet Wash™⁩ API',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
@@ -335,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     res.set('Cache-Control', 'no-store').json({
       ok: true,
       status: 'healthy',
-      service: 'Pet Wash™ API',
+      service: '⁦Pet Wash™⁩ API',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
@@ -587,7 +587,7 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
-  const notificationTitle = payload.notification?.title || 'Pet Wash™';
+  const notificationTitle = payload.notification?.title || '⁦Pet Wash™⁩';
   const notificationOptions = {
     body: payload.notification?.body || 'You have a new notification',
     icon: '/brand/petwash-logo-official.png',
@@ -1610,8 +1610,8 @@ self.addEventListener('notificationclick', (event) => {
       // Fallback greeting
       const language = (req.query.language as string) || 'en';
       const fallback = language === 'he' 
-        ? 'שלום! ברוכים הבאים ל-Pet Wash™! 🐾'
-        : 'Welcome to Pet Wash™! 🐾';
+        ? 'שלום! ברוכים הבאים ל-⁦Pet Wash™⁩! 🐾'
+        : 'Welcome to ⁦Pet Wash™⁩! 🐾';
       
       res.json({ 
         ok: true,
@@ -2961,7 +2961,7 @@ self.addEventListener('notificationclick', (event) => {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Pet Wash™ - Invalid Unsubscribe Link</title>
+    <title>⁦Pet Wash™⁩ - Invalid Unsubscribe Link</title>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
@@ -2970,7 +2970,7 @@ self.addEventListener('notificationclick', (event) => {
 </head>
 <body>
     <div class="container">
-        <h1>Pet Wash™</h1>
+        <h1>⁦Pet Wash™⁩</h1>
         <h2>Invalid Unsubscribe Link</h2>
         <p>The unsubscribe link appears to be invalid or has expired.</p>
         <p>If you need assistance, please contact our support team at Support@PetWash.co.il</p>
@@ -2990,7 +2990,7 @@ self.addEventListener('notificationclick', (event) => {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Pet Wash™ - Invalid Unsubscribe Link</title>
+    <title>⁦Pet Wash™⁩ - Invalid Unsubscribe Link</title>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
@@ -2999,7 +2999,7 @@ self.addEventListener('notificationclick', (event) => {
 </head>
 <body>
     <div class="container">
-        <h1>Pet Wash™</h1>
+        <h1>⁦Pet Wash™⁩</h1>
         <h2>Invalid or Expired Unsubscribe Link</h2>
         <p>This unsubscribe link is invalid or has expired for security reasons.</p>
         <p>If you need to unsubscribe from our emails, please contact us at Support@PetWash.co.il</p>
@@ -3054,7 +3054,7 @@ self.addEventListener('notificationclick', (event) => {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Pet Wash™ - Successfully Unsubscribed</title>
+    <title>⁦Pet Wash™⁩ - Successfully Unsubscribed</title>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
@@ -3064,12 +3064,12 @@ self.addEventListener('notificationclick', (event) => {
 </head>
 <body>
     <div class="container">
-        <h1>Pet Wash™</h1>
+        <h1>⁦Pet Wash™⁩</h1>
         <h2 class="success">✅ Successfully Unsubscribed</h2>
         <p>You have been unsubscribed from marketing emails and SMS messages.</p>
         <p>You will still receive important service-related communications such as appointment reminders.</p>
         <p>If you have any questions, please contact us at Support@PetWash.co.il</p>
-        <p><strong>Thank you for using Pet Wash™</strong></p>
+        <p><strong>Thank you for using ⁦Pet Wash™⁩</strong></p>
     </div>
 </body>
 </html>`);
@@ -3089,7 +3089,7 @@ self.addEventListener('notificationclick', (event) => {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Pet Wash™ - Unsubscribe Error</title>
+    <title>⁦Pet Wash™⁩ - Unsubscribe Error</title>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
@@ -3099,7 +3099,7 @@ self.addEventListener('notificationclick', (event) => {
 </head>
 <body>
     <div class="container">
-        <h1>Pet Wash™</h1>
+        <h1>⁦Pet Wash™⁩</h1>
         <h2 class="error">❌ Error Processing Unsubscribe</h2>
         <p>We encountered an error processing your unsubscribe request.</p>
         <p>Please contact our support team at Support@PetWash.co.il for assistance.</p>
@@ -3262,7 +3262,7 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // POST /api/nayax/redeem - Redeem QR voucher at Pet Wash™ station (Firestore)
+  // POST /api/nayax/redeem - Redeem QR voucher at ⁦Pet Wash™⁩ station (Firestore)
   app.post('/api/nayax/redeem', paymentLimiter, async (req, res) => {
     try {
       // Validate station API key
@@ -8314,7 +8314,7 @@ self.addEventListener('notificationclick', (event) => {
   const avatarsRoutes = await import('./routes/avatars');
   app.use('/api/avatars', apiLimiter, avatarsRoutes.default);
 
-  // Paw Finder™ routes (FREE Community Service - Lost & Found Pets)
+  // ⁦Paw Finder™⁩ routes (FREE Community Service - Lost & Found Pets)
   const pawFinderRoutes = await import('./routes/paw-finder');
   app.use('/api/paw-finder', apiLimiter, pawFinderRoutes.default);
 
@@ -8339,13 +8339,13 @@ self.addEventListener('notificationclick', (event) => {
   // Israeli Subcontractor Agreement 2025 - FREE internal e-signature system (NO paid providers)
   app.use('/api/subcontractors/agreements', apiLimiter, subcontractorAgreementsRoutes);
   
-  // Provider Training - Pet Wash™ professional training, quizzes, certificates
+  // Provider Training - ⁦Pet Wash™⁩ professional training, quizzes, certificates
   app.use('/api/provider-training', apiLimiter, providerTrainingRoutes);
   
   // Police Check Badge System - Israeli תעודת יושר verification
   app.use('/api/police-check', apiLimiter, policeCheckRoutes);
   
-  // Admin Provider Review Queue - Pet Wash™ approval workflow
+  // Admin Provider Review Queue - ⁦Pet Wash™⁩ approval workflow
   app.use('/api/provider-review', apiLimiter, adminProviderReviewRoutes);
   
   // AI Payout Verification - Gemini 2.5 Flash work verification before payouts
@@ -8552,7 +8552,7 @@ self.addEventListener('notificationclick', (event) => {
   const recaptchaRoutes = await import('./routes/recaptcha');
   app.use('/api/recaptcha', recaptchaRoutes.default);
   
-  // The Sitter Suite™ - Pet sitting marketplace (Nayax-only payments)
+  // ⁦The Sitter Suite™⁩ - Pet sitting marketplace (Nayax-only payments)
   app.use('/api/sitter-suite', apiLimiter, sitterSuiteRoutes);
   
   // 💼 CAREERS PORTAL - SEEK-inspired HR application system with fraud prevention
@@ -8561,16 +8561,16 @@ self.addEventListener('notificationclick', (event) => {
   // Seed demo data endpoint (for testing/demo purposes)
   app.use('/api', seedDemoRoutes);
   
-  // Pet Wash Academy™ - Professional trainer marketplace (2025 unified ecosystem)
+  // ⁦Pet Wash Academy™⁩ - Professional trainer marketplace (2025 unified ecosystem)
   app.use('/api/academy', apiLimiter, academyRoutes);
   
   // 🐙 Unified Platform Routes - Cross-platform services
   app.use('/api/unified', apiLimiter, unifiedPlatformRoutes);
   
-  // Walk My Pet™ - Premium dog walking marketplace
+  // ⁦Walk My Pet™⁩ - Premium dog walking marketplace
   app.use(apiLimiter, walkMyPetRoutes);
   
-  // Walk My Pet™ - Session Management (Check-in/Check-out, GPS, Vitals)
+  // ⁦Walk My Pet™⁩ - Session Management (Check-in/Check-out, GPS, Vitals)
   app.use('/api/walk-session', apiLimiter, walkSessionRoutes);
   app.use('/api/pettrek', apiLimiter, pettrekRoutes);
   app.use('/api/calendar', apiLimiter, calendarRoutes);
@@ -8793,7 +8793,7 @@ self.addEventListener('notificationclick', (event) => {
       const platforms = [
         {
           platform: "sitter-suite",
-          displayName: "The Sitter Suite™",
+          displayName: "⁦The Sitter Suite™⁩",
           status: "operational",
           uptime: 99.98,
           activeUsers: Math.floor(Math.random() * 300) + 200,
@@ -8803,7 +8803,7 @@ self.addEventListener('notificationclick', (event) => {
         },
         {
           platform: "walk-my-pet",
-          displayName: "Walk My Pet™",
+          displayName: "⁦Walk My Pet™⁩",
           status: "operational",
           uptime: 99.95,
           activeUsers: Math.floor(Math.random() * 200) + 150,
@@ -8813,7 +8813,7 @@ self.addEventListener('notificationclick', (event) => {
         },
         {
           platform: "pettrek",
-          displayName: "PetTrek™",
+          displayName: "⁦PetTrek™⁩",
           status: "operational",
           uptime: 99.92,
           activeUsers: Math.floor(Math.random() * 180) + 120,
@@ -8823,7 +8823,7 @@ self.addEventListener('notificationclick', (event) => {
         },
         {
           platform: "pet-wash-hub",
-          displayName: "Pet Wash Hub™",
+          displayName: "Pet ⁦Wash Hub™⁩",
           status: "operational",
           uptime: 99.99,
           activeUsers: Math.floor(Math.random() * 400) + 400,
@@ -8833,7 +8833,7 @@ self.addEventListener('notificationclick', (event) => {
         },
         {
           platform: "paw-finder",
-          displayName: "Paw Finder™",
+          displayName: "⁦Paw Finder™⁩",
           status: "operational",
           uptime: 99.97,
           activeUsers: Math.floor(Math.random() * 250) + 250,
@@ -8844,7 +8844,7 @@ self.addEventListener('notificationclick', (event) => {
         // DISABLED: PlushLab - Pet Avatar Creator (frozen for now, keep for future use)
         // {
         //   platform: "plush-lab",
-        //   displayName: "The Plush Lab™",
+        //   displayName: "⁦The Plush Lab™⁩",
         //   status: "operational",
         //   uptime: 99.94,
         //   activeUsers: Math.floor(Math.random() * 200) + 150,
@@ -9142,7 +9142,7 @@ self.addEventListener('notificationclick', (event) => {
           <div style="font-family: Arial; text-align: center; padding: 50px;">
             <h1 style="color: #10B981;">✅ Feature Approved</h1>
             <p>The new AI feature has been approved and will be implemented soon.</p>
-            <p style="color: #6B7280; font-size: 14px;">Pet Wash™ AI Learning System</p>
+            <p style="color: #6B7280; font-size: 14px;">⁦Pet Wash™⁩ AI Learning System</p>
           </div>
         `);
       } else {
@@ -9170,7 +9170,7 @@ self.addEventListener('notificationclick', (event) => {
           <div style="font-family: Arial; text-align: center; padding: 50px;">
             <h1 style="color: #EF4444;">❌ Feature Rejected</h1>
             <p>The AI feature suggestion has been rejected.</p>
-            <p style="color: #6B7280; font-size: 14px;">Pet Wash™ AI Learning System</p>
+            <p style="color: #6B7280; font-size: 14px;">⁦Pet Wash™⁩ AI Learning System</p>
           </div>
         `);
       } else {
@@ -9952,7 +9952,7 @@ self.addEventListener('notificationclick', (event) => {
             <p><strong>ההודעה שלך:</strong></p>
             <p>${message}</p>
             <hr>
-            <p>בברכה,<br>צוות Pet Wash™</p>
+            <p>בברכה,<br>צוות ⁦Pet Wash™⁩</p>
           `
           : `
             <h2>Hello ${name},</h2>
@@ -9960,7 +9960,7 @@ self.addEventListener('notificationclick', (event) => {
             <p><strong>Your message:</strong></p>
             <p>${message}</p>
             <hr>
-            <p>Best regards,<br>Pet Wash™ Team</p>
+            <p>Best regards,<br>⁦Pet Wash™⁩ Team</p>
           `
       });
       
@@ -11569,7 +11569,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 <body>
   <div class="container">
     <div class="header">
-      <h1>🐾 Pet Wash™ Platform</h1>
+      <h1>🐾 ⁦Pet Wash™⁩ Platform</h1>
       <p>Final Production Status Report</p>
       <p style="font-size: 14px; opacity: 0.9;">Generated: October 25, 2025 • 09:36 AM Israel Time</p>
       <div class="status-badge">✅ PLATFORM OPERATIONAL</div>
@@ -11578,7 +11578,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     <div class="content" style="padding: 40px;">
       <h2 style="color: #1e293b; font-size: 24px; margin-top: 0;">Executive Summary</h2>
       <p style="color: #64748b; font-size: 15px; line-height: 1.7;">
-        This comprehensive report confirms that the Pet Wash™ platform is <strong>LIVE and OPERATIONAL</strong> 
+        This comprehensive report confirms that the ⁦Pet Wash™⁩ platform is <strong>LIVE and OPERATIONAL</strong> 
         on production domain <strong>petwash.co.il</strong> with all critical authentication fixes successfully deployed.
       </p>
       
@@ -11612,7 +11612,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       
       const success = await EmailService.send({
         to: 'Support@PetWash.co.il',
-        subject: '🐾 Pet Wash™ Platform - Final Status Report (Oct 25, 2025)',
+        subject: '🐾 ⁦Pet Wash™⁩ Platform - Final Status Report (Oct 25, 2025)',
         html: htmlContent,
         from: 'noreply@petwash.co.il'
       });

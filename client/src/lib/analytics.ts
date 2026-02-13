@@ -1,5 +1,5 @@
 // Google Analytics 4 Event Tracking
-// Comprehensive analytics for Pet Wash™
+// Comprehensive analytics for ⁦Pet Wash™⁩
 
 import { getAnalytics, isSupported, logEvent as firebaseLogEvent, setUserProperties, type Analytics } from "firebase/analytics";
 import { app } from "./firebase";

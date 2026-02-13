@@ -115,8 +115,8 @@ export default function SharedServicesImpact() {
             </h2>
             <p className="luxury-text-body max-w-4xl mx-auto leading-relaxed">
               {isHebrew
-                ? 'Pet Wash™ מחויבת ליצירה של עתיד טוב יותר לכל חיות המחמד ובעליהן. באמצעות תוכניות הקהילה שלנו, אנו עוזרים למשפחות להעניק את הטיפול הטוב ביותר לחיות המחמד שלהן, מקדמים אימוצים אחראיים, ומספקים משאבי חירום למי שזקוק להם. כל רחיצה במערכות K9000 שלנו תומכת ביוזמות אלה.'
-                : 'Pet Wash™ is committed to creating a better future for all pets and their owners. Through our community programs, we help families provide the best care for their pets, promote responsible adoptions, and provide emergency resources for those in need. Every wash at our K9000 stations supports these initiatives.'}
+                ? '⁦Pet Wash™⁩ מחויבת ליצירה של עתיד טוב יותר לכל חיות המחמד ובעליהן. באמצעות תוכניות הקהילה שלנו, אנו עוזרים למשפחות להעניק את הטיפול הטוב ביותר לחיות המחמד שלהן, מקדמים אימוצים אחראיים, ומספקים משאבי חירום למי שזקוק להם. כל רחיצה במערכות K9000 שלנו תומכת ביוזמות אלה.'
+                : '⁦Pet Wash™⁩ is committed to creating a better future for all pets and their owners. Through our community programs, we help families provide the best care for their pets, promote responsible adoptions, and provide emergency resources for those in need. Every wash at our K9000 stations supports these initiatives.'}
             </p>
           </div>
         </div>

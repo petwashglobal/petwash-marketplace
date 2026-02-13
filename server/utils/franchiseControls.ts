@@ -52,7 +52,7 @@ export function getFranchiseCommandCenter(franchiseeId?: string): {
 } {
   // In production, fetch from database with real-time data
   return {
-    totalStations: 127, // Total Pet Wash™ stations
+    totalStations: 127, // Total ⁦Pet Wash™⁩ stations
     activeStations: 124,
     totalRevenueToday: 45230.50,
     totalCustomersToday: 1847,

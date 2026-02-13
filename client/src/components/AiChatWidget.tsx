@@ -1,13 +1,13 @@
 /**
  * Google Dialogflow CX AI Chat Widget
- * Production-grade Gemini-powered chatbot for Pet Wash™
+ * Production-grade Gemini-powered chatbot for ⁦Pet Wash™⁩
  * 
  * Features:
  * - Bilingual Hebrew/English support
  * - Accessibility compliant (WCAG 2.1 AA)
  * - Mobile-responsive design
  * - Session persistence
- * - Luxury Pet Wash™ branding
+ * - Luxury ⁦Pet Wash™⁩ branding
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -55,7 +55,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
     setMessages([
       {
         id: 'welcome',
-        text: '👋 שלום! אני קנזו, העוזר החכם של Pet Wash™. איך אוכל לעזור לך היום?',
+        text: '👋 שלום! אני קנזו, העוזר החכם של ⁦Pet Wash™⁩. איך אוכל לעזור לך היום?',
         sender: 'bot',
         timestamp: new Date(),
       }

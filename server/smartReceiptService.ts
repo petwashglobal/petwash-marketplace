@@ -238,7 +238,7 @@ export class SmartReceiptService {
         transactionId,
         userId: request.userId || null,
         packageId: request.packageId,
-        locationName: request.locationName || 'Pet Wash™ Premium Station',
+        locationName: request.locationName || '⁦Pet Wash™⁩ Premium Station',
         washType: washPackage.name,
         washDuration: request.washDuration || 15,
         customerIdMasked,
@@ -272,7 +272,7 @@ export class SmartReceiptService {
         paymentMethod: request.paymentMethod,
         platform: 'K9000',
         serviceType: washPackage.name,
-        description: `${washPackage.name} @ ${request.locationName || 'Pet Wash™ Premium Station'}`,
+        description: `${washPackage.name} @ ${request.locationName || '⁦Pet Wash™⁩ Premium Station'}`,
         status: 'Completed',
       }).catch(err => logger.error('[SmartReceipt] Google Sheets logging failed - DB record saved', err));
 

@@ -23,7 +23,7 @@ export default function SystemStatus() {
           </div>
           <h1 className="text-5xl font-bold mb-4 luxury-text-gradient">System Status</h1>
           <p className="text-xl text-gray-600">
-            Real-time status of all Pet Wash™ platforms and services
+            Real-time status of all ⁦Pet Wash™⁩ platforms and services
           </p>
         </div>
 

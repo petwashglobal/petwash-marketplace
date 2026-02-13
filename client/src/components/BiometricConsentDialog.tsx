@@ -76,7 +76,7 @@ export function BiometricConsentDialog({
         dataCollected: 'Biometric Data Processing',
         dataItems: [
           '🔒 Your biometric data (Face ID/Touch ID/Windows Hello) is processed locally on your device',
-          '🚫 Pet Wash™ NEVER receives, stores, or has access to your biometric information',
+          '🚫 ⁦Pet Wash™⁩ NEVER receives, stores, or has access to your biometric information',
           '✅ Only a cryptographic signature is sent to our servers for authentication',
           '🔐 Your passkey is protected by your device\'s Secure Enclave (iOS) or TPM (Windows)',
           '📱 Biometric data never leaves your device and is encrypted by Apple/Microsoft/Google'
@@ -85,25 +85,25 @@ export function BiometricConsentDialog({
         appleItems: [
           'Face ID/Touch ID data is processed by Apple\'s Secure Enclave',
           'Your biometric templates never leave your device',
-          'Pet Wash™ complies with Apple\'s biometric data usage policies',
+          '⁦Pet Wash™⁩ complies with Apple\'s biometric data usage policies',
           'You can revoke access at any time in Settings → Face ID & Passcode'
         ],
         googleCompliance: '🤖 Google/Android Requirements',
         googleItems: [
           'Biometric authentication uses Android BiometricPrompt API',
           'Data is processed by your device\'s hardware security module',
-          'Pet Wash™ complies with Google Play biometric policies',
+          '⁦Pet Wash™⁩ complies with Google Play biometric policies',
           'You can manage permissions in Settings → Security → Biometrics'
         ],
         microsoftCompliance: '🪟 Microsoft Requirements',
         microsoftItems: [
           'Windows Hello uses TPM (Trusted Platform Module)',
           'Biometric data is isolated from the operating system',
-          'Pet Wash™ complies with Microsoft identity platform policies',
+          '⁦Pet Wash™⁩ complies with Microsoft identity platform policies',
           'Manage in Settings → Accounts → Sign-in options'
         ],
-        consent1: 'I consent to using my device\'s biometric authentication (Face ID/Touch ID/Windows Hello) for secure sign-in to Pet Wash™',
-        consent2: 'I understand that my biometric data is processed locally on my device and Pet Wash™ never receives or stores this sensitive information',
+        consent1: 'I consent to using my device\'s biometric authentication (Face ID/Touch ID/Windows Hello) for secure sign-in to ⁦Pet Wash™⁩',
+        consent2: 'I understand that my biometric data is processed locally on my device and ⁦Pet Wash™⁩ never receives or stores this sensitive information',
         consent3: 'I have read and agree to the',
         privacyPolicy: 'Privacy Policy',
         termsOfService: 'Terms of Service',
@@ -130,19 +130,19 @@ export function BiometricConsentDialog({
       faceid: {
         title: 'Enable Face ID Authentication',
         icon: Smartphone,
-        description: 'Use Face ID for secure, password-free authentication to your Pet Wash™ account.',
+        description: 'Use Face ID for secure, password-free authentication to your ⁦Pet Wash™⁩ account.',
         method: 'Face ID (TrueDepth Camera)',
       },
       touchid: {
         title: 'Enable Touch ID Authentication',
         icon: Fingerprint,
-        description: 'Use Touch ID for secure, password-free authentication to your Pet Wash™ account.',
+        description: 'Use Touch ID for secure, password-free authentication to your ⁦Pet Wash™⁩ account.',
         method: 'Touch ID (Fingerprint Sensor)',
       },
       windowshello: {
         title: 'Enable Windows Hello',
         icon: Lock,
-        description: 'Use Windows Hello for secure, password-free authentication to your Pet Wash™ account.',
+        description: 'Use Windows Hello for secure, password-free authentication to your ⁦Pet Wash™⁩ account.',
         method: 'Windows Hello (Biometric/PIN)',
       }
     },
@@ -157,7 +157,7 @@ export function BiometricConsentDialog({
         dataCollected: 'עיבוד נתונים ביומטריים',
         dataItems: [
           '🔒 הנתונים הביומטריים שלך (Face ID/Touch ID/Windows Hello) מעובדים מקומית במכשיר שלך',
-          '🚫 Pet Wash™ לעולם לא מקבלת, מאחסנת או ניגשת למידע הביומטרי שלך',
+          '🚫 ⁦Pet Wash™⁩ לעולם לא מקבלת, מאחסנת או ניגשת למידע הביומטרי שלך',
           '✅ רק חתימה קריפטוגרפית נשלחת לשרתים שלנו לאימות',
           '🔐 ה-Passkey שלך מוגן על ידי Secure Enclave (iOS) או TPM (Windows) של המכשיר',
           '📱 נתונים ביומטריים לעולם לא עוזבים את המכשיר ומוצפנים על ידי Apple/Microsoft/Google'
@@ -166,25 +166,25 @@ export function BiometricConsentDialog({
         appleItems: [
           'נתוני Face ID/Touch ID מעובדים על ידי Secure Enclave של Apple',
           'התבניות הביומטריות שלך לעולם לא עוזבות את המכשיר',
-          'Pet Wash™ עומדת במדיניות השימוש בנתונים ביומטריים של Apple',
+          '⁦Pet Wash™⁩ עומדת במדיניות השימוש בנתונים ביומטריים של Apple',
           'ניתן לבטל גישה בכל עת בהגדרות → Face ID וקוד גישה'
         ],
         googleCompliance: '🤖 דרישות Google/Android',
         googleItems: [
           'אימות ביומטרי משתמש ב-Android BiometricPrompt API',
           'הנתונים מעובדים על ידי מודול האבטחה החומרתי של המכשיר',
-          'Pet Wash™ עומדת במדיניות ביומטריה של Google Play',
+          '⁦Pet Wash™⁩ עומדת במדיניות ביומטריה של Google Play',
           'ניתן לנהל הרשאות בהגדרות → אבטחה → ביומטריה'
         ],
         microsoftCompliance: '🪟 דרישות Microsoft',
         microsoftItems: [
           'Windows Hello משתמש ב-TPM (Trusted Platform Module)',
           'נתונים ביומטריים מבודדים ממערכת ההפעלה',
-          'Pet Wash™ עומדת במדיניות פלטפורמת הזהות של Microsoft',
+          '⁦Pet Wash™⁩ עומדת במדיניות פלטפורמת הזהות של Microsoft',
           'ניהול בהגדרות → חשבונות → אפשרויות כניסה'
         ],
-        consent1: 'אני מסכים להשתמש באימות הביומטרי של המכשיר (Face ID/Touch ID/Windows Hello) לכניסה מאובטחת ל-Pet Wash™',
-        consent2: 'אני מבין שהנתונים הביומטריים שלי מעובדים מקומית במכשיר ו-Pet Wash™ לעולם לא מקבלת או מאחסנת מידע רגיש זה',
+        consent1: 'אני מסכים להשתמש באימות הביומטרי של המכשיר (Face ID/Touch ID/Windows Hello) לכניסה מאובטחת ל-⁦Pet Wash™⁩',
+        consent2: 'אני מבין שהנתונים הביומטריים שלי מעובדים מקומית במכשיר ו-⁦Pet Wash™⁩ לעולם לא מקבלת או מאחסנת מידע רגיש זה',
         consent3: 'קראתי ואני מסכים ל',
         privacyPolicy: 'מדיניות הפרטיות',
         termsOfService: 'תנאי השימוש',
@@ -211,19 +211,19 @@ export function BiometricConsentDialog({
       faceid: {
         title: 'הפעלת אימות Face ID',
         icon: Smartphone,
-        description: 'השתמש ב-Face ID לאימות מאובטח ללא סיסמה לחשבון Pet Wash™ שלך.',
+        description: 'השתמש ב-Face ID לאימות מאובטח ללא סיסמה לחשבון ⁦Pet Wash™⁩ שלך.',
         method: 'Face ID (מצלמת TrueDepth)',
       },
       touchid: {
         title: 'הפעלת אימות Touch ID',
         icon: Fingerprint,
-        description: 'השתמש ב-Touch ID לאימות מאובטח ללא סיסמה לחשבון Pet Wash™ שלך.',
+        description: 'השתמש ב-Touch ID לאימות מאובטח ללא סיסמה לחשבון ⁦Pet Wash™⁩ שלך.',
         method: 'Touch ID (חיישן טביעת אצבע)',
       },
       windowshello: {
         title: 'הפעלת Windows Hello',
         icon: Lock,
-        description: 'השתמש ב-Windows Hello לאימות מאובטח ללא סיסמה לחשבון Pet Wash™ שלך.',
+        description: 'השתמש ב-Windows Hello לאימות מאובטח ללא סיסמה לחשבון ⁦Pet Wash™⁩ שלך.',
         method: 'Windows Hello (ביומטרי/PIN)',
       }
     }

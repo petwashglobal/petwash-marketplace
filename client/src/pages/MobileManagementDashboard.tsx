@@ -140,7 +140,7 @@ export default function MobileManagementDashboard() {
 
       sendMessageMutation.mutate({
         senderId: firebaseUser.uid,
-        senderName: 'Pet Wash™ Management',
+        senderName: '⁦Pet Wash™⁩ Management',
         senderEmail: firebaseUser.email || 'admin@petwash.co.il',
         recipientId: recipientData.uid,
         recipientName: `${selectedProvider.firstName} ${selectedProvider.lastName}`,
@@ -276,7 +276,7 @@ export default function MobileManagementDashboard() {
                 { label: isHebrew ? 'נהגים' : 'Drivers', icon: Car, color: 'text-blue-400', bg: 'from-blue-500/15 to-blue-600/5', count: 6, route: '/pettrek' },
                 { label: isHebrew ? 'טיפוח' : 'Groomers', icon: Scissors, color: 'text-rose-400', bg: 'from-rose-500/15 to-rose-600/5', count: 0, route: '/groomers' },
                 { label: isHebrew ? 'מאלפים' : 'Trainers', icon: GraduationCap, color: 'text-cyan-400', bg: 'from-cyan-500/15 to-cyan-600/5', count: 3, route: '/academy' },
-                { label: 'K9000™', icon: Droplets, color: 'text-[#C9A96E]', bg: 'from-[#C9A96E]/15 to-[#C9A96E]/5', count: 6, route: '/k9000' },
+                { label: '⁦K9000™⁩', icon: Droplets, color: 'text-[#C9A96E]', bg: 'from-[#C9A96E]/15 to-[#C9A96E]/5', count: 6, route: '/k9000' },
               ].map((p, i) => (
                 <Link key={i} href={p.route}>
                   <div className={`luxury-dark-card rounded-xl p-3 text-center hover:border-[rgba(201,169,110,0.2)] transition-all cursor-pointer bg-gradient-to-br ${p.bg}`} data-testid={`platform-${p.label.toLowerCase()}`}>
@@ -562,7 +562,7 @@ export default function MobileManagementDashboard() {
                     <Sparkles className="h-6 w-6 text-[#0A0A0F]" />
                   </div>
                   <div>
-                    <h2 className="font-bold text-lg text-white">Pet Wash™</h2>
+                    <h2 className="font-bold text-lg text-white">⁦Pet Wash™⁩</h2>
                     <p className="text-xs text-[rgba(149,144,168,0.5)]">{isHebrew ? 'מרכז ניהול' : 'Management'}</p>
                   </div>
                 </div>

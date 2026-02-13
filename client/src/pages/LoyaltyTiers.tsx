@@ -46,7 +46,7 @@ export default function LoyaltyTiers() {
         </Link>
 
         <div className="text-center mb-10">
-          <img src="/brand/petwash-logo-black-bg.png" alt="Pet Wash™" className="h-12 mx-auto mb-6 opacity-90" />
+          <img src="/brand/petwash-logo-black-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
           <div className="inline-flex items-center gap-2 mb-4">
             <Star className="w-6 h-6 text-[#C9A96E]" />
             <Sparkles className="w-5 h-5 text-[#C9A96E]/60" />

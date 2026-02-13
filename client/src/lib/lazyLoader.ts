@@ -1,7 +1,7 @@
 /**
  * Lazy Loading System 2025
  * 
- * Optimizes image and video loading for Pet Wash™:
+ * Optimizes image and video loading for ⁦Pet Wash™⁩:
  * - Intersection Observer API for viewport detection
  * - Progressive JPEG/WebP support
  * - Responsive image srcset

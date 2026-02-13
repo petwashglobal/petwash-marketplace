@@ -1,7 +1,7 @@
 /**
  * Apple-Style User Device Monitoring Service
  * 
- * Provides comprehensive device tracking and fraud prevention for Pet Wash™
+ * Provides comprehensive device tracking and fraud prevention for ⁦Pet Wash™⁩
  * - Device fingerprinting and identification
  * - Session tracking across devices
  * - Fraud detection and scoring

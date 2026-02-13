@@ -137,7 +137,7 @@ export class GoogleMessagingService {
     return await this.sendNotification({
       userId: params.userId,
       email: params.email,
-      title: '🐾 Pet Wash™ Reminder',
+      title: '🐾 ⁦Pet Wash™⁩ Reminder',
       body: `Your ${params.serviceType} appointment is scheduled for ${formattedDate} at ${formattedTime}. Location: ${params.location}`,
       type: 'both',
       data: {

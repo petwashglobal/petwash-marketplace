@@ -40,7 +40,7 @@ export default function LoyaltyTerms() {
             7-Star Loyalty Program Terms
           </h1>
           <p className="luxury-text-body max-w-2xl mx-auto mb-6">
-            Welcome to Pet Wash™ Loyalty & VIP Club — your gateway to exclusive rewards, 
+            Welcome to ⁦Pet Wash™⁩ Loyalty & VIP Club — your gateway to exclusive rewards, 
             premium benefits, and unforgettable experiences across all our platforms.
           </p>
           <div className="luxury-badge luxury-badge-gold">
@@ -87,9 +87,9 @@ export default function LoyaltyTerms() {
             <div>
               <h2 className="luxury-heading-md mb-2">1. Program Overview</h2>
               <p className="luxury-text-body">
-                The Pet Wash™ Loyalty & VIP Club is a free rewards program offering exclusive
-                benefits across all platforms including K9000™ self-service stations, PetTrek™ 
-                transportation, Walk My Pet™, Groomers marketplace, and Sitter Suite™.
+                The ⁦Pet Wash™⁩ Loyalty & VIP Club is a free rewards program offering exclusive
+                benefits across all platforms including ⁦K9000™⁩ self-service stations, ⁦PetTrek™⁩ 
+                transportation, ⁦Walk My Pet™⁩, Groomers marketplace, and ⁦Sitter Suite™⁩.
               </p>
             </div>
           </div>
@@ -193,7 +193,7 @@ export default function LoyaltyTerms() {
               <h2 className="luxury-heading-md mb-2">4. Point Expiration</h2>
               <p className="luxury-text-body mb-4">
                 Points expire after <strong>24 months of account inactivity</strong>. 
-                Active members who use any Pet Wash™ service retain all points indefinitely.
+                Active members who use any ⁦Pet Wash™⁩ service retain all points indefinitely.
               </p>
               <div className="luxury-glass-panel p-4 border-l-4 border-yellow-500">
                 <p className="luxury-text-small text-yellow-700 dark:text-yellow-400 font-medium">
@@ -230,7 +230,7 @@ export default function LoyaltyTerms() {
             <div>
               <h2 className="luxury-heading-md mb-2">6. Program Changes</h2>
               <p className="luxury-text-body">
-                Pet Wash™ reserves the right to modify program benefits, point values, 
+                ⁦Pet Wash™⁩ reserves the right to modify program benefits, point values, 
                 tier requirements, and redemption options with <strong>30 days advance notice</strong> 
                 to all members via email and in-app notifications.
               </p>
@@ -247,7 +247,7 @@ export default function LoyaltyTerms() {
           <div className="space-y-4">
             <div className="luxury-glass-panel p-4">
               <p className="luxury-text-body">
-                <strong>7.1 Eligibility:</strong> Open to all Pet Wash™ customers aged 18+. 
+                <strong>7.1 Eligibility:</strong> Open to all ⁦Pet Wash™⁩ customers aged 18+. 
                 One account per person.
               </p>
             </div>
@@ -269,13 +269,13 @@ export default function LoyaltyTerms() {
             <div className="luxury-glass-panel p-4">
               <p className="luxury-text-body">
                 <strong>7.4 Service Integration:</strong> Points earned on one platform 
-                (e.g., K9000™) can be redeemed across all Pet Wash™ services.
+                (e.g., ⁦K9000™⁩) can be redeemed across all ⁦Pet Wash™⁩ services.
               </p>
             </div>
 
             <div className="luxury-glass-panel p-4 border-l-4 border-red-500">
               <p className="luxury-text-body text-red-700 dark:text-red-400">
-                <strong>7.5 Termination:</strong> Pet Wash™ reserves the right to terminate 
+                <strong>7.5 Termination:</strong> ⁦Pet Wash™⁩ reserves the right to terminate 
                 memberships for terms violations. All points forfeit upon account closure.
               </p>
             </div>

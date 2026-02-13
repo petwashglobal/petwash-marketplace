@@ -1,14 +1,14 @@
 /**
- * Pet Wash™ Brand Constants & Utilities
+ * ⁦Pet Wash™⁩ Brand Constants & Utilities
  * 
  * CRITICAL BRAND RULE:
  * The trademark symbol (™) must ALWAYS appear to the RIGHT of "Wash"
  * regardless of text direction (LTR or RTL languages).
  * 
- * CORRECT: Pet Wash™
+ * CORRECT: ⁦Pet Wash™⁩
  * WRONG: ™Pet Wash (can happen in RTL due to bidirectional text)
  * 
- * The brand name "Pet Wash™" must NEVER be transliterated.
+ * The brand name "⁦Pet Wash™⁩" must NEVER be transliterated.
  * Keep it in English in ALL languages (Hebrew, Arabic, Russian, etc.)
  */
 
@@ -20,36 +20,36 @@ const RLM = '\u200F'; // Right-to-Left Mark
  * Official brand name with proper bidirectional handling
  * Use this in all RTL contexts to ensure trademark stays on the right
  */
-export const BRAND_NAME = 'Pet Wash™';
-export const BRAND_NAME_RTL_SAFE = `Pet Wash™${LRM}`; // LRM after ™ anchors it in RTL
+export const BRAND_NAME = '⁦Pet Wash™⁩';
+export const BRAND_NAME_RTL_SAFE = `⁦Pet Wash™⁩${LRM}`; // LRM after ™ anchors it in RTL
 
 /**
  * Sub-brands with proper trademark handling
  */
 export const SUB_BRANDS = {
-  K9000: 'K9000™',
-  K9000_RTL_SAFE: `K9000™${LRM}`,
+  K9000: '⁦K9000™⁩',
+  K9000_RTL_SAFE: `⁦K9000™⁩${LRM}`,
   
-  SITTER_SUITE: 'Sitter Suite™',
-  SITTER_SUITE_RTL_SAFE: `Sitter Suite™${LRM}`,
+  SITTER_SUITE: '⁦Sitter Suite™⁩',
+  SITTER_SUITE_RTL_SAFE: `⁦Sitter Suite™⁩${LRM}`,
   
-  WALK_MY_PET: 'Walk My Pet™',
-  WALK_MY_PET_RTL_SAFE: `Walk My Pet™${LRM}`,
+  WALK_MY_PET: '⁦Walk My Pet™⁩',
+  WALK_MY_PET_RTL_SAFE: `⁦Walk My Pet™⁩${LRM}`,
   
-  PET_TREK: 'PetTrek™',
-  PET_TREK_RTL_SAFE: `PetTrek™${LRM}`,
+  PET_TREK: '⁦PetTrek™⁩',
+  PET_TREK_RTL_SAFE: `⁦PetTrek™⁩${LRM}`,
   
-  PAW_FINDER: 'Paw Finder™',
-  PAW_FINDER_RTL_SAFE: `Paw Finder™${LRM}`,
+  PAW_FINDER: '⁦Paw Finder™⁩',
+  PAW_FINDER_RTL_SAFE: `⁦Paw Finder™⁩${LRM}`,
   
-  ACADEMY: 'Pet Wash Academy™',
-  ACADEMY_RTL_SAFE: `Pet Wash Academy™${LRM}`,
+  ACADEMY: '⁦Pet Wash Academy™⁩',
+  ACADEMY_RTL_SAFE: `⁦Pet Wash Academy™⁩${LRM}`,
   
-  ENRIQUE: 'Enrique™',
-  ENRIQUE_RTL_SAFE: `Enrique™${LRM}`,
+  ENRIQUE: '⁦Enrique™⁩',
+  ENRIQUE_RTL_SAFE: `⁦Enrique™⁩${LRM}`,
   
-  PLUSH_LAB: 'The Plush Lab™',
-  PLUSH_LAB_RTL_SAFE: `The Plush Lab™${LRM}`,
+  PLUSH_LAB: '⁦The Plush Lab™⁩',
+  PLUSH_LAB_RTL_SAFE: `⁦The Plush Lab™⁩${LRM}`,
 } as const;
 
 /**
@@ -86,7 +86,7 @@ export function getSubBrand(
 
 /**
  * Wrap a trademarked brand name to ensure proper RTL display
- * @param brandName - Brand name with trademark (e.g., "Pet Wash™")
+ * @param brandName - Brand name with trademark (e.g., "⁦Pet Wash™⁩")
  * @param isRTL - Whether the current language is RTL
  */
 export function wrapBrandForRTL(brandName: string, isRTL: boolean): string {
@@ -98,8 +98,8 @@ export function wrapBrandForRTL(brandName: string, isRTL: boolean): string {
 /**
  * Company legal name
  */
-export const COMPANY_LEGAL_NAME = 'Pet Wash™ Ltd';
-export const COMPANY_LEGAL_NAME_RTL_SAFE = `Pet Wash™${LRM} Ltd`;
+export const COMPANY_LEGAL_NAME = '⁦Pet Wash™⁩ Ltd';
+export const COMPANY_LEGAL_NAME_RTL_SAFE = `⁦Pet Wash™⁩${LRM} Ltd`;
 
 export function getCompanyLegalName(language: string): string {
   const isRTL = language === 'he' || language === 'ar';

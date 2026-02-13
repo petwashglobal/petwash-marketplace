@@ -217,7 +217,7 @@ function generateCustom404HTML(requestPath: string, host: string): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page Not Found - Pet Wash™️</title>
+    <title>Page Not Found - ⁦Pet Wash™️⁩</title>
     <meta name="description" content="The page you're looking for couldn't be found. Explore our premium organic pet care services instead.">
     <meta name="robots" content="noindex, nofollow">
     <style>
@@ -333,7 +333,7 @@ function generateCustom404HTML(requestPath: string, host: string): string {
 </head>
 <body>
     <div class="container">
-        <div class="logo">Pet Wash™️</div>
+        <div class="logo">⁦Pet Wash™️⁩</div>
         <div class="error-code">404</div>
         <h1>Oops! Page Not Found</h1>
         <p>The page you're looking for seems to have wandered off like a curious pet. But don't worry - we'll help you find what you need!</p>

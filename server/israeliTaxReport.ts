@@ -166,7 +166,7 @@ export class IsraeliTaxReportService {
         <!-- HEBREW SECTION -->
         <div class="section section-he">
             <div class="header">
-                <h1>🐾 דוח מס - Pet Wash™</h1>
+                <h1>🐾 דוח מס - ⁦Pet Wash™⁩</h1>
                 <div class="subtitle">דוח הכנסות ומע"מ לרשויות המס</div>
                 <div class="subtitle">תאריך דוח: ${formatDate(new Date())}</div>
             </div>
@@ -237,7 +237,7 @@ export class IsraeliTaxReportService {
         <!-- ENGLISH SECTION -->
         <div class="section section-en">
             <div class="header">
-                <h1>🐾 Tax Report - Pet Wash™</h1>
+                <h1>🐾 Tax Report - ⁦Pet Wash™⁩</h1>
                 <div class="subtitle">Revenue and VAT Report for Tax Authorities</div>
                 <div class="subtitle">Report Date: ${formatDateEn(new Date())}</div>
             </div>
@@ -304,8 +304,8 @@ export class IsraeliTaxReportService {
         </div>
 
         <div class="footer">
-            <p>📄 דוח זה הופק אוטומטית על ידי מערכת Pet Wash™</p>
-            <p>This report was generated automatically by Pet Wash™ system</p>
+            <p>📄 דוח זה הופק אוטומטית על ידי מערכת ⁦Pet Wash™⁩</p>
+            <p>This report was generated automatically by ⁦Pet Wash™⁩ system</p>
             <p style="margin-top: 10px; font-size: 12px;">
                 🔒 כל הנתונים מאובטחים ונשמרים בהתאם לחוק הגנת הפרטיות והנחיות רשות המיסים<br>
                 All data is secured and retained in accordance with Privacy Protection Law and Tax Authority guidelines
@@ -334,7 +334,7 @@ export class IsraeliTaxReportService {
       const msg = {
         to: recipientEmail,
         from: 'reports@petwash.co.il',
-        subject: `📊 דוח מס / Tax Report - Pet Wash™ - ${data.reportDate}`,
+        subject: `📊 דוח מס / Tax Report - ⁦Pet Wash™⁩ - ${data.reportDate}`,
         html: htmlContent
       };
       

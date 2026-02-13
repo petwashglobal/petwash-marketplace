@@ -14,7 +14,7 @@ export default function FranchiseMarketing() {
             {language === 'he' ? 'חומרי שיווק' : 'Marketing Materials'}
           </h1>
           <p className="luxury-text-body">
-            {language === 'he' ? 'גישה לחומרי מיתוג ושיווק של PetWash™' : 'Access to PetWash™ branding and marketing materials'}
+            {language === 'he' ? 'גישה לחומרי מיתוג ושיווק של ⁦PetWash™⁩' : 'Access to ⁦PetWash™⁩ branding and marketing materials'}
           </p>
         </div>
 

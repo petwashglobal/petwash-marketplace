@@ -1,5 +1,5 @@
 /**
- * Provider Training API Routes - Pet Wash™
+ * Provider Training API Routes - ⁦Pet Wash™⁩
  * 
  * Training modules, quizzes, and certificate management
  * Hebrew-dominant with English brand touches

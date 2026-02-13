@@ -78,7 +78,7 @@ const defaultTemplates: InsertNotificationTemplate[] = [
         </body>
       </html>
     `,
-    whatsappBody: `🐾 *Pet Wash™ - Low Stock Alert*\n\n⚠️ Item: {{item.name}}\nCurrent Stock: {{item.currentStock}}\nMin Required: {{item.minStock}}\nLocation: {{item.location}}\n\n⚠️ Action Required: Please reorder immediately.`,
+    whatsappBody: `🐾 *⁦Pet Wash™⁩ - Low Stock Alert*\n\n⚠️ Item: {{item.name}}\nCurrent Stock: {{item.currentStock}}\nMin Required: {{item.minStock}}\nLocation: {{item.location}}\n\n⚠️ Action Required: Please reorder immediately.`,
     defaultRecipients: ['department:operations', 'role:inventory_manager'],
     isActive: true,
   },
@@ -150,7 +150,7 @@ const defaultTemplates: InsertNotificationTemplate[] = [
     `,
     pushTitle: '🔧 New Task: {{task.type}}',
     pushBody: 'Station: {{task.stationName}} | Priority: {{task.priority}}',
-    smsBody: '🐾 Pet Wash™: New {{task.type}} task assigned at {{task.stationName}}. Priority: {{task.priority}}. View details in app.',
+    smsBody: '🐾 ⁦Pet Wash™⁩: New {{task.type}} task assigned at {{task.stationName}}. Priority: {{task.priority}}. View details in app.',
     isActive: true,
   },
   
@@ -201,7 +201,7 @@ const defaultTemplates: InsertNotificationTemplate[] = [
     description: 'In-app notification sent to customer when wash is completed',
     channels: ['in_app', 'push'],
     inAppTitle: '✨ Wash Complete!',
-    inAppBody: 'Your pet\'s wash at {{wash.stationName}} is complete! Thank you for using Pet Wash™.',
+    inAppBody: 'Your pet\'s wash at {{wash.stationName}} is complete! Thank you for using ⁦Pet Wash™⁩.',
     pushTitle: '✨ Wash Complete at {{wash.stationName}}',
     pushBody: 'Package: {{wash.packageName}} | Duration: {{wash.duration}}',
     isActive: true,

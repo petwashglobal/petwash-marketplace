@@ -1,5 +1,5 @@
 /**
- * PetWash™ Vouchers 2025 API Routes - SECURE
+ * ⁦PetWash™⁩ Vouchers 2025 API Routes - SECURE
  * 7-Star Luxury Voucher Management with Zod Validation & JWS Signing
  */
 

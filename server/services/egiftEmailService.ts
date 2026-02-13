@@ -76,8 +76,8 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
 
   const t = {
     subject: isHe 
-      ? `${emoji} כרטיס מתנה דיגיטלי של Pet Wash™ נשלח בהצלחה!`
-      : `${emoji} Your Pet Wash™ E-Gift Card Has Been Sent!`,
+      ? `${emoji} כרטיס מתנה דיגיטלי של ⁦Pet Wash™⁩ נשלח בהצלחה!`
+      : `${emoji} Your ⁦Pet Wash™⁩ E-Gift Card Has Been Sent!`,
     heading: isHe ? 'כרטיס המתנה נשלח!' : 'Gift Card Sent!',
     subheading: isHe 
       ? `${config.senderName}, המתנה שלך בדרך אל ${config.recipientName}`
@@ -96,8 +96,8 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
       ? `${config.recipientName} יקבל/תקבל אימייל עם כרטיס המתנה בקרוב.`
       : `${config.recipientName} will receive their gift card email shortly.`,
     thankYou: isHe 
-      ? 'תודה שבחרת ב-Pet Wash™ - טיפוח יוקרתי לחיות מחמד'
-      : 'Thank you for choosing Pet Wash™ - Luxury Pet Care',
+      ? 'תודה שבחרת ב-⁦Pet Wash™⁩ - טיפוח יוקרתי לחיות מחמד'
+      : 'Thank you for choosing ⁦Pet Wash™⁩ - Luxury Pet Care',
     allRights: isHe ? 'כל הזכויות שמורות' : 'All rights reserved',
   };
 
@@ -150,7 +150,7 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
     <!-- Header -->
     <div class="animate-fade" style="text-align:center;padding:32px 24px 20px;background:white;border-radius:12px 12px 0 0;border-bottom:2px solid ${colors.accent}20;">
       <div style="font-size:24px;font-weight:700;letter-spacing:0.5px;color:#1a1a1a;margin-bottom:4px;">
-        Pet Wash™
+        ⁦Pet Wash™⁩
       </div>
       <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${colors.accent};font-weight:500;">
         E-Gift Collection
@@ -273,7 +273,7 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
       </p>
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid #f5f5f5;">
         <p style="font-size:10px;color:#ccc;margin:0;">
-          © ${new Date().getFullYear()} Pet Wash™ Ltd. ${t.allRights}
+          © ${new Date().getFullYear()} ⁦Pet Wash™⁩ Ltd. ${t.allRights}
         </p>
       </div>
     </div>
@@ -284,8 +284,8 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
 
   const recipientHeading = isHe ? 'קיבלת כרטיס מתנה!' : "You've Received a Gift Card!";
   const recipientSubheading = isHe 
-    ? `${config.senderName} שלח/ה לך כרטיס מתנה של Pet Wash™`
-    : `${config.senderName} sent you a Pet Wash™ gift card`;
+    ? `${config.senderName} שלח/ה לך כרטיס מתנה של ⁦Pet Wash™⁩`
+    : `${config.senderName} sent you a ⁦Pet Wash™⁩ gift card`;
   const recipientHtml = html
     .replace(`>${t.heading}<`, `>${recipientHeading}<`)
     .replace(`>${t.subheading}<`, `>${recipientSubheading}<`);
@@ -293,7 +293,7 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
   try {
     await sgMail.send({
       to: config.senderEmail,
-      from: { email: 'support@petwash.co.il', name: 'Pet Wash™' },
+      from: { email: 'support@petwash.co.il', name: '⁦Pet Wash™⁩' },
       subject: t.subject,
       html,
     });
@@ -304,12 +304,12 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
 
   try {
     const recipientSubject = isHe
-      ? `${emoji} ${config.senderName} שלח/ה לך כרטיס מתנה של Pet Wash™!`
-      : `${emoji} ${config.senderName} sent you a Pet Wash™ E-Gift Card!`;
+      ? `${emoji} ${config.senderName} שלח/ה לך כרטיס מתנה של ⁦Pet Wash™⁩!`
+      : `${emoji} ${config.senderName} sent you a ⁦Pet Wash™⁩ E-Gift Card!`;
     
     await sgMail.send({
       to: config.recipientEmail,
-      from: { email: 'support@petwash.co.il', name: 'Pet Wash™' },
+      from: { email: 'support@petwash.co.il', name: '⁦Pet Wash™⁩' },
       subject: recipientSubject,
       html: recipientHtml,
     });

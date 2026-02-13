@@ -216,7 +216,7 @@ function setupForegroundMessageHandler(messaging: Messaging): void {
   onMessage(messaging, (payload) => {
     logger.info('[FCM] Foreground message received:', payload);
     
-    const notificationTitle = payload.notification?.title || 'Pet Wash™';
+    const notificationTitle = payload.notification?.title || '⁦Pet Wash™⁩';
     const notificationOptions = {
       body: payload.notification?.body || '',
       icon: '/brand/petwash-logo-official.png',

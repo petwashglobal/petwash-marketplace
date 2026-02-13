@@ -657,7 +657,7 @@ export class IsraeliVATReclaimService {
         </div>
         
         <div class="footer">
-            <p>דוח זה נוצר אוטומטית על ידי מערכת החשבונאות של Pet Wash™</p>
+            <p>דוח זה נוצר אוטומטית על ידי מערכת החשבונאות של ⁦Pet Wash™⁩</p>
             <p>לשאלות: Support@PetWash.co.il</p>
         </div>
     </div>

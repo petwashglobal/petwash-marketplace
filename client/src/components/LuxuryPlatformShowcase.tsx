@@ -72,8 +72,8 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
   const platforms = [
     {
       id: 'pet-wash-hub',
-      name: 'Pet Wash Hub™',
-      nameHe: 'Pet Wash Hub™',
+      name: 'Pet ⁦Wash Hub™⁩',
+      nameHe: 'Pet ⁦Wash Hub™⁩',
       icon: Building2,
       gradient: 'from-blue-500 via-cyan-500 to-blue-600',
       description: 'Premium organic self-service wash stations',
@@ -86,8 +86,8 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
     },
     {
       id: 'walk-my-pet',
-      name: 'Walk My Pet™',
-      nameHe: 'Walk My Pet™',
+      name: '⁦Walk My Pet™⁩',
+      nameHe: '⁦Walk My Pet™⁩',
       icon: Footprints,
       gradient: 'from-green-500 via-emerald-500 to-teal-600',
       description: 'Premium dog walking with real-time GPS',
@@ -100,8 +100,8 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
     },
     {
       id: 'sitter-suite',
-      name: 'The Sitter Suite™',
-      nameHe: 'The Sitter Suite™',
+      name: '⁦The Sitter Suite™⁩',
+      nameHe: '⁦The Sitter Suite™⁩',
       icon: Heart,
       gradient: 'from-rose-700 via-rose-600 to-rose-800',
       description: 'Pet sitting marketplace with AI matching',
@@ -114,8 +114,8 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
     },
     {
       id: 'pettrek',
-      name: 'PetTrek™',
-      nameHe: 'PetTrek™',
+      name: '⁦PetTrek™⁩',
+      nameHe: '⁦PetTrek™⁩',
       icon: Car,
       gradient: 'from-amber-500 via-orange-500 to-amber-600',
       description: 'Uber-style pet transport with live tracking',
@@ -128,8 +128,8 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
     },
     {
       id: 'paw-finder',
-      name: 'Paw Finder™',
-      nameHe: 'Paw Finder™',
+      name: '⁦Paw Finder™⁩',
+      nameHe: '⁦Paw Finder™⁩',
       icon: Search,
       gradient: 'from-orange-500 via-amber-500 to-yellow-500',
       description: 'FREE lost & found pet recovery service',
@@ -143,8 +143,8 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
     // DISABLED: PlushLab - Pet Avatar Creator (frozen for now, keep for future use)
     // {
     //   id: 'plush-lab',
-    //   name: 'The Plush Lab™',
-    //   nameHe: 'The Plush Lab™',
+    //   name: '⁦The Plush Lab™⁩',
+    //   nameHe: '⁦The Plush Lab™⁩',
     //   icon: Wand2,
     //   gradient: 'from-violet-500 via-purple-500 to-fuchsia-500',
     //   description: 'AI pet avatar creator - Free for everyone',
@@ -193,7 +193,7 @@ export function LuxuryPlatformShowcase({ language }: LuxuryPlatformShowcaseProps
       >
         <DialogHeader className="sr-only">
           <DialogTitle>
-            {isHebrew ? 'מערכת אקולוגית Pet Wash™ פרימיום 2026' : 'Premium Pet Wash™ Ecosystem 2026'}
+            {isHebrew ? 'מערכת אקולוגית ⁦Pet Wash™⁩ פרימיום 2026' : 'Premium ⁦Pet Wash™⁩ Ecosystem 2026'}
           </DialogTitle>
           <DialogDescription>
             {isHebrew 

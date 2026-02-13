@@ -16,12 +16,12 @@ export default function PlatformShowcase() {
       icon: <Crown className="h-8 w-8" />,
       color: "from-purple-500 to-pink-500",
       items: [
-        "Pet Wash Hub™ - Premium organic washing stations",
-        "Walk My Pet™ - Real-time GPS dog walking marketplace (15% commission)",
-        "The Sitter Suite™ - AI-powered pet sitting with urgency triage",
-        "PetTrek™ - Uber-style pet transport with dynamic fare estimation",
+        "Pet ⁦Wash Hub™⁩ - Premium organic washing stations",
+        "⁦Walk My Pet™⁩ - Real-time GPS dog walking marketplace (15% commission)",
+        "⁦The Sitter Suite™⁩ - AI-powered pet sitting with urgency triage",
+        "⁦PetTrek™⁩ - Uber-style pet transport with dynamic fare estimation",
         "K9000 IoT Stations - Cloud-managed wash bays with remote control",
-        "The Plush Lab™ - AI avatar creator with custom animations",
+        "⁦The Plush Lab™⁩ - AI avatar creator with custom animations",
         "Enterprise Division - Global franchise & B2B operations"
       ]
     },
@@ -190,7 +190,7 @@ export default function PlatformShowcase() {
         "7-Star Luxury Design - Dark-theme with Moti animations",
         "Direct Support Chat - Professional help desk integration (+972549833355)",
         "M2M Luxury Inbox - Member-to-member DMs with opt-in approval",
-        "Paw Finder™ - FREE lost pet assistance with community rewards (no fees)",
+        "⁦Paw Finder™⁩ - FREE lost pet assistance with community rewards (no fees)",
         "Social Sharing - One-tap to Facebook/Instagram/TikTok with branded assets",
         "Microservices Backend - Auth, Chat, Feed, Notifications (WebSocket/Firebase)"
       ]
@@ -218,7 +218,7 @@ export default function PlatformShowcase() {
             </div>
             
             <h1 className="luxury-heading-xl">
-              Pet Wash™ Platform
+              ⁦Pet Wash™⁩ Platform
             </h1>
             
             <p className="luxury-subtitle-lg max-w-4xl mx-auto">
@@ -371,7 +371,7 @@ export default function PlatformShowcase() {
                   <Heart className="h-10 w-10 text-white drop-shadow-md fill-white" strokeWidth={2} />
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-                  🆓 FREE Paw Finder™
+                  🆓 FREE ⁦Paw Finder™⁩
                 </h3>
                 <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
                   Lost pet reunions with ZERO fees or commissions — reuniting families is priceless
@@ -454,7 +454,7 @@ export default function PlatformShowcase() {
             Innovation That Sets Industry Standards
           </h2>
           <p className="text-xl opacity-90">
-            Pet Wash™ combines cutting-edge technology with luxury service delivery.
+            ⁦Pet Wash™⁩ combines cutting-edge technology with luxury service delivery.
             <br />
             Built with 2025 standards. Ready for global expansion.
           </p>

@@ -185,7 +185,7 @@ async function sendLowStockNotifications(alerts: LowStockItem[]): Promise<void> 
     }, {} as Record<string, any>);
     
     // Build email content
-    let emailContent = '<h2>Pet Wash™ Low Stock Alert</h2>';
+    let emailContent = '<h2>⁦Pet Wash™⁩ Low Stock Alert</h2>';
     emailContent += '<p>The following stations have inventory below minimum thresholds:</p>';
     
     for (const [stationId, group] of Object.entries(stationGroups)) {
@@ -228,7 +228,7 @@ async function sendRenewalNotifications(alerts: ExpiringUtility[]): Promise<void
     const medium = alerts.filter(a => a.daysUntilRenewal > 14);
     
     // Build email content
-    let emailContent = '<h2>Pet Wash™ Utility Renewal Alert</h2>';
+    let emailContent = '<h2>⁦Pet Wash™⁩ Utility Renewal Alert</h2>';
     
     if (critical.length > 0) {
       emailContent += '<h3>🔴 Critical (Expires within 7 days)</h3><ul>';

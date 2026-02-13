@@ -188,7 +188,7 @@ export class DocumentWatermark {
       Document: ${documentNumber}
       Date: ${dateStr}
       
-      CONFIDENTIAL - Pet Wash™ Ltd.
+      CONFIDENTIAL - ⁦Pet Wash™⁩ Ltd.
       Unauthorized distribution prohibited
     `.trim();
   }

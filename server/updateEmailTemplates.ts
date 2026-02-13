@@ -10,7 +10,7 @@ async function updateWelcomeTemplate() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ברוכים הבאים ל-Pet Wash™</title>
+    <title>ברוכים הבאים ל-⁦Pet Wash™⁩</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0; margin: 0; }
         .container { max-width: 600px; margin: 0 auto; background: white; overflow: hidden; }
@@ -36,7 +36,7 @@ async function updateWelcomeTemplate() {
 <body>
     <div class="container">
         <div class="hero">
-            <div class="hero-logo">🐾 Pet Wash™</div>
+            <div class="hero-logo">🐾 ⁦Pet Wash™⁩</div>
             <div class="hero-subtitle">שירותי רחיצה פרימיום אורגניים</div>
         </div>
         
@@ -46,9 +46,9 @@ async function updateWelcomeTemplate() {
             </div>
             
             <div class="message">
-                <strong>תודה רבה שהצטרפת למשפחת Pet Wash™!</strong><br><br>
+                <strong>תודה רבה שהצטרפת למשפחת ⁦Pet Wash™⁩!</strong><br><br>
                 אנחנו נרגשים שבחרת בנו לטפל בחיית המחמד האהובה עליך. 
-                Pet Wash™ מציעה את השירות המתקדם והאיכותי ביותר עם מוצרים אורגניים פרימיום.
+                ⁦Pet Wash™⁩ מציעה את השירות המתקדם והאיכותי ביותר עם מוצרים אורגניים פרימיום.
             </div>
 
             <div class="features">
@@ -90,7 +90,7 @@ async function updateWelcomeTemplate() {
         </div>
 
         <div class="footer">
-            <div class="footer-brand">🐾 Pet Wash™</div>
+            <div class="footer-brand">🐾 ⁦Pet Wash™⁩</div>
             <div class="footer-info">שירותי רחיצה פרימיום אורגניים לחיות מחמד</div>
             <div class="footer-info">Support@PetWash.co.il | www.petwash.co.il</div>
             <div class="footer-info">📞 054-983-3355 | WhatsApp זמין 24/7</div>
@@ -104,7 +104,7 @@ async function updateWelcomeTemplate() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Pet Wash™</title>
+    <title>Welcome to ⁦Pet Wash™⁩</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0; margin: 0; }
         .container { max-width: 600px; margin: 0 auto; background: white; overflow: hidden; }
@@ -130,7 +130,7 @@ async function updateWelcomeTemplate() {
 <body>
     <div class="container">
         <div class="hero">
-            <div class="hero-logo">🐾 Pet Wash™</div>
+            <div class="hero-logo">🐾 ⁦Pet Wash™⁩</div>
             <div class="hero-subtitle">Premium Organic Pet Wash Services</div>
         </div>
         
@@ -140,9 +140,9 @@ async function updateWelcomeTemplate() {
             </div>
             
             <div class="message">
-                <strong>Thank you for joining the Pet Wash™ family!</strong><br><br>
+                <strong>Thank you for joining the ⁦Pet Wash™⁩ family!</strong><br><br>
                 We're thrilled you chose us to care for your beloved pet. 
-                Pet Wash™ offers the most advanced and quality service with premium organic products.
+                ⁦Pet Wash™⁩ offers the most advanced and quality service with premium organic products.
             </div>
 
             <div class="features">
@@ -184,7 +184,7 @@ async function updateWelcomeTemplate() {
         </div>
 
         <div class="footer">
-            <div class="footer-brand">🐾 Pet Wash™</div>
+            <div class="footer-brand">🐾 ⁦Pet Wash™⁩</div>
             <div class="footer-info">Premium Organic Pet Wash Services</div>
             <div class="footer-info">Support@PetWash.co.il | www.petwash.co.il</div>
             <div class="footer-info">📞 +972-54-983-3355 | WhatsApp Available 24/7</div>
@@ -203,8 +203,8 @@ async function updateWelcomeTemplate() {
       hebrewTemplate,
       englishTemplate,
       subject: {
-        he: '🐾 ברוכים הבאים ל-Pet Wash™ - המסע שלך מתחיל כאן!',
-        en: '🐾 Welcome to Pet Wash™ - Your Journey Starts Here!'
+        he: '🐾 ברוכים הבאים ל-⁦Pet Wash™⁩ - המסע שלך מתחיל כאן!',
+        en: '🐾 Welcome to ⁦Pet Wash™⁩ - Your Journey Starts Here!'
       },
       description: 'Enhanced welcome email with hero section, 7-tier luxury loyalty program info, AI assistant mention, and branded footer',
       createdAt: new Date().toISOString(),
@@ -223,7 +223,7 @@ async function updateBirthdayTemplate() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>יום הולדת שמח - Pet Wash™</title>
+    <title>יום הולדת שמח - ⁦Pet Wash™⁩</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .container { max-width: 600px; margin: 0 auto; background: white; overflow: hidden; }
@@ -253,7 +253,7 @@ async function updateBirthdayTemplate() {
         <div class="hero">
             <div class="hero-emoji">🎂🐕🎉</div>
             <div class="hero-title">יום הולדת שמח!</div>
-            <div class="hero-subtitle">Pet Wash™</div>
+            <div class="hero-subtitle">⁦Pet Wash™⁩</div>
         </div>
         
         <div class="content">
@@ -286,13 +286,13 @@ async function updateBirthdayTemplate() {
 
             <div class="message" style="margin-top: 40px;">
                 <div class="paw-prints">🐾 🐾 🐾</div>
-                <p><strong>תודה שאתה חלק ממשפחת Pet Wash™!</strong></p>
+                <p><strong>תודה שאתה חלק ממשפחת ⁦Pet Wash™⁩!</strong></p>
                 <p>אנחנו שמחים לחגוג את הרגעים המיוחדים שלך</p>
             </div>
         </div>
 
         <div class="footer">
-            <div class="footer-brand">🐾 Pet Wash™</div>
+            <div class="footer-brand">🐾 ⁦Pet Wash™⁩</div>
             <div class="footer-info">שירותי רחיצה פרימיום אורגניים לחיות מחמד</div>
             <div class="footer-info">Support@PetWash.co.il | www.petwash.co.il</div>
             <div class="footer-info">📞 054-983-3355 | WhatsApp זמין 24/7</div>
@@ -306,7 +306,7 @@ async function updateBirthdayTemplate() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Happy Birthday - Pet Wash™</title>
+    <title>Happy Birthday - ⁦Pet Wash™⁩</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .container { max-width: 600px; margin: 0 auto; background: white; overflow: hidden; }
@@ -336,7 +336,7 @@ async function updateBirthdayTemplate() {
         <div class="hero">
             <div class="hero-emoji">🎂🐕🎉</div>
             <div class="hero-title">Happy Birthday!</div>
-            <div class="hero-subtitle">Pet Wash™</div>
+            <div class="hero-subtitle">⁦Pet Wash™⁩</div>
         </div>
         
         <div class="content">
@@ -369,13 +369,13 @@ async function updateBirthdayTemplate() {
 
             <div class="message" style="margin-top: 40px;">
                 <div class="paw-prints">🐾 🐾 🐾</div>
-                <p><strong>Thank you for being part of the Pet Wash™ family!</strong></p>
+                <p><strong>Thank you for being part of the ⁦Pet Wash™⁩ family!</strong></p>
                 <p>We're happy to celebrate your special moments with you</p>
             </div>
         </div>
 
         <div class="footer">
-            <div class="footer-brand">🐾 Pet Wash™</div>
+            <div class="footer-brand">🐾 ⁦Pet Wash™⁩</div>
             <div class="footer-info">Premium Organic Pet Wash Services</div>
             <div class="footer-info">Support@PetWash.co.il | www.petwash.co.il</div>
             <div class="footer-info">📞 +972-54-983-3355 | WhatsApp Available 24/7</div>
@@ -394,8 +394,8 @@ async function updateBirthdayTemplate() {
       hebrewTemplate,
       englishTemplate,
       subject: {
-        he: '🎉 יום הולדת שמח ${dogName || ""}! 10% הנחה מיוחדת - Pet Wash™',
-        en: '🎉 Happy Birthday ${dogName || ""}! Special 10% Discount - Pet Wash™'
+        he: '🎉 יום הולדת שמח ${dogName || ""}! 10% הנחה מיוחדת - ⁦Pet Wash™⁩',
+        en: '🎉 Happy Birthday ${dogName || ""}! Special 10% Discount - ⁦Pet Wash™⁩'
       },
       description: 'Enhanced birthday email with animated hero section, larger voucher display, stronger CTAs, and branded footer',
       createdAt: new Date().toISOString(),

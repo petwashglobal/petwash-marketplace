@@ -378,7 +378,7 @@ export default function Contact({ language }: ContactProps) {
               </div>
               <p className="luxury-text-body">
                 {currentLanguage === 'en' 
-                  ? 'Navigate to Pet Wash™ using your preferred map service' 
+                  ? 'Navigate to ⁦Pet Wash™⁩ using your preferred map service' 
                   : 'נווט לפט ווש™ באמצעות שירות המפות המועדף עליך'}
               </p>
             </div>

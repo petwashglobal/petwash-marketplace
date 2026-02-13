@@ -184,15 +184,15 @@ export class DeviceSecurityAlertsService {
 
     switch (alert.alertType) {
       case 'new_device':
-        return `${emoji} New Device Logged In - Pet Wash™`;
+        return `${emoji} New Device Logged In - ⁦Pet Wash™⁩`;
       case 'suspicious_login':
-        return `${emoji} Suspicious Login Attempt - Pet Wash™`;
+        return `${emoji} Suspicious Login Attempt - ⁦Pet Wash™⁩`;
       case 'location_change':
-        return `${emoji} Unusual Location Detected - Pet Wash™`;
+        return `${emoji} Unusual Location Detected - ⁦Pet Wash™⁩`;
       case 'fraud_detected':
-        return `${emoji} URGENT: Potential Fraud Detected - Pet Wash™`;
+        return `${emoji} URGENT: Potential Fraud Detected - ⁦Pet Wash™⁩`;
       default:
-        return `${emoji} Security Alert - Pet Wash™`;
+        return `${emoji} Security Alert - ⁦Pet Wash™⁩`;
     }
   }
 
@@ -222,7 +222,7 @@ export class DeviceSecurityAlertsService {
                 <tr>
                   <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0;">
                     <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 600;">🔒 Security Alert</h1>
-                    <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">Pet Wash™ Account Security</p>
+                    <p style="margin: 10px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">⁦Pet Wash™⁩ Account Security</p>
                   </td>
                 </tr>
                 
@@ -293,7 +293,7 @@ export class DeviceSecurityAlertsService {
                 <tr>
                   <td style="padding: 30px 40px; background-color: #f9fafb; border-radius: 0 0 12px 12px; text-align: center;">
                     <p style="margin: 0 0 10px; color: #6b7280; font-size: 12px;">
-                      This is an automated security alert from Pet Wash™
+                      This is an automated security alert from ⁦Pet Wash™⁩
                     </p>
                     <p style="margin: 0; color: #6b7280; font-size: 12px;">
                       Time: ${alert.timestamp.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' })} (Israel Time)
@@ -318,7 +318,7 @@ export class DeviceSecurityAlertsService {
       ? `${deviceInfo.location.city}, ${deviceInfo.location.country}`
       : 'Unknown';
 
-    let text = `🔒 SECURITY ALERT - Pet Wash™\n\n`;
+    let text = `🔒 SECURITY ALERT - ⁦Pet Wash™⁩\n\n`;
     text += `${this.getAlertTitle(alert.alertType)}\n\n`;
     text += `${details}\n\n`;
     text += `DEVICE DETAILS:\n`;
@@ -345,7 +345,7 @@ export class DeviceSecurityAlertsService {
     text += `• Change your password if you suspect unauthorized access\n\n`;
     text += `---\n`;
     text += `Time: ${alert.timestamp.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' })} (Israel Time)\n`;
-    text += `This is an automated security alert from Pet Wash™`;
+    text += `This is an automated security alert from ⁦Pet Wash™⁩`;
 
     return text;
   }
@@ -418,7 +418,7 @@ export class DeviceSecurityAlertsService {
         ipAddress: params.ipAddress,
         location: params.location,
       },
-      details: `A new device (${params.deviceLabel}) has signed in to your Pet Wash™ account. If this was you, you can safely ignore this message.`,
+      details: `A new device (${params.deviceLabel}) has signed in to your ⁦Pet Wash™⁩ account. If this was you, you can safely ignore this message.`,
       timestamp: new Date(),
       fraudScore: 100 - params.trustScore,
     };
@@ -448,7 +448,7 @@ export class DeviceSecurityAlertsService {
         ipAddress: params.ipAddress,
         location: params.location,
       },
-      details: `We detected suspicious activity during a login attempt on your Pet Wash™ account. Please review your connected devices and secure your account if needed.`,
+      details: `We detected suspicious activity during a login attempt on your ⁦Pet Wash™⁩ account. Please review your connected devices and secure your account if needed.`,
       timestamp: new Date(),
       fraudScore: 100 - params.trustScore,
       fraudFlags: params.fraudFlags,

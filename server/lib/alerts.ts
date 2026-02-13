@@ -194,7 +194,7 @@ class AlertManager {
               short: false
             }] : [])
           ],
-          footer: 'Pet Wash™ Monitoring',
+          footer: '⁦Pet Wash™⁩ Monitoring',
           footer_icon: 'https://petwash.co.il/petwash-logo-official.png'
         }]
       };

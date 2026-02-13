@@ -117,7 +117,7 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
                   <iframe
                     className="absolute inset-0 w-full h-full"
                     src="https://www.youtube.com/embed/Om-iwY_vt5M?si=vGYJEwYMFyYRSoow"
-                    title="Pet Wash™ - Premium Organic Pet Care Experience"
+                    title="⁦Pet Wash™⁩ - Premium Organic Pet Care Experience"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                     data-testid="youtube-video"

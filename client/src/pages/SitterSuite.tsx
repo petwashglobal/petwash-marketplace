@@ -101,7 +101,7 @@ export default function SitterSuite() {
 
   const t = {
     hero: {
-      title: isHebrew ? 'The Sitter Suite™' : 'The Sitter Suite™',
+      title: isHebrew ? '⁦The Sitter Suite™⁩' : '⁦The Sitter Suite™⁩',
       subtitle: isHebrew 
         ? 'מרקטפלייס פרימיום לשמרטפים מקצועיים. בטוח, מאומת, שקוף' 
         : 'Premium Pet Sitting Marketplace. Safe, Verified, Transparent.',
@@ -242,7 +242,7 @@ export default function SitterSuite() {
                   </h3>
                   
                   <div className="space-y-4">
-                    {/* Guided Booking Button - Pet Wash™ Luxury Wizard */}
+                    {/* Guided Booking Button - ⁦Pet Wash™⁩ Luxury Wizard */}
                     <button
                       onClick={() => setShowWizard(true)}
                       className="w-full h-16 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-bold text-lg flex items-center justify-center gap-3 hover:from-amber-600 hover:via-orange-600 hover:to-amber-700 transition-all shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:scale-[1.02]"
@@ -357,7 +357,7 @@ export default function SitterSuite() {
                 {isHebrew ? 'פעם ראשונה בישראל' : 'First in Israel'}
               </span>
               <h2 className="luxury-heading-lg mb-4 text-white">
-                {isHebrew ? 'למה לבחור במרקטפלייס של Pet Wash™?' : 'Why Choose Pet Wash™ Marketplace?'}
+                {isHebrew ? 'למה לבחור במרקטפלייס של ⁦Pet Wash™⁩?' : 'Why Choose ⁦Pet Wash™⁩ Marketplace?'}
               </h2>
               <p className="luxury-text-body text-gray-300 max-w-3xl mx-auto">
                 {isHebrew 

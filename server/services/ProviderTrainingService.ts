@@ -1,11 +1,11 @@
 /**
- * Provider Training Service - Pet Wash™
+ * Provider Training Service - ⁦Pet Wash™⁩
  * 
  * Training modules, quizzes, and certificate generation for:
- * - Sitter Suite™ - Pet sitting providers
- * - Walk My Pet™ - Dog walkers
- * - PetTrek™ - Pet transport drivers
- * - K9000™ - Station operators
+ * - ⁦Sitter Suite™⁩ - Pet sitting providers
+ * - ⁦Walk My Pet™⁩ - Dog walkers
+ * - ⁦PetTrek™⁩ - Pet transport drivers
+ * - ⁦K9000™⁩ - Station operators
  * 
  * Hebrew-dominant with English brand touches
  * Israeli Law 2025 compliance built-in
@@ -91,15 +91,15 @@ export interface QuizResult {
   }[];
 }
 
-// Pre-defined training modules (Pet Wash™ professional style)
+// Pre-defined training modules (⁦Pet Wash™⁩ professional style)
 const TRAINING_MODULES: TrainingModuleContent[] = [
   // GENERAL - Required for all platforms
   {
     id: 'gen-001',
     platform: 'general',
     moduleNumber: 1,
-    titleHe: 'ברוכים הבאים ל-Pet Wash™',
-    titleEn: 'Welcome to Pet Wash™',
+    titleHe: 'ברוכים הבאים ל-⁦Pet Wash™⁩',
+    titleEn: 'Welcome to ⁦Pet Wash™⁩',
     descriptionHe: 'היכרות עם הפלטפורמה, הערכים שלנו והסטנדרטים שאנו מקפידים עליהם',
     descriptionEn: 'Introduction to our platform, values, and standards',
     durationMinutes: 15,
@@ -109,8 +109,8 @@ const TRAINING_MODULES: TrainingModuleContent[] = [
         {
           titleHe: 'מי אנחנו',
           titleEn: 'Who We Are',
-          contentHe: 'Pet Wash™ הינה פלטפורמה יוקרתית לטיפול בחיות מחמד. אנו מחברים בין בעלי חיות מחמד לבין ספקי שירות מקצועיים ומוסמכים. החזון שלנו הוא להיות המובילים העולמיים בתחום טיפול יוקרתי בחיות מחמד.',
-          contentEn: 'Pet Wash™ is a premium pet care platform connecting pet owners with certified professional service providers. Our vision is to be the global leader in luxury pet care.',
+          contentHe: '⁦Pet Wash™⁩ הינה פלטפורמה יוקרתית לטיפול בחיות מחמד. אנו מחברים בין בעלי חיות מחמד לבין ספקי שירות מקצועיים ומוסמכים. החזון שלנו הוא להיות המובילים העולמיים בתחום טיפול יוקרתי בחיות מחמד.',
+          contentEn: '⁦Pet Wash™⁩ is a premium pet care platform connecting pet owners with certified professional service providers. Our vision is to be the global leader in luxury pet care.',
         },
         {
           titleHe: 'הערכים שלנו',
@@ -130,8 +130,8 @@ const TRAINING_MODULES: TrainingModuleContent[] = [
       questions: [
         {
           id: 'gen-001-q1',
-          questionHe: 'מה הערך החשוב ביותר ב-Pet Wash™?',
-          questionEn: 'What is the most important value at Pet Wash™?',
+          questionHe: 'מה הערך החשוב ביותר ב-⁦Pet Wash™⁩?',
+          questionEn: 'What is the most important value at ⁦Pet Wash™⁩?',
           options: [
             { id: 'a', textHe: 'רווחיות', textEn: 'Profitability', isCorrect: false },
             { id: 'b', textHe: 'בטיחות חיות המחמד', textEn: 'Pet safety', isCorrect: true },
@@ -631,10 +631,10 @@ class ProviderTrainingService {
       // Platform names in Hebrew
       const platformNames: Record<TrainingPlatform, { he: string; en: string }> = {
         general: { he: 'כללי', en: 'General' },
-        sitter_suite: { he: 'The Sitter Suite™', en: 'The Sitter Suite™' },
-        walk_my_pet: { he: 'Walk My Pet™', en: 'Walk My Pet™' },
-        pettrek: { he: 'PetTrek™', en: 'PetTrek™' },
-        k9000: { he: 'K9000™', en: 'K9000™' },
+        sitter_suite: { he: '⁦The Sitter Suite™⁩', en: '⁦The Sitter Suite™⁩' },
+        walk_my_pet: { he: '⁦Walk My Pet™⁩', en: '⁦Walk My Pet™⁩' },
+        pettrek: { he: '⁦PetTrek™⁩', en: '⁦PetTrek™⁩' },
+        k9000: { he: '⁦K9000™⁩', en: '⁦K9000™⁩' },
       };
 
       // Save certificate record

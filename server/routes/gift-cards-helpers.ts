@@ -85,8 +85,8 @@ async function sendGiftCardToRecipient(params: {
   const { voucher, recipientEmail, recipientName, senderName, message, qrCodeDataURL } = params;
 
   const emailSubject = senderName !== 'A friend'
-    ? `🎁 You received a PetWash™ E-Gift Card from ${senderName}!`
-    : `🎁 You received a PetWash™ E-Gift Card!`;
+    ? `🎁 You received a ⁦PetWash™⁩ E-Gift Card from ${senderName}!`
+    : `🎁 You received a ⁦PetWash™⁩ E-Gift Card!`;
 
   const emailHtml = `
     <!DOCTYPE html>
@@ -126,7 +126,7 @@ async function sendGiftCardToRecipient(params: {
           
           <div class="gift-amount">₪${voucher.initialAmount}</div>
           
-          <p style="text-align: center; font-size: 18px; color: #6b7280;">PetWash™ E-Gift Card</p>
+          <p style="text-align: center; font-size: 18px; color: #6b7280;">⁦PetWash™⁩ E-Gift Card</p>
           
           <div class="qr-code">
             <img src="${qrCodeDataURL}" alt="Gift Card QR Code" />
@@ -161,13 +161,13 @@ async function sendGiftCardToRecipient(params: {
         </div>
         
         <div class="footer">
-          <p><strong>PetWash™</strong> - Premium Organic Pet Care</p>
+          <p><strong>⁦PetWash™⁩</strong> - Premium Organic Pet Care</p>
           <p>petwash.co.il</p>
           <div class="legal">
             <p>This e-gift card is issued by PetWash Ltd. (Israel Company #516458396)</p>
             <p>Non-refundable. Non-transferable. Cannot be redeemed for cash. Single-use only.</p>
             <p>Blockchain-secured transaction with immutable audit trail.</p>
-            <p>© ${new Date().getFullYear()} PetWash™. All rights reserved.</p>
+            <p>© ${new Date().getFullYear()} ⁦PetWash™⁩. All rights reserved.</p>
           </div>
         </div>
       </div>
@@ -192,7 +192,7 @@ async function sendPurchaseConfirmationToBuyer(params: {
   voucherId: string;
   transactionHash: string;
 }) {
-  const emailSubject = `✅ Your PetWash™ E-Gift Card Purchase Confirmation`;
+  const emailSubject = `✅ Your ⁦PetWash™⁩ E-Gift Card Purchase Confirmation`;
 
   const emailHtml = `
     <!DOCTYPE html>
@@ -260,7 +260,7 @@ async function sendPurchaseConfirmationToBuyer(params: {
         </div>
         
         <div class="footer">
-          <p><strong>PetWash™</strong> - Premium Organic Pet Care</p>
+          <p><strong>⁦PetWash™⁩</strong> - Premium Organic Pet Care</p>
           <p>Company Registration: 516458396 (Israel)</p>
           <p style="font-size: 10px; color: #9ca3af; margin-top: 10px;">
             This is a legal receipt for your records. Non-refundable.<br>

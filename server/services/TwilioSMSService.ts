@@ -156,12 +156,12 @@ class TwilioSMSService {
   private smsBody(code: string, language: string): string {
     const mins = VERIFICATION_CODE_EXPIRY_MINUTES;
     const bodies: Record<string, string> = {
-      en: `Your Pet Wash™ verification code is: ${code}\nValid for ${mins} minutes`,
-      he: `קוד האימות שלך ל-Pet Wash™ הוא: ${code}\nתוקף: ${mins} דקות`,
-      ar: `رمز التحقق الخاص بك لـ Pet Wash™ هو: ${code}\nصالح لمدة ${mins} دقائق`,
-      es: `Tu código de verificación de Pet Wash™ es: ${code}\nVálido por ${mins} minutos`,
-      fr: `Votre code de vérification Pet Wash™ est : ${code}\nValide pendant ${mins} minutes`,
-      ru: `Ваш код подтверждения Pet Wash™: ${code}\nДействителен ${mins} минут`,
+      en: `Your ⁦Pet Wash™⁩ verification code is: ${code}\nValid for ${mins} minutes`,
+      he: `קוד האימות שלך ל-⁦Pet Wash™⁩ הוא: ${code}\nתוקף: ${mins} דקות`,
+      ar: `رمز التحقق الخاص بك لـ ⁦Pet Wash™⁩ هو: ${code}\nصالح لمدة ${mins} دقائق`,
+      es: `Tu código de verificación de ⁦Pet Wash™⁩ es: ${code}\nVálido por ${mins} minutos`,
+      fr: `Votre code de vérification ⁦Pet Wash™⁩ est : ${code}\nValide pendant ${mins} minutes`,
+      ru: `Ваш код подтверждения ⁦Pet Wash™⁩: ${code}\nДействителен ${mins} минут`,
     };
     return bodies[language] || bodies.en;
   }

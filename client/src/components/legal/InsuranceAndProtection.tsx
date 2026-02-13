@@ -36,7 +36,7 @@ export function InsuranceAndProtection({ variant = "full", className = "" }: Ins
 
   const insuranceContent = {
     overview: {
-      title: isHebrew ? "כיסוי ביטוחי Pet Wash™" : "Pet Wash™ Accident Cover",
+      title: isHebrew ? "כיסוי ביטוחי ⁦Pet Wash™⁩" : "⁦Pet Wash™⁩ Accident Cover",
       subtitle: isHebrew 
         ? "ביטוח אחריות צד שלישי לכל ההזמנות דרך הפלטפורמה"
         : "Third-Party Liability Insurance for All Bookings Through the Platform",
@@ -135,7 +135,7 @@ export function InsuranceAndProtection({ variant = "full", className = "" }: Ins
         category: isHebrew ? "שירות והתנהגות" : "Service & Behavioral",
         items: [
           isHebrew ? "פגישות \"היכרות\" (לפני תחילת ההזמנה)" : "Meet & Greet appointments (before booking starts)",
-          isHebrew ? "שירותים שהוזמנו מחוץ לפלטפורמת Pet Wash™" : "Services booked outside Pet Wash™ platform",
+          isHebrew ? "שירותים שהוזמנו מחוץ לפלטפורמת ⁦Pet Wash™⁩" : "Services booked outside ⁦Pet Wash™⁩ platform",
           isHebrew ? "פנסיונים מסחריים" : "Commercial boarding kennels",
           isHebrew ? "הפחתה ב\"ערך תצוגה\" של החיה" : "Reduction in pet's 'show value'",
           isHebrew ? "הפרת חובה מקצועית (למשל, הליכה ללא רצועה באזור לא בטוח)" : "Breach of professional duty (e.g., off-leash in unsafe areas)",
@@ -192,13 +192,13 @@ export function InsuranceAndProtection({ variant = "full", className = "" }: Ins
         step: 5,
         title: isHebrew ? "החלטת המבטח" : "Insurer Decision",
         description: isHebrew 
-          ? "הראל ביטוח מטפלת בתביעות ומחליטה. Pet Wash™ אינה המבטח"
-          : "Harel Insurance handles and decides claims. Pet Wash™ is not the insurer",
+          ? "הראל ביטוח מטפלת בתביעות ומחליטה. ⁦Pet Wash™⁩ אינה המבטח"
+          : "Harel Insurance handles and decides claims. ⁦Pet Wash™⁩ is not the insurer",
         timeframe: isHebrew ? "עד 30 יום" : "Up to 30 days"
       }
     ],
     eligibilityRequirements: [
-      isHebrew ? "השירות חייב להיות מוזמן ומשולם במלואו דרך פלטפורמת Pet Wash™ לפני תאריך תחילת השירות" : "Service MUST be booked AND paid in full via Pet Wash™ platform before service start date",
+      isHebrew ? "השירות חייב להיות מוזמן ומשולם במלואו דרך פלטפורמת ⁦Pet Wash™⁩ לפני תאריך תחילת השירות" : "Service MUST be booked AND paid in full via ⁦Pet Wash™⁩ platform before service start date",
       isHebrew ? "האירוע חייב להתרחש במהלך תקופת הזמנה פעילה" : "Incident must occur DURING an active booking period",
       isHebrew ? "הספק חייב להיות אחראי ישירות (פעולה או מחדל)" : "Provider must be deemed directly responsible (action or inaction)",
       isHebrew ? "נדרשות ראיות להוכחת אחריות הספק" : "Evidence required to prove Provider responsibility"
@@ -213,8 +213,8 @@ export function InsuranceAndProtection({ variant = "full", className = "" }: Ins
       {
         icon: Building,
         text: isHebrew 
-          ? "Pet Wash™ אינה המבטח - הראל ביטוח מטפלת ומסדירה תביעות"
-          : "Pet Wash™ is NOT the insurer - Harel Insurance handles and settles claims"
+          ? "⁦Pet Wash™⁩ אינה המבטח - הראל ביטוח מטפלת ומסדירה תביעות"
+          : "⁦Pet Wash™⁩ is NOT the insurer - Harel Insurance handles and settles claims"
       },
       {
         icon: Info,
@@ -231,15 +231,15 @@ export function InsuranceAndProtection({ variant = "full", className = "" }: Ins
       {
         icon: FileText,
         text: isHebrew 
-          ? "החוזה הוא בין הספק לבעלים - Pet Wash™ היא רק ספקית הפלטפורמה"
-          : "Contract is between Provider and Owner - Pet Wash™ is only the platform provider"
+          ? "החוזה הוא בין הספק לבעלים - ⁦Pet Wash™⁩ היא רק ספקית הפלטפורמה"
+          : "Contract is between Provider and Owner - ⁦Pet Wash™⁩ is only the platform provider"
       }
     ],
     emergencyContacts: {
       title: isHebrew ? "קווים חמים לחירום" : "Emergency Hotlines",
       contacts: [
         {
-          type: isHebrew ? "קו חירום Pet Wash™" : "Pet Wash™ Emergency Line",
+          type: isHebrew ? "קו חירום ⁦Pet Wash™⁩" : "⁦Pet Wash™⁩ Emergency Line",
           number: "*2738",
           available: isHebrew ? "24/7" : "24/7"
         },
@@ -313,8 +313,8 @@ export function InsuranceAndProtection({ variant = "full", className = "" }: Ins
       }
     ],
     disclaimer: isHebrew 
-      ? "Pet Wash™ אינה מספקת ייעוץ מס או משפטי. מומלץ להתייעץ עם רואה חשבון."
-      : "Pet Wash™ does not provide tax or legal advice. Consult with an accountant."
+      ? "⁦Pet Wash™⁩ אינה מספקת ייעוץ מס או משפטי. מומלץ להתייעץ עם רואה חשבון."
+      : "⁦Pet Wash™⁩ does not provide tax or legal advice. Consult with an accountant."
   };
 
   const customerProtectionContent = {

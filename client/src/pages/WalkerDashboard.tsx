@@ -377,7 +377,7 @@ export default function WalkerDashboard() {
             </div>
             <div>
               <h1 className="luxury-heading-sm luxury-text-gradient">
-                {isHebrew ? 'Walk My Pet™ - מטיילים' : 'Walk My Pet™ - Walker'}
+                {isHebrew ? '⁦Walk My Pet™⁩ - מטיילים' : '⁦Walk My Pet™⁩ - Walker'}
               </h1>
               <p className="luxury-text-small">
                 {isHebrew ? 'שלום' : 'Welcome'}, {user?.displayName || user?.email?.split('@')[0]}

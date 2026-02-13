@@ -17,7 +17,7 @@ export default function Support() {
             Help Center & FAQ
           </h1>
           <p className="luxury-services-subtitle luxury-animate-fade-in luxury-delay-2">
-            Get help with your Pet Wash™ account and services
+            Get help with your ⁦Pet Wash™⁩ account and services
           </p>
         </div>
       </div>

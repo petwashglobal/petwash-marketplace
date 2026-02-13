@@ -88,7 +88,7 @@ export function generateWorkflowNotification(data: WorkflowNotificationData): { 
                 
                 <tr>
                     <td style="padding:25px 30px;text-align:center;">
-                        ${data.logoUrl ? `<img src="${data.logoUrl}" alt="Pet Wash™" width="150" style="height:auto;border:0; max-width: 150px;"/>` : '<div style="font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #7C3AED, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🐾 Pet Wash™</div>'}
+                        ${data.logoUrl ? `<img src="${data.logoUrl}" alt="⁦Pet Wash™⁩" width="150" style="height:auto;border:0; max-width: 150px;"/>` : '<div style="font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #7C3AED, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🐾 ⁦Pet Wash™⁩</div>'}
                     </td>
                 </tr>
 
@@ -144,7 +144,7 @@ export function generateWorkflowNotification(data: WorkflowNotificationData): { 
                             <tr>
                                 <td>
                                     <p style="font-size: 14px; color: #64748b;" class="darkmode-text">
-                                        This notification was sent via your secure Pet Wash™ workflow system. Please do not reply directly to this email.
+                                        This notification was sent via your secure ⁦Pet Wash™⁩ workflow system. Please do not reply directly to this email.
                                     </p>
                                 </td>
                             </tr>
@@ -154,7 +154,7 @@ export function generateWorkflowNotification(data: WorkflowNotificationData): { 
                 
                 <tr>
                     <td style="padding:20px 30px;text-align:center;font-size:12px;line-height:18px;color:#94a3b8;border-top:1px solid #e5e7eb;" class="darkmode-bg">
-                        <p style="margin:0;" class="darkmode-text">&copy; 2025 Pet Wash™ Ltd. All rights reserved.</p>
+                        <p style="margin:0;" class="darkmode-text">&copy; 2025 ⁦Pet Wash™⁩ Ltd. All rights reserved.</p>
                         <p style="margin:10px 0 0;" class="darkmode-text">
                             Premium Organic Pet Care | Made in Israel
                         </p>

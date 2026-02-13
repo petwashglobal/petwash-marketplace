@@ -17,7 +17,7 @@ interface Platform {
 const platforms: Platform[] = [
   {
     id: 'wash',
-    name: 'Pet Wash Hub™',
+    name: 'Pet ⁦Wash Hub™⁩',
     description: 'Premium organic self-service wash stations',
     icon: Dog,
     gradient: 'from-purple-500 to-purple-600',
@@ -25,7 +25,7 @@ const platforms: Platform[] = [
   },
   {
     id: 'walk',
-    name: 'Walk My Pet™',
+    name: '⁦Walk My Pet™⁩',
     description: 'Premium dog walking with real-time GPS',
     icon: MapPin,
     gradient: 'from-emerald-400 to-teal-500',
@@ -35,7 +35,7 @@ const platforms: Platform[] = [
   },
   {
     id: 'sitter',
-    name: 'The Sitter Suite™',
+    name: '⁦The Sitter Suite™⁩',
     description: 'Pet sitting marketplace with AI matching',
     icon: Heart,
     gradient: 'from-pink-400 to-rose-500',
@@ -45,7 +45,7 @@ const platforms: Platform[] = [
   },
   {
     id: 'trek',
-    name: 'PetTrek™',
+    name: '⁦PetTrek™⁩',
     description: 'Uber-style pet transport with live tracking',
     icon: Car,
     gradient: 'from-amber-400 to-orange-500',
@@ -55,7 +55,7 @@ const platforms: Platform[] = [
   },
   {
     id: 'finder',
-    name: 'Paw Finder™',
+    name: '⁦Paw Finder™⁩',
     description: 'FREE lost & found pet recovery service',
     icon: Search,
     gradient: 'from-blue-400 to-indigo-500',

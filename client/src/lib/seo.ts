@@ -1,4 +1,4 @@
-// SEO utilities for Pet Wash™
+// SEO utilities for ⁦Pet Wash™⁩
 // Comprehensive meta tags, OpenGraph, Twitter Cards, structured data
 
 import { useEffect } from 'react';
@@ -16,7 +16,7 @@ export interface SEOConfig {
 
 // Default SEO configuration
 export const defaultSEO: SEOConfig = {
-  title: 'Pet Wash™ - Premium Organic Pet Care | שטיפת חיות מחמד אורגנית פרימיום',
+  title: '⁦Pet Wash™⁩ - Premium Organic Pet Care | שטיפת חיות מחמד אורגנית פרימיום',
   description: 'Israel\'s leading premium organic pet washing service. 7-tier luxury loyalty program (Bronze→Royal, up to 50% discount), AI-powered booking, Apple/Google Wallet integration. שירות שטיפת חיות מחמד אורגני פרימיום מוביל בישראל עם תוכנית נאמנות 7 רמות יוקרה.',
   keywords: 'pet wash, dog wash, cat wash, organic pet care, Israel pet services, שטיפת כלבים, שטיפת חיות מחמד, שטיפה אורגנית, כלבים ישראל',
   ogImage: 'https://petwash.co.il/IMG_7114_1751624638881.jpeg',
@@ -27,80 +27,80 @@ export const defaultSEO: SEOConfig = {
 // Page-specific SEO configurations
 export const pageSEO: Record<string, SEOConfig> = {
   home: {
-    title: 'Pet Wash™ - Premium Organic Pet Care | שטיפת חיות מחמד אורגנית',
+    title: '⁦Pet Wash™⁩ - Premium Organic Pet Care | שטיפת חיות מחמד אורגנית',
     description: 'Israel\'s #1 premium organic pet washing service with K9000 smart stations. Book online, earn loyalty rewards, get weather-based recommendations. שירות שטיפת חיות מחמד אורגני מוביל בישראל עם תחנות חכמות K9000.',
     keywords: 'pet wash Israel, organic dog wash, K9000, smart pet care, שטיפת כלבים אורגנית, תחנות שטיפה חכמות',
     ogType: 'website',
   },
   pricing: {
-    title: 'Pricing & Packages - Pet Wash™ | מחירים וחבילות',
+    title: 'Pricing & Packages - ⁦Pet Wash™⁩ | מחירים וחבילות',
     description: 'Transparent pricing for premium organic pet washing. 7-tier luxury loyalty program (Bronze to Royal) with up to 50% discounts. Gift cards available. מחירים שקופים לשטיפת חיות מחמד אורגנית עם הנחות עד 50%.',
     keywords: 'pet wash prices, dog wash cost, loyalty discounts, מחיר שטיפת כלבים, הנחות נאמנות',
     ogType: 'website',
   },
   about: {
-    title: 'About Us - Pet Wash™ | אודות',
+    title: 'About Us - ⁦Pet Wash™⁩ | אודות',
     description: 'Learn about Israel\'s leading premium organic pet care platform. Our mission: banking-grade security, organic products, AI-powered service. למד על פלטפורמת טיפול בחיות מחמד אורגנית מובילה בישראל.',
     keywords: 'about pet wash, organic pet care, Israel pet company, אודות שטיפת חיות מחמד',
     ogType: 'website',
   },
   contact: {
-    title: 'Contact Us - Pet Wash™ | צור קשר',
-    description: 'Get in touch with Pet Wash™. WhatsApp support, email, phone. We\'re here to help with your pet care needs. צור קשר עם Pet Wash™ דרך WhatsApp, אימייל, או טלפון.',
+    title: 'Contact Us - ⁦Pet Wash™⁩ | צור קשר',
+    description: 'Get in touch with ⁦Pet Wash™⁩. WhatsApp support, email, phone. We\'re here to help with your pet care needs. צור קשר עם ⁦Pet Wash™⁩ דרך WhatsApp, אימייל, או טלפון.',
     keywords: 'contact pet wash, customer support, WhatsApp support, תמיכת לקוחות, צור קשר',
     ogType: 'website',
   },
   login: {
-    title: 'Login - Pet Wash™ | התחברות',
-    description: 'Sign in to your Pet Wash™ account. Access loyalty rewards, booking history, and premium features. התחבר לחשבון Pet Wash™ שלך.',
+    title: 'Login - ⁦Pet Wash™⁩ | התחברות',
+    description: 'Sign in to your ⁦Pet Wash™⁩ account. Access loyalty rewards, booking history, and premium features. התחבר לחשבון ⁦Pet Wash™⁩ שלך.',
     keywords: 'pet wash login, customer portal, התחברות, כניסה לחשבון',
     ogType: 'website',
     noindex: true,
   },
   signup: {
-    title: 'Sign Up - Pet Wash™ | הרשמה',
-    description: 'Create your Pet Wash™ account. Start earning loyalty points instantly, book washes online, and unlock premium rewards. צור חשבון Pet Wash™ והתחל לצבור נקודות מיד.',
+    title: 'Sign Up - ⁦Pet Wash™⁩ | הרשמה',
+    description: 'Create your ⁦Pet Wash™⁩ account. Start earning loyalty points instantly, book washes online, and unlock premium rewards. צור חשבון ⁦Pet Wash™⁩ והתחל לצבור נקודות מיד.',
     keywords: 'pet wash signup, create account, join loyalty program, הרשמה, יצירת חשבון',
     ogType: 'website',
   },
   vouchers: {
-    title: 'Gift Cards & E-Vouchers - Pet Wash™ | שוברי מתנה',
+    title: 'Gift Cards & E-Vouchers - ⁦Pet Wash™⁩ | שוברי מתנה',
     description: 'Buy digital gift cards for pet lovers. Instant delivery via email, Apple Wallet, Google Wallet. קנה שוברי מתנה דיגיטליים לאוהבי חיות מחמד.',
     keywords: 'pet wash gift card, e-voucher, digital gift, שובר מתנה, גיפט קארד',
     ogType: 'product',
   },
   franchise: {
-    title: 'Franchise Opportunities - Pet Wash™ | הזדמנויות זיכיון',
+    title: 'Franchise Opportunities - ⁦Pet Wash™⁩ | הזדמנויות זיכיון',
     description: 'Join Israel\'s fastest-growing pet care franchise. Global expansion planned for 2026. Complete support, proven business model. הצטרף לזיכיון טיפול בחיות מחמד המתפתח ביותר בישראל.',
     keywords: 'pet wash franchise, business opportunity, זיכיון, הזדמנות עסקית',
     ogType: 'website',
   },
   k9000: {
-    title: 'K9000™ IoT Pet Wash Stations - Pet Wash™ | תחנות שטיפה חכמות',
+    title: '⁦K9000™⁩ IoT Pet Wash Stations - ⁦Pet Wash™⁩ | תחנות שטיפה חכמות',
     description: 'Smart IoT pet washing stations with organic products. Self-service 24/7, AI-powered monitoring, contactless payment, real-time status. תחנות שטיפה חכמות עם מוצרים אורגניים, זמינות 24/7.',
     keywords: 'K9000, IoT pet wash, smart pet station, self-service dog wash, תחנות שטיפה חכמות, כביסת כלבים עצמית',
     ogType: 'product',
   },
   walkMyPet: {
-    title: 'Walk My Pet™ - Professional Dog Walking Services | שירותי הליכה מקצועיים',
+    title: '⁦Walk My Pet™⁩ - Professional Dog Walking Services | שירותי הליכה מקצועיים',
     description: 'Book certified dog walkers in Israel. GPS tracking, live updates, insurance coverage, instant booking. Starting from ₪50/walk. הזמן מטיילי כלבים מוסמכים עם מעקב GPS.',
     keywords: 'dog walking Israel, pet walker, GPS tracking, professional dog walker, מטיילי כלבים, שירות הליכה',
     ogType: 'website',
   },
   sitterSuite: {
-    title: 'The Sitter Suite™ - Premium Pet Sitting Services | שירותי פנסיון איכותיים',
+    title: '⁦The Sitter Suite™⁩ - Premium Pet Sitting Services | שירותי פנסיון איכותיים',
     description: 'Trusted pet sitters for overnight care, daily visits, and vacation boarding. Background-checked, insured, 72-hour escrow protection. From ₪120/day. פנסיון איכותי עם שמירה 24/7.',
     keywords: 'pet sitting Israel, pet boarding, overnight pet care, dog sitter, פנסיון כלבים, שמירה על חיות מחמד',
     ogType: 'website',
   },
   petTrek: {
-    title: 'PetTrek™ - Safe Pet Transportation Services | שירותי הסעות בטוחות',
+    title: '⁦PetTrek™⁩ - Safe Pet Transportation Services | שירותי הסעות בטוחות',
     description: 'Professional pet transport across Israel. Vet visits, airport transfers, inter-city travel. Climate-controlled vehicles, real-time tracking, certified drivers. הסעות מקצועיות עם מעקב בזמן אמת.',
     keywords: 'pet transport Israel, dog taxi, pet shuttle, vet transport, הסעות כלבים, מונית לחיות מחמד',
     ogType: 'website',
   },
   plushLab: {
-    title: 'The Plush Lab™ - AI Pet Avatar Creator | יוצר דמויות דיגיטליות',
+    title: '⁦The Plush Lab™⁩ - AI Pet Avatar Creator | יוצר דמויות דיגיטליות',
     description: 'Create stunning AI-powered 3D avatars of your pet. Advanced landmark detection, multilingual TTS, custom animations. Perfect for social media and gifts. צור דמויות דיגיטליות 3D מהחיה שלך.',
     keywords: 'pet avatar, AI pet photo, 3D pet model, digital pet, דמות דיגיטלית, אווטאר כלב',
     ogType: 'product',
@@ -158,7 +158,7 @@ export function useSEO(config?: Partial<SEOConfig>) {
     setMeta('og:description', seoConfig.description, true);
     setMeta('og:type', seoConfig.ogType || 'website', true);
     setMeta('og:url', seoConfig.canonical || window.location.href, true);
-    setMeta('og:site_name', 'Pet Wash™', true);
+    setMeta('og:site_name', '⁦Pet Wash™⁩', true);
     setMeta('og:locale', seoConfig.locale || 'he_IL', true);
     setMeta('og:locale:alternate', seoConfig.locale === 'he_IL' ? 'en_US' : 'he_IL', true);
     
@@ -166,7 +166,7 @@ export function useSEO(config?: Partial<SEOConfig>) {
       setMeta('og:image', seoConfig.ogImage, true);
       setMeta('og:image:width', '1200', true);
       setMeta('og:image:height', '630', true);
-      setMeta('og:image:alt', 'Pet Wash™ - Premium Organic Pet Care', true);
+      setMeta('og:image:alt', '⁦Pet Wash™⁩ - Premium Organic Pet Care', true);
     }
     
     // Twitter Card meta tags
@@ -199,7 +199,7 @@ export function generateLocalBusinessSchema() {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
     '@id': 'https://petwash.co.il/#organization',
-    name: 'Pet Wash™',
+    name: '⁦Pet Wash™⁩',
     alternateName: 'Pet Wash Israel',
     description: 'Premium organic pet washing service in Israel with K9000 smart stations',
     url: 'https://petwash.co.il',

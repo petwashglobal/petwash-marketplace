@@ -9,7 +9,7 @@
  * - Firmware (when applicable)
  * - SSL/TLS certificates
  * 
- * Ensures Pet Wash™ platform stays secure and up-to-date
+ * Ensures ⁦Pet Wash™⁩ platform stays secure and up-to-date
  * 
  * Created: October 22, 2025
  * Status: Production Ready
@@ -414,7 +414,7 @@ export class SecurityUpdateMonitor {
 }
 
 /**
- * Supported browsers and minimum versions for Pet Wash™
+ * Supported browsers and minimum versions for ⁦Pet Wash™⁩
  */
 export const SUPPORTED_BROWSERS = {
   chrome: {

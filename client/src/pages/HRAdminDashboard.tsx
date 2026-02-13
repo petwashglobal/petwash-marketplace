@@ -233,7 +233,7 @@ export default function HRAdminDashboard() {
                 {isRTL ? 'לוח בקרה HR' : 'HR Admin Dashboard'}
               </h1>
               <p className="text-gray-600 text-sm">
-                {isRTL ? 'ניהול מועמדויות Pet Wash™' : 'Pet Wash™ Application Management'}
+                {isRTL ? 'ניהול מועמדויות ⁦Pet Wash™⁩' : '⁦Pet Wash™⁩ Application Management'}
               </p>
             </div>
             <div className="flex gap-3">

@@ -87,7 +87,7 @@ export default function TermsAndConditions() {
                 <h2 className="luxury-heading-md mb-6">1. Agreement to Terms</h2>
                 <div className="space-y-4">
                   <p className="luxury-text-body">
-                    By accessing or using Pet Wash™ services (website, mobile application, physical washing stations), 
+                    By accessing or using ⁦Pet Wash™⁩ services (website, mobile application, physical washing stations), 
                     you agree to be bound by these Terms and Conditions. If you do not agree to these terms, 
                     please do not use our services.
                   </p>
@@ -106,7 +106,7 @@ export default function TermsAndConditions() {
                 <h2 className="luxury-heading-md mb-6">2. Use of Services</h2>
                 <div className="space-y-4">
                   <p className="luxury-text-body">
-                    Pet Wash™ provides access to 8 integrated platforms: Pet Wash Stations, Pet Sitter Suite,
+                    ⁦Pet Wash™⁩ provides access to 8 integrated platforms: Pet Wash Stations, Pet Sitter Suite,
                     Walk My Pet, PetTrek Transport, Pet Wash Academy, Pet Wash Shop, Loyalty & VIP Club, and Avatar Studio.
                   </p>
                   <p className="luxury-text-body">
@@ -124,7 +124,7 @@ export default function TermsAndConditions() {
                 <h2 className="luxury-heading-md mb-6">3. User Accounts</h2>
                 <div className="space-y-4">
                   <p className="luxury-text-body">
-                    Users must create a Pet Wash Hub™ account to access services. You are responsible for
+                    Users must create a Pet ⁦Wash Hub™⁩ account to access services. You are responsible for
                     maintaining the security of your account credentials.
                   </p>
                   <p className="luxury-text-body">
@@ -238,7 +238,7 @@ export default function TermsAndConditions() {
                 <h2 className="luxury-heading-md mb-6">7. Limitation of Liability</h2>
                 <div className="space-y-4">
                   <p className="luxury-text-body">
-                    Pet Wash™ is not liable for indirect, incidental, or consequential damages arising from
+                    ⁦Pet Wash™⁩ is not liable for indirect, incidental, or consequential damages arising from
                     use of our services, except as required by Israeli law.
                   </p>
                   <div className="luxury-glass-panel p-6 border-l-4 border-yellow-500">

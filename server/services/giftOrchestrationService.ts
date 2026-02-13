@@ -36,9 +36,9 @@ export interface DistributionReport {
 
 const SERVICE_DEPARTMENTS: Record<PlatformService, string> = {
   wash: 'K9000 Operations',
-  sitter: 'Sitter Suite™ Division',
-  walk: 'Walk My Pet™ Division', 
-  trek: 'PetTrek™ Logistics',
+  sitter: '⁦Sitter Suite™⁩ Division',
+  walk: '⁦Walk My Pet™⁩ Division', 
+  trek: '⁦PetTrek™⁩ Logistics',
   all: 'Central Treasury'
 };
 
@@ -165,9 +165,9 @@ ${redemptionHistory.map(r => `- ${r.service}: ₪${r.amount}`).join('\n')}
 
 Service Departments:
 - wash (K9000 Operations): Self-service pet wash stations
-- sitter (Sitter Suite™): Premium pet sitting services
-- walk (Walk My Pet™): Professional dog walking
-- trek (PetTrek™): Pet transport/adventure
+- sitter (⁦Sitter Suite™⁩): Premium pet sitting services
+- walk (⁦Walk My Pet™⁩): Professional dog walking
+- trek (⁦PetTrek™⁩): Pet transport/adventure
 
 Based on actual usage, recommend percentage split. Consider:
 1. Actual redemption amounts per service
@@ -257,9 +257,9 @@ Return ONLY valid JSON: {"distributions": [{"service": "wash", "percentage": 40}
       totalGiftRevenue: 0,
       byDepartment: {
         'K9000 Operations': 0,
-        'Sitter Suite™ Division': 0,
-        'Walk My Pet™ Division': 0,
-        'PetTrek™ Logistics': 0,
+        '⁦Sitter Suite™⁩ Division': 0,
+        '⁦Walk My Pet™⁩ Division': 0,
+        '⁦PetTrek™⁩ Logistics': 0,
         'Central Treasury': 0
       }
     };

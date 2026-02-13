@@ -31,7 +31,7 @@ export const legalTemplates = {
 
 **This Independent Contractor Agreement** ("Agreement") is entered into as of {{DATE}} by and between:
 
-**Pet Wash™** ("Company")  
+**⁦Pet Wash™⁩** ("Company")  
 Business Address: {{COMPANY_ADDRESS}}  
 Israel Business Registration: {{COMPANY_REG}}
 
@@ -56,11 +56,11 @@ Tax ID/SSN: {{TAX_ID}}
 2.1 The Contractor agrees to provide {{SERVICE_TYPE}} services including:
 {{#if SITTER}}
 - Pet sitting and care services
-- Following Pet Wash™ safety protocols
+- Following ⁦Pet Wash™⁩ safety protocols
 - Maintaining communication with pet owners
 {{/if}}
 {{#if WALKER}}
-- Dog walking services per Pet Wash™ standards
+- Dog walking services per ⁦Pet Wash™⁩ standards
 - GPS tracking of walks
 - Photo documentation of completed walks
 {{/if}}
@@ -92,7 +92,7 @@ Tax ID/SSN: {{TAX_ID}}
 
 ## 5. CONFIDENTIALITY AND NON-DISCLOSURE
 
-5.1 The Contractor agrees to protect Pet Wash™ confidential information including:
+5.1 The Contractor agrees to protect ⁦Pet Wash™⁩ confidential information including:
 - Customer data and contact information
 - Business processes and pricing strategies
 - Proprietary technology and software
@@ -104,12 +104,12 @@ Tax ID/SSN: {{TAX_ID}}
 6.1 The Contractor agrees to:
 - Comply with all applicable laws and regulations
 - Maintain required licenses, certifications, and insurance
-- Follow Pet Wash™ Code of Conduct and Safety Standards
+- Follow ⁦Pet Wash™⁩ Code of Conduct and Safety Standards
 - Submit to periodic background checks as required
 
 6.2 The Contractor shall NOT:
 - Engage in fraudulent activity or misrepresentation
-- Solicit customers directly outside the Pet Wash™ platform
+- Solicit customers directly outside the ⁦Pet Wash™⁩ platform
 - Disclose confidential information to third parties
 
 ## 7. INSURANCE AND LIABILITY
@@ -121,7 +121,7 @@ Tax ID/SSN: {{TAX_ID}}
 - General liability insurance
 - Professional liability/errors & omissions insurance
 
-7.2 The Contractor indemnifies Pet Wash™ from claims arising from Contractor's negligence or misconduct.
+7.2 The Contractor indemnifies ⁦Pet Wash™⁩ from claims arising from Contractor's negligence or misconduct.
 
 ## 8. DISPUTE RESOLUTION
 
@@ -143,7 +143,7 @@ Signature: _______________________
 Name: {{CONTRACTOR_NAME}}  
 Date: {{DATE}}
 
-**Pet Wash™:**  
+**⁦Pet Wash™⁩:**  
 Signature: _______________________  
 Name: {{COMPANY_REP_NAME}}  
 Title: {{COMPANY_REP_TITLE}}  
@@ -162,7 +162,7 @@ Date: {{DATE}}
     content: `
 # BACKGROUND CHECK AUTHORIZATION & CONSENT
 
-**I, {{CONTRACTOR_NAME}}**, hereby authorize Pet Wash™ and its designated agents (including but not limited to Checkr, HireRight, or similar services) to conduct comprehensive background checks including:
+**I, {{CONTRACTOR_NAME}}**, hereby authorize ⁦Pet Wash™⁩ and its designated agents (including but not limited to Checkr, HireRight, or similar services) to conduct comprehensive background checks including:
 
 ## 1. SCOPE OF BACKGROUND CHECK
 
@@ -232,7 +232,7 @@ Date: {{DATE}}
     content: `
 # NON-DISCLOSURE AGREEMENT (NDA)
 
-**WHEREAS**, {{CONTRACTOR_NAME}} ("Recipient") will receive confidential information from Pet Wash™ ("Discloser") in connection with providing services;
+**WHEREAS**, {{CONTRACTOR_NAME}} ("Recipient") will receive confidential information from ⁦Pet Wash™⁩ ("Discloser") in connection with providing services;
 
 **NOW THEREFORE**, in consideration of access to Confidential Information, the parties agree:
 
@@ -283,7 +283,7 @@ Recipient acknowledges that customer data is subject to:
 - California Consumer Privacy Act (CCPA)
 
 Recipient agrees to:
-✓ Process data only as instructed by Pet Wash™  
+✓ Process data only as instructed by ⁦Pet Wash™⁩  
 ✓ Implement appropriate technical and organizational security measures  
 ✓ Report any data breaches within 24 hours  
 ✓ NOT transfer data outside authorized jurisdictions
@@ -297,7 +297,7 @@ Confidentiality obligations:
 
 ## 6. REMEDIES
 
-Recipient acknowledges that breach of this NDA may cause irreparable harm. Pet Wash™ may seek:
+Recipient acknowledges that breach of this NDA may cause irreparable harm. ⁦Pet Wash™⁩ may seek:
 - Immediate injunctive relief
 - Monetary damages and legal fees
 - Termination of contractor relationship
@@ -311,7 +311,7 @@ Signature: _______________________
 Name: {{CONTRACTOR_NAME}}  
 Date: {{DATE}}
 
-**Pet Wash™:**  
+**⁦Pet Wash™⁩:**  
 Signature: _______________________  
 Name: {{COMPANY_REP_NAME}}  
 Date: {{DATE}}
@@ -329,7 +329,7 @@ Date: {{DATE}}
     content: `
 # ANTI-FRAUD & COMPLIANCE AGREEMENT
 
-**Pet Wash™** operates with zero tolerance for fraudulent activity. This agreement outlines prohibited conduct and fraud prevention measures.
+**⁦Pet Wash™⁩** operates with zero tolerance for fraudulent activity. This agreement outlines prohibited conduct and fraud prevention measures.
 
 ## 1. PROHIBITED FRAUDULENT ACTIVITIES
 
@@ -349,13 +349,13 @@ The Contractor agrees to NEVER engage in:
 ❌ Submitting inaccurate logbook entries
 
 ### Customer Solicitation
-❌ Contacting customers outside the Pet Wash™ platform  
+❌ Contacting customers outside the ⁦Pet Wash™⁩ platform  
 ❌ Accepting payments directly from customers  
 ❌ Directing customers to competing services
 
 ## 2. FRAUD DETECTION MEASURES
 
-I understand that Pet Wash™ employs:
+I understand that ⁦Pet Wash™⁩ employs:
 
 ✓ **AI Receipt Verification** - Google Vision OCR + Gemini AI analyze all receipts  
 ✓ **GPS Tracking** - Real-time location verification for all logged activities  
@@ -398,7 +398,7 @@ For all logged work activities:
 
 **Second Offense / Serious Fraud:**
 - Immediate termination
-- Ban from Pet Wash™ platform (all markets)
+- Ban from ⁦Pet Wash™⁩ platform (all markets)
 - Legal action including criminal charges
 - Collection of damages + legal fees
 
@@ -430,7 +430,7 @@ Name: {{CONTRACTOR_NAME}}
 Date: {{DATE}}  
 Employee/Contractor ID: {{CONTRACTOR_ID}}
 
-**Witness (Pet Wash™ Representative):**
+**Witness (⁦Pet Wash™⁩ Representative):**
 
 Signature: _______________________  
 Name: {{WITNESS_NAME}}  

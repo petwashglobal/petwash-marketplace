@@ -1,7 +1,7 @@
 /**
  * Performance Monitoring System 2025
  * 
- * Tracks real-time performance metrics for Pet Wash™ platform:
+ * Tracks real-time performance metrics for ⁦Pet Wash™⁩ platform:
  * - Page load times (FCP, TTI, LCP)
  * - Resource loading metrics
  * - Core Web Vitals (Google's quality signals)

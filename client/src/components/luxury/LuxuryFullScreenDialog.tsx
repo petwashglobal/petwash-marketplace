@@ -200,7 +200,7 @@ export function LuxuryFullScreenDialog({
                   transition={{ delay: 0.6 }}
                   className="absolute bottom-8 text-center text-sm text-gray-400"
                 >
-                  {isRTL ? 'הצעה מיוחדת מ-Pet Wash™' : 'Special offer from Pet Wash™'}
+                  {isRTL ? 'הצעה מיוחדת מ-⁦Pet Wash™⁩' : 'Special offer from ⁦Pet Wash™⁩'}
                 </motion.div>
               </motion.div>
             </DialogPrimitive.Content>

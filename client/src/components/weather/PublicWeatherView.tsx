@@ -97,7 +97,7 @@ export default function PublicWeatherView({ data, location, onLocationChange }: 
         className="max-w-7xl mx-auto mb-12 text-center"
       >
         <h1 className="text-6xl md:text-7xl font-black mb-4 bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
-          Pet Wash™
+          ⁦Pet Wash™⁩
         </h1>
         <p className="text-2xl text-gray-300 mb-8">7-Day Premium Wash Planner</p>
         

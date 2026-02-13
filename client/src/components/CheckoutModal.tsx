@@ -141,7 +141,7 @@ export function CheckoutModal({ package: pkg, isOpen, onClose, language: initial
             <div className="flex items-center space-x-3">
               <img 
                 src="/brand/petwash-logo-official.png" 
-                alt="Pet Wash™" 
+                alt="⁦Pet Wash™⁩" 
                 className="h-8 w-auto object-contain"
               />
             </div>

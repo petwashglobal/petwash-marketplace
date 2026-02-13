@@ -72,7 +72,7 @@ router.post('/test', requireAuth, async (req, res) => {
     const success = await FCMService.sendToUser({
       userId,
       title: title || 'Test Notification',
-      body: body || 'This is a test notification from Pet Wash™',
+      body: body || 'This is a test notification from ⁦Pet Wash™⁩',
       data: {
         type: 'test',
       },

@@ -97,7 +97,7 @@ export class NayaxSitterMarketplaceService {
         Currency: this.CURRENCY,
         Token: params.ownerPaymentToken,
         ExternalTransactionId: `SITTER_${params.bookingId}_${nanoid(10)}`,
-        Description: `The Sitter Suite™ - Booking ${params.bookingId}`,
+        Description: `⁦The Sitter Suite™⁩ - Booking ${params.bookingId}`,
       };
       
       // Call Nayax API to authorize and capture payment

@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ — Auth Guardian 2025
+ * ⁦Pet Wash™⁩ — Auth Guardian 2025
  * 
  * Hardens Firebase Auth across iOS/Android mobile browsers with:
  * - Config validation for production deployments
@@ -34,7 +34,7 @@ const EXPECTED = {
     'ceo@petwash.co.il'
   ],
   telemetryEndpoint: '/api/telemetry/auth',
-  platformName: 'Pet Wash™',
+  platformName: '⁦Pet Wash™⁩',
 };
 
 /**

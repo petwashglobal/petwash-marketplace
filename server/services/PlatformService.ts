@@ -34,7 +34,7 @@ export interface PlatformUpdateInput {
 const PETWASH_PLATFORMS: PlatformCreateInput[] = [
   {
     id: "SITTER_SUITE",
-    name: "The Sitter Suite™",
+    name: "⁦The Sitter Suite™⁩",
     nameHe: "חבילת הסיטר™",
     description: "Premium pet sitting marketplace with Meet & Greet, 72-hour escrow, and verified sitters",
     descriptionHe: "שוק שמרטפים מובחר עם פגישת היכרות, נאמנות 72 שעות, ושמרטפים מאומתים",
@@ -44,7 +44,7 @@ const PETWASH_PLATFORMS: PlatformCreateInput[] = [
   },
   {
     id: "WALK_MY_PET",
-    name: "Walk My Pet™",
+    name: "⁦Walk My Pet™⁩",
     nameHe: "הולך את הכלב שלי™",
     description: "On-demand dog walking with real-time GPS tracking",
     descriptionHe: "שירות הליכת כלבים לפי דרישה עם מעקב GPS בזמן אמת",
@@ -54,7 +54,7 @@ const PETWASH_PLATFORMS: PlatformCreateInput[] = [
   },
   {
     id: "PET_TREK",
-    name: "PetTrek™",
+    name: "⁦PetTrek™⁩",
     nameHe: "פט-טרק™",
     description: "Premium pet transportation with climate-controlled vehicles",
     descriptionHe: "הסעות חיות מחמד פרימיום עם רכבים ממוזגים",
@@ -64,8 +64,8 @@ const PETWASH_PLATFORMS: PlatformCreateInput[] = [
   },
   {
     id: "K9000_WASH",
-    name: "K9000™ Self-Wash",
-    nameHe: "K9000™ שטיפה עצמית",
+    name: "⁦K9000™⁩ Self-Wash",
+    nameHe: "⁦K9000™⁩ שטיפה עצמית",
     description: "IoT-enabled premium self-service pet washing stations",
     descriptionHe: "תחנות שטיפה עצמית לחיות מחמד עם טכנולוגיית IoT",
     platformFeePercent: 0,
@@ -75,7 +75,7 @@ const PETWASH_PLATFORMS: PlatformCreateInput[] = [
   },
   {
     id: "PAW_FINDER",
-    name: "Paw Finder™",
+    name: "⁦Paw Finder™⁩",
     nameHe: "מחפש כפה™",
     description: "Lost & found pet network with community alerts",
     descriptionHe: "רשת חיות אבודות ונמצאות עם התראות קהילתיות",
@@ -85,7 +85,7 @@ const PETWASH_PLATFORMS: PlatformCreateInput[] = [
   },
   {
     id: "PLUSH_LAB",
-    name: "The Plush Lab™",
+    name: "⁦The Plush Lab™⁩",
     nameHe: "מעבדת הפלאש™",
     description: "AI-powered custom pet avatar and plush toy creation",
     descriptionHe: "יצירת אווטארים ובובות פלאש מותאמות אישית עם AI",

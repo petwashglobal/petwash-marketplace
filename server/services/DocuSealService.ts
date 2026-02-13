@@ -65,7 +65,7 @@ export class DocuSealService {
 
   /**
    * Create a signing submission (sends document for signature)
-   * Supports Hebrew and all Pet Wash™ languages
+   * Supports Hebrew and all ⁦Pet Wash™⁩ languages
    */
   async createSubmission(request: CreateSubmissionRequest): Promise<SubmissionResponse> {
     if (!this.config.apiKey) {

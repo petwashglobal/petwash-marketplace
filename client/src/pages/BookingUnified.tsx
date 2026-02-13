@@ -63,7 +63,7 @@ export default function BookingUnified() {
             Smart Booking
           </h1>
           <p className="luxury-text-body max-w-2xl mx-auto opacity-0 luxury-animate-fade-in luxury-delay-4">
-            Pet Wash™ unified booking engine for all platforms. One account, seamless scheduling across all services.
+            ⁦Pet Wash™⁩ unified booking engine for all platforms. One account, seamless scheduling across all services.
           </p>
         </div>
 

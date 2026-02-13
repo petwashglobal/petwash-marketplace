@@ -1,5 +1,5 @@
 /**
- * GPS Tracking Service for Walk My Pet™
+ * GPS Tracking Service for ⁦Walk My Pet™⁩
  * Real-time location tracking with validation and security
  */
 

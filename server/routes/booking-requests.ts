@@ -748,7 +748,7 @@ router.post('/:requestId/confirm', async (req, res) => {
         title: 'Booking Completed! ✅',
         message: rating 
           ? `Thank you for your ${rating}-star review! We hope to see you again.`
-          : 'Thank you for using Pet Wash™!',
+          : 'Thank you for using ⁦Pet Wash™⁩!',
         priority: 'normal',
         channel: 'push',
         data: { requestId },

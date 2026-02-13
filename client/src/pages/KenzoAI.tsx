@@ -36,12 +36,12 @@ const suggestions: Record<Language, string[]> = {
 };
 
 const uiLabels: Record<Language, { title: string; subtitle: string; placeholder: string; back: string; thinking: string; welcome: string }> = {
-  he: { title: '🐾 Kenzo AI', subtitle: 'העוזר החכם של Pet Wash™️', placeholder: 'שאל את קנזו...', back: 'חזרה', thinking: 'קנזו חושב...', welcome: 'שלום! 🐾 אני קנזו, הגולדן רטריבר הלבן של Pet Wash™️. איך אוכל לעזור לך היום?' },
-  en: { title: '🐾 Kenzo AI', subtitle: 'Pet Wash™️ Smart Assistant', placeholder: 'Ask Kenzo...', back: 'Back', thinking: 'Kenzo is thinking...', welcome: 'Hello! 🐾 I\'m Kenzo, the white Golden Retriever of Pet Wash™️. How can I help you today?' },
-  ar: { title: '🐾 Kenzo AI', subtitle: 'المساعد الذكي لـ Pet Wash™️', placeholder: 'اسأل كنزو...', back: 'رجوع', thinking: 'كنزو يفكر...', welcome: 'مرحباً! 🐾 أنا كنزو، كلب الغولدن ريتريفر الأبيض من Pet Wash™️. كيف يمكنني مساعدتك اليوم؟' },
-  ru: { title: '🐾 Kenzo AI', subtitle: 'Умный помощник Pet Wash™️', placeholder: 'Спросите Кензо...', back: 'Назад', thinking: 'Кензо думает...', welcome: 'Привет! 🐾 Я Кензо, белый Голден Ретривер из Pet Wash™️. Чем могу помочь сегодня?' },
-  fr: { title: '🐾 Kenzo AI', subtitle: 'Assistant intelligent Pet Wash™️', placeholder: 'Demandez à Kenzo...', back: 'Retour', thinking: 'Kenzo réfléchit...', welcome: 'Bonjour! 🐾 Je suis Kenzo, le Golden Retriever blanc de Pet Wash™️. Comment puis-je vous aider aujourd\'hui?' },
-  es: { title: '🐾 Kenzo AI', subtitle: 'Asistente inteligente Pet Wash™️', placeholder: 'Pregunta a Kenzo...', back: 'Volver', thinking: 'Kenzo está pensando...', welcome: '¡Hola! 🐾 Soy Kenzo, el Golden Retriever blanco de Pet Wash™️. ¿Cómo puedo ayudarte hoy?' },
+  he: { title: '🐾 Kenzo AI', subtitle: 'העוזר החכם של ⁦Pet Wash™️⁩', placeholder: 'שאל את קנזו...', back: 'חזרה', thinking: 'קנזו חושב...', welcome: 'שלום! 🐾 אני קנזו, הגולדן רטריבר הלבן של ⁦Pet Wash™️⁩. איך אוכל לעזור לך היום?' },
+  en: { title: '🐾 Kenzo AI', subtitle: '⁦Pet Wash™️⁩ Smart Assistant', placeholder: 'Ask Kenzo...', back: 'Back', thinking: 'Kenzo is thinking...', welcome: 'Hello! 🐾 I\'m Kenzo, the white Golden Retriever of ⁦Pet Wash™️⁩. How can I help you today?' },
+  ar: { title: '🐾 Kenzo AI', subtitle: 'المساعد الذكي لـ ⁦Pet Wash™️⁩', placeholder: 'اسأل كنزو...', back: 'رجوع', thinking: 'كنزو يفكر...', welcome: 'مرحباً! 🐾 أنا كنزو، كلب الغولدن ريتريفر الأبيض من ⁦Pet Wash™️⁩. كيف يمكنني مساعدتك اليوم؟' },
+  ru: { title: '🐾 Kenzo AI', subtitle: 'Умный помощник ⁦Pet Wash™️⁩', placeholder: 'Спросите Кензо...', back: 'Назад', thinking: 'Кензо думает...', welcome: 'Привет! 🐾 Я Кензо, белый Голден Ретривер из ⁦Pet Wash™️⁩. Чем могу помочь сегодня?' },
+  fr: { title: '🐾 Kenzo AI', subtitle: 'Assistant intelligent ⁦Pet Wash™️⁩', placeholder: 'Demandez à Kenzo...', back: 'Retour', thinking: 'Kenzo réfléchit...', welcome: 'Bonjour! 🐾 Je suis Kenzo, le Golden Retriever blanc de ⁦Pet Wash™️⁩. Comment puis-je vous aider aujourd\'hui?' },
+  es: { title: '🐾 Kenzo AI', subtitle: 'Asistente inteligente ⁦Pet Wash™️⁩', placeholder: 'Pregunta a Kenzo...', back: 'Volver', thinking: 'Kenzo está pensando...', welcome: '¡Hola! 🐾 Soy Kenzo, el Golden Retriever blanco de ⁦Pet Wash™️⁩. ¿Cómo puedo ayudarte hoy?' },
 };
 
 export default function KenzoAI() {
@@ -165,7 +165,7 @@ export default function KenzoAI() {
               <span>{labels.back}</span>
             </button>
           </Link>
-          <img src="/brand/petwash-logo-black-bg.png" alt="Pet Wash™" className="h-8 opacity-90" />
+          <img src="/brand/petwash-logo-black-bg.png" alt="⁦Pet Wash™⁩" className="h-8 opacity-90" />
           <div className="flex items-center gap-2">
             <Globe className="w-4 h-4" style={{ color: '#C9A96E' }} />
             <Sparkles className="w-4 h-4" style={{ color: '#C9A96E' }} />

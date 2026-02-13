@@ -162,7 +162,7 @@ const MainLoyaltyWidget = ({
   );
 };
 
-// Pet Wash™ Loyalty Dashboard
+// ⁦Pet Wash™⁩ Loyalty Dashboard
 export default function LoyaltyDashboard() {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
@@ -202,7 +202,7 @@ export default function LoyaltyDashboard() {
           <div className="flex items-center justify-between mb-8 luxury-animate-fade-in">
             <div>
               <h1 className="luxury-heading-xl mb-2">
-                {isHebrew ? '🏆 תוכנית הנאמנות Pet Wash™' : '🏆 Pet Wash™ Loyalty Program'}
+                {isHebrew ? '🏆 תוכנית הנאמנות ⁦Pet Wash™⁩' : '🏆 ⁦Pet Wash™⁩ Loyalty Program'}
               </h1>
               <p className="luxury-text-body">
                 {isHebrew ? 'צבור נקודות וקבל פרסים מדהימים' : 'Earn points and get amazing rewards'}
@@ -393,7 +393,7 @@ export default function LoyaltyDashboard() {
           {/* Footer */}
           <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
             <p>
-              Pet Wash™ Loyalty Engine 2025-2026 • {isHebrew ? 'בנוי עם טכנולוגיה מתקדמת' : 'Built with Advanced Technology'}
+              ⁦Pet Wash™⁩ Loyalty Engine 2025-2026 • {isHebrew ? 'בנוי עם טכנולוגיה מתקדמת' : 'Built with Advanced Technology'}
             </p>
           </div>
         </div>

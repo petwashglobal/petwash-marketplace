@@ -10,7 +10,7 @@ const teamMembers = [
   {
     name: "Nir Hadad",
     title: "Founder & CEO",
-    company: "PetWash™ Ltd",
+    company: "⁦PetWash™⁩ Ltd",
     email: "Nir.H@petwash.co.il",
     phone: "+972 549 833 355",
     mobile: "+61 419 773 360",
@@ -24,7 +24,7 @@ const teamMembers = [
   {
     name: "Ido Shakarzi",
     title: "Director",
-    company: "PetWash™ Ltd",
+    company: "⁦PetWash™⁩ Ltd",
     email: "Ido.S@PetWash.co.il",
     phone: "+972 55-8813036",
     website: "https://www.petwash.co.il",
@@ -37,7 +37,7 @@ const teamMembers = [
   {
     name: "Tom Hane",
     title: "Director",
-    company: "PetWash™ Ltd",
+    company: "⁦PetWash™⁩ Ltd",
     email: "Tom.H@PetWash.co.il",
     phone: "+972 52-6012166",
     website: "https://www.petwash.co.il",

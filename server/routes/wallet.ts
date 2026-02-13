@@ -381,7 +381,7 @@ router.post('/my-business-card', requireAuth, async (req, res) => {
     const cardData = {
       name: customBusinessCard?.name || userData?.displayName || userData?.name || 'VIP Member',
       title: customBusinessCard?.title || userData?.title || 'VIP Member',
-      company: 'Pet Wash™ Ltd',
+      company: '⁦Pet Wash™⁩ Ltd',
       email: userData?.email || '',
       phone: customBusinessCard?.phone || userData?.phone || '',
       mobile: customBusinessCard?.mobile || userData?.mobile,
@@ -443,7 +443,7 @@ router.post('/business-card', async (req, res) => {
     const passBuffer = await AppleWalletService.generateBusinessCard({
       name,
       title: title || '',
-      company: 'Pet Wash™ Ltd',
+      company: '⁦Pet Wash™⁩ Ltd',
       email,
       phone,
       mobile,
@@ -568,7 +568,7 @@ router.get('/pass/:linkId', async (req, res) => {
       const cardData = {
         name: userName,
         title: userData?.displayName === 'Nir Hadad' ? 'CEO & Founder' : 'VIP Member',
-        company: 'Pet Wash™ Ltd',
+        company: '⁦Pet Wash™⁩ Ltd',
         email: userEmail,
         phone: userData?.displayName === 'Nir Hadad' ? '+972 549 833 355' : userData?.phone || '',
         mobile: userData?.mobile,
@@ -716,7 +716,7 @@ router.post('/email-cards', requireAuth, async (req, res) => {
     const msg = {
       to: targetEmail,
       from: 'noreply@petwash.co.il',
-      subject: `${userName} - Your Premium Pet Wash™ Wallet Cards`,
+      subject: `${userName} - Your Premium ⁦Pet Wash™⁩ Wallet Cards`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -792,7 +792,7 @@ router.post('/email-cards', requireAuth, async (req, res) => {
                 Questions? Contact us at <a href="mailto:Support@PetWash.co.il" style="color: #7C3AED;">Support@PetWash.co.il</a>
               </p>
               <p style="color: #999; font-size: 12px; margin: 0;">
-                Pet Wash™ Ltd • Premium Organic Pet Care • Israel
+                ⁦Pet Wash™⁩ Ltd • Premium Organic Pet Care • Israel
               </p>
               <p style="color: #ccc; font-size: 11px; margin: 15px 0 0 0;">
                 Links expire in 1 hour for your security

@@ -1,14 +1,14 @@
 /**
  * 🐙 OCTOPUS BRAIN - Central Platform Orchestration Service
  * 
- * The Master Brain that manages all Pet Wash™ SaaS platforms:
- * - Sitter Suite™ (Pet Sitting)
- * - Walk My Pet™ (Dog Walking)
- * - PetTrek™ (Pet Transportation)
- * - K9000™ (IoT Wash Stations)
- * - Pet Wash Academy™ (Training)
- * - The Plush Lab™ (AI Avatars)
- * - Wash Hub™ (Packages & Loyalty)
+ * The Master Brain that manages all ⁦Pet Wash™⁩ SaaS platforms:
+ * - ⁦Sitter Suite™⁩ (Pet Sitting)
+ * - ⁦Walk My Pet™⁩ (Dog Walking)
+ * - ⁦PetTrek™⁩ (Pet Transportation)
+ * - ⁦K9000™⁩ (IoT Wash Stations)
+ * - ⁦Pet Wash Academy™⁩ (Training)
+ * - ⁦The Plush Lab™⁩ (AI Avatars)
+ * - ⁦Wash Hub™⁩ (Packages & Loyalty)
  * 
  * Features:
  * - Real-time platform health monitoring
@@ -86,7 +86,7 @@ class OctopusBrainService {
   private readonly PLATFORMS: PlatformDefinition[] = [
     {
       id: 'sitter-suite',
-      name: 'Sitter Suite™',
+      name: '⁦Sitter Suite™⁩',
       nameHe: 'סיטר סוויט™',
       icon: '🏠',
       color: '#8B5CF6',
@@ -96,7 +96,7 @@ class OctopusBrainService {
     },
     {
       id: 'walk-my-pet',
-      name: 'Walk My Pet™',
+      name: '⁦Walk My Pet™⁩',
       nameHe: 'ווק מיי פט™',
       icon: '🚶',
       color: '#10B981',
@@ -106,7 +106,7 @@ class OctopusBrainService {
     },
     {
       id: 'pettrek',
-      name: 'PetTrek™',
+      name: '⁦PetTrek™⁩',
       nameHe: 'פט טרק™',
       icon: '🚗',
       color: '#F59E0B',
@@ -116,8 +116,8 @@ class OctopusBrainService {
     },
     {
       id: 'k9000',
-      name: 'K9000™',
-      nameHe: 'K9000™',
+      name: '⁦K9000™⁩',
+      nameHe: '⁦K9000™⁩',
       icon: '🚿',
       color: '#3B82F6',
       basePath: '/api/k9000',
@@ -126,7 +126,7 @@ class OctopusBrainService {
     },
     {
       id: 'academy',
-      name: 'Pet Wash Academy™',
+      name: '⁦Pet Wash Academy™⁩',
       nameHe: 'אקדמיית פט וואש™',
       icon: '🎓',
       color: '#EC4899',
@@ -136,7 +136,7 @@ class OctopusBrainService {
     },
     {
       id: 'plush-lab',
-      name: 'The Plush Lab™',
+      name: '⁦The Plush Lab™⁩',
       nameHe: 'פלוש לאב™',
       icon: '🧸',
       color: '#A855F7',
@@ -146,7 +146,7 @@ class OctopusBrainService {
     },
     {
       id: 'wash-hub',
-      name: 'Wash Hub™',
+      name: '⁦Wash Hub™⁩',
       nameHe: 'ווש האב™',
       icon: '💎',
       color: '#C6A664',
@@ -327,7 +327,7 @@ class OctopusBrainService {
 
       const recentAlerts = this.alerts.filter(a => !a.resolved).slice(0, 10);
 
-      const prompt = `You are the Octopus Brain AI for Pet Wash™ platform ecosystem.
+      const prompt = `You are the Octopus Brain AI for ⁦Pet Wash™⁩ platform ecosystem.
 
 Analyze the following platform health data and provide:
 1. Brief overall assessment (1 sentence)

@@ -178,7 +178,7 @@ export class RevenueReportService {
       doc.on('error', reject);
 
       // Header
-      doc.fontSize(20).text('Pet Wash™ - Revenue Report', { align: 'center' });
+      doc.fontSize(20).text('⁦Pet Wash™⁩ - Revenue Report', { align: 'center' });
       doc.moveDown();
       doc.fontSize(12).text(`Period: ${period.startDate.toLocaleDateString('he-IL')} - ${period.endDate.toLocaleDateString('he-IL')}`, { align: 'center' });
       doc.moveDown(2);

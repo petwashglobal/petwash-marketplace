@@ -121,9 +121,9 @@ export class AppleWalletService {
       formatVersion: 1,
       passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.vip',
       teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
-      organizationName: 'Pet Wash™',
+      organizationName: '⁦Pet Wash™⁩',
       description: `Pet Wash ${data.tier.toUpperCase()} VIP Card`,
-      logoText: 'Pet Wash™',
+      logoText: '⁦Pet Wash™⁩',
       serialNumber: `VIP_${data.userId}_${data.tier}_${Date.now()}`,
       
       backgroundColor: colors.backgroundColor,
@@ -210,9 +210,9 @@ export class AppleWalletService {
       formatVersion: 1,
       passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher',
       teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
-      organizationName: 'Pet Wash™',
+      organizationName: '⁦Pet Wash™⁩',
       description: 'Pet Wash E-Voucher',
-      logoText: 'Pet Wash™',
+      logoText: '⁦Pet Wash™⁩',
       serialNumber: `VOUCHER_${data.voucherId}_${Date.now()}`,
       
       backgroundColor: 'rgb(99, 102, 241)',
@@ -583,7 +583,7 @@ END:VCARD`;
         teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
         organizationName: data.company,
         description: `${data.name} - Digital Business Card`,
-        logoText: 'PetWash™',
+        logoText: '⁦PetWash™⁩',
         serialNumber: `BIZCARD_${data.email.replace('@', '_at_')}_${Date.now()}`,
         
         backgroundColor: 'rgb(18, 18, 18)',       // Premium black like luxury business cards

@@ -145,7 +145,7 @@ export default function BrowseSitters() {
               </div>
               
               <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-light text-gray-900 mb-4" style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif Hebrew', serif", direction: 'ltr', unicodeBidi: 'isolate' }} data-testid="heading-main">
-                The Sitter Suite™
+                ⁦The Sitter Suite™⁩
               </h1>
               
               <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto font-light" style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif Hebrew', serif" }}>
@@ -333,7 +333,7 @@ export default function BrowseSitters() {
                 </span>
               </div>
               <h2 className="text-3xl font-bold text-white mb-3">
-                {isHebrew ? 'הפכו לשמרטפים ב-Pet Wash™' : 'Become a Pet Wash™ Sitter'}
+                {isHebrew ? 'הפכו לשמרטפים ב-⁦Pet Wash™⁩' : 'Become a ⁦Pet Wash™⁩ Sitter'}
               </h2>
               <p className="text-gray-300 max-w-2xl mx-auto">
                 {isHebrew 
@@ -387,7 +387,7 @@ export default function BrowseSitters() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-semibold text-gray-900 mb-3">
-                {isHebrew ? 'למה לבחור ב-The Sitter Suite™?' : 'Why Choose The Sitter Suite™?'}
+                {isHebrew ? 'למה לבחור ב-⁦The Sitter Suite™⁩?' : 'Why Choose ⁦The Sitter Suite™⁩?'}
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
                 {isHebrew 

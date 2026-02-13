@@ -1,7 +1,7 @@
 /**
  * JOB DISPATCH SERVICE - Uber/Airbnb-Style Job Marketplace
  * 
- * Handles job offers for The Sitter Suite™, Walk My Pet™, and PetTrek™
+ * Handles job offers for ⁦The Sitter Suite™⁩, ⁦Walk My Pet™⁩, and ⁦PetTrek™⁩
  * 
  * Flow:
  * 1. Customer creates booking → JobOffer created with "pending" status

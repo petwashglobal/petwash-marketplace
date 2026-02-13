@@ -203,7 +203,7 @@ export default function AdminBackendPanel() {
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Pet Wash™ Backend</h1>
+              <h1 className="text-lg font-bold text-gray-900">⁦Pet Wash™⁩ Backend</h1>
               <p className="text-xs text-gray-500">Admin Control Panel</p>
             </div>
             <Button

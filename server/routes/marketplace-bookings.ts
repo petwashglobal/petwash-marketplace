@@ -325,15 +325,15 @@ router.post('/:quoteId/checkout', async (req, res) => {
 
     // Platform name mapping
     const platformNames: Record<string, string> = {
-      sitter_suite: 'The Sitter Suite™',
-      walk_my_pet: 'Walk My Pet™',
-      pet_trek: 'PetTrek™',
+      sitter_suite: '⁦The Sitter Suite™⁩',
+      walk_my_pet: '⁦Walk My Pet™⁩',
+      pet_trek: '⁦PetTrek™⁩',
       grooming: 'Premium Grooming',
       training_academy: 'Training Academy',
       daycare: 'Pet Daycare',
-      k9000: 'K9000™ Self-Wash'
+      k9000: '⁦K9000™⁩ Self-Wash'
     };
-    const platformName = platformNames[quote.platform || ''] || quote.platform || 'Pet Wash™ Service';
+    const platformName = platformNames[quote.platform || ''] || quote.platform || '⁦Pet Wash™⁩ Service';
 
     // Persist invoice number to booking record (in platformData JSON field)
     await db.update(bookings)

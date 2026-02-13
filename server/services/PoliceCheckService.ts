@@ -2,7 +2,7 @@
  * Police Check Badge Service - Israeli תעודת יושר
  * 
  * Manages police clearance certificate verification and badge issuance
- * for Pet Wash™ service providers.
+ * for ⁦Pet Wash™⁩ service providers.
  * 
  * Hebrew-dominant with English brand touches
  * Israeli Law 2025 compliance
@@ -56,7 +56,7 @@ export interface PoliceCheckSummary {
 }
 
 // ============================================================================
-// BIOMETRIC VERIFICATION TYPES - Pet Wash™ Subcontractor Onboarding
+// BIOMETRIC VERIFICATION TYPES - ⁦Pet Wash™⁩ Subcontractor Onboarding
 // ============================================================================
 
 /**
@@ -170,7 +170,7 @@ class PoliceCheckService {
   }
 
   // ============================================================================
-  // BIOMETRIC ONBOARDING - Pet Wash™ Subcontractor Registration
+  // BIOMETRIC ONBOARDING - ⁦Pet Wash™⁩ Subcontractor Registration
   // ============================================================================
 
   /**
@@ -216,8 +216,8 @@ class PoliceCheckService {
             biometricMatch: false,
           },
           status: 'documents_incomplete',
-          messageHe: 'חסרים מסמכים לקבלה לחברת Pet Wash™',
-          messageEn: 'Missing documents for Pet Wash™ subcontractor registration',
+          messageHe: 'חסרים מסמכים לקבלה לחברת ⁦Pet Wash™⁩',
+          messageEn: 'Missing documents for ⁦Pet Wash™⁩ subcontractor registration',
           nextStepHe: 'אנא העלה את כל המסמכים הנדרשים: תעודת יושר, תעודת זהות ביומטרית וסלפי עדכני',
           nextStepEn: 'Please upload all required documents: police clearance, biometric ID, and current selfie',
         };
@@ -322,8 +322,8 @@ class PoliceCheckService {
           biometricMatchScore: biometricResult.matchScore,
         },
         status: 'ready_for_review',
-        messageHe: 'כל המסמכים אומתו בהצלחה! ברוכים הבאים למשפחת Pet Wash™',
-        messageEn: 'All documents verified successfully! Welcome to the Pet Wash™ family',
+        messageHe: 'כל המסמכים אומתו בהצלחה! ברוכים הבאים למשפחת ⁦Pet Wash™⁩',
+        messageEn: 'All documents verified successfully! Welcome to the ⁦Pet Wash™⁩ family',
         nextStepHe: 'הבקשה שלך נשלחה לצוות שלנו ותיבדק תוך 24-48 שעות',
         nextStepEn: 'Your application has been sent to our team and will be reviewed within 24-48 hours',
       };

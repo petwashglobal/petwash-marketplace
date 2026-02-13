@@ -80,7 +80,7 @@ export function WalletConsentDialog({
         ],
         business: [
           'Your name and title',
-          'Company name (Pet Wash™)',
+          'Company name (⁦Pet Wash™⁩)',
           'Contact email',
           'QR code with contact information',
           'Company logo and branding'
@@ -96,7 +96,7 @@ export function WalletConsentDialog({
       platformNote: platform === 'apple' 
         ? '🍎 This pass will be stored securely in your Apple Wallet. Apple may process this data according to their privacy policy.'
         : '🤖 This pass will be stored in your Google Wallet. Google may process this data according to their privacy policy.',
-      consent1: 'I consent to Pet Wash™ generating and storing the above data in my digital wallet pass',
+      consent1: 'I consent to ⁦Pet Wash™⁩ generating and storing the above data in my digital wallet pass',
       consent2: 'I have read and agree to the',
       privacyPolicy: 'Privacy Policy',
       termsOfService: 'Terms of Service',
@@ -121,7 +121,7 @@ export function WalletConsentDialog({
         ],
         business: [
           'שמך ותפקידך',
-          'שם החברה (Pet Wash™)',
+          'שם החברה (⁦Pet Wash™⁩)',
           'אימייל ליצירת קשר',
           'קוד QR עם פרטי התקשרות',
           'לוגו ומיתוג החברה'
@@ -137,7 +137,7 @@ export function WalletConsentDialog({
       platformNote: platform === 'apple'
         ? '🍎 כרטיס זה יאוחסן בצורה מאובטחת ב-Apple Wallet שלך. Apple עשויה לעבד נתונים אלה בהתאם למדיניות הפרטיות שלהם.'
         : '🤖 כרטיס זה יאוחסן ב-Google Wallet שלך. Google עשויה לעבד נתונים אלה בהתאם למדיניות הפרטיות שלהם.',
-      consent1: 'אני מסכים ל-Pet Wash™ ליצור ולאחסן את הנתונים לעיל בכרטיס הארנק הדיגיטלי שלי',
+      consent1: 'אני מסכים ל-⁦Pet Wash™⁩ ליצור ולאחסן את הנתונים לעיל בכרטיס הארנק הדיגיטלי שלי',
       consent2: 'קראתי ואני מסכים ל',
       privacyPolicy: 'מדיניות הפרטיות',
       termsOfService: 'תנאי השימוש',

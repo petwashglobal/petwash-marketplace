@@ -199,7 +199,7 @@ export function ExpressCheckoutModal({
           <div className="flex items-center gap-3">
             <img 
               src="/brand/petwash-logo-official.png" 
-              alt="Pet Wash™" 
+              alt="⁦Pet Wash™⁩" 
               className="h-7 w-auto object-contain"
             />
             <span className="text-[10px] tracking-[0.15em] uppercase text-[#999] font-medium">
@@ -371,7 +371,7 @@ export function ExpressCheckoutModal({
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[9px] text-[#ccc] tracking-wider">
-                {tx('poweredBy', lang)} <span className="font-medium text-[#aaa]">Nayax</span> · Pet Wash™
+                {tx('poweredBy', lang)} <span className="font-medium text-[#aaa]">Nayax</span> · ⁦Pet Wash™⁩
               </span>
             </div>
           </div>

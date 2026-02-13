@@ -99,7 +99,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">1. Acceptance of Terms</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        By accessing or using Pet Wash™ services (website, mobile application, physical washing stations), 
+                        By accessing or using ⁦Pet Wash™⁩ services (website, mobile application, physical washing stations), 
                         you agree to be bound by these Terms and Conditions. If you do not agree to these terms, 
                         please do not use our services.
                       </p>
@@ -118,7 +118,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">2. Service Description</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        Pet Wash™ provides premium organic pet washing services, including:
+                        ⁦Pet Wash™⁩ provides premium organic pet washing services, including:
                       </p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
@@ -571,7 +571,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">12. Intellectual Property</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        All content on our website, app, and materials (including Pet Wash™ logo, trademarks, text, graphics, 
+                        All content on our website, app, and materials (including ⁦Pet Wash™⁩ logo, trademarks, text, graphics, 
                         images, software) are the property of Pet Wash Ltd and protected by Israeli and international 
                         intellectual property laws.
                       </p>
@@ -605,7 +605,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">13. Service Area & Availability</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        Pet Wash™ services are currently available throughout Israel. 
+                        ⁦Pet Wash™⁩ services are currently available throughout Israel. 
                         Station locations are listed on our website and mobile app.
                       </p>
                       <p className="luxury-text-body">
@@ -721,7 +721,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">1. קבלת התנאים</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        על ידי שימוש בשירותי Pet Wash™ (אתר, אפליקציה, תחנות רחיצה), 
+                        על ידי שימוש בשירותי ⁦Pet Wash™⁩ (אתר, אפליקציה, תחנות רחיצה), 
                         אתה מסכים להיות כפוף לתנאים וההגבלות הללו.
                         אם אינך מסכים לתנאים אלו, אנא אל תשתמש בשירותינו.
                       </p>
@@ -739,7 +739,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">2. תיאור השירות</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        Pet Wash™ מספקת שירותי רחצת חיות מחמד אורגנית פרמיום, כולל:
+                        ⁦Pet Wash™⁩ מספקת שירותי רחצת חיות מחמד אורגנית פרמיום, כולל:
                       </p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
@@ -1131,7 +1131,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">12. קניין רוחני</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        כל התוכן באתר, באפליקציה ובחומרים שלנו (כולל לוגו Pet Wash™, סימנים מסחריים, טקסט, גרפיקה, 
+                        כל התוכן באתר, באפליקציה ובחומרים שלנו (כולל לוגו ⁦Pet Wash™⁩, סימנים מסחריים, טקסט, גרפיקה, 
                         תמונות, תוכנה) הם רכושה של פט ווש בע"מ ומוגנים על ידי חוקי קניין רוחני ישראליים ובינלאומיים.
                       </p>
                     </div>

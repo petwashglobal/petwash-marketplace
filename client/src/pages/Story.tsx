@@ -23,7 +23,7 @@ export default function Story() {
               <span className="luxury-gradient-text">The Vision</span>
             </h2>
             <p className="luxury-text-body leading-relaxed text-lg">
-              Pet Wash™ was born from a simple idea: every pet deserves access to premium care,
+              ⁦Pet Wash™⁩ was born from a simple idea: every pet deserves access to premium care,
               and every pet owner deserves convenience. We've built the world's first integrated
               pet care ecosystem, connecting 8 different platforms under one unified experience.
             </p>

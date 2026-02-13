@@ -235,7 +235,7 @@ Total Transactions: ${stats.total}
               color: colors[params.level],
               title: params.message,
               text: params.details || '',
-              footer: 'Pet Wash™ Nayax Monitor',
+              footer: '⁦Pet Wash™⁩ Nayax Monitor',
               ts: Math.floor(Date.now() / 1000),
             },
           ],

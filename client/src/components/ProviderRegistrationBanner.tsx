@@ -137,7 +137,7 @@ export default function ProviderRegistrationBanner({
     {
       icon: Heart,
       title: isRTL ? "קהילה תומכת" : "Supportive Community",
-      desc: isRTL ? "חלק ממשפחת Pet Wash™" : "Part of Pet Wash™ family",
+      desc: isRTL ? "חלק ממשפחת ⁦Pet Wash™⁩" : "Part of ⁦Pet Wash™⁩ family",
     },
   ];
 
@@ -308,7 +308,7 @@ export default function ProviderRegistrationBanner({
             </div>
             <div>
               <h3 className="font-bold text-white text-lg">
-                {isRTL ? "הצטרפו למשפחת Pet Wash™" : "Join Pet Wash™ Family"}
+                {isRTL ? "הצטרפו למשפחת ⁦Pet Wash™⁩" : "Join ⁦Pet Wash™⁩ Family"}
               </h3>
               <p className="text-gray-400 text-sm">
                 {isRTL ? "הרוויחו עד ₪200+ לשעה" : "Earn up to ₪200+/hour"}
@@ -378,8 +378,8 @@ export default function ProviderRegistrationBanner({
               
               <p className="text-gray-300 text-lg mb-8">
                 {isRTL 
-                  ? "הצטרפו למשפחת Pet Wash™ בתור שותפים חיצוניים והרוויחו הכנסה נוספת בשעות הפנויות שלכם. אנחנו מחפשים שמרטפים, מוליכי כלבים, נהגים ומאלפים."
-                  : "Join the Pet Wash™ family as external partners and earn extra income during your free time. We're looking for pet sitters, dog walkers, drivers, and trainers."}
+                  ? "הצטרפו למשפחת ⁦Pet Wash™⁩ בתור שותפים חיצוניים והרוויחו הכנסה נוספת בשעות הפנויות שלכם. אנחנו מחפשים שמרטפים, מוליכי כלבים, נהגים ומאלפים."
+                  : "Join the ⁦Pet Wash™⁩ family as external partners and earn extra income during your free time. We're looking for pet sitters, dog walkers, drivers, and trainers."}
               </p>
 
               <div className="grid grid-cols-2 gap-4 mb-8">
@@ -466,7 +466,7 @@ export default function ProviderRegistrationBanner({
           </div>
           
           <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-            {isRTL ? "הצטרפו למשפחת Pet Wash™" : "Join the Pet Wash™ Family"}
+            {isRTL ? "הצטרפו למשפחת ⁦Pet Wash™⁩" : "Join the ⁦Pet Wash™⁩ Family"}
           </h2>
           
           <p className="text-gray-300 max-w-2xl mx-auto">
@@ -841,8 +841,8 @@ function ApplicationForm({
           />
           <label htmlFor="agreeToTerms" className="text-gray-300 text-sm cursor-pointer">
             {isRTL 
-              ? "אני מאשר/ת את תנאי השימוש ומדיניות הפרטיות של Pet Wash™. אני מבין/ה שזו הרשמה למועמדות ולא התחייבות לקבלה."
-              : "I agree to Pet Wash™ terms of service and privacy policy. I understand this is an application, not a guarantee of acceptance."}
+              ? "אני מאשר/ת את תנאי השימוש ומדיניות הפרטיות של ⁦Pet Wash™⁩. אני מבין/ה שזו הרשמה למועמדות ולא התחייבות לקבלה."
+              : "I agree to ⁦Pet Wash™⁩ terms of service and privacy policy. I understand this is an application, not a guarantee of acceptance."}
           </label>
         </div>
 

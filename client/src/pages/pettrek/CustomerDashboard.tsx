@@ -191,7 +191,7 @@ export default function PetTrekCustomerDashboard() {
         <div className="flex items-center justify-between mb-8 luxury-animate-fade-in">
           <div>
             <h1 className="luxury-heading-lg luxury-text-gradient mb-2" data-testid="page-title">
-              🚗 Welcome to PetTrek™
+              🚗 Welcome to ⁦PetTrek™⁩
             </h1>
             <p className="luxury-text-body" data-testid="page-subtitle">Your Premium Pet Transportation Hub</p>
           </div>

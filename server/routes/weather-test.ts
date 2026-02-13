@@ -124,7 +124,7 @@ router.post('/weather-test/batch', async (req, res) => {
  */
 router.get('/weather-test/health', async (req, res) => {
   try {
-    // Test with Tel Aviv coordinates (Pet Wash™ HQ)
+    // Test with Tel Aviv coordinates (⁦Pet Wash™⁩ HQ)
     const telAvivLat = 32.0853;
     const telAvivLon = 34.7818;
 
@@ -137,7 +137,7 @@ router.get('/weather-test/health', async (req, res) => {
       provider: data.weather?.source || 'unknown',
       responseTime: `${responseTime}ms`,
       googleWeatherApiKey: process.env.GOOGLE_WEATHER_API_KEY ? '✅ Configured' : '❌ Missing',
-      testLocation: 'Tel Aviv, Israel (Pet Wash™ HQ)',
+      testLocation: 'Tel Aviv, Israel (⁦Pet Wash™⁩ HQ)',
       coordinates: {
         lat: telAvivLat,
         lon: telAvivLon

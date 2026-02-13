@@ -59,7 +59,7 @@ export default function EGiftPolicy() {
             </div>
             <h3 className="luxury-heading-sm mb-2">All Platforms</h3>
             <p className="luxury-text-small">
-              Use across all Pet Wash™ services and platforms
+              Use across all ⁦Pet Wash™⁩ services and platforms
             </p>
           </div>
         </div>
@@ -77,7 +77,7 @@ export default function EGiftPolicy() {
           
           <div className="luxury-text-body space-y-4">
             <p>
-              Pet Wash™ eGift cards are digital vouchers that can be redeemed for services across all platforms.
+              ⁦Pet Wash™⁩ eGift cards are digital vouchers that can be redeemed for services across all platforms.
             </p>
             
             <ul className="space-y-3 ml-6">
@@ -131,7 +131,7 @@ export default function EGiftPolicy() {
               </div>
               <div>
                 <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Select your service</h4>
-                <p className="luxury-text-small">Choose any Pet Wash™ service or product</p>
+                <p className="luxury-text-small">Choose any ⁦Pet Wash™⁩ service or product</p>
               </div>
             </div>
 

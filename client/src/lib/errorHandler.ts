@@ -1,7 +1,7 @@
 /**
  * Centralized Error Handling System 2025
  * 
- * User-friendly error handling for Pet Wash™:
+ * User-friendly error handling for ⁦Pet Wash™⁩:
  * - Catches and logs all errors
  * - Shows bilingual user-friendly messages
  * - Sends error reports to backend

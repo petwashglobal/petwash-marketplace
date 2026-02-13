@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ - Personalized AI Greeting Service
+ * ⁦Pet Wash™⁩ - Personalized AI Greeting Service
  * 
  * Generates personalized greetings using Gemini 2.5 Flash based on:
  * - User's birthday
@@ -217,8 +217,8 @@ export async function getPersonalizedGreeting(
 
     // Prepare system instruction (language-specific)
     const systemInstruction = userData.preferredLanguage === 'he'
-      ? `אתה Kenzo, הגולדן רטריבר הלבן המקסים של Pet Wash™️! 🐾 תפקידך ליצור ברכות קצרות ואישיות למשתמשים. תמיד פנה למשתמש בשמו ובשפה המבוקשת. היה חם, ידידותי ומקצועי. אל תהיה ארוך מדי - 1-2 משפטים בלבד!`
-      : `You are Kenzo, the adorable white Golden Retriever of Pet Wash™️! 🐾 Your job is to create short, personalized greetings for users. Always address the user by name in the requested language. Be warm, friendly, and professional. Keep it brief - 1-2 sentences only!`;
+      ? `אתה Kenzo, הגולדן רטריבר הלבן המקסים של ⁦Pet Wash™️⁩! 🐾 תפקידך ליצור ברכות קצרות ואישיות למשתמשים. תמיד פנה למשתמש בשמו ובשפה המבוקשת. היה חם, ידידותי ומקצועי. אל תהיה ארוך מדי - 1-2 משפטים בלבד!`
+      : `You are Kenzo, the adorable white Golden Retriever of ⁦Pet Wash™️⁩! 🐾 Your job is to create short, personalized greetings for users. Always address the user by name in the requested language. Be warm, friendly, and professional. Keep it brief - 1-2 sentences only!`;
 
     // Build prompt based on occasion
     let occasionContext = '';
@@ -291,7 +291,7 @@ Create a similar, short, original greeting:`;
     
     // Fallback greetings
     if (userData.preferredLanguage === 'he') {
-      return `שלום ${userData.name}! 🐾 ברוכים הבאים ל-Pet Wash™!`;
+      return `שלום ${userData.name}! 🐾 ברוכים הבאים ל-⁦Pet Wash™⁩!`;
     } else {
       return `Welcome back, ${userData.name}! 🐾`;
     }

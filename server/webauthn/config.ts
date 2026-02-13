@@ -126,7 +126,7 @@ export const ATTESTATION_POLICY = {
 export const webauthnConfig: WebAuthnConfig = {
   // Relying Party
   rpId: process.env.WEBAUTHN_RP_ID || 'petwash.co.il',
-  rpName: process.env.WEBAUTHN_RP_NAME || 'Pet Wash™',
+  rpName: process.env.WEBAUTHN_RP_NAME || '⁦Pet Wash™⁩',
   origins: ORIGINS,
   
   // Timeouts

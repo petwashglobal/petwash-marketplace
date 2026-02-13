@@ -91,10 +91,10 @@ const platformIcons: Record<string, any> = {
 };
 
 const platformLabels: Record<string, { he: string; en: string }> = {
-  sitter_suite: { he: "מלון חיות", en: "Sitter Suite™" },
-  walk_my_pet: { he: "טיולי כלבים", en: "Walk My Pet™" },
-  pettrek: { he: "הסעות", en: "PetTrek™" },
-  k9000: { he: "עמדות שטיפה", en: "K9000™" },
+  sitter_suite: { he: "מלון חיות", en: "⁦Sitter Suite™⁩" },
+  walk_my_pet: { he: "טיולי כלבים", en: "⁦Walk My Pet™⁩" },
+  pettrek: { he: "הסעות", en: "⁦PetTrek™⁩" },
+  k9000: { he: "עמדות שטיפה", en: "⁦K9000™⁩" },
 };
 
 const statusStyles: Record<string, string> = {
@@ -336,7 +336,7 @@ export default function ProviderManagementView() {
         <TabsContent value="queue" className="space-y-4">
           <Card className="luxury-glass-card">
             <CardHeader>
-              <CardTitle>תור אישורים - Pet Wash™</CardTitle>
+              <CardTitle>תור אישורים - ⁦Pet Wash™⁩</CardTitle>
               <CardDescription>
                 7-פריטים לבדיקה לכל ספק: תמונה, תעודות, זהות, כתובת, תעודת יושר, ביטוח, תמחור
               </CardDescription>
@@ -550,7 +550,7 @@ export default function ProviderManagementView() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <GraduationCap className="w-5 h-5" />
-                מערכת הכשרה - Pet Wash™
+                מערכת הכשרה - ⁦Pet Wash™⁩
               </CardTitle>
               <CardDescription>
                 מודולים, מבחנים, ותעודות לכל פלטפורמה
@@ -585,7 +585,7 @@ export default function ProviderManagementView() {
                       {stats?.trainingCompletions || 0}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      תעודות Pet Wash™ Certified שהופקו
+                      תעודות ⁦Pet Wash™⁩ Certified שהופקו
                     </p>
                   </div>
                 </div>

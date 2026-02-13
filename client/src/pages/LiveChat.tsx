@@ -28,7 +28,7 @@ export default function LiveChat() {
               Click the purple chat bubble in the bottom-right corner to start chatting! 💬
             </p>
             <p className="text-white/80 text-lg">
-              Our AI assistant is available on every page of Pet Wash™
+              Our AI assistant is available on every page of ⁦Pet Wash™⁩
             </p>
           </div>
 

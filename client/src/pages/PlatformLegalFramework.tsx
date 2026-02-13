@@ -26,7 +26,7 @@ export default function PlatformLegalFramework() {
               {isHebrew ? 'מסגרת משפטית של הפלטפורמה' : 'Platform Legal Framework'}
             </h1>
             <p className="luxury-heading-md mb-2">
-              {isHebrew ? 'Pet Wash™ - פלטפורמת מקשרת בלבד (כמו Uber)' : 'Pet Wash™ - Connector Platform Only (Like Uber)'}
+              {isHebrew ? '⁦Pet Wash™⁩ - פלטפורמת מקשרת בלבד (כמו Uber)' : '⁦Pet Wash™⁩ - Connector Platform Only (Like Uber)'}
             </p>
             <p className="luxury-text-small">
               {isHebrew ? 'עודכן לאחרונה: 29 באוקטובר 2025' : 'Last Updated: October 29, 2025'}
@@ -103,7 +103,7 @@ export default function PlatformLegalFramework() {
               {/* Walk My Pet */}
               <div className="luxury-glass-panel rounded-xl p-6">
                 <h3 className="text-xl font-bold mb-3 text-purple-900 dark:text-purple-200">
-                  Walk My Pet™
+                  ⁦Walk My Pet™⁩
                 </h3>
                 <p className="text-sm text-purple-800 dark:text-purple-300 mb-4">
                   {isHebrew ? 'פלטפורמת שוק - 24% עמלת תיווך גולמית' : 'Marketplace Platform - 24% gross take rate'}
@@ -127,7 +127,7 @@ export default function PlatformLegalFramework() {
               {/* The Sitter Suite */}
               <div className="luxury-glass-panel rounded-xl p-6">
                 <h3 className="text-xl font-bold mb-3 text-green-900 dark:text-green-200">
-                  The Sitter Suite™
+                  ⁦The Sitter Suite™⁩
                 </h3>
                 <p className="text-sm text-green-800 dark:text-green-300 mb-4">
                   {isHebrew ? 'שוק Airbnb - עמלת תיווך 7%' : 'Airbnb-style marketplace - 7% broker commission'}

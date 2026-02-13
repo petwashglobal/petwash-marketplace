@@ -68,7 +68,7 @@ router.post('/send-report', async (req, res) => {
 
     await sendLuxuryEmail({
       to: recipientEmail,
-      subject: `🔍 Pet Wash™ - Endpoint QA Report ${new Date().toLocaleDateString()}`,
+      subject: `🔍 ⁦Pet Wash™⁩ - Endpoint QA Report ${new Date().toLocaleDateString()}`,
       html: htmlReport
     });
 

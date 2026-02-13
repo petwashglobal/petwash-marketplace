@@ -152,7 +152,7 @@ export default function Hub() {
         {/* Hero Section */}
         <div className="text-center mb-16 luxury-animate-fade-in">
           <h1 className="luxury-heading-xl mb-4">
-            Pet Wash Hub™
+            Pet ⁦Wash Hub™⁩
           </h1>
           {user && (
             <p className="luxury-heading-lg mb-3">
@@ -344,7 +344,7 @@ export default function Hub() {
               <Heart className="w-8 h-8 text-white" />
             </div>
             <h2 className="luxury-heading-lg mb-4">
-              Experience the Pet Wash™ Ecosystem
+              Experience the ⁦Pet Wash™⁩ Ecosystem
             </h2>
             <p className="luxury-text-body mb-6 max-w-2xl mx-auto">
               One account. Eight premium platforms. Unlimited care for your pets.

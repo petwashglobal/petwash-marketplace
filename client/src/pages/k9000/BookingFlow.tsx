@@ -160,7 +160,7 @@ export default function K9000BookingFlow() {
           </button>
 
           <h1 className="luxury-heading-md luxury-text-gradient" data-testid="page-title">
-            הזמנת K9000™
+            הזמנת ⁦K9000™⁩
           </h1>
         </div>
       </div>
@@ -325,7 +325,7 @@ export default function K9000BookingFlow() {
             
             <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6 space-y-3">
               <div className="luxury-heading-sm">
-                K9000™ - {selectedStation?.name || "תחנת שטיפה"}
+                ⁦K9000™⁩ - {selectedStation?.name || "תחנת שטיפה"}
               </div>
               <div className="luxury-text-body">
                 תאריך: {selectedDate ? selectedDate.toLocaleString("he-IL") : "-"}

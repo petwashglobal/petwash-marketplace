@@ -136,7 +136,7 @@ export class GeminiUpdateAdvisor {
   private static async analyzeUpdate(update: any): Promise<UpdateAdvisory> {
     try {
       const prompt = `
-You are a senior DevOps engineer advising on a software update for Pet Wash™ production platform.
+You are a senior DevOps engineer advising on a software update for ⁦Pet Wash™⁩ production platform.
 
 **Update Details:**
 Package: ${update.component}
@@ -281,11 +281,11 @@ Respond ONLY with valid JSON.
 
       await emailService.sendEmail({
         to: 'nirhadad1@gmail.com',
-        subject: `🤖 Pet Wash™ - Gemini AI Update Recommendations (${advisories.length} updates)`,
+        subject: `🤖 ⁦Pet Wash™⁩ - Gemini AI Update Recommendations (${advisories.length} updates)`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
             <h1 style="color: #0B57D0;">🤖 Gemini AI Update Advisory</h1>
-            <p>Gemini 2.5 Flash has analyzed ${advisories.length} available updates for your Pet Wash™ platform.</p>
+            <p>Gemini 2.5 Flash has analyzed ${advisories.length} available updates for your ⁦Pet Wash™⁩ platform.</p>
             
             ${criticalItems.length > 0 ? `
               <h2 style="color: #dc2626;">🚨 Apply Now (${criticalItems.length})</h2>

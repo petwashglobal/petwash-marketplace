@@ -172,7 +172,7 @@ CRITICAL TRANSLATION RULES:
     case 'he':
       prompt += `\nHEBREW-SPECIFIC RULES:
 - Use modern Israeli Hebrew (not biblical)
-- Preserve English brand names (Pet Wash™, K9000™, etc.)
+- Preserve English brand names (⁦Pet Wash™⁩, ⁦K9000™⁩, etc.)
 - Use correct gender agreement
 - Natural word order for spoken Hebrew
 - Keep numbers and currency symbols as-is (₪, $, etc.)
@@ -182,7 +182,7 @@ CRITICAL TRANSLATION RULES:
     case 'ar':
       prompt += `\nARABIC-SPECIFIC RULES:
 - Use Modern Standard Arabic (MSA) or Levantine dialect as appropriate
-- Preserve English brand names (Pet Wash™, K9000™, etc.)
+- Preserve English brand names (⁦Pet Wash™⁩, ⁦K9000™⁩, etc.)
 - Correct gender and number agreement
 - Right-to-left text direction
 - Keep currency symbols as-is (₪, $, etc.)
@@ -192,7 +192,7 @@ CRITICAL TRANSLATION RULES:
     case 'ru':
       prompt += `\nRUSSIAN-SPECIFIC RULES:
 - Use contemporary Russian (not formal Soviet-era)
-- Preserve English brand names (Pet Wash™, K9000™, etc.)
+- Preserve English brand names (⁦Pet Wash™⁩, ⁦K9000™⁩, etc.)
 - Correct case declensions
 - Natural colloquial phrasing
 `;
@@ -201,7 +201,7 @@ CRITICAL TRANSLATION RULES:
     case 'fr':
       prompt += `\nFRENCH-SPECIFIC RULES:
 - Use International French (not Canadian)
-- Preserve English brand names (Pet Wash™, K9000™, etc.)
+- Preserve English brand names (⁦Pet Wash™⁩, ⁦K9000™⁩, etc.)
 - Correct gender agreement
 - Formal "vous" for business context, "tu" for casual
 `;
@@ -210,7 +210,7 @@ CRITICAL TRANSLATION RULES:
     case 'es':
       prompt += `\nSPANISH-SPECIFIC RULES:
 - Use International Spanish (neutral Latin American)
-- Preserve English brand names (Pet Wash™, K9000™, etc.)
+- Preserve English brand names (⁦Pet Wash™⁩, ⁦K9000™⁩, etc.)
 - Formal "usted" for business, "tú" for casual
 - Natural phrasing (avoid literal translations)
 `;

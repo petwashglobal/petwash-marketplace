@@ -182,7 +182,7 @@ router.post('/request-trip', requireAuth, requireLoyaltyMember, async (req, res)
     calendarIntegrationService.createBookingEvent({
       platform: 'pettrek',
       bookingId: tripId,
-      title: `PetTrek™ - ${data.petName} ${data.serviceType}`,
+      title: `⁦PetTrek™⁩ - ${data.petName} ${data.serviceType}`,
       description: `${data.serviceType} for ${data.petName} (${data.petType}, ${data.petSize})`,
       startTime: data.scheduledPickupTime,
       endTime: new Date(data.scheduledPickupTime.getTime() + 60 * 60000),

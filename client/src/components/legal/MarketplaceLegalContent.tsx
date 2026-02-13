@@ -56,14 +56,14 @@ export function MarketplaceLegalContent({ section, compact = false, className = 
         {
           title: isHebrew ? "הגדרות ותנאים כלליים" : "Definitions and General Terms",
           content: isHebrew 
-            ? `Pet Wash™ היא פלטפורמת שוק מקוונת ("השוק") המחברת בין בעלי חיות מחמד ("לקוחות") לבין נותני שירות עצמאיים ("ספקים"). Pet Wash™ אינה מספקת שירותי טיפול בחיות מחמד באופן ישיר, אלא משמשת כמתווכת טכנולוגית המאפשרת חיבור בין הצדדים. כל ספק הוא קבלן עצמאי ואינו עובד של Pet Wash™.`
-            : `Pet Wash™ is an online marketplace platform ("Marketplace") connecting pet owners ("Customers") with independent service providers ("Providers"). Pet Wash™ does not directly provide pet care services but acts as a technology intermediary enabling connections between parties. Each Provider is an independent contractor and not an employee of Pet Wash™.`
+            ? `⁦Pet Wash™⁩ היא פלטפורמת שוק מקוונת ("השוק") המחברת בין בעלי חיות מחמד ("לקוחות") לבין נותני שירות עצמאיים ("ספקים"). ⁦Pet Wash™⁩ אינה מספקת שירותי טיפול בחיות מחמד באופן ישיר, אלא משמשת כמתווכת טכנולוגית המאפשרת חיבור בין הצדדים. כל ספק הוא קבלן עצמאי ואינו עובד של ⁦Pet Wash™⁩.`
+            : `⁦Pet Wash™⁩ is an online marketplace platform ("Marketplace") connecting pet owners ("Customers") with independent service providers ("Providers"). ⁦Pet Wash™⁩ does not directly provide pet care services but acts as a technology intermediary enabling connections between parties. Each Provider is an independent contractor and not an employee of ⁦Pet Wash™⁩.`
         },
         {
           title: isHebrew ? "תפקיד הפלטפורמה" : "Platform Role",
           content: isHebrew
-            ? `Pet Wash™ מספקת: (1) טכנולוגיית שוק לחיבור לקוחות וספקים, (2) עיבוד תשלומים מאובטח, (3) מערכת נאמנות 72 שעות להגנה פיננסית, (4) כלי תקשורת ולוח זמנים, (5) מערכת דירוג וביקורות, (6) ערוצי יישוב סכסוכים. Pet Wash™ לא מתחייבת לזמינות ספקים, איכות השירותים, או התאמה לכל חיית מחמד.`
-            : `Pet Wash™ provides: (1) Marketplace technology connecting Customers and Providers, (2) Secure payment processing, (3) 72-hour escrow system for financial protection, (4) Communication and scheduling tools, (5) Rating and review system, (6) Dispute resolution channels. Pet Wash™ does not guarantee Provider availability, service quality, or suitability for any pet.`
+            ? `⁦Pet Wash™⁩ מספקת: (1) טכנולוגיית שוק לחיבור לקוחות וספקים, (2) עיבוד תשלומים מאובטח, (3) מערכת נאמנות 72 שעות להגנה פיננסית, (4) כלי תקשורת ולוח זמנים, (5) מערכת דירוג וביקורות, (6) ערוצי יישוב סכסוכים. ⁦Pet Wash™⁩ לא מתחייבת לזמינות ספקים, איכות השירותים, או התאמה לכל חיית מחמד.`
+            : `⁦Pet Wash™⁩ provides: (1) Marketplace technology connecting Customers and Providers, (2) Secure payment processing, (3) 72-hour escrow system for financial protection, (4) Communication and scheduling tools, (5) Rating and review system, (6) Dispute resolution channels. ⁦Pet Wash™⁩ does not guarantee Provider availability, service quality, or suitability for any pet.`
         },
         {
           title: isHebrew ? "כשירות שימוש" : "Eligibility",
@@ -81,8 +81,8 @@ export function MarketplaceLegalContent({ section, compact = false, className = 
         {
           title: isHebrew ? "מעמד קבלן עצמאי" : "Independent Contractor Status",
           content: isHebrew
-            ? `כספק ב-Pet Wash™, הנך מאשר כי אתה קבלן עצמאי ולא עובד. אתה אחראי ל: (1) דיווח והעברת מיסים, (2) ביטוח אחריות מקצועית, (3) ציוד ואספקה, (4) קביעת לוח זמנים ותמחור, (5) עמידה בתקנות מקומיות. Pet Wash™ גובה עמלת פלטפורמה של 15% מסך ההזמנה. יתרת 85% מועברת לספק בתום תקופת הנאמנות.`
-            : `As a Pet Wash™ Provider, you acknowledge being an independent contractor, not an employee. You are responsible for: (1) Tax reporting and remittance, (2) Professional liability insurance, (3) Equipment and supplies, (4) Schedule and pricing determination, (5) Local regulatory compliance. Pet Wash™ charges a 15% platform commission on total bookings. The remaining 85% is transferred to Providers after the escrow period.`
+            ? `כספק ב-⁦Pet Wash™⁩, הנך מאשר כי אתה קבלן עצמאי ולא עובד. אתה אחראי ל: (1) דיווח והעברת מיסים, (2) ביטוח אחריות מקצועית, (3) ציוד ואספקה, (4) קביעת לוח זמנים ותמחור, (5) עמידה בתקנות מקומיות. ⁦Pet Wash™⁩ גובה עמלת פלטפורמה של 15% מסך ההזמנה. יתרת 85% מועברת לספק בתום תקופת הנאמנות.`
+            : `As a ⁦Pet Wash™⁩ Provider, you acknowledge being an independent contractor, not an employee. You are responsible for: (1) Tax reporting and remittance, (2) Professional liability insurance, (3) Equipment and supplies, (4) Schedule and pricing determination, (5) Local regulatory compliance. ⁦Pet Wash™⁩ charges a 15% platform commission on total bookings. The remaining 85% is transferred to Providers after the escrow period.`
         },
         {
           title: isHebrew ? "תמחור ותשלומים" : "Pricing and Payments",
@@ -93,8 +93,8 @@ export function MarketplaceLegalContent({ section, compact = false, className = 
         {
           title: isHebrew ? "ציות לחוקי ישראל" : "Israeli Legal Compliance",
           content: isHebrew
-            ? `ספקים הפועלים בישראל חייבים לעמוד ב: חוק חובת המכרזים לקבלנים עצמאיים, פקודת מס הכנסה וחוק מע"מ, תקנות ביטוח לאומי, חוק הגנת הפרטיות התשמ"א-1981 (כולל תיקון 2025), תקנות רווחת בעלי חיים. Pet Wash™ עשויה לספק טפסים וכלים לעזרה בציות אך אינה מספקת ייעוץ משפטי או מיסויי.`
-            : `Providers operating in Israel must comply with: Independent contractor regulations, Income Tax Ordinance and VAT Law, National Insurance regulations, Privacy Protection Law 5741-1981 (including 2025 amendment), Animal welfare regulations. Pet Wash™ may provide forms and tools to assist compliance but does not provide legal or tax advice.`
+            ? `ספקים הפועלים בישראל חייבים לעמוד ב: חוק חובת המכרזים לקבלנים עצמאיים, פקודת מס הכנסה וחוק מע"מ, תקנות ביטוח לאומי, חוק הגנת הפרטיות התשמ"א-1981 (כולל תיקון 2025), תקנות רווחת בעלי חיים. ⁦Pet Wash™⁩ עשויה לספק טפסים וכלים לעזרה בציות אך אינה מספקת ייעוץ משפטי או מיסויי.`
+            : `Providers operating in Israel must comply with: Independent contractor regulations, Income Tax Ordinance and VAT Law, National Insurance regulations, Privacy Protection Law 5741-1981 (including 2025 amendment), Animal welfare regulations. ⁦Pet Wash™⁩ may provide forms and tools to assist compliance but does not provide legal or tax advice.`
         }
       ]
     },
@@ -118,8 +118,8 @@ export function MarketplaceLegalContent({ section, compact = false, className = 
         {
           title: isHebrew ? "יישוב סכסוכים" : "Dispute Resolution",
           content: isHebrew
-            ? `במקרה של בעיות עם שירות, יש לפנות לתמיכת Pet Wash™ תוך 72 שעות. הפלטפורמה תחקור ועשויה: להציע החזר מלא או חלקי, לתווך בין הצדדים, לנקוט פעולה נגד ספק. החזרים כספיים מוגבלים לסכום שהוחזק בנאמנות ולא יחרגו מהתשלום המקורי.`
-            : `If issues arise with service, contact Pet Wash™ support within 72 hours. The platform will investigate and may: Offer full or partial refund, Mediate between parties, Take action against Provider. Monetary refunds are limited to escrowed amounts and shall not exceed original payment.`
+            ? `במקרה של בעיות עם שירות, יש לפנות לתמיכת ⁦Pet Wash™⁩ תוך 72 שעות. הפלטפורמה תחקור ועשויה: להציע החזר מלא או חלקי, לתווך בין הצדדים, לנקוט פעולה נגד ספק. החזרים כספיים מוגבלים לסכום שהוחזק בנאמנות ולא יחרגו מהתשלום המקורי.`
+            : `If issues arise with service, contact ⁦Pet Wash™⁩ support within 72 hours. The platform will investigate and may: Offer full or partial refund, Mediate between parties, Take action against Provider. Monetary refunds are limited to escrowed amounts and shall not exceed original payment.`
         }
       ]
     },
@@ -131,8 +131,8 @@ export function MarketplaceLegalContent({ section, compact = false, className = 
         {
           title: isHebrew ? "מבנה עמלות הפלטפורמה" : "Platform Fee Structure",
           content: isHebrew
-            ? `Pet Wash™ גובה עמלה אחידה של 15% מסך ההזמנה. עמלה זו כוללת: עיבוד תשלומים מאובטח, מערכת נאמנות 72 שעות, תמיכת לקוחות, פיתוח ותחזוקת פלטפורמה, אימות ספקים, מנגנון יישוב סכסוכים. לספקים מועבר 85% מסך ההזמנה לאחר תקופת הנאמנות.`
-            : `Pet Wash™ charges a uniform 15% commission on total bookings. This fee includes: Secure payment processing, 72-hour escrow system, Customer support, Platform development and maintenance, Provider verification, Dispute resolution mechanisms. Providers receive 85% of total booking after escrow period.`
+            ? `⁦Pet Wash™⁩ גובה עמלה אחידה של 15% מסך ההזמנה. עמלה זו כוללת: עיבוד תשלומים מאובטח, מערכת נאמנות 72 שעות, תמיכת לקוחות, פיתוח ותחזוקת פלטפורמה, אימות ספקים, מנגנון יישוב סכסוכים. לספקים מועבר 85% מסך ההזמנה לאחר תקופת הנאמנות.`
+            : `⁦Pet Wash™⁩ charges a uniform 15% commission on total bookings. This fee includes: Secure payment processing, 72-hour escrow system, Customer support, Platform development and maintenance, Provider verification, Dispute resolution mechanisms. Providers receive 85% of total booking after escrow period.`
         },
         {
           title: isHebrew ? "תמחור דינמי" : "Dynamic Pricing",
@@ -156,8 +156,8 @@ export function MarketplaceLegalContent({ section, compact = false, className = 
         {
           title: isHebrew ? "מערכת הנאמנות 72 שעות" : "72-Hour Escrow System",
           content: isHebrew
-            ? `Pet Wash™ מחזיקה את כספי ההזמנה בנאמנות עד 72 שעות לאחר סיום השירות המתוכנן. מערכת זו מגנה על שני הצדדים: לקוחות יכולים לדווח על בעיות לפני שחרור הכספים, ספקים מובטחים שהתשלום יתבצע לאחר מתן שירות תקין. הכספים מוחזקים בחשבון נאמנות מאובטח.`
-            : `Pet Wash™ holds booking funds in escrow until 72 hours after scheduled service completion. This system protects both parties: Customers can report issues before funds release, Providers are guaranteed payment after proper service delivery. Funds are held in a secure escrow account.`
+            ? `⁦Pet Wash™⁩ מחזיקה את כספי ההזמנה בנאמנות עד 72 שעות לאחר סיום השירות המתוכנן. מערכת זו מגנה על שני הצדדים: לקוחות יכולים לדווח על בעיות לפני שחרור הכספים, ספקים מובטחים שהתשלום יתבצע לאחר מתן שירות תקין. הכספים מוחזקים בחשבון נאמנות מאובטח.`
+            : `⁦Pet Wash™⁩ holds booking funds in escrow until 72 hours after scheduled service completion. This system protects both parties: Customers can report issues before funds release, Providers are guaranteed payment after proper service delivery. Funds are held in a secure escrow account.`
         },
         {
           title: isHebrew ? "שחרור כספים" : "Fund Release",
@@ -181,8 +181,8 @@ export function MarketplaceLegalContent({ section, compact = false, className = 
         {
           title: isHebrew ? "מקרים חריגים" : "Exceptional Circumstances",
           content: isHebrew
-            ? `Pet Wash™ עשויה לשקול החזרים חריגים במקרי: מצב חירום רפואי (עם תיעוד), אסון טבע, נסיבות כוח עליון. פניות לבחינה חריגה יש להפנות לתמיכת הפלטפורמה עם תיעוד מתאים.`
-            : `Pet Wash™ may consider exceptional refunds in cases of: Medical emergency (with documentation), Natural disaster, Force majeure circumstances. Requests for exceptional review should be directed to platform support with appropriate documentation.`
+            ? `⁦Pet Wash™⁩ עשויה לשקול החזרים חריגים במקרי: מצב חירום רפואי (עם תיעוד), אסון טבע, נסיבות כוח עליון. פניות לבחינה חריגה יש להפנות לתמיכת הפלטפורמה עם תיעוד מתאים.`
+            : `⁦Pet Wash™⁩ may consider exceptional refunds in cases of: Medical emergency (with documentation), Natural disaster, Force majeure circumstances. Requests for exceptional review should be directed to platform support with appropriate documentation.`
         }
       ]
     },
@@ -194,14 +194,14 @@ export function MarketplaceLegalContent({ section, compact = false, className = 
         {
           title: isHebrew ? "הגבלת אחריות הפלטפורמה" : "Platform Liability Limitation",
           content: isHebrew
-            ? `Pet Wash™ היא פלטפורמת שוק בלבד ואינה אחראית ל: איכות או בטיחות השירותים שניתנים על ידי ספקים, נזק לחיית מחמד או רכוש, מחלוקות בין לקוחות לספקים שאינן נפתרות דרך הפלטפורמה, אי-עמידה של ספקים בהתחייבויותיהם. האחריות המקסימלית של Pet Wash™ מוגבלת לסכום העמלה ששולמה עבור ההזמנה הרלוונטית.`
-            : `Pet Wash™ is a marketplace platform only and is not liable for: Quality or safety of services provided by Providers, Damage to pets or property, Disputes between Customers and Providers not resolved through platform, Provider failure to meet commitments. Pet Wash™ maximum liability is limited to the commission paid for the relevant booking.`
+            ? `⁦Pet Wash™⁩ היא פלטפורמת שוק בלבד ואינה אחראית ל: איכות או בטיחות השירותים שניתנים על ידי ספקים, נזק לחיית מחמד או רכוש, מחלוקות בין לקוחות לספקים שאינן נפתרות דרך הפלטפורמה, אי-עמידה של ספקים בהתחייבויותיהם. האחריות המקסימלית של ⁦Pet Wash™⁩ מוגבלת לסכום העמלה ששולמה עבור ההזמנה הרלוונטית.`
+            : `⁦Pet Wash™⁩ is a marketplace platform only and is not liable for: Quality or safety of services provided by Providers, Damage to pets or property, Disputes between Customers and Providers not resolved through platform, Provider failure to meet commitments. ⁦Pet Wash™⁩ maximum liability is limited to the commission paid for the relevant booking.`
         },
         {
           title: isHebrew ? "ביטוח ספקים" : "Provider Insurance",
           content: isHebrew
-            ? `ספקים אחראים לדאוג לביטוח מתאים כולל: ביטוח אחריות מקצועית, ביטוח רכוש אם רלוונטי, ביטוח תאונות אישיות. Pet Wash™ ממליצה ללקוחות לוודא שהספק שלהם מבוטח כראוי לפני ההזמנה.`
-            : `Providers are responsible for securing appropriate insurance including: Professional liability insurance, Property insurance if relevant, Personal accident insurance. Pet Wash™ recommends Customers verify their Provider is properly insured before booking.`
+            ? `ספקים אחראים לדאוג לביטוח מתאים כולל: ביטוח אחריות מקצועית, ביטוח רכוש אם רלוונטי, ביטוח תאונות אישיות. ⁦Pet Wash™⁩ ממליצה ללקוחות לוודא שהספק שלהם מבוטח כראוי לפני ההזמנה.`
+            : `Providers are responsible for securing appropriate insurance including: Professional liability insurance, Property insurance if relevant, Personal accident insurance. ⁦Pet Wash™⁩ recommends Customers verify their Provider is properly insured before booking.`
         }
       ]
     },
@@ -213,20 +213,20 @@ export function MarketplaceLegalContent({ section, compact = false, className = 
         {
           title: isHebrew ? "חוק הגנת הפרטיות" : "Privacy Protection Law",
           content: isHebrew
-            ? `Pet Wash™ פועלת בהתאם לחוק הגנת הפרטיות התשמ"א-1981 כולל תיקון 2025. אנו אוספים מידע אישי הנדרש לפעילות הפלטפורמה בלבד, מאחסנים מידע בצורה מאובטחת, מספקים ללקוחות גישה למידע שלהם, ומאפשרים מחיקת מידע לפי בקשה (בכפוף לחובות רגולטוריות).`
-            : `Pet Wash™ operates in compliance with Privacy Protection Law 5741-1981 including 2025 amendment. We collect personal information required for platform operation only, store information securely, provide customers access to their information, and allow information deletion on request (subject to regulatory obligations).`
+            ? `⁦Pet Wash™⁩ פועלת בהתאם לחוק הגנת הפרטיות התשמ"א-1981 כולל תיקון 2025. אנו אוספים מידע אישי הנדרש לפעילות הפלטפורמה בלבד, מאחסנים מידע בצורה מאובטחת, מספקים ללקוחות גישה למידע שלהם, ומאפשרים מחיקת מידע לפי בקשה (בכפוף לחובות רגולטוריות).`
+            : `⁦Pet Wash™⁩ operates in compliance with Privacy Protection Law 5741-1981 including 2025 amendment. We collect personal information required for platform operation only, store information securely, provide customers access to their information, and allow information deletion on request (subject to regulatory obligations).`
         },
         {
           title: isHebrew ? "ציות למס" : "Tax Compliance",
           content: isHebrew
-            ? `ספקים בישראל אחראים לניהול מס עצמאי. Pet Wash™ מספקת דוחות הכנסה חודשיים וכלים לניהול חשבוניות. הפלטפורמה אינה מנכה מס במקור והספקים אחראים לדיווח ותשלום מיסים לרשויות המתאימות.`
-            : `Providers in Israel are responsible for independent tax management. Pet Wash™ provides monthly income reports and invoicing tools. The platform does not withhold taxes and Providers are responsible for reporting and paying taxes to appropriate authorities.`
+            ? `ספקים בישראל אחראים לניהול מס עצמאי. ⁦Pet Wash™⁩ מספקת דוחות הכנסה חודשיים וכלים לניהול חשבוניות. הפלטפורמה אינה מנכה מס במקור והספקים אחראים לדיווח ותשלום מיסים לרשויות המתאימות.`
+            : `Providers in Israel are responsible for independent tax management. ⁦Pet Wash™⁩ provides monthly income reports and invoicing tools. The platform does not withhold taxes and Providers are responsible for reporting and paying taxes to appropriate authorities.`
         },
         {
           title: isHebrew ? "רווחת בעלי חיים" : "Animal Welfare",
           content: isHebrew
-            ? `כל הספקים מתחייבים לעמוד בתקנות רווחת בעלי חיים הישראליות. Pet Wash™ שומרת את הזכות להשעות או להסיר ספקים שמפרים כללי רווחת בעלי חיים או מקבלים תלונות רבות בנושא.`
-            : `All Providers commit to complying with Israeli animal welfare regulations. Pet Wash™ reserves the right to suspend or remove Providers who violate animal welfare rules or receive multiple complaints on this matter.`
+            ? `כל הספקים מתחייבים לעמוד בתקנות רווחת בעלי חיים הישראליות. ⁦Pet Wash™⁩ שומרת את הזכות להשעות או להסיר ספקים שמפרים כללי רווחת בעלי חיים או מקבלים תלונות רבות בנושא.`
+            : `All Providers commit to complying with Israeli animal welfare regulations. ⁦Pet Wash™⁩ reserves the right to suspend or remove Providers who violate animal welfare rules or receive multiple complaints on this matter.`
         }
       ]
     }
@@ -373,8 +373,8 @@ export function ProviderLegalAcknowledgement({
     {
       key: "contractor",
       text: isHebrew 
-        ? "אני מאשר כי אני קבלן עצמאי ולא עובד של Pet Wash™"
-        : "I acknowledge that I am an independent contractor and not an employee of Pet Wash™"
+        ? "אני מאשר כי אני קבלן עצמאי ולא עובד של ⁦Pet Wash™⁩"
+        : "I acknowledge that I am an independent contractor and not an employee of ⁦Pet Wash™⁩"
     },
     {
       key: "taxes",

@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ Provider Application Form - MadPaws-Style 2026 Edition
+ * ⁦Pet Wash™⁩ Provider Application Form - MadPaws-Style 2026 Edition
  * 
  * Premium marketplace application form with:
  * - Multi-platform selection (like MadPaws but for 9 platforms)
@@ -37,7 +37,7 @@ const PLATFORMS = [
   { 
     id: 'sitter_suite', 
     icon: Home, 
-    nameEn: 'The Sitter Suite™', 
+    nameEn: '⁦The Sitter Suite™⁩', 
     nameHe: 'סוויטת השמרטף™',
     descEn: 'Overnight pet sitting in a loving home',
     descHe: 'שמירה על חיות מחמד בבית אוהב',
@@ -48,7 +48,7 @@ const PLATFORMS = [
   { 
     id: 'walk_my_pet', 
     icon: Dog, 
-    nameEn: 'Walk My Pet™', 
+    nameEn: '⁦Walk My Pet™⁩', 
     nameHe: 'טייל את הכלב שלי™',
     descEn: 'Professional dog walking services',
     descHe: 'שירותי טיול כלבים מקצועיים',
@@ -59,7 +59,7 @@ const PLATFORMS = [
   { 
     id: 'pet_trek', 
     icon: Car, 
-    nameEn: 'PetTrek™', 
+    nameEn: '⁦PetTrek™⁩', 
     nameHe: 'פט-טרק™',
     descEn: 'Safe pet transportation',
     descHe: 'הסעות חיות מחמד בטוחות',
@@ -211,8 +211,8 @@ export default function ProviderApplicationForm() {
   const t = {
     title: isHebrew ? 'הפוך לספק שירות' : 'Become a Provider',
     subtitle: isHebrew 
-      ? 'הצטרף למשפחת Pet Wash™ והתחל להרוויח! הפלטפורמה המובילה לשירותי חיות מחמד בישראל'
-      : 'Join the Pet Wash™ family and start earning! The leading pet services platform in Israel',
+      ? 'הצטרף למשפחת ⁦Pet Wash™⁩ והתחל להרוויח! הפלטפורמה המובילה לשירותי חיות מחמד בישראל'
+      : 'Join the ⁦Pet Wash™⁩ family and start earning! The leading pet services platform in Israel',
     step1Title: isHebrew ? 'בחר את הפלטפורמות שלך' : 'Choose Your Platforms',
     step1Desc: isHebrew ? 'בחר אחד או יותר שירותים שתרצה להציע' : 'Select one or more services you\'d like to offer',
     step2Title: isHebrew ? 'קבע את המחירים שלך' : 'Set Your Prices',
@@ -245,8 +245,8 @@ export default function ProviderApplicationForm() {
     terms: isHebrew ? 'אני מסכים/ה לתנאי השימוש' : 'I agree to the Terms of Service',
     privacy: isHebrew ? 'אני מסכים/ה למדיניות הפרטיות ושמירת הנתונים' : 'I agree to the Privacy Policy and Data Retention',
     contractor: isHebrew 
-      ? 'אני מבין/ה שאני קבלן עצמאי ולא עובד של Pet Wash™' 
-      : 'I understand I am an independent contractor, not an employee of Pet Wash™',
+      ? 'אני מבין/ה שאני קבלן עצמאי ולא עובד של ⁦Pet Wash™⁩' 
+      : 'I understand I am an independent contractor, not an employee of ⁦Pet Wash™⁩',
     next: isHebrew ? 'המשך' : 'Continue',
     back: isHebrew ? 'חזרה' : 'Back',
     submit: isHebrew ? 'הגש בקשה' : 'Submit Application',
@@ -448,7 +448,7 @@ export default function ProviderApplicationForm() {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
               {isHebrew ? 'הפוך לספק ' : 'Become a '}
               <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
-                Pet Wash™
+                ⁦Pet Wash™⁩
               </span>
             </h1>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto">
@@ -1254,8 +1254,8 @@ export default function ProviderApplicationForm() {
                   <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 text-sm text-gray-400 border border-white/5">
                     <p>
                       {isHebrew 
-                        ? 'Pet Wash™ משמש כפלטפורמת תיווך בין בעלי חיות מחמד לספקי שירות עצמאיים. Pet Wash™ אינה מעסיקה את הספקים ואינה אחראית ישירות לשירותים הניתנים.'
-                        : 'Pet Wash™ acts as a marketplace connecting pet owners with independent service providers. Pet Wash™ does not employ providers and is not directly responsible for services rendered.'}
+                        ? '⁦Pet Wash™⁩ משמש כפלטפורמת תיווך בין בעלי חיות מחמד לספקי שירות עצמאיים. ⁦Pet Wash™⁩ אינה מעסיקה את הספקים ואינה אחראית ישירות לשירותים הניתנים.'
+                        : '⁦Pet Wash™⁩ acts as a marketplace connecting pet owners with independent service providers. ⁦Pet Wash™⁩ does not employ providers and is not directly responsible for services rendered.'}
                     </p>
                   </div>
                 </div>

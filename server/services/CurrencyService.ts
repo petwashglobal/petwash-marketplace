@@ -30,7 +30,7 @@ export class CurrencyService {
   private exchangeRates: ExchangeRates | null = null;
   private lastUpdate: number = 0;
   private readonly UPDATE_INTERVAL = 3600000; // 1 hour
-  private readonly BASE_CURRENCY = 'ILS'; // Israeli Shekel (Pet Wash™ base currency)
+  private readonly BASE_CURRENCY = 'ILS'; // Israeli Shekel (⁦Pet Wash™⁩ base currency)
 
   constructor() {
     this.initializeRates();

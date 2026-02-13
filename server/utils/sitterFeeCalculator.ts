@@ -5,7 +5,7 @@
  * FLAT 15% COMMISSION MODEL (all platforms unified):
  * - Owner pays: Base Price + 15% Platform Fee + 18% VAT on platform fee (via Nayax)
  * - Sitter receives: 85% of Base Price (after 15% platform commission)
- * - PetWash™ keeps: 15% of Base Price (platform commission)
+ * - ⁦PetWash™⁩ keeps: 15% of Base Price (platform commission)
  * - VAT (18%) applied on platform fee per Israeli law
  * - Withholding tax (ניכוי מס במקור) deducted from sitter payout at settlement
  * 
@@ -48,7 +48,7 @@ export interface TransparentFeeCalculation {
 }
 
 /**
- * Calculate transparent fees for The Sitter Suite™ booking
+ * Calculate transparent fees for ⁦The Sitter Suite™⁩ booking
  * Israeli law 2026 compliant - VAT included in customer total
  * FLAT 15% commission (matches MadPaws industry standard)
  * 

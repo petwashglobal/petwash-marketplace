@@ -63,7 +63,7 @@ router.get('/uptime', async (_req, res) => {
 
     res.status(200).json({
       ok: true,
-      service: 'PetWash™ Enterprise Platform',
+      service: '⁦PetWash™⁩ Enterprise Platform',
       environment: isProd ? 'production' : 'development',
       timestamp: new Date().toISOString(),
       uptime: {

@@ -51,7 +51,7 @@ export default function MunicipalPartners() {
         </div>
 
         <div className="luxury-glass-card luxury-shadow-xl p-8 text-center bg-gradient-to-r from-purple-500/10 to-blue-500/10 luxury-animate-fade-in luxury-delay-6">
-          <h2 className="luxury-heading-lg mb-4">Partner with Pet Wash™</h2>
+          <h2 className="luxury-heading-lg mb-4">Partner with ⁦Pet Wash™⁩</h2>
           <p className="luxury-text-body mb-6">
             Explore public-private partnership opportunities for your municipality
           </p>

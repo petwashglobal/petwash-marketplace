@@ -18,7 +18,7 @@ interface SocialShareProps {
 
 export function SocialShare({ 
   url = window.location.href, 
-  title = 'Pet Wash™ - Premium Organic Pet Care',
+  title = '⁦Pet Wash™⁩ - Premium Organic Pet Care',
   description = 'Israel\'s leading premium organic pet washing service',
   showLabels = false 
 }: SocialShareProps) {

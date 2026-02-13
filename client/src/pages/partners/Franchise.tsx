@@ -14,7 +14,7 @@ export default function FranchisePartners() {
             Franchise & City Partners
           </h1>
           <p className="luxury-text-body max-w-2xl mx-auto">
-            Join the Pet Wash™ global franchise network. Proven business model, enterprise support, luxury brand.
+            Join the ⁦Pet Wash™⁩ global franchise network. Proven business model, enterprise support, luxury brand.
           </p>
         </div>
 

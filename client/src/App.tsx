@@ -171,7 +171,7 @@ const NotificationPreferences = lazy(() => import("@/pages/NotificationPreferenc
 const PetWashDayPlanner = lazy(() => import("@/pages/PetWashDayPlanner"));
 const RoleAwareWeatherPlanner = lazy(() => import("@/pages/RoleAwareWeatherPlanner"));
 
-// The Sitter Suite™ - Pet Sitting Marketplace
+// ⁦The Sitter Suite™⁩ - Pet Sitting Marketplace
 const SitterSuiteOverview = lazy(() => import("@/pages/sitter-suite/Overview"));
 const SitterSuite = lazy(() => import("@/pages/sitter-suite/BrowseSitters"));
 const SitterDetail = lazy(() => import("@/pages/sitter-suite/SitterDetail"));
@@ -182,7 +182,7 @@ const SitterEditProfile = lazy(() => import("@/pages/sitter-suite/SitterEditProf
 const OwnerDashboardPage = SitterOwnerDashboard; // Alias
 const SitterDashboardPage = SitterDashboard; // Alias
 
-// Pet Wash Academy™ - Professional Trainer Marketplace
+// ⁦Pet Wash Academy™⁩ - Professional Trainer Marketplace
 const Academy = lazy(() => import("@/pages/Academy"));
 const TrainerProfile = lazy(() => import("@/pages/academy/TrainerProfile"));
 const TrainerDetail = lazy(() => import("@/pages/academy/TrainerDetail"));
@@ -191,7 +191,7 @@ const AcademyBookingFlow = lazy(() => import("@/pages/academy/BookingFlow"));
 // Contractor Dashboard - 2026 Lifecycle Management
 const ContractorDashboard = lazy(() => import("@/pages/contractor/Dashboard"));
 
-// Walk My Pet™ - Premium Dog Walking
+// ⁦Walk My Pet™⁩ - Premium Dog Walking
 const WalkMyPetOverview = lazy(() => import("@/pages/walk-my-pet/Overview"));
 const WalkMyPet = lazy(() => import("@/pages/walk-my-pet/BrowseWalkers"));
 const WalkerDetail = lazy(() => import("@/pages/walk-my-pet/WalkerDetail"));
@@ -200,7 +200,7 @@ const WalkOwnerDashboardPage = lazy(() => import("@/pages/walk-my-pet/OwnerDashb
 const WalkerDashboardPage = lazy(() => import("@/pages/walk-my-pet/WalkerDashboard"));
 const WalkerBooking = lazy(() => import("@/pages/WalkerBooking"));
 
-// PetTrek™ - Advanced Pet Transport
+// ⁦PetTrek™⁩ - Advanced Pet Transport
 const PetTrekOverview = lazy(() => import("@/pages/pettrek/Overview"));
 const PetTrek = lazy(() => import("@/pages/pettrek/BrowseDrivers"));
 const DriverDetail = lazy(() => import("@/pages/pettrek/DriverDetail"));
@@ -250,7 +250,7 @@ const PlatformShowcase = lazy(() => import("@/pages/PlatformShowcase"));
 const PawFinder = lazy(() => import("@/pages/PawFinder"));
 const ServiceStatus = lazy(() => import("@/pages/ServiceStatus"));
 
-// Pet Wash™ 2025 Global Architecture - Octopus Model Routes
+// ⁦Pet Wash™⁩ 2025 Global Architecture - Octopus Model Routes
 const Hub = lazy(() => import("@/pages/Hub"));
 const Stations = lazy(() => import("@/pages/Stations"));
 const Shop = lazy(() => import("@/pages/Shop"));
@@ -280,24 +280,24 @@ const CookiesPolicy = lazy(() => import("@/pages/legal/Cookies"));
 const AccessibilityStatementPage = lazy(() => import("@/pages/legal/AccessibilityStatement"));
 const MarketplaceTerms = lazy(() => import("@/pages/legal/MarketplaceTerms"));
 
-// Walk My Pet™ Pages
+// ⁦Walk My Pet™⁩ Pages
 const TrackWalk = lazy(() => import("@/pages/walks/TrackWalk"));
 
-// PetTrek™ Pages
+// ⁦PetTrek™⁩ Pages
 const BookTrip = lazy(() => import("@/pages/pettrek/BookTrip"));
 const TrackTrip = lazy(() => import("@/pages/pettrek/TrackTrip"));
 const ProviderDashboard = lazy(() => import("@/pages/pettrek/ProviderDashboard"));
 
-// The Sitter Suite™ - Legal Documents (Airbnb-style compliance)
+// ⁦The Sitter Suite™⁩ - Legal Documents (Airbnb-style compliance)
 const SitterPrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
 const SitterTermsConditions = lazy(() => import("@/pages/legal/TermsConditions"));
 const SitterDisclaimer = lazy(() => import("@/pages/legal/Disclaimer"));
 
-// Walk My Pet™ - Legacy/Alias Pages
+// ⁦Walk My Pet™⁩ - Legacy/Alias Pages
 const WalkTracking = lazy(() => import("@/pages/walks/TrackWalk")); // Alias
 const TrackMyPetLive = lazy(() => import("@/pages/walks/TrackWalk")); // Alias
 
-// PetTrek™ - Legacy/Alias Pages
+// ⁦PetTrek™⁩ - Legacy/Alias Pages
 const PetTrekBooking = lazy(() => import("@/pages/pettrek/BookTrip")); // Alias
 const PetTrekTracking = lazy(() => import("@/pages/pettrek/TrackTrip")); // Alias
 const PetTrekProviderDashboard = lazy(() => import("@/pages/pettrek/ProviderDashboard")); // Alias
@@ -496,7 +496,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <Vouchers />}
         </Route>
         
-        {/* Pet Wash™ 2025 Global Architecture - Octopus Model Routes */}
+        {/* ⁦Pet Wash™⁩ 2025 Global Architecture - Octopus Model Routes */}
         <Route path="/hub">
           {() => <Hub />}
         </Route>
@@ -641,7 +641,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* TALENT MARKETPLACE - 7-Platform Pet Wash™ Directory */}
+        {/* TALENT MARKETPLACE - 7-Platform ⁦Pet Wash™⁩ Directory */}
         <Route path="/talent">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -704,8 +704,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* The Sitter Suite™ - Specific routes BEFORE general routes */}
-        {/* The Sitter Suite™ - Sitter Detail/Profile Page */}
+        {/* ⁦The Sitter Suite™⁩ - Specific routes BEFORE general routes */}
+        {/* ⁦The Sitter Suite™⁩ - Sitter Detail/Profile Page */}
         <Route path="/sitter-suite/sitters/:id">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -714,7 +714,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* The Sitter Suite™ - Provider Profile (alias for sitters) */}
+        {/* ⁦The Sitter Suite™⁩ - Provider Profile (alias for sitters) */}
         <Route path="/sitter-suite/provider/:id">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -723,7 +723,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Pet Wash Academy™ - Professional Trainer Marketplace (Public browsing, auth required for booking) */}
+        {/* ⁦Pet Wash Academy™⁩ - Professional Trainer Marketplace (Public browsing, auth required for booking) */}
         <Route path="/academy">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -732,7 +732,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Pet Wash Academy™ - Trainer Profile (Legacy) */}
+        {/* ⁦Pet Wash Academy™⁩ - Trainer Profile (Legacy) */}
         <Route path="/academy/trainer/:trainerId">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -741,7 +741,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Pet Wash Academy™ - Trainer Detail (Luxury Shared Component) */}
+        {/* ⁦Pet Wash Academy™⁩ - Trainer Detail (Luxury Shared Component) */}
         <Route path="/academy/trainers/:id">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -750,7 +750,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Pet Wash Academy™ - Booking Flow (6-step unified payment integration) */}
+        {/* ⁦Pet Wash Academy™⁩ - Booking Flow (6-step unified payment integration) */}
         <Route path="/academy/book/:trainerId">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -759,8 +759,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Specific routes BEFORE general routes to avoid catch-all */}
-        {/* Walk My Pet™ - Walker Booking Page */}
+        {/* ⁦Walk My Pet™⁩ - Specific routes BEFORE general routes to avoid catch-all */}
+        {/* ⁦Walk My Pet™⁩ - Walker Booking Page */}
         <Route path="/walk-my-pet/book/:walkerId">
           {() => (
             <RequireAuth>
@@ -771,7 +771,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Walker Dashboard (Uber-style for dog walkers) */}
+        {/* ⁦Walk My Pet™⁩ - Walker Dashboard (Uber-style for dog walkers) */}
         <Route path="/walk-my-pet/walker/dashboard">
           {() => (
             <RequireAuth>
@@ -782,7 +782,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Owner Dashboard (Track walks, view history, manage bookings) */}
+        {/* ⁦Walk My Pet™⁩ - Owner Dashboard (Track walks, view history, manage bookings) */}
         <Route path="/walk-my-pet/owner/dashboard">
           {() => (
             <RequireAuth>
@@ -793,7 +793,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Booking Flow */}
+        {/* ⁦Walk My Pet™⁩ - Booking Flow */}
         <Route path="/walk-my-pet/book/:walkerId">
           {() => (
             <RequireAuth>
@@ -804,7 +804,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Live GPS Walk Tracking */}
+        {/* ⁦Walk My Pet™⁩ - Live GPS Walk Tracking */}
         <Route path="/walk-tracking/:walkId">
           {() => (
             <RequireAuth>
@@ -815,7 +815,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Platform Overview (Marketing/Gateway) */}
+        {/* ⁦Walk My Pet™⁩ - Platform Overview (Marketing/Gateway) */}
         <Route path="/walk-my-pet">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -824,7 +824,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Browse/Explore Walkers */}
+        {/* ⁦Walk My Pet™⁩ - Browse/Explore Walkers */}
         <Route path="/walk-my-pet/explore">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -833,7 +833,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Browse Alias (MadPaws-style) */}
+        {/* ⁦Walk My Pet™⁩ - Browse Alias (MadPaws-style) */}
         <Route path="/walk-my-pet/browse">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -842,7 +842,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Browse Walkers List (alias for browse) */}
+        {/* ⁦Walk My Pet™⁩ - Browse Walkers List (alias for browse) */}
         <Route path="/walk-my-pet/walkers">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -851,7 +851,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Walker Detail Profile */}
+        {/* ⁦Walk My Pet™⁩ - Walker Detail Profile */}
         <Route path="/walk-my-pet/walkers/:id">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -860,7 +860,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Walk My Pet™ - Unified Hub (placeholder - routes to owner dashboard for now) */}
+        {/* ⁦Walk My Pet™⁩ - Unified Hub (placeholder - routes to owner dashboard for now) */}
         <Route path="/walk-my-pet/hub">
           {() => (
             <RequireAuth>
@@ -882,7 +882,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PetTrek™ - Premium Pet Transport Booking */}
+        {/* ⁦PetTrek™⁩ - Premium Pet Transport Booking */}
         <Route path="/pettrek/book">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -891,7 +891,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PetTrek™ - Real-Time Trip Tracking */}
+        {/* ⁦PetTrek™⁩ - Real-Time Trip Tracking */}
         <Route path="/pettrek/track/:tripId">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -911,7 +911,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* PetTrek™ - Provider/Driver Dashboard */}
+        {/* ⁦PetTrek™⁩ - Provider/Driver Dashboard */}
         <Route path="/pettrek/provider/dashboard">
           {() => (
             <RequireAuth>
@@ -922,7 +922,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PetTrek™ - Driver Dashboard (Uber-style for pet transport drivers) */}
+        {/* ⁦PetTrek™⁩ - Driver Dashboard (Uber-style for pet transport drivers) */}
         <Route path="/pettrek/driver/dashboard">
           {() => (
             <RequireAuth>
@@ -933,7 +933,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PetTrek™ - Customer Dashboard (Book trips, track rides, receipts) */}
+        {/* ⁦PetTrek™⁩ - Customer Dashboard (Book trips, track rides, receipts) */}
         <Route path="/pettrek/customer/dashboard">
           {() => (
             <RequireAuth>
@@ -944,7 +944,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PetTrek™ - Booking Flow (5-step process: route, schedule, pets, payment, confirm) */}
+        {/* ⁦PetTrek™⁩ - Booking Flow (5-step process: route, schedule, pets, payment, confirm) */}
         <Route path="/pettrek/book">
           {() => (
             <RequireAuth>
@@ -955,7 +955,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PetTrek™ - Platform Overview (Marketing/Gateway) */}
+        {/* ⁦PetTrek™⁩ - Platform Overview (Marketing/Gateway) */}
         <Route path="/pettrek">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -964,7 +964,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PetTrek™ - Browse/Explore Drivers */}
+        {/* ⁦PetTrek™⁩ - Browse/Explore Drivers */}
         <Route path="/pettrek/explore">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -973,7 +973,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PetTrek™ - Driver Detail Profile */}
+        {/* ⁦PetTrek™⁩ - Driver Detail Profile */}
         <Route path="/pettrek/drivers/:id">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -982,7 +982,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PetTrek™ - Unified Hub (placeholder - routes to customer dashboard for now) */}
+        {/* ⁦PetTrek™⁩ - Unified Hub (placeholder - routes to customer dashboard for now) */}
         <Route path="/pettrek/hub">
           {() => (
             <RequireAuth>
@@ -993,7 +993,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* The Sitter Suite™ - Comprehensive Booking Flow (6-step process with Israeli VAT) */}
+        {/* ⁦The Sitter Suite™⁩ - Comprehensive Booking Flow (6-step process with Israeli VAT) */}
         <Route path="/sitter-suite/book/:sitterId">
           {() => (
             <RequireAuth>
@@ -1004,7 +1004,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* The Sitter Suite™ - Legal Documents (Public Access) */}
+        {/* ⁦The Sitter Suite™⁩ - Legal Documents (Public Access) */}
         <Route path="/sitter-suite/privacy-policy">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -1029,7 +1029,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* The Sitter Suite™ - Luxury Owner Dashboard (7-Star Hotel Aesthetic) */}
+        {/* ⁦The Sitter Suite™⁩ - Luxury Owner Dashboard (7-Star Hotel Aesthetic) */}
         <Route path="/sitter-suite/owner/dashboard">
           {() => (
             <RequireAuth>
@@ -1040,7 +1040,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* The Sitter Suite™ - Luxury Sitter Dashboard (7-Star Hotel Aesthetic) */}
+        {/* ⁦The Sitter Suite™⁩ - Luxury Sitter Dashboard (7-Star Hotel Aesthetic) */}
         <Route path="/sitter-suite/sitter/dashboard">
           {() => (
             <RequireAuth>
@@ -1051,7 +1051,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* The Sitter Suite™ - Sitter Edit Profile (MadPaws-style with Photo Upload) */}
+        {/* ⁦The Sitter Suite™⁩ - Sitter Edit Profile (MadPaws-style with Photo Upload) */}
         <Route path="/sitter-suite/sitter/edit-profile">
           {() => (
             <RequireAuth>
@@ -1062,7 +1062,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* The Sitter Suite™ - Platform Overview (Marketing/Gateway) */}
+        {/* ⁦The Sitter Suite™⁩ - Platform Overview (Marketing/Gateway) */}
         <Route path="/sitter-suite">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -1071,7 +1071,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* The Sitter Suite™ - Browse/Explore Sitters */}
+        {/* ⁦The Sitter Suite™⁩ - Browse/Explore Sitters */}
         <Route path="/sitter-suite/explore">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -1080,7 +1080,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* The Sitter Suite™ - Browse Alias (MadPaws-style) */}
+        {/* ⁦The Sitter Suite™⁩ - Browse Alias (MadPaws-style) */}
         <Route path="/sitter-suite/browse">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -1089,7 +1089,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* The Sitter Suite™ - Unified Hub (placeholder - routes to owner dashboard for now) */}
+        {/* ⁦The Sitter Suite™⁩ - Unified Hub (placeholder - routes to owner dashboard for now) */}
         <Route path="/sitter-suite/hub">
           {() => (
             <RequireAuth>

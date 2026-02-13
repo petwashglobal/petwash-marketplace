@@ -66,23 +66,23 @@ router.post('/send-welcome', async (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to Pet Wash™</title>
+  <title>Welcome to ⁦Pet Wash™⁩</title>
 </head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
   <div style="max-width:600px;margin:40px auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
     <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:40px;text-align:center;">
-      <div style="font-size:48px;font-weight:bold;color:white;">Pet Wash™</div>
+      <div style="font-size:48px;font-weight:bold;color:white;">⁦Pet Wash™⁩</div>
       <div style="color:rgba(255,255,255,0.9);font-size:16px;">The World's Leading Pet Care Ecosystem</div>
     </div>
     <div style="padding:40px;">
-      <div style="font-size:32px;font-weight:bold;color:#1a202c;margin-bottom:20px;">Welcome to Pet Wash™!</div>
-      <p style="font-size:16px;color:#4a5568;line-height:1.6;">We're thrilled to have you join the Pet Wash™ family! You now have access to our complete ecosystem of premium pet care platforms.</p>
+      <div style="font-size:32px;font-weight:bold;color:#1a202c;margin-bottom:20px;">Welcome to ⁦Pet Wash™⁩!</div>
+      <p style="font-size:16px;color:#4a5568;line-height:1.6;">We're thrilled to have you join the ⁦Pet Wash™⁩ family! You now have access to our complete ecosystem of premium pet care platforms.</p>
       <div style="text-align:center;margin:30px 0;">
         <a href="https://petwash.co.il/dashboard" style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;text-decoration:none;border-radius:10px;font-weight:600;font-size:16px;">Explore Your Dashboard</a>
       </div>
     </div>
     <div style="background:#f7fafc;padding:30px;text-align:center;color:#718096;font-size:14px;">
-      <p><strong>Pet Wash™ Ltd</strong></p>
+      <p><strong>⁦Pet Wash™⁩ Ltd</strong></p>
       <p>Premium Organic Pet Care | Israel</p>
       <p style="margin-top:15px;font-size:12px;">
         This email was sent to ${email}<br>
@@ -95,7 +95,7 @@ router.post('/send-welcome', async (req, res) => {
 
     const rawMessage = [
       `To: ${email}`,
-      `Subject: Welcome to Pet Wash™!`,
+      `Subject: Welcome to ⁦Pet Wash™⁩!`,
       `Content-Type: text/html; charset=utf-8`,
       '',
       welcomeEmailHTML,

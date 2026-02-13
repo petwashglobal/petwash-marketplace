@@ -1,5 +1,5 @@
 /**
- * Escrow Payment Service for The Sitter Suite™
+ * Escrow Payment Service for ⁦The Sitter Suite™⁩
  * 72-hour payment hold with automatic release upon service completion
  * Nayax-powered secure escrow with dispute resolution
  */

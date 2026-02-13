@@ -1,5 +1,5 @@
 /**
- * EMERGENCY WALK SERVICE - Walk My Pet™
+ * EMERGENCY WALK SERVICE - ⁦Walk My Pet™⁩
  * 
  * ASAP booking system inspired by Rover's "Book Now" and Wag's "On-Demand Walks"
  * 
@@ -436,7 +436,7 @@ export class EmergencyWalkService {
 
 המטייל בדרך אליך! 🚀
 
-- צוות Walk My Pet™
+- צוות ⁦Walk My Pet™⁩
     `.trim();
 
     const walkerMessageHE = `
@@ -450,7 +450,7 @@ export class EmergencyWalkService {
 
 האם אתה מקבל את ההזמנה? יש לך 60 שניות להגיב.
 
-- צוות Walk My Pet™
+- צוות ⁦Walk My Pet™⁩
     `.trim();
 
     // Log WhatsApp notifications (production will send via Meta WhatsApp Business API)

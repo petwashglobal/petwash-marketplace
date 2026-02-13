@@ -197,7 +197,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M30 0L60 30L30 60L0 30L30 0z\' fill=\'%23c6a664\' fill-opacity=\'1\'/%3E%3C/svg%3E")', backgroundSize: '30px 30px' }} />
           
           <div className="max-w-5xl mx-auto text-center relative z-10">
-            <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-2 block gold-shimmer-text">Pet Wash™ Ltd</span>
+            <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-2 block gold-shimmer-text">⁦Pet Wash™⁩ Ltd</span>
             <h2 className="font-serif text-xl sm:text-2xl lg:text-3xl font-light text-[#111] mb-2 tracking-tight">
               {t('technology.title', language)}
             </h2>
@@ -209,7 +209,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             <div className="mt-6 sm:mt-8 max-w-3xl mx-auto">
               <img 
                 src={k9000StationImg}
-                alt="PetWash™ K9000 Dual Wash Station"
+                alt="⁦PetWash™⁩ K9000 Dual Wash Station"
                 className="w-full rounded-sm"
                 style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.12))' }}
                 loading="lazy"
@@ -281,7 +281,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 organicRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               }`}
             >
-              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium gold-shimmer-text">Pet Wash™ Promise</span>
+              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium gold-shimmer-text">⁦Pet Wash™⁩ Promise</span>
               <h2 className="font-serif text-lg sm:text-2xl lg:text-3xl font-light text-[#111] mt-2 mb-2 tracking-tight">
                 {t('organic.title', language)}
               </h2>

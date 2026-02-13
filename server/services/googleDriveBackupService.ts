@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ Google Drive Backup Service
+ * ⁦Pet Wash™⁩ Google Drive Backup Service
  * 
  * Comprehensive backup and management system using Google Drive
  * Integrates with Google Sheets, Docs, Gmail, Calendar for complete data management

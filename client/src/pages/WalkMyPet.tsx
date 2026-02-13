@@ -119,7 +119,7 @@ export default function WalkMyPet() {
 
   const t = {
     hero: {
-      title: isHebrew ? 'Walk My Pet™' : 'Walk My Pet™',
+      title: isHebrew ? '⁦Walk My Pet™⁩' : '⁦Walk My Pet™⁩',
       subtitle: isHebrew 
         ? 'שירות הליכה פרימיום עם מעקב GPS בזמן אמת וטכנולוגיית בלוקצ\'יין. מאומת, מבוטח, שקוף' 
         : 'Premium Dog Walking with Real-Time GPS Tracking & Blockchain Audit Trail. Verified, Insured, Transparent.',
@@ -135,7 +135,7 @@ export default function WalkMyPet() {
       gps: { value: '100%', label: isHebrew ? 'מעקב GPS' : 'GPS Tracked' },
     },
     trust: {
-      title: isHebrew ? 'למה לבחור ב-Walk My Pet™?' : 'Why Choose Walk My Pet™?',
+      title: isHebrew ? 'למה לבחור ב-⁦Walk My Pet™⁩?' : 'Why Choose ⁦Walk My Pet™⁩?',
       badge1Title: isHebrew ? 'מעקב GPS בזמן אמת' : 'Real-Time GPS Tracking',
       badge1Desc: isHebrew ? 'עקוב אחרי הליכת הכלב שלך בזמן אמת עם מפה חיה, מרחק, ומהירות' : 'Follow your dog\'s walk in real-time with live map, distance, and speed',
       badge2Title: isHebrew ? 'רשומת בלוקצ\'יין בלתי ניתנת לשינוי' : 'Immutable Blockchain Audit Trail',
@@ -324,7 +324,7 @@ export default function WalkMyPet() {
                       {isHebrew ? 'מצא את הווקר המושלם 🐕' : 'Find Your Perfect Walker 🐕'}
                     </h3>
 
-                    {/* Guided Booking Button - Pet Wash™ Luxury Wizard */}
+                    {/* Guided Booking Button - ⁦Pet Wash™⁩ Luxury Wizard */}
                     <button
                       onClick={() => setShowWizard(true)}
                       className="w-full h-16 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-bold text-lg flex items-center justify-center gap-3 hover:from-amber-600 hover:via-orange-600 hover:to-amber-700 transition-all shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:scale-[1.02]"

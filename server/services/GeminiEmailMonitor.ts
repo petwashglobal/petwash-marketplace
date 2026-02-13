@@ -66,13 +66,13 @@ class GeminiEmailMonitor {
         });
       }
 
-      // Check 2: Verify PetWash™ branding is present
+      // Check 2: Verify ⁦PetWash™⁩ branding is present
       const hasPetWashBrand = emailHtml.includes('Pet Wash') || emailHtml.includes('PetWash');
       if (!hasPetWashBrand) {
         issues.push({
           severity: 'warning',
           type: 'missing_logo',
-          description: 'PetWash™ branding not found in email',
+          description: '⁦PetWash™⁩ branding not found in email',
           location: 'Email header'
         });
       }

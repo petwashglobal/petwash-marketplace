@@ -1,7 +1,7 @@
 /**
  * Blockchain-Style Audit Ledger Service
  * 
- * Provides immutable, cryptographically-chained audit trail for Pet Wash™
+ * Provides immutable, cryptographically-chained audit trail for ⁦Pet Wash™⁩
  * - Hash-chained records (like blockchain)
  * - Double-spend prevention for vouchers/discounts
  * - Tamper detection

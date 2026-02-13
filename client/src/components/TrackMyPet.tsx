@@ -175,7 +175,7 @@ export default function TrackMyPet() {
             </Link>
             <Link href="/walk-my-pet">
               <Button variant="outline" className="w-full border-purple-300 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/30">
-                {isHebrew ? 'למידע נוסף על Walk My Pet™' : 'Learn more about Walk My Pet™'}
+                {isHebrew ? 'למידע נוסף על ⁦Walk My Pet™⁩' : 'Learn more about ⁦Walk My Pet™⁩'}
               </Button>
             </Link>
           </div>

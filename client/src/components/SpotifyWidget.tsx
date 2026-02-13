@@ -1,5 +1,5 @@
 /**
- * Spotify Widget - Pet Wash™
+ * Spotify Widget - ⁦Pet Wash™⁩
  * Shows Spotify connection status and now playing
  */
 
@@ -104,7 +104,7 @@ export function SpotifyWidget({ variant = 'compact', language = 'en' }: SpotifyW
         </div>
         <div className="flex-1">
           <p className="text-white font-semibold text-sm">
-            {language === 'he' ? 'האזינו ל-Pet Wash™' : 'Listen to Pet Wash™'}
+            {language === 'he' ? 'האזינו ל-⁦Pet Wash™⁩' : 'Listen to ⁦Pet Wash™⁩'}
           </p>
           <p className="text-zinc-400 text-xs">
             {language === 'he' ? 'עקבו אחרינו ב-Spotify' : 'Follow us on Spotify'}
@@ -146,7 +146,7 @@ export function SpotifyWidget({ variant = 'compact', language = 'en' }: SpotifyW
           ) : (
             <>
               <p className="text-white font-medium text-sm">
-                {profile?.displayName || 'Pet Wash™'}
+                {profile?.displayName || '⁦Pet Wash™⁩'}
               </p>
               <p className="text-zinc-400 text-xs">
                 {language === 'he' ? 'מחובר' : 'Connected'}

@@ -527,7 +527,7 @@ async function sendBackupSummaryEmail(data: {
     timeZone: 'Asia/Jerusalem'
   });
 
-  const subject = `✅ Pet Wash™ Backup Summary — ${new Date(data.timestamp).toLocaleDateString('en-US')}`;
+  const subject = `✅ ⁦Pet Wash™⁩ Backup Summary — ${new Date(data.timestamp).toLocaleDateString('en-US')}`;
 
   let htmlContent = `
     <!DOCTYPE html>
@@ -551,7 +551,7 @@ async function sendBackupSummaryEmail(data: {
     </head>
     <body>
       <div class="header">
-        <h1>🐾 Pet Wash™ Backup Summary</h1>
+        <h1>🐾 ⁦Pet Wash™⁩ Backup Summary</h1>
         <p style="margin: 10px 0 0 0; opacity: 0.9;">Automated Backup Report</p>
       </div>
   `;
@@ -673,7 +673,7 @@ async function sendBackupSummaryEmail(data: {
       </div>
 
       <div class="footer">
-        <p>Pet Wash™ Automated Backup System</p>
+        <p>⁦Pet Wash™⁩ Automated Backup System</p>
         <p>This is an automated report. For support, contact <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
       </div>
     </body>
@@ -685,7 +685,7 @@ async function sendBackupSummaryEmail(data: {
     cc: 'Support@PetWash.co.il',
     from: {
       email: 'Support@PetWash.co.il',
-      name: 'Pet Wash™ Backup System'
+      name: '⁦Pet Wash™⁩ Backup System'
     },
     subject,
     html: htmlContent

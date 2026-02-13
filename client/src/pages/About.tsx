@@ -50,7 +50,7 @@ export default function About({ language }: AboutProps) {
             
             {/* Main Title */}
             <h1 className="luxury-heading-xl mt-8">
-              Pet Wash™
+              ⁦Pet Wash™⁩
             </h1>
             
             {/* Subtitle */}
@@ -210,8 +210,8 @@ export default function About({ language }: AboutProps) {
             
             <p className="luxury-text-body max-w-3xl mx-auto">
               {currentLanguage === 'en' 
-                ? 'Own and operate your premium Pet Wash™ station with complete support'
-                : 'הפעל תחנת Pet Wash™ פרימיום בבעלותך עם תמיכה מלאה'
+                ? 'Own and operate your premium ⁦Pet Wash™⁩ station with complete support'
+                : 'הפעל תחנת ⁦Pet Wash™⁩ פרימיום בבעלותך עם תמיכה מלאה'
               }
             </p>
           </div>

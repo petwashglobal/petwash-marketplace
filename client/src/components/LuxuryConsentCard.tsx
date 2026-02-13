@@ -14,7 +14,7 @@ export function LuxuryConsentCard() {
       <div className="flex items-center gap-3">
         <img
           src="/brand/petwash-logo-official.png"
-          alt="Pet Wash™"
+          alt="⁦Pet Wash™⁩"
           width={48}
           height={48}
           className="rounded-lg ring-1 ring-white/15"
@@ -24,7 +24,7 @@ export function LuxuryConsentCard() {
             id="petwash-consent-title"
             className="text-lg font-semibold tracking-wide text-white"
           >
-            Pet Wash™ would like to access your Google account
+            ⁦Pet Wash™⁩ would like to access your Google account
           </h2>
           <p className="text-sm text-white/70">
             We'll use your email and profile to verify your identity and keep your

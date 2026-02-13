@@ -1,12 +1,12 @@
 /**
- * Pet Wash™ Management Analytics Service
+ * ⁦Pet Wash™⁩ Management Analytics Service
  * Comprehensive financial tracking and AI-powered forecasting
  * 
  * Tracks 4 revenue streams separately:
  * 1. K9000 DIY Wash Stations
- * 2. The Sitter Suite™ (Pet Sitting)
- * 3. Walk My Pet™ (Dog Walking)
- * 4. PetTrek™ (Pet Transport)
+ * 2. ⁦The Sitter Suite™⁩ (Pet Sitting)
+ * 3. ⁦Walk My Pet™⁩ (Dog Walking)
+ * 4. ⁦PetTrek™⁩ (Pet Transport)
  * 
  * Features:
  * - Daily/Weekly/Monthly/Yearly metrics
@@ -228,7 +228,7 @@ export class ManagementAnalyticsService {
   }
 
   /**
-   * The Sitter Suite™ Metrics
+   * ⁦The Sitter Suite™⁩ Metrics
    */
   private async getSitterSuiteMetrics(
     startDate: Date,
@@ -280,7 +280,7 @@ export class ManagementAnalyticsService {
 
     return {
       serviceType: 'sitter_suite',
-      serviceName: 'The Sitter Suite™',
+      serviceName: '⁦The Sitter Suite™⁩',
       totalRevenue,
       totalTransactions,
       averageTransaction: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
@@ -292,7 +292,7 @@ export class ManagementAnalyticsService {
   }
 
   /**
-   * Walk My Pet™ Metrics
+   * ⁦Walk My Pet™⁩ Metrics
    */
   private async getWalkMyPetMetrics(
     startDate: Date,
@@ -344,7 +344,7 @@ export class ManagementAnalyticsService {
 
     return {
       serviceType: 'walk_my_pet',
-      serviceName: 'Walk My Pet™',
+      serviceName: '⁦Walk My Pet™⁩',
       totalRevenue,
       totalTransactions,
       averageTransaction: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
@@ -356,7 +356,7 @@ export class ManagementAnalyticsService {
   }
 
   /**
-   * PetTrek™ Transport Metrics
+   * ⁦PetTrek™⁩ Transport Metrics
    */
   private async getPetTrekMetrics(
     startDate: Date,
@@ -408,7 +408,7 @@ export class ManagementAnalyticsService {
 
     return {
       serviceType: 'pettrek_transport',
-      serviceName: 'PetTrek™ Transport',
+      serviceName: '⁦PetTrek™⁩ Transport',
       totalRevenue,
       totalTransactions,
       averageTransaction: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
@@ -464,7 +464,7 @@ export class ManagementAnalyticsService {
         }
       });
 
-      const prompt = `You are a financial analyst for Pet Wash™, a multi-service pet care franchise in Israel.
+      const prompt = `You are a financial analyst for ⁦Pet Wash™⁩, a multi-service pet care franchise in Israel.
 
 Analyze the current performance data and generate revenue forecasts:
 

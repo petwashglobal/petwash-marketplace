@@ -12,7 +12,7 @@ export default function SuppliersPartners() {
           </div>
           <h1 className="luxury-heading-xl mb-4">Suppliers & Brands</h1>
           <p className="luxury-text-body max-w-2xl mx-auto">
-            Partner with Pet Wash™ as a premium supplier or brand partner
+            Partner with ⁦Pet Wash™⁩ as a premium supplier or brand partner
           </p>
         </div>
 

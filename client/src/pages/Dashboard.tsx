@@ -314,7 +314,7 @@ export default function Dashboard() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mb-12 sm:mb-16"
           >
-            <p className="text-[10px] tracking-[0.3em] uppercase text-gray-400 mb-6">Pet Wash™ Services</p>
+            <p className="text-[10px] tracking-[0.3em] uppercase text-gray-400 mb-6">⁦Pet Wash™⁩ Services</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-[1px] bg-gray-100">
               <button
                 onClick={() => setLocation('/stations')}
@@ -332,7 +332,7 @@ export default function Dashboard() {
                 <p className="text-sm sm:text-base text-black font-normal mb-1 group-hover:text-gray-700 transition-colors">
                   {tx('petSitting', language)}
                 </p>
-                <p className="text-xs text-gray-400">The Sitter Suite™</p>
+                <p className="text-xs text-gray-400">⁦The Sitter Suite™⁩</p>
               </button>
               <button
                 onClick={() => setLocation('/walk-my-pet')}
@@ -341,7 +341,7 @@ export default function Dashboard() {
                 <p className="text-sm sm:text-base text-black font-normal mb-1 group-hover:text-gray-700 transition-colors">
                   {tx('dogWalking', language)}
                 </p>
-                <p className="text-xs text-gray-400">Walk My Pet™</p>
+                <p className="text-xs text-gray-400">⁦Walk My Pet™⁩</p>
               </button>
               <button
                 onClick={() => setLocation('/pettrek')}
@@ -350,7 +350,7 @@ export default function Dashboard() {
                 <p className="text-sm sm:text-base text-black font-normal mb-1 group-hover:text-gray-700 transition-colors">
                   {tx('petTransport', language)}
                 </p>
-                <p className="text-xs text-gray-400">PetTrek™</p>
+                <p className="text-xs text-gray-400">⁦PetTrek™⁩</p>
               </button>
             </div>
           </motion.div>
@@ -416,7 +416,7 @@ export default function Dashboard() {
             className="border-t border-gray-100 pt-8"
           >
             <p className="text-[10px] tracking-[0.2em] uppercase text-gray-300 text-center">
-              Pet Wash™ 2025 - 2026
+              ⁦Pet Wash™⁩ 2025 - 2026
             </p>
           </motion.div>
         </div>

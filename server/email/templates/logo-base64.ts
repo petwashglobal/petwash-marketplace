@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ Logo for Email Templates
+ * ⁦Pet Wash™⁩ Logo for Email Templates
  * Using hosted logo URL for reliable email display across all clients
  */
 

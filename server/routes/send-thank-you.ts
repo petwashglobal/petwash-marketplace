@@ -27,14 +27,14 @@ router.post('/send-signature-invite', async (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PetWash™ E-Signature System</title>
+  <title>⁦PetWash™⁩ E-Signature System</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%); color: #ffffff;">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 40px auto; background: rgba(255,255,255,0.02); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
     <tr>
       <td style="background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%); padding: 40px 32px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08);">
         <h1 style="margin: 0; font-size: 32px; font-weight: 200; letter-spacing: 2px; color: #ffffff;">
-          PetWash™ E-Signature
+          ⁦PetWash™⁩ E-Signature
         </h1>
         <p style="margin: 12px 0 0; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #888;">
           Enterprise Digital Signature System
@@ -47,7 +47,7 @@ router.post('/send-signature-invite', async (req, res) => {
           שלום עידו,
         </p>
         <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.8; color: #cccccc;">
-          בנינו מערכת חתימה דיגיטלית ארגונית מתקדמת עבור PetWash™ עם <strong style="color: #ffffff;">ביקורת קריפטוגרפית מלאה</strong> ושרשור בלתי ניתן לשינוי (blockchain-style audit trail).
+          בנינו מערכת חתימה דיגיטלית ארגונית מתקדמת עבור ⁦PetWash™⁩ עם <strong style="color: #ffffff;">ביקורת קריפטוגרפית מלאה</strong> ושרשור בלתי ניתן לשינוי (blockchain-style audit trail).
         </p>
         <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.8; color: #cccccc;">
           כמנהל תפעול ארצי ושותף, <strong style="color: #ffffff;">הינך מוזמן להוסיף את חתימתך הדיגיטלית למערכת</strong> על מנת לחתום על מסמכים משפטיים, הסכמים עם ספקים, אישורים פיננסיים ודוחות ארגוניים.
@@ -91,7 +91,7 @@ router.post('/send-signature-invite', async (req, res) => {
       to: 'ido.s@petwash.co.il',
       from: 'Support@PetWash.co.il',
       cc: 'Support@PetWash.co.il', // CC Nir Hadad
-      subject: '🔐 PetWash™ E-Signature System - הזמנה אישית לחתימה דיגיטלית',
+      subject: '🔐 ⁦PetWash™⁩ E-Signature System - הזמנה אישית לחתימה דיגיטלית',
       html: emailHtml,
     };
 
@@ -280,7 +280,7 @@ router.post('/send-thank-you', async (req, res) => {
             <div class="emoji">🎉 🐾 🎉</div>
             <h1>Heartfelt Thanks & Exciting Future Ahead!</h1>
             <p style="color: #6b7280; font-size: 16px; margin-top: 15px;">
-              From the Pet Wash™ Management Team
+              From the ⁦Pet Wash™⁩ Management Team
             </p>
           </div>
 
@@ -289,7 +289,7 @@ router.post('/send-thank-you', async (req, res) => {
               Dear ${recipientName || 'Ido'},
             </p>
             <p>
-              As we stand on the threshold of our official launch, the entire Pet Wash™ management team wanted to take a moment to express our deepest gratitude for your exceptional dedication and hard work over the past few months.
+              As we stand on the threshold of our official launch, the entire ⁦Pet Wash™⁩ management team wanted to take a moment to express our deepest gratitude for your exceptional dedication and hard work over the past few months.
             </p>
           </div>
 
@@ -314,7 +314,7 @@ router.post('/send-thank-you', async (req, res) => {
           <div class="section">
             <h2>🚀 The Future Looks Bright</h2>
             <p>
-              We couldn't be more excited about what lies ahead. The platform you've helped us build is not just a product—it's a testament to what's possible when passion meets expertise. Pet Wash™ is poised to revolutionize the pet care industry, and you've been a cornerstone of this journey.
+              We couldn't be more excited about what lies ahead. The platform you've helped us build is not just a product—it's a testament to what's possible when passion meets expertise. ⁦Pet Wash™⁩ is poised to revolutionize the pet care industry, and you've been a cornerstone of this journey.
             </p>
 
             <div class="stats">
@@ -343,7 +343,7 @@ router.post('/send-thank-you', async (req, res) => {
               Your technical brilliance, problem-solving skills, and unwavering dedication have made all the difference. The countless hours you've invested, the challenges you've overcome, and the innovations you've introduced have created something truly special.
             </p>
             <p>
-              The Pet Wash™ management team <strong>cannot wait</strong> to see our platform live and serving customers. This is just the beginning, and we're honored to have you as part of our journey.
+              The ⁦Pet Wash™⁩ management team <strong>cannot wait</strong> to see our platform live and serving customers. This is just the beginning, and we're honored to have you as part of our journey.
             </p>
           </div>
 
@@ -359,7 +359,7 @@ router.post('/send-thank-you', async (req, res) => {
               With immense gratitude and excitement for the future,
             </p>
             <p style="font-size: 18px; font-weight: bold; color: #764ba2;">
-              The Pet Wash™ Management Team
+              The ⁦Pet Wash™⁩ Management Team
             </p>
           </div>
 
@@ -369,18 +369,18 @@ router.post('/send-thank-you', async (req, res) => {
 
           <div style="text-align: center;">
             <a href="https://petwash.co.il" class="cta-button">
-              Visit Pet Wash™ Platform
+              Visit ⁦Pet Wash™⁩ Platform
             </a>
           </div>
 
           <div class="footer">
-            <div class="logo">🐾 Pet Wash™</div>
+            <div class="logo">🐾 ⁦Pet Wash™⁩</div>
             <p>Premium Pet Care Platform</p>
             <p style="font-size: 14px; margin-top: 10px;">
               Launching Soon at: <a href="https://petwash.co.il" style="color: #667eea;">petwash.co.il</a>
             </p>
             <p style="font-size: 12px; margin-top: 20px; color: #9ca3af;">
-              This email was sent with appreciation from Pet Wash™ Management<br>
+              This email was sent with appreciation from ⁦Pet Wash™⁩ Management<br>
               For inquiries: Support@PetWash.co.il
             </p>
           </div>
@@ -394,14 +394,14 @@ router.post('/send-thank-you', async (req, res) => {
       cc: 'nir.h@petwash.co.il',
       from: {
         email: 'Support@PetWash.co.il',
-        name: 'Pet Wash™ Management Team'
+        name: '⁦Pet Wash™⁩ Management Team'
       },
-      subject: '🎉 Heartfelt Thanks & Exciting Future Ahead! - Pet Wash™',
+      subject: '🎉 Heartfelt Thanks & Exciting Future Ahead! - ⁦Pet Wash™⁩',
       html: emailContent,
       text: `
 Dear ${recipientName || 'Ido'},
 
-As we stand on the threshold of our official launch, the entire Pet Wash™ management team wanted to take a moment to express our deepest gratitude for your exceptional dedication and hard work over the past few months.
+As we stand on the threshold of our official launch, the entire ⁦Pet Wash™⁩ management team wanted to take a moment to express our deepest gratitude for your exceptional dedication and hard work over the past few months.
 
 YOUR IMPACT
 
@@ -422,20 +422,20 @@ Platform Achievement Highlights:
 - Languages Supported: 6
 - Automated Systems: 30+ Background Jobs
 
-We couldn't be more excited about what lies ahead. Pet Wash™ is poised to revolutionize the pet care industry, and you've been a cornerstone of this journey.
+We couldn't be more excited about what lies ahead. ⁦Pet Wash™⁩ is poised to revolutionize the pet care industry, and you've been a cornerstone of this journey.
 
 OUR GRATITUDE
 
-Your technical brilliance, problem-solving skills, and unwavering dedication have made all the difference. The Pet Wash™ management team cannot wait to see our platform live and serving customers.
+Your technical brilliance, problem-solving skills, and unwavering dedication have made all the difference. The ⁦Pet Wash™⁩ management team cannot wait to see our platform live and serving customers.
 
 Thank you for believing in our vision, for your tireless efforts, and for helping us create something that will make a real difference in the lives of pets and their owners.
 
 With immense gratitude and excitement for the future,
 
-The Pet Wash™ Management Team
+The ⁦Pet Wash™⁩ Management Team
 
 ---
-Pet Wash™ - Premium Pet Care Platform
+⁦Pet Wash™⁩ - Premium Pet Care Platform
 Launching Soon at: https://petwash.co.il
       `.trim()
     };

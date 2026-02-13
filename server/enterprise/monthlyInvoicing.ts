@@ -262,7 +262,7 @@ async function generateInvoicePDF(invoiceData: any): Promise<Buffer> {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       
       // Header
-      doc.fontSize(20).text('PetWash™ Ltd.', 50, 50);
+      doc.fontSize(20).text('⁦PetWash™⁩ Ltd.', 50, 50);
       doc.fontSize(10).text('Company ID: 517145033', 50, 75);
       doc.text('Premium Organic Pet Care Services', 50, 90);
       
@@ -332,7 +332,7 @@ async function sendInvoiceEmail(
     // Note: PDF attachments require direct SendGrid usage - simplified for now
     await EmailService.send({
       to: email,
-      subject: `Invoice ${invoiceNumber} - PetWash™`,
+      subject: `Invoice ${invoiceNumber} - ⁦PetWash™⁩`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Invoice ${invoiceNumber}</h2>
@@ -340,8 +340,8 @@ async function sendInvoiceEmail(
           <p>Your invoice for this month's services is ready.</p>
           <p><strong>Amount Due: ₪${amount.toFixed(2)}</strong></p>
           <p>Payment is due within 30 days.</p>
-          <p>Thank you for choosing PetWash™!</p>
-          <p>Best regards,<br>PetWash™ Team</p>
+          <p>Thank you for choosing ⁦PetWash™⁩!</p>
+          <p>Best regards,<br>⁦PetWash™⁩ Team</p>
           <p style="font-size: 11px; color: #666;">
             Note: PDF invoice with ${pdfBuffer.length} bytes generated successfully.
           </p>

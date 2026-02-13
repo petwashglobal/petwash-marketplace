@@ -80,7 +80,7 @@ export default function LoyaltyBirthday() {
         </Link>
 
         <div className="text-center mb-12">
-          <img src="/brand/petwash-logo-black-bg.png" alt="Pet Wash™" className="h-12 mx-auto mb-6 opacity-90" />
+          <img src="/brand/petwash-logo-black-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
           <div className="w-16 h-16 rounded-2xl bg-[rgba(236,72,153,0.1)] border border-[rgba(236,72,153,0.2)] flex items-center justify-center mx-auto mb-4">
             <Cake className="w-8 h-8 text-pink-400" />
           </div>

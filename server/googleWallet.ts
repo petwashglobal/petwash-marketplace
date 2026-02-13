@@ -149,7 +149,7 @@ export class GoogleWalletService {
       // Create loyalty class (template)
       const loyaltyClass = {
         id: classId,
-        issuerName: 'Pet Wash™',
+        issuerName: '⁦Pet Wash™⁩',
         programName: 'VIP Loyalty Program',
         programLogo: {
           sourceUri: {
@@ -161,7 +161,7 @@ export class GoogleWalletService {
         localizedIssuerName: {
           defaultValue: {
             language: 'en',
-            value: 'Pet Wash™'
+            value: '⁦Pet Wash™⁩'
           },
           translatedValues: [
             {

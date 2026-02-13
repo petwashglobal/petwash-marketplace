@@ -1,5 +1,5 @@
 /**
- * Advanced Booking Engine for The Sitter Suite™
+ * Advanced Booking Engine for ⁦The Sitter Suite™⁩
  * Handles complex availability, dynamic pricing, holiday surges, escrow payments
  * Enterprise-level like Booking.com / Airbnb
  */

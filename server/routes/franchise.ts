@@ -441,7 +441,7 @@ router.get('/reports/export/pdf', requireFranchiseAuth, async (req, res) => {
     doc.pipe(res);
 
     // Header
-    doc.fontSize(20).text('Pet Wash™ Financial Report', { align: 'center' });
+    doc.fontSize(20).text('⁦Pet Wash™⁩ Financial Report', { align: 'center' });
     doc.moveDown();
     doc.fontSize(12).text(`Franchise ID: ${franchiseId}`);
     doc.text(`Period: ${period}`);

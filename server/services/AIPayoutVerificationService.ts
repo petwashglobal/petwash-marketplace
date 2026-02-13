@@ -601,7 +601,7 @@ export class AIPayoutVerificationService {
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-      const prompt = `You are a fraud detection AI for Pet Wash™ subcontractor payout verification.
+      const prompt = `You are a fraud detection AI for ⁦Pet Wash™⁩ subcontractor payout verification.
 
 Analyze this work completion evidence for payout verification:
 

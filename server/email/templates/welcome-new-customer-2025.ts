@@ -15,8 +15,8 @@ export function generateWelcomeEmail(data: WelcomeEmailData): { subject: string;
   const isHebrew = data.language === 'he';
   
   const subject = isHebrew 
-    ? `🐾 ברוכים הבאים למשפחת Pet Wash™ - ${data.firstName}!`
-    : `🐾 Welcome to the Pet Wash™ Family, ${data.firstName}!`;
+    ? `🐾 ברוכים הבאים למשפחת ⁦Pet Wash™⁩ - ${data.firstName}!`
+    : `🐾 Welcome to the ⁦Pet Wash™⁩ Family, ${data.firstName}!`;
   
   const html = `
 <!DOCTYPE html>
@@ -312,7 +312,7 @@ export function generateWelcomeEmail(data: WelcomeEmailData): { subject: string;
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <div class="logo">Pet Wash™</div>
+      <div class="logo">⁦Pet Wash™⁩</div>
       <div class="hero-image">${data.petType === 'cat' ? '🐱' : data.petType === 'dog' ? '🐶' : '🐾'}</div>
       <div class="tagline">${isHebrew ? 'טיפול אורגני פרימיום לחיות מחמד' : 'Premium Organic Pet Care'}</div>
     </div>
@@ -326,8 +326,8 @@ export function generateWelcomeEmail(data: WelcomeEmailData): { subject: string;
       
       <p class="message">
         ${isHebrew 
-          ? `אנחנו כל כך שמחים שהצטרפת למשפחת <strong>Pet Wash™</strong>! זה לא רק חברה, זו <strong>קהילה</strong> של אנשים שאוהבים את חיות המחמד שלהם מעל הכל.`
-          : `We're absolutely <strong>thrilled</strong> to welcome you to the <strong>Pet Wash™ family</strong>! This isn't just a company — it's a <strong>community</strong> of people who love their pets more than anything.`}
+          ? `אנחנו כל כך שמחים שהצטרפת למשפחת <strong>⁦Pet Wash™⁩</strong>! זה לא רק חברה, זו <strong>קהילה</strong> של אנשים שאוהבים את חיות המחמד שלהם מעל הכל.`
+          : `We're absolutely <strong>thrilled</strong> to welcome you to the <strong>⁦Pet Wash™⁩ family</strong>! This isn't just a company — it's a <strong>community</strong> of people who love their pets more than anything.`}
       </p>
       
       <p class="message">
@@ -344,8 +344,8 @@ export function generateWelcomeEmail(data: WelcomeEmailData): { subject: string;
         </div>
         <p class="heart-text">
           ${isHebrew
-            ? `חיית מחמד נקייה היא חיית מחמד <strong>שמחה, בריאה ומרוצה</strong>. איכות החיים שלהם תלויה בנו, ובPet Wash™ אנחנו עושים הכל בשביל שהם ירגישו מושלמים.`
-            : `A clean pet is a <strong>happy, healthy, and content pet</strong>. Their quality of life depends on us, and at Pet Wash™, we do everything to make them feel perfect.`}
+            ? `חיית מחמד נקייה היא חיית מחמד <strong>שמחה, בריאה ומרוצה</strong>. איכות החיים שלהם תלויה בנו, וב⁦Pet Wash™⁩ אנחנו עושים הכל בשביל שהם ירגישו מושלמים.`
+            : `A clean pet is a <strong>happy, healthy, and content pet</strong>. Their quality of life depends on us, and at ⁦Pet Wash™⁩, we do everything to make them feel perfect.`}
         </p>
       </div>
       
@@ -422,8 +422,8 @@ export function generateWelcomeEmail(data: WelcomeEmailData): { subject: string;
       
       <p class="message" style="text-align: center; margin-top: 35px;">
         ${isHebrew
-          ? `תודה שבחרת ב-<strong>Pet Wash™</strong>. אנחנו כאן בשבילך ${data.petName ? `ובשביל ${data.petName}` : ''}, תמיד. 💜`
-          : `Thank you for choosing <strong>Pet Wash™</strong>. We're here for you ${data.petName ? `and ${data.petName}` : ''}, always. 💜`}
+          ? `תודה שבחרת ב-<strong>⁦Pet Wash™⁩</strong>. אנחנו כאן בשבילך ${data.petName ? `ובשביל ${data.petName}` : ''}, תמיד. 💜`
+          : `Thank you for choosing <strong>⁦Pet Wash™⁩</strong>. We're here for you ${data.petName ? `and ${data.petName}` : ''}, always. 💜`}
       </p>
     </div>
     
@@ -431,8 +431,8 @@ export function generateWelcomeEmail(data: WelcomeEmailData): { subject: string;
     <div class="footer">
       <p class="footer-text">
         ${isHebrew
-          ? '🐾 Pet Wash™ — היכן שטכנולוגיה פוגשת אהבה ללא תנאים'
-          : '🐾 Pet Wash™ — Where Technology Meets Unconditional Love'}
+          ? '🐾 ⁦Pet Wash™⁩ — היכן שטכנולוגיה פוגשת אהבה ללא תנאים'
+          : '🐾 ⁦Pet Wash™⁩ — Where Technology Meets Unconditional Love'}
       </p>
       
       <div class="social-links">

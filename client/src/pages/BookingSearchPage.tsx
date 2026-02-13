@@ -9,7 +9,7 @@ export default function BookingSearchPage() {
   return (
     <>
       <Helmet>
-        <title>{isHebrew ? 'חפש שירותי חיות מחמד | Pet Wash™' : 'Find Pet Services | Pet Wash™'}</title>
+        <title>{isHebrew ? 'חפש שירותי חיות מחמד | ⁦Pet Wash™⁩' : 'Find Pet Services | ⁦Pet Wash™⁩'}</title>
         <meta 
           name="description" 
           content={isHebrew 

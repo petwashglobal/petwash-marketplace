@@ -50,7 +50,7 @@ async function analyzeWithAI(tx: Transaction): Promise<FraudAnalysis> {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
-    const prompt = `You are a fraud detection AI for Pet Wash™ payment platform.
+    const prompt = `You are a fraud detection AI for ⁦Pet Wash™⁩ payment platform.
 
 Analyze this transaction for fraud risk:
 

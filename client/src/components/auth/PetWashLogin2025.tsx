@@ -63,13 +63,13 @@ export function PetWashLogin2025({
         <div className="flex flex-col items-center gap-4">
           <img
             src="/icons/petwash-512.png"
-            alt="Pet Wash™ Ltd"
+            alt="⁦Pet Wash™⁩ Ltd"
             className="h-20 w-20 rounded-full shadow-[0_0_25px_rgba(0,0,0,0.08)]"
           />
 
           <div className="text-center">
             <h1 className="text-2xl font-semibold tracking-tight">
-              Pet Wash™ Ltd
+              ⁦Pet Wash™⁩ Ltd
             </h1>
             <p className="text-sm text-neutral-500 leading-relaxed">
               One secure account for all services:
@@ -131,7 +131,7 @@ export function PetWashLogin2025({
 
         {/* TRUST COPY */}
         <p className="text-center text-xs text-neutral-500 leading-snug">
-          Pet Wash™ uses 2025 Google Verified OAuth, Passkeys, and encrypted
+          ⁦Pet Wash™⁩ uses 2025 Google Verified OAuth, Passkeys, and encrypted
           credentials. Your password is never visible to us.
         </p>
 

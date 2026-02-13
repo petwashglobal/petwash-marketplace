@@ -51,7 +51,7 @@ export async function checkFailedBurst(uid: string, userEmail?: string): Promise
         <p><strong>Time:</strong> ${new Date().toISOString()}</p>
         <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
         <p style="color: #6b7280; font-size: 12px;">
-          This alert was triggered automatically by PetWash™ security monitoring.
+          This alert was triggered automatically by ⁦PetWash™⁩ security monitoring.
         </p>
       </div>
     `;
@@ -79,7 +79,7 @@ export async function alertPasskeyRevoked(
       <p><strong>Time:</strong> ${new Date().toISOString()}</p>
       <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
       <p style="color: #6b7280; font-size: 12px;">
-        This alert was triggered automatically by PetWash™ security monitoring.
+        This alert was triggered automatically by ⁦PetWash™⁩ security monitoring.
       </p>
     </div>
   `;
@@ -135,7 +135,7 @@ export async function alertNewDeviceIfUnusual(
           </p>
           <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
           <p style="color: #6b7280; font-size: 12px;">
-            This alert was triggered automatically by PetWash™ security monitoring.
+            This alert was triggered automatically by ⁦PetWash™⁩ security monitoring.
           </p>
         </div>
       `;

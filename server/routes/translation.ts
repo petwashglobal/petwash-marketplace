@@ -210,10 +210,10 @@ router.post('/verify', async (req, res) => {
 
     const { englishText, currentTranslation, targetLanguage, context } = validation.data;
 
-    const brandContext = context || `Luxury pet care marketplace for Pet Wash™ brand. 
+    const brandContext = context || `Luxury pet care marketplace for ⁦Pet Wash™⁩ brand. 
       Premium/luxury positioning targeting Israeli market. 
       Use natural, native-speaker phrasing - NOT Google Translate style.
-      Preserve brand names like "Pet Wash™", "K9000™", "The Sitter Suite™", etc.`;
+      Preserve brand names like "⁦Pet Wash™⁩", "⁦K9000™⁩", "⁦The Sitter Suite™⁩", etc.`;
 
     const result = await translateWithGemini(
       englishText,

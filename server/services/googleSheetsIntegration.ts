@@ -107,14 +107,14 @@ async function initializeSheetsClient(): Promise<GoogleSheetsClient | null> {
 }
 
 /**
- * Create master Pet Wash™ Forms spreadsheet with all sheets
+ * Create master ⁦Pet Wash™⁩ Forms spreadsheet with all sheets
  */
 async function createMasterSpreadsheet(sheets: any): Promise<string> {
   try {
     const response = await sheets.spreadsheets.create({
       requestBody: {
         properties: {
-          title: 'Pet Wash™ Global Forms - Master Tracking',
+          title: '⁦Pet Wash™⁩ Global Forms - Master Tracking',
         },
         sheets: Object.values(SHEETS).map(sheetName => ({
           properties: {

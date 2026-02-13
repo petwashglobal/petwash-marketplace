@@ -1,5 +1,5 @@
 /**
- * Luxury Invoice Service for Pet Wash™
+ * Luxury Invoice Service for ⁦Pet Wash™⁩
  * Israeli Law Compliant Invoice/Receipt/Statement Generation
  * Full Hebrew RTL Support with מע"מ and Commission Tracking
  */
@@ -412,7 +412,7 @@ class LuxuryInvoiceService {
   <div class="invoice-container">
     <div class="header">
       <div class="header-title">חשבונית מס / כספית</div>
-      <div class="header-subtitle">Pet Wash™ - Tax Invoice / Receipt</div>
+      <div class="header-subtitle">⁦Pet Wash™⁩ - Tax Invoice / Receipt</div>
     </div>
     
     <div class="company-details">
@@ -591,7 +591,7 @@ class LuxuryInvoiceService {
     
     <div class="footer">
       <div class="footer-note">
-        💎 Pet Wash™ - שירותי טיפוח פרמיום לחיות מחמד
+        💎 ⁦Pet Wash™⁩ - שירותי טיפוח פרמיום לחיות מחמד
       </div>
       <div class="footer-legal">
         מסמך זה מהווה חשבונית מס/כספית כדין | מספר עוסק מורשה: ${COMPANY_DETAILS.vatNumber}<br>

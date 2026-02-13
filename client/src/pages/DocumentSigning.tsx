@@ -146,7 +146,7 @@ export default function DocumentSigning() {
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="luxury-heading-xl mb-4">
-              PetWash™ E-Signature
+              ⁦PetWash™⁩ E-Signature
             </h1>
             <p className="luxury-text-small uppercase tracking-widest">
               Enterprise Digital Signature System

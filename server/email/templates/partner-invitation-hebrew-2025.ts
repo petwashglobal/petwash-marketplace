@@ -13,7 +13,7 @@ interface PartnerInvitationHebrewData {
 export function generatePartnerInvitationHebrew(data: PartnerInvitationHebrewData): { subject: string; html: string } {
   const { partnerName, role, presentationUrl } = data;
 
-  const subject = `🚀 Pet Wash™ - מצגת משקיעים בלעדית עבור ${partnerName}`;
+  const subject = `🚀 ⁦Pet Wash™⁩ - מצגת משקיעים בלעדית עבור ${partnerName}`;
 
   const html = `
 <!DOCTYPE html>
@@ -21,7 +21,7 @@ export function generatePartnerInvitationHebrew(data: PartnerInvitationHebrewDat
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pet Wash™ - הזמנה לשותף</title>
+  <title>⁦Pet Wash™⁩ - הזמנה לשותף</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh;">
   
@@ -49,7 +49,7 @@ export function generatePartnerInvitationHebrew(data: PartnerInvitationHebrewDat
         </h2>
         <p style="margin: 0 0 20px 0; color: #333; font-size: 17px; line-height: 1.8;">
           אנחנו שמחים מאוד לשתף אותך במצגת המשקיעים המקיפה שלנו! בתור 
-          <strong style="color: #667eea;">${role}</strong> שלנו, אתה חלק חשוב ומרכזי במשפחת Pet Wash™.
+          <strong style="color: #667eea;">${role}</strong> שלנו, אתה חלק חשוב ומרכזי במשפחת ⁦Pet Wash™⁩.
         </p>
         <p style="margin: 0 0 20px 0; color: #333; font-size: 17px; line-height: 1.8;">
           העבודה שלך יחד עם <strong>ניר חדד</strong> ו-<strong>עידו שקרזי</strong>, המומחיות שלך ב-<strong>התקנות, בנייה, תאימות ורגולציה</strong> - תרומתך לא תסולא בפז.

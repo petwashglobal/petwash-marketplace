@@ -83,7 +83,7 @@ export default function Stations() {
           {/* Premium Badge */}
           <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/30">
             <Sparkles className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm font-bold tracking-wider text-cyan-300">K9000™ SMART WASH HUBS</span>
+            <span className="text-sm font-bold tracking-wider text-cyan-300">⁦K9000™⁩ SMART WASH HUBS</span>
           </div>
           
           <div className="flex justify-center items-center gap-4 mb-6">
@@ -96,7 +96,7 @@ export default function Stations() {
             Premium Wash Stations
           </h1>
           <p className="luxury-dark-text-body max-w-2xl mx-auto mb-8">
-            Self-service K9000™ organic wash locations. Professional-grade equipment, organic products, convenient locations.
+            Self-service ⁦K9000™⁩ organic wash locations. Professional-grade equipment, organic products, convenient locations.
           </p>
 
           {/* Luxury Dark Search Bar */}

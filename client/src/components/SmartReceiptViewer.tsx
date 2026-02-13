@@ -98,7 +98,7 @@ export function SmartReceiptViewer() {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mr-3">
                 <Receipt className="h-6 w-6 text-white" />
               </div>
-              <h1 className="luxury-heading-lg">Pet Wash™ Receipt</h1>
+              <h1 className="luxury-heading-lg">⁦Pet Wash™⁩ Receipt</h1>
             </div>
             <p className="text-lg font-mono luxury-text-gradient">#{receipt.transactionId}</p>
           </div>
@@ -290,7 +290,7 @@ export function SmartReceiptViewer() {
         {/* Footer */}
         <div className="text-center mt-8 luxury-text-small luxury-animate-fade-in luxury-delay-6">
           <p>
-            Thank you for choosing Pet Wash™ Premium Services
+            Thank you for choosing ⁦Pet Wash™⁩ Premium Services
           </p>
           <p className="mt-2">
             Questions? Contact us at <a href="mailto:Support@PetWash.co.il" className="luxury-text-gradient font-semibold">Support@PetWash.co.il</a>

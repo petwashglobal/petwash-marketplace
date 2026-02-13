@@ -903,7 +903,7 @@ router.post('/ceo/request-voucher', validateFirebaseToken, requireCEO, async (re
     });
 
     // Send WhatsApp verification code to CEO (out-of-band 2FA security channel)
-    const whatsappMessage = `🔐 PetWash™ Security Alert\n\nFree voucher issuance request:\n₪${amount} for ${recipientName}\n\nYour verification code: ${verificationCode}\n\nValid for 5 minutes.\n\nIf you didn't request this, contact security immediately.`;
+    const whatsappMessage = `🔐 ⁦PetWash™⁩ Security Alert\n\nFree voucher issuance request:\n₪${amount} for ${recipientName}\n\nYour verification code: ${verificationCode}\n\nValid for 5 minutes.\n\nIf you didn't request this, contact security immediately.`;
 
     try {
       const { WhatsAppService } = await import('../services/WhatsAppService');
@@ -1008,7 +1008,7 @@ router.post('/ceo/issue-free-voucher', validateFirebaseToken, requireCEO, async 
       recipientEmail,
       recipientName,
       senderName: 'Nir Hadad - PetWash CEO',
-      personalMessage: message || 'Complimentary gift from PetWash™',
+      personalMessage: message || 'Complimentary gift from ⁦PetWash™⁩',
       isActive: true,
       isRedeemed: false,
       isFreeGift: true,
@@ -1021,7 +1021,7 @@ router.post('/ceo/issue-free-voucher', validateFirebaseToken, requireCEO, async 
     await voucherRef.set(voucherData);
 
     // Send email to recipient
-    const emailSubject = '🎁 You received a complimentary PetWash™ Gift Card from our CEO!';
+    const emailSubject = '🎁 You received a complimentary ⁦PetWash™⁩ Gift Card from our CEO!';
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -1053,13 +1053,13 @@ router.post('/ceo/issue-free-voucher', validateFirebaseToken, requireCEO, async 
           <div class="content">
             <p>Dear ${recipientName},</p>
             
-            <p>On behalf of PetWash™, I'm delighted to present you with this complimentary gift card as a token of our appreciation.</p>
+            <p>On behalf of ⁦PetWash™⁩, I'm delighted to present you with this complimentary gift card as a token of our appreciation.</p>
             
             ${message ? `<div class="message-box"><p><em>"${message}"</em></p></div>` : ''}
             
             <div class="gift-amount">₪${amount}</div>
             
-            <p style="text-align: center; font-size: 20px; color: #ec4899;">Premium PetWash™ Gift Card</p>
+            <p style="text-align: center; font-size: 20px; color: #ec4899;">Premium ⁦PetWash™⁩ Gift Card</p>
             
             <div class="code-box">
               ${code}
@@ -1085,7 +1085,7 @@ router.post('/ceo/issue-free-voucher', validateFirebaseToken, requireCEO, async 
               <p>Warm regards,<br>
               <strong>Nir Hadad</strong><br>
               Founder & CEO<br>
-              PetWash™</p>
+              ⁦PetWash™⁩</p>
             </div>
             
             <p style="font-size: 12px; color: #6b7280; text-align: center;">
@@ -1095,10 +1095,10 @@ router.post('/ceo/issue-free-voucher', validateFirebaseToken, requireCEO, async 
           </div>
           
           <div class="footer">
-            <p><strong>PetWash™</strong> - Premium Organic Pet Care</p>
+            <p><strong>⁦PetWash™⁩</strong> - Premium Organic Pet Care</p>
             <p>petwash.co.il • +972 549 833 355</p>
             <p style="margin-top: 15px;">This is a complimentary gift. Non-refundable. Valid for 12 months.</p>
-            <p>© ${new Date().getFullYear()} PetWash™. All rights reserved.</p>
+            <p>© ${new Date().getFullYear()} ⁦PetWash™⁩. All rights reserved.</p>
           </div>
         </div>
       </body>

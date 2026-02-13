@@ -58,7 +58,7 @@ export function OAuthConsentDialog({
           <div className="flex items-center justify-center mb-4">
             <img 
               src="/brand/petwash-logo-official.png" 
-              alt="Pet Wash™" 
+              alt="⁦Pet Wash™⁩" 
               className="h-12"
             />
           </div>

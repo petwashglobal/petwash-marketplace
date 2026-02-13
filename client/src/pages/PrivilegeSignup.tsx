@@ -60,13 +60,13 @@ const TIER_DATA = [
 ];
 
 const PLATFORMS = [
-  { name: 'K9000™', icon: '🚿' },
-  { name: 'Sitter Suite™', icon: '🏠' },
-  { name: 'Walk My Pet™', icon: '🚶' },
-  { name: 'PetTrek™', icon: '🚗' },
+  { name: '⁦K9000™⁩', icon: '🚿' },
+  { name: '⁦Sitter Suite™⁩', icon: '🏠' },
+  { name: '⁦Walk My Pet™⁩', icon: '🚶' },
+  { name: '⁦PetTrek™⁩', icon: '🚗' },
   { name: 'Academy™', icon: '🎓' },
-  { name: 'The Plush Lab™', icon: '🧸' },
-  { name: 'Wash Hub™', icon: '💎' },
+  { name: '⁦The Plush Lab™⁩', icon: '🧸' },
+  { name: '⁦Wash Hub™⁩', icon: '💎' },
 ];
 
 const gold = '#C9A96E';
@@ -291,7 +291,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-5">
                     <div>
-                      <div className="text-[11px] tracking-[0.2em] uppercase text-white/50">Pet Wash™</div>
+                      <div className="text-[11px] tracking-[0.2em] uppercase text-white/50">⁦Pet Wash™⁩</div>
                       <div className="text-[10px] tracking-[0.15em] uppercase mt-0.5" style={{ color: gold }}>PRIVILEGE CARD</div>
                     </div>
                     <div className="w-8 h-8 flex items-center justify-center" style={{ background: `${gold}15`, borderRadius: '2px' }}>

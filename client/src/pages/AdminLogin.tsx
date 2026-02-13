@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ Admin Login - Production Fix (October 29, 2025)
+ * ⁦Pet Wash™⁩ Admin Login - Production Fix (October 29, 2025)
  * 
  * ✅ FIXES APPLIED:
  * - Removed all strict password regex validation
@@ -339,7 +339,7 @@ export default function AdminLogin() {
           </div>
           <div>
             <CardTitle className="text-2xl font-bold luxury-text-gradient">
-              Pet Wash™ Admin
+              ⁦Pet Wash™⁩ Admin
             </CardTitle>
             <CardDescription className="text-gray-600 mt-2">
               Secure access to management portal

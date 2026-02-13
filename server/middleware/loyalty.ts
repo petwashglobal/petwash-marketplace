@@ -47,7 +47,7 @@ export async function requireLoyaltyMember(
       return res.status(403).json({
         success: false,
         error: 'loyalty_membership_required',
-        message: 'This feature is exclusive to Pet Wash™ loyalty members. Complete a wash or booking to join our loyalty program.',
+        message: 'This feature is exclusive to ⁦Pet Wash™⁩ loyalty members. Complete a wash or booking to join our loyalty program.',
       });
     }
     

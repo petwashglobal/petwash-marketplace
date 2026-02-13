@@ -209,7 +209,7 @@ export default function SitterBookingFlow() {
       } else if (errorMsg.includes("loyalty") || errorMsg.includes("403")) {
         toast({
           title: "נדרשת חברות במועדון",
-          description: "שירות זה זמין לחברי מועדון Pet Wash™. הצטרפו עכשיו!",
+          description: "שירות זה זמין לחברי מועדון ⁦Pet Wash™⁩. הצטרפו עכשיו!",
           variant: "destructive",
         });
       } else {

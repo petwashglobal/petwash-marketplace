@@ -144,7 +144,7 @@ export default function PetWashDayPlanner() {
 
           <h1 className="text-7xl md:text-8xl font-serif tracking-tight leading-none">
             <span className="bg-gradient-to-r from-white via-amber-100 to-white bg-clip-text text-transparent">
-              Pet Wash™
+              ⁦Pet Wash™⁩
             </span>
           </h1>
           

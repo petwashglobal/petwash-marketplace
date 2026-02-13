@@ -1,5 +1,5 @@
 /**
- * Spotify API Routes - Pet Wash™
+ * Spotify API Routes - ⁦Pet Wash™⁩
  * Provides Spotify profile and now playing endpoints
  */
 

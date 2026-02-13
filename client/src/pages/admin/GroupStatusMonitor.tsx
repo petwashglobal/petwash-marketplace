@@ -3,12 +3,12 @@
  * First view after admin login
  * 
  * Displays real-time operational status for all 7 autonomous platforms:
- * 1. The Sitter Suite™
- * 2. Walk My Pet™
- * 3. PetTrek™
- * 4. Pet Wash Hub™
- * 5. Paw Finder™
- * 6. The Plush Lab™
+ * 1. ⁦The Sitter Suite™⁩
+ * 2. ⁦Walk My Pet™⁩
+ * 3. ⁦PetTrek™⁩
+ * 4. Pet ⁦Wash Hub™⁩
+ * 5. ⁦Paw Finder™⁩
+ * 6. ⁦The Plush Lab™⁩
  * 7. Enterprise Platform
  */
 
@@ -60,7 +60,7 @@ export default function GroupStatusMonitor() {
   const platforms: PlatformStatus[] = data?.platforms || [
     {
       platform: "sitter-suite",
-      displayName: "The Sitter Suite™",
+      displayName: "⁦The Sitter Suite™⁩",
       status: "operational",
       uptime: 99.98,
       activeUsers: 247,
@@ -72,7 +72,7 @@ export default function GroupStatusMonitor() {
     },
     {
       platform: "walk-my-pet",
-      displayName: "Walk My Pet™",
+      displayName: "⁦Walk My Pet™⁩",
       status: "operational",
       uptime: 99.95,
       activeUsers: 189,
@@ -84,7 +84,7 @@ export default function GroupStatusMonitor() {
     },
     {
       platform: "pettrek",
-      displayName: "PetTrek™",
+      displayName: "⁦PetTrek™⁩",
       status: "operational",
       uptime: 99.92,
       activeUsers: 156,
@@ -96,7 +96,7 @@ export default function GroupStatusMonitor() {
     },
     {
       platform: "pet-wash-hub",
-      displayName: "Pet Wash Hub™",
+      displayName: "Pet ⁦Wash Hub™⁩",
       status: "operational",
       uptime: 99.99,
       activeUsers: 523,
@@ -108,7 +108,7 @@ export default function GroupStatusMonitor() {
     },
     {
       platform: "paw-finder",
-      displayName: "Paw Finder™",
+      displayName: "⁦Paw Finder™⁩",
       status: "operational",
       uptime: 99.97,
       activeUsers: 312,
@@ -120,7 +120,7 @@ export default function GroupStatusMonitor() {
     },
     {
       platform: "plush-lab",
-      displayName: "The Plush Lab™",
+      displayName: "⁦The Plush Lab™⁩",
       status: "operational",
       uptime: 99.94,
       activeUsers: 198,

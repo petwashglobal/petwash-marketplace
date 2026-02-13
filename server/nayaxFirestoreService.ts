@@ -1324,7 +1324,7 @@ async function sendAlertEmail(alertId: string, alert: Omit<StationAlert, 'id'>):
 
           <hr style="margin: 20px 0;" />
           <p style="color: #6b7280; font-size: 12px;">
-            Pet Wash™ Smart Monitoring System
+            ⁦Pet Wash™⁩ Smart Monitoring System
           </p>
         </div>
       `

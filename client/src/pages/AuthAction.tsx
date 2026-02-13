@@ -139,7 +139,7 @@ export default function AuthAction() {
           <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto flex items-center justify-center luxury-shadow-xl">
             <div className="text-4xl">🐾</div>
           </div>
-          <h1 className="luxury-heading-xl">Pet Wash™</h1>
+          <h1 className="luxury-heading-xl">⁦Pet Wash™⁩</h1>
           <p className="text-gray-600">
             {mode === 'resetPassword' && 'Reset Your Password'}
             {mode === 'verifyEmail' && 'Email Verification'}

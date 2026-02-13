@@ -1,5 +1,5 @@
 /**
- * PetWash™ Voucher Security Service (Server-Side Only)
+ * ⁦PetWash™⁩ Voucher Security Service (Server-Side Only)
  * ES256 JWS Cryptographic Signing & Verification + Ledger-Based Balance Reconciliation
  * 
  * CRITICAL: This file MUST stay server-side only

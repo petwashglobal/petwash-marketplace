@@ -2,7 +2,7 @@
  * Audit Signature Utility
  * Provides cryptographic SHA-256 signatures for immutable audit trails
  * 
- * Usage across PetWash™ platform:
+ * Usage across ⁦PetWash™⁩ platform:
  * - Employee expense submissions
  * - Third-party integrations (Google, Nayax, etc.)
  * - K9000 wash activations

@@ -14,7 +14,7 @@ interface PartnerInvitationData {
 export function generatePartnerInvitation(data: PartnerInvitationData): { subject: string; html: string } {
   const { partnerName, role, presentationUrl } = data;
 
-  const subject = `🚀 Pet Wash™ Investor Presentation - Exclusive Access for ${partnerName}`;
+  const subject = `🚀 ⁦Pet Wash™⁩ Investor Presentation - Exclusive Access for ${partnerName}`;
 
   const html = `
 <!DOCTYPE html>
@@ -22,7 +22,7 @@ export function generatePartnerInvitation(data: PartnerInvitationData): { subjec
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pet Wash™ - Partner Invitation</title>
+  <title>⁦Pet Wash™⁩ - Partner Invitation</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh;">
   
@@ -50,7 +50,7 @@ export function generatePartnerInvitation(data: PartnerInvitationData): { subjec
         </h2>
         <p style="margin: 0 0 20px 0; color: #333; font-size: 17px; line-height: 1.7;">
           We're delighted to share our comprehensive investor presentation with you! As our valued 
-          <strong style="color: #667eea;">${role}</strong>, you're an essential part of the Pet Wash™ family.
+          <strong style="color: #667eea;">${role}</strong>, you're an essential part of the ⁦Pet Wash™⁩ family.
         </p>
         <p style="margin: 0 0 20px 0; color: #333; font-size: 17px; line-height: 1.7;">
           Working alongside <strong>Nir Hadad</strong> and <strong>Ido Shakarzi</strong>, your expertise in 

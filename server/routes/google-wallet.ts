@@ -205,7 +205,7 @@ router.post('/business-card', async (req, res) => {
     const jwt = await GoogleWalletService.generateBusinessCardJWT({
       name,
       title: title || '',
-      company: company || 'Pet Wash™ Ltd',
+      company: company || '⁦Pet Wash™⁩ Ltd',
       email,
       phone,
       mobile,

@@ -1,5 +1,5 @@
 /**
- * PetWash™ Unified Notifications Hub 2025
+ * ⁦PetWash™⁩ Unified Notifications Hub 2025
  * 
  * Multi-channel notification system supporting:
  * - Push notifications (FCM)

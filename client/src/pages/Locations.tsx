@@ -40,7 +40,7 @@ export default function Locations() {
   const stations: Station[] = [
     {
       id: '1',
-      name: 'Pet Wash™ - רמת גן',
+      name: '⁦Pet Wash™⁩ - רמת גן',
       address: 'רחוב בילינסון 12',
       city: 'רמת גן',
       hours: 'א׳-ה׳: 08:00-20:00, ו׳: 08:00-14:00',
@@ -49,7 +49,7 @@ export default function Locations() {
     },
     {
       id: '2',
-      name: 'Pet Wash™ - תל אביב',
+      name: '⁦Pet Wash™⁩ - תל אביב',
       address: 'רחוב דיזנגוף 100',
       city: 'תל אביב',
       hours: 'א׳-ה׳: 08:00-20:00, ו׳: 08:00-14:00',
@@ -58,7 +58,7 @@ export default function Locations() {
     },
     {
       id: '3',
-      name: 'Pet Wash™ - ראש העין',
+      name: '⁦Pet Wash™⁩ - ראש העין',
       address: 'עוזי חיטמן 8',
       city: 'ראש העין',
       hours: 'א׳-ה׳: 08:00-20:00, ו׳: 08:00-14:00',
@@ -193,7 +193,7 @@ export default function Locations() {
         <div className="max-w-4xl mx-auto mt-16 luxury-glass-card luxury-shadow-xl p-10 text-center luxury-slide-up">
           <h2 className="text-3xl font-bold luxury-gradient-text mb-4">More Locations Coming Soon!</h2>
           <p className="luxury-text-body text-lg mb-8">
-            We're expanding across Israel in 2025. Want a Pet Wash™ station in your neighborhood?
+            We're expanding across Israel in 2025. Want a ⁦Pet Wash™⁩ station in your neighborhood?
           </p>
           <button 
             className="luxury-btn-outline luxury-shadow-lg"

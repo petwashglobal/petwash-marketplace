@@ -1,6 +1,6 @@
 /**
  * Deep QA Endpoint Testing Suite
- * Comprehensive testing of all Pet Wash™ API endpoints
+ * Comprehensive testing of all ⁦Pet Wash™⁩ API endpoints
  */
 
 import { logger } from './lib/logger';
@@ -194,7 +194,7 @@ class EndpointQATester {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pet Wash™ - Endpoint QA Report</title>
+  <title>⁦Pet Wash™⁩ - Endpoint QA Report</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -297,7 +297,7 @@ class EndpointQATester {
   <div class="container">
     <div class="header">
       <h1>🔍 Endpoint QA Report</h1>
-      <p>Pet Wash™ API - Deep Quality Assurance Testing</p>
+      <p>⁦Pet Wash™⁩ API - Deep Quality Assurance Testing</p>
       <p style="margin-top: 10px; font-size: 14px;">${new Date().toLocaleString()}</p>
     </div>
     

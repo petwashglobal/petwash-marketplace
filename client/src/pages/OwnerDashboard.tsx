@@ -118,7 +118,7 @@ export default function OwnerDashboard() {
               active={activeTab === 'pawfinder'}
               onClick={() => setActiveTab('pawfinder')}
               icon={<Search className="h-5 w-5" />}
-              label={isHebrew ? 'Paw Finder™ חינם!' : 'Paw Finder™ FREE!'}
+              label={isHebrew ? '⁦Paw Finder™⁩ חינם!' : '⁦Paw Finder™⁩ FREE!'}
               badge={<Sparkles className="h-3 w-3 text-yellow-400" />}
             />
           </div>
@@ -336,7 +336,7 @@ export default function OwnerDashboard() {
                 </div>
                 <div>
                   <h2 className="luxury-heading-md flex items-center gap-2">
-                    Paw Finder™
+                    ⁦Paw Finder™⁩
                     <Sparkles className="h-6 w-6 text-yellow-400" />
                   </h2>
                   <p className="luxury-text-body">
@@ -413,8 +413,8 @@ export default function OwnerDashboard() {
                 <div className="border-l-4 border-green-500 pl-4 py-2">
                   <p className="luxury-text-body font-semibold">
                     {isHebrew 
-                      ? '"נעלם במשך 3 ימים - נמצא בזכות Paw Finder™!"' 
-                      : '"Lost for 3 days - Found thanks to Paw Finder™!"'}
+                      ? '"נעלם במשך 3 ימים - נמצא בזכות ⁦Paw Finder™⁩!"' 
+                      : '"Lost for 3 days - Found thanks to ⁦Paw Finder™⁩!"'}
                   </p>
                   <p className="luxury-text-small">
                     - {isHebrew ? 'שרה, תל אביב' : 'Sarah, Tel Aviv'}

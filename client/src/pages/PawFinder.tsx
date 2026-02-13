@@ -1,7 +1,7 @@
 /**
- * Paw Finder™ - FREE Community Service
+ * ⁦Paw Finder™⁩ - FREE Community Service
  * Help reunite lost pets with their owners
- * NO platform fees - Pet Wash™ only connects owners and finders
+ * NO platform fees - ⁦Pet Wash™⁩ only connects owners and finders
  */
 
 import { useState } from 'react';
@@ -124,10 +124,10 @@ export default function PawFinder({ language }: PawFinderProps) {
   };
 
   const content = {
-    title: isHebrew ? "Paw Finder™ - מחפשים חיית מחמד שאבדה" : "Paw Finder™ - Find Your Lost Pet",
+    title: isHebrew ? "⁦Paw Finder™⁩ - מחפשים חיית מחמד שאבדה" : "⁦Paw Finder™⁩ - Find Your Lost Pet",
     subtitle: isHebrew 
-      ? "שירות קהילתי חינמי - Pet Wash™ מחברת בין בעלים למוצאים"
-      : "FREE Community Service - Pet Wash™ Connects Owners & Finders",
+      ? "שירות קהילתי חינמי - ⁦Pet Wash™⁩ מחברת בין בעלים למוצאים"
+      : "FREE Community Service - ⁦Pet Wash™⁩ Connects Owners & Finders",
     free: isHebrew ? "חינמי לחלוטין" : "Completely FREE",
     noFees: isHebrew ? "ללא עמלות פלטפורמה" : "No Platform Fees",
     community: isHebrew ? "שירות קהילתי" : "Community Service",
@@ -474,8 +474,8 @@ export default function PawFinder({ language }: PawFinderProps) {
                 </p>
                 <p className="luxury-text-body">
                   {isHebrew 
-                    ? "Pet Wash™ מחברת בין בעלים למוצאים בחינם. אין עמלות פלטפורמה. בעלים משלמים למוצאים ישירות אם רוצים. אנחנו כאן כדי לעזור לקהילה! 🐾"
-                    : "Pet Wash™ connects owners and finders for free. No platform fees. Owners pay finders directly if they wish. We're here to help the community! 🐾"}
+                    ? "⁦Pet Wash™⁩ מחברת בין בעלים למוצאים בחינם. אין עמלות פלטפורמה. בעלים משלמים למוצאים ישירות אם רוצים. אנחנו כאן כדי לעזור לקהילה! 🐾"
+                    : "⁦Pet Wash™⁩ connects owners and finders for free. No platform fees. Owners pay finders directly if they wish. We're here to help the community! 🐾"}
                 </p>
               </div>
             </div>

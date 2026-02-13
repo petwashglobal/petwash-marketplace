@@ -108,7 +108,7 @@ export function GiftCards({ language }: GiftCardsProps) {
                   <div className="relative overflow-hidden bg-[#f5f5f3]" style={{ aspectRatio: '1120 / 928' }}>
                     <img
                       src={cardImg}
-                      alt={`PetWash™ ${tierLabel} E-Gift Card - ₪${voucher.value}`}
+                      alt={`⁦PetWash™⁩ ${tierLabel} E-Gift Card - ₪${voucher.value}`}
                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                       loading="lazy"
                     />

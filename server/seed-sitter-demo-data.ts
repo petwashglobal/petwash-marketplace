@@ -1,5 +1,5 @@
 /**
- * Seed Demo Data for The Sitter Suite™
+ * Seed Demo Data for ⁦The Sitter Suite™⁩
  * Creates premium sitters, reviews, and bookings for demonstration
  */
 
@@ -295,7 +295,7 @@ const demoSitters = [
 
 export async function seedSitterDemoData() {
   try {
-    logger.info('[Seed] Starting Sitter Suite™ demo data seeding...');
+    logger.info('[Seed] Starting ⁦Sitter Suite™⁩ demo data seeding...');
 
     // Insert sitters
     const insertedSitters = await db.insert(sitterProfiles).values(demoSitters).returning();
@@ -353,7 +353,7 @@ export async function seedSitterDemoData() {
 
     logger.info('[Seed] Created demo pet for demo user');
 
-    logger.info('[Seed] ✅ Sitter Suite™ demo data seeded successfully!');
+    logger.info('[Seed] ✅ ⁦Sitter Suite™⁩ demo data seeded successfully!');
     logger.info(`[Seed] Created ${insertedSitters.length} sitters, ${reviews.length} reviews, and 1 demo pet`);
 
     return { sitters: insertedSitters, reviews, pet: demoPet };

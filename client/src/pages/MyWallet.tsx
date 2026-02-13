@@ -271,7 +271,7 @@ export default function MyWallet() {
                   <Wallet className="w-6 h-6 text-[#d4af37]" />
                 </div>
                 <div>
-                  <h2 className="luxury-dark-heading-sm text-lg">Pet Wash™ Wallet</h2>
+                  <h2 className="luxury-dark-heading-sm text-lg">⁦Pet Wash™⁩ Wallet</h2>
                   <p className="luxury-dark-text-small text-xs mt-0.5">Premium Balance</p>
                 </div>
               </div>

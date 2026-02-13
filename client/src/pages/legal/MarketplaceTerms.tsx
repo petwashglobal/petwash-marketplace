@@ -112,8 +112,8 @@ export default function MarketplaceTerms() {
           </h1>
           <p className="text-xl text-white/60 max-w-2xl mx-auto">
             {isHebrew 
-              ? "כל מה שצריך לדעת על ההגנות, הביטוח והתנאים של Pet Wash™ Marketplace"
-              : "Everything you need to know about Pet Wash™ Marketplace protections, insurance and terms"}
+              ? "כל מה שצריך לדעת על ההגנות, הביטוח והתנאים של ⁦Pet Wash™⁩ Marketplace"
+              : "Everything you need to know about ⁦Pet Wash™⁩ Marketplace protections, insurance and terms"}
           </p>
           <p className="text-sm text-white/40 mt-4">
             {isHebrew ? "עודכן לאחרונה: ינואר 2026" : "Last updated: January 2026"}

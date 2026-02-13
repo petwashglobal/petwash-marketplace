@@ -137,7 +137,7 @@ export class ReviewModerationService {
     try {
       const model = this.geminiAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
-      const prompt = `You are a review moderation AI for Pet Wash™, a pet services platform.
+      const prompt = `You are a review moderation AI for ⁦Pet Wash™⁩, a pet services platform.
 
 Your task: Analyze this customer review for policy violations.
 

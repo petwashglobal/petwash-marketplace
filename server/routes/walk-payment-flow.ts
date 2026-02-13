@@ -159,7 +159,7 @@ router.get('/api/payments/nayax/redirect/:sessionId', async (req, res) => {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Nayax Payment - Pet Wash™</title>
+      <title>Nayax Payment - ⁦Pet Wash™⁩</title>
       <style>
         body { font-family: system-ui; max-width: 500px; margin: 100px auto; padding: 20px; }
         .card { border: 1px solid #ddd; border-radius: 12px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
