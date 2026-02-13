@@ -433,7 +433,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 )}
               </div>
 
-              {/* Booking and loyalty quick link */}
+              {/* PetWash Privilege */}
               <div className="pw-nav-item">
                 <button
                   className="pw-nav-link"
@@ -443,33 +443,13 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 </button>
               </div>
 
-              {/* Company */}
+              {/* e-Gift */}
               <div className="pw-nav-item">
                 <button
                   className="pw-nav-link"
-                  onClick={() => handleNavigate("/about")}
+                  onClick={() => handleNavigate("/egift")}
                 >
-                  {t("nav.about", currentLanguage)}
-                </button>
-              </div>
-
-              {/* Legal */}
-              <div className="pw-nav-item">
-                <button
-                  className="pw-nav-link"
-                  onClick={() => handleNavigate("/legal/terms")}
-                >
-                  {t("nav.legal", currentLanguage)}
-                </button>
-              </div>
-
-              {/* Support */}
-              <div className="pw-nav-item">
-                <button
-                  className="pw-nav-link"
-                  onClick={() => handleNavigate("/support")}
-                >
-                  {t("nav.support", currentLanguage)}
+                  {t("nav.giftCards", currentLanguage)}
                 </button>
               </div>
             </nav>
