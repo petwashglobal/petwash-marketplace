@@ -18,7 +18,7 @@ import {
   Crown, Shield, Star, Sparkles, Upload, FileCheck, ArrowRight, ArrowLeft,
   Plus, X, Check, Lock, Users, Gift, Calendar, Heart, Zap, TrendingUp,
   Award, Diamond, Globe, Clock, MapPin, Briefcase, ChevronDown, Activity,
-  Dog, Cat, Gem, Trophy
+  Dog, Cat, Gem, Trophy, Wallet, CreditCard, QrCode
 } from "lucide-react";
 
 interface VitoLoyaltySignupProps {
@@ -50,24 +50,26 @@ const COUNTRIES = [
 const TOTAL_STEPS = 5;
 
 const TIER_DATA = [
-  { id: 'bronze', points: '0', color: '#CD7F32', gradient: 'from-amber-700 via-amber-500 to-amber-700' },
-  { id: 'silver', points: '1,000', color: '#C0C0C0', gradient: 'from-gray-400 via-gray-200 to-gray-400' },
-  { id: 'gold', points: '5,000', color: '#FFD700', gradient: 'from-yellow-600 via-yellow-400 to-yellow-600' },
-  { id: 'platinum', points: '15,000', color: '#E5E4E2', gradient: 'from-slate-300 via-white to-slate-300' },
-  { id: 'diamond', points: '30,000', color: '#B9F2FF', gradient: 'from-cyan-400 via-blue-300 to-cyan-400' },
-  { id: 'royal_black', points: '50,000', color: '#1a1a2e', gradient: 'from-gray-900 via-gray-700 to-gray-900' },
-  { id: 'crown', points: '100,000', color: '#C9A96E', gradient: 'from-yellow-600 via-amber-300 to-yellow-600' },
+  { id: 'bronze', label: 'Bronze', points: '0', color: '#CD7F32', bg: 'from-amber-700/10 to-amber-600/5' },
+  { id: 'silver', label: 'Silver', points: '1,000', color: '#94A3B8', bg: 'from-slate-400/10 to-slate-300/5' },
+  { id: 'gold', label: 'Gold', points: '5,000', color: '#D4AF37', bg: 'from-yellow-500/10 to-yellow-400/5' },
+  { id: 'platinum', label: 'Platinum', points: '15,000', color: '#94A3B8', bg: 'from-gray-300/10 to-gray-200/5' },
+  { id: 'diamond', label: 'Diamond', points: '30,000', color: '#60A5FA', bg: 'from-blue-400/10 to-blue-300/5' },
+  { id: 'royal_black', label: 'Royal Black', points: '50,000', color: '#1a1a2e', bg: 'from-gray-800/10 to-gray-700/5' },
+  { id: 'crown', label: 'Crown', points: '100,000', color: '#C9A96E', bg: 'from-amber-500/10 to-amber-400/5' },
 ];
 
 const PLATFORMS = [
-  { name: 'K9000™', icon: '🚿', desc: 'Self-Service Wash' },
-  { name: 'Sitter Suite™', icon: '🏠', desc: 'Pet Sitting' },
-  { name: 'Walk My Pet™', icon: '🚶', desc: 'Dog Walking' },
-  { name: 'PetTrek™', icon: '🚗', desc: 'Pet Transport' },
-  { name: 'Pet Wash Academy™', icon: '🎓', desc: 'Training' },
-  { name: 'The Plush Lab™', icon: '🧸', desc: 'AI Avatars' },
-  { name: 'Wash Hub™', icon: '💎', desc: 'Premium Hub' },
+  { name: 'K9000™', icon: '🚿' },
+  { name: 'Sitter Suite™', icon: '🏠' },
+  { name: 'Walk My Pet™', icon: '🚶' },
+  { name: 'PetTrek™', icon: '🚗' },
+  { name: 'Academy™', icon: '🎓' },
+  { name: 'The Plush Lab™', icon: '🧸' },
+  { name: 'Wash Hub™', icon: '💎' },
 ];
+
+const gold = '#C9A96E';
 
 export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLoyaltySignupProps) {
   const { toast } = useToast();
@@ -89,17 +91,13 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState('');
-
   const [country, setCountry] = useState('Israel');
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
-
   const [pets, setPets] = useState<PetEntry[]>([{ name: '', type: 'Dog', breed: '', dob: '' }]);
-
   const [docType, setDocType] = useState('');
   const [docNumber, setDocNumber] = useState('');
   const [docFile, setDocFile] = useState<File | null>(null);
-
   const [referralSource, setReferralSource] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [marketingConsent, setMarketingConsent] = useState(true);
@@ -126,9 +124,7 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveActivityIndex(prev => (prev + 1) % 5);
-    }, 3000);
+    const interval = setInterval(() => setActiveActivityIndex(prev => (prev + 1) % 5), 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -228,41 +224,27 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
 
   const stepIndicator = t('vito.stepOf', language).replace('{current}', String(currentStep)).replace('{total}', String(TOTAL_STEPS));
 
-  const metalBg = 'background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 25%, #16213e 50%, #1a1a2e 75%, #0d0d0d 100%)';
-  const metallicCard = 'bg-[rgba(255,255,255,0.03)] border border-[rgba(201,169,110,0.12)] backdrop-blur-xl';
-  const goldAccent = '#C9A96E';
-
   if (submitted) {
     return (
       <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
-        <div className="min-h-screen" style={{ background: metalBg }} dir={isRTL ? 'rtl' : 'ltr'}>
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, type: 'spring' }}
-              className={`${metallicCard} p-8 sm:p-12 text-center space-y-6`}
-              style={{ borderRadius: '2px' }}
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-                className="w-24 h-24 mx-auto flex items-center justify-center"
-                style={{ background: `linear-gradient(135deg, ${goldAccent}, #d4af37)`, borderRadius: '2px' }}
+        <div className="min-h-screen bg-white" dir={isRTL ? 'rtl' : 'ltr'}>
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, type: 'spring' }} className="text-center space-y-8">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+                className="w-28 h-28 mx-auto flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0d0d0d 100%)', borderRadius: '2px' }}
               >
-                <Crown className="w-12 h-12 text-black" />
+                <Crown className="w-14 h-14" style={{ color: gold }} />
               </motion.div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                 {t('vito.successTitle', language)}
               </h1>
-              <p className="text-white/60 text-lg">{t('vito.successMessage', language)}</p>
-              <div className="flex items-center justify-center gap-2 text-sm text-white/30">
-                <Lock className="w-4 h-4" />
-                <span>{t('vito.secureNote', language)}</span>
+              <p className="text-gray-500 text-lg max-w-md mx-auto">{t('vito.successMessage', language)}</p>
+              <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
+                <Shield className="w-4 h-4" /><span>{t('vito.secureNote', language)}</span>
               </div>
               <Link href="/login">
-                <Button className="mt-4 px-8 py-3 text-black font-bold" style={{ borderRadius: '2px', background: `linear-gradient(135deg, ${goldAccent}, #d4af37)` }}>
+                <Button className="mt-4 px-8 py-3 text-white font-bold" style={{ borderRadius: '2px', background: '#0a0a0a' }}>
                   {t('vito.signInHere', language)}
                 </Button>
               </Link>
@@ -275,57 +257,115 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
-      <div className="min-h-screen" style={{ background: metalBg }} dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-[#fafafa]" dir={isRTL ? 'rtl' : 'ltr'}>
 
-        {/* HERO SECTION */}
-        <section className="relative overflow-hidden py-16 sm:py-24">
-          <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 30% 20%, ${goldAccent}15 0%, transparent 50%), radial-gradient(circle at 70% 80%, ${goldAccent}10 0%, transparent 50%)` }} />
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-            <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="text-center space-y-6">
+        {/* HERO - Clean white with floating privilege card */}
+        <section className="relative overflow-hidden bg-white pt-16 sm:pt-24 pb-20 sm:pb-28">
+          <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #000 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="text-center space-y-8">
+              <p className="text-sm uppercase tracking-[0.3em] font-medium text-gray-400">{t('vito.heroTagline', language)}</p>
+              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.1]" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                {t('vito.heroTitle', language)}
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                {t('vito.heroSubtitle', language)}
+              </p>
+
+              {/* Floating Privilege Card - Dark metallic on white */}
               <motion.div
-                animate={{ rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                className="w-20 h-20 mx-auto flex items-center justify-center"
-                style={{ background: `linear-gradient(135deg, ${goldAccent}, #d4af37)`, borderRadius: '2px' }}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.7 }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                className="relative mx-auto max-w-sm p-6 text-white overflow-hidden"
+                style={{
+                  background: 'radial-gradient(circle at 10% -10%, rgba(255,255,255,0.24), transparent 55%), radial-gradient(circle at 95% 110%, rgba(201,169,110,0.15), transparent 55%), linear-gradient(135deg, #05070a, #121b2a 60%, #1a2e3a 100%)',
+                  borderRadius: '2px',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: '0 25px 60px rgba(0,0,0,0.25), 0 10px 20px rgba(0,0,0,0.12)'
+                }}
               >
-                <Crown className="w-10 h-10 text-black" />
+                <div className="absolute -top-20 -right-20 w-48 h-48 rounded-full bg-white/5 blur-3xl" />
+                <div className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-3xl" style={{ background: `${gold}08` }} />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <div className="text-[11px] tracking-[0.2em] uppercase text-white/50">Pet Wash™</div>
+                      <div className="text-[10px] tracking-[0.15em] uppercase mt-0.5" style={{ color: gold }}>PRIVILEGE CARD</div>
+                    </div>
+                    <div className="w-8 h-8 flex items-center justify-center" style={{ background: `${gold}15`, borderRadius: '2px' }}>
+                      <Crown className="w-4 h-4" style={{ color: gold }} />
+                    </div>
+                  </div>
+                  <div className="text-4xl font-bold mb-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                    ₪325
+                  </div>
+                  <div className="flex items-center gap-3 mb-5">
+                    <span className="px-3 py-1 text-[10px] uppercase tracking-wider text-white/80" style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '2px' }}>
+                      Signature Member
+                    </span>
+                    <span className="px-3 py-1 text-[10px] uppercase tracking-wider" style={{ background: `${gold}15`, color: gold, borderRadius: '2px' }}>
+                      7 stamps
+                    </span>
+                  </div>
+                  <Button className="w-full text-sm font-bold text-black" style={{ borderRadius: '2px', background: 'white' }}>
+                    {t('vito.submitApplication', language)}
+                  </Button>
+                </div>
               </motion.div>
-              <div className="space-y-3">
-                <p className="text-sm uppercase tracking-[0.3em] font-medium" style={{ color: goldAccent }}>{t('vito.heroTagline', language)}</p>
-                <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                  {t('vito.heroTitle', language)}
-                </h1>
-                <p className="text-lg sm:text-xl text-white/50 max-w-3xl mx-auto" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                  {t('vito.heroSubtitle', language)}
-                </p>
-              </div>
-              <div className="flex flex-wrap justify-center gap-3 pt-2">
-                <span className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-black" style={{ background: `linear-gradient(135deg, ${goldAccent}, #d4af37)`, borderRadius: '2px' }}>
-                  <Sparkles className="w-4 h-4" />{t('vito.freeExclusive', language)}
+
+              <div className="flex flex-wrap justify-center gap-3 pt-4">
+                <span className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white" style={{ background: '#0a0a0a', borderRadius: '2px' }}>
+                  <Sparkles className="w-4 h-4" style={{ color: gold }} />{t('vito.freeExclusive', language)}
                 </span>
-                <span className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white/80 border" style={{ borderRadius: '2px', borderColor: `${goldAccent}40` }}>
-                  <Shield className="w-4 h-4" style={{ color: goldAccent }} />{t('vito.verifiedBadge', language)}
+                <span className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 border border-gray-200" style={{ borderRadius: '2px' }}>
+                  <Shield className="w-4 h-4" style={{ color: gold }} />{t('vito.verifiedBadge', language)}
                 </span>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => { setShowForm(true); setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}
-                className="inline-flex items-center gap-3 px-10 py-4 text-lg font-bold text-black mt-4"
-                style={{ background: `linear-gradient(135deg, ${goldAccent}, #d4af37)`, borderRadius: '2px' }}
-              >
-                <Crown className="w-5 h-5" />
-                {t('vito.submitApplication', language)}
-                {isRTL ? <ArrowLeft className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
-              </motion.button>
             </motion.div>
           </div>
         </section>
 
-        {/* LIVE STATS BAR */}
-        <section className="border-t border-b" style={{ borderColor: `${goldAccent}15` }}>
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-6 text-center">
+        {/* PRIVILEGES UNLOCKED - Like the mockup */}
+        <section className="bg-white border-t border-gray-100 py-12">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-8" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+              {t('vito.benefitsTitle', language)}
+            </h2>
+            <div className="space-y-3">
+              {[
+                { icon: <Star className="w-5 h-5" />, text: t('vito.benefit1', language) },
+                { icon: <Gift className="w-5 h-5" />, text: t('vito.benefit2', language) },
+                { icon: <Calendar className="w-5 h-5" />, text: t('vito.benefit3', language) },
+                { icon: <Heart className="w-5 h-5" />, text: t('vito.benefit4', language) },
+                { icon: <Users className="w-5 h-5" />, text: t('vito.benefit5', language) },
+                { icon: <Sparkles className="w-5 h-5" />, text: t('vito.benefit6', language) },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.06 }}
+                  className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors cursor-default group"
+                  style={{ borderRadius: '2px' }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 flex items-center justify-center bg-white shadow-sm" style={{ borderRadius: '2px', color: gold }}>{item.icon}</div>
+                    <span className="text-sm font-medium text-gray-700">{item.text}</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-gray-300 ${isRTL ? 'rotate-90' : '-rotate-90'}`} />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* LIVE STATS */}
+        <section className="bg-white py-14 border-t border-gray-100">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-8 text-center">
               {[
                 { value: animatedStats.members.toLocaleString(), label: t('vito.statsMembers', language), icon: <Users className="w-5 h-5" /> },
                 { value: animatedStats.providers.toLocaleString(), label: t('vito.statsProviders', language), icon: <Briefcase className="w-5 h-5" /> },
@@ -333,112 +373,102 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
                 { value: '12', label: t('vito.statsCountries', language), icon: <Globe className="w-5 h-5" /> },
                 { value: '4.9', label: t('vito.statsRating', language), icon: <Star className="w-5 h-5" /> },
               ].map((stat, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                  <div className="flex items-center justify-center gap-2 mb-2" style={{ color: goldAccent }}>{stat.icon}</div>
-                  <div className="text-2xl sm:text-3xl font-bold text-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{stat.value}</div>
-                  <div className="text-xs uppercase tracking-wider text-white/40 mt-1">{stat.label}</div>
+                <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
+                  <div className="flex justify-center mb-3 text-gray-300">{stat.icon}</div>
+                  <div className="text-3xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{stat.value}</div>
+                  <div className="text-xs uppercase tracking-wider text-gray-400 mt-1">{stat.label}</div>
                 </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* THE STORY */}
-        <section className="py-16 sm:py-20">
+        {/* TIMELINE - Activity feed */}
+        <section className="py-16 bg-[#fafafa]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="grid md:grid-cols-2 gap-12 items-center">
-              <div className="space-y-6">
-                <p className="text-sm uppercase tracking-[0.2em] font-medium" style={{ color: goldAccent }}>{t('vito.clubStory', language)}</p>
-                <h2 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                  Vito™
-                </h2>
-                <p className="text-white/50 text-lg leading-relaxed" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+            <div className="grid md:grid-cols-2 gap-12 items-start">
+              <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="space-y-5">
+                <p className="text-sm uppercase tracking-[0.2em] font-medium text-gray-400">{t('vito.clubStory', language)}</p>
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>Vito™</h2>
+                <p className="text-gray-500 text-lg leading-relaxed" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                   {t('vito.clubStoryText', language)}
                 </p>
-                <div className="grid grid-cols-3 gap-4 pt-4">
+                <div className="grid grid-cols-3 gap-3 pt-2">
                   {[
                     { icon: <Heart className="w-5 h-5" />, label: t('vito.benefit4', language) },
                     { icon: <Shield className="w-5 h-5" />, label: t('vito.benefit5', language) },
                     { icon: <Zap className="w-5 h-5" />, label: t('vito.benefit6', language) },
                   ].map((item, i) => (
-                    <div key={i} className="text-center p-3" style={{ background: `${goldAccent}08`, borderRadius: '2px', border: `1px solid ${goldAccent}15` }}>
-                      <div className="flex justify-center mb-2" style={{ color: goldAccent }}>{item.icon}</div>
-                      <p className="text-xs text-white/50">{item.label}</p>
+                    <div key={i} className="text-center p-3 bg-white shadow-sm" style={{ borderRadius: '2px' }}>
+                      <div className="flex justify-center mb-2" style={{ color: gold }}>{item.icon}</div>
+                      <p className="text-[11px] text-gray-500">{item.label}</p>
                     </div>
                   ))}
                 </div>
-              </div>
-              <div className={`${metallicCard} p-6 space-y-4`} style={{ borderRadius: '2px' }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <Activity className="w-4 h-4" style={{ color: goldAccent }} />
-                  <span className="text-sm font-medium text-white/60">{t('vito.recentActivity', language)}</span>
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              </motion.div>
+
+              {/* Timeline card */}
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="bg-white p-6 shadow-lg shadow-gray-100/80" style={{ borderRadius: '2px', border: '1px solid #f0f0f0' }}>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>Timeline</h3>
+                <p className="text-xs text-gray-400 mb-5 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />{t('vito.recentActivity', language)}</p>
+                <div className="space-y-0">
+                  {[
+                    { text: t('vito.activity1', language), amount: '+200', time: '12:03', icon: <CreditCard className="w-4 h-4" /> },
+                    { text: t('vito.activity2', language), amount: '-₪55', time: '1m ago', icon: <QrCode className="w-4 h-4" /> },
+                    { text: t('vito.activity3', language), amount: '+300', time: '2m ago', icon: <Wallet className="w-4 h-4" /> },
+                    { text: t('vito.activity4', language), amount: '+578', time: '5m ago', icon: <Gift className="w-4 h-4" /> },
+                    { text: t('vito.activity5', language), amount: '+100', time: '8m ago', icon: <Star className="w-4 h-4" /> },
+                  ].map((item, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{ opacity: i === activeActivityIndex ? 1 : 0.5 }}
+                      transition={{ duration: 0.4 }}
+                      className="flex items-center justify-between py-3.5 border-b border-gray-50 last:border-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400" style={{ borderRadius: '2px' }}>{item.icon}</div>
+                        <div>
+                          <p className="text-sm text-gray-700">{item.text}</p>
+                          <p className="text-[11px] text-gray-400">{item.time}</p>
+                        </div>
+                      </div>
+                      <span className={`text-sm font-bold ${item.amount.startsWith('-') ? 'text-red-500' : 'text-green-600'}`}>{item.amount}</span>
+                    </motion.div>
+                  ))}
                 </div>
-                {[
-                  t('vito.activity1', language),
-                  t('vito.activity2', language),
-                  t('vito.activity3', language),
-                  t('vito.activity4', language),
-                  t('vito.activity5', language),
-                ].map((activity, i) => (
-                  <motion.div
-                    key={i}
-                    animate={{ opacity: i === activeActivityIndex ? 1 : 0.3, scale: i === activeActivityIndex ? 1.02 : 1 }}
-                    transition={{ duration: 0.5 }}
-                    className="flex items-start gap-3 p-3 transition-all"
-                    style={{ borderRadius: '2px', background: i === activeActivityIndex ? `${goldAccent}08` : 'transparent', border: i === activeActivityIndex ? `1px solid ${goldAccent}20` : '1px solid transparent' }}
-                  >
-                    <div className="w-2 h-2 mt-2 rounded-full flex-shrink-0" style={{ background: i === activeActivityIndex ? goldAccent : `${goldAccent}40` }} />
-                    <div>
-                      <p className="text-sm text-white/70">{activity}</p>
-                      <p className="text-xs text-white/30 mt-1">{Math.floor(Math.random() * 45 + 1)}m ago</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </div>
         </section>
 
-        {/* TIMELINE / MILESTONES */}
-        <section className="py-16 sm:py-20" style={{ background: `${goldAccent}03` }}>
+        {/* MILESTONES */}
+        <section className="py-16 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
-              <p className="text-sm uppercase tracking-[0.2em] font-medium mb-3" style={{ color: goldAccent }}>{t('vito.milestones', language)}</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                {t('vito.milestones', language)}
-              </h2>
+              <p className="text-sm uppercase tracking-[0.2em] font-medium text-gray-400 mb-3">{t('vito.milestones', language)}</p>
             </motion.div>
-            <div className="relative">
-              <div className="absolute top-0 bottom-0 w-px" style={{ background: `linear-gradient(to bottom, transparent, ${goldAccent}40, transparent)`, [isRTL ? 'right' : 'left']: '50%', transform: 'translateX(-50%)' }} />
+            <div className="grid sm:grid-cols-4 gap-4">
               {[
-                { date: t('vito.milestone1Date', language), text: t('vito.milestone1', language), icon: <Zap className="w-5 h-5" />, past: true },
-                { date: t('vito.milestone2Date', language), text: t('vito.milestone2', language), icon: <Crown className="w-5 h-5" />, past: true },
-                { date: t('vito.milestone3Date', language), text: t('vito.milestone3', language), icon: <Globe className="w-5 h-5" />, past: false },
-                { date: t('vito.milestone4Date', language), text: t('vito.milestone4', language), icon: <Sparkles className="w-5 h-5" />, past: false },
-              ].map((milestone, i) => (
+                { date: t('vito.milestone1Date', language), text: t('vito.milestone1', language), icon: <Zap className="w-5 h-5" />, done: true },
+                { date: t('vito.milestone2Date', language), text: t('vito.milestone2', language), icon: <Crown className="w-5 h-5" />, done: true },
+                { date: t('vito.milestone3Date', language), text: t('vito.milestone3', language), icon: <Globe className="w-5 h-5" />, done: false },
+                { date: t('vito.milestone4Date', language), text: t('vito.milestone4', language), icon: <Sparkles className="w-5 h-5" />, done: false },
+              ].map((m, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, x: i % 2 === 0 ? -40 : 40 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.15 }}
-                  className={`relative flex items-center mb-10 ${i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'}`}
+                  transition={{ delay: i * 0.1 }}
+                  className={`p-5 ${m.done ? 'bg-gray-50' : 'bg-white border border-dashed border-gray-200'}`}
+                  style={{ borderRadius: '2px' }}
                 >
-                  <div className={`flex-1 ${i % 2 === 0 ? 'md:text-end md:pe-10' : 'md:text-start md:ps-10'} text-start ps-14 md:ps-0`}>
-                    <div className={`inline-block ${metallicCard} p-5`} style={{ borderRadius: '2px', borderColor: milestone.past ? `${goldAccent}30` : `${goldAccent}10` }}>
-                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: milestone.past ? goldAccent : `${goldAccent}50` }}>
-                        {milestone.date}
-                      </span>
-                      <p className={`text-sm mt-2 ${milestone.past ? 'text-white/70' : 'text-white/40'}`}>{milestone.text}</p>
-                    </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`w-8 h-8 flex items-center justify-center ${m.done ? 'bg-white shadow-sm' : 'bg-gray-50'}`} style={{ borderRadius: '2px', color: m.done ? gold : '#d1d5db' }}>{m.icon}</div>
+                    {m.done && <Check className="w-3.5 h-3.5 text-green-500" />}
                   </div>
-                  <div className="absolute md:relative w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ [isRTL ? 'right' : 'left']: 0 }}>
-                    <div className="w-10 h-10 flex items-center justify-center" style={{ background: milestone.past ? `${goldAccent}20` : `${goldAccent}08`, border: `1px solid ${milestone.past ? goldAccent : `${goldAccent}30`}`, borderRadius: '2px', color: milestone.past ? goldAccent : `${goldAccent}50` }}>
-                      {milestone.icon}
-                    </div>
-                  </div>
-                  <div className="flex-1 hidden md:block" />
+                  <span className={`text-[10px] uppercase tracking-wider font-bold ${m.done ? 'text-gray-900' : 'text-gray-400'}`}>{m.date}</span>
+                  <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{m.text}</p>
                 </motion.div>
               ))}
             </div>
@@ -446,31 +476,29 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
         </section>
 
         {/* 7-STAR TIER SYSTEM */}
-        <section className="py-16 sm:py-20">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
-              <p className="text-sm uppercase tracking-[0.2em] font-medium mb-3" style={{ color: goldAccent }}>{t('vito.tierPreviewTitle', language)}</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                7-Star Loyalty System
-              </h2>
+        <section className="py-16 bg-[#fafafa]">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-10">
+              <p className="text-sm uppercase tracking-[0.2em] font-medium text-gray-400 mb-3">{t('vito.tierPreviewTitle', language)}</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>7-Star Loyalty System</h2>
             </motion.div>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
               {TIER_DATA.map((tier, i) => (
                 <motion.div
                   key={tier.id}
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.08 }}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  className={`${metallicCard} p-4 text-center cursor-default group`}
-                  style={{ borderRadius: '2px' }}
+                  transition={{ delay: i * 0.06 }}
+                  whileHover={{ y: -4 }}
+                  className="bg-white p-4 text-center shadow-sm hover:shadow-md transition-all cursor-default"
+                  style={{ borderRadius: '2px', borderBottom: `3px solid ${tier.color}` }}
                 >
-                  <div className="w-10 h-10 mx-auto mb-3 flex items-center justify-center" style={{ background: `${tier.color}20`, borderRadius: '2px', border: `1px solid ${tier.color}40` }}>
-                    <div className="w-4 h-4 rounded-full" style={{ background: tier.color, boxShadow: `0 0 10px ${tier.color}40` }} />
+                  <div className="w-8 h-8 mx-auto mb-3 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+                    <div className="w-5 h-5 rounded-full" style={{ background: tier.color, boxShadow: `0 0 12px ${tier.color}30` }} />
                   </div>
-                  <p className="text-xs font-bold text-white uppercase tracking-wide">{t(`vito.tier${tier.id.charAt(0).toUpperCase() + tier.id.slice(1).replace('_b', 'B').replace('_', '')}` as any, language) || tier.id}</p>
-                  <p className="text-[10px] text-white/30 mt-1">{tier.points} {t('vito.tierPoints', language)}</p>
+                  <p className="text-xs font-bold text-gray-800 uppercase tracking-wide">{tier.label}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">{tier.points} pts</p>
                 </motion.div>
               ))}
             </div>
@@ -478,16 +506,15 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
         </section>
 
         {/* PROVIDERS & PLATFORMS */}
-        <section className="py-16 sm:py-20" style={{ background: `${goldAccent}03` }}>
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
-              <p className="text-sm uppercase tracking-[0.2em] font-medium mb-3" style={{ color: goldAccent }}>{t('vito.providersTitle', language)}</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+        <section className="py-16 bg-white">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-10">
+              <p className="text-sm uppercase tracking-[0.2em] font-medium text-gray-400 mb-3">{t('vito.providersTitle', language)}</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                 {t('vito.platformsTitle', language)}
               </h2>
-              <p className="text-white/40 max-w-2xl mx-auto">{t('vito.providersSubtitle', language)}</p>
             </motion.div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-12">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-10">
               {[
                 { label: t('vito.providerSitters', language), count: '120+', icon: <Heart className="w-5 h-5" /> },
                 { label: t('vito.providerWalkers', language), count: '85+', icon: <MapPin className="w-5 h-5" /> },
@@ -495,51 +522,48 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
                 { label: t('vito.providerDrivers', language), count: '30+', icon: <TrendingUp className="w-5 h-5" /> },
                 { label: t('vito.providerVets', language), count: '25+', icon: <Shield className="w-5 h-5" /> },
                 { label: t('vito.providerTrainers', language), count: '37+', icon: <Award className="w-5 h-5" /> },
-              ].map((provider, i) => (
+              ].map((p, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, scale: 0.9 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.08 }}
-                  className={`${metallicCard} p-5 text-center group hover:border-[rgba(201,169,110,0.3)] transition-all`}
+                  transition={{ delay: i * 0.06 }}
+                  className="bg-gray-50 p-5 text-center hover:bg-gray-100 transition-colors"
                   style={{ borderRadius: '2px' }}
                 >
-                  <div className="mb-3" style={{ color: goldAccent }}>{provider.icon}</div>
-                  <p className="text-2xl font-bold text-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{provider.count}</p>
-                  <p className="text-xs text-white/40 mt-1 uppercase tracking-wider">{provider.label}</p>
+                  <div className="mb-3" style={{ color: gold }}>{p.icon}</div>
+                  <p className="text-2xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{p.count}</p>
+                  <p className="text-xs text-gray-400 mt-1 uppercase tracking-wider">{p.label}</p>
                 </motion.div>
               ))}
             </div>
-            <div className="flex flex-wrap justify-center gap-3">
+            <div className="flex flex-wrap justify-center gap-2">
               {PLATFORMS.map((platform, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm"
-                  style={{ background: `${goldAccent}06`, border: `1px solid ${goldAccent}15`, borderRadius: '2px' }}
+                  transition={{ delay: i * 0.04 }}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm bg-white shadow-sm hover:shadow-md transition-shadow"
+                  style={{ borderRadius: '2px', border: '1px solid #f0f0f0' }}
                 >
                   <span className="text-lg">{platform.icon}</span>
-                  <span className="text-white/60 font-medium">{platform.name}</span>
+                  <span className="text-gray-600 font-medium">{platform.name}</span>
                 </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* WHAT'S COMING NEXT */}
-        <section className="py-16 sm:py-20">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
-              <p className="text-sm uppercase tracking-[0.2em] font-medium mb-3" style={{ color: goldAccent }}>{t('vito.futureTitle', language)}</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                {t('vito.futureTitle', language)}
-              </h2>
+        {/* FUTURE ROADMAP */}
+        <section className="py-16 bg-[#fafafa]">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-10">
+              <p className="text-sm uppercase tracking-[0.2em] font-medium text-gray-400 mb-3">{t('vito.futureTitle', language)}</p>
             </motion.div>
-            <div className="grid sm:grid-cols-2 gap-5">
+            <div className="grid sm:grid-cols-2 gap-4">
               {[
                 { text: t('vito.futureItem1', language), icon: <Gem className="w-5 h-5" />, tag: '2026 Q2' },
                 { text: t('vito.futureItem2', language), icon: <Activity className="w-5 h-5" />, tag: '2026 Q3' },
@@ -548,19 +572,19 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
               ].map((item, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className={`${metallicCard} p-6 flex items-start gap-4 group hover:border-[rgba(201,169,110,0.3)] transition-all`}
+                  transition={{ delay: i * 0.08 }}
+                  className="bg-white p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow"
                   style={{ borderRadius: '2px' }}
                 >
-                  <div className="w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ background: `${goldAccent}10`, border: `1px solid ${goldAccent}20`, borderRadius: '2px', color: goldAccent }}>
+                  <div className="w-10 h-10 flex items-center justify-center flex-shrink-0 bg-gray-50" style={{ borderRadius: '2px', color: gold }}>
                     {item.icon}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-white/70">{item.text}</p>
-                    <span className="inline-block mt-2 text-[10px] font-bold uppercase tracking-wider px-2 py-1" style={{ color: goldAccent, background: `${goldAccent}10`, borderRadius: '2px' }}>
+                    <p className="text-sm text-gray-600 leading-relaxed">{item.text}</p>
+                    <span className="inline-block mt-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 text-gray-500 bg-gray-50" style={{ borderRadius: '2px' }}>
                       {item.tag}
                     </span>
                   </div>
@@ -570,113 +594,81 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
           </div>
         </section>
 
-        {/* MEMBER BENEFITS */}
-        <section className="py-16 sm:py-20" style={{ background: `${goldAccent}03` }}>
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
-              <p className="text-sm uppercase tracking-[0.2em] font-medium mb-3" style={{ color: goldAccent }}>{t('vito.benefitsTitle', language)}</p>
-            </motion.div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {[
-                { icon: <Star className="w-6 h-6" />, text: t('vito.benefit1', language) },
-                { icon: <Gift className="w-6 h-6" />, text: t('vito.benefit2', language) },
-                { icon: <Calendar className="w-6 h-6" />, text: t('vito.benefit3', language) },
-                { icon: <Heart className="w-6 h-6" />, text: t('vito.benefit4', language) },
-                { icon: <Users className="w-6 h-6" />, text: t('vito.benefit5', language) },
-                { icon: <Sparkles className="w-6 h-6" />, text: t('vito.benefit6', language) },
-              ].map((benefit, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.08 }}
-                  className={`${metallicCard} p-5 text-center space-y-3 group hover:border-[rgba(201,169,110,0.3)] transition-all`}
-                  style={{ borderRadius: '2px' }}
-                >
-                  <div className="flex justify-center" style={{ color: goldAccent }}>{benefit.icon}</div>
-                  <p className="text-xs text-white/60 leading-relaxed">{benefit.text}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* APPLICATION FORM */}
-        <section className="py-16 sm:py-20" ref={formRef} id="join-form">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="py-16 bg-white" ref={formRef} id="join-form">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             {!showForm ? (
               <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center space-y-6">
-                <h2 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                   {t('vito.joinFormTitle', language)}
                 </h2>
-                <p className="text-white/50">{t('vito.joinFormSubtitle', language)}</p>
+                <p className="text-gray-400 max-w-md mx-auto">{t('vito.joinFormSubtitle', language)}</p>
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={() => setShowForm(true)}
-                  className="inline-flex items-center gap-3 px-10 py-4 text-lg font-bold text-black"
-                  style={{ background: `linear-gradient(135deg, ${goldAccent}, #d4af37)`, borderRadius: '2px' }}
+                  className="inline-flex items-center gap-3 px-10 py-4 text-lg font-bold text-white"
+                  style={{ background: '#0a0a0a', borderRadius: '2px' }}
                 >
-                  <Crown className="w-5 h-5" />
+                  <Crown className="w-5 h-5" style={{ color: gold }} />
                   {t('vito.submitApplication', language)}
                 </motion.button>
               </motion.div>
             ) : (
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className={`${metallicCard} p-6 sm:p-8 space-y-6`}
-                style={{ borderRadius: '2px' }}
+                transition={{ duration: 0.4 }}
+                className="bg-white p-6 sm:p-8 shadow-xl shadow-gray-100/50 space-y-6"
+                style={{ borderRadius: '2px', border: '1px solid #f0f0f0' }}
               >
                 <div className="text-center space-y-2">
-                  <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                  <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                     {t('vito.joinFormTitle', language)}
                   </h2>
-                  <p className="text-sm text-white/40">{t('vito.joinFormSubtitle', language)}</p>
+                  <p className="text-sm text-gray-400">{t('vito.joinFormSubtitle', language)}</p>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-white/40">{stepIndicator}</span>
-                    <span className="text-sm font-medium" style={{ color: goldAccent }}>{stepLabels[currentStep - 1]}</span>
+                    <span className="text-sm text-gray-400">{stepIndicator}</span>
+                    <span className="text-sm font-medium text-gray-700">{stepLabels[currentStep - 1]}</span>
                   </div>
                   <div className="flex gap-1">
                     {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-                      <div key={i} className="h-1.5 flex-1 transition-all duration-300" style={{ borderRadius: '2px', background: i < currentStep ? `linear-gradient(135deg, ${goldAccent}, #d4af37)` : 'rgba(255,255,255,0.05)' }} />
+                      <div key={i} className="h-1.5 flex-1 transition-all duration-300" style={{ borderRadius: '2px', background: i < currentStep ? '#0a0a0a' : '#f0f0f0' }} />
                     ))}
                   </div>
                 </div>
 
                 <AnimatePresence mode="wait">
-                  <motion.div key={currentStep} initial={{ opacity: 0, x: isRTL ? -30 : 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: isRTL ? 30 : -30 }} transition={{ duration: 0.3 }} className="space-y-4" dir={isRTL ? 'rtl' : 'ltr'}>
+                  <motion.div key={currentStep} initial={{ opacity: 0, x: isRTL ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: isRTL ? 20 : -20 }} transition={{ duration: 0.25 }} className="space-y-4" dir={isRTL ? 'rtl' : 'ltr'}>
                     {currentStep === 1 && (
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label className="text-white/70 font-medium">{t('vito.firstName', language)} <span style={{ color: goldAccent }}>*</span></Label>
-                            <Input id="vito-firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="bg-white/5 border-white/10 text-white placeholder-white/20 focus:border-[#C9A96E]" style={{ borderRadius: '2px' }} />
+                            <Label className="text-gray-600 font-medium">{t('vito.firstName', language)} <span className="text-red-500">*</span></Label>
+                            <Input id="vito-firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="bg-gray-50 border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
                           </div>
                           <div>
-                            <Label className="text-white/70 font-medium">{t('vito.lastName', language)} <span style={{ color: goldAccent }}>*</span></Label>
-                            <Input id="vito-lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="bg-white/5 border-white/10 text-white placeholder-white/20 focus:border-[#C9A96E]" style={{ borderRadius: '2px' }} />
+                            <Label className="text-gray-600 font-medium">{t('vito.lastName', language)} <span className="text-red-500">*</span></Label>
+                            <Input id="vito-lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="bg-gray-50 border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
                           </div>
                         </div>
                         <div>
-                          <Label className="text-white/70 font-medium">{t('vito.email', language)} <span style={{ color: goldAccent }}>*</span></Label>
-                          <Input id="vito-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="bg-white/5 border-white/10 text-white placeholder-white/20 focus:border-[#C9A96E]" style={{ borderRadius: '2px' }} />
+                          <Label className="text-gray-600 font-medium">{t('vito.email', language)} <span className="text-red-500">*</span></Label>
+                          <Input id="vito-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="bg-gray-50 border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
                         </div>
                         <div>
-                          <Label className="text-white/70 font-medium">{t('vito.phone', language)} <span style={{ color: goldAccent }}>*</span></Label>
+                          <Label className="text-gray-600 font-medium">{t('vito.phone', language)} <span className="text-red-500">*</span></Label>
                           <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountryCode="+972" />
                         </div>
                         <div>
                           <NativeDateSelect value={dob} onChange={setDob} label={`${t('vito.dob', language)} *`} language={language} minYear={new Date().getFullYear() - 120} maxYear={new Date().getFullYear() - 13} />
                         </div>
                         <div>
-                          <Label className="text-white/70 font-medium">{t('vito.gender', language)} <span style={{ color: goldAccent }}>*</span></Label>
+                          <Label className="text-gray-600 font-medium">{t('vito.gender', language)} <span className="text-red-500">*</span></Label>
                           <Select value={gender} onValueChange={setGender}>
-                            <SelectTrigger className="h-10 mt-1 bg-white/5 border-white/10 text-white" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
+                            <SelectTrigger className="h-10 mt-1 bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="male">{t('vito.genderMale', language)}</SelectItem>
                               <SelectItem value="female">{t('vito.genderFemale', language)}</SelectItem>
@@ -689,15 +681,15 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
                     {currentStep === 2 && (
                       <div className="space-y-4">
                         <div>
-                          <Label className="text-white/70 font-medium">{t('vito.country', language)}</Label>
+                          <Label className="text-gray-600 font-medium">{t('vito.country', language)}</Label>
                           <Select value={country} onValueChange={setCountry}>
-                            <SelectTrigger className="h-10 mt-1 bg-white/5 border-white/10 text-white" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
+                            <SelectTrigger className="h-10 mt-1 bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
                             <SelectContent className="max-h-[200px]">{COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-white/70 font-medium">{t('vito.city', language)}</Label>
-                          <Input id="vito-city" value={city} onChange={(e) => setCity(e.target.value)} className="bg-white/5 border-white/10 text-white placeholder-white/20 focus:border-[#C9A96E]" style={{ borderRadius: '2px' }} />
+                          <Label className="text-gray-600 font-medium">{t('vito.city', language)}</Label>
+                          <Input id="vito-city" value={city} onChange={(e) => setCity(e.target.value)} className="bg-gray-50 border-gray-200 text-gray-900 focus:border-gray-400" style={{ borderRadius: '2px' }} />
                         </div>
                         <div>
                           <GooglePlacesAutocomplete value={address} onChange={(val) => setAddress(val)} label={`${t('vito.address', language)} (${t('vito.optional', language)})`} placeholder={t('vito.address', language)} />
@@ -707,24 +699,24 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
                     {currentStep === 3 && (
                       <div className="space-y-4">
                         {pets.map((pet, index) => (
-                          <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 space-y-3 relative" style={{ borderRadius: '2px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${goldAccent}10` }}>
+                          <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 space-y-3 relative bg-gray-50" style={{ borderRadius: '2px' }}>
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-white/70">{t('vito.sectionPets', language)} #{index + 1}</span>
+                              <span className="text-sm font-medium text-gray-600">{t('vito.sectionPets', language)} #{index + 1}</span>
                               {pets.length > 1 && (
-                                <Button type="button" variant="ghost" size="sm" onClick={() => removePet(index)} className="text-red-400 hover:text-red-300 h-8" style={{ borderRadius: '2px' }}>
+                                <Button type="button" variant="ghost" size="sm" onClick={() => removePet(index)} className="text-red-400 hover:text-red-500 h-8" style={{ borderRadius: '2px' }}>
                                   <X className="w-4 h-4 mr-1" />{t('vito.removePet', language)}
                                 </Button>
                               )}
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <Label className="text-white/60 text-sm">{t('vito.petName', language)} <span style={{ color: goldAccent }}>*</span></Label>
-                                <Input value={pet.name} onChange={(e) => updatePet(index, 'name', e.target.value)} required className="bg-white/5 border-white/10 text-white" style={{ borderRadius: '2px' }} />
+                                <Label className="text-gray-500 text-sm">{t('vito.petName', language)} <span className="text-red-500">*</span></Label>
+                                <Input value={pet.name} onChange={(e) => updatePet(index, 'name', e.target.value)} required className="bg-white border-gray-200 text-gray-900" style={{ borderRadius: '2px' }} />
                               </div>
                               <div>
-                                <Label className="text-white/60 text-sm">{t('vito.petType', language)} <span style={{ color: goldAccent }}>*</span></Label>
+                                <Label className="text-gray-500 text-sm">{t('vito.petType', language)} <span className="text-red-500">*</span></Label>
                                 <Select value={pet.type} onValueChange={(val) => updatePet(index, 'type', val)}>
-                                  <SelectTrigger className="h-10 mt-1 bg-white/5 border-white/10 text-white" style={{ borderRadius: '2px' }}><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="h-10 mt-1 bg-white border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="Dog">{t('vito.petDog', language)}</SelectItem>
                                     <SelectItem value="Cat">{t('vito.petCat', language)}</SelectItem>
@@ -734,14 +726,14 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
                               </div>
                             </div>
                             <div>
-                              <Label className="text-white/60 text-sm">{t('vito.petBreed', language)} ({t('vito.optional', language)})</Label>
-                              <Input value={pet.breed} onChange={(e) => updatePet(index, 'breed', e.target.value)} className="bg-white/5 border-white/10 text-white" style={{ borderRadius: '2px' }} />
+                              <Label className="text-gray-500 text-sm">{t('vito.petBreed', language)} ({t('vito.optional', language)})</Label>
+                              <Input value={pet.breed} onChange={(e) => updatePet(index, 'breed', e.target.value)} className="bg-white border-gray-200 text-gray-900" style={{ borderRadius: '2px' }} />
                             </div>
                             <NativeDateSelect value={pet.dob} onChange={(val) => updatePet(index, 'dob', val)} label={`${t('vito.petDob', language)} (${t('vito.optional', language)})`} language={language} minYear={new Date().getFullYear() - 30} maxYear={new Date().getFullYear()} />
                           </motion.div>
                         ))}
                         {pets.length < 5 && (
-                          <Button type="button" variant="outline" onClick={addPet} className="w-full border-dashed text-white/50 hover:text-white" style={{ borderRadius: '2px', borderColor: `${goldAccent}40`, background: 'transparent' }}>
+                          <Button type="button" variant="outline" onClick={addPet} className="w-full border-dashed text-gray-400 hover:text-gray-600 border-gray-300" style={{ borderRadius: '2px', background: 'transparent' }}>
                             <Plus className="w-4 h-4 mr-2" />{t('vito.addAnotherPet', language)}
                           </Button>
                         )}
@@ -749,15 +741,15 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
                     )}
                     {currentStep === 4 && (
                       <div className="space-y-4">
-                        <div className="p-4 text-center space-y-2" style={{ borderRadius: '2px', background: `${goldAccent}05`, border: `1px solid ${goldAccent}20` }}>
-                          <Shield className="w-8 h-8 mx-auto" style={{ color: goldAccent }} />
-                          <h3 className="font-semibold text-white" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{t('vito.idVerification', language)}</h3>
-                          <p className="text-sm text-white/50">{t('vito.idDescription', language)}</p>
+                        <div className="p-4 text-center space-y-2 bg-gray-50" style={{ borderRadius: '2px' }}>
+                          <Shield className="w-8 h-8 mx-auto" style={{ color: gold }} />
+                          <h3 className="font-semibold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{t('vito.idVerification', language)}</h3>
+                          <p className="text-sm text-gray-500">{t('vito.idDescription', language)}</p>
                         </div>
                         <div>
-                          <Label className="text-white/70 font-medium">{t('vito.idType', language)}</Label>
+                          <Label className="text-gray-600 font-medium">{t('vito.idType', language)}</Label>
                           <Select value={docType} onValueChange={setDocType}>
-                            <SelectTrigger className="h-10 mt-1 bg-white/5 border-white/10 text-white" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
+                            <SelectTrigger className="h-10 mt-1 bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="driving_license">{t('vito.idDriverLicense', language)}</SelectItem>
                               <SelectItem value="national_id">{t('vito.idNationalId', language)}</SelectItem>
@@ -766,23 +758,23 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-white/70 font-medium">{t('vito.idNumber', language)}</Label>
-                          <Input id="vito-docNumber" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} className="bg-white/5 border-white/10 text-white" style={{ borderRadius: '2px' }} />
+                          <Label className="text-gray-600 font-medium">{t('vito.idNumber', language)}</Label>
+                          <Input id="vito-docNumber" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} className="bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }} />
                         </div>
                         <div>
-                          <Label className="text-white/70 font-medium">{t('vito.idUpload', language)}</Label>
+                          <Label className="text-gray-600 font-medium">{t('vito.idUpload', language)}</Label>
                           <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleFileChange} className="hidden" />
-                          <div className="mt-1 border-2 border-dashed p-6 text-center cursor-pointer hover:bg-white/5 transition-colors" style={{ borderRadius: '2px', borderColor: docFile ? goldAccent : 'rgba(255,255,255,0.1)' }} onClick={() => fileInputRef.current?.click()}>
+                          <div className="mt-1 border-2 border-dashed p-6 text-center cursor-pointer hover:bg-gray-50 transition-colors" style={{ borderRadius: '2px', borderColor: docFile ? gold : '#e5e7eb' }} onClick={() => fileInputRef.current?.click()}>
                             {docFile ? (
                               <div className="flex items-center justify-center gap-2 text-sm">
-                                <FileCheck className="w-5 h-5" style={{ color: goldAccent }} />
-                                <span className="text-white/70">{t('vito.fileSelected', language)}: {docFile.name}</span>
+                                <FileCheck className="w-5 h-5" style={{ color: gold }} />
+                                <span className="text-gray-600">{t('vito.fileSelected', language)}: {docFile.name}</span>
                               </div>
                             ) : (
                               <div className="space-y-2">
-                                <Upload className="w-8 h-8 mx-auto text-white/20" />
-                                <p className="text-sm text-white/40">{t('vito.chooseFile', language)}</p>
-                                <p className="text-xs text-white/20">{t('vito.idUploadHint', language)}</p>
+                                <Upload className="w-8 h-8 mx-auto text-gray-300" />
+                                <p className="text-sm text-gray-400">{t('vito.chooseFile', language)}</p>
+                                <p className="text-xs text-gray-300">{t('vito.idUploadHint', language)}</p>
                               </div>
                             )}
                           </div>
@@ -792,9 +784,9 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
                     {currentStep === 5 && (
                       <div className="space-y-4">
                         <div>
-                          <Label className="text-white/70 font-medium">{t('vito.referralSource', language)}</Label>
+                          <Label className="text-gray-600 font-medium">{t('vito.referralSource', language)}</Label>
                           <Select value={referralSource} onValueChange={setReferralSource}>
-                            <SelectTrigger className="h-10 mt-1 bg-white/5 border-white/10 text-white" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
+                            <SelectTrigger className="h-10 mt-1 bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }}><SelectValue placeholder="--" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="friend">{t('vito.referralFriend', language)}</SelectItem>
                               <SelectItem value="social">{t('vito.referralSocial', language)}</SelectItem>
@@ -806,21 +798,21 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-white/70 font-medium">{t('vito.referralCode', language)}</Label>
-                          <Input id="vito-referralCode" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} className="bg-white/5 border-white/10 text-white" style={{ borderRadius: '2px' }} />
+                          <Label className="text-gray-600 font-medium">{t('vito.referralCode', language)}</Label>
+                          <Input id="vito-referralCode" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} className="bg-gray-50 border-gray-200 text-gray-900" style={{ borderRadius: '2px' }} />
                         </div>
-                        <div className="space-y-3 pt-4 border-t border-white/10">
+                        <div className="space-y-3 pt-4 border-t border-gray-100">
                           <div className="flex items-start gap-2">
                             <Checkbox id="vito-marketing" checked={marketingConsent} onCheckedChange={(checked) => setMarketingConsent(!!checked)} />
-                            <Label htmlFor="vito-marketing" className="text-sm text-white/50 cursor-pointer leading-snug">{t('vito.marketingConsent', language)}</Label>
+                            <Label htmlFor="vito-marketing" className="text-sm text-gray-500 cursor-pointer leading-snug">{t('vito.marketingConsent', language)}</Label>
                           </div>
                           <div className="flex items-start gap-2">
                             <Checkbox id="vito-sms" checked={smsConsent} onCheckedChange={(checked) => setSmsConsent(!!checked)} />
-                            <Label htmlFor="vito-sms" className="text-sm text-white/50 cursor-pointer leading-snug">{t('vito.smsConsent', language)}</Label>
+                            <Label htmlFor="vito-sms" className="text-sm text-gray-500 cursor-pointer leading-snug">{t('vito.smsConsent', language)}</Label>
                           </div>
                           <div className="flex items-start gap-2">
                             <Checkbox id="vito-terms" checked={termsConsent} onCheckedChange={(checked) => setTermsConsent(!!checked)} />
-                            <Label htmlFor="vito-terms" className="text-sm text-white/50 cursor-pointer leading-snug">{t('vito.termsConsent', language)} <span style={{ color: goldAccent }}>*</span></Label>
+                            <Label htmlFor="vito-terms" className="text-sm text-gray-500 cursor-pointer leading-snug">{t('vito.termsConsent', language)} <span className="text-red-500">*</span></Label>
                           </div>
                         </div>
                         <div className="pt-4">
@@ -831,33 +823,33 @@ export default function VitoLoyaltySignup({ language, onLanguageChange }: VitoLo
                   </motion.div>
                 </AnimatePresence>
 
-                <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                   {currentStep > 1 ? (
-                    <Button type="button" variant="outline" onClick={prevStep} className="flex items-center gap-2 text-white/70 border-white/10 bg-transparent hover:bg-white/5" style={{ borderRadius: '2px' }}>
+                    <Button type="button" variant="outline" onClick={prevStep} className="flex items-center gap-2 text-gray-500 border-gray-200 bg-white hover:bg-gray-50" style={{ borderRadius: '2px' }}>
                       {isRTL ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}{t('vito.back', language)}
                     </Button>
                   ) : <div />}
                   {currentStep < TOTAL_STEPS ? (
-                    <Button type="button" onClick={nextStep} className="flex items-center gap-2 font-bold text-black" style={{ borderRadius: '2px', background: `linear-gradient(135deg, ${goldAccent}, #d4af37)` }}>
+                    <Button type="button" onClick={nextStep} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: '#0a0a0a' }}>
                       {t('vito.next', language)}{isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                     </Button>
                   ) : (
-                    <Button type="button" onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 font-bold text-black" style={{ borderRadius: '2px', background: `linear-gradient(135deg, ${goldAccent}, #d4af37)` }}>
+                    <Button type="button" onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: '#0a0a0a' }}>
                       {loading ? (
                         <span className="flex items-center gap-2">
                           <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}><Sparkles className="w-4 h-4" /></motion.div>
                           {t('vito.submitting', language)}
                         </span>
-                      ) : (<><Crown className="w-4 h-4" />{t('vito.submitApplication', language)}</>)}
+                      ) : (<><Crown className="w-4 h-4" style={{ color: gold }} />{t('vito.submitApplication', language)}</>)}
                     </Button>
                   )}
                 </div>
-                <div className="flex items-center justify-center gap-2 text-xs text-white/20 pt-2">
+                <div className="flex items-center justify-center gap-2 text-xs text-gray-300 pt-2">
                   <Lock className="w-3 h-3" /><span>{t('vito.secureNote', language)}</span>
                 </div>
-                <div className="text-center text-sm text-white/40 pt-2">
+                <div className="text-center text-sm text-gray-400 pt-2">
                   {t('vito.alreadyMember', language)}{' '}
-                  <Link href="/login" className="underline font-medium" style={{ color: goldAccent }}>{t('vito.signInHere', language)}</Link>
+                  <Link href="/login" className="underline font-medium text-gray-600">{t('vito.signInHere', language)}</Link>
                 </div>
               </motion.div>
             )}
