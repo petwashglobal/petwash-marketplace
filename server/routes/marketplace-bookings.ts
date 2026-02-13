@@ -52,7 +52,7 @@ router.post('/quote', async (req, res) => {
     } = req.body;
 
     // Also check header for authenticated user
-    const userId = customerId || req.headers['x-user-id'] as string;
+    const userId = customerId || req.user?.uid || req.firebaseUser?.uid;
 
     const quote = await bookingLifecycleService.calculateQuote(
       providerId,
@@ -123,7 +123,7 @@ router.post('/quote', async (req, res) => {
 
 router.post('/create', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -169,7 +169,7 @@ router.post('/create', async (req, res) => {
 router.post('/:quoteId/checkout', async (req, res) => {
   try {
     const { quoteId } = req.params;
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     
     if (!userId) {
       return res.status(401).json({ 
@@ -412,7 +412,7 @@ router.post('/:quoteId/checkout', async (req, res) => {
 
 router.get('/my-bookings', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -452,7 +452,7 @@ router.get('/:bookingId', async (req, res) => {
 
 router.post('/:bookingId/transition', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -483,7 +483,7 @@ router.post('/:bookingId/transition', async (req, res) => {
 
 router.post('/:bookingId/confirm', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -510,7 +510,7 @@ router.post('/:bookingId/confirm', async (req, res) => {
 
 router.post('/:bookingId/start', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -534,7 +534,7 @@ router.post('/:bookingId/start', async (req, res) => {
 
 router.post('/:bookingId/complete', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -579,7 +579,7 @@ router.post('/:bookingId/complete', async (req, res) => {
 
 router.post('/:bookingId/cancel', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -903,7 +903,7 @@ router.get('/provider/:providerId/availability', async (req, res) => {
 // Provider updates their availability
 router.post('/provider/:providerId/availability', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -975,7 +975,7 @@ router.post('/provider/:providerId/availability', async (req, res) => {
 // Provider creates/updates their rate card
 router.post('/provider/rate-card', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }

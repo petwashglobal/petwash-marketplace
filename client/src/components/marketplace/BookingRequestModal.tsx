@@ -79,7 +79,7 @@ export function BookingRequestModal({
       const response = await apiRequest('/api/booking-requests', {
         method: 'POST',
         body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json', 'x-user-id': 'demo-user' },
+        headers: { 'Content-Type': 'application/json' },
       });
       return response;
     },

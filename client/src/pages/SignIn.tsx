@@ -561,14 +561,21 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const deviceInfo = getDeviceInfo();
       logger.info('[Auth] Device info:', deviceInfo);
       
-      // Use iOS-compatible auth method (redirect for iOS, popup for others)
-      const userCredential = await signInWithBestMethod(auth, authProvider);
+      let userCredential: import('firebase/auth').UserCredential | null = null;
+      try {
+        userCredential = await signInWithPopup(auth, authProvider);
+      } catch (popupErr: any) {
+        if (popupErr.code === 'auth/popup-blocked') {
+          logger.info('[Auth] Popup blocked, falling back to redirect');
+          userCredential = await signInWithBestMethod(auth, authProvider);
+        } else {
+          throw popupErr;
+        }
+      }
       
-      // If redirect method was used, userCredential will be null
-      // The redirect result will be handled by the useEffect on page load
       if (!userCredential) {
         logger.info('[iOS Auth] Redirect initiated, waiting for return...');
-        return; // Early return - auth will complete after redirect
+        return;
       }
       
       let grantedScopes: string[] = [];

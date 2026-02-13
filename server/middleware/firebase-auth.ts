@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { auth as firebaseAdmin } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 
-// Extend Express Request to include firebaseUser
 declare global {
   namespace Express {
     interface Request {
@@ -15,29 +14,34 @@ declare global {
   }
 }
 
+async function extractFirebaseUser(req: Request): Promise<{ uid: string; email?: string; email_verified?: boolean } | null> {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split('Bearer ')[1];
+    const decoded = await firebaseAdmin.verifyIdToken(token, true);
+    return { uid: decoded.uid, email: decoded.email, email_verified: decoded.email_verified };
+  }
+
+  const sessionCookie = req.cookies?.pw_session;
+  if (sessionCookie) {
+    const decoded = await firebaseAdmin.verifySessionCookie(sessionCookie, true);
+    return { uid: decoded.uid, email: decoded.email, email_verified: decoded.email_verified };
+  }
+
+  return null;
+}
+
 export async function validateFirebaseToken(
   req: Request,
   res: Response,
   next: NextFunction
 ) {
   try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const user = await extractFirebaseUser(req);
+    if (!user) {
       return res.status(401).json({ error: 'No authorization token provided' });
     }
-    
-    const token = authHeader.split('Bearer ')[1];
-    
-    // Verify Firebase ID token with revocation check (security requirement)
-    const decodedToken = await firebaseAdmin.verifyIdToken(token, true);
-    
-    req.firebaseUser = {
-      uid: decodedToken.uid,
-      email: decodedToken.email,
-      email_verified: decodedToken.email_verified,
-    };
-    
+    req.firebaseUser = user;
     next();
   } catch (error) {
     logger.error('Firebase token validation failed', error);
@@ -51,22 +55,12 @@ export async function optionalFirebaseToken(
   next: NextFunction
 ) {
   try {
-    const authHeader = req.headers.authorization;
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split('Bearer ')[1];
-      const decodedToken = await firebaseAdmin.verifyIdToken(token, true);
-      
-      req.firebaseUser = {
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        email_verified: decodedToken.email_verified,
-      };
+    const user = await extractFirebaseUser(req);
+    if (user) {
+      req.firebaseUser = user;
     }
-    
     next();
   } catch (error: any) {
-    // Continue without auth if token is invalid
     logger.debug('Optional Firebase token validation failed', { error: error?.message });
     next();
   }

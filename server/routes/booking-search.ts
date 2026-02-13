@@ -105,7 +105,7 @@ router.post('/', async (req, res) => {
  */
 router.get('/my-pets', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });

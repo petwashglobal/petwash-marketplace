@@ -66,7 +66,6 @@ export function BookingPaymentModal({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-id': 'demo-owner',
         },
         body: JSON.stringify({
           paymentMethod: 'nayax',
@@ -99,7 +98,6 @@ export function BookingPaymentModal({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-id': 'demo-owner',
         },
         body: JSON.stringify({ rating, review }),
       });

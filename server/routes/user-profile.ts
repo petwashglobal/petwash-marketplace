@@ -33,13 +33,9 @@ const router = Router();
 router.get('/profile', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    const userId = req.headers['x-user-id'] as string;
+    const firebaseUid = req.firebaseUser?.uid;
     
-    if (!authHeader && !userId) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    let uid = userId;
+    let uid = firebaseUid;
     
     if (authHeader?.startsWith('Bearer ')) {
       try {
@@ -47,12 +43,14 @@ router.get('/profile', async (req, res) => {
         const decodedToken = await admin.auth().verifyIdToken(token);
         uid = decodedToken.uid;
       } catch (tokenError) {
-        logger.warn('[UserProfile] Token verification failed, using x-user-id');
+        if (!uid) {
+          return res.status(401).json({ error: 'Authentication required' });
+        }
       }
     }
 
     if (!uid) {
-      return res.status(401).json({ error: 'User ID required' });
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
@@ -121,13 +119,9 @@ router.get('/profile', async (req, res) => {
 router.patch('/profile', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    const userId = req.headers['x-user-id'] as string;
+    const firebaseUid = req.firebaseUser?.uid;
     
-    if (!authHeader && !userId) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    let uid = userId;
+    let uid = firebaseUid;
     
     if (authHeader?.startsWith('Bearer ')) {
       try {
@@ -135,12 +129,14 @@ router.patch('/profile', async (req, res) => {
         const decodedToken = await admin.auth().verifyIdToken(token);
         uid = decodedToken.uid;
       } catch (tokenError) {
-        logger.warn('[UserProfile] Token verification failed, using x-user-id');
+        if (!uid) {
+          return res.status(401).json({ error: 'Authentication required' });
+        }
       }
     }
 
     if (!uid) {
-      return res.status(401).json({ error: 'User ID required' });
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const parseResult = profileUpdateSchema.safeParse(req.body);

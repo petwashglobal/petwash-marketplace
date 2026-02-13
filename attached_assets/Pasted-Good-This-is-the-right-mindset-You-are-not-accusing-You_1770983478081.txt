@@ -1,0 +1,247 @@
+Good. This is the right mindset.
+
+You are not accusing.
+You are protecting your infrastructure.
+
+I’ll give you two parts:
+	1.	A professional warning checklist for your programmer
+	2.	Exact steps to enforce 2-Step Verification in Google Workspace
+
+⸻
+
+PART 1
+
+What You Should Clearly Tell / Require From Your Programmer
+
+Send him something like this professionally.
+
+🔐 Access Control Rules
+	1.	No personal Gmail accounts used for company systems
+	2.	No shared passwords in chat
+	3.	No API keys stored in code
+	4.	No secrets committed to GitHub
+	5.	No production access from unsecured WiFi
+	6.	No bypassing 2FA under any circumstance
+	7.	No creating admin accounts without written approval
+	8.	No changing recovery emails
+	9.	No adding OAuth scopes beyond required
+	10.	No disabling Google security alerts
+
+⸻
+
+🔐 Google Workspace Rules
+	11.	Only you are Super Admin
+	12.	Developer gets limited Admin role only if required
+	13.	All users must have 2-Step Verification
+	14.	No legacy app passwords
+	15.	No IMAP/POP basic authentication
+	16.	No third-party apps without approval
+	17.	Audit logs must remain enabled
+	18.	No external forwarding rules
+
+⸻
+
+🔐 Firebase / Backend Rules
+	19.	No direct writes to Firestore from client for financial data
+	20.	All wallet balance mutations must be server-side only
+	21.	All booking state transitions validated on backend
+	22.	All payment verification done server-side
+	23.	No trusting client request for price or tier
+	24.	No bypass route for admin operations
+	25.	All financial records immutable
+	26.	E-invoice generation server-controlled only
+
+⸻
+
+🔐 GitHub Rules
+	27.	Secrets only in GitHub Secrets
+	28.	No hardcoded environment variables
+	29.	No pushing .env files
+	30.	CI must not print secrets in logs
+	31.	Branch protection enabled
+	32.	Require pull request before merge
+
+⸻
+
+🔐 API & Integrations
+	33.	SendGrid API restricted by IP
+	34.	Twilio geo permissions limited
+	35.	Firebase service account key stored securely
+	36.	No downloading service account JSON to personal devices
+	37.	Rotate API keys every 90 days
+	38.	Remove unused OAuth tokens
+
+⸻
+
+🔐 Infrastructure Discipline
+	39.	No direct production database edits
+	40.	No hotfix in production without commit
+	41.	All changes logged
+	42.	Monitoring enabled
+	43.	Error logs reviewed weekly
+	44.	Rate limiting on all public endpoints
+	45.	CAPTCHA on public forms
+
+⸻
+
+🔐 Legal & Compliance
+	46.	User data encrypted at rest
+	47.	Logs retained per regulation
+	48.	No storing full credit card numbers
+	49.	PCI compliance respected
+	50.	KYC documents stored encrypted
+
+⸻
+
+🔐 What You Should Ask Him Directly
+
+Ask clearly:
+
+• Are wallet balances event-driven or directly mutated?
+• Are onboarding writes done server-side only?
+• Are booking state transitions backend-validated?
+• Is payment processing centralized?
+• Are audit logs enabled?
+• Who has production access?
+• Where are service account keys stored?
+• Are Firestore rules locked down?
+
+You are not attacking him.
+You are setting governance.
+
+Serious developers respect this.
+
+⸻
+
+PART 2
+
+How To Enforce 2-Step Verification in Google Workspace
+
+Do this yourself.
+
+Step 1
+
+Go to:
+admin.google.com
+
+Log in as Super Admin.
+
+⸻
+
+Step 2
+
+Go to:
+
+Security → Authentication → 2-Step Verification
+
+⸻
+
+Step 3
+
+Click:
+
+“Allow users to turn on 2-Step Verification”
+Enable it.
+
+Then:
+
+Click “Enforcement”
+
+Set:
+
+Enforce 2SV for:
+All users
+
+Grace period:
+7 days maximum
+
+Save.
+
+⸻
+
+Step 4
+
+Force Strong Methods
+
+Security → Authentication → 2-Step Verification → Advanced
+
+Disable:
+SMS only authentication
+
+Enable:
+Google Prompt
+Authenticator App
+Security Keys
+
+Best practice:
+Require Google Prompt + backup method.
+
+⸻
+
+Step 5
+
+Disable Less Secure Apps
+
+Security → Access and Data Control → Less Secure Apps
+
+Turn OFF completely.
+
+⸻
+
+Step 6
+
+Check Admin Roles
+
+Directory → Admin roles
+
+Ensure:
+Only you are Super Admin.
+
+Remove unnecessary roles.
+
+⸻
+
+Very Important
+
+After enabling 2SV enforcement:
+
+Go to:
+Security → Alerts
+
+Review:
+• Admin activity
+• API usage
+• OAuth apps
+• Login attempts
+
+⸻
+
+Reality Check
+
+You are building:
+
+• Multi-platform system
+• Financial wallet
+• Loyalty program
+• E-invoice integration
+• SMS verification
+• Email verification
+• Backend global brain
+
+This requires enterprise discipline.
+
+If he resists structure and audit:
+That’s the red flag.
+
+If he welcomes it:
+That’s a professional.
+
+⸻
+
+If you want, next I can:
+
+• Audit your security posture like enterprise
+• Create a developer security contract template
+• Or give you a production hardening checklist
+
+Tell me which direction you want.

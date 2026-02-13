@@ -8291,7 +8291,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/vito', apiLimiter, privilegeLoyaltyRoutes.default);
 
   // Loyalty & Rewards routes - Protected with Firebase auth
-  const { validateFirebaseToken } = await import('./middleware/firebase-auth');
+  const { validateFirebaseToken, optionalFirebaseToken } = await import('./middleware/firebase-auth');
   app.use('/api/loyalty', validateFirebaseToken, apiLimiter, loyaltyRoutes);
 
   // Referral System - חבר מביא חבר (Friend Brings Friend)
@@ -8421,7 +8421,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Credit Wallet & E-Gift Redemption (Unified credits across all platforms)
   const creditWalletRoutes = await import('./routes/credit-wallet');
-  app.use('/api/credit-wallet', apiLimiter, creditWalletRoutes.default);
+  app.use('/api/credit-wallet', optionalFirebaseToken, apiLimiter, creditWalletRoutes.default);
   logger.info('[Routes] ✅ Credit Wallet routes registered (e-gift, wash packages, loyalty points)');
   
   // Spotify Integration (Profile, Now Playing)
@@ -8481,9 +8481,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // 🔐 PIN Authentication - December 2025 Edition (4-6 digit PIN, device binding, rate limiting)
   app.use('/api/pin-auth', apiLimiter, pinAuthRoutes);
-  app.use('/api/user', apiLimiter, userProfileRoutes);
+  app.use('/api/user', optionalFirebaseToken, apiLimiter, userProfileRoutes);
   app.use('/api/account', apiLimiter, accountManagementRoutes);
-  app.use('/api/user', apiLimiter, profileSettingsRoutes);
+  app.use('/api/user', optionalFirebaseToken, apiLimiter, profileSettingsRoutes);
 
   // 🔐 Mobile Biometric Authentication - NIST SP 800-63B AAL2 Compliant (Passkeys, Health Data)
   app.use('/api/mobile/biometric', apiLimiter, mobileBiometricRoutes);
@@ -8672,15 +8672,15 @@ self.addEventListener('notificationclick', (event) => {
 
   // MadPaws-style Booking Search (pet count, types, area, filters) - PUBLIC ACCESS
   const bookingSearchRoutes = (await import('./routes/booking-search')).default;
-  app.use('/api/booking-search', apiLimiter, bookingSearchRoutes);
+  app.use('/api/booking-search', optionalFirebaseToken, apiLimiter, bookingSearchRoutes);
 
   // MadPaws-style Booking Requests (complete flow: request → meet & greet → payment → service)
   const bookingRequestsRoutes = (await import('./routes/booking-requests')).default;
-  app.use('/api/booking-requests', apiLimiter, bookingRequestsRoutes);
+  app.use('/api/booking-requests', optionalFirebaseToken, apiLimiter, bookingRequestsRoutes);
 
   // MadPaws-style Marketplace Bookings (PostgreSQL - 12-status lifecycle, escrow, quotes)
   const marketplaceBookingsRoutes = (await import('./routes/marketplace-bookings')).default;
-  app.use('/api/marketplace-bookings', apiLimiter, marketplaceBookingsRoutes);
+  app.use('/api/marketplace-bookings', optionalFirebaseToken, apiLimiter, marketplaceBookingsRoutes);
 
   // Dynamic Pricing Engine - MadPaws-style quote calculation with multi-pet surcharges
   app.use('/api/pricing', apiLimiter, pricingApiRoutes);

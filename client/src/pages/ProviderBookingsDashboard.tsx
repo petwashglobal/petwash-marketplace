@@ -94,9 +94,7 @@ export default function ProviderBookingsDashboard() {
   const { data: bookingsData, isLoading, refetch } = useQuery({
     queryKey: ['/api/booking-requests', 'provider'],
     queryFn: async () => {
-      const res = await fetch(getApiUrl('/api/booking-requests?role=provider'), {
-        headers: { 'x-user-id': 'demo-provider' },
-      });
+      const res = await fetch(getApiUrl('/api/booking-requests?role=provider'));
       if (!res.ok) throw new Error('Failed to fetch bookings');
       return res.json();
     },
@@ -325,7 +323,6 @@ function PendingBookingCard({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-id': 'demo-provider',
         },
         body: JSON.stringify({ action, ...data }),
       });
@@ -531,7 +528,6 @@ function UpcomingBookingCard({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-id': 'demo-provider',
         },
         body: JSON.stringify({ action: 'complete' }),
       });
@@ -550,7 +546,6 @@ function UpcomingBookingCard({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-id': 'demo-provider',
         },
       });
       if (!res.ok) throw new Error('Failed to start');
@@ -647,7 +642,6 @@ function ActiveBookingCard({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-id': 'demo-provider',
         },
       });
       if (!res.ok) throw new Error('Failed to complete');

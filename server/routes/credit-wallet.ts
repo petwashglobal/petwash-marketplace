@@ -13,8 +13,8 @@ const redemptionRateLimiter = rateLimit({
   message: { success: false, error: 'Too many redemption requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.headers['x-user-id'] as string || 'anonymous',
-  validate: { xForwardedForHeader: false, ip: false },
+  keyGenerator: (req) => (req as any).user?.uid || (req as any).firebaseUser?.uid || 'anonymous',
+  validate: { xForwardedForHeader: false, ip: false, default: false },
 });
 
 const nayaxValidationRateLimiter = rateLimit({
@@ -49,7 +49,7 @@ const addCreditsSchema = z.object({
 
 router.get('/summary', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
@@ -64,7 +64,7 @@ router.get('/summary', async (req, res) => {
 
 router.post('/preview', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
@@ -86,7 +86,7 @@ router.post('/preview', async (req, res) => {
 
 router.post('/redemptions', redemptionRateLimiter, async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
@@ -117,7 +117,7 @@ router.post('/redemptions', redemptionRateLimiter, async (req, res) => {
 
 router.post('/redemptions/:sessionId/confirm', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
@@ -166,7 +166,7 @@ router.post('/redemptions/:sessionId/refund', async (req, res) => {
 
 router.post('/redemptions/:sessionId/cancel', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
@@ -184,7 +184,7 @@ router.post('/redemptions/:sessionId/cancel', async (req, res) => {
 
 router.get('/transactions', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
@@ -399,7 +399,7 @@ router.get('/admin/injection-history/:userId', async (req, res) => {
 
 router.get('/expiring-credits', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }

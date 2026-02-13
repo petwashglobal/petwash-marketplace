@@ -30,7 +30,7 @@ export async function requireLoyaltyMember(
 ) {
   try {
     // Get Firebase UID from authenticated user
-    const userId = req.user?.uid || req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     
     if (!userId) {
       return res.status(401).json({
@@ -82,7 +82,7 @@ export async function requireLoyaltyMember(
 export function requireTier(minimumTier: LoyaltyTier) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user?.uid || req.headers['x-user-id'] as string;
+      const userId = req.user?.uid || req.firebaseUser?.uid;
       
       if (!userId) {
         return res.status(401).json({
@@ -149,7 +149,7 @@ export async function enrichWithLoyalty(
   next: NextFunction
 ) {
   try {
-    const userId = req.user?.uid || req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     
     if (userId) {
       const loyaltyUser = await getLoyaltyStatus(userId);

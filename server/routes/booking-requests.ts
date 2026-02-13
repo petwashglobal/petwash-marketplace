@@ -59,7 +59,7 @@ const router = Router();
  */
 router.post('/', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -184,7 +184,7 @@ router.post('/', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -241,7 +241,7 @@ router.get('/', async (req, res) => {
  */
 router.get('/:requestId', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
     
     const [booking] = await db.select()
@@ -270,7 +270,7 @@ router.get('/:requestId', async (req, res) => {
  */
 router.post('/:requestId/respond', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
     const data = providerBookingResponseSchema.parse({ ...req.body, requestId });
     
@@ -366,7 +366,7 @@ router.post('/:requestId/respond', async (req, res) => {
  */
 router.post('/:requestId/meet-greet', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
     const { action, date, location, notes } = req.body;
     
@@ -464,7 +464,7 @@ router.post('/:requestId/meet-greet', async (req, res) => {
  */
 router.post('/:requestId/pay', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
     const { paymentMethod, transactionId } = req.body;
     
@@ -564,7 +564,7 @@ router.post('/:requestId/pay', async (req, res) => {
  */
 router.post('/:requestId/start', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
     
     const [booking] = await db.select()
@@ -617,7 +617,7 @@ router.post('/:requestId/start', async (req, res) => {
  */
 router.post('/:requestId/complete', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
     
     const [booking] = await db.select()
@@ -680,7 +680,7 @@ router.post('/:requestId/complete', async (req, res) => {
  */
 router.post('/:requestId/confirm', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
     const { rating, review } = req.body;
     
@@ -811,7 +811,7 @@ router.post('/:requestId/confirm', async (req, res) => {
  */
 router.post('/:requestId/cancel', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
     const { reason } = req.body;
     
@@ -896,7 +896,7 @@ router.post('/:requestId/cancel', async (req, res) => {
  */
 router.post('/:requestId/photo-update', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] as string;
+    const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
     const { photoUrl, caption } = req.body;
     
