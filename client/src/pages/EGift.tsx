@@ -211,12 +211,12 @@ const translations: Record<string, Record<string, string>> = {
     es: 'Sin cuenta necesaria',
   },
   valid12Months: {
-    en: 'Valid 12 Months',
-    he: 'בתוקף 12 חודשים',
-    ar: 'صالحة لمدة 12 شهراً',
-    ru: 'Действует 12 месяцев',
-    fr: 'Valable 12 mois',
-    es: 'Válido 12 meses',
+    en: 'Valid 24 Months',
+    he: 'בתוקף 24 חודשים',
+    ar: 'صالحة لمدة 24 شهراً',
+    ru: 'Действует 24 месяца',
+    fr: 'Valable 24 mois',
+    es: 'Válido 24 meses',
   },
   allServices: {
     en: 'All Services',
