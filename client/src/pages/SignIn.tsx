@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential, getRedirectResult, getAdditionalUserInfo } from "firebase/auth";
+import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential, getAdditionalUserInfo } from "firebase/auth";
 import { signInWithBestMethod, isIOS, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
@@ -119,132 +119,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   }, [magicLinkResendCountdown]);
   
-  // Handle iOS redirect result on page load
+  // Handle post-redirect navigation
+  // Auth-guardian-2025.ts is the SOLE handler for getRedirectResult (runs on import in main.tsx).
+  // This effect only checks the sessionStorage flag that auth-guardian sets after processing.
   useEffect(() => {
-    const handleRedirectSignIn = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          const additionalInfo = getAdditionalUserInfo(result);
-          const isNewUser = additionalInfo?.isNewUser || false;
-          const detectedProvider = additionalInfo?.providerId || result.providerId || 'google';
-          const providerName = detectedProvider.replace('.com', '').replace('google.com', 'google').replace('apple.com', 'apple').replace('facebook.com', 'facebook');
-          
-          logger.info(`[Auth] Redirect sign-in successful via ${providerName}`, { email: result.user.email, isNewUser });
-          
-          const idToken = await result.user.getIdToken();
-          const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ idToken }),
-          });
-
-          if (!sessionResponse.ok) {
-            throw new Error('Failed to create session');
-          }
-
-          if (isNewUser) {
-            logger.info(`[Auth] New user via redirect ${providerName} - auto-enrolling in loyalty`);
-            try {
-              await fetch(getApiUrl('/api/loyalty/auto-enroll'), {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${idToken}`,
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                  userId: result.user.uid,
-                  email: result.user.email,
-                  displayName: result.user.displayName,
-                  provider: providerName,
-                  role: 'pet_parent',
-                }),
-              });
-            } catch (loyaltyErr) {
-              logger.warn('[Auth] Loyalty auto-enroll failed (non-blocking):', loyaltyErr);
-            }
-          }
-          
-          if (rememberDevice && result.user.uid && result.user.email) {
-            trustDevice(result.user.uid, result.user.email);
-          }
-
-          storeLastAuthMethod('social');
-          
-          const { trackLogin } = await import('@/lib/analytics');
-          trackLogin(providerName, result.user.uid);
-          
-          toast({
-            title: t('signin.successTitle', language),
-            description: t('signin.redirecting', language),
-          });
-
-          const redirectPath = isNewUser ? '/onboarding' : '/dashboard';
-          setTimeout(() => {
-            window.scrollTo(0, 0);
-            navigate(redirectPath);
-          }, 1000);
-        }
-      } catch (error: any) {
-        if (error.code !== 'auth/popup-closed-by-user') {
-          logger.error('[iOS Auth] Redirect result error:', error);
-          
-          const authErrors: Record<string, Record<string, string>> = {
-            'auth/unauthorized-domain': {
-              en: 'This domain is not authorized for sign-in. Please try again.',
-              he: 'דומיין זה אינו מורשה להתחברות. אנא נסו שוב.',
-              ar: 'هذا النطاق غير مصرح به لتسجيل الدخول. يرجى المحاولة مرة أخرى.',
-              es: 'Este dominio no está autorizado para iniciar sesión. Inténtelo de nuevo.',
-              fr: 'Ce domaine n\'est pas autorisé pour la connexion. Veuillez réessayer.',
-              ru: 'Этот домен не авторизован для входа. Пожалуйста, попробуйте снова.',
-            },
-            'auth/popup-blocked': {
-              en: 'Pop-up was blocked. Please allow pop-ups and try again.',
-              he: 'החלון נחסם. אנא אפשרו חלונות קופצים ונסו שוב.',
-              ar: 'تم حظر النافذة المنبثقة. يرجى السماح بها والمحاولة مرة أخرى.',
-              es: 'La ventana emergente fue bloqueada. Permita las ventanas emergentes e inténtelo de nuevo.',
-              fr: 'Le pop-up a été bloqué. Veuillez autoriser les pop-ups et réessayer.',
-              ru: 'Всплывающее окно заблокировано. Разрешите всплывающие окна и попробуйте снова.',
-            },
-            'auth/cancelled-popup-request': {
-              en: 'Sign-in was cancelled. Please try again.',
-              he: 'ההתחברות בוטלה. אנא נסו שוב.',
-              ar: 'تم إلغاء تسجيل الدخول. يرجى المحاولة مرة أخرى.',
-              es: 'El inicio de sesión fue cancelado. Inténtelo de nuevo.',
-              fr: 'La connexion a été annulée. Veuillez réessayer.',
-              ru: 'Вход был отменён. Пожалуйста, попробуйте снова.',
-            },
-          };
-          const defaultErr: Record<string, string> = {
-            en: 'Sign-in failed. Please try again.',
-            he: 'ההתחברות נכשלה. אנא נסו שוב.',
-            ar: 'فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.',
-            es: 'Error de inicio de sesión. Inténtelo de nuevo.',
-            fr: 'La connexion a échoué. Veuillez réessayer.',
-            ru: 'Ошибка входа. Пожалуйста, попробуйте снова.',
-          };
-          const errTitle: Record<string, string> = {
-            en: 'Sign-in error',
-            he: 'שגיאה בהתחברות',
-            ar: 'خطأ في تسجيل الدخول',
-            es: 'Error de inicio de sesión',
-            fr: 'Erreur de connexion',
-            ru: 'Ошибка входа',
-          };
-
-          const msg = authErrors[error.code]?.[language] || authErrors[error.code]?.en || defaultErr[language] || defaultErr.en;
-          toast({
-            variant: "destructive",
-            title: errTitle[language] || errTitle.en,
-            description: msg,
-          });
-        }
-      }
-    };
-    
-    handleRedirectSignIn();
+    if (sessionStorage.getItem('pw_redirect_handled') === 'true') {
+      sessionStorage.removeItem('pw_redirect_handled');
+      logger.info('[Auth] Redirect handled by auth-guardian, navigating to dashboard');
+      navigate('/dashboard');
+    }
   }, []);
 
   useEffect(() => {

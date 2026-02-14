@@ -17,36 +17,24 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      // LUXURY 2025: Premium glassmorphism design matching Input component
       "flex h-14 w-full items-center justify-between rounded-2xl",
       "border-2 border-neutral-200/50 dark:border-neutral-700/50",
-      "bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl",
+      "bg-white dark:bg-neutral-900",
       "px-5 py-4",
-      // LUXURY 2025: Premium typography - sophisticated font styling
       "text-[16px] font-normal leading-relaxed tracking-wide",
       "text-neutral-900 dark:text-neutral-100",
-      // LUXURY 2025: Elegant placeholder
       "[&>span]:text-neutral-900 dark:[&>span]:text-neutral-100",
       "[&>span]:line-clamp-1",
-      // LUXURY 2025: Premium focus state with smooth glow
       "focus:outline-none",
       "focus:ring-2 focus:ring-primary/30 focus:ring-offset-2",
       "focus:border-primary/60 dark:focus:border-primary/40",
-      "focus:bg-white dark:focus:bg-neutral-900",
       "focus:shadow-lg focus:shadow-primary/10",
-      // LUXURY 2025: Smooth premium transitions
-      "transition-all duration-300 ease-out",
-      // LUXURY 2025: Subtle hover state
+      "transition-[border-color,box-shadow] duration-200 ease-out",
       "hover:border-neutral-300/70 dark:hover:border-neutral-600/70",
-      "hover:bg-white dark:hover:bg-neutral-900",
       "hover:shadow-md hover:shadow-neutral-200/20 dark:hover:shadow-neutral-800/20",
-      // iOS 2025: Touch states with premium feel
-      "active:scale-[0.995]",
-      // LUXURY 2025: Premium disabled state
       "disabled:cursor-not-allowed disabled:opacity-40",
       "disabled:bg-neutral-50/50 dark:disabled:bg-neutral-900/30",
       "disabled:border-neutral-200/30 dark:disabled:border-neutral-800/30",
-      // iOS: Prevent double-tap zoom
       "touch-manipulation",
       className
     )}

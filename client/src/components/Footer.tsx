@@ -3,72 +3,26 @@ import { Link } from 'wouter';
 import { FaWhatsapp } from 'react-icons/fa';
 import { Mail, Shield, Award, Leaf, CheckCircle2, Lock, Sparkles } from 'lucide-react';
 
+const paymentSvgMap: Record<string, string> = {
+  visa: '/assets/payments/visa-2025.svg',
+  mastercard: '/assets/payments/mastercard-2025.svg',
+  amex: '/assets/payments/amex-2025.svg',
+  applepay: '/assets/payments/apple-pay-2025.svg',
+  googlepay: '/assets/payments/google-pay-2025.svg',
+  diners: '/assets/payments/diners-2025.svg',
+};
+
 const PaymentLogo = ({ type }: { type: string }) => {
-  const vb = "0 0 160 100";
-  switch (type) {
-    case 'visa':
-      return (
-        <svg viewBox={vb} xmlns="http://www.w3.org/2000/svg" className="block w-full h-full">
-          <rect width="160" height="100" rx="6" fill="#1A1F71" />
-          <text x="80" y="62" textAnchor="middle" fill="#fff" fontFamily="Arial,Helvetica,sans-serif" fontWeight="bold" fontSize="42" fontStyle="italic" letterSpacing="2">VISA</text>
-          <rect x="10" y="82" width="140" height="6" rx="3" fill="#F7B600" />
-        </svg>
-      );
-    case 'mastercard':
-      return (
-        <svg viewBox={vb} xmlns="http://www.w3.org/2000/svg" className="block w-full h-full">
-          <rect width="160" height="100" rx="6" fill="#1A1F71" />
-          <circle cx="60" cy="50" r="30" fill="#EB001B" />
-          <circle cx="100" cy="50" r="30" fill="#F79E1B" />
-          <path d="M80 26.2a29.9 29.9 0 0 0-11.2 23.8A29.9 29.9 0 0 0 80 73.8 29.9 29.9 0 0 0 91.2 50 29.9 29.9 0 0 0 80 26.2z" fill="#FF5F00" />
-        </svg>
-      );
-    case 'amex':
-      return (
-        <svg viewBox={vb} xmlns="http://www.w3.org/2000/svg" className="block w-full h-full">
-          <rect width="160" height="100" rx="6" fill="#006FCF" />
-          <text x="80" y="45" textAnchor="middle" fill="#fff" fontFamily="Arial,Helvetica,sans-serif" fontWeight="bold" fontSize="18" letterSpacing="1">AMERICAN</text>
-          <text x="80" y="70" textAnchor="middle" fill="#fff" fontFamily="Arial,Helvetica,sans-serif" fontWeight="bold" fontSize="18" letterSpacing="1">EXPRESS</text>
-        </svg>
-      );
-    case 'applepay':
-      return (
-        <svg viewBox={vb} xmlns="http://www.w3.org/2000/svg" className="block w-full h-full">
-          <rect width="160" height="100" rx="6" fill="#000" />
-          <g transform="translate(24, 20) scale(0.65)" fill="#fff">
-            <path d="M33.6 16.26c-1.5 1.77-3.9 3.14-6.32 2.94-.3-2.4.88-4.97 2.26-6.55 1.5-1.86 4.1-3.24 6.22-3.33.26 2.5-.73 4.97-2.16 6.94zm2.12 3.53c-3.48-.21-6.45 1.98-8.1 1.98s-4.21-1.87-6.95-1.83c-3.58.06-6.9 2.08-8.74 5.3-3.74 6.45-.96 16.01 2.67 21.26 1.78 2.61 3.9 5.51 6.69 5.4 2.67-.1 3.69-1.72 6.91-1.72s4.13 1.72 6.95 1.67c2.9-.05 4.73-2.61 6.51-5.24 2.03-3.01 2.86-5.93 2.9-6.08-.05-.05-5.57-2.14-5.63-8.49-.05-5.3 4.32-7.85 4.52-8-2.48-3.64-6.32-4.05-7.7-4.25h-.03z" />
-          </g>
-          <text x="105" y="62" textAnchor="middle" fill="#fff" fontFamily="Arial,Helvetica,sans-serif" fontWeight="600" fontSize="28">Pay</text>
-        </svg>
-      );
-    case 'googlepay':
-      return (
-        <svg viewBox={vb} xmlns="http://www.w3.org/2000/svg" className="block w-full h-full">
-          <rect width="160" height="100" rx="6" fill="#f5f5f5" stroke="#dadce0" strokeWidth="1" />
-          <g transform="translate(20, 28)">
-            <path d="M24.38 23.35c0-1.15-.1-2.26-.29-3.32H12.5v6.28h6.67c-.29 1.56-1.16 2.88-2.48 3.76v3.13h4.01c2.35-2.16 3.68-5.35 3.68-9.85z" fill="#4285F4"/>
-            <path d="M12.5 29.6c3.36 0 6.17-1.12 8.22-3.02l-4.01-3.13c-1.11.75-2.53 1.2-4.21 1.2-3.23 0-5.97-2.19-6.95-5.14H1.38v3.23c2.04 4.06 6.24 6.86 11.12 6.86z" fill="#34A853"/>
-            <path d="M5.55 19.51a10.65 10.65 0 0 1 0-6.82V9.46H1.38a17.73 17.73 0 0 0 0 13.28l4.17-3.23z" fill="#FBBC04"/>
-            <path d="M12.5 5.55c1.82 0 3.46.63 4.75 1.87l3.56-3.56C18.64 1.79 15.83.6 12.5.6 7.62.6 3.42 3.4 1.38 7.46l4.17 3.23c.98-2.95 3.72-5.14 6.95-5.14z" fill="#EA4335"/>
-          </g>
-          <text x="108" y="60" textAnchor="middle" fill="#3C4043" fontFamily="Arial,Helvetica,sans-serif" fontWeight="500" fontSize="22">Pay</text>
-        </svg>
-      );
-    case 'diners':
-      return (
-        <svg viewBox={vb} xmlns="http://www.w3.org/2000/svg" className="block w-full h-full">
-          <rect width="160" height="100" rx="6" fill="#fff" stroke="#dadce0" strokeWidth="1" />
-          <g transform="translate(80, 46)">
-            <circle cx="5" cy="0" r="34" fill="#0079BE" />
-            <circle cx="-3" cy="0" r="30" fill="#fff" />
-            <path d="M-21 -21 A30 30 0 0 0 -21 21" stroke="#0079BE" strokeWidth="6" fill="none" strokeLinecap="round" />
-            <path d="M15 -21 A30 30 0 0 1 15 21" stroke="#0079BE" strokeWidth="6" fill="none" strokeLinecap="round" />
-          </g>
-        </svg>
-      );
-    default:
-      return null;
-  }
+  const src = paymentSvgMap[type];
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt={type}
+      className="block w-full h-full object-contain"
+      loading="lazy"
+    />
+  );
 };
 
 interface FooterProps {
