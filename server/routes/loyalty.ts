@@ -35,7 +35,7 @@ import type { AuthenticatedRequest } from '../middleware/rbac';
 import { requireAdmin } from '../middleware/rbac';
 import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
-import { sendLoyaltyEnrollmentConfirmation } from '../email/luxury-email-service';
+import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
 
 const router = Router();
 
@@ -87,14 +87,12 @@ router.get('/profile', async (req: AuthenticatedRequest, res: Response) => {
         const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
         
         if (userEmail) {
-          await sendLoyaltyEnrollmentConfirmation(
-            userEmail,
-            firstName,
-            'bronze',
-            0,
-            language
-          );
-          logger.info('[Loyalty] Enrollment confirmation email sent', { userId, email: userEmail });
+          await sendClubWelcomeEmail(userEmail, firstName, {
+            tier: 'bronze',
+            points: 0,
+            language,
+          });
+          logger.info('[Loyalty] Club welcome email sent', { userId, email: userEmail });
         }
       } catch (emailError) {
         logger.error('[Loyalty] Failed to send enrollment email', { emailError, userId });
@@ -163,10 +161,11 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
     try {
       await db.insert(pointsTransactions).values({
         userId,
-        points: welcomePoints,
-        type: 'earn',
-        reason: `Welcome Wag bonus - signed up via ${provider || 'social'} as ${userRole}`,
-        balanceAfter: welcomePoints,
+        type: 'earned',
+        amount: welcomePoints,
+        balance: welcomePoints,
+        source: 'signup',
+        description: `Welcome bonus - signed up via ${provider || 'social'} as ${userRole}`,
       });
     } catch (txErr) {
       logger.warn('[Loyalty] Failed to record welcome points transaction', { txErr });
@@ -213,8 +212,12 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
       const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
 
       if (email) {
-        await sendLoyaltyEnrollmentConfirmation(email, firstName, 'bronze', welcomePoints, language);
-        logger.info('[Loyalty] Auto-enroll confirmation email sent', { userId, provider, role: userRole });
+        await sendClubWelcomeEmail(email, firstName, {
+          tier: 'bronze',
+          points: welcomePoints,
+          language,
+        });
+        logger.info('[Loyalty] Club welcome email sent', { userId, provider, role: userRole });
       }
     } catch (emailError) {
       logger.error('[Loyalty] Failed to send auto-enroll email', { emailError, userId });
@@ -342,7 +345,19 @@ router.post('/points/add', requireAdmin, async (req: AuthenticatedRequest, res: 
       })
       .where(eq(loyaltyProfiles.userId, userId));
 
-    // Log transaction
+    const tierCheck = detectTierUpgrade(profile.lifetimePoints, newLifetimePoints);
+    if (tierCheck.upgraded) {
+      await db
+        .update(loyaltyProfiles)
+        .set({
+          tier: tierCheck.newTier,
+          tierSince: new Date(),
+        })
+        .where(eq(loyaltyProfiles.userId, userId));
+
+      logger.info('[Loyalty] Tier upgrade detected', { userId, from: tierCheck.previousTier, to: tierCheck.newTier });
+    }
+
     const [transaction] = await db
       .insert(pointsTransactions)
       .values({
@@ -356,7 +371,37 @@ router.post('/points/add', requireAdmin, async (req: AuthenticatedRequest, res: 
       })
       .returning();
 
-    res.json(transaction);
+    try {
+      const firebaseUser = await adminAuth.getUser(userId);
+      const userEmail = firebaseUser.email;
+      const firstName = firebaseUser.displayName?.split(' ')[0] || 'Member';
+
+      if (userEmail && tierCheck.upgraded) {
+        await sendTierUpgradeEmail(
+          userEmail,
+          firstName,
+          tierCheck.previousTier,
+          tierCheck.newTier,
+          { points: newBalance, language: 'he' }
+        );
+        logger.info('[Loyalty] Tier upgrade email sent', { userId, newTier: tierCheck.newTier });
+      }
+
+      if (userEmail && amount > 0 && source !== 'admin_adjustment') {
+        await sendPurchaseRewardEmail(
+          userEmail,
+          firstName,
+          amount,
+          newBalance,
+          { tier: (tierCheck.upgraded ? tierCheck.newTier : profile.tier) as any, language: 'he' }
+        );
+        logger.info('[Loyalty] Purchase reward email sent', { userId, pointsEarned: amount });
+      }
+    } catch (emailErr) {
+      logger.error('[Loyalty] Failed to send points email (non-blocking)', { emailErr, userId });
+    }
+
+    res.json({ ...transaction, tierUpgrade: tierCheck.upgraded ? tierCheck : undefined });
   } catch (error) {
     logger.error('Error adding points:', error);
     res.status(500).json({ error: 'Failed to add points' });

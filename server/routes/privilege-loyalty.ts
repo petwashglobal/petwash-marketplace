@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { sendClubWelcomeEmail } from '../email/luxury-email-service';
 import multer from 'multer';
 import admin from 'firebase-admin';
 import crypto from 'crypto';
@@ -174,6 +175,18 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       hasIdDocument: !!idDocumentUrl,
       petsCount: parsedPets.length,
     });
+
+    try {
+      const memberLang = (language === 'he' ? 'he' : 'en') as 'he' | 'en';
+      await sendClubWelcomeEmail(email.trim().toLowerCase(), firstName.trim(), {
+        tier: 'bronze',
+        points: 0,
+        language: memberLang,
+      });
+      logger.info('[Privilege] Club welcome email sent', { email: email.trim().toLowerCase() });
+    } catch (emailErr) {
+      logger.error('[Privilege] Failed to send welcome email (non-blocking)', { emailErr });
+    }
 
     res.status(201).json({
       ok: true,

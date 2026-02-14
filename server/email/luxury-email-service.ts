@@ -275,6 +275,8 @@ import {
 import { generateFranchiseApplicationEmail } from './templates/welcome-franchise-application-2026';
 import { generateMembershipConfirmationEmail } from './templates/membership-confirmation-2026';
 import { generateEGiftActivationEmail } from './templates/egift-activation-2026';
+import { generateLuxuryClubEmail, type ClubEmailEventKind, type LuxuryClubEmailParams } from './templates/luxury-club-2026';
+import { TIER_CONFIGS, type LoyaltyTier } from '../../shared/schema-loyalty';
 
 /**
  * Send New User Registration Confirmation Email
@@ -432,4 +434,140 @@ export async function sendEGiftActivation(
 
   logger.info('[EGift Email] Sending e-gift activation', { recipientEmail, recipientName, senderName, giftCode });
   return sendLuxuryEmail({ to: recipientEmail, subject, html });
+}
+
+export async function sendClubWelcomeEmail(
+  email: string,
+  recipientName: string,
+  options?: {
+    tier?: LoyaltyTier;
+    points?: number;
+    language?: 'he' | 'en';
+  }
+): Promise<boolean> {
+  const tier = options?.tier || 'bronze';
+  const lang = options?.language || 'he';
+  const points = options?.points || 100;
+
+  const { subject, html } = generateLuxuryClubEmail({
+    kind: 'welcome',
+    recipientName,
+    recipientEmail: email,
+    language: lang,
+    tier,
+    walletBalanceText: `${points} ${lang === 'he' ? 'נקודות' : 'points'}`,
+    memberSinceText: lang === 'he'
+      ? `חבר מועדון מאז ${new Date().getFullYear()}`
+      : `Member since ${new Date().getFullYear()}`,
+  });
+
+  logger.info('[Club Email] Sending welcome email', { email, recipientName, tier });
+  return sendLuxuryEmail({ to: email, subject, html });
+}
+
+export async function sendTierUpgradeEmail(
+  email: string,
+  recipientName: string,
+  previousTier: LoyaltyTier,
+  newTier: LoyaltyTier,
+  options?: {
+    points?: number;
+    language?: 'he' | 'en';
+  }
+): Promise<boolean> {
+  const lang = options?.language || 'he';
+  const points = options?.points || 0;
+
+  const { subject, html } = generateLuxuryClubEmail({
+    kind: 'tier_upgrade',
+    recipientName,
+    recipientEmail: email,
+    language: lang,
+    tier: newTier,
+    previousTier,
+    newTier,
+    walletBalanceText: points > 0 ? `${points} ${lang === 'he' ? 'נקודות' : 'points'}` : undefined,
+    memberSinceText: lang === 'he'
+      ? `חבר מועדון מאז ${new Date().getFullYear()}`
+      : `Member since ${new Date().getFullYear()}`,
+  });
+
+  logger.info('[Club Email] Sending tier upgrade email', { email, recipientName, previousTier, newTier });
+  return sendLuxuryEmail({ to: email, subject, html });
+}
+
+export async function sendPurchaseRewardEmail(
+  email: string,
+  recipientName: string,
+  pointsEarned: number,
+  newBalance: number,
+  options?: {
+    tier?: LoyaltyTier;
+    language?: 'he' | 'en';
+  }
+): Promise<boolean> {
+  const lang = options?.language || 'he';
+
+  const { subject, html } = generateLuxuryClubEmail({
+    kind: 'purchase_reward',
+    recipientName,
+    recipientEmail: email,
+    language: lang,
+    tier: options?.tier || 'bronze',
+    pointsEarned,
+    newPoints: newBalance,
+    walletBalanceText: `${newBalance} ${lang === 'he' ? 'נקודות' : 'points'}`,
+  });
+
+  logger.info('[Club Email] Sending purchase reward email', { email, recipientName, pointsEarned, newBalance });
+  return sendLuxuryEmail({ to: email, subject, html });
+}
+
+export async function sendClubEventEmail(
+  email: string,
+  recipientName: string,
+  options?: {
+    heroTitle?: string;
+    heroSubtitle?: string;
+    ctaLabel?: string;
+    ctaUrl?: string;
+    tier?: LoyaltyTier;
+    language?: 'he' | 'en';
+    benefits?: { title: string; desc: string }[];
+    moments?: { label: string; desc: string }[];
+  }
+): Promise<boolean> {
+  const lang = options?.language || 'he';
+
+  const { subject, html } = generateLuxuryClubEmail({
+    kind: 'club_event',
+    recipientName,
+    recipientEmail: email,
+    language: lang,
+    tier: options?.tier || 'bronze',
+    heroTitle: options?.heroTitle,
+    heroSubtitle: options?.heroSubtitle,
+    primaryCtaLabel: options?.ctaLabel,
+    primaryCtaUrl: options?.ctaUrl,
+    benefits: options?.benefits,
+    moments: options?.moments,
+  });
+
+  logger.info('[Club Email] Sending club event email', { email, recipientName });
+  return sendLuxuryEmail({ to: email, subject, html });
+}
+
+export function detectTierUpgrade(previousLifetimePoints: number, newLifetimePoints: number): { upgraded: boolean; previousTier: LoyaltyTier; newTier: LoyaltyTier } {
+  const tiers = TIER_CONFIGS
+    .map(t => ({ id: t.id as LoyaltyTier, threshold: t.threshold }))
+    .sort((a, b) => b.threshold - a.threshold);
+
+  const previousTier = tiers.find(t => previousLifetimePoints >= t.threshold)?.id || 'bronze';
+  const newTier = tiers.find(t => newLifetimePoints >= t.threshold)?.id || 'bronze';
+
+  return {
+    upgraded: previousTier !== newTier,
+    previousTier,
+    newTier,
+  };
 }
