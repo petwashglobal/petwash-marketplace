@@ -569,6 +569,7 @@ export default function ProviderOnboarding() {
                       placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city...'}
                       country={['il', 'us', 'gb', 'au', 'ca']}
                       className="luxury-glass-minimal"
+                      types={['(cities)']}
                     />
                   </div>
                   <div>

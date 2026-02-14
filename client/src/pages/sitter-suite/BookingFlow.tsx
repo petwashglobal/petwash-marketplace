@@ -471,6 +471,11 @@ export default function SitterBookingFlow() {
                 onPlaceSelected={(place: PlaceDetails) => setAddress(place.formattedAddress)}
                 placeholder="הקלידו כתובת..."
                 country={['il']}
+                showExtraFields={true}
+                apartmentLabel="דירה / קומה / כניסה"
+                postalCodeLabel="מיקוד"
+                apartmentPlaceholder="לדוגמה: דירה 4, קומה 2"
+                postalCodePlaceholder="לדוגמה: 6100000"
               />
             </section>
 

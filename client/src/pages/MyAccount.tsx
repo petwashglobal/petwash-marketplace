@@ -1010,6 +1010,11 @@ export default function MyAccount() {
                         }}
                         placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
                         country={['il']}
+                        showExtraFields={true}
+                        apartmentLabel={isHebrew ? 'דירה / קומה / כניסה' : 'Apt / Unit / Floor'}
+                        postalCodeLabel={isHebrew ? 'מיקוד' : 'Postal Code'}
+                        apartmentPlaceholder={isHebrew ? 'לדוגמה: דירה 4, קומה 2' : 'e.g. Apt 4, Floor 2'}
+                        postalCodePlaceholder={isHebrew ? 'לדוגמה: 6100000' : 'e.g. 6100000'}
                       />
                     ) : (
                       <p className="text-gray-900 text-lg">{profile.address || '-'}</p>
@@ -1184,6 +1189,11 @@ export default function MyAccount() {
                       }}
                       placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
                       country={['il']}
+                      showExtraFields={true}
+                      apartmentLabel={isHebrew ? 'דירה / קומה / כניסה' : 'Apt / Unit / Floor'}
+                      postalCodeLabel={isHebrew ? 'מיקוד' : 'Postal Code'}
+                      apartmentPlaceholder={isHebrew ? 'לדוגמה: דירה 4, קומה 2' : 'e.g. Apt 4, Floor 2'}
+                      postalCodePlaceholder={isHebrew ? 'לדוגמה: 6100000' : 'e.g. 6100000'}
                     />
                   </div>
                   <div>

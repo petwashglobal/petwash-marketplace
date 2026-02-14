@@ -363,6 +363,11 @@ export default function WalkerBooking() {
                       placeholder={t('booking.location.enterAddress')}
                       country={['il']}
                       className="flex-1"
+                      showExtraFields={true}
+                      apartmentLabel="דירה / קומה / כניסה"
+                      postalCodeLabel="מיקוד"
+                      apartmentPlaceholder="לדוגמה: דירה 4, קומה 2"
+                      postalCodePlaceholder="לדוגמה: 6100000"
                     />
                     <Button 
                       type="button" 

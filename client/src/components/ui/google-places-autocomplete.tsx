@@ -13,12 +13,19 @@ interface GooglePlacesAutocompleteProps {
   required?: boolean;
   country?: string[];
   className?: string;
+  showExtraFields?: boolean;
+  apartmentLabel?: string;
+  postalCodeLabel?: string;
+  apartmentPlaceholder?: string;
+  postalCodePlaceholder?: string;
+  types?: string[];
 }
 
 export interface PlaceDetails {
   formattedAddress: string;
   street?: string;
   streetNumber?: string;
+  apartment?: string;
   city?: string;
   state?: string;
   postalCode?: string;
@@ -180,12 +187,21 @@ export function GooglePlacesAutocomplete({
   required = false,
   country = ['il'],
   className = '',
+  showExtraFields = false,
+  apartmentLabel,
+  postalCodeLabel,
+  apartmentPlaceholder,
+  postalCodePlaceholder,
+  types,
 }: GooglePlacesAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [isReady, setIsReady] = useState(false);
   const isSelectingRef = useRef(false);
   const skipNextOnChangeRef = useRef(false);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
+  const [apartment, setApartment] = useState('');
+  const [postalCode, setPostalCode] = useState('');
 
   useEffect(() => {
     injectPacStyles();
@@ -193,6 +209,21 @@ export function GooglePlacesAutocomplete({
       .then(() => setIsReady(true))
       .catch(() => {});
   }, []);
+
+  const emitUpdatedDetails = useCallback((base: PlaceDetails, apt: string, zip: string) => {
+    const updated: PlaceDetails = {
+      ...base,
+      apartment: apt || undefined,
+      postalCode: zip || base.postalCode,
+    };
+    let fullAddr = base.formattedAddress;
+    if (apt) {
+      fullAddr = `${fullAddr}, ${apt}`;
+    }
+    updated.formattedAddress = fullAddr;
+    onChange(fullAddr, updated);
+    onPlaceSelected?.(updated);
+  }, [onChange, onPlaceSelected]);
 
   const handlePlaceChanged = useCallback(() => {
     const place = autocompleteRef.current?.getPlace();
@@ -212,6 +243,9 @@ export function GooglePlacesAutocomplete({
         lng: place.geometry?.location?.lng(),
       };
       skipNextOnChangeRef.current = true;
+      setSelectedPlace(basicDetails);
+      setApartment('');
+      setPostalCode('');
       onChange(addr, basicDetails);
       onPlaceSelected?.(basicDetails);
       isSelectingRef.current = false;
@@ -226,13 +260,15 @@ export function GooglePlacesAutocomplete({
     };
 
     place.address_components.forEach((component) => {
-      const types = component.types;
-      if (types.includes('street_number')) details.streetNumber = component.long_name;
-      if (types.includes('route')) details.street = component.long_name;
-      if (types.includes('locality')) details.city = component.long_name;
-      if (types.includes('administrative_area_level_1')) details.state = component.long_name;
-      if (types.includes('postal_code')) details.postalCode = component.long_name;
-      if (types.includes('country')) details.country = component.long_name;
+      const t = component.types;
+      if (t.includes('street_number')) details.streetNumber = component.long_name;
+      if (t.includes('route')) details.street = component.long_name;
+      if (t.includes('subpremise')) details.apartment = component.long_name;
+      if (t.includes('locality')) details.city = component.long_name;
+      if (t.includes('sublocality_level_1') && !details.city) details.city = component.long_name;
+      if (t.includes('administrative_area_level_1')) details.state = component.long_name;
+      if (t.includes('postal_code')) details.postalCode = component.long_name;
+      if (t.includes('country')) details.country = component.long_name;
     });
 
     if (details.streetNumber && details.street) {
@@ -240,6 +276,9 @@ export function GooglePlacesAutocomplete({
     }
 
     skipNextOnChangeRef.current = true;
+    setSelectedPlace(details);
+    setApartment(details.apartment || '');
+    setPostalCode(details.postalCode || '');
     onChange(details.formattedAddress, details);
     onPlaceSelected?.(details);
     isSelectingRef.current = false;
@@ -254,11 +293,18 @@ export function GooglePlacesAutocomplete({
     }
 
     try {
-      const ac = new google.maps.places.Autocomplete(inputRef.current, {
-        types: ['address'],
+      const options: google.maps.places.AutocompleteOptions = {
         componentRestrictions: country.length > 0 ? { country } : undefined,
         fields: ['address_components', 'formatted_address', 'geometry', 'place_id', 'name'],
-      });
+      };
+
+      if (types && types.length > 0) {
+        options.types = types;
+      } else {
+        options.types = ['address'];
+      }
+
+      const ac = new google.maps.places.Autocomplete(inputRef.current, options);
 
       ac.addListener('place_changed', handlePlaceChanged);
       autocompleteRef.current = ac;
@@ -302,6 +348,11 @@ export function GooglePlacesAutocomplete({
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
+    if (!e.target.value) {
+      setSelectedPlace(null);
+      setApartment('');
+      setPostalCode('');
+    }
   }, [onChange]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -312,6 +363,22 @@ export function GooglePlacesAutocomplete({
       }
     }
   }, []);
+
+  const handleApartmentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setApartment(val);
+    if (selectedPlace) {
+      emitUpdatedDetails(selectedPlace, val, postalCode);
+    }
+  }, [selectedPlace, postalCode, emitUpdatedDetails]);
+
+  const handlePostalCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setPostalCode(val);
+    if (selectedPlace) {
+      emitUpdatedDetails(selectedPlace, apartment, val);
+    }
+  }, [selectedPlace, apartment, emitUpdatedDetails]);
 
   return (
     <div className={`space-y-2 ${className}`}>
@@ -356,6 +423,60 @@ export function GooglePlacesAutocomplete({
           data-testid="input-google-places-autocomplete"
         />
       </div>
+
+      {showExtraFields && selectedPlace && (
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          <div>
+            <Label className="text-sm font-medium text-gray-600 mb-1 block">
+              {apartmentLabel || 'Apt / Unit / Floor'}
+            </Label>
+            <Input
+              type="text"
+              value={apartment}
+              onChange={handleApartmentChange}
+              placeholder={apartmentPlaceholder || 'e.g. Apt 4, Floor 2'}
+              className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
+              style={{ fontSize: '16px' }}
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <Label className="text-sm font-medium text-gray-600 mb-1 block">
+              {postalCodeLabel || 'Postal Code'}
+            </Label>
+            <Input
+              type="text"
+              value={postalCode}
+              onChange={handlePostalCodeChange}
+              placeholder={postalCodePlaceholder || 'e.g. 6100000'}
+              className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
+              style={{ fontSize: '16px' }}
+              autoComplete="off"
+            />
+          </div>
+        </div>
+      )}
+
+      {showExtraFields && selectedPlace && (
+        <div className="flex flex-wrap gap-2 mt-1">
+          {selectedPlace.street && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+              {selectedPlace.street}
+            </span>
+          )}
+          {selectedPlace.city && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              {selectedPlace.city}
+            </span>
+          )}
+          {selectedPlace.country && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+              {selectedPlace.country}
+            </span>
+          )}
+        </div>
+      )}
+
       {error && (
         <p className="text-sm text-red-600 mt-1">{error}</p>
       )}
