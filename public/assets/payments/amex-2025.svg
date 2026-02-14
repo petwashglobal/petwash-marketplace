@@ -1,5 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" fill="none">
-  <rect width="120" height="40" rx="4" fill="#006FCF"/>
-  <text x="60" y="17" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="8" font-weight="bold" letter-spacing="0.5">AMERICAN</text>
-  <text x="60" y="27" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="8" font-weight="bold" letter-spacing="0.5">EXPRESS</text>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Ebene_1" data-name="Ebene 1" xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80">
+  <rect x="48" y="7.34" width="72" height="66" style="fill: #fff;"/>
+  <g>
+    <g>
+      <path d="M109.97,70.99l-5.32-6.13-5.53,6.13h-34.2v-28.55h-10.85l13.52-31.94h13.11l4.71,11V10.5h16.38l2.87,8.25,2.87-8.25h12.49V5.63c0-2.96-2.25-5.29-5.12-5.29H5.12C2.25,.34,0,2.67,0,5.63V74.37c0,2.96,2.25,5.29,5.12,5.29H114.88c2.87,0,5.12-2.33,5.12-5.29v-3.38h-10.03Z" style="fill: #0071ce;"/>
+      <g>
+        <polygon points="111.4 67.6 120 67.6 108.74 55.12 120 42.86 111.6 42.86 104.44 50.89 97.47 42.86 88.87 42.86 100.34 55.33 88.87 67.6 97.27 67.6 104.44 59.56 111.4 67.6" style="fill: #0071ce;"/>
+        <polygon points="75.15 61.89 75.15 58.08 88.67 58.08 88.67 52.37 75.15 52.37 75.15 48.57 88.87 48.57 88.87 42.86 68.6 42.86 68.6 67.6 88.87 67.6 88.87 61.89 75.15 61.89" style="fill: #0071ce;"/>
+        <polygon points="113.65 39.26 119.8 39.26 119.8 14.3 109.97 14.51 104.64 29.95 99.11 14.51 88.87 14.51 88.87 39.26 95.43 39.26 95.43 21.92 101.57 39.26 107.3 39.26 113.65 21.92 113.65 39.26" style="fill: #0071ce;"/>
+        <path d="M78.43,14.51h-8.4l-10.65,24.75h7.17l2.05-4.86h11.06l2.05,4.86h7.37l-10.65-24.75Zm-7.58,14.17l3.28-8.04,3.28,8.04h-6.55Z" style="fill: #0071ce;"/>
+      </g>
+    </g>
+    <polygon points="114.06 54.49 120 61.26 120 47.72 114.06 54.49" style="fill: #0071ce;"/>
+  </g>
 </svg>

@@ -131,11 +131,11 @@ export class AuthService {
     profileImageUrl?: string;
     country?: string;
     language?: string;
-  }) {
+  }): Promise<{ user: any; isNewUser: boolean } | null> {
     try {
       const existing = await this.getUserById(firebaseUid);
       if (existing) {
-        return existing;
+        return { user: existing, isNewUser: false };
       }
 
       if (!email) {
@@ -143,11 +143,12 @@ export class AuthService {
         return null;
       }
 
-      return await this.createUser({
+      const newUser = await this.createUser({
         id: firebaseUid,
         email,
         ...extraData,
       });
+      return { user: newUser, isNewUser: true };
     } catch (error) {
       logger.error('[AuthService] ensureUserInPostgres failed:', error);
       return null;

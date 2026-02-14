@@ -842,7 +842,7 @@ self.addEventListener('notificationclick', (event) => {
             lastName = nameParts.slice(1).join(' ') || undefined;
           }
           
-          await authService.ensureUserInPostgres(decoded.uid, decoded.email || undefined, {
+          const syncResult = await authService.ensureUserInPostgres(decoded.uid, decoded.email || undefined, {
             firstName,
             lastName,
             phone: phone || decoded.phone_number || undefined,
@@ -851,6 +851,26 @@ self.addEventListener('notificationclick', (event) => {
             language: lang,
           });
           logger.info('[Session] ✅ PostgreSQL user sync complete', { uid: decoded.uid });
+
+          if (syncResult?.isNewUser) {
+            try {
+              const { logRegistration } = await import('./services/googleSheetsIntegration');
+              await logRegistration({
+                userId: decoded.uid,
+                firstName: firstName || '',
+                lastName: lastName || '',
+                email: decoded.email || '',
+                phone: phone || decoded.phone_number || '',
+                country: country || 'IL',
+                registrationSource: decoded.firebase?.sign_in_provider === 'google.com' ? 'google_auth' : 'phone_auth',
+                profilePhotoUrl: decoded.picture || '',
+                language: lang || 'he',
+              });
+              logger.info('[Session] ✅ Google Sheets registration logged', { uid: decoded.uid });
+            } catch (sheetsErr) {
+              logger.warn('[Session] Google Sheets registration logging failed (non-blocking)', sheetsErr);
+            }
+          }
         } catch (syncErr) {
           logger.warn('[Session] PostgreSQL auto-sync failed (non-blocking)', syncErr);
         }
