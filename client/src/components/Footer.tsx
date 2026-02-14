@@ -132,19 +132,19 @@ export function Footer({ language }: FooterProps) {
                 <Sparkles className="w-4 h-4 text-amber-500" />
               </div>
               
-              {/* Payment Icons Grid */}
-              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+              {/* Payment Icons Grid - Full Width */}
+              <div className="grid grid-cols-6 gap-2 sm:gap-3 max-w-2xl mx-auto">
                 {[
-                  { name: 'Visa', icon: SiVisa, color: '#1A1F71' },
-                  { name: 'Mastercard', icon: SiMastercard, color: '#EB001B' },
-                  { name: 'American Express', icon: SiAmericanexpress, color: '#006FCF' },
-                  { name: 'Apple Pay', icon: SiApplepay, color: '#000000' },
-                  { name: 'Google Pay', icon: SiGooglepay, color: '#4285F4' },
                   { name: 'Diners Club', icon: SiDinersclub, color: '#0079BE' },
+                  { name: 'Google Pay', icon: SiGooglepay, color: '#4285F4' },
+                  { name: 'Apple Pay', icon: SiApplepay, color: '#000000' },
+                  { name: 'American Express', icon: SiAmericanexpress, color: '#006FCF' },
+                  { name: 'Mastercard', icon: SiMastercard, color: '#FF5F00' },
+                  { name: 'Visa', icon: SiVisa, color: '#1A1F71' },
                 ].map((item) => (
                   <div
                     key={item.name}
-                    className="group relative flex items-center justify-center w-16 h-10 sm:w-20 sm:h-12 md:w-24 md:h-14 lg:w-28 lg:h-16
+                    className="group relative flex items-center justify-center h-12 sm:h-14 md:h-16
                       bg-gradient-to-br from-slate-50 via-white to-gray-100
                       rounded-lg sm:rounded-xl 
                       shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.9)]
@@ -156,7 +156,7 @@ export function Footer({ language }: FooterProps) {
                     data-testid={`payment-logo-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                   >
                     <item.icon 
-                      className="h-5 sm:h-6 md:h-7 lg:h-8 w-auto drop-shadow-sm group-hover:drop-shadow-md transition-all duration-300"
+                      className="h-6 sm:h-7 md:h-8 w-auto drop-shadow-sm group-hover:drop-shadow-md transition-all duration-300"
                       style={{ color: item.color }}
                     />
                   </div>
