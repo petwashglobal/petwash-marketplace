@@ -8907,6 +8907,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/pricing', apiLimiter, pricingRoutes);
   app.use('/api/reviews', apiLimiter, reviewsRoutes);
   app.use('/api/grooming-feedback', apiLimiter, groomingFeedbackRoutes);
+  app.use('/api/analytics', adminLimiter, analyticsRoutes);
+  app.use('/api/devices', adminLimiter, devicesRoutes);
   
   // Enterprise Management
   app.use('/api/enterprise/finance', adminLimiter, enterpriseFinanceRoutes);

@@ -125,7 +125,7 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5 minutes (was Infinity - prevents unbounded memory growth)
-      cacheTime: 10 * 60 * 1000, // 10 minutes garbage collection (cache pruning) - TanStack Query v5 compatible
+      gcTime: 10 * 60 * 1000, // 10 minutes garbage collection (cache pruning) - TanStack Query v5
       retry: false,
     },
     mutations: {

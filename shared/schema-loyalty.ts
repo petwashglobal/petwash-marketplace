@@ -78,37 +78,17 @@ export const loyaltyProfiles = pgTable('loyalty_profiles', {
   tierProgress: integer('tier_progress').notNull().default(0), // Points toward next tier
   tierThreshold: integer('tier_threshold').notNull().default(1000), // Points needed for next tier
   
-  // Special Member Categories (verified status)
-  specialCategory: varchar('special_category', { length: 50 }).default('none'), // none, disabled, senior, military, first_responder
-  specialCategoryVerified: boolean('special_category_verified').notNull().default(false),
-  specialCategoryVerifiedAt: timestamp('special_category_verified_at'),
-  specialCategoryCertificateId: varchar('special_category_certificate_id', { length: 255 }), // Document ID for verification
-  specialCategoryExpiresAt: timestamp('special_category_expires_at'), // Some certifications expire
-  
-  // Base Club Membership (all registered members get 5% discount)
-  isClubMember: boolean('is_club_member').notNull().default(true),
-  clubMemberSince: timestamp('club_member_since').notNull().defaultNow(),
-  
   // Points & Currency (Pyramid-style accumulation)
   points: integer('points').notNull().default(0), // Redeemable loyalty points (credit)
   lifetimePoints: integer('lifetime_points').notNull().default(0), // Total points earned (never decreases)
   xp: integer('xp').notNull().default(0), // Experience points for leveling
   level: integer('level').notNull().default(1), // User level (1-100)
   
-  // Pyramid Points System (like Starbucks Stars, Sephora Beauty Insider)
-  pointsThisMonth: integer('points_this_month').notNull().default(0), // Monthly accumulation
-  pointsThisYear: integer('points_this_year').notNull().default(0), // Annual accumulation
-  pointsMultiplierActive: boolean('points_multiplier_active').notNull().default(false),
-  pointsMultiplierValue: decimal('points_multiplier_value', { precision: 3, scale: 2 }).default('1.00'),
-  pointsMultiplierExpiresAt: timestamp('points_multiplier_expires_at'),
-  
   // Engagement Metrics
   totalWashes: integer('total_washes').notNull().default(0),
-  totalServices: integer('total_services').notNull().default(0), // All services used
   currentStreak: integer('current_streak').notNull().default(0), // Consecutive service days
   longestStreak: integer('longest_streak').notNull().default(0),
   lastWashDate: timestamp('last_wash_date'),
-  lastServiceDate: timestamp('last_service_date'),
   
   // AI Personalization
   preferredStations: jsonb('preferred_stations').default([]), // Array of station IDs

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/lib/languageStore";
+import { getApiUrl } from "@/lib/apiConfig";
 
 function StarDisplay({ rating, size = 16 }: { rating: number; size?: number }) {
   return (
@@ -151,7 +152,7 @@ export default function GroomingReviews() {
     queryKey: ["/api/grooming-feedback/station", selectedStation, page],
     queryFn: async () => {
       if (!selectedStation) return null;
-      const res = await fetch(`/api/grooming-feedback/station/${selectedStation}?page=${page}&limit=10`);
+      const res = await fetch(getApiUrl(`/api/grooming-feedback/station/${selectedStation}?page=${page}&limit=10`));
       return res.json();
     },
     enabled: !!selectedStation,

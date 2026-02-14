@@ -5,7 +5,7 @@
  * and multi-dimensional rewards. Inspired by Apple, Tesla, and Airbnb.
  */
 
-import { TIER_CONFIGS, type TierConfig } from '@/../../shared/schema-loyalty';
+import { TIER_CONFIGS, type TierConfig } from '../../shared/schema-loyalty';
 
 // ========================================
 // TIER MANAGEMENT
