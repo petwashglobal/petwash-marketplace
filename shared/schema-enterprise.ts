@@ -1781,46 +1781,24 @@ export const providerDocuments = pgTable("provider_documents", {
   id: serial("id").primaryKey(),
   applicantId: integer("applicant_id").references(() => providerApplicants.id).notNull(),
   
-  // Document Details
   documentType: varchar("document_type").notNull(),
   fileName: varchar("file_name").notNull(),
-  fileSize: integer("file_size").notNull(), // bytes
-  mimeType: varchar("mime_type").notNull(),
+  fileUrl: text("file_url"),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type"),
   
-  // Storage (Google Cloud Storage)
-  storagePath: varchar("storage_path").notNull(), // GCS path
-  storageUrl: text("storage_url"), // Signed URL (temporary)
-  
-  // Verification
-  verificationStatus: varchar("verification_status").notNull().default("pending"), // pending, verified, rejected, expired
+  status: varchar("status").default("pending"),
+  verifiedBy: varchar("verified_by"),
   verifiedAt: timestamp("verified_at"),
-  verifiedByUid: varchar("verified_by_uid"),
-  verificationNotes: text("verification_notes"),
   rejectionReason: text("rejection_reason"),
   
-  // Document Validity
-  documentNumber: varchar("document_number"), // ID number, license number, etc.
-  issueDate: date("issue_date"),
-  expiryDate: date("expiry_date"),
-  issuingAuthority: varchar("issuing_authority"),
-  
-  // OCR/AI Extraction (Google Vision API)
-  extractedData: jsonb("extracted_data"), // OCR results
-  ocrConfidenceScore: decimal("ocr_confidence_score", { precision: 5, scale: 4 }),
-  aiVerificationResult: jsonb("ai_verification_result"),
-  
-  // Security
-  fileHash: varchar("file_hash").notNull(), // SHA-256 of file content
-  encryptedAt: timestamp("encrypted_at"),
-  
-  // Audit
   uploadedAt: timestamp("uploaded_at").defaultNow(),
-  lastAccessedAt: timestamp("last_accessed_at"),
-  accessCount: integer("access_count").default(0),
+
+  metadata: jsonb("metadata"),
+  uploadedBy: varchar("uploaded_by"),
 }, (table) => [
   index("idx_provider_docs_applicant").on(table.applicantId),
   index("idx_provider_docs_type").on(table.documentType),
-  index("idx_provider_docs_status").on(table.verificationStatus),
 ]);
 
 // Background Check Results
@@ -1965,8 +1943,6 @@ export const insertProviderApplicantSchema = createInsertSchema(providerApplican
 export const insertProviderDocumentSchema = createInsertSchema(providerDocuments).omit({ 
   id: true, 
   uploadedAt: true,
-  lastAccessedAt: true,
-  accessCount: true 
 });
 
 export const insertProviderBackgroundCheckSchema = createInsertSchema(providerBackgroundChecks).omit({ 

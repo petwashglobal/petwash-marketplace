@@ -425,7 +425,7 @@ router.get('/my', async (req: Request, res: Response) => {
         id: d.id,
         documentType: d.documentType,
         fileName: d.fileName,
-        verificationStatus: d.verificationStatus,
+        verificationStatus: d.status || 'pending',
         rejectionReason: d.rejectionReason,
         uploadedAt: d.uploadedAt
       })),
@@ -578,10 +578,11 @@ router.get('/admin/list', async (req: Request, res: Response) => {
     
     let query = db.select({
       id: providerApplicants.id,
+      firebaseUid: providerApplicants.userId,
       email: providerApplicants.email,
       firstName: providerApplicants.firstName,
       lastName: providerApplicants.lastName,
-      phoneNumber: providerApplicants.phoneNumber,
+      phone: providerApplicants.phoneNumber,
       city: providerApplicants.city,
       serviceTypes: providerApplicants.serviceTypes,
       stage: providerApplicants.stage,
@@ -659,11 +660,60 @@ router.get('/admin/:id', async (req: Request, res: Response) => {
     ]);
     
     res.json({
-      application,
-      documents,
+      id: application.id,
+      firebaseUid: application.userId,
+      email: application.email,
+      firstName: application.firstName,
+      lastName: application.lastName,
+      phone: application.phoneNumber,
+      city: application.city,
+      serviceTypes: application.serviceTypes,
+      stage: application.stage,
+      status: application.status,
+      submittedAt: application.submittedAt,
+      lastUpdatedAt: application.lastUpdatedAt,
+      dateOfBirth: application.dateOfBirth,
+      nationalId: application.nationalId,
+      streetAddress: application.streetAddress,
+      postalCode: application.postalCode,
+      preferredPetTypes: application.petTypesAccepted || [],
+      languagesSpoken: application.languages || [],
+      yearsExperience: application.yearsExperience || 0,
+      bio: application.biography || '',
+      serviceRadius: application.serviceRadius || 0,
+      maxPetsAtOnce: application.maxPetsAtOnce || 1,
+      hasTransportation: application.hasOwnVehicle || false,
+      emergencyContactName: application.emergencyContactName,
+      emergencyContactPhone: application.emergencyContactPhone,
+      emergencyContactRelation: application.emergencyContactRelation,
+      rejectionReason: application.rejectionReason,
+      documents: documents.map(d => ({
+        id: d.id,
+        documentType: d.documentType,
+        fileName: d.fileName,
+        fileUrl: d.fileUrl || '',
+        verificationStatus: d.status || 'pending',
+        rejectionReason: d.rejectionReason,
+        uploadedAt: d.uploadedAt
+      })),
+      backgroundChecks: backgroundChecks.map(bc => ({
+        id: bc.id,
+        checkType: bc.checkType,
+        status: bc.status,
+        resultStatus: bc.resultStatus,
+        notes: bc.notes || '',
+        initiatedAt: bc.initiatedAt,
+        completedAt: bc.completedAt
+      })),
+      stageTransitions: transitions.map(t => ({
+        id: t.id,
+        fromStage: t.fromStage,
+        toStage: t.toStage,
+        transitionedAt: t.createdAt,
+        performedBy: t.triggeredByUid || 'system',
+        notes: t.transitionReason || ''
+      })),
       tasks,
-      backgroundChecks,
-      transitions,
       requiredDocuments: getRequiredDocuments(application.serviceTypes)
     });
     
@@ -885,16 +935,14 @@ router.post('/admin/:id/advance-stage', async (req: Request, res: Response) => {
     const applicationId = parseInt(req.params.id);
     const { targetStage, notes } = req.body;
     
-    const validStages = [
+    const stageOrder = [
+      'application_submitted',
+      'documents_pending',
       'documents_under_review',
       'background_check_pending',
       'background_check_complete',
       'admin_final_review'
     ];
-    
-    if (!validStages.includes(targetStage)) {
-      return res.status(400).json({ error: 'Invalid target stage' });
-    }
     
     const [application] = await db.select()
       .from(providerApplicants)
@@ -905,11 +953,31 @@ router.post('/admin/:id/advance-stage', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Application not found' });
     }
     
+    let nextStage = targetStage;
+    if (!nextStage) {
+      const currentIdx = stageOrder.indexOf(application.stage);
+      if (currentIdx === -1 || currentIdx >= stageOrder.length - 1) {
+        return res.status(400).json({ error: 'Cannot advance further. Use approve or reject.' });
+      }
+      nextStage = stageOrder[currentIdx + 1];
+    }
+    
+    const validStages = [
+      'documents_under_review',
+      'background_check_pending',
+      'background_check_complete',
+      'admin_final_review'
+    ];
+    
+    if (!validStages.includes(nextStage)) {
+      return res.status(400).json({ error: 'Invalid target stage' });
+    }
+    
     const previousStage = application.stage;
     
     await db.update(providerApplicants)
       .set({
-        stage: targetStage,
+        stage: nextStage,
         reviewerNotes: notes || application.reviewerNotes,
         assignedReviewerId: user.uid,
         lastUpdatedAt: new Date(),
@@ -920,14 +988,14 @@ router.post('/admin/:id/advance-stage', async (req: Request, res: Response) => {
     await recordStageTransition(
       applicationId,
       previousStage,
-      targetStage,
+      nextStage,
       user.uid,
       notes || `Stage advanced by admin`,
       {},
       req
     );
     
-    res.json({ success: true, message: `Application moved to ${targetStage}` });
+    res.json({ success: true, message: `Application moved to ${nextStage}`, newStage: nextStage });
     
   } catch (error) {
     logger.error('[ProviderApplication] Advance stage error', { error });
