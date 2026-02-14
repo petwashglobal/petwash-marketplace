@@ -1,8 +1,17 @@
 import { t, type Language } from '@/lib/i18n';
 import { Link } from 'wouter';
 import { FaWhatsapp } from 'react-icons/fa';
-import { SiVisa, SiMastercard, SiAmericanexpress, SiApplepay, SiGooglepay, SiDinersclub } from 'react-icons/si';
+import { SiVisa, SiAmericanexpress, SiApplepay, SiGooglepay, SiDinersclub } from 'react-icons/si';
 import { Mail, Shield, Award, Leaf, CheckCircle2, Lock, Sparkles } from 'lucide-react';
+
+const MastercardLogo = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+  <svg viewBox="0 0 131.39 86.9" className={className} style={style} xmlns="http://www.w3.org/2000/svg">
+    <rect width="131.39" height="86.9" rx="8" fill="#1A1F71" />
+    <circle cx="48.37" cy="43.45" r="27.5" fill="#EB001B" />
+    <circle cx="83.02" cy="43.45" r="27.5" fill="#F79E1B" />
+    <path d="M65.7 21.27a27.42 27.42 0 0 0-10.14 21.18 27.42 27.42 0 0 0 10.14 21.18A27.42 27.42 0 0 0 75.83 42.45a27.42 27.42 0 0 0-10.13-21.18z" fill="#FF5F00" />
+  </svg>
+);
 
 interface FooterProps {
   language: Language;
@@ -135,16 +144,17 @@ export function Footer({ language }: FooterProps) {
               {/* Payment Icons Grid - Full Width */}
               <div className="grid grid-cols-6 gap-2 sm:gap-3 max-w-2xl mx-auto">
                 {[
-                  { name: 'Diners Club', icon: SiDinersclub, color: '#0079BE' },
-                  { name: 'Google Pay', icon: SiGooglepay, color: '#4285F4' },
-                  { name: 'Apple Pay', icon: SiApplepay, color: '#000000' },
-                  { name: 'American Express', icon: SiAmericanexpress, color: '#006FCF' },
-                  { name: 'Mastercard', icon: SiMastercard, color: '#FF5F00' },
-                  { name: 'Visa', icon: SiVisa, color: '#1A1F71' },
+                  { name: 'Diners Club', icon: SiDinersclub, color: '#0079BE', custom: false },
+                  { name: 'Google Pay', icon: SiGooglepay, color: '#4285F4', custom: false },
+                  { name: 'Apple Pay', icon: SiApplepay, color: '#000000', custom: false },
+                  { name: 'American Express', icon: SiAmericanexpress, color: '#006FCF', custom: false },
+                  { name: 'Mastercard', icon: null, color: '', custom: true },
+                  { name: 'Visa', icon: SiVisa, color: '#1A1F71', custom: false },
                 ].map((item) => (
                   <div
                     key={item.name}
-                    className="group relative flex items-center justify-center h-12 sm:h-14 md:h-16
+                    className="group relative flex items-center justify-center overflow-hidden
+                      h-12 sm:h-14 md:h-16
                       bg-gradient-to-br from-slate-50 via-white to-gray-100
                       rounded-lg sm:rounded-xl 
                       shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.9)]
@@ -152,13 +162,17 @@ export function Footer({ language }: FooterProps) {
                       hover:shadow-[0_8px_24px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_0_rgba(255,255,255,1)]
                       hover:border-amber-300/50
                       hover:scale-105
-                      transition-all duration-300 ease-out"
+                      transition-all duration-300 ease-out p-0"
                     data-testid={`payment-logo-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                   >
-                    <item.icon 
-                      className="h-6 sm:h-7 md:h-8 w-auto drop-shadow-sm group-hover:drop-shadow-md transition-all duration-300"
-                      style={{ color: item.color }}
-                    />
+                    {item.custom && item.name === 'Mastercard' ? (
+                      <MastercardLogo className="w-full h-full object-cover rounded-lg sm:rounded-xl" />
+                    ) : item.icon ? (
+                      <item.icon 
+                        className="w-[80%] h-[80%] drop-shadow-sm group-hover:drop-shadow-md transition-all duration-300"
+                        style={{ color: item.color }}
+                      />
+                    ) : null}
                   </div>
                 ))}
               </div>
