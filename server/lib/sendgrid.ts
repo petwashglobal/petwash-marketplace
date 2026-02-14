@@ -1,9 +1,17 @@
 import sgMail from '@sendgrid/mail';
 import { MailService } from '@sendgrid/mail';
 
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
+const rawKey = process.env.SENDGRID_API_KEY || '';
+const SENDGRID_API_KEY = rawKey.split('').filter(c => {
+  const code = c.charCodeAt(0);
+  return code >= 0x21 && code <= 0x7E;
+}).join('');
 
 let initialized = false;
+
+if (rawKey && rawKey !== SENDGRID_API_KEY) {
+  console.warn(`[SendGrid] API key sanitized: removed ${rawKey.length - SENDGRID_API_KEY.length} invisible characters (original length: ${rawKey.length}, clean length: ${SENDGRID_API_KEY.length})`);
+}
 
 if (SENDGRID_API_KEY && SENDGRID_API_KEY.startsWith('SG.')) {
   sgMail.setApiKey(SENDGRID_API_KEY);

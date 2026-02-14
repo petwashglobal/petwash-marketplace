@@ -273,6 +273,8 @@ import {
   generateProviderEnrollmentEmail
 } from './templates/registration-confirmation-2025';
 import { generateFranchiseApplicationEmail } from './templates/welcome-franchise-application-2026';
+import { generateMembershipConfirmationEmail } from './templates/membership-confirmation-2026';
+import { generateEGiftActivationEmail } from './templates/egift-activation-2026';
 
 /**
  * Send New User Registration Confirmation Email
@@ -368,4 +370,66 @@ export async function sendFranchiseApplicationConfirmation(
 
   logger.info('[Registration Email] Sending franchise application confirmation', { email, firstName });
   return sendLuxuryEmail({ to: email, subject, html });
+}
+
+export async function sendMembershipConfirmation(
+  email: string,
+  firstName: string,
+  options?: {
+    membershipId?: string;
+    tier?: string;
+    points?: number;
+    language?: 'he' | 'en';
+  }
+): Promise<boolean> {
+  const membershipId = options?.membershipId || `PWM-${Date.now().toString(36).toUpperCase()}`;
+  const { subject, html } = generateMembershipConfirmationEmail({
+    firstName,
+    email,
+    membershipId,
+    tier: options?.tier || 'bronze',
+    points: options?.points || 100,
+    language: options?.language || 'he'
+  });
+
+  logger.info('[Membership Email] Sending membership confirmation', { email, firstName, membershipId });
+  return sendLuxuryEmail({ to: email, subject, html });
+}
+
+export async function sendEGiftActivation(
+  recipientEmail: string,
+  recipientName: string,
+  senderName: string,
+  options?: {
+    giftValue?: number;
+    currency?: string;
+    giftCode?: string;
+    serialNumber?: string;
+    personalMessage?: string;
+    expiresAt?: string;
+    language?: 'he' | 'en';
+  }
+): Promise<boolean> {
+  const giftCode = options?.giftCode || `PW-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  const serialNumber = options?.serialNumber || `PWG${Date.now().toString(36).substring(0, 8).toUpperCase()}`;
+  const expiresAt = options?.expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString(
+    options?.language === 'he' ? 'he-IL' : 'en-US',
+    { year: 'numeric', month: 'long', day: 'numeric' }
+  );
+
+  const { subject, html } = generateEGiftActivationEmail({
+    recipientName,
+    recipientEmail,
+    senderName,
+    giftValue: options?.giftValue || 200,
+    currency: options?.currency || 'ILS',
+    giftCode,
+    serialNumber,
+    personalMessage: options?.personalMessage,
+    expiresAt,
+    language: options?.language || 'he'
+  });
+
+  logger.info('[EGift Email] Sending e-gift activation', { recipientEmail, recipientName, senderName, giftCode });
+  return sendLuxuryEmail({ to: recipientEmail, subject, html });
 }

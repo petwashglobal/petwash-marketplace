@@ -8641,7 +8641,43 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin', adminLimiter, platformCopyEmailRoutes);
   app.use('/api', testLuxuryLaunchRoutes);
   app.use('/api', sendInvestorEventEmailRoutes);
-  
+
+  app.post('/api/send-membership-confirmation', async (req, res) => {
+    try {
+      const { email, firstName, tier, points, membershipId, language } = req.body;
+      if (!email || !firstName) {
+        return res.status(400).json({ error: 'email and firstName are required' });
+      }
+      const { sendMembershipConfirmation } = await import('./email/luxury-email-service');
+      const success = await sendMembershipConfirmation(email, firstName, { tier, points, membershipId, language });
+      if (success) {
+        return res.json({ success: true, message: 'Membership confirmation email sent', email });
+      }
+      return res.status(500).json({ error: 'Failed to send email' });
+    } catch (error) {
+      logger.error('[API] Membership confirmation email error', error);
+      return res.status(500).json({ error: 'Failed to send email' });
+    }
+  });
+
+  app.post('/api/send-egift-activation', async (req, res) => {
+    try {
+      const { recipientEmail, recipientName, senderName, giftValue, currency, giftCode, serialNumber, personalMessage, expiresAt, language } = req.body;
+      if (!recipientEmail || !recipientName || !senderName) {
+        return res.status(400).json({ error: 'recipientEmail, recipientName, and senderName are required' });
+      }
+      const { sendEGiftActivation } = await import('./email/luxury-email-service');
+      const success = await sendEGiftActivation(recipientEmail, recipientName, senderName, { giftValue, currency, giftCode, serialNumber, personalMessage, expiresAt, language });
+      if (success) {
+        return res.json({ success: true, message: 'E-Gift activation email sent', recipientEmail });
+      }
+      return res.status(500).json({ error: 'Failed to send email' });
+    } catch (error) {
+      logger.error('[API] E-Gift activation email error', error);
+      return res.status(500).json({ error: 'Failed to send email' });
+    }
+  });
+
   // CEO Wallet & Team Management (PRIVATE - backend only)
   app.use('/api/ceo', adminLimiter, ceoWalletRoutes);
   
