@@ -3,7 +3,7 @@ import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 import { Link } from 'wouter';
 import { Shield, Lock, Wallet, Fingerprint } from 'lucide-react';
-import './prestige-club.css';
+import '@/styles/luxury-system-2025.css';
 
 type Lang = 'he' | 'en';
 
