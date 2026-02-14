@@ -233,7 +233,9 @@ router.post('/apply', upload.fields([
   { name: 'selfiePhoto', maxCount: 1 },
   { name: 'governmentId', maxCount: 1 },
   { name: 'insuranceCert', maxCount: 1 },
-  { name: 'businessLicense', maxCount: 1 }
+  { name: 'businessLicense', maxCount: 1 },
+  { name: 'petFirstAidCert', maxCount: 1 },
+  { name: 'drivingLicenseFile', maxCount: 1 }
 ]), async (req: Request, res: Response) => {
   try {
     // SECURITY: Verify Firebase authentication
@@ -259,14 +261,27 @@ router.post('/apply', upload.fields([
       phoneNumber,
       city,
       country,
-      providerType
+      providerType: rawProviderType,
+      providerTypes: rawProviderTypes,
     } = req.body;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-    // Validate required fields
+    let providerType = rawProviderType;
+    if (!providerType && rawProviderTypes) {
+      try {
+        const typesArray = typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes;
+        if (Array.isArray(typesArray) && typesArray.length > 0) {
+          providerType = typesArray[0];
+        }
+      } catch {
+        providerType = rawProviderTypes;
+      }
+    }
+
     if (!firstName || !lastName || !phoneNumber || !city || !providerType) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      logger.warn('[Provider Onboarding] Missing required fields', { firstName: !!firstName, lastName: !!lastName, phoneNumber: !!phoneNumber, city: !!city, providerType: !!providerType });
+      return res.status(400).json({ error: 'Missing required fields: firstName, lastName, phoneNumber, city, and providerType are required' });
     }
 
     // AUTO-APPROVAL FLOW: No invite code required
@@ -516,7 +531,7 @@ router.post('/apply', upload.fields([
         language: (country === 'IL' || country === 'Israel') ? 'he' : 'en',
         providerType,
         applicationId: applicationId.toString(),
-        serviceTypes: [providerType],
+        serviceTypes: (() => { try { return rawProviderTypes ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes) : [providerType]; } catch { return [providerType]; } })(),
         autoApproved: autoApproved || false,
       });
       sendLuxuryEmail({

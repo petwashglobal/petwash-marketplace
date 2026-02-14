@@ -695,10 +695,9 @@ router.get('/search/providers', async (req, res) => {
     const platformStr = platform as string;
     const cityStr = city as string;
     
-    // Build query with filters
     let whereConditions = [eq(providerRateCards.isActive, true)];
     if (platform) {
-      whereConditions.push(eq(providerRateCards.platform, platformStr));
+      whereConditions.push(sql`lower(${providerRateCards.platform}) = ${platformStr.toLowerCase()}`);
     }
     if (serviceType) {
       whereConditions.push(eq(providerRateCards.serviceType, serviceType as string));
@@ -741,54 +740,100 @@ router.get('/search/providers', async (req, res) => {
     let profileMap = new Map<string, { displayName: string; bio: string | null; profilePhotoUrl: string | null; city: string | null; rating: number | null; reviewCount: number }>();
     
     if (providerIds.length > 0) {
-      if (platformStr === 'sitter_suite') {
-        const profiles = await db.select({
-          userId: sitterProfiles.userId,
-          firstName: sitterProfiles.firstName,
-          lastName: sitterProfiles.lastName,
-          bio: sitterProfiles.bio,
-          profilePhotoUrl: sitterProfiles.profilePictureUrl,
-          city: sitterProfiles.city,
-          rating: sitterProfiles.rating,
-          totalBookings: sitterProfiles.totalBookings,
-        })
-        .from(sitterProfiles)
-        .where(sql`${sitterProfiles.userId} IN (${sql.join(providerIds.map(id => sql`${id}`), sql`, `)})`);
-        
-        profiles.forEach(p => {
-          profileMap.set(p.userId, {
-            displayName: `${p.firstName} ${p.lastName}`,
-            bio: p.bio,
-            profilePhotoUrl: p.profilePhotoUrl,
-            city: p.city,
-            rating: p.rating ? parseFloat(p.rating) : null,
-            reviewCount: p.totalBookings || 0,
+      const normalizedPlatform = platformStr?.toLowerCase();
+      const idParams = providerIds.map(id => sql`${id}`);
+      
+      try {
+        if (!normalizedPlatform || normalizedPlatform === 'sitter_suite') {
+          const profiles = await db.select({
+            userId: sitterProfiles.userId,
+            firstName: sitterProfiles.firstName,
+            lastName: sitterProfiles.lastName,
+            bio: sitterProfiles.bio,
+            profilePhotoUrl: sitterProfiles.profilePictureUrl,
+            city: sitterProfiles.city,
+            rating: sitterProfiles.rating,
+            totalBookings: sitterProfiles.totalBookings,
+          })
+          .from(sitterProfiles)
+          .where(sql`${sitterProfiles.userId} IN (${sql.join(idParams, sql`, `)})`);
+          
+          profiles.forEach(p => {
+            profileMap.set(p.userId, {
+              displayName: `${p.firstName} ${p.lastName || ''}`.trim(),
+              bio: p.bio,
+              profilePhotoUrl: p.profilePhotoUrl,
+              city: p.city,
+              rating: p.rating ? parseFloat(p.rating) : null,
+              reviewCount: p.totalBookings || 0,
+            });
           });
-        });
-      } else if (platformStr === 'walk_my_pet') {
-        const profiles = await db.select({
-          walkerId: walkerProfiles.walkerId,
-          firstName: walkerProfiles.firstName,
-          lastName: walkerProfiles.lastName,
-          bio: walkerProfiles.bio,
-          profilePhotoUrl: walkerProfiles.profilePictureUrl,
-          city: walkerProfiles.city,
-          rating: walkerProfiles.rating,
-          totalWalks: walkerProfiles.totalWalks,
-        })
-        .from(walkerProfiles)
-        .where(sql`${walkerProfiles.walkerId} IN (${sql.join(providerIds.map(id => sql`${id}`), sql`, `)})`);
-        
-        profiles.forEach(p => {
-          profileMap.set(p.walkerId, {
-            displayName: `${p.firstName} ${p.lastName}`,
-            bio: p.bio,
-            profilePhotoUrl: p.profilePhotoUrl,
-            city: p.city,
-            rating: p.rating ? parseFloat(p.rating) : null,
-            reviewCount: p.totalWalks || 0,
+        }
+      } catch (err: any) {
+        logger.warn('[MarketplaceBookings] Sitter profile enrichment error', { error: err?.message });
+      }
+
+      try {
+        if (!normalizedPlatform || normalizedPlatform === 'walk_my_pet') {
+          const profiles = await db.select({
+            walkerId: walkerProfiles.walkerId,
+            userId: walkerProfiles.userId,
+            firstName: walkerProfiles.firstName,
+            lastName: walkerProfiles.lastName,
+            bio: walkerProfiles.bio,
+            profilePhotoUrl: walkerProfiles.profilePhotoUrl,
+            city: walkerProfiles.city,
+            rating: walkerProfiles.averageRating,
+            totalWalks: walkerProfiles.totalWalks,
+          })
+          .from(walkerProfiles)
+          .where(sql`(${walkerProfiles.userId} IN (${sql.join(idParams, sql`, `)}) OR ${walkerProfiles.walkerId} IN (${sql.join(idParams, sql`, `)}))`);
+          
+          profiles.forEach(p => {
+            const profileData = {
+              displayName: `${p.firstName} ${p.lastName || ''}`.trim(),
+              bio: p.bio,
+              profilePhotoUrl: p.profilePhotoUrl,
+              city: p.city,
+              rating: p.rating ? parseFloat(p.rating) : null,
+              reviewCount: p.totalWalks || 0,
+            };
+            if (!profileMap.has(p.userId)) profileMap.set(p.userId, profileData);
+            if (p.walkerId && !profileMap.has(p.walkerId)) profileMap.set(p.walkerId, profileData);
           });
-        });
+        }
+      } catch (err: any) {
+        logger.warn('[MarketplaceBookings] Walker profile enrichment error', { error: err?.message });
+      }
+
+      try {
+        const unmatchedIds = providerIds.filter(id => !profileMap.has(id));
+        if (unmatchedIds.length > 0) {
+          const unmatchedParams = unmatchedIds.map(id => sql`${id}`);
+          const userProfiles = await db.select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profileImageUrl: users.profileImageUrl,
+          })
+          .from(users)
+          .where(sql`${users.id} IN (${sql.join(unmatchedParams, sql`, `)})`);
+          
+          userProfiles.forEach(u => {
+            if (!profileMap.has(u.id)) {
+              profileMap.set(u.id, {
+                displayName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || formatProviderName(u.id),
+                bio: null,
+                profilePhotoUrl: u.profileImageUrl,
+                city: null,
+                rating: null,
+                reviewCount: 0,
+              });
+            }
+          });
+        }
+      } catch (err: any) {
+        logger.warn('[MarketplaceBookings] User profile fallback error', { error: err?.message });
       }
     }
 
@@ -812,8 +857,14 @@ router.get('/search/providers', async (req, res) => {
           currency: 'ILS'
         },
         maxPets: provider.maxPets || 4,
-        acceptedPetTypes: provider.enabledAddons || ['dog', 'cat'],
-        addons: provider.enabledAddons || [],
+        acceptedPetTypes: ['dog', 'cat'],
+        addons: Array.isArray(provider.enabledAddons) && provider.enabledAddons.length > 0 
+          ? provider.enabledAddons 
+          : provider.platform?.toLowerCase() === 'sitter_suite' 
+            ? ['medication_admin', 'daily_photos', 'grooming']
+            : provider.platform?.toLowerCase() === 'walk_my_pet'
+              ? ['extra_walk', 'training_tips', 'gps_tracking']
+              : ['premium_shampoo', 'blow_dry'],
         instantBooking: provider.minBookingHours === 0,
         cancellationPolicy: 'flexible',
       };
