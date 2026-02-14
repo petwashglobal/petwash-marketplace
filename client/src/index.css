@@ -916,6 +916,25 @@ textarea {
   appearance: none;
 }
 
+/* CRITICAL FIX: Prevent gradient text classes from making input text invisible.
+   -webkit-text-fill-color: transparent is inherited from parent gradient text
+   effects (luxury-gradient-text, text-metallic-*, gold-shimmer-text, etc.)
+   and overrides color on WebKit browsers, making typed text invisible. */
+input,
+textarea,
+select,
+input::placeholder,
+textarea::placeholder {
+  -webkit-text-fill-color: currentColor !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  -webkit-text-fill-color: currentColor !important;
+}
+
 /* Ensure 48px minimum touch targets for accessibility */
 button, 
 a, 

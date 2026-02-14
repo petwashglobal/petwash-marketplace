@@ -8,7 +8,7 @@ export interface InputProps
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type = 'text', textDir, ...props }, ref) => {
+  ({ className, type = 'text', textDir, style, ...props }, ref) => {
     // iOS 2025: Smart keyboard type detection
     const getInputMode = (): React.HTMLAttributes<HTMLInputElement>['inputMode'] => {
       if (props.inputMode) return props.inputMode;
@@ -107,6 +107,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           "file:text-neutral-700 dark:file:text-neutral-300",
           className
         )}
+        style={{ WebkitTextFillColor: 'currentColor', ...style }}
         ref={ref}
         {...props}
       />

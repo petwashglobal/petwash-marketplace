@@ -9,7 +9,7 @@ export interface TextareaProps
 }
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, textDir, ...props }, ref) => {
+  ({ className, textDir, style, ...props }, ref) => {
     // iOS 2025: Auto-detect text direction
     const getTextDirection = (): 'ltr' | 'rtl' | 'auto' => {
       if (textDir) return textDir;
@@ -55,6 +55,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           "resize-y",
           className
         )}
+        style={{ WebkitTextFillColor: 'currentColor', ...style }}
         ref={ref}
         // iOS 2025: Smart autocomplete for common fields
         autoComplete={props.autoComplete || (() => {
