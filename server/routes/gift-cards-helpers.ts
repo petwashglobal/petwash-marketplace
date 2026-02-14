@@ -11,6 +11,7 @@ import { EmailService } from '../emailService';
 import { GoogleMessagingService } from '../services/GoogleMessagingService';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
+import { generateEGiftPurchaseConfirmation } from '../email/templates/egift-purchase-confirmation-2026';
 
 interface SendGiftCardEmailsParams {
   voucherId: string;
@@ -192,91 +193,22 @@ async function sendPurchaseConfirmationToBuyer(params: {
   voucherId: string;
   transactionHash: string;
 }) {
-  const emailSubject = `✅ Your ⁦PetWash™⁩ E-Gift Card Purchase Confirmation`;
-
-  const emailHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 20px; text-align: center; color: white; }
-        .content { padding: 30px; }
-        .receipt-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0; }
-        .receipt-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
-        .receipt-row:last-child { border-bottom: none; font-weight: bold; font-size: 18px; }
-        .blockchain-hash { background: #fef3c7; border: 1px solid #fbbf24; border-radius: 4px; padding: 10px; font-family: monospace; font-size: 10px; word-break: break-all; margin: 10px 0; }
-        .footer { background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>✅ Purchase Confirmed</h1>
-          <p>Thank you for your purchase!</p>
-        </div>
-        
-        <div class="content">
-          <p>Hi ${params.senderName},</p>
-          
-          <p>Your e-gift card purchase has been completed successfully and delivered to <strong>${params.recipientName}</strong>.</p>
-          
-          <div class="receipt-box">
-            <h3 style="margin-top: 0;">Purchase Receipt</h3>
-            <div class="receipt-row">
-              <span>Recipient:</span>
-              <span>${params.recipientName}</span>
-            </div>
-            <div class="receipt-row">
-              <span>Gift Card Amount:</span>
-              <span>₪${params.amount}</span>
-            </div>
-            <div class="receipt-row">
-              <span>Transaction ID:</span>
-              <span>${params.voucherId}</span>
-            </div>
-            <div class="receipt-row">
-              <span>Purchase Date:</span>
-              <span>${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-            <div class="receipt-row">
-              <span>Total Paid:</span>
-              <span>₪${params.amount}</span>
-            </div>
-          </div>
-          
-          <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 15px; margin: 20px 0;">
-            <p style="margin: 0; color: #92400e;"><strong>🔐 Blockchain Security</strong></p>
-            <p style="font-size: 12px; color: #92400e; margin: 5px 0 10px 0;">This transaction is secured with blockchain-style cryptographic hashing:</p>
-            <div class="blockchain-hash">${params.transactionHash}</div>
-            <p style="font-size: 11px; color: #92400e; margin: 0;">This hash ensures the transaction is immutable and tamper-proof.</p>
-          </div>
-          
-          <p style="font-size: 14px; color: #6b7280;">
-            The recipient has been notified and can now use their gift card at any K9000 wash station or add it to their digital wallet.
-          </p>
-        </div>
-        
-        <div class="footer">
-          <p><strong>⁦PetWash™⁩</strong> - Premium Organic Pet Care</p>
-          <p>Company Registration: 516458396 (Israel)</p>
-          <p style="font-size: 10px; color: #9ca3af; margin-top: 10px;">
-            This is a legal receipt for your records. Non-refundable.<br>
-            For support, contact: Support@PetWash.co.il
-          </p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const { subject: emailSubject, html: emailHtml } = generateEGiftPurchaseConfirmation({
+    buyerName: params.senderName,
+    buyerEmail: params.senderEmail,
+    recipientName: params.recipientName,
+    giftValue: params.amount,
+    currency: 'ILS',
+    voucherId: params.voucherId,
+    transactionHash: params.transactionHash,
+    deliveryMethod: 'email',
+    language: 'he',
+  });
 
   try {
     await EmailService.sendEmail(params.senderEmail, emailSubject, emailHtml);
-    logger.info('[E-Gift] Purchase confirmation sent to buyer', { senderEmail: params.senderEmail, voucherId: params.voucherId });
+    logger.info('[E-Gift] Luxury purchase confirmation sent to buyer', { senderEmail: params.senderEmail, voucherId: params.voucherId });
   } catch (error) {
     logger.error('[E-Gift] Failed to send confirmation to buyer', { error, senderEmail: params.senderEmail });
-    // Don't throw - confirmation email is optional
   }
 }
