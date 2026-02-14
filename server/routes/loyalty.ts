@@ -33,6 +33,7 @@ import {
 import { users, loyaltyCampaigns } from '../../shared/schema';
 import type { AuthenticatedRequest } from '../middleware/rbac';
 import { requireAdmin } from '../middleware/rbac';
+import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { sendLoyaltyEnrollmentConfirmation } from '../email/luxury-email-service';
 
@@ -115,11 +116,15 @@ router.get('/profile', async (req: AuthenticatedRequest, res: Response) => {
 router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.firebaseUser!.uid;
-    const allowedProviders = ['google', 'apple', 'facebook', 'social'];
+    const allowedProviders = ['google', 'apple', 'facebook', 'social', 'email', 'phone', 'tiktok', 'instagram'];
     const rawProvider = typeof req.body?.provider === 'string' ? req.body.provider : 'social';
     const provider = allowedProviders.includes(rawProvider) ? rawProvider : 'social';
     const email = req.firebaseUser!.email || (typeof req.body?.email === 'string' ? req.body.email : null);
     const displayName = req.firebaseUser!.displayName || (typeof req.body?.displayName === 'string' ? req.body.displayName : null);
+
+    const allowedRoles = ['pet_parent', 'provider'];
+    const rawRole = typeof req.body?.role === 'string' ? req.body.role : 'pet_parent';
+    const userRole = allowedRoles.includes(rawRole) ? rawRole : 'pet_parent';
 
     const [existing] = await db
       .select()
@@ -131,7 +136,7 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
       return res.json({ success: true, enrolled: false, message: 'Already enrolled', profile: existing });
     }
 
-    const welcomePoints = 50;
+    const welcomePoints = userRole === 'pet_parent' ? 100 : 100;
 
     const [profile] = await db
       .insert(loyaltyProfiles)
@@ -160,11 +165,44 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
         userId,
         points: welcomePoints,
         type: 'earn',
-        reason: `Welcome bonus - signed up via ${provider || 'social'}`,
+        reason: `Welcome Wag bonus - signed up via ${provider || 'social'} as ${userRole}`,
         balanceAfter: welcomePoints,
       });
     } catch (txErr) {
       logger.warn('[Loyalty] Failed to record welcome points transaction', { txErr });
+    }
+
+    try {
+      const existingClaims = (await adminAuth.getUser(userId)).customClaims || {};
+      await adminAuth.setCustomUserClaims(userId, {
+        ...existingClaims,
+        accountType: userRole === 'provider' ? 'provider' : 'pet_parent',
+        loyaltyTier: 'bronze',
+      });
+      logger.info('[Loyalty] Custom claims set for user', { userId, accountType: userRole });
+    } catch (claimsErr) {
+      logger.warn('[Loyalty] Failed to set custom claims (non-blocking)', { claimsErr, userId });
+    }
+
+    if (userRole === 'provider') {
+      try {
+        const [certifiedBadge] = await db
+          .select()
+          .from(badges)
+          .where(eq(badges.code, 'certified_provider'))
+          .limit(1);
+
+        if (certifiedBadge) {
+          await db.insert(userBadges).values({
+            userId,
+            badgeId: certifiedBadge.id,
+            isNew: true,
+          });
+          logger.info('[Loyalty] Certified badge awarded to provider', { userId });
+        }
+      } catch (badgeErr) {
+        logger.warn('[Loyalty] Failed to award certified badge', { badgeErr, userId });
+      }
     }
 
     try {
@@ -173,14 +211,14 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
 
       if (email) {
         await sendLoyaltyEnrollmentConfirmation(email, firstName, 'bronze', welcomePoints, language);
-        logger.info('[Loyalty] Auto-enroll confirmation email sent', { userId, provider });
+        logger.info('[Loyalty] Auto-enroll confirmation email sent', { userId, provider, role: userRole });
       }
     } catch (emailError) {
       logger.error('[Loyalty] Failed to send auto-enroll email', { emailError, userId });
     }
 
-    logger.info(`[Loyalty] New user auto-enrolled via ${provider}`, { userId, welcomePoints });
-    res.json({ success: true, enrolled: true, welcomePoints, profile });
+    logger.info(`[Loyalty] New user auto-enrolled via ${provider} as ${userRole}`, { userId, welcomePoints });
+    res.json({ success: true, enrolled: true, welcomePoints, role: userRole, profile });
   } catch (error) {
     logger.error('Error in loyalty auto-enroll:', error);
     res.status(500).json({ error: 'Failed to auto-enroll in loyalty program' });

@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { PinKeypad } from "@/components/PinKeypad";
 import { Loader2, Mail, Info, Fingerprint, Smartphone, ScanFace, Phone, User, Lock, ArrowRight, Sparkles, KeyRound, X, ArrowLeft } from "lucide-react";
-import { SiGmail, SiApple, SiFacebook } from "react-icons/si";
+import { SiGmail, SiApple, SiFacebook, SiTiktok, SiInstagram } from "react-icons/si";
 import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
@@ -159,6 +159,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   email: result.user.email,
                   displayName: result.user.displayName,
                   provider: providerName,
+                  role: 'pet_parent',
                 }),
               });
             } catch (loyaltyErr) {
@@ -244,6 +245,91 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     };
     
     handleRedirectSignIn();
+  }, []);
+
+  useEffect(() => {
+    const handleOAuthCustomToken = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const oauthCode = params.get('oauthCode');
+      const oauthProvider = params.get('provider');
+      
+      if (!oauthCode || !oauthProvider) return;
+      
+      try {
+        setLoading(true);
+        window.history.replaceState({}, '', '/signin');
+        
+        const exchangeResponse = await fetch(getApiUrl(`/api/auth/social/token-exchange?code=${encodeURIComponent(oauthCode)}`));
+        const exchangeData = await exchangeResponse.json();
+        
+        if (!exchangeData.customToken) {
+          throw new Error('Token exchange failed');
+        }
+        
+        const isNew = exchangeData.isNew || false;
+        const userCredential = await signInWithCustomToken(auth, exchangeData.customToken);
+        const idToken = await userCredential.user.getIdToken();
+        
+        const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ idToken }),
+        });
+        
+        if (!sessionResponse.ok) {
+          throw new Error('Failed to create session');
+        }
+        
+        if (isNew) {
+          try {
+            await fetch(getApiUrl('/api/loyalty/auto-enroll'), {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                userId: userCredential.user.uid,
+                email: userCredential.user.email,
+                displayName: userCredential.user.displayName,
+                provider: oauthProvider,
+                role: 'pet_parent',
+              }),
+            });
+          } catch (loyaltyErr) {
+            logger.warn('[Auth] Loyalty auto-enroll failed for OAuth user:', loyaltyErr);
+          }
+        }
+        
+        storeLastAuthMethod('social');
+        const { trackLogin } = await import('@/lib/analytics');
+        trackLogin(oauthProvider, userCredential.user.uid);
+        
+        toast({
+          title: t('signin.successTitle', language),
+          description: t('signin.redirecting', language),
+        });
+        
+        const redirectPath = isNew ? '/onboarding' : '/dashboard';
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          navigate(redirectPath);
+        }, 1000);
+      } catch (error: any) {
+        logger.error(`[Auth] ${oauthProvider} OAuth custom token sign-in failed:`, error);
+        toast({
+          variant: 'destructive',
+          title: language === 'he' ? 'שגיאה בהתחברות' : 'Sign-in error',
+          description: language === 'he' ? 'ההתחברות נכשלה. אנא נסו שוב.' : 'Sign-in failed. Please try again.',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    handleOAuthCustomToken();
   }, []);
 
   // Handle Magic Link return - detect when user clicks magic link from email
@@ -578,9 +664,37 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const isPinLoginAvailable = !!localStorage.getItem('petwash_device_trust_token');
 
   type SocialProvider = 'google' | 'apple' | 'facebook';
+  type OAuthProvider = 'tiktok' | 'instagram';
 
   const handleSocialLogin = async (provider: SocialProvider) => {
     await performOAuthLogin(provider);
+  };
+
+  const handleExternalOAuth = async (provider: OAuthProvider) => {
+    try {
+      setSocialLoading(provider as any);
+      const response = await fetch(getApiUrl(`/api/auth/social/${provider}/authorize`));
+      const data = await response.json();
+      
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        toast({
+          variant: 'destructive',
+          title: language === 'he' ? 'שירות לא זמין' : 'Service unavailable',
+          description: language === 'he' ? `התחברות עם ${provider} אינה זמינה כרגע` : `Sign in with ${provider} is not available yet`,
+        });
+      }
+    } catch (err) {
+      logger.error(`[Auth] ${provider} OAuth init failed:`, err);
+      toast({
+        variant: 'destructive',
+        title: language === 'he' ? 'שגיאה' : 'Error',
+        description: language === 'he' ? 'אירעה שגיאה. אנא נסו שוב.' : 'An error occurred. Please try again.',
+      });
+    } finally {
+      setSocialLoading(null);
+    }
   };
 
   const performOAuthLogin = async (provider: SocialProvider) => {
@@ -673,6 +787,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               email: userCredential.user.email,
               displayName: userCredential.user.displayName,
               provider,
+              role: 'pet_parent',
             }),
           });
         } catch (loyaltyErr) {
@@ -1374,6 +1489,41 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 <>
                   <SiFacebook className="w-4 h-4 mr-3" />
                   <span>{language === 'he' ? 'המשך עם Facebook' : 'Continue with Facebook'}</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={() => handleExternalOAuth('tiktok')}
+              disabled={!!socialLoading}
+              variant="outline"
+              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-black hover:bg-neutral-900 text-white rounded-none tracking-wider uppercase transition-all"
+              data-testid="button-tiktok-signin"
+            >
+              {socialLoading === 'tiktok' as any ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <SiTiktok className="w-4 h-4 mr-3" />
+                  <span>{language === 'he' ? 'המשך עם TikTok' : 'Continue with TikTok'}</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={() => handleExternalOAuth('instagram')}
+              disabled={!!socialLoading}
+              variant="outline"
+              className="w-full h-13 text-sm font-medium border border-neutral-200 text-white rounded-none tracking-wider uppercase transition-all"
+              style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
+              data-testid="button-instagram-signin"
+            >
+              {socialLoading === 'instagram' as any ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <SiInstagram className="w-4 h-4 mr-3" />
+                  <span>{language === 'he' ? 'המשך עם Instagram' : 'Continue with Instagram'}</span>
                 </>
               )}
             </Button>

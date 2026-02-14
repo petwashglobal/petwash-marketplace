@@ -647,6 +647,22 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       })
       .where(eq(providerApplications.applicationId, applicationId));
 
+    if (application.userId) {
+      try {
+        const existingClaims = (await auth.getUser(application.userId)).customClaims || {};
+        await auth.setCustomUserClaims(application.userId, {
+          ...existingClaims,
+          accountType: 'provider',
+          providerType: application.providerType,
+          providerId,
+          providerVerified: true,
+        });
+        logger.info(`[Provider Onboarding] Custom claims set for approved provider`, { userId: application.userId, providerType: application.providerType });
+      } catch (claimsErr) {
+        logger.warn('[Provider Onboarding] Failed to set custom claims', { claimsErr });
+      }
+    }
+
     logger.info(`[Provider Onboarding] Application approved: ${applicationId} by admin ${adminUid}`);
 
     res.json({ 

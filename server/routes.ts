@@ -15,6 +15,7 @@ import kycRoutes from "./routes/kyc";
 import stationsRoutes from "./routes/stations";
 import enterpriseRoutes from "./routes/enterprise";
 import loyaltyRoutes from "./routes/loyalty";
+import socialOAuthRoutes from "./routes/social-oauth";
 import documentsRoutes from "./routes/documents";
 import k9000SupplierRoutes from "./routes/k9000-supplier";
 import k9000IotRoutes from "./routes/k9000";
@@ -8293,6 +8294,9 @@ self.addEventListener('notificationclick', (event) => {
   // Loyalty & Rewards routes - Protected with Firebase auth
   const { validateFirebaseToken, optionalFirebaseToken } = await import('./middleware/firebase-auth');
   app.use('/api/loyalty', validateFirebaseToken, apiLimiter, loyaltyRoutes);
+
+  // TikTok & Instagram OAuth routes (no auth needed - these are OAuth callbacks)
+  app.use('/api/auth/social', apiLimiter, socialOAuthRoutes);
 
   // Referral System - חבר מביא חבר (Friend Brings Friend)
   app.use('/api/referral', apiLimiter, referralRoutes);
