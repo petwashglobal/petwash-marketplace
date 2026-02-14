@@ -58,6 +58,7 @@ const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
 const PrivilegeSignup = lazy(() => import("@/pages/PrivilegeSignup"));
+const PrestigeClub = lazy(() => import("@/pages/PrestigeClub"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
 const LoyaltyTiers = lazy(() => import("@/pages/LoyaltyTiers"));
@@ -425,6 +426,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* PetWash Prestige Club - Luxury Loyalty Landing */}
+        <Route path="/prestige-club">
+          {() => <PrestigeClub />}
+        </Route>
+
         {/* PetWash Privilege - Public registration */}
         <Route path="/privilege">
           {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
