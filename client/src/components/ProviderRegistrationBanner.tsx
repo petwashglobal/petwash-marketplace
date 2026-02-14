@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import {
   Dialog,
@@ -42,6 +41,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { getApiUrl } from '@/lib/apiConfig';
+import { useLanguage } from "@/lib/languageStore";
 
 type ProviderType = "sitter" | "walker" | "driver" | "trainer";
 
@@ -56,10 +56,10 @@ export default function ProviderRegistrationBanner({
   platform = "all",
   className = "",
 }: ProviderRegistrationBannerProps) {
-  const { t, i18n } = useTranslation();
+  const { t, dir, language } = useLanguage();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const isRTL = i18n.language === "he" || i18n.language === "ar";
+  const isRTL = dir === "rtl";
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<ProviderType | "">(
@@ -91,29 +91,29 @@ export default function ProviderRegistrationBanner({
     {
       id: "sitter" as ProviderType,
       icon: Home,
-      title: isRTL ? "שמרטף/ית חיות מחמד" : "Pet Sitter",
-      desc: isRTL ? "שמרו על חיות מחמד בבית שלכם או בבית הלקוח" : "Care for pets at your home or client's home",
+      title: t("providerBanner.petSitter"),
+      desc: t("providerBanner.petSitterDesc"),
       color: "from-pink-500 to-rose-600",
     },
     {
       id: "walker" as ProviderType,
       icon: Dog,
-      title: isRTL ? "מוליך/ת כלבים" : "Dog Walker",
-      desc: isRTL ? "הוליכו כלבים לטיולים יומיים" : "Take dogs on daily walks",
+      title: t("providerBanner.dogWalker"),
+      desc: t("providerBanner.dogWalkerDesc"),
       color: "from-emerald-500 to-teal-600",
     },
     {
       id: "driver" as ProviderType,
       icon: Car,
-      title: isRTL ? "נהג/ת הסעות חיות מחמד" : "Pet Transport Driver",
-      desc: isRTL ? "הסיעו חיות מחמד בבטחה ובנוחות" : "Transport pets safely and comfortably",
+      title: t("providerBanner.petDriver"),
+      desc: t("providerBanner.petDriverDesc"),
       color: "from-blue-500 to-indigo-600",
     },
     {
       id: "trainer" as ProviderType,
       icon: GraduationCap,
-      title: isRTL ? "מאלף/ת חיות מחמד" : "Pet Trainer",
-      desc: isRTL ? "אלפו והדריכו חיות מחמד" : "Train and guide pets",
+      title: t("providerBanner.petTrainer"),
+      desc: t("providerBanner.petTrainerDesc"),
       color: "from-amber-500 to-orange-600",
     },
   ];
@@ -121,32 +121,32 @@ export default function ProviderRegistrationBanner({
   const benefits = [
     {
       icon: DollarSign,
-      title: isRTL ? "הכנסה גמישה" : "Flexible Income",
-      desc: isRTL ? "עד ₪200+ לשעה" : "Up to ₪200+/hour",
+      title: t("providerBanner.flexibleIncome"),
+      desc: t("providerBanner.flexibleIncomeDesc"),
     },
     {
       icon: Clock,
-      title: isRTL ? "שעות גמישות" : "Flexible Hours",
-      desc: isRTL ? "עבדו מתי שנוח לכם" : "Work when you want",
+      title: t("providerBanner.flexibleHours"),
+      desc: t("providerBanner.flexibleHoursDesc"),
     },
     {
       icon: Shield,
-      title: isRTL ? "ביטוח מלא" : "Full Insurance",
-      desc: isRTL ? "כיסוי ביטוחי מקיף" : "Comprehensive coverage",
+      title: t("providerBanner.fullInsurance"),
+      desc: t("providerBanner.fullInsuranceDesc"),
     },
     {
       icon: Heart,
-      title: isRTL ? "קהילה תומכת" : "Supportive Community",
-      desc: isRTL ? "חלק ממשפחת ⁦Pet Wash™⁩" : "Part of ⁦Pet Wash™⁩ family",
+      title: t("providerBanner.supportiveCommunity"),
+      desc: t("providerBanner.supportiveCommunityDesc"),
     },
   ];
 
   const requirements = [
-    isRTL ? "גיל 18 ומעלה" : "Age 18+",
-    isRTL ? "תעודת זהות תקפה" : "Valid ID",
-    isRTL ? "ניסיון עם חיות מחמד (מועדף)" : "Pet experience (preferred)",
-    isRTL ? "אישור משטרה נקי" : "Clean police clearance",
-    isRTL ? "זמינות לפחות 10 שעות בשבוע" : "At least 10 hours/week availability",
+    t("providerBanner.reqAge"),
+    t("providerBanner.reqValidId"),
+    t("providerBanner.reqPetExperience"),
+    t("providerBanner.reqPolice"),
+    t("providerBanner.reqAvailability"),
   ];
 
   const handleFileChange = (type: "id" | "certificate" | "insurance", file: File | null) => {
@@ -158,8 +158,8 @@ export default function ProviderRegistrationBanner({
   const handleSubmit = async () => {
     if (!formData.firstName.trim() || !formData.lastName.trim()) {
       toast({
-        title: isRTL ? "שם מלא נדרש" : "Full Name Required",
-        description: isRTL ? "אנא הזינו שם פרטי ומשפחה" : "Please enter first and last name",
+        title: t("providerBanner.fullNameRequired"),
+        description: t("providerBanner.enterFullName"),
         variant: "destructive",
       });
       return;
@@ -167,8 +167,8 @@ export default function ProviderRegistrationBanner({
 
     if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       toast({
-        title: isRTL ? "אימייל לא תקין" : "Invalid Email",
-        description: isRTL ? "אנא הזינו כתובת אימייל תקינה" : "Please enter a valid email address",
+        title: t("providerBanner.invalidEmail"),
+        description: t("providerBanner.enterValidEmail"),
         variant: "destructive",
       });
       return;
@@ -176,8 +176,8 @@ export default function ProviderRegistrationBanner({
 
     if (!formData.phone.trim() || formData.phone.replace(/\D/g, '').length < 9) {
       toast({
-        title: isRTL ? "מספר טלפון לא תקין" : "Invalid Phone Number",
-        description: isRTL ? "אנא הזינו מספר טלפון תקין" : "Please enter a valid phone number",
+        title: t("providerBanner.invalidPhone"),
+        description: t("providerBanner.enterValidPhone"),
         variant: "destructive",
       });
       return;
@@ -185,8 +185,8 @@ export default function ProviderRegistrationBanner({
 
     if (!formData.city.trim()) {
       toast({
-        title: isRTL ? "עיר מגורים נדרשת" : "City Required",
-        description: isRTL ? "אנא הזינו את עיר מגוריכם" : "Please enter your city",
+        title: t("providerBanner.cityRequired"),
+        description: t("providerBanner.enterCity"),
         variant: "destructive",
       });
       return;
@@ -194,8 +194,8 @@ export default function ProviderRegistrationBanner({
 
     if (!formData.aboutMe.trim() || formData.aboutMe.length < 20) {
       toast({
-        title: isRTL ? "ספרו על עצמכם" : "Tell Us About Yourself",
-        description: isRTL ? "אנא כתבו לפחות 20 תווים" : "Please write at least 20 characters",
+        title: t("providerBanner.tellAboutYourself"),
+        description: t("providerBanner.writeMinChars"),
         variant: "destructive",
       });
       return;
@@ -203,8 +203,8 @@ export default function ProviderRegistrationBanner({
 
     if (!formData.whyJoinPetWash.trim() || formData.whyJoinPetWash.length < 20) {
       toast({
-        title: isRTL ? "למה אתם רוצים להצטרף?" : "Why Do You Want to Join?",
-        description: isRTL ? "אנא כתבו לפחות 20 תווים" : "Please write at least 20 characters",
+        title: t("providerBanner.whyJoinTitle"),
+        description: t("providerBanner.writeMinChars"),
         variant: "destructive",
       });
       return;
@@ -212,8 +212,8 @@ export default function ProviderRegistrationBanner({
 
     if (!formData.agreeToTerms || !formData.agreeToPrivacy) {
       toast({
-        title: isRTL ? "נדרשת הסכמה לתנאים" : "Agreement Required",
-        description: isRTL ? "יש לאשר את תנאי השימוש ומדיניות הפרטיות" : "Please agree to the terms and privacy policy",
+        title: t("providerBanner.agreementRequired"),
+        description: t("providerBanner.agreeToTermsDesc"),
         variant: "destructive",
       });
       return;
@@ -221,8 +221,8 @@ export default function ProviderRegistrationBanner({
 
     if (!selectedType) {
       toast({
-        title: isRTL ? "בחרו סוג שירות" : "Select Service Type",
-        description: isRTL ? "יש לבחור את סוג השירות שברצונכם להציע" : "Please select the type of service you want to offer",
+        title: t("providerBanner.selectServiceType"),
+        description: t("providerBanner.selectServiceDesc"),
         variant: "destructive",
       });
       return;
@@ -262,10 +262,8 @@ export default function ProviderRegistrationBanner({
 
       if (response.ok && result.success) {
         toast({
-          title: isRTL ? "הבקשה נשלחה בהצלחה! 🎉" : "Application Submitted! 🎉",
-          description: isRTL 
-            ? "נציג מטעמנו יחזור אליכם תוך 48 שעות" 
-            : "Our team will contact you within 48 hours",
+          title: t("providerBanner.applicationSubmitted"),
+          description: t("providerBanner.contactWithin48"),
         });
         setIsFormOpen(false);
         setFormData({
@@ -289,8 +287,8 @@ export default function ProviderRegistrationBanner({
       }
     } catch (error: any) {
       toast({
-        title: isRTL ? "שגיאה בשליחה" : "Submission Error",
-        description: error.message || (isRTL ? "אנא נסו שוב מאוחר יותר" : "Please try again later"),
+        title: t("providerBanner.submissionError"),
+        description: error.message || t("providerBanner.tryAgainLater"),
         variant: "destructive",
       });
     } finally {
@@ -308,10 +306,10 @@ export default function ProviderRegistrationBanner({
             </div>
             <div>
               <h3 className="font-bold text-white text-lg">
-                {isRTL ? "הצטרפו למשפחת ⁦Pet Wash™⁩" : "Join ⁦Pet Wash™⁩ Family"}
+                {t("providerBanner.joinFamily")}
               </h3>
               <p className="text-gray-400 text-sm">
-                {isRTL ? "הרוויחו עד ₪200+ לשעה" : "Earn up to ₪200+/hour"}
+                {t("providerBanner.earnUpTo")}
               </p>
             </div>
           </div>
@@ -319,7 +317,7 @@ export default function ProviderRegistrationBanner({
             onClick={() => setIsFormOpen(true)}
             className="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-bold px-6 py-2 rounded-full shadow-lg shadow-cyan-500/25"
           >
-            {isRTL ? "הגשת מועמדות" : "Apply Now"}
+            {t("providerBanner.applyNow")}
             <ArrowRight className={`w-4 h-4 ${isRTL ? "mr-2 rotate-180" : "ml-2"}`} />
           </Button>
         </div>
@@ -327,6 +325,7 @@ export default function ProviderRegistrationBanner({
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 text-white">
             <ApplicationForm
+              t={t}
               isRTL={isRTL}
               selectedType={selectedType}
               setSelectedType={setSelectedType}
@@ -358,28 +357,18 @@ export default function ProviderRegistrationBanner({
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 mb-6">
                 <Sparkles className="w-4 h-4 text-cyan-400" />
                 <span className="text-cyan-400 font-medium text-sm">
-                  {isRTL ? "הזדמנות קריירה" : "Career Opportunity"}
+                  {t("providerBanner.careerOpportunity")}
                 </span>
               </div>
               
               <h2 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">
-                {isRTL ? (
-                  <>
-                    הפכו את <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">אהבת החיות</span>
-                    <br />למקור הכנסה
-                  </>
-                ) : (
-                  <>
-                    Turn Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Pet Love</span>
-                    <br />Into Income
-                  </>
-                )}
+                {t("providerBanner.turnYourPetLove")}{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">{t("providerBanner.petLove")}</span>
+                <br />{t("providerBanner.intoIncome")}
               </h2>
               
               <p className="text-gray-300 text-lg mb-8">
-                {isRTL 
-                  ? "הצטרפו למשפחת ⁦Pet Wash™⁩ בתור שותפים חיצוניים והרוויחו הכנסה נוספת בשעות הפנויות שלכם. אנחנו מחפשים שמרטפים, מוליכי כלבים, נהגים ומאלפים."
-                  : "Join the ⁦Pet Wash™⁩ family as external partners and earn extra income during your free time. We're looking for pet sitters, dog walkers, drivers, and trainers."}
+                {t("providerBanner.heroDescription")}
               </p>
 
               <div className="grid grid-cols-2 gap-4 mb-8">
@@ -401,7 +390,7 @@ export default function ProviderRegistrationBanner({
                 size="lg"
                 className="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-bold px-8 py-6 text-lg rounded-2xl shadow-2xl shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all duration-300 hover:scale-105"
               >
-                {isRTL ? "הגישו מועמדות עכשיו" : "Apply Now"}
+                {t("providerBanner.applyNow")}
                 <ArrowRight className={`w-5 h-5 ${isRTL ? "mr-3 rotate-180" : "ml-3"}`} />
               </Button>
             </div>
@@ -432,6 +421,7 @@ export default function ProviderRegistrationBanner({
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 text-white">
             <ApplicationForm
+              t={t}
               isRTL={isRTL}
               selectedType={selectedType}
               setSelectedType={setSelectedType}
@@ -461,18 +451,16 @@ export default function ProviderRegistrationBanner({
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 mb-6">
             <Wallet className="w-4 h-4 text-cyan-400" />
             <span className="text-cyan-400 font-medium text-sm">
-              {isRTL ? "הזדמנות הכנסה נוספת" : "Extra Income Opportunity"}
+              {t("providerBanner.extraIncomeOpportunity")}
             </span>
           </div>
           
           <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
-            {isRTL ? "הצטרפו למשפחת ⁦Pet Wash™⁩" : "Join the ⁦Pet Wash™⁩ Family"}
+            {t("providerBanner.joinTheFamily")}
           </h2>
           
           <p className="text-gray-300 max-w-2xl mx-auto">
-            {isRTL 
-              ? "הפכו את אהבת החיות שלכם להכנסה נוספת. הצטרפו כשותפים חיצוניים והיו חלק מהמהפכה בטיפול בחיות מחמד."
-              : "Turn your love for pets into extra income. Join as external partners and be part of the pet care revolution."}
+            {t("providerBanner.sectionDescription")}
           </p>
         </div>
 
@@ -510,7 +498,7 @@ export default function ProviderRegistrationBanner({
             size="lg"
             className="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-bold px-10 py-6 text-lg rounded-2xl shadow-2xl shadow-cyan-500/25"
           >
-            {isRTL ? "הגישו מועמדות עכשיו" : "Apply Now"}
+            {t("providerBanner.applyNow")}
             <ArrowRight className={`w-5 h-5 ${isRTL ? "mr-3 rotate-180" : "ml-3"}`} />
           </Button>
         </div>
@@ -519,6 +507,7 @@ export default function ProviderRegistrationBanner({
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 text-white">
           <ApplicationForm
+            t={t}
             isRTL={isRTL}
             selectedType={selectedType}
             setSelectedType={setSelectedType}
@@ -539,6 +528,7 @@ export default function ProviderRegistrationBanner({
 }
 
 function ApplicationForm({
+  t,
   isRTL,
   selectedType,
   setSelectedType,
@@ -552,6 +542,7 @@ function ApplicationForm({
   requirements,
   platform,
 }: {
+  t: (key: string) => string;
   isRTL: boolean;
   selectedType: ProviderType | "";
   setSelectedType: (type: ProviderType | "") => void;
@@ -569,7 +560,7 @@ function ApplicationForm({
     <>
       <DialogHeader>
         <DialogTitle className="text-2xl font-black text-center">
-          {isRTL ? "טופס הרשמה לשותפים" : "Partner Application Form"}
+          {t("providerBanner.partnerApplicationForm")}
         </DialogTitle>
       </DialogHeader>
 
@@ -577,7 +568,7 @@ function ApplicationForm({
         {platform === "all" && (
           <div>
             <Label className="text-gray-300 mb-3 block">
-              {isRTL ? "סוג השירות *" : "Service Type *"}
+              {t("providerBanner.serviceType")}
             </Label>
             <div className="grid grid-cols-2 gap-3">
               {providerTypes.map((type) => (
@@ -603,22 +594,22 @@ function ApplicationForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-gray-300">{isRTL ? "שם פרטי *" : "First Name *"}</Label>
+            <Label className="text-gray-300">{t("providerBanner.firstName")}</Label>
             <Input
               value={formData.firstName}
               onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
               className="bg-gray-800 border-gray-700 text-white mt-1"
-              placeholder={isRTL ? "הזינו שם פרטי" : "Enter first name"}
+              placeholder={t("providerBanner.firstNamePlaceholder")}
               required
             />
           </div>
           <div>
-            <Label className="text-gray-300">{isRTL ? "שם משפחה *" : "Last Name *"}</Label>
+            <Label className="text-gray-300">{t("providerBanner.lastName")}</Label>
             <Input
               value={formData.lastName}
               onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
               className="bg-gray-800 border-gray-700 text-white mt-1"
-              placeholder={isRTL ? "הזינו שם משפחה" : "Enter last name"}
+              placeholder={t("providerBanner.lastNamePlaceholder")}
               required
             />
           </div>
@@ -627,7 +618,7 @@ function ApplicationForm({
         <div>
           <Label className="text-gray-300 mb-2 block flex items-center gap-2">
             <MapPin className="w-4 h-4 text-cyan-400" />
-            {isRTL ? "אזור פעילות / עיר מגורים *" : "Service Area / City *"}
+            {t("providerBanner.serviceArea")}
           </Label>
           <GooglePlacesAutocomplete
             value={formData.city}
@@ -635,35 +626,35 @@ function ApplicationForm({
               const cityName = details?.city || value;
               setFormData({ ...formData, city: cityName });
             }}
-            placeholder={isRTL ? "התחילו להקליד עיר או כתובת..." : "Start typing city or address..."}
+            placeholder={t("providerBanner.serviceAreaPlaceholder")}
             country={['il']}
             className="[&_input]:bg-gray-800 [&_input]:border-gray-700 [&_input]:text-white [&_input]:placeholder:text-gray-500"
           />
           <p className="text-xs text-gray-500 mt-1">
-            {isRTL ? "הקלידו לקבלת הצעות אוטומטיות מ-Google" : "Type to get Google autocomplete suggestions"}
+            {t("providerBanner.serviceAreaHint")}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-gray-300">{isRTL ? "שנות ניסיון" : "Years of Experience"}</Label>
+            <Label className="text-gray-300">{t("providerBanner.yearsExperience")}</Label>
             <Input
               value={formData.experience}
               onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
               className="bg-gray-800 border-gray-700 text-white mt-1"
-              placeholder={isRTL ? "לדוגמה: 2-5" : "e.g., 2-5"}
+              placeholder={t("providerBanner.yearsExperiencePlaceholder")}
             />
           </div>
           <div className="flex items-end">
             <p className="text-xs text-gray-400 pb-2">
-              {isRTL ? "אזור הפעילות שלכם ישפיע על הזמנות שתקבלו" : "Your service area affects the bookings you receive"}
+              {t("providerBanner.serviceAreaAffects")}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-gray-300">{isRTL ? "אימייל *" : "Email *"}</Label>
+            <Label className="text-gray-300">{t("providerBanner.email")}</Label>
             <Input
               type="email"
               value={formData.email}
@@ -674,7 +665,7 @@ function ApplicationForm({
             />
           </div>
           <div>
-            <Label className="text-gray-300">{isRTL ? "טלפון *" : "Phone *"}</Label>
+            <Label className="text-gray-300">{t("providerBanner.phone")}</Label>
             <Input
               type="tel"
               value={formData.phone}
@@ -687,36 +678,36 @@ function ApplicationForm({
         </div>
 
         <div>
-          <Label className="text-gray-300">{isRTL ? "ספרו על עצמכם *" : "About Yourself *"}</Label>
+          <Label className="text-gray-300">{t("providerBanner.aboutYourself")}</Label>
           <Textarea
             value={formData.aboutMe}
             onChange={(e) => setFormData({ ...formData, aboutMe: e.target.value })}
             className="bg-gray-800 border-gray-700 text-white mt-1"
-            placeholder={isRTL ? "ספרו על עצמכם ועל הניסיון שלכם עם חיות מחמד (לפחות 20 תווים)..." : "Tell us about yourself and your experience with pets (at least 20 characters)..."}
+            placeholder={t("providerBanner.aboutYourselfPlaceholder")}
             rows={3}
           />
         </div>
 
         <div>
-          <Label className="text-gray-300">{isRTL ? "למה אתם רוצים להצטרף? *" : "Why do you want to join Pet Wash? *"}</Label>
+          <Label className="text-gray-300">{t("providerBanner.whyJoin")}</Label>
           <Textarea
             value={formData.whyJoinPetWash}
             onChange={(e) => setFormData({ ...formData, whyJoinPetWash: e.target.value })}
             className="bg-gray-800 border-gray-700 text-white mt-1"
-            placeholder={isRTL ? "מה מושך אתכם בעבודה עם חיות מחמד? (לפחות 20 תווים)" : "What attracts you to working with pets? (at least 20 characters)"}
+            placeholder={t("providerBanner.whyJoinPlaceholder")}
             rows={2}
           />
         </div>
 
         <div className="space-y-3">
-          <Label className="text-gray-300 block mb-2">{isRTL ? "העלאת מסמכים" : "Document Upload"}</Label>
+          <Label className="text-gray-300 block mb-2">{t("providerBanner.documentUpload")}</Label>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="p-4 rounded-xl bg-gray-800 border border-dashed border-gray-600 hover:border-cyan-500 transition-colors">
               <label className="cursor-pointer block text-center">
                 <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                 <span className="text-sm text-gray-400">
-                  {isRTL ? "תעודת זהות" : "ID Document"}
+                  {t("providerBanner.idDocument")}
                 </span>
                 <input
                   type="file"
@@ -737,7 +728,7 @@ function ApplicationForm({
               <label className="cursor-pointer block text-center">
                 <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                 <span className="text-sm text-gray-400">
-                  {isRTL ? "תעודות/הסמכות" : "Certificates"}
+                  {t("providerBanner.certificates")}
                 </span>
                 <input
                   type="file"
@@ -758,7 +749,7 @@ function ApplicationForm({
               <label className="cursor-pointer block text-center">
                 <Shield className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                 <span className="text-sm text-gray-400">
-                  {isRTL ? "ביטוח (אופציונלי)" : "Insurance (optional)"}
+                  {t("providerBanner.insuranceOptional")}
                 </span>
                 <input
                   type="file"
@@ -778,7 +769,7 @@ function ApplicationForm({
         </div>
 
         <div className="space-y-3 p-4 rounded-xl bg-gray-800/50">
-          <Label className="text-gray-300 block">{isRTL ? "פרטים נוספים" : "Additional Details"}</Label>
+          <Label className="text-gray-300 block">{t("providerBanner.additionalDetails")}</Label>
           
           <div className="flex items-center gap-3">
             <Checkbox
@@ -788,7 +779,7 @@ function ApplicationForm({
               className="border-gray-600"
             />
             <label htmlFor="hasVehicle" className="text-gray-300 text-sm cursor-pointer">
-              {isRTL ? "יש לי רכב פרטי" : "I have a personal vehicle"}
+              {t("providerBanner.hasVehicle")}
             </label>
           </div>
 
@@ -800,7 +791,7 @@ function ApplicationForm({
               className="border-gray-600"
             />
             <label htmlFor="hasPetExperience" className="text-gray-300 text-sm cursor-pointer">
-              {isRTL ? "יש לי ניסיון מקצועי עם חיות מחמד" : "I have professional pet experience"}
+              {t("providerBanner.hasPetExperience")}
             </label>
           </div>
 
@@ -812,7 +803,7 @@ function ApplicationForm({
               className="border-gray-600"
             />
             <label htmlFor="hasFirstAid" className="text-gray-300 text-sm cursor-pointer">
-              {isRTL ? "יש לי הכשרה בעזרה ראשונה" : "I have first aid training"}
+              {t("providerBanner.hasFirstAid")}
             </label>
           </div>
         </div>
@@ -820,7 +811,7 @@ function ApplicationForm({
         <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
           <h4 className="font-bold text-cyan-400 mb-3 flex items-center gap-2">
             <Star className="w-4 h-4" />
-            {isRTL ? "תנאי קבלה" : "Acceptance Requirements"}
+            {t("providerBanner.acceptanceRequirements")}
           </h4>
           <ul className="space-y-2">
             {requirements.map((req, idx) => (
@@ -840,9 +831,7 @@ function ApplicationForm({
             className="border-purple-500 mt-1"
           />
           <label htmlFor="agreeToTerms" className="text-gray-300 text-sm cursor-pointer">
-            {isRTL 
-              ? "אני מאשר/ת את תנאי השימוש ומדיניות הפרטיות של ⁦Pet Wash™⁩. אני מבין/ה שזו הרשמה למועמדות ולא התחייבות לקבלה."
-              : "I agree to ⁦Pet Wash™⁩ terms of service and privacy policy. I understand this is an application, not a guarantee of acceptance."}
+            {t("providerBanner.agreeToTerms")}
           </label>
         </div>
 
@@ -854,11 +843,11 @@ function ApplicationForm({
           {isSubmitting ? (
             <span className="flex items-center gap-2">
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              {isRTL ? "שולח..." : "Submitting..."}
+              {t("providerBanner.submitting")}
             </span>
           ) : (
             <>
-              {isRTL ? "שלחו את המועמדות" : "Submit Application"}
+              {t("providerBanner.submitApplication")}
               <ArrowRight className={`w-5 h-5 ${isRTL ? "mr-2 rotate-180" : "ml-2"}`} />
             </>
           )}
