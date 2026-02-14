@@ -109,6 +109,85 @@ router.get('/profile', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 /**
+ * POST /api/loyalty/auto-enroll - Auto-enroll new social sign-in users into loyalty program
+ * Called automatically when a new user signs up via Google, Apple, or Facebook
+ */
+router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.firebaseUser!.uid;
+    const allowedProviders = ['google', 'apple', 'facebook', 'social'];
+    const rawProvider = typeof req.body?.provider === 'string' ? req.body.provider : 'social';
+    const provider = allowedProviders.includes(rawProvider) ? rawProvider : 'social';
+    const email = req.firebaseUser!.email || (typeof req.body?.email === 'string' ? req.body.email : null);
+    const displayName = req.firebaseUser!.displayName || (typeof req.body?.displayName === 'string' ? req.body.displayName : null);
+
+    const [existing] = await db
+      .select()
+      .from(loyaltyProfiles)
+      .where(eq(loyaltyProfiles.userId, userId))
+      .limit(1);
+
+    if (existing) {
+      return res.json({ success: true, enrolled: false, message: 'Already enrolled', profile: existing });
+    }
+
+    const welcomePoints = 50;
+
+    const [profile] = await db
+      .insert(loyaltyProfiles)
+      .values({
+        userId,
+        tier: 'bronze',
+        tierSince: new Date(),
+        tierProgress: 0,
+        tierThreshold: 1000,
+        points: welcomePoints,
+        lifetimePoints: welcomePoints,
+        xp: 0,
+        level: 1,
+        totalWashes: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        averageWashInterval: 21,
+        isVip: false,
+        conciergeAccess: false,
+        prioritySupport: false,
+      })
+      .returning();
+
+    try {
+      await db.insert(pointsTransactions).values({
+        userId,
+        points: welcomePoints,
+        type: 'earn',
+        reason: `Welcome bonus - signed up via ${provider || 'social'}`,
+        balanceAfter: welcomePoints,
+      });
+    } catch (txErr) {
+      logger.warn('[Loyalty] Failed to record welcome points transaction', { txErr });
+    }
+
+    try {
+      const firstName = (displayName || '').split(' ')[0] || 'Member';
+      const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+
+      if (email) {
+        await sendLoyaltyEnrollmentConfirmation(email, firstName, 'bronze', welcomePoints, language);
+        logger.info('[Loyalty] Auto-enroll confirmation email sent', { userId, provider });
+      }
+    } catch (emailError) {
+      logger.error('[Loyalty] Failed to send auto-enroll email', { emailError, userId });
+    }
+
+    logger.info(`[Loyalty] New user auto-enrolled via ${provider}`, { userId, welcomePoints });
+    res.json({ success: true, enrolled: true, welcomePoints, profile });
+  } catch (error) {
+    logger.error('Error in loyalty auto-enroll:', error);
+    res.status(500).json({ error: 'Failed to auto-enroll in loyalty program' });
+  }
+});
+
+/**
  * PATCH /api/loyalty/profile - Update loyalty profile (customer-editable fields only)
  * Security: Only allows updating non-privileged preferences. Tier, points, VIP status are read-only.
  */

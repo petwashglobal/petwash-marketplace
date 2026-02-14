@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential, getRedirectResult } from "firebase/auth";
-import { signInWithBestMethod, isIOS, createGoogleProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
+import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential, getRedirectResult, getAdditionalUserInfo } from "firebase/auth";
+import { signInWithBestMethod, isIOS, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
 import { Layout } from "@/components/Layout";
@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { PinKeypad } from "@/components/PinKeypad";
 import { Loader2, Mail, Info, Fingerprint, Smartphone, ScanFace, Phone, User, Lock, ArrowRight, Sparkles, KeyRound, X, ArrowLeft } from "lucide-react";
-import { SiGmail } from "react-icons/si";
+import { SiGmail, SiApple, SiFacebook } from "react-icons/si";
 import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
@@ -125,7 +125,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       try {
         const result = await getRedirectResult(auth);
         if (result) {
-          logger.info('[iOS Auth] Redirect sign-in successful', { email: result.user.email });
+          const additionalInfo = getAdditionalUserInfo(result);
+          const isNewUser = additionalInfo?.isNewUser || false;
+          const detectedProvider = additionalInfo?.providerId || result.providerId || 'google';
+          const providerName = detectedProvider.replace('.com', '').replace('google.com', 'google').replace('apple.com', 'apple').replace('facebook.com', 'facebook');
+          
+          logger.info(`[Auth] Redirect sign-in successful via ${providerName}`, { email: result.user.email, isNewUser });
           
           const idToken = await result.user.getIdToken();
           const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
@@ -138,22 +143,47 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           if (!sessionResponse.ok) {
             throw new Error('Failed to create session');
           }
+
+          if (isNewUser) {
+            logger.info(`[Auth] New user via redirect ${providerName} - auto-enrolling in loyalty`);
+            try {
+              await fetch(getApiUrl('/api/loyalty/auto-enroll'), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${idToken}`,
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                  userId: result.user.uid,
+                  email: result.user.email,
+                  displayName: result.user.displayName,
+                  provider: providerName,
+                }),
+              });
+            } catch (loyaltyErr) {
+              logger.warn('[Auth] Loyalty auto-enroll failed (non-blocking):', loyaltyErr);
+            }
+          }
           
           if (rememberDevice && result.user.uid && result.user.email) {
             trustDevice(result.user.uid, result.user.email);
           }
+
+          storeLastAuthMethod('social');
           
           const { trackLogin } = await import('@/lib/analytics');
-          trackLogin('google', result.user.uid);
+          trackLogin(providerName, result.user.uid);
           
           toast({
             title: t('signin.successTitle', language),
             description: t('signin.redirecting', language),
           });
 
+          const redirectPath = isNewUser ? '/onboarding' : '/dashboard';
           setTimeout(() => {
             window.scrollTo(0, 0);
-            navigate("/dashboard");
+            navigate(redirectPath);
           }, 1000);
         }
       } catch (error: any) {
@@ -547,17 +577,30 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   // This is separate from the client-side deviceTrust.ts which tracks 30-day device memory
   const isPinLoginAvailable = !!localStorage.getItem('petwash_device_trust_token');
 
-  const handleSocialLogin = async (provider: 'google') => {
+  type SocialProvider = 'google' | 'apple' | 'facebook';
+
+  const handleSocialLogin = async (provider: SocialProvider) => {
     await performOAuthLogin(provider);
   };
 
-  const performOAuthLogin = async (provider: 'google') => {
+  const performOAuthLogin = async (provider: SocialProvider) => {
     try {
       setSocialLoading(provider);
       
-      const authProvider = createGoogleProvider();
+      let authProvider: import('firebase/auth').AuthProvider;
+      switch (provider) {
+        case 'apple':
+          authProvider = createAppleProvider();
+          break;
+        case 'facebook':
+          authProvider = createFacebookProvider();
+          break;
+        case 'google':
+        default:
+          authProvider = createGoogleProvider();
+          break;
+      }
       
-      // Log device info for debugging
       const deviceInfo = getDeviceInfo();
       logger.info('[Auth] Device info:', deviceInfo);
       
@@ -567,7 +610,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       let userCredential: import('firebase/auth').UserCredential | null = null;
       
       if (isEmbeddedWebview || isIOSDevice) {
-        logger.info('[Auth] iOS/webview detected, using redirect auth');
+        logger.info(`[Auth] iOS/webview detected, using redirect auth for ${provider}`);
         await signInWithBestMethod(auth, authProvider, 'redirect');
         return;
       }
@@ -576,7 +619,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         userCredential = await signInWithPopup(auth, authProvider);
       } catch (popupErr: any) {
         if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user') {
-          logger.info('[Auth] Popup blocked/closed, falling back to redirect');
+          logger.info(`[Auth] Popup blocked/closed for ${provider}, falling back to redirect`);
           await signInWithBestMethod(auth, authProvider, 'redirect');
           return;
         } else {
@@ -588,10 +631,17 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         logger.info('[Auth] Redirect initiated, waiting for return...');
         return;
       }
+
+      const additionalInfo = getAdditionalUserInfo(userCredential);
+      const isNewUser = additionalInfo?.isNewUser || false;
       
       let grantedScopes: string[] = [];
       try {
-        grantedScopes = GoogleAuthProvider.credentialFromResult(userCredential)?.accessToken ? ['email', 'profile'] : [];
+        if (provider === 'google') {
+          grantedScopes = GoogleAuthProvider.credentialFromResult(userCredential)?.accessToken ? ['email', 'profile'] : [];
+        } else {
+          grantedScopes = ['email', 'profile'];
+        }
       } catch (scopeError) {
         logger.warn('Could not set OAuth scopes:', scopeError);
       }
@@ -606,6 +656,28 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       if (!sessionResponse.ok) {
         throw new Error('Failed to create session');
+      }
+
+      if (isNewUser) {
+        logger.info(`[Auth] New user via ${provider} - auto-enrolling in loyalty program`);
+        try {
+          await fetch(getApiUrl('/api/loyalty/auto-enroll'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              userId: userCredential.user.uid,
+              email: userCredential.user.email,
+              displayName: userCredential.user.displayName,
+              provider,
+            }),
+          });
+        } catch (loyaltyErr) {
+          logger.warn('[Auth] Loyalty auto-enroll failed (non-blocking):', loyaltyErr);
+        }
       }
       
       const consentRecord = {
@@ -658,9 +730,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         description: t('signin.redirecting', language),
       });
 
+      const redirectPath = isNewUser ? '/onboarding' : '/dashboard';
       setTimeout(() => {
         window.scrollTo(0, 0);
-        navigate("/dashboard");
+        navigate(redirectPath);
       }, 1000);
     } catch (error: any) {
       logger.error("Social login error:", error);
@@ -1267,6 +1340,40 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 <>
                   <SiGmail className="w-4 h-4 mr-3 text-red-500" />
                   <span>{t('signin.continueGmail', language)}</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={() => handleSocialLogin('apple')}
+              disabled={!!socialLoading}
+              variant="outline"
+              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all"
+              data-testid="button-apple-signin"
+            >
+              {socialLoading === 'apple' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <SiApple className="w-4 h-4 mr-3" />
+                  <span>{language === 'he' ? 'המשך עם Apple' : 'Continue with Apple'}</span>
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={() => handleSocialLogin('facebook')}
+              disabled={!!socialLoading}
+              variant="outline"
+              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-none tracking-wider uppercase transition-all"
+              data-testid="button-facebook-signin"
+            >
+              {socialLoading === 'facebook' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <SiFacebook className="w-4 h-4 mr-3" />
+                  <span>{language === 'he' ? 'המשך עם Facebook' : 'Continue with Facebook'}</span>
                 </>
               )}
             </Button>

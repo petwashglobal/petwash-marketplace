@@ -12,6 +12,7 @@ import {
   signInWithPopup,
   getRedirectResult,
   GoogleAuthProvider,
+  FacebookAuthProvider,
   OAuthProvider,
   type Auth,
   type UserCredential,
@@ -122,9 +123,24 @@ export function createGoogleProvider(): GoogleAuthProvider {
 export function createAppleProvider(): OAuthProvider {
   const provider = new OAuthProvider('apple.com');
   
-  // Request name and email
   provider.addScope('email');
   provider.addScope('name');
+  
+  return provider;
+}
+
+/**
+ * Configure Facebook Auth Provider with best practices
+ */
+export function createFacebookProvider(): FacebookAuthProvider {
+  const provider = new FacebookAuthProvider();
+  
+  provider.addScope('email');
+  provider.addScope('public_profile');
+  
+  provider.setCustomParameters({
+    display: 'popup',
+  });
   
   return provider;
 }
