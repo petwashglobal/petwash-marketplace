@@ -153,6 +153,7 @@ const T: Record<string, Record<string, string>> = {
   "account": { en: "Account", he: "חשבון", ru: "Аккаунт", fr: "Compte", es: "Cuenta", ar: "الحساب" },
   "signin": { en: "Sign in", he: "התחברות", ru: "Войти", fr: "Se connecter", es: "Iniciar sesión", ar: "تسجيل الدخول" },
   "signup": { en: "Sign up", he: "הרשמה", ru: "Регистрация", fr: "S'inscrire", es: "Registrarse", ar: "إنشاء حساب" },
+  "mydashboard": { en: "My Dashboard", he: "הלוח שלי", ru: "Мой кабинет", fr: "Mon tableau de bord", es: "Mi panel", ar: "لوحتي" },
   "myaccount": { en: "My account", he: "החשבון שלי", ru: "Мой аккаунт", fr: "Mon compte", es: "Mi cuenta", ar: "حسابي" },
   "logout": { en: "Log out", he: "התנתק", ru: "Выйти", fr: "Déconnexion", es: "Cerrar sesión", ar: "تسجيل الخروج" },
 };
@@ -536,7 +537,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           {user ? (
             <button
               className="pw-account-btn"
-              onClick={() => handleNavigate("/my-account")}
+              onClick={() => handleNavigate("/dashboard")}
             >
               <div className="pw-account-circle">👤</div>
             </button>
@@ -661,6 +662,12 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             </div>
             {user ? (
               <>
+                <button
+                  className="pw-mobile-link"
+                  onClick={() => handleNavigate("/dashboard")}
+                >
+                  {t("mydashboard", currentLanguage)}
+                </button>
                 <button
                   className="pw-mobile-link"
                   onClick={() => handleNavigate("/my-account")}
