@@ -135,7 +135,7 @@ const tierConfig: Record<string, {
     icon: Star,
     pointsRequired: 0,
     nextTier: 'silver',
-    discount: 0
+    discount: 5
   },
   silver: { 
     gradient: 'from-slate-400 via-slate-300 to-slate-500',
@@ -143,9 +143,9 @@ const tierConfig: Record<string, {
     label: 'Silver Member',
     labelHe: 'חבר כסף',
     icon: Star,
-    pointsRequired: 500,
+    pointsRequired: 2500,
     nextTier: 'gold',
-    discount: 5
+    discount: 6
   },
   gold: { 
     gradient: 'from-yellow-500 via-yellow-400 to-amber-500',
@@ -153,9 +153,9 @@ const tierConfig: Record<string, {
     label: 'Gold Member',
     labelHe: 'חבר זהב',
     icon: Crown,
-    pointsRequired: 1500,
+    pointsRequired: 7500,
     nextTier: 'platinum',
-    discount: 10
+    discount: 7
   },
   platinum: { 
     gradient: 'from-slate-300 via-white to-slate-400',
@@ -163,9 +163,9 @@ const tierConfig: Record<string, {
     label: 'Platinum Elite',
     labelHe: 'אליטה פלטינום',
     icon: Crown,
-    pointsRequired: 3000,
+    pointsRequired: 15000,
     nextTier: 'diamond',
-    discount: 15
+    discount: 8
   },
   diamond: { 
     gradient: 'from-cyan-300 via-sky-200 to-blue-400',
@@ -173,19 +173,19 @@ const tierConfig: Record<string, {
     label: 'Diamond VIP',
     labelHe: 'יהלום VIP',
     icon: Gem,
-    pointsRequired: 6000,
-    nextTier: 'black',
-    discount: 18
+    pointsRequired: 25000,
+    nextTier: 'emerald',
+    discount: 9
   },
-  black: { 
-    gradient: 'from-zinc-900 via-zinc-800 to-black',
-    bgGradient: 'from-zinc-900/40 to-black/20',
-    label: 'Black Card',
-    labelHe: 'כרטיס שחור',
+  emerald: { 
+    gradient: 'from-emerald-500 via-emerald-400 to-green-600',
+    bgGradient: 'from-emerald-900/20 to-green-800/10',
+    label: 'Emerald Elite',
+    labelHe: 'אליטה אמרלד',
     icon: Crown,
-    pointsRequired: 12000,
+    pointsRequired: 40000,
     nextTier: 'royal',
-    discount: 20
+    discount: 10
   },
   royal: { 
     gradient: 'from-purple-600 via-violet-500 to-fuchsia-600',
@@ -193,8 +193,8 @@ const tierConfig: Record<string, {
     label: 'Royal Elite',
     labelHe: 'אליטה מלכותית',
     icon: Crown,
-    pointsRequired: 25000,
-    discount: 25
+    pointsRequired: 50000,
+    discount: 15
   },
 };
 

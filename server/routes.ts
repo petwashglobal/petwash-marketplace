@@ -596,13 +596,13 @@ export async function registerRoutes(app: Express): Promise<void> {
       {
         id: 'bronze',
         name: 'Bronze',
-        nameHe: 'ארד',
+        nameHe: 'ברונזה',
         icon: '🥉',
         color: '#CD7F32',
-        minBookings: 0,
-        discountPercent: 0,
-        benefits: ['Welcome bonus points', 'Access to basic rewards'],
-        benefitsHe: ['נקודות בונוס ברוכים הבאים', 'גישה לפרסים בסיסיים']
+        pointsRequired: 0,
+        discountPercent: 5,
+        benefits: ['5% base discount', 'Welcome bonus points', 'Pet profile access'],
+        benefitsHe: ['הנחה בסיסית 5%', 'נקודות בונוס ברוכים הבאים', 'גישה לפרופיל חיית מחמד']
       },
       {
         id: 'silver',
@@ -610,10 +610,10 @@ export async function registerRoutes(app: Express): Promise<void> {
         nameHe: 'כסף',
         icon: '🥈',
         color: '#C0C0C0',
-        minBookings: 10,
-        discountPercent: 5,
-        benefits: ['5% discount on bookings', 'Priority customer support', 'Birthday bonus'],
-        benefitsHe: ['הנחה של 5% על הזמנות', 'תמיכת לקוחות בעדיפות', 'בונוס יום הולדת']
+        pointsRequired: 2500,
+        discountPercent: 6,
+        benefits: ['6% discount on bookings', 'Priority customer support', 'Birthday bonus'],
+        benefitsHe: ['הנחה של 6% על הזמנות', 'תמיכת לקוחות בעדיפות', 'בונוס יום הולדת']
       },
       {
         id: 'gold',
@@ -621,10 +621,10 @@ export async function registerRoutes(app: Express): Promise<void> {
         nameHe: 'זהב',
         icon: '🥇',
         color: '#FFD700',
-        minBookings: 25,
-        discountPercent: 8,
-        benefits: ['8% discount on bookings', 'Exclusive member events', 'Free add-ons'],
-        benefitsHe: ['הנחה של 8% על הזמנות', 'אירועים בלעדיים לחברים', 'תוספות חינם']
+        pointsRequired: 7500,
+        discountPercent: 7,
+        benefits: ['7% discount on bookings', '1 free wash per year', 'Early access to products'],
+        benefitsHe: ['הנחה של 7% על הזמנות', 'שטיפה חינם אחת בשנה', 'גישה מוקדמת למוצרים']
       },
       {
         id: 'platinum',
@@ -632,21 +632,43 @@ export async function registerRoutes(app: Express): Promise<void> {
         nameHe: 'פלטינום',
         icon: '💎',
         color: '#E5E4E2',
-        minBookings: 50,
-        discountPercent: 10,
-        benefits: ['10% discount on bookings', 'VIP concierge service', 'Priority booking'],
-        benefitsHe: ['הנחה של 10% על הזמנות', 'שירות קונסיירז׳ VIP', 'הזמנה בעדיפות']
+        pointsRequired: 15000,
+        discountPercent: 8,
+        benefits: ['8% discount on bookings', 'Priority support', 'Exclusive access'],
+        benefitsHe: ['הנחה של 8% על הזמנות', 'תמיכה בעדיפות', 'גישה בלעדית']
       },
       {
         id: 'diamond',
         name: 'Diamond',
         nameHe: 'יהלום',
         icon: '💠',
-        color: '#B9F2FF',
-        minBookings: 100,
+        color: '#3B82F6',
+        pointsRequired: 25000,
+        discountPercent: 9,
+        benefits: ['9% discount on all services', '2 free washes per year', 'Exclusive events'],
+        benefitsHe: ['הנחה של 9% על כל השירותים', '2 שטיפות חינם בשנה', 'אירועים בלעדיים']
+      },
+      {
+        id: 'emerald',
+        name: 'Emerald',
+        nameHe: 'אמרלד',
+        icon: '💚',
+        color: '#10B981',
+        pointsRequired: 40000,
+        discountPercent: 10,
+        benefits: ['10% discount', 'Concierge service', '3 free washes per year', 'Personal account manager'],
+        benefitsHe: ['הנחה של 10%', 'שירות קונסיירז׳', '3 שטיפות חינם בשנה', 'מנהל חשבון אישי']
+      },
+      {
+        id: 'royal',
+        name: 'Royal',
+        nameHe: 'מלכותי',
+        icon: '👑',
+        color: '#8B5CF6',
+        pointsRequired: 50000,
         discountPercent: 15,
-        benefits: ['15% discount on all services', 'Personal account manager', 'Exclusive rewards', 'Free upgrades'],
-        benefitsHe: ['הנחה של 15% על כל השירותים', 'מנהל חשבון אישי', 'פרסים בלעדיים', 'שדרוגים חינם']
+        benefits: ['15% discount on everything', 'VIP concierge', '6 free washes per year', 'Exclusive rewards', 'Free upgrades'],
+        benefitsHe: ['הנחה של 15% על הכל', 'קונסיירז׳ VIP', '6 שטיפות חינם בשנה', 'פרסים בלעדיים', 'שדרוגים חינם']
       }
     ];
     

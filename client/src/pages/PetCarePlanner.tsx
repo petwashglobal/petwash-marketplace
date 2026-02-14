@@ -69,7 +69,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
 
   // Fetch real loyalty data from API
   const { data: loyaltyData, isLoading: loyaltyLoading } = useQuery<{
-    tier: 'new' | 'silver' | 'gold' | 'platinum';
+    tier: 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'emerald' | 'royal';
     totalWashes: number;
     giftBalance: number;
     washesUntilNextTier: number;
@@ -257,7 +257,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
   };
 
   // Safe tier config with fallback during loading
-  const tierConfig = loyaltyData ? TIER_CONFIG[loyaltyData.tier] : TIER_CONFIG['new'];
+  const tierConfig = loyaltyData ? TIER_CONFIG[loyaltyData.tier] : TIER_CONFIG['bronze'];
   const qrData = loyaltyData ? generateNayaxQRCode() : { amount: 0, url: '', token: '' };
 
   if (petsLoading || loyaltyLoading) {

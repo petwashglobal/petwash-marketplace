@@ -582,8 +582,8 @@ export default function Loyalty() {
   };
 
   const tierEmoji = (tier: LoyaltyTier) => {
-    const map = { new: '🌟', silver: '🥈', gold: '🥇', platinum: '💎' };
-    return map[tier] || '🌟';
+    const map: Record<string, string> = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎', diamond: '💠', emerald: '💚', royal: '👑' };
+    return map[tier] || '🥉';
   };
 
   return (
@@ -826,14 +826,17 @@ export default function Loyalty() {
                   {t('loyalty.allTiers', language)}
                 </h3>
                 <div className="space-y-3">
-                  {(['new', 'silver', 'gold', 'platinum'] as LoyaltyTier[]).map((tier, i) => {
+                  {(['bronze', 'silver', 'gold', 'platinum', 'diamond', 'emerald', 'royal'] as LoyaltyTier[]).map((tier, i) => {
                     const config = getTierConfig(tier);
                     const isCurrent = tier === tierProgress.currentTier;
                     const tierColors: Record<LoyaltyTier, { accent: string }> = {
-                      new: { accent: '#6B7280' },
+                      bronze: { accent: '#CD7F32' },
                       silver: { accent: '#94A3B8' },
                       gold: { accent: '#D4AF37' },
-                      platinum: { accent: '#7C3AED' },
+                      platinum: { accent: '#9CA3AF' },
+                      diamond: { accent: '#3B82F6' },
+                      emerald: { accent: '#10B981' },
+                      royal: { accent: '#8B5CF6' },
                     };
 
                     return (

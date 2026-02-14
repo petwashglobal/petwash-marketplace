@@ -249,7 +249,8 @@ class OctopusBrainService {
     const startTime = Date.now();
     
     try {
-      const response = await fetch(`http://localhost:5000${platform.basePath}`, {
+      const baseUrl = process.env.NODE_ENV === 'production' ? 'https://petwash.co.il' : 'http://localhost:5000';
+      const response = await fetch(`${baseUrl}${platform.basePath}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
         signal: AbortSignal.timeout(5000)

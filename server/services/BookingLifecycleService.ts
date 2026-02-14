@@ -21,13 +21,15 @@ import { GoogleSheetsService } from './googleSheetsIntegration';
 const VAT_RATE = 0.18;
 const ESCROW_HOURS = 72;
 
-// Loyalty tier thresholds and discounts
+// Loyalty tier thresholds and discounts (aligned with schema-loyalty.ts canonical source)
 const LOYALTY_TIERS = {
-  bronze: { minBookings: 3, minRating: 4.0, discountPercent: 3 },
-  silver: { minBookings: 10, minRating: 4.2, discountPercent: 5 },
-  gold: { minBookings: 25, minRating: 4.5, discountPercent: 8 },
-  platinum: { minBookings: 50, minRating: 4.7, discountPercent: 10 },
-  diamond: { minBookings: 100, minRating: 4.8, discountPercent: 15 },
+  bronze: { minBookings: 0, minRating: 0, discountPercent: 5 },
+  silver: { minBookings: 5, minRating: 4.0, discountPercent: 6 },
+  gold: { minBookings: 15, minRating: 4.2, discountPercent: 7 },
+  platinum: { minBookings: 30, minRating: 4.5, discountPercent: 8 },
+  diamond: { minBookings: 50, minRating: 4.7, discountPercent: 9 },
+  emerald: { minBookings: 80, minRating: 4.8, discountPercent: 10 },
+  royal: { minBookings: 100, minRating: 4.9, discountPercent: 15 },
 };
 
 // Multi-pet + long-stay combo discount

@@ -214,7 +214,7 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
         lastName: sitter.lastName || '',
         profilePictureUrl: sitter.profilePictureUrl,
         rating: parseFloat(sitter.rating || '0'),
-        totalReviews: sitter.totalBookings || 0,
+        totalReviews: sitter.totalReviews || 0,
         totalBookings: sitter.totalBookings || 0,
         pricePerNight: sitter.pricePerDayCents ? Math.round(sitter.pricePerDayCents / 100) : null,
         pricePerHour: null,
@@ -249,6 +249,7 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
  * Search dog walkers
  */
 async function searchWalkers(filters: BookingSearchFilters, searchId: string): Promise<BookingSearchResult> {
+  try {
   const conditions = [eq(walkerProfiles.isActive, true)];
 
   if (filters.city) {
@@ -309,6 +310,10 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
     filters,
     searchId,
   };
+  } catch (error) {
+    logger.error('[BookingSearch] Walker search error', { error: (error as Error).message });
+    return { providers: [], total: 0, filters, searchId };
+  }
 }
 
 /**

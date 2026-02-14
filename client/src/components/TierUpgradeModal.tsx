@@ -180,11 +180,11 @@ export function checkTierUpgrade(
 }
 
 function calculateTierFromWashes(washes: number): LoyaltyTier {
-  if (washes >= 35) return 'royal';
-  if (washes >= 20) return 'emerald';
-  if (washes >= 10) return 'diamond';
-  if (washes >= 6) return 'platinum';
-  if (washes >= 3) return 'gold';
-  if (washes >= 1) return 'silver';
+  if (washes >= 100) return 'royal';
+  if (washes >= 80) return 'emerald';
+  if (washes >= 50) return 'diamond';
+  if (washes >= 30) return 'platinum';
+  if (washes >= 15) return 'gold';
+  if (washes >= 5) return 'silver';
   return 'bronze';
 }
