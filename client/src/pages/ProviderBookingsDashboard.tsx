@@ -123,9 +123,14 @@ export default function ProviderBookingsDashboard() {
       {/* Header */}
       <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-6">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold mb-2">
-            {isHebrew ? 'לוח בקרה לספקים' : 'Provider Dashboard'}
-          </h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-2xl font-bold">
+              {isHebrew ? 'לוח בקרה לספקים' : 'Provider Dashboard'}
+            </h1>
+            <span className="px-2 py-0.5 text-[9px] tracking-[0.12em] uppercase font-semibold bg-white/20 text-white border border-white/30 rounded-sm">
+              {isHebrew ? 'הזמנות' : 'Bookings'}
+            </span>
+          </div>
           <p className="text-white/80">
             {isHebrew ? 'נהל את ההזמנות והבקשות שלך' : 'Manage your bookings and requests'}
           </p>

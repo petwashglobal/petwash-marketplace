@@ -8,7 +8,7 @@ interface GroomersProviderDashboardProps {
 export default function GroomersProviderDashboard({ language = 'en' }: GroomersProviderDashboardProps) {
   return (
     <PlatformPlaceholder
-      platformName="Groomer Dashboard"
+      platformName="Groomer Dashboard — Provider"
       platformNameHe="לוח בקרה למטפח"
       description="Manage your grooming business. View bookings, update availability, track earnings, and connect with clients."
       descriptionHe="נהל את עסק הטיפוח שלך. הצג הזמנות, עדכן זמינות, עקוב אחר הכנסות והתחבר ללקוחות."

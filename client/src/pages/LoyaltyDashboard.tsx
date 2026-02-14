@@ -201,9 +201,14 @@ export default function LoyaltyDashboard() {
           {/* Header */}
           <div className="flex items-center justify-between mb-8 luxury-animate-fade-in">
             <div>
-              <h1 className="luxury-heading-xl mb-2">
-                {isHebrew ? '🏆 תוכנית הנאמנות ⁦Pet Wash™⁩' : '🏆 ⁦Pet Wash™⁩ Loyalty Program'}
-              </h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="luxury-heading-xl">
+                  {isHebrew ? '🏆 תוכנית הנאמנות ⁦Pet Wash™⁩' : '🏆 ⁦Pet Wash™⁩ Loyalty Program'}
+                </h1>
+                <span className="px-2 py-0.5 text-[8px] tracking-[0.15em] uppercase font-semibold bg-amber-100 text-amber-700 border border-amber-200/60 rounded-sm dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/40">
+                  {isHebrew ? 'חבר' : 'Member'}
+                </span>
+              </div>
               <p className="luxury-text-body">
                 {isHebrew ? 'צבור נקודות וקבל פרסים מדהימים' : 'Earn points and get amazing rewards'}
               </p>

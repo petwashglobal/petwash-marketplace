@@ -184,9 +184,14 @@ export default function AdminDashboard() {
                 className="h-12 w-auto object-contain"
               />
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-rose-300 via-purple-300 to-blue-300 bg-clip-text text-transparent">
-                  Pet Wash Admin Platform
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-rose-300 via-purple-300 to-blue-300 bg-clip-text text-transparent">
+                    Pet Wash Admin Platform
+                  </h1>
+                  <span className="px-2 py-0.5 text-[8px] tracking-[0.12em] uppercase font-semibold bg-red-500/20 text-red-200 border border-red-400/30 rounded-sm">
+                    Admin
+                  </span>
+                </div>
                 <p className="text-sm text-purple-200 font-medium">Business Management</p>
               </div>
             </div>

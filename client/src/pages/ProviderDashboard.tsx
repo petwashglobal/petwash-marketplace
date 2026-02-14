@@ -308,6 +308,9 @@ export default function ProviderDashboard() {
             <div className="flex items-center gap-3 mb-1">
               <div className="w-2 h-8 bg-gradient-to-b from-teal-400 to-emerald-600" style={{ borderRadius: '1px' }} />
               <h1 className="text-3xl font-serif text-gray-900 tracking-tight">{'\u05DC\u05D5\u05D7 \u05D1\u05E7\u05E8\u05D4'}</h1>
+              <span className="px-2.5 py-1 text-[9px] tracking-[0.15em] uppercase font-semibold bg-gradient-to-r from-teal-50 to-emerald-50 text-teal-700 border border-teal-200/60" style={{ borderRadius: '2px' }}>
+                Provider
+              </span>
             </div>
             <p className="text-sm text-gray-500 mt-1 font-serif mr-5">{'\u05E0\u05D9\u05D4\u05D5\u05DC \u05D4\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05D5\u05D4\u05E8\u05D5\u05D5\u05D7\u05D9\u05DD \u05E9\u05DC\u05DA'}</p>
           </div>

@@ -181,7 +181,12 @@ export default function MobileManagementDashboard() {
               <Crown className="h-5 w-5 text-[#0A0A0F]" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">{isHebrew ? 'מרכז הניהול' : 'Management Hub'}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold text-white">{isHebrew ? 'מרכז הניהול' : 'Management Hub'}</h1>
+                <span className="px-1.5 py-0.5 text-[7px] tracking-[0.1em] uppercase font-semibold bg-[#C9A96E]/20 text-[#C9A96E] border border-[#C9A96E]/30 rounded-sm">
+                  Staff
+                </span>
+              </div>
               <p className="text-xs text-[rgba(149,144,168,0.6)]">{isHebrew ? 'ניהול מאייפון' : 'iPhone Management'}</p>
             </div>
           </div>

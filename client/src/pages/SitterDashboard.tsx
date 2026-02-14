@@ -58,9 +58,14 @@ export default function SitterDashboard() {
                 <Shield className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="luxury-heading-md luxury-text-gradient">
-                  Pet Wash Stay™
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="luxury-heading-md luxury-text-gradient">
+                    Pet Wash Stay™
+                  </h1>
+                  <span className="px-2 py-0.5 text-[8px] tracking-[0.15em] uppercase font-semibold bg-purple-100 text-purple-700 border border-purple-200/60 rounded-sm">
+                    {isHebrew ? 'שמרטף' : 'Sitter'}
+                  </span>
+                </div>
                 <p className="luxury-text-small">
                   {isHebrew ? 'לוח שמרטפים מקצועי' : 'Professional Sitter Portal'}
                 </p>

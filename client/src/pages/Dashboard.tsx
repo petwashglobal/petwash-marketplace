@@ -40,6 +40,14 @@ const dashText: Record<string, Record<string, string>> = {
     fr: 'Bon retour',
     ru: 'С возвращением',
   },
+  loyaltyMemberDashboard: {
+    en: 'Loyalty Member',
+    he: 'חבר מועדון נאמנות',
+    ar: 'عضو برنامج الولاء',
+    es: 'Miembro de Lealtad',
+    fr: 'Membre Fidélité',
+    ru: 'Участник Программы Лояльности',
+  },
   yourPersonalSpace: {
     en: 'Your Personal Space',
     he: 'המרחב האישי שלך',
@@ -272,9 +280,14 @@ export default function Dashboard() {
             transition={{ duration: 0.6 }}
             className="mb-12 sm:mb-16"
           >
-            <p className="text-[11px] tracking-[0.35em] uppercase text-gray-400 mb-3">
-              {tx('welcomeBack', language)}
-            </p>
+            <div className="flex items-center gap-3 mb-3">
+              <p className="text-[11px] tracking-[0.35em] uppercase text-gray-400">
+                {tx('welcomeBack', language)}
+              </p>
+              <span className="px-2.5 py-1 text-[9px] tracking-[0.2em] uppercase font-medium bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200/60">
+                {tx('loyaltyMemberDashboard', language)}
+              </span>
+            </div>
             <h1 
               className="text-3xl sm:text-4xl lg:text-5xl text-black font-light mb-2"
               style={{ fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', Georgia, serif", letterSpacing: '-0.02em' }}

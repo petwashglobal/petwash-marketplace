@@ -116,7 +116,12 @@ export default function ContractorDashboard() {
         {/* Header */}
         <div className="luxury-animate-fade-in flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="luxury-heading-lg">Provider Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="luxury-heading-lg">Provider Dashboard</h1>
+              <span className="px-2.5 py-1 text-[9px] tracking-[0.15em] uppercase font-semibold bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 border border-indigo-200/60 rounded-sm">
+                Contractor
+              </span>
+            </div>
             <p className="luxury-text-body mt-2">Track your performance, earnings, and reputation</p>
           </div>
           <div className={`luxury-badge ${trustScores.publicScore >= 4.7 ? 'luxury-badge-gold' : ''} text-lg`}>

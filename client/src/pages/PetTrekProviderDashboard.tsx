@@ -237,9 +237,14 @@ export default function PetTrekProviderDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8 luxury-animate-fade-in">
           <div>
-            <h1 className="luxury-heading-lg luxury-text-gradient">
-              Driver Dashboard
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="luxury-heading-lg luxury-text-gradient">
+                Driver Dashboard
+              </h1>
+              <span className="px-2 py-0.5 text-[8px] tracking-[0.15em] uppercase font-semibold bg-blue-100 text-blue-700 border border-blue-200/60 rounded-sm">
+                PetTrek™ Driver
+              </span>
+            </div>
             <p className="luxury-text-body mt-1">Manage your trips and earnings</p>
           </div>
 
