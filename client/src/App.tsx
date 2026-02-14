@@ -238,6 +238,9 @@ const MobileManagementDashboard = lazy(() => import("@/pages/MobileManagementDas
 const K9000Overview = lazy(() => import("@/pages/k9000/Overview"));
 const K9000BookingFlow = lazy(() => import("@/pages/k9000/BookingFlow"));
 
+const GroomingFeedback = lazy(() => import("@/pages/GroomingFeedback"));
+const GroomingReviews = lazy(() => import("@/pages/GroomingReviews"));
+
 const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
 const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
@@ -1164,6 +1167,21 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        <Route path="/grooming-feedback">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <GroomingFeedback />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/grooming-reviews">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <GroomingReviews />
+            </Suspense>
+          )}
+        </Route>
+
         {/* Shared Pet Services - Community Programs */}
         <Route path="/shared-services/programs">
           {() => (

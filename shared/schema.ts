@@ -7196,6 +7196,46 @@ export const stations = pgTable("stations", {
   locationIdx: index("station_location_idx").on(table.locationId),
 }));
 
+// ===== GROOMING FEEDBACK & RATINGS =====
+
+export const groomingFeedback = pgTable("grooming_feedback", {
+  id: serial("id").primaryKey(),
+  feedbackId: varchar("feedback_id").unique().notNull(),
+  stationId: integer("station_id").references(() => stations.id).notNull(),
+  customerId: varchar("customer_id").notNull(),
+  customerName: varchar("customer_name"),
+  petName: varchar("pet_name"),
+  petType: varchar("pet_type"),
+  serviceType: varchar("service_type").default("self_service_wash"),
+  overallRating: integer("overall_rating").notNull(),
+  cleanlinessRating: integer("cleanliness_rating"),
+  equipmentRating: integer("equipment_rating"),
+  valueRating: integer("value_rating"),
+  easeOfUseRating: integer("ease_of_use_rating"),
+  comment: text("comment"),
+  photos: text("photos").array(),
+  wouldRecommend: boolean("would_recommend"),
+  isFlagged: boolean("is_flagged").default(false),
+  flaggedReason: varchar("flagged_reason"),
+  isVisible: boolean("is_visible").default(true),
+  isPublic: boolean("is_public").default(true),
+  adminResponse: text("admin_response"),
+  adminRespondedAt: timestamp("admin_responded_at"),
+  adminRespondedBy: varchar("admin_responded_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  stationIdx: index("idx_grooming_feedback_station").on(table.stationId),
+  customerIdx: index("idx_grooming_feedback_customer").on(table.customerId),
+  ratingIdx: index("idx_grooming_feedback_rating").on(table.overallRating),
+}));
+
+export const insertGroomingFeedbackSchema = createInsertSchema(groomingFeedback).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertGroomingFeedback = z.infer<typeof insertGroomingFeedbackSchema>;
+export type GroomingFeedback = typeof groomingFeedback.$inferSelect;
+
 // ===== INVENTORY MANAGEMENT =====
 
 // Supplies master catalog

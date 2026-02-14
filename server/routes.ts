@@ -165,6 +165,7 @@ import providerIntakeRoutes from "./routes/provider-intake";
 import pushNotificationsRoutes from "./routes/push-notifications";
 import recaptchaRoutes from "./routes/recaptcha";
 import reviewsRoutes from "./routes/reviews";
+import groomingFeedbackRoutes from "./routes/grooming-feedback";
 import securityStatusRoutes from "./routes/security-status";
 import eventsRoutes from "./routes/events";
 import unifiedBookingRoutes from "./routes/unified-booking";
@@ -8905,6 +8906,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/multi-currency', apiLimiter, multiCurrencyRoutes);
   app.use('/api/pricing', apiLimiter, pricingRoutes);
   app.use('/api/reviews', apiLimiter, reviewsRoutes);
+  app.use('/api/grooming-feedback', apiLimiter, groomingFeedbackRoutes);
   
   // Enterprise Management
   app.use('/api/enterprise/finance', adminLimiter, enterpriseFinanceRoutes);
