@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" fill="none">
+  <rect width="120" height="40" rx="4" fill="#FFFFFF" stroke="#E0E0E0" stroke-width="0.5"/>
+  <circle cx="56" cy="20" r="13" fill="none" stroke="#0079BE" stroke-width="2"/>
+  <circle cx="52" cy="20" r="10" fill="#0079BE"/>
+  <path d="M48 14C45.5 15.5 44 18 44 20.5C44 23 45.5 25.5 48 27V14Z" fill="white"/>
+  <path d="M56 14C58.5 15.5 60 18 60 20.5C60 23 58.5 25.5 56 27V14Z" fill="white"/>
+  <text x="74" y="18" fill="#004A77" font-family="Arial, sans-serif" font-size="6" font-weight="bold">DINERS</text>
+  <text x="74" y="25" fill="#004A77" font-family="Arial, sans-serif" font-size="6" font-weight="bold">CLUB</text>
+</svg>

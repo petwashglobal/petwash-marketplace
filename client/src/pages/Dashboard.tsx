@@ -4,6 +4,9 @@ import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { LogOut } from 'lucide-react';
 
 interface WalletSummary {
   walletId: string;
@@ -188,6 +191,22 @@ const dashText: Record<string, Record<string, string>> = {
     es: 'Cargando...',
     fr: 'Chargement...',
     ru: 'Загрузка...',
+  },
+  signOut: {
+    en: 'Sign Out',
+    he: 'התנתק',
+    ar: 'تسجيل الخروج',
+    es: 'Cerrar sesión',
+    fr: 'Déconnexion',
+    ru: 'Выйти',
+  },
+  securitySettings: {
+    en: 'Security & Face ID',
+    he: 'אבטחה ו-Face ID',
+    ar: 'الأمان وبصمة الوجه',
+    es: 'Seguridad y Face ID',
+    fr: 'Sécurité et Face ID',
+    ru: 'Безопасность и Face ID',
   },
 };
 
@@ -415,7 +434,38 @@ export default function Dashboard() {
                   <span className="text-xs text-gray-400">&rsaquo;</span>
                 </div>
               </Link>
+              <Link href="/settings/security">
+                <div className="bg-white p-5 sm:p-6 flex items-center justify-between hover:bg-[#FAFAF9] transition-colors cursor-pointer">
+                  <p className="text-sm text-black">{tx('securitySettings', language)}</p>
+                  <span className="text-xs text-gray-400">&rsaquo;</span>
+                </div>
+              </Link>
             </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+            className="mb-12 sm:mb-16"
+          >
+            <button
+              onClick={async () => {
+                try {
+                  await signOut(auth);
+                  document.cookie = 'pw_session=; Max-Age=0; path=/';
+                  window.location.assign('/');
+                } catch (e) {
+                  window.location.assign('/');
+                }
+              }}
+              className="w-full p-5 sm:p-6 border border-gray-200 flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
+            >
+              <LogOut className="w-4 h-4 text-gray-500" />
+              <span className="text-sm tracking-[0.15em] uppercase text-gray-600">
+                {tx('signOut', language)}
+              </span>
+            </button>
           </motion.div>
 
           <motion.div
