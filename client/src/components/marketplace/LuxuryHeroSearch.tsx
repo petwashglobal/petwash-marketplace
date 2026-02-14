@@ -31,6 +31,7 @@ interface ServiceOption {
   nameHe: string;
   icon: typeof Home;
   route: string;
+  comingSoon?: boolean;
 }
 
 const SERVICES: ServiceOption[] = [
@@ -38,7 +39,7 @@ const SERVICES: ServiceOption[] = [
   { id: 'house-sitting', name: 'House Sitting', nameHe: 'שמרטפות בבית', icon: Heart, route: '/sitter-suite' },
   { id: 'daycare', name: 'Doggy Daycare', nameHe: 'מעון יום', icon: Users, route: '/sitter-suite' },
   { id: 'dog-walking', name: 'Dog Walking', nameHe: 'טיולי כלבים', icon: Footprints, route: '/walk-my-pet' },
-  { id: 'pet-taxi', name: 'Pet Taxi', nameHe: 'הסעות', icon: Car, route: '/pettrek' },
+  { id: 'pet-taxi', name: 'Pet Taxi', nameHe: 'הסעות', icon: Car, route: '/pettrek', comingSoon: true },
   { id: 'training', name: 'Dog Training', nameHe: 'אילוף', icon: GraduationCap, route: '/academy' },
   { id: 'grooming', name: 'Grooming', nameHe: 'טיפוח', icon: Sparkles, route: '/grooming' },
   { id: 'k9000-wash', name: 'K9000 Smart Hub', nameHe: 'K9000 עמדה חכמה', icon: Droplets, route: '/k9000' },
@@ -85,8 +86,8 @@ export function LuxuryHeroSearch({
 
   const handleSearch = () => {
     const service = SERVICES.find(s => s.id === selectedService);
-    if (!service) {
-      navigate('/services');
+    if (!service || service.comingSoon) {
+      if (!service) navigate('/services');
       return;
     }
 

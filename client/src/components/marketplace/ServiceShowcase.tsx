@@ -93,6 +93,7 @@ const serviceData = [
     route: "/pettrek",
     image: "https://images.unsplash.com/photo-1541599540903-216a46ca1dc0?w=600&h=400&fit=crop",
     popular: false,
+    comingSoon: true,
   },
   {
     id: "academy",
@@ -135,8 +136,8 @@ export function ServiceShowcase({ variant = "grid", showPricing = true, classNam
         {serviceData.map((service) => (
           <Card 
             key={service.id}
-            className="p-4 hover:shadow-lg transition-all duration-300 cursor-pointer border-0 bg-white"
-            onClick={() => navigate(service.route)}
+            className={`p-4 transition-all duration-300 border-0 bg-white ${service.comingSoon ? 'opacity-60 cursor-default' : 'hover:shadow-lg cursor-pointer'}`}
+            onClick={() => { if (!service.comingSoon) navigate(service.route); }}
             data-testid={`service-list-${service.id}`}
           >
             <div className="flex items-center gap-4">
@@ -190,8 +191,8 @@ export function ServiceShowcase({ variant = "grid", showPricing = true, classNam
         {serviceData.map((service) => (
           <Card 
             key={service.id}
-            className="group overflow-hidden border-0 bg-white hover:shadow-2xl transition-all duration-500 cursor-pointer rounded-2xl"
-            onClick={() => navigate(service.route)}
+            className={`group overflow-hidden border-0 bg-white transition-all duration-500 rounded-2xl ${service.comingSoon ? 'opacity-70 cursor-default' : 'hover:shadow-2xl cursor-pointer'}`}
+            onClick={() => { if (!service.comingSoon) navigate(service.route); }}
             data-testid={`service-card-${service.id}`}
           >
             <div className="relative h-48 overflow-hidden">
@@ -206,6 +207,11 @@ export function ServiceShowcase({ variant = "grid", showPricing = true, classNam
                 <div className="absolute top-4 right-4 bg-emerald-500 text-white text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1">
                   <Star className="h-3 w-3" />
                   {isRTL ? "פופולרי" : "Popular"}
+                </div>
+              )}
+              {service.comingSoon && (
+                <div className="absolute top-4 right-4 bg-amber-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                  {isRTL ? "בקרוב" : "Coming Soon"}
                 </div>
               )}
 

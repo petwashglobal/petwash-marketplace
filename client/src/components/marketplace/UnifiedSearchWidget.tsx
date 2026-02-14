@@ -37,7 +37,7 @@ const services = [
   { id: "house-sitting", label: "House Sitting", labelHe: "שמרטפות בבית", route: "/sitter-suite" },
   { id: "doggy-daycare", label: "Doggy Daycare", labelHe: "מעון יום", route: "/sitter-suite" },
   { id: "walk-my-pet", label: "Walk My Pet", labelHe: "טיול כלבים", route: "/walk-my-pet" },
-  { id: "pettrek", label: "PetTrek Transport", labelHe: "הסעות", route: "/pettrek" },
+  { id: "pettrek", label: "PetTrek Transport (Coming Soon)", labelHe: "הסעות (בקרוב)", route: "/pettrek", comingSoon: true },
   { id: "academy", label: "Pet Wash Academy", labelHe: "אילוף", route: "/academy" },
   { id: "k9000", label: "K9000 Smart Hub", labelHe: "עמדת שטיפה", route: "/k9000" },
 ];
@@ -55,7 +55,7 @@ export function UnifiedSearchWidget({ variant = "hero", className }: UnifiedSear
 
   const handleSearch = () => {
     const selectedService = services.find(s => s.id === service);
-    if (selectedService) {
+    if (selectedService && !('comingSoon' in selectedService && selectedService.comingSoon)) {
       const params = new URLSearchParams();
       if (petType) params.set("pet", petType);
       if (location) params.set("location", location);

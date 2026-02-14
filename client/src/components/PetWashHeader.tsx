@@ -105,7 +105,7 @@ const T: Record<string, Record<string, string>> = {
   "walker.label": { en: "Pet Walker", he: "מטייל עם חיות מחמד", ru: "Выгул питомцев", fr: "Promeneur d'animaux", es: "Paseador de mascotas", ar: "مشّاي حيوانات أليفة" },
   "walker.desc": { en: "Walks, play time and outdoor activities", he: "טיולים, משחקים ופעילויות חוץ", ru: "Прогулки, игры и активный отдых", fr: "Promenades, jeux et activités en plein air", es: "Paseos, juegos y actividades al aire libre", ar: "نزهات، وقت لعب وأنشطة خارجية" },
   "transport.label": { en: "Pet Transport", he: "הסעות חיות מחמד", ru: "Перевозка питомцев", fr: "Transport d'animaux", es: "Transporte de mascotas", ar: "نقل حيوانات أليفة" },
-  "transport.desc": { en: "Pet taxi between home, sitter and stations", he: "מונית לחיות מחמד בין הבית, המטפל והתחנות", ru: "Такси для питомцев между домом, няней и станциями", fr: "Taxi pour animaux entre domicile, gardien et stations", es: "Taxi para mascotas entre hogar, cuidador y estaciones", ar: "تاكسي حيوانات بين المنزل والجليس والمحطات" },
+  "transport.desc": { en: "Pet taxi between home, sitter and stations (coming soon)", he: "מונית לחיות מחמד בין הבית, המטפל והתחנות (בקרוב)", ru: "Такси для питомцев между домом, няней и станциями (скоро)", fr: "Taxi pour animaux entre domicile, gardien et stations (bientôt)", es: "Taxi para mascotas entre hogar, cuidador y estaciones (próximamente)", ar: "تاكسي حيوانات بين المنزل والجليس والمحطات (قريبًا)" },
   "academy.label": { en: "Pet Wash Academy", he: "אקדמיית ⁦Pet Wash™⁩", ru: "Академия ⁦Pet Wash™⁩", fr: "Académie ⁦Pet Wash™⁩", es: "Academia ⁦Pet Wash™⁩", ar: "أكاديمية ⁦Pet Wash™⁩" },
   "academy.desc": { en: "Training, certification and education for pros", he: "הכשרה, הסמכה וחינוך למקצוענים", ru: "Обучение, сертификация и образование для профессионалов", fr: "Formation, certification et éducation pour professionnels", es: "Formación, certificación y educación para profesionales", ar: "تدريب وشهادات وتعليم للمحترفين" },
   "shop.label": { en: "Pet Wash Shop", he: "חנות ⁦Pet Wash™⁩", ru: "Магазин ⁦Pet Wash™⁩", fr: "Boutique ⁦Pet Wash™⁩", es: "Tienda ⁦Pet Wash™⁩", ar: "متجر ⁦Pet Wash™⁩" },
@@ -166,7 +166,7 @@ const PLATFORM_ITEMS = [
   { id: "stations", labelKey: "stations.label", descKey: "stations.desc", href: "/stations", frozen: false },
   { id: "sitter", labelKey: "sitter.label", descKey: "sitter.desc", href: "/sitter-suite", frozen: false },
   { id: "walker", labelKey: "walker.label", descKey: "walker.desc", href: "/walk-my-pet", frozen: false },
-  { id: "transport", labelKey: "transport.label", descKey: "transport.desc", href: "/pettrek/book", frozen: false },
+  { id: "transport", labelKey: "transport.label", descKey: "transport.desc", href: "/pettrek/book", frozen: true },
 ];
 
 const PARTNER_ITEMS = [

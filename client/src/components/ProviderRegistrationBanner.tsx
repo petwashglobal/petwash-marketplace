@@ -108,6 +108,7 @@ export default function ProviderRegistrationBanner({
       title: t("providerBanner.petDriver"),
       desc: t("providerBanner.petDriverDesc"),
       color: "from-blue-500 to-indigo-600",
+      comingSoon: true,
     },
     {
       id: "trainer" as ProviderType,
@@ -401,15 +402,19 @@ export default function ProviderRegistrationBanner({
                   <div
                     key={type.id}
                     onClick={() => {
+                      if (type.comingSoon) return;
                       setSelectedType(type.id);
                       setIsFormOpen(true);
                     }}
-                    className="group cursor-pointer p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-500/50 transition-all duration-300 hover:scale-105 hover:bg-white/10"
+                    className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-white/3 border-white/5' : 'cursor-pointer bg-white/5 border-white/10 hover:border-cyan-500/50 hover:scale-105 hover:bg-white/10'}`}
                   >
-                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${type.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${type.color} flex items-center justify-center mb-4 ${type.comingSoon ? '' : 'group-hover:scale-110'} transition-transform`}>
                       <type.icon className="w-7 h-7 text-white" />
                     </div>
-                    <h3 className="font-bold text-white mb-2">{type.title}</h3>
+                    <h3 className="font-bold text-white mb-2 flex items-center gap-2">
+                      {type.title}
+                      {type.comingSoon && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-semibold tracking-wide">{isRTL ? 'בקרוב' : 'Coming Soon'}</span>}
+                    </h3>
                     <p className="text-gray-400 text-sm">{type.desc}</p>
                   </div>
                 ))}
@@ -469,15 +474,19 @@ export default function ProviderRegistrationBanner({
             <div
               key={type.id}
               onClick={() => {
+                if (type.comingSoon) return;
                 setSelectedType(type.id);
                 setIsFormOpen(true);
               }}
-              className="group cursor-pointer p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-500/50 transition-all duration-300 hover:scale-105"
+              className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-white/3 border-white/5' : 'cursor-pointer bg-white/5 border-white/10 hover:border-cyan-500/50 hover:scale-105'}`}
             >
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${type.color} flex items-center justify-center mb-4`}>
                 <type.icon className="w-6 h-6 text-white" />
               </div>
-              <h3 className="font-bold text-white mb-1">{type.title}</h3>
+              <h3 className="font-bold text-white mb-1 flex items-center gap-2">
+                {type.title}
+                {type.comingSoon && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-semibold tracking-wide">{isRTL ? 'בקרוב' : 'Coming Soon'}</span>}
+              </h3>
               <p className="text-gray-400 text-sm">{type.desc}</p>
             </div>
           ))}
@@ -575,17 +584,21 @@ function ApplicationForm({
                 <button
                   key={type.id}
                   type="button"
-                  onClick={() => setSelectedType(type.id)}
+                  disabled={type.comingSoon}
+                  onClick={() => { if (!type.comingSoon) setSelectedType(type.id); }}
                   className={`p-4 rounded-xl border-2 transition-all ${
-                    selectedType === type.id
-                      ? "border-cyan-500 bg-cyan-500/20"
-                      : "border-gray-700 hover:border-gray-600"
+                    type.comingSoon
+                      ? "border-gray-800 opacity-50 cursor-not-allowed"
+                      : selectedType === type.id
+                        ? "border-cyan-500 bg-cyan-500/20"
+                        : "border-gray-700 hover:border-gray-600"
                   }`}
                 >
                   <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${type.color} flex items-center justify-center mb-2 mx-auto`}>
                     <type.icon className="w-5 h-5 text-white" />
                   </div>
                   <div className="text-white font-medium text-sm">{type.title}</div>
+                  {type.comingSoon && <div className="text-amber-400 text-[10px] font-semibold mt-1">{isRTL ? 'בקרוב' : 'Coming Soon'}</div>}
                 </button>
               ))}
             </div>
