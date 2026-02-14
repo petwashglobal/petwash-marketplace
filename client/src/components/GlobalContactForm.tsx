@@ -67,7 +67,7 @@ export default function GlobalContactForm({
 
   const onSubmit = async (data: ContactFormData) => {
     try {
-      const response = await apiRequest('/api/forms/contact', {
+      const response = await apiRequest('/api/global-forms/contact', {
         method: 'POST',
         body: JSON.stringify({ ...data, platform }),
       });

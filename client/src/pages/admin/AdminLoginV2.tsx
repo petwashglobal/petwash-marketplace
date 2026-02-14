@@ -56,18 +56,19 @@ export default function AdminLoginV2() {
     triggerHaptic();
 
     try {
-      const response = await apiRequest("/auth/login/standard", {
+      const res = await apiRequest("/auth/login/standard", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
+      const responseData = await res.json();
 
       toast({
         title: "Welcome back! ✨",
         description: "Successfully logged in",
       });
 
-      localStorage.setItem("access_token", response.tokens.accessToken);
-      localStorage.setItem("refresh_token", response.tokens.refreshToken);
+      localStorage.setItem("access_token", responseData.tokens.accessToken);
+      localStorage.setItem("refresh_token", responseData.tokens.refreshToken);
 
       setLocation("/admin/dashboard");
     } catch (error: any) {
@@ -118,10 +119,11 @@ export default function AdminLoginV2() {
         return;
       }
 
-      const options = await apiRequest("/webauthn/authenticate/options", {
+      const optionsRes = await apiRequest("/webauthn/authenticate/options", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
+      const options = await optionsRes.json();
 
       const credential = await navigator.credentials.get({
         publicKey: {
@@ -151,13 +153,14 @@ export default function AdminLoginV2() {
         },
       };
 
-      const verifyResponse = await apiRequest("/webauthn/authenticate/verify", {
+      const verifyRes = await apiRequest("/webauthn/authenticate/verify", {
         method: "POST",
         body: JSON.stringify({
           response: serializedCredential,
           email,
         }),
       });
+      const verifyResponse = await verifyRes.json();
 
       if (verifyResponse.customToken) {
         setBiometricStatus("success");
@@ -194,7 +197,7 @@ export default function AdminLoginV2() {
       
       const idToken = await result.user.getIdToken();
 
-      const response = await apiRequest("/auth/login/google", {
+      const googleRes = await apiRequest("/auth/login/google", {
         method: "POST",
         body: JSON.stringify({ 
           idToken,
@@ -204,14 +207,15 @@ export default function AdminLoginV2() {
           },
         }),
       });
+      const googleData = await googleRes.json();
 
       toast({
         title: "Welcome back! ✨",
         description: "Successfully logged in with Google",
       });
 
-      localStorage.setItem("access_token", response.tokens.accessToken);
-      localStorage.setItem("refresh_token", response.tokens.refreshToken);
+      localStorage.setItem("access_token", googleData.tokens.accessToken);
+      localStorage.setItem("refresh_token", googleData.tokens.refreshToken);
 
       setLocation("/admin/dashboard");
     } catch (error: any) {

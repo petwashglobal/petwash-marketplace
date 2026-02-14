@@ -151,11 +151,12 @@ export function BiometricCertificateUpload() {
       }, 500);
 
       // Upload and verify
-      const response = await apiRequest('/api/biometric-certificates/upload', {
+      const res = await apiRequest('/api/biometric-certificates/upload', {
         method: 'POST',
         body: formData,
-        headers: {} // Let browser set Content-Type with boundary
+        headers: {}
       });
+      const response = await res.json();
 
       clearInterval(progressInterval);
       setUploadProgress(100);

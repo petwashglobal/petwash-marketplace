@@ -68,10 +68,11 @@ export function ReceiptCameraUpload({ onDataExtracted, language = 'en' }: Receip
       const formData = new FormData();
       formData.append('receipt', optimizedFile);
 
-      const response = await apiRequest('/api/expenses/ocr-receipt', {
+      const res = await apiRequest('/api/expenses/ocr-receipt', {
         method: 'POST',
         body: formData,
       });
+      const response = await res.json();
 
       if (response.success && response.data) {
         setExtractedData(response.data);

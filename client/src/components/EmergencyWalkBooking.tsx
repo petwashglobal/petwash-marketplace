@@ -344,10 +344,10 @@ export function EmergencyWalkBooking() {
                 try {
                   // Step 1: Create slot hold (prevents double-booking)
                   const slotId = `SLOT-${bookingResult?.matchedWalker?.walkerId}-${Date.now()}`;
-                  const holdResponse = await apiRequest('/api/walks/holds', {
+                  const holdRes = await apiRequest('/api/walks/holds', {
                     method: 'POST',
                     body: JSON.stringify({
-                      slotId, // CRITICAL: Enforces unique active hold per slot
+                      slotId,
                       walkerId: bookingResult?.matchedWalker?.walkerId,
                       latitude: bookingResult?.location?.latitude || 0,
                       longitude: bookingResult?.location?.longitude || 0,
@@ -356,13 +356,13 @@ export function EmergencyWalkBooking() {
                       estimatedAmount: parseFloat(bookingResult?.pricing?.totalChargeWithVATILS?.replace(/[^\d.]/g, '') || '0'),
                     }),
                   });
+                  const holdResponse = await holdRes.json();
 
                   if (!holdResponse.success) {
                     throw new Error(holdResponse.error || 'Slot unavailable');
                   }
 
-                  // Step 2: Start payment session
-                  const paymentResponse = await apiRequest('/api/payments/nayax/walk-session', {
+                  const paymentRes = await apiRequest('/api/payments/nayax/walk-session', {
                     method: 'POST',
                     body: JSON.stringify({
                       holdId: holdResponse.holdId,
@@ -370,8 +370,8 @@ export function EmergencyWalkBooking() {
                       service: 'emergency_walk',
                     }),
                   });
+                  const paymentResponse = await paymentRes.json();
 
-                  // Step 3: Redirect to Nayax
                   window.location.href = paymentResponse.redirectUrl;
                 } catch (error) {
                   toast({

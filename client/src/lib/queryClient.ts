@@ -27,20 +27,49 @@ async function throwIfResNotOk(res: Response) {
 }
 
 export async function apiRequest(
-  method: string,
-  url: string,
+  methodOrUrl: string,
+  urlOrOptions?: string | Record<string, any>,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // CRITICAL FIX: Ensure getAppCheckToken failure doesn't break API calls
-  // If App Check is disabled or fails, we continue without the token (fail-open)
+  let method: string;
+  let url: string;
+  let body: any;
+  let extraHeaders: Record<string, string> = {};
+
+  if (methodOrUrl.startsWith('/') || methodOrUrl.startsWith('http')) {
+    url = methodOrUrl;
+    if (typeof urlOrOptions === 'string') {
+      method = urlOrOptions;
+      body = data ? JSON.stringify(data) : undefined;
+      if (data) extraHeaders["Content-Type"] = "application/json";
+    } else if (urlOrOptions && typeof urlOrOptions === 'object') {
+      method = urlOrOptions.method || 'GET';
+      body = urlOrOptions.body;
+      if (urlOrOptions.headers) {
+        Object.assign(extraHeaders, urlOrOptions.headers);
+      }
+      if (body && typeof body === 'string' && !extraHeaders["Content-Type"]) {
+        extraHeaders["Content-Type"] = "application/json";
+      }
+    } else {
+      method = 'GET';
+      body = undefined;
+    }
+  } else {
+    method = methodOrUrl;
+    url = urlOrOptions as string;
+    body = data ? JSON.stringify(data) : undefined;
+    if (data) extraHeaders["Content-Type"] = "application/json";
+  }
+
   let appCheckToken: string | null = null;
   try {
     appCheckToken = await getAppCheckToken();
   } catch (error) {
     console.warn('[QueryClient] Failed to get App Check token, continuing without it', error);
   }
-  
-  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+
+  const headers: Record<string, string> = { ...extraHeaders };
   if (appCheckToken) {
     headers["X-Firebase-AppCheck"] = appCheckToken;
   }
@@ -48,7 +77,7 @@ export async function apiRequest(
   const res = await fetch(getApiUrl(url), {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    body,
     credentials: "include",
   });
 
