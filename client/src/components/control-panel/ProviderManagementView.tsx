@@ -133,13 +133,11 @@ export default function ProviderManagementView() {
 
   const approveMutation = useMutation({
     mutationFn: async ({ id, notes }: { id: number; notes?: string }) => {
-      return apiRequest(`/api/provider-review/admin/approve/${id}`, {
-        method: "POST",
-        body: JSON.stringify({ reviewNotes: notes }),
-      });
+      return apiRequest("POST", `/api/provider-review/admin/approve/${id}`, { reviewNotes: notes });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/control-panel/providers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/control-panel/providers/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/control-panel/providers/queue"] });
       toast({
         title: "בקשה אושרה",
         description: "הספק אושר לעבודה בפלטפורמה",
@@ -151,13 +149,11 @@ export default function ProviderManagementView() {
 
   const rejectMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
-      return apiRequest(`/api/provider-review/admin/reject/${id}`, {
-        method: "POST",
-        body: JSON.stringify({ rejectionReason: reason }),
-      });
+      return apiRequest("POST", `/api/provider-review/admin/reject/${id}`, { rejectionReason: reason });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/control-panel/providers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/control-panel/providers/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/control-panel/providers/queue"] });
       toast({
         title: "בקשה נדחתה",
         description: "הספק קיבל הודעה על הדחייה",
@@ -169,13 +165,11 @@ export default function ProviderManagementView() {
 
   const holdMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
-      return apiRequest(`/api/provider-review/admin/hold/${id}`, {
-        method: "POST",
-        body: JSON.stringify({ reason }),
-      });
+      return apiRequest("POST", `/api/provider-review/admin/hold/${id}`, { reason });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/control-panel/providers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/control-panel/providers/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/control-panel/providers/queue"] });
       toast({
         title: "בקשה הוקפאה",
         description: "הבקשה הועברה להמתנה",

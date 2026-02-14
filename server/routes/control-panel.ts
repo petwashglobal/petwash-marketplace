@@ -257,7 +257,7 @@ router.get("/providers/stats", async (req, res) => {
     const [trainingCerts] = await db
       .select({ count: count() })
       .from(providerTrainingProgress)
-      .where(eq(providerTrainingProgress.certificateGenerated, true));
+      .where(eq(providerTrainingProgress.completed, true));
 
     res.json({
       totalProviders: (approvedApps?.count || 0) + (pendingApps?.count || 0),

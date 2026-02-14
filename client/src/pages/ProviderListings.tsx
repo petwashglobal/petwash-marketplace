@@ -79,14 +79,35 @@ export default function ProviderListings() {
     return `/api/marketplace-bookings/search/providers?${params.toString()}`;
   })();
   
-  // Fetch providers using default queryFn (uses queryKey[0] as URL)
   const { data: providersData, isLoading } = useQuery({
     queryKey: [providerQueryUrl],
   });
   
-  const providers: Provider[] = providersData?.providers || [];
+  const providers: Provider[] = (providersData?.providers || []).map((p: any) => {
+    const nameParts = (p.displayName || '').split(' ');
+    return {
+      id: p.id,
+      firstName: nameParts[0] || '',
+      lastName: nameParts.slice(1).join(' ') || '',
+      profilePhoto: p.profilePhotoUrl || undefined,
+      serviceType: serviceType,
+      city: p.location || '',
+      country: 'IL',
+      rating: p.rating || 0,
+      totalReviews: p.reviewCount || 0,
+      completedBookings: p.reviewCount || 0,
+      hourlyRate: p.pricing?.perHour ? parseFloat(p.pricing.perHour) : undefined,
+      dailyRate: p.pricing?.perNight ? parseFloat(p.pricing.perNight) : undefined,
+      verificationStatus: 'verified' as const,
+      trustScore: p.rating ? Math.round(p.rating * 20) : 0,
+      badges: [],
+      hasInsurance: true,
+      yearsOfExperience: undefined,
+      bio: p.bio || undefined,
+      availability: 'available' as const,
+    };
+  });
   
-  // Filter providers based on search
   const filteredProviders = providers.filter((provider) => {
     const nameMatch = `${provider.firstName} ${provider.lastName}`
       .toLowerCase()

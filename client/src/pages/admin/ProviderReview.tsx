@@ -156,14 +156,22 @@ export default function ProviderReview() {
     setCheckApprovalNotes('');
   };
 
-  const { data: applicants = [], isLoading } = useQuery<Applicant[]>({
+  const { data: listResponse, isLoading } = useQuery<{ applications: Applicant[]; counts: Record<string, number>; pagination: { limit: number; offset: number } }>({
     queryKey: ['/api/provider-applications/admin/list', filterStage],
   });
+  const applicants: Applicant[] = listResponse?.applications || [];
 
-  const { data: applicantDetails, isLoading: isLoadingDetails } = useQuery<ApplicantDetails>({
-    queryKey: ['/api/provider-applications/admin', selectedApplicant?.id],
-    enabled: !!selectedApplicant,
+  const detailUrl = selectedApplicant ? `/api/provider-applications/admin/${selectedApplicant.id}` : '';
+  const { data: detailResponse, isLoading: isLoadingDetails } = useQuery<{ application: ApplicantDetails; documents: any[]; tasks: any[]; backgroundChecks: any[]; transitions: any[] }>({
+    queryKey: [detailUrl],
+    enabled: !!selectedApplicant && !!detailUrl,
   });
+  const applicantDetails: ApplicantDetails | null = detailResponse ? {
+    ...detailResponse.application,
+    documents: detailResponse.documents || [],
+    backgroundChecks: detailResponse.backgroundChecks || [],
+    stageTransitions: detailResponse.transitions || [],
+  } as ApplicantDetails : null;
 
   const advanceStageMutation = useMutation({
     mutationFn: async (applicantId: number) => {
