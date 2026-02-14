@@ -108,7 +108,7 @@ router.get('/dashboard/stations', async (req, res) => {
           .select()
           .from(nayaxTelemetry)
           .where(eq(nayaxTelemetry.terminalId, station.terminalId))
-          .orderBy(desc(nayaxTelemetry.timestamp))
+          .orderBy(desc(nayaxTelemetry.createdAt))
           .limit(1);
         
         // Get wash count today
@@ -127,7 +127,7 @@ router.get('/dashboard/stations', async (req, res) => {
         // Determine current status
         let currentStatus = station.status;
         if (telemetry.length > 0) {
-          const lastSeen = new Date(telemetry[0].timestamp);
+          const lastSeen = new Date(telemetry[0].lastPingAt);
           const minutesSinceLastSeen = (Date.now() - lastSeen.getTime()) / 60000;
           
           if (minutesSinceLastSeen > 30) {
@@ -158,7 +158,7 @@ router.get('/dashboard/stations', async (req, res) => {
         return {
           ...station,
           status: currentStatus,
-          lastSeen: telemetry[0]?.timestamp || null,
+          lastSeen: telemetry[0]?.lastPingAt || null,
           washesToday: washesToday[0]?.count || 0,
           supplyLevels,
           alerts,
@@ -415,13 +415,13 @@ router.get('/dashboard/salt-report', async (req, res) => {
           .select()
           .from(nayaxTelemetry)
           .where(eq(nayaxTelemetry.terminalId, station.terminalId))
-          .orderBy(desc(nayaxTelemetry.timestamp))
+          .orderBy(desc(nayaxTelemetry.createdAt))
           .limit(1);
         
         const supplyData = {
           stationId: station.stationId,
           location: station.location,
-          timestamp: telemetry[0]?.timestamp || new Date(),
+          timestamp: telemetry[0]?.createdAt || new Date(),
           supplies: {
             shampoo: {
               level: parseInt(telemetry[0]?.shampooLevel || '100'),
@@ -775,7 +775,7 @@ router.get('/dashboard/station/:stationId', async (req, res) => {
       .select()
       .from(nayaxTelemetry)
       .where(eq(nayaxTelemetry.terminalId, station.terminalId))
-      .orderBy(desc(nayaxTelemetry.timestamp))
+      .orderBy(desc(nayaxTelemetry.createdAt))
       .limit(10);
     
     // Get recent transactions

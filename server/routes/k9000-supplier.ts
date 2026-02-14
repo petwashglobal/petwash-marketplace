@@ -286,19 +286,20 @@ router.post('/orders', async (req: Request, res: Response) => {
     
     logger.info(`New franchise order created: ${orderNumber}`);
     
-    // Send email notification to supplier and operations team
+    const items = (newOrder.requestedItems as any[]) || [];
+    const itemsSummary = items.map((item: any) => `${item.partName || item.partNumber} x${item.quantity}`).join(', ');
     await EmailService.send({
       to: 'supplier@petwash.co.il',
       subject: `📦 New Order Received: ${orderNumber}`,
       html: `
         <h2>New Franchise Order</h2>
         <p><strong>Order Number:</strong> ${orderNumber}</p>
-        <p><strong>Franchise ID:</strong> ${newOrder.franchiseId}</p>
-        <p><strong>Part Number:</strong> ${newOrder.partNumber}</p>
-        <p><strong>Part Name:</strong> ${newOrder.partName}</p>
-        <p><strong>Quantity:</strong> ${newOrder.requestedQuantity}</p>
+        <p><strong>Franchisee ID:</strong> ${newOrder.franchiseeId}</p>
+        <p><strong>Items:</strong> ${itemsSummary || 'See details'}</p>
+        <p><strong>Order Type:</strong> ${newOrder.orderType}</p>
+        <p><strong>Priority:</strong> ${newOrder.priority}</p>
         <p><strong>Status:</strong> ${newOrder.status}</p>
-        <p><strong>Notes:</strong> ${newOrder.notes || 'None'}</p>
+        <p><strong>Notes:</strong> ${newOrder.requestNotes || 'None'}</p>
         <hr>
         <p><small>Please process this order within 24 hours.</small></p>
       `,
@@ -351,13 +352,15 @@ router.patch('/orders/:id', async (req: Request, res: Response) => {
     let notificationSubject = '';
     let notificationBody = '';
     
+    const orderItems = (updatedOrder.requestedItems as any[]) || [];
+    const orderItemsSummary = orderItems.map((item: any) => `${item.partName || item.partNumber} x${item.quantity}`).join(', ');
+    
     if (updatedOrder.status === 'approved') {
       notificationSubject = `✅ Order Approved: ${updatedOrder.orderNumber}`;
       notificationBody = `
         <h2>Order Approved</h2>
         <p>Your order <strong>${updatedOrder.orderNumber}</strong> has been approved and is being processed.</p>
-        <p><strong>Part:</strong> ${updatedOrder.partName}</p>
-        <p><strong>Quantity:</strong> ${updatedOrder.requestedQuantity}</p>
+        <p><strong>Items:</strong> ${orderItemsSummary || 'See details'}</p>
         <p><strong>Approved by:</strong> ${approvedBy || 'System'}</p>
       `;
     } else if (updatedOrder.status === 'rejected') {
@@ -366,8 +369,7 @@ router.patch('/orders/:id', async (req: Request, res: Response) => {
         <h2>Order Rejected</h2>
         <p>Your order <strong>${updatedOrder.orderNumber}</strong> has been rejected.</p>
         <p><strong>Reason:</strong> ${rejectionReason || 'Not specified'}</p>
-        <p><strong>Part:</strong> ${updatedOrder.partName}</p>
-        <p><strong>Quantity:</strong> ${updatedOrder.requestedQuantity}</p>
+        <p><strong>Items:</strong> ${orderItemsSummary || 'See details'}</p>
       `;
     } else if (updatedOrder.status === 'shipped') {
       notificationSubject = `🚚 Order Shipped: ${updatedOrder.orderNumber}`;
@@ -375,8 +377,7 @@ router.patch('/orders/:id', async (req: Request, res: Response) => {
         <h2>Order Shipped</h2>
         <p>Your order <strong>${updatedOrder.orderNumber}</strong> has been shipped.</p>
         <p><strong>Tracking Number:</strong> ${trackingNumber || 'Not available'}</p>
-        <p><strong>Part:</strong> ${updatedOrder.partName}</p>
-        <p><strong>Quantity:</strong> ${updatedOrder.requestedQuantity}</p>
+        <p><strong>Items:</strong> ${orderItemsSummary || 'See details'}</p>
       `;
     }
     
@@ -612,6 +613,131 @@ router.delete('/notification-settings/:id', async (req: Request, res: Response) 
   } catch (error) {
     logger.error('Error deleting notification setting:', error);
     res.status(500).json({ error: 'Failed to delete notification setting' });
+  }
+});
+
+router.get('/spare-parts/orders', async (req: Request, res: Response) => {
+  try {
+    const { status, franchiseeId, priority } = req.query;
+    
+    const conditions: any[] = [];
+    if (status) {
+      conditions.push(eq(franchiseOrderRequests.status, status as string));
+    }
+    if (franchiseeId) {
+      conditions.push(eq(franchiseOrderRequests.franchiseeId, parseInt(franchiseeId as string)));
+    }
+    if (priority) {
+      conditions.push(eq(franchiseOrderRequests.priority, priority as string));
+    }
+    
+    const ordersQuery = db
+      .select({
+        order: franchiseOrderRequests,
+        franchisee: franchisees,
+        station: petWashStations
+      })
+      .from(franchiseOrderRequests)
+      .leftJoin(franchisees, eq(franchiseOrderRequests.franchiseeId, franchisees.id))
+      .leftJoin(petWashStations, eq(franchiseOrderRequests.stationId, petWashStations.id));
+    
+    const rawOrders = conditions.length > 0
+      ? await ordersQuery.where(and(...conditions)).orderBy(desc(franchiseOrderRequests.createdAt))
+      : await ordersQuery.orderBy(desc(franchiseOrderRequests.createdAt));
+    
+    const orders = rawOrders.map(row => {
+      const items = (row.order.requestedItems as any[]) || [];
+      const firstItem = items[0] || {};
+      return {
+        id: row.order.id,
+        orderNumber: row.order.orderNumber,
+        partId: firstItem.sparePartId || null,
+        partNumber: firstItem.partNumber || '',
+        partName: firstItem.partName || row.order.orderType,
+        quantity: firstItem.quantity || 0,
+        status: row.order.status,
+        requestedBy: row.order.requestedByEmail || row.order.requestedBy || 'Unknown',
+        requestedAt: row.order.createdAt,
+        expectedDelivery: row.order.estimatedArrival,
+      };
+    });
+    
+    res.json({ orders });
+  } catch (error) {
+    logger.error('Error fetching spare parts orders:', error);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+router.get('/spare-parts/summary', async (req: Request, res: Response) => {
+  try {
+    const allParts = await db.select().from(spareParts);
+    
+    const totalParts = allParts.length;
+    const lowStockParts = allParts.filter(p => (p.quantityInStock || 0) <= (p.reorderPoint || 0)).length;
+    const criticalParts = allParts.filter(p => p.isCritical && (p.quantityInStock || 0) <= (p.minimumStockLevel || 0)).length;
+    const totalValue = allParts.reduce((sum, p) => sum + ((p.quantityInStock || 0) * parseFloat(String(p.unitCost || '0'))), 0);
+    
+    const pendingOrders = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(franchiseOrderRequests)
+      .where(or(
+        eq(franchiseOrderRequests.status, 'pending'),
+        eq(franchiseOrderRequests.status, 'approved')
+      ));
+    
+    res.json({
+      totalParts,
+      lowStockParts,
+      criticalParts,
+      totalInventoryValue: Math.round(totalValue * 100) / 100,
+      pendingOrders: pendingOrders[0]?.count || 0,
+      currency: 'ILS',
+    });
+  } catch (error) {
+    logger.error('Error fetching spare parts summary:', error);
+    res.status(500).json({ error: 'Failed to fetch summary' });
+  }
+});
+
+router.post('/spare-parts/order', async (req: Request, res: Response) => {
+  try {
+    const { partId, quantity, stationId } = req.body;
+    
+    if (!partId || !quantity) {
+      return res.status(400).json({ error: 'partId and quantity are required' });
+    }
+    
+    const [part] = await db.select().from(spareParts).where(eq(spareParts.id, partId));
+    if (!part) {
+      return res.status(404).json({ error: 'Spare part not found' });
+    }
+    
+    const orderCount = await db.select({ count: sql<number>`count(*)` }).from(franchiseOrderRequests);
+    const orderNumber = `FOR-${new Date().getFullYear()}-${String(Number(orderCount[0].count) + 1).padStart(6, '0')}`;
+    
+    const [newOrder] = await db
+      .insert(franchiseOrderRequests)
+      .values({
+        orderNumber,
+        franchiseeId: 1,
+        stationId: stationId || null,
+        requestedBy: (req as any).user?.displayName || 'System',
+        requestedByEmail: (req as any).user?.email || 'system@petwash.co.il',
+        orderType: 'spare_parts',
+        priority: 'normal',
+        requestedItems: [{ sparePartId: partId, partNumber: part.partNumber, partName: part.partName, quantity }],
+        estimatedTotal: String(quantity * parseFloat(String(part.unitCost || '0'))),
+        status: 'pending',
+      })
+      .returning();
+    
+    logger.info(`Spare part order created via quick-order: ${orderNumber}`);
+    
+    res.status(201).json({ order: newOrder });
+  } catch (error) {
+    logger.error('Error creating spare parts order:', error);
+    res.status(400).json({ error: 'Failed to create order' });
   }
 });
 
