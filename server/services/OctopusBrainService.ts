@@ -26,7 +26,7 @@ import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
 export interface PlatformDefinition {
   id: string;
@@ -158,7 +158,10 @@ class OctopusBrainService {
 
   constructor() {
     if (GEMINI_API_KEY) {
-      this.ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+      this.ai = new GoogleGenAI({
+        apiKey: GEMINI_API_KEY,
+        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+      });
       logger.info('[🐙 Octopus Brain] ✅ Gemini 2.5 Flash initialized for platform orchestration');
     } else {
       logger.warn('[🐙 Octopus Brain] ⚠️ Gemini API key not configured - AI analysis disabled');

@@ -15,7 +15,10 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import NotificationService from '../services/NotificationService';
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
 
 /**
  * Transaction data for fraud analysis
@@ -48,8 +51,6 @@ interface FraudAnalysis {
  */
 async function analyzeWithAI(tx: Transaction): Promise<FraudAnalysis> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    
     const prompt = `You are a fraud detection AI for ⁦Pet Wash™⁩ payment platform.
 
 Analyze this transaction for fraud risk:
@@ -80,8 +81,11 @@ Return JSON only:
   "recommendedAction": "<approve|review|block>"
 }`;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+    const responseText = result.text || '';
     
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);

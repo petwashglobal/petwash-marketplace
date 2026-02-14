@@ -8,13 +8,16 @@ import {
   getWeatherConditionTranslation 
 } from '../lib/weatherTranslations';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
 if (!GEMINI_API_KEY) {
   logger.warn('[SmartWeatherAdvisor] GEMINI_API_KEY not configured - smart advice disabled');
 }
 
-const genAI = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
+const genAI = GEMINI_API_KEY ? new GoogleGenAI({
+  apiKey: GEMINI_API_KEY,
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+}) : null;
 
 // Language name mapping for Gemini prompts
 const LANGUAGE_MAP: Record<SupportedLanguage, string> = {
@@ -73,13 +76,12 @@ export class SmartWeatherAdvisorService {
 
       const prompt = this.buildSmartPrompt(operatorName, weather, appointments, lang);
       
-      // Get the Gemini model (correct API per architect review)
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-      
       // Call Gemini AI
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      const advice = this.parseGeminiResponse(response.text(), weather, lang);
+      const result = await genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      const advice = this.parseGeminiResponse(result.text || '', weather, lang);
 
       logger.info('[SmartWeatherAdvisor] ✅ Generated smart advice', {
         operatorName,

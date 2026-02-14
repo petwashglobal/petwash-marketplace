@@ -29,12 +29,15 @@ export class SitterAITriageService {
   private genAI: GoogleGenAI;
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('[Sitter AI Triage] GEMINI_API_KEY not configured');
     }
     
-    this.genAI = new GoogleGenAI({ apiKey });
+    this.genAI = new GoogleGenAI({
+      apiKey,
+      ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+    });
   }
 
   /**

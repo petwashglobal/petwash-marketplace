@@ -10,7 +10,10 @@
 import { GoogleGenAI } from "@google/genai";
 import { logger } from '../lib/logger';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const ai = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "",
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
 
 // API Monitoring metrics
 interface TranslationMetrics {
@@ -72,7 +75,7 @@ export async function translateWithGemini(
     }
 
     // Check if Gemini API key is configured
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.AI_INTEGRATIONS_GEMINI_API_KEY && !process.env.GEMINI_API_KEY) {
       logger.error('[GeminiTranslation] GEMINI_API_KEY not configured');
       metrics.failedTranslations++;
       return { success: false, translatedText: text, error: 'GEMINI_API_KEY not configured' };

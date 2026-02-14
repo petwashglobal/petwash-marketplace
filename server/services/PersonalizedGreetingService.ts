@@ -14,7 +14,10 @@
 import { GoogleGenAI } from "@google/genai";
 import { logger } from '../lib/logger';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const ai = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "",
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
 
 // ============================================
 // TYPES
@@ -269,13 +272,12 @@ Short examples:
 Create a similar, short, original greeting:`;
 
     // Call Gemini 2.5 Flash
-    const model = ai.getGenerativeModel({ 
+    const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      systemInstruction
+      config: { systemInstruction },
+      contents: prompt,
     });
-
-    const result = await model.generateContent(prompt);
-    const greetingText = result.response.text().trim();
+    const greetingText = (result.text || '').trim();
 
     logger.info('[PersonalizedGreeting] Generated greeting', {
       user: userData.name,

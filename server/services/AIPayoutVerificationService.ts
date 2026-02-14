@@ -27,7 +27,10 @@ import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
 
 export interface WorkEvidence {
   bookingId: string;
@@ -599,8 +602,6 @@ export class AIPayoutVerificationService {
    */
   private static async getGeminiAnalysis(evidence: WorkEvidence): Promise<string> {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
       const prompt = `You are a fraud detection AI for ⁦Pet Wash™⁩ subcontractor payout verification.
 
 Analyze this work completion evidence for payout verification:
@@ -632,8 +633,11 @@ Provide a brief assessment (2-3 sentences) of whether this work appears legitima
 
 Keep response under 150 words.`;
 
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
+      const result = await genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      const responseText = result.text || '';
       
       logger.info('[AIPayoutVerification] Gemini analysis complete', {
         bookingId: evidence.bookingId,

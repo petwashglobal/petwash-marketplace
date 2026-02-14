@@ -15,10 +15,13 @@ import { logger } from '../lib/logger';
 import { format } from 'date-fns';
 
 const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
 const ACCOUNTING_SPREADSHEET_ID = process.env.ACCOUNTING_SPREADSHEET_ID;
 
-const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
+const ai = GEMINI_API_KEY ? new GoogleGenAI({
+  apiKey: GEMINI_API_KEY,
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+}) : null;
 
 // Sheet names for accounting
 const ACCOUNTING_SHEETS = {
@@ -190,11 +193,6 @@ async function classifyTransactionWithAI(booking: any): Promise<AIClassification
   }
 
   try {
-    const model = ai.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: { responseMimeType: 'application/json' }
-    });
-
     const prompt = `You are an Israeli certified public accountant (רואה חשבון מוסמך) for ⁦Pet Wash™⁩.
     
 Classify this booking transaction for Israeli tax compliance 2025:
@@ -226,8 +224,12 @@ Israeli Tax Context 2025:
 - Escrow held funds are liability until released
 - Report requirements per רשות המסים regulations`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' },
+    });
+    const text = result.text || '';
     const classification: AIClassification = JSON.parse(text);
     
     logger.info('[BookingExport] AI classified transaction', {

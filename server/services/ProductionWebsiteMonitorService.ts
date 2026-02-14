@@ -18,7 +18,7 @@ import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 const PRODUCTION_URL = 'https://petwash.co.il';
 const FIREBASE_URL = 'https://signinpetwash.web.app';
 
@@ -59,7 +59,10 @@ class ProductionWebsiteMonitorService {
 
   constructor() {
     if (GEMINI_API_KEY) {
-      this.ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+      this.ai = new GoogleGenAI({
+        apiKey: GEMINI_API_KEY,
+        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+      });
       logger.info('[ProductionMonitor] ✅ Gemini AI initialized for website monitoring');
     } else {
       logger.warn('[ProductionMonitor] ⚠️ Gemini API key not configured - monitoring limited');

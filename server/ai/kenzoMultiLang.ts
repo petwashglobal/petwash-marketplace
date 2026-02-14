@@ -21,7 +21,10 @@
 import { GoogleGenAI } from '@google/genai';
 import { logger } from '../lib/logger';
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const genAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
 
 /**
  * Supported languages
@@ -117,7 +120,6 @@ export async function kenzoChat(
     });
     
     const langConfig = LANGUAGE_CONFIG[lang];
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
     // Build comprehensive prompt with context
     let fullPrompt = `${langConfig.contextPrefix}
@@ -163,8 +165,11 @@ ${Object.entries(PLATFORM_CONTEXT).map(([key, desc]) => `- ${desc}`).join('\n')}
 **Your Task:** Answer in ${langConfig.name} with helpful, accurate information. Be concise but warm.`;
 
     // Generate response
-    const result = await model.generateContent(fullPrompt);
-    const response = result.response.text();
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: fullPrompt,
+    });
+    const response = result.text || '';
     
     logger.info('[KenzoMultiLang] Response generated', {
       lang,
@@ -211,8 +216,6 @@ ${Object.entries(PLATFORM_CONTEXT).map(([key, desc]) => `- ${desc}`).join('\n')}
  */
 export async function detectEmotion(message: string): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    
     const prompt = `Analyze the emotion in this message and return ONE word only:
 happy, sad, worried, angry, confused, excited, frustrated, neutral
 
@@ -220,8 +223,11 @@ Message: "${message}"
 
 Response (one word only):`;
 
-    const result = await model.generateContent(prompt);
-    const emotion = result.response.text().trim().toLowerCase();
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+    const emotion = (result.text || '').trim().toLowerCase();
     
     const validEmotions = ['happy', 'sad', 'worried', 'angry', 'confused', 'excited', 'frustrated', 'neutral'];
     
@@ -242,15 +248,16 @@ export async function autoTranslate(
   targetLang: SupportedLanguage
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    
     const langName = LANGUAGE_CONFIG[targetLang].name;
     const prompt = `Translate this text to ${langName}. Return ONLY the translation, no explanations:
 
 "${text}"`;
 
-    const result = await model.generateContent(prompt);
-    return result.response.text().trim();
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+    return (result.text || '').trim();
   } catch (error: any) {
     logger.error('[KenzoMultiLang] Translation failed', {
       targetLang,

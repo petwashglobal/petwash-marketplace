@@ -27,7 +27,7 @@ import {
 } from '../../shared/schema-gemini-watchdog';
 import { eq, desc, and, sql } from 'drizzle-orm';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
 interface LogEntry {
   timestamp: Date;
@@ -65,7 +65,10 @@ class GeminiWatchdogService {
 
   constructor() {
     if (GEMINI_API_KEY) {
-      this.genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+      this.genAI = new GoogleGenAI({
+        apiKey: GEMINI_API_KEY,
+        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+      });
       logger.info('[Gemini Watchdog] ✅ Gemini 2.5 Flash initialized');
     } else {
       logger.warn('[Gemini Watchdog] ⚠️ GEMINI_API_KEY not configured - watchdog disabled');

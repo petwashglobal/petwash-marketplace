@@ -7,11 +7,14 @@
 import { logger } from '../lib/logger';
 import { GoogleGenAI } from '@google/genai';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 let genAI: GoogleGenAI | null = null;
 
 if (GEMINI_API_KEY) {
-  genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  genAI = new GoogleGenAI({
+    apiKey: GEMINI_API_KEY,
+    ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+  });
 }
 
 interface EmailValidationResult {
@@ -89,8 +92,6 @@ class GeminiEmailMonitor {
       }
 
       // Check 4: Use Gemini AI to analyze email for deep issues
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-
       const prompt = `You are an email rendering expert. Analyze this HTML email template for issues that would prevent it from displaying correctly in iOS Mail, Android Gmail, Outlook, and web clients.
 
 Focus on:
@@ -116,8 +117,11 @@ CRITICAL: [issue 1]
 WARNING: [issue 2]
 SUGGESTION: [fix 1]`;
 
-      const result = await model.generateContent(prompt);
-      const aiAnalysis = result.response.text();
+      const result = await genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      const aiAnalysis = result.text || '';
 
       // Parse AI response
       const criticalMatches = aiAnalysis.match(/CRITICAL: (.+)/g);

@@ -57,9 +57,12 @@ export class ReviewModerationService {
   private geminiAI: GoogleGenAI | null = null;
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (apiKey) {
-      this.geminiAI = new GoogleGenAI({ apiKey });
+      this.geminiAI = new GoogleGenAI({
+        apiKey,
+        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+      });
     } else {
       console.warn("GEMINI_API_KEY not set - AI moderation will be limited to keyword matching");
     }
@@ -135,8 +138,6 @@ export class ReviewModerationService {
     }
 
     try {
-      const model = this.geminiAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-
       const prompt = `You are a review moderation AI for ⁦Pet Wash™⁩, a pet services platform.
 
 Your task: Analyze this customer review for policy violations.
@@ -166,9 +167,11 @@ Return ONLY a valid JSON object with this exact structure:
   "requiresLegalReview": boolean
 }`;
 
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      const text = response.text();
+      const result = await this.geminiAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      const text = result.text || '';
 
       // Parse JSON response
       const jsonMatch = text.match(/\{[\s\S]*\}/);

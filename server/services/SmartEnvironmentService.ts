@@ -14,12 +14,15 @@ import { logger } from '../lib/logger';
 import { GoogleGenAI } from '@google/genai';
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
 let genAI: GoogleGenAI | null = null;
 
 if (GEMINI_API_KEY) {
-  genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  genAI = new GoogleGenAI({
+    apiKey: GEMINI_API_KEY,
+    ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+  });
 }
 
 interface AirQualityData {
@@ -389,8 +392,6 @@ class SmartEnvironmentService {
         return this.getFallbackRecommendations(airQuality, pollen, weather, overallScore);
       }
 
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-
       const prompt = `You are a luxury pet care environmental expert. Analyze this environmental data and provide actionable recommendations for pet owners.
 
 **Air Quality:**
@@ -430,8 +431,11 @@ Provide recommendations in this exact JSON format:
 
 Make recommendations luxurious, specific, and actionable. Focus on pet health and comfort.`;
 
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
+      const result = await genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      const responseText = result.text || '';
 
       // Extract JSON from response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);

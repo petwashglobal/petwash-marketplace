@@ -11479,9 +11479,11 @@ self.addEventListener('notificationclick', (event) => {
         .where(eq(subscriptionProducts.isActive, true));
 
       // Import Google Gemini API
-      const { GoogleGenerativeAI } = await import('@google/genai');
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      const { GoogleGenAI } = await import('@google/genai');
+      const genAI = new GoogleGenAI({
+        apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+      });
 
       const petProfile = subscription.petProfile as any;
       const prompt = `You are an expert pet nutritionist and product curator. Based on the following pet profile and available products, recommend the best ${boxType.itemCount} products for this month's subscription box.
@@ -11511,8 +11513,11 @@ Return a JSON response with the following structure:
 
 Select exactly ${boxType.itemCount} products that match the pet's profile, age, size, and dietary needs. Prioritize variety across categories (food, treats, toys, etc.).`;
 
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
+      const result = await genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      const responseText = result.text || '';
       
       // Parse AI response
       let aiResponse;

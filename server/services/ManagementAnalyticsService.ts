@@ -30,7 +30,10 @@ import { eq, and, gte, lte, sql, desc, sum } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const ai = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
 
 export type ServiceType = 'k9000_wash' | 'sitter_suite' | 'walk_my_pet' | 'pettrek_transport';
 export type TimeFrame = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -457,13 +460,6 @@ export class ManagementAnalyticsService {
     currentPeriod: TimeFrame
   ): Promise<ComprehensiveMetrics['forecasting']> {
     try {
-      const model = ai.getGenerativeModel({
-        model: 'gemini-2.0-flash-exp',
-        generationConfig: {
-          responseMimeType: 'application/json'
-        }
-      });
-
       const prompt = `You are a financial analyst for ⁦Pet Wash™⁩, a multi-service pet care franchise in Israel.
 
 Analyze the current performance data and generate revenue forecasts:
@@ -495,8 +491,12 @@ Consider:
 - Market trends in Israel
 - Economic conditions (2025)`;
 
-      const result = await model.generateContent(prompt);
-      const forecast = JSON.parse(result.response.text());
+      const result = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: { responseMimeType: 'application/json' },
+      });
+      const forecast = JSON.parse(result.text || '{}');
 
       logger.info('[Management Analytics] AI forecast generated', {
         nextMonthRevenue: forecast.nextMonthRevenue,

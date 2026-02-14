@@ -4,6 +4,11 @@ import { db } from '../db';
 import crypto from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 
+const geminiAI = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
+
 export type PlatformService = 'wash' | 'sitter' | 'walk' | 'trek' | 'all';
 
 export interface GiftCardConfig {
@@ -51,14 +56,8 @@ const DEFAULT_DISTRIBUTION: Record<PlatformService, number> = {
 };
 
 export class GiftOrchestrationService {
-  private genAI: GoogleGenerativeAI | null = null;
-  
-  constructor() {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
-    if (apiKey) {
-      this.genAI = new GoogleGenerativeAI(apiKey);
-    }
-  }
+  constructor() {}
+
 
   async createMultiServiceGiftCard(config: GiftCardConfig): Promise<{
     giftCardId: string;
@@ -151,9 +150,8 @@ export class GiftOrchestrationService {
     let distributions: RevenueDistribution[] = [];
     let aiReasoning = '';
 
-    if (this.genAI && redemptionHistory.length > 0) {
+    if (redemptionHistory.length > 0) {
       try {
-        const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
         
         const prompt = `Analyze this PetWash gift card redemption data and recommend fair revenue distribution:
 
@@ -177,8 +175,11 @@ Based on actual usage, recommend percentage split. Consider:
 
 Return ONLY valid JSON: {"distributions": [{"service": "wash", "percentage": 40}, ...], "reasoning": "brief explanation"}`;
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
+        const result = await geminiAI.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+        });
+        const text = result.text || '';
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         
         if (jsonMatch) {

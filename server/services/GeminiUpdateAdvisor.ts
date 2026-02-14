@@ -55,21 +55,15 @@ export class GeminiUpdateAdvisor {
     if (this.isInitialized) return;
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
       if (!apiKey) {
         logger.warn('[Gemini Advisor] ⚠️ GEMINI_API_KEY not configured - advisory disabled');
         return;
       }
 
-      this.genAI = new GoogleGenAI({ apiKey });
-      this.model = this.genAI.getGenerativeModel({ 
-        model: 'gemini-2.0-flash-exp',
-        generationConfig: {
-          temperature: 0.2,
-          topP: 0.9,
-          topK: 40,
-          maxOutputTokens: 2048,
-        }
+      this.genAI = new GoogleGenAI({
+        apiKey,
+        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
       });
 
       this.isInitialized = true;
@@ -170,8 +164,17 @@ Provide expert analysis as JSON:
 Respond ONLY with valid JSON.
 `;
 
-      const result = await this.model.generateContent(prompt);
-      const response = result.response.text();
+      const result = await this.genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          temperature: 0.2,
+          topP: 0.9,
+          topK: 40,
+          maxOutputTokens: 2048,
+        },
+      });
+      const response = result.text || '';
       
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {

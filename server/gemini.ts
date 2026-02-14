@@ -6,8 +6,10 @@ import { logger } from './lib/logger';
 // - Note that the newest Gemini model series is "gemini-2.5-flash" or gemini-2.5-pro"
 //   - do not change this unless explicitly requested by the user
 
-// This API key is from Gemini Developer API Key, not vertex AI API Key
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const ai = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "",
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
 
 const KENZO_SECURITY_GUARDRAILS = `
 🚫 STRICT SECURITY RULES - NEVER VIOLATE:

@@ -32,9 +32,12 @@ class ContentModerationService {
   private blocklist: Map<string, string[]>; // language -> blocked terms
 
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (apiKey) {
-      this.genAI = new GoogleGenAI(apiKey);
+      this.genAI = new GoogleGenAI({
+        apiKey,
+        ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+      });
       logger.info('[ContentModeration] ✅ Gemini AI initialized');
     } else {
       logger.warn('[ContentModeration] ⚠️ Gemini API key not found - AI moderation disabled');
@@ -119,8 +122,6 @@ class ContentModerationService {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-
       const prompt = `You are a content moderation AI for a family-friendly pet care platform.
 Analyze this user-generated content for:
 1. Profanity or vulgar language
@@ -142,8 +143,11 @@ Respond in JSON format:
 
 Be strict but context-aware. Reject anything offensive, hateful, or inappropriate for a family platform.`;
 
-      const result = await model.generateContent(prompt);
-      const response = result.response.text();
+      const result = await this.genAI.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      const response = result.text || '';
 
       // Parse JSON response
       const jsonMatch = response.match(/\{[\s\S]*\}/);

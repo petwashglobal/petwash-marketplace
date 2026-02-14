@@ -3,13 +3,16 @@
  * OCR + Gemini 2.5 Flash for Automatic Expense Classification
  */
 
-import { GoogleGenerativeAI } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import { db as firestoreDb } from '../lib/firebase-admin';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 
-const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const ai = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+  ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+});
 const visionClient = new ImageAnnotatorClient({
   credentials: process.env.FIREBASE_SERVICE_ACCOUNT_KEY 
     ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
@@ -59,12 +62,7 @@ async function extractTextFromReceipt(imageUrl: string): Promise<string> {
  */
 async function classifyExpenseWithAI(receiptText: string): Promise<ReceiptData> {
   try {
-    const model = ai.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: {
-        responseMimeType: 'application/json'
-      }
-    });
+    const model = 'gemini-2.5-flash';
     
     const prompt = `You are a professional Israeli bookkeeper for ⁦PetWash™⁩ franchise.
 
@@ -107,9 +105,12 @@ Israeli Receipt Patterns:
 
 Be conservative with classification. If unsure, use "other" and set low confidence.`;
     
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const result = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: { responseMimeType: 'application/json' },
+    });
+    const text = result.text || '';
     
     const expenseData: ReceiptData = JSON.parse(text);
     
