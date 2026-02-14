@@ -4,9 +4,24 @@ import { onAuthStateChanged, User, signOut, setPersistence, browserLocalPersiste
 import { trackLogout } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
 
+export type UserRole = 'public' | 'provider' | 'staff' | 'admin' | 'management' | 'super_admin';
+
+export interface UserClaims {
+  role: UserRole;
+  accountType?: string;
+  loyaltyTier?: string;
+  loyaltyMember?: boolean;
+  program?: string;
+  authProvider?: string;
+}
+
+const DEFAULT_CLAIMS: UserClaims = { role: 'public' };
+
 type AuthContextType = { 
   user: User | null; 
   loading: boolean;
+  claims: UserClaims;
+  claimsLoading: boolean;
   logout: () => Promise<void>;
   isDevMode: boolean;
   enableDevMode: () => void;
@@ -16,6 +31,8 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType>({ 
   user: null, 
   loading: true,
+  claims: DEFAULT_CLAIMS,
+  claimsLoading: true,
   logout: async () => {},
   isDevMode: false,
   enableDevMode: () => {},
@@ -52,6 +69,8 @@ const createDevUser = (): Partial<User> => ({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [claims, setClaims] = useState<UserClaims>(DEFAULT_CLAIMS);
+  const [claimsLoading, setClaimsLoading] = useState(true);
   const [isDevMode, setIsDevMode] = useState(() => {
     if (!import.meta.env.DEV) return false;
     if (typeof window !== 'undefined') {
@@ -94,9 +113,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.error("Failed to set persistence:", error);
     });
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
       setLoading(false);
+
+      if (firebaseUser) {
+        try {
+          const tokenResult = await firebaseUser.getIdTokenResult(true);
+          const c = tokenResult.claims;
+          setClaims({
+            role: (c.role as UserRole) || 'public',
+            accountType: c.accountType as string,
+            loyaltyTier: c.loyaltyTier as string,
+            loyaltyMember: c.loyaltyMember as boolean,
+            program: c.program as string,
+            authProvider: c.authProvider as string,
+          });
+        } catch (err) {
+          logger.warn('Failed to fetch user claims', err);
+          setClaims(DEFAULT_CLAIMS);
+        }
+        setClaimsLoading(false);
+      } else {
+        setClaims(DEFAULT_CLAIMS);
+        setClaimsLoading(false);
+      }
     });
 
     return () => unsubscribe();
@@ -132,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, isDevMode, enableDevMode, disableDevMode }}>
+    <AuthContext.Provider value={{ user, loading, claims, claimsLoading, logout, isDevMode, enableDevMode, disableDevMode }}>
       {children}
     </AuthContext.Provider>
   );

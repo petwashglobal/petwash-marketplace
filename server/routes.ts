@@ -296,6 +296,96 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   // Phase 1: App Check Monitor Mode for admin routes
   app.use('/api/admin/', verifyAppCheckTokenOptional);
+
+  // ========================================================================
+  // PUBLIC USER ROLE GUARD - Blocks public/pet_parent users from internal routes
+  // Public users can ONLY access: loyalty, gift-cards, wallet, profile, auth, referral, public pages
+  // All admin/enterprise/franchise/provider/staff/management routes are blocked
+  // ========================================================================
+  const INTERNAL_ROUTE_PREFIXES = [
+    '/api/admin',
+    '/api/enterprise',
+    '/api/franchise',
+    '/api/franchise-mgmt',
+    '/api/control-panel',
+    '/api/employees',
+    '/api/staff',
+    '/api/management',
+    '/api/ceo',
+    '/api/hr',
+    '/api/compliance',
+    '/api/compliance-brain',
+    '/api/contractors',
+    '/api/contracts',
+    '/api/operations',
+    '/api/deployment',
+    '/api/metrics',
+    '/api/security-status',
+    '/api/synthetic',
+    '/api/gemini-watchdog',
+    '/api/ai-insights',
+    '/api/campaigns',
+    '/api/meetings',
+    '/api/ita',
+    '/api/luxury-documents',
+    '/api/qa',
+    '/api/backup',
+    '/api/expenses',
+    '/api/accounting',
+    '/api/bank',
+    '/api/send-report',
+    '/api/production-monitor',
+    '/api/inventory',
+    '/api/finance',
+    '/api/k9000',
+    '/api/documents',
+    '/api/events',
+    '/api/provider-review',
+    '/api/provider-training',
+    '/api/israeli-compliance',
+    '/api/provider-dashboard',
+    '/api/provider-applications',
+  ];
+
+  app.use(async (req, res, next) => {
+    const path = req.path.toLowerCase();
+    const isInternalRoute = INTERNAL_ROUTE_PREFIXES.some(prefix => path.startsWith(prefix));
+
+    if (!isInternalRoute) {
+      return next();
+    }
+
+    if (!req.firebaseUser?.uid) {
+      return next();
+    }
+
+    const userEmail = (req.firebaseUser.email || '').toLowerCase();
+    const { isSuperAdmin: checkSuperAdmin } = await import('./middleware/rbac');
+    if (checkSuperAdmin(userEmail)) {
+      return next();
+    }
+
+    try {
+      const { adminAuth: fbAdminAuth } = await import('./lib/firebase-admin');
+      const userRecord = await fbAdminAuth.getUser(req.firebaseUser.uid);
+      const claims = (userRecord.customClaims || {}) as Record<string, any>;
+
+      const role = claims.role || (claims.accountType === 'internal' ? 'staff' : claims.accountType === 'provider' ? 'provider' : 'public');
+
+      if (role === 'public' || role === 'pet_parent') {
+        logger.warn(`[RBAC Guard] Public user blocked from internal route: ${userEmail} -> ${path}`);
+        return res.status(403).json({
+          error: 'Access denied',
+          message: 'This area is restricted to authorized personnel only. Public users can access loyalty, gift cards, wallet, and profile features.',
+        });
+      }
+    } catch (err) {
+      // If we can't verify, let through to individual route middleware
+      logger.warn('[RBAC Guard] Could not verify role claims, falling through', { err });
+    }
+
+    next();
+  });
   
   // ========================================================================
   // 🏥 HEALTH CHECK ENDPOINTS - Status monitoring for uptime services

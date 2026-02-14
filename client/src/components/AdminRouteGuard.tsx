@@ -8,22 +8,25 @@ interface AdminRouteGuardProps {
 }
 
 export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
-  const { user: firebaseUser, loading: firebaseLoading } = useFirebaseAuth();
+  const { user: firebaseUser, loading: firebaseLoading, claims, claimsLoading } = useFirebaseAuth();
   const { admin, isLoading: adminLoading, isError } = useAdminAuth();
   const [, setLocation] = useLocation();
 
-  // Redirect logic in useEffect to prevent infinite loops
   useEffect(() => {
-    // Step 1: Check Firebase auth first
     if (!firebaseLoading && !firebaseUser) {
-      console.log('[AdminGuard] ❌ No Firebase user → redirecting to /admin/login');
+      console.log('[AdminGuard] No Firebase user, redirecting to /admin/login');
       setLocation("/admin/login");
       return;
     }
 
-    // Step 2: Then check admin access via /api/auth/me
+    if (!claimsLoading && firebaseUser && (claims.role === 'public' || claims.role === 'provider')) {
+      console.log('[AdminGuard] Public/provider user blocked from admin area, role:', claims.role);
+      setLocation("/admin/access-denied");
+      return;
+    }
+
     if (!adminLoading && firebaseUser && (!admin || !admin.isActive || isError)) {
-      console.log('[AdminGuard] ❌ Admin check failed → redirecting to access denied', { 
+      console.log('[AdminGuard] Admin check failed, redirecting to access denied', { 
         hasAdmin: !!admin, 
         isActive: admin?.isActive, 
         isError 
@@ -32,22 +35,19 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
       return;
     }
 
-    // Step 3: Verify role is admin or ops (SECURITY: prevent privilege escalation)
     const allowedRoles = ['admin', 'ops'];
     if (!adminLoading && firebaseUser && admin && !allowedRoles.includes(admin.role)) {
-      console.log('[AdminGuard] ❌ Insufficient permissions → role:', admin.role);
+      console.log('[AdminGuard] Insufficient permissions, role:', admin.role);
       setLocation("/admin/access-denied");
       return;
     }
 
-    // Step 4: Success
     if (!adminLoading && !firebaseLoading && admin && admin.isActive && allowedRoles.includes(admin.role)) {
-      console.log('[AdminGuard] ✅ Access granted:', admin.email, admin.role);
+      console.log('[AdminGuard] Access granted:', admin.email, admin.role);
     }
-  }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation]);
+  }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation, claims, claimsLoading]);
 
-  // Show loading state while checking
-  if (firebaseLoading || adminLoading) {
+  if (firebaseLoading || adminLoading || claimsLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">

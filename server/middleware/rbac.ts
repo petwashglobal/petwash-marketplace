@@ -476,6 +476,170 @@ export async function requireCustomerAccount(
   }
 }
 
+export const ROLE_HIERARCHY: Record<string, number> = {
+  'public': 1,
+  'pet_parent': 1,
+  'provider': 2,
+  'pending_staff': 3,
+  'staff': 4,
+  'admin': 6,
+  'hr': 7,
+  'management': 8,
+  'super_admin': 10,
+};
+
+export const PUBLIC_ALLOWED_ROUTES = [
+  '/api/loyalty',
+  '/api/gift-cards',
+  '/api/egift',
+  '/api/vouchers',
+  '/api/wallet',
+  '/api/credit-wallet',
+  '/api/auth',
+  '/api/profile',
+  '/api/pets',
+  '/api/marketplace-bookings/search',
+  '/api/stations/public',
+  '/api/referral',
+  '/api/weather',
+  '/api/k9000/public',
+];
+
+function getUserRoleFromClaims(claims: Record<string, any>): string {
+  if (claims.role) return claims.role;
+  if (claims.accountType === 'internal') return 'staff';
+  if (claims.accountType === 'provider') return 'provider';
+  return 'public';
+}
+
+export async function requirePublicUser(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.firebaseUser?.uid) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'Please sign in to access this feature',
+      });
+    }
+    next();
+  } catch (error) {
+    logger.error('Error in requirePublicUser middleware:', error);
+    res.status(500).json({ error: 'Failed to verify access' });
+  }
+}
+
+export async function blockPublicUser(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.firebaseUser?.uid || !req.firebaseUser?.email) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'Please sign in to access this feature',
+      });
+    }
+
+    const userEmail = req.firebaseUser.email.toLowerCase();
+
+    if (isSuperAdmin(userEmail)) {
+      return next();
+    }
+
+    const { adminAuth } = await import('../lib/firebase-admin');
+    const userRecord = await adminAuth.getUser(req.firebaseUser.uid);
+    const claims = (userRecord.customClaims || {}) as Record<string, any>;
+    const role = getUserRoleFromClaims(claims);
+    const roleLevel = ROLE_HIERARCHY[role] || 1;
+
+    if (roleLevel <= ROLE_HIERARCHY['public']) {
+      logger.warn(`[RBAC] Public user blocked from internal route: ${userEmail} -> ${req.path}`);
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'This area is restricted to authorized personnel only',
+        role: 'public',
+      });
+    }
+
+    next();
+  } catch (error) {
+    logger.error('Error in blockPublicUser middleware:', error);
+    res.status(500).json({ error: 'Failed to verify access level' });
+  }
+}
+
+export async function requireMinRole(minRole: string) {
+  const minLevel = ROLE_HIERARCHY[minRole] || 1;
+
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      if (!req.firebaseUser?.uid || !req.firebaseUser?.email) {
+        return res.status(401).json({
+          error: 'Authentication required',
+        });
+      }
+
+      const userEmail = req.firebaseUser.email.toLowerCase();
+
+      if (isSuperAdmin(userEmail)) {
+        return next();
+      }
+
+      const { adminAuth } = await import('../lib/firebase-admin');
+      const userRecord = await adminAuth.getUser(req.firebaseUser.uid);
+      const claims = (userRecord.customClaims || {}) as Record<string, any>;
+      const role = getUserRoleFromClaims(claims);
+      const roleLevel = ROLE_HIERARCHY[role] || 1;
+
+      if (roleLevel < minLevel) {
+        logger.warn(`[RBAC] Insufficient role: ${userEmail} has ${role} (${roleLevel}), needs ${minRole} (${minLevel})`);
+        return res.status(403).json({
+          error: 'Access denied',
+          message: `This action requires ${minRole} access or higher`,
+        });
+      }
+
+      next();
+    } catch (error) {
+      logger.error('Error in requireMinRole middleware:', error);
+      res.status(500).json({ error: 'Failed to verify access level' });
+    }
+  };
+}
+
+export function enforceSelfOnly(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  if (!req.firebaseUser?.uid) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const bodyUserId = req.body?.userId || req.body?.uid;
+  const queryUserId = req.query?.userId || req.query?.uid;
+  const paramUserId = req.params?.userId || req.params?.uid;
+
+  const requestedUserId = bodyUserId || queryUserId || paramUserId;
+
+  if (requestedUserId && requestedUserId !== req.firebaseUser.uid) {
+    const userEmail = req.firebaseUser.email || 'unknown';
+    if (!isSuperAdmin(userEmail)) {
+      logger.warn(`[RBAC] Self-only violation: ${userEmail} tried to access data for ${requestedUserId}`);
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'You can only access your own data',
+      });
+    }
+  }
+
+  next();
+}
+
 export default {
   isSuperAdmin,
   loadUserRole,
@@ -487,5 +651,11 @@ export default {
   checkFranchiseeOwnership,
   requireAdmin,
   requireInternalAccount,
-  requireCustomerAccount
+  requireCustomerAccount,
+  requirePublicUser,
+  blockPublicUser,
+  requireMinRole,
+  enforceSelfOnly,
+  ROLE_HIERARCHY,
+  PUBLIC_ALLOWED_ROUTES,
 };

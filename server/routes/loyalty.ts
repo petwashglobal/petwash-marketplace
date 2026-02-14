@@ -177,7 +177,10 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
       await adminAuth.setCustomUserClaims(userId, {
         ...existingClaims,
         accountType: userRole === 'provider' ? 'provider' : 'pet_parent',
+        role: userRole === 'provider' ? 'provider' : 'public',
         loyaltyTier: 'bronze',
+        loyaltyMember: true,
+        program: 'PetWash Privilege',
       });
       logger.info('[Loyalty] Custom claims set for user', { userId, accountType: userRole });
     } catch (claimsErr) {

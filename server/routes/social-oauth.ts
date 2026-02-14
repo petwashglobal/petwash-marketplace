@@ -144,8 +144,11 @@ router.get('/tiktok/callback', async (req: Request, res: Response) => {
 
       await adminAuth.setCustomUserClaims(uid, {
         accountType: 'pet_parent',
+        role: 'public',
         authProvider: 'tiktok',
         loyaltyTier: 'bronze',
+        loyaltyMember: true,
+        program: 'PetWash Privilege',
       });
     }
 
@@ -234,8 +237,11 @@ router.get('/instagram/callback', async (req: Request, res: Response) => {
 
       await adminAuth.setCustomUserClaims(uid, {
         accountType: 'pet_parent',
+        role: 'public',
         authProvider: 'instagram',
         loyaltyTier: 'bronze',
+        loyaltyMember: true,
+        program: 'PetWash Privilege',
       });
     }
 
