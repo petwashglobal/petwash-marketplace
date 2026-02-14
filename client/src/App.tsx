@@ -14,6 +14,7 @@ import { NotificationPermissionPrompt } from "@/components/NotificationPermissio
 import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
 import { SimpleAuthProvider } from "@/hooks/useSimpleAuth";
 import RequireAuth from "@/auth/RequireAuth";
+import RoleProtectedRoute from "@/auth/RoleProtectedRoute";
 import { initClientSentry } from "@/lib/sentry";
 
 initClientSentry();
@@ -903,33 +904,33 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Unified Provider Dashboard (Uber/MadPaws style) */}
         <Route path="/provider/dashboard">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="provider">
               <Suspense fallback={<PageLoader />}>
                 <UnifiedProviderDashboard />
               </Suspense>
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
 
         {/* ⁦PetTrek™⁩ - Provider/Driver Dashboard */}
         <Route path="/pettrek/provider/dashboard">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="provider">
               <Suspense fallback={<PageLoader />}>
                 <PetTrekProviderDashboard />
               </Suspense>
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
         
         {/* ⁦PetTrek™⁩ - Driver Dashboard (Uber-style for pet transport drivers) */}
         <Route path="/pettrek/driver/dashboard">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="provider">
               <Suspense fallback={<PageLoader />}>
                 <DriverDashboardPage />
               </Suspense>
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
         
@@ -1137,11 +1138,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Grooming Marketplace - Provider Dashboard */}
         <Route path="/groomers/provider/dashboard">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="provider">
               <Suspense fallback={<PageLoader />}>
                 <GroomersProviderDashboard language={language} />
               </Suspense>
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
         
@@ -1430,40 +1431,40 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Franchise routes - Protected */}
+        {/* Franchise routes - Protected (staff+ only) */}
         <Route path="/franchise/dashboard">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="staff">
               <FranchiseDashboard />
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/franchise/inbox">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="staff">
               <FranchiseInbox />
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/franchise/reports">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="staff">
               <FranchiseReports />
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/franchise/support">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="staff">
               <FranchiseSupport />
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/franchise/marketing">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="staff">
               <FranchiseMarketing />
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
         
@@ -1600,23 +1601,29 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/provider-compliance">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderCompliance />
-            </Suspense>
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderCompliance />
+              </Suspense>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/provider/bookings">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderBookingsDashboard />
-            </Suspense>
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderBookingsDashboard />
+              </Suspense>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/accounting">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <AccountingDashboard />
-            </Suspense>
+            <RoleProtectedRoute minRole="staff">
+              <Suspense fallback={<PageLoader />}>
+                <AccountingDashboard />
+              </Suspense>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/control-panel">
@@ -1630,9 +1637,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/management">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <MobileManagementDashboard />
-            </Suspense>
+            <RoleProtectedRoute minRole="management">
+              <Suspense fallback={<PageLoader />}>
+                <MobileManagementDashboard />
+              </Suspense>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/admin/dashboard">

@@ -370,7 +370,23 @@ export async function registerRoutes(app: Express): Promise<void> {
       const userRecord = await fbAdminAuth.getUser(req.firebaseUser.uid);
       const claims = (userRecord.customClaims || {}) as Record<string, any>;
 
-      const role = claims.role || (claims.accountType === 'internal' ? 'staff' : claims.accountType === 'provider' ? 'provider' : 'public');
+      let role = claims.role;
+
+      if (!role) {
+        role = claims.accountType === 'internal' ? 'staff' : claims.accountType === 'provider' ? 'provider' : 'public';
+        try {
+          await fbAdminAuth.setCustomUserClaims(req.firebaseUser.uid, {
+            ...claims,
+            role,
+            loyaltyMember: claims.loyaltyMember ?? true,
+            loyaltyTier: claims.loyaltyTier || 'bronze',
+            program: claims.program || 'PetWash Privilege',
+          });
+          logger.info(`[RBAC Guard] Auto-set role claim for user: ${userEmail} -> ${role}`);
+        } catch (setErr) {
+          logger.warn('[RBAC Guard] Failed to auto-set role claim', { setErr });
+        }
+      }
 
       if (role === 'public' || role === 'pet_parent') {
         logger.warn(`[RBAC Guard] Public user blocked from internal route: ${userEmail} -> ${path}`);
@@ -380,7 +396,6 @@ export async function registerRoutes(app: Express): Promise<void> {
         });
       }
     } catch (err) {
-      // If we can't verify, let through to individual route middleware
       logger.warn('[RBAC Guard] Could not verify role claims, falling through', { err });
     }
 
