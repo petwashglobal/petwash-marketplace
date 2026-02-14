@@ -181,6 +181,7 @@ import weatherTestRoutes from "./routes/weather-test";
 import productionMonitorRoutes from "./routes/production-monitor";
 import octopusBrainRoutes from "./routes/octopus-brain";
 import octopusEngineRoutes from "./routes/octopus-engine";
+import kyc2026Routes from "./routes/kyc2026";
 import { publicAuthRouter } from "./routes/publicAuthRoutes";
 // SSL certificate endpoints removed - handled by Replit platform
 import { 
@@ -8432,6 +8433,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // KYC Verification routes
   app.use('/api/kyc', uploadLimiter, kycRoutes);
+  
+  // KYC 2026 - Enterprise-Grade Identity Verification
+  app.use('/api/kyc/v2', kyc2026Routes);
 
   // PetWash Privilege registration - Public (no auth required to join)
   const privilegeLoyaltyRoutes = await import('./routes/privilege-loyalty');

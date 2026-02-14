@@ -10888,3 +10888,62 @@ export const insertEgiftRedeemAttemptSchema = createInsertSchema(egiftRedeemAtte
 });
 export type InsertEgiftRedeemAttempt = z.infer<typeof insertEgiftRedeemAttemptSchema>;
 export type EgiftRedeemAttempt = typeof egiftRedeemAttempts.$inferSelect;
+
+export const kycAuditLog = pgTable("kyc_audit_log", {
+  id: serial("id").primaryKey(),
+  entryId: varchar("entry_id", { length: 64 }).notNull(),
+  action: varchar("action", { length: 50 }).notNull(),
+  actorId: varchar("actor_id", { length: 255 }).notNull(),
+  actorRole: varchar("actor_role", { length: 100 }).notNull(),
+  targetUserId: varchar("target_user_id", { length: 255 }),
+  verificationId: varchar("verification_id", { length: 100 }),
+  ipAddress: varchar("ip_address", { length: 100 }),
+  userAgent: text("user_agent"),
+  deviceFingerprint: varchar("device_fingerprint", { length: 64 }),
+  metadata: jsonb("metadata"),
+  riskScore: integer("risk_score"),
+  previousHash: varchar("previous_hash", { length: 64 }).notNull(),
+  entryHash: varchar("entry_hash", { length: 64 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_kyc_audit_actor").on(table.actorId),
+  index("idx_kyc_audit_target").on(table.targetUserId),
+  index("idx_kyc_audit_action").on(table.action),
+  index("idx_kyc_audit_created").on(table.createdAt),
+  index("idx_kyc_audit_verification").on(table.verificationId),
+]);
+
+export const kycRoleAssignments = pgTable("kyc_role_assignments", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  role: varchar("role", { length: 50 }).notNull(),
+  assignedBy: varchar("assigned_by", { length: 255 }).notNull(),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"),
+  isActive: boolean("is_active").default(true).notNull(),
+}, (table) => [
+  index("idx_kyc_roles_user").on(table.userId),
+  index("idx_kyc_roles_active").on(table.isActive),
+]);
+
+export const kycIncidents = pgTable("kyc_incidents", {
+  id: serial("id").primaryKey(),
+  incidentId: varchar("incident_id", { length: 64 }).notNull().unique(),
+  severity: varchar("severity", { length: 10 }).notNull(),
+  type: varchar("type", { length: 100 }).notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 20 }).notNull().default("detected"),
+  affectedUsers: jsonb("affected_users"),
+  containmentActions: jsonb("containment_actions"),
+  evidence: jsonb("evidence"),
+  detectedAt: timestamp("detected_at").notNull(),
+  respondedAt: timestamp("responded_at"),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by", { length: 255 }),
+  resolution: text("resolution"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_kyc_incidents_status").on(table.status),
+  index("idx_kyc_incidents_severity").on(table.severity),
+]);

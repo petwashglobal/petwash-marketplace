@@ -1,0 +1,71 @@
+Got it. Here is the clear update you can send to the developer, plus the 2026-level hardened KYC architecture (production-ready) and the dashboard separation plan.
+
+⸻
+
+1) Dashboards must be separated by type
+
+Yes, “general loyalty member” must be different from provider or staff. Badges alone are not enough. You need hard routing + hard authorization.
+
+Required dashboard routing rules
+	•	Loyalty Member
+Route: /member
+Cannot see any provider onboarding, jobs, staff tools, HR, finance.
+	•	Provider (sitter, walker, groomer, PetTrek driver, contractor)
+Route: /provider
+Sees onboarding, availability, bookings assigned, payouts, KYC status, compliance.
+	•	Staff (ops, support, maintenance)
+Route: /staff
+Sees station ops, tickets, customer support tools.
+	•	Admin / Management / HR / Finance
+Route: /admin
+Only via claims, mandatory MFA, IP logging, session hardening.
+
+Hard requirement
+	•	Role must come from custom claims only (JWT claims), not from Firestore fields.
+	•	Front end must not decide role. Front end only reads claims and routes.
+
+Implementation pattern
+	•	After login: call GET /session/whoami (server)
+	•	Server returns {role, dashboardsAllowed, mfaRequired, kycStatus}
+	•	Client routes accordingly and hides everything else.
+
+⸻
+
+2) Your biometric setup with Google, what you are actually doing today
+
+What you are doing (current)
+	•	OCR using Google Vision (document text detection, MRZ for passports if used)
+	•	Face detection using Vision faceDetection
+	•	Basic face comparison in your own code (landmarks geometry), not a dedicated face-match model
+	•	Uploads stored temporarily (Firebase Storage) then deleted by lifecycle rule (example 24h)
+
+What you are NOT doing (current)
+	•	NFC scanning: No
+	•	mDL cryptographic validation: No
+	•	Barcode scanning (PDF417 on license back): Not unless you implemented a barcode reader library and pipeline
+
+So answer to your question: No NFC / no mDL crypto today. That is fine for remote onboarding, but you must add real liveness + stronger face match to be fintech-grade.
+
+⸻
+
+3) Clear answers to your 10 security confirmations (current vs 2026 target)
+
+Current honest status (based on what you pasted)
+	1.	Zero-storage for sensitive images? No (temporary Storage upload).
+	2.	Strict TTL deletion? Yes (example 24h lifecycle) but must confirm it applies to all prefixes.
+	3.	Processing server-side only? Yes (decisions server-side).
+	4.	Secret Manager everywhere? No (env vars).
+	5.	Admin mandatory MFA + IP logging? Not mandatory.
+	6.	Anomaly detection? No.
+	7.	KYC specific rate limiting? Not dedicated.
+	8.	Firestore/Storage rules locked? Needs verification (must be explicitly locked).
+	9.	Audit trail for every KYC view/edit/approve? Partial.
+	10.	Lateral movement controls? Minimal.
+
+That is not “fintech 2026” yet. Below is the production-ready 2026 architecture.
+
+⸻
+
+4) 2026-level hardened KYC architecture (production-ready)
+
+Architecture diagram (text)

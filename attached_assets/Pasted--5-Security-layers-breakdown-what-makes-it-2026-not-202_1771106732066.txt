@@ -1,0 +1,87 @@
+
+⸻
+
+5) Security layers breakdown (what makes it 2026, not 2022)
+
+A) Zero trust access model
+	•	All admin tools are separate origin/app
+	•	Role via custom claims only
+	•	Every sensitive endpoint checks:
+	•	role claim
+	•	MFA claim
+	•	session age
+	•	IP risk score
+
+B) “Zero storage” mode option
+
+You can run two modes:
+	•	Memory-only mode (best): upload -> process in memory -> store only decision + hashes, no file stored
+	•	Strict TTL mode: store encrypted objects for short TTL (example 1-6 hours), auto delete
+
+C) Real liveness (not a checkbox)
+
+Production requirement:
+	•	active challenge: blink + head turn + random prompt
+	•	anti-spoof checks: screen replay, photo, deepfake signals
+	•	device signals: camera metadata, attempt velocity
+
+D) Real face match
+	•	Use neural embeddings (not landmarks geometry)
+	•	Store only embedding hash if needed (or no storage at all)
+	•	Thresholds per document type
+
+E) Dedicated KYC throttling
+	•	Per user: max submissions per day
+	•	Per IP: max attempts per hour
+	•	Per device fingerprint: max attempts
+	•	Hard lockouts with cooldown
+
+F) Full audit trail
+
+Log every event:
+	•	upload initiated
+	•	upload completed
+	•	processing started
+	•	decision
+	•	admin viewed image
+	•	admin approved/rejected
+	•	any export or download attempt
+
+G) Lateral movement barriers
+
+If one layer is breached:
+	•	WAF blocks unusual traffic
+	•	service accounts are least privilege
+	•	separate projects for prod vs dev
+	•	secrets never in code
+	•	storage buckets deny public access
+	•	admin console behind MFA + optional IP allowlist
+
+⸻
+
+6) Independent testing requirement
+
+For “government IDs” you should have at least:
+	•	external penetration test report (annual or per major release)
+	•	vulnerability scanning in CI (SAST + dependency scan)
+	•	security baseline checklist signed by dev lead
+
+If they have none, it is not enterprise-grade.
+
+⸻
+
+7) The exact questions to send your developer now (copy paste)
+	1.	Are dashboards routed by server whoami response and custom claims only? Show the code path.
+	2.	Confirm roles list and claims mapping. Who can access /admin, /staff, /provider, /member?
+	3.	Is MFA mandatory for admin and KYC-admin? How is it enforced server-side?
+	4.	Are KYC images stored at all? If yes, where, for how long, and prove TTL applies to all paths.
+	5.	Can we switch to memory-only KYC processing? If no, why.
+	6.	Do we have real liveness challenge in production? If yes, which vendor or implementation.
+	7.	Are we still using landmark geometry face matching? If yes, replace with embeddings.
+	8.	Show Firestore rules and Storage rules. Confirm no public reads and no wildcard access.
+	9.	Show audit log events list. Does it log admin views and downloads.
+	10.	What stops lateral movement if an admin token is stolen: IP checks, session age, step-up MFA, allowlist?
+
+⸻
+
+If you want, I can rewrite this as one clean “developer instruction” document with headings, acceptance criteria, and a pass/fail checklist that you can use to approve delivery.
