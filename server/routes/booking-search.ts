@@ -539,7 +539,7 @@ async function searchK9000Stations(filters: BookingSearchFilters, searchId: stri
       yearsExperience: 0,
       acceptedPetTypes: station.supportedPetTypes || ['dog'],
       maxPets: 1,
-      bio: `K9000 Self-Service Station at ${station.address}`,
+      bio: `K9000 Self-Service Station${station.address ? ` at ${station.address}` : ` - ${station.name}`}`,
       badges: station.status === 'online' ? ['available'] : [],
       responseTime: 'instant',
       lastActive: station.updatedAt,
