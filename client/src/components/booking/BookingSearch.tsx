@@ -87,7 +87,7 @@ const serviceTypes = [
   { value: 'pet_sitting', labelEn: 'Pet Sitting', labelHe: 'שמירת חיות מחמד' },
   { value: 'dog_walking', labelEn: 'Dog Walking', labelHe: 'הליכות כלבים' },
   { value: 'grooming', labelEn: 'Grooming', labelHe: 'טיפוח' },
-  { value: 'pet_taxi', labelEn: 'Pet Taxi', labelHe: 'הסעות חיות' },
+  { value: 'pet_taxi', labelEn: 'Pet Taxi (Coming Soon)', labelHe: 'הסעות חיות (בקרוב)', disabled: true },
   { value: 'daycare', labelEn: 'Daycare', labelHe: 'מעון יום' },
   { value: 'training', labelEn: 'Training', labelHe: 'אילוף' },
   { value: 'k9000_wash', labelEn: 'K9000 Wash', labelHe: 'רחצה K9000' },
@@ -200,7 +200,12 @@ export function BookingSearch() {
                 </SelectTrigger>
                 <SelectContent>
                   {serviceTypes.map(service => (
-                    <SelectItem key={service.value} value={service.value}>
+                    <SelectItem 
+                      key={service.value} 
+                      value={service.value}
+                      disabled={(service as any).disabled}
+                      className={(service as any).disabled ? 'opacity-50' : ''}
+                    >
                       {isHebrew ? service.labelHe : service.labelEn}
                     </SelectItem>
                   ))}

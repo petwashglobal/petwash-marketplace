@@ -38,8 +38,9 @@ export default function BookingUnified() {
     {
       icon: RouteIcon,
       name: "Pet Transport",
-      href: "/pettrek/book",
-      desc: "Safe pet transportation",
+      href: "/pettrek",
+      desc: "Coming Soon",
+      comingSoon: true,
     },
     {
       icon: GraduationCap,
@@ -71,14 +72,20 @@ export default function BookingUnified() {
         <div className="luxury-grid-3 mb-16">
           {services.map((service, index) => {
             const Icon = service.icon;
+            const isComingSoon = (service as any).comingSoon;
             return (
               <div
                 key={service.name}
-                className={`luxury-glass-card luxury-shadow-xl luxury-hover-glow p-8 cursor-pointer opacity-0 luxury-animate-slide-up luxury-delay-${index + 5}`}
-                onClick={() => setLocation(service.href)}
+                className={`luxury-glass-card luxury-shadow-xl ${isComingSoon ? 'opacity-60' : 'luxury-hover-glow cursor-pointer'} p-8 opacity-0 luxury-animate-slide-up luxury-delay-${index + 5} relative`}
+                onClick={() => !isComingSoon && setLocation(service.href)}
               >
+                {isComingSoon && (
+                  <div className="absolute top-4 right-4 bg-violet-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    Coming Soon
+                  </div>
+                )}
                 <div className="flex flex-col gap-6">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#0a2540] to-[#1a365d] flex items-center justify-center luxury-shadow-lg">
+                  <div className={`w-16 h-16 rounded-full ${isComingSoon ? 'bg-gradient-to-br from-gray-400 to-gray-500' : 'bg-gradient-to-br from-[#0a2540] to-[#1a365d]'} flex items-center justify-center luxury-shadow-lg`}>
                     <Icon className="w-8 h-8 text-white" />
                   </div>
                   <div>
@@ -86,10 +93,11 @@ export default function BookingUnified() {
                     <p className="luxury-text-small">{service.desc}</p>
                   </div>
                   <button 
-                    className="luxury-btn-primary luxury-shadow-xl w-full"
+                    className={`${isComingSoon ? 'bg-gray-300 text-gray-500 cursor-not-allowed rounded-lg py-2 px-4' : 'luxury-btn-primary luxury-shadow-xl'} w-full`}
                     data-testid={`button-book-${service.name.toLowerCase().replace(' ', '-')}`}
+                    disabled={isComingSoon}
                   >
-                    Book Now
+                    {isComingSoon ? 'Coming Soon' : 'Book Now'}
                   </button>
                 </div>
               </div>

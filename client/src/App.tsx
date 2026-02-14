@@ -15,6 +15,8 @@ import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
 import { SimpleAuthProvider } from "@/hooks/useSimpleAuth";
 import RequireAuth from "@/auth/RequireAuth";
 import RoleProtectedRoute from "@/auth/RoleProtectedRoute";
+import { PlatformComingSoon } from "@/components/PlatformComingSoon";
+import { Car } from "lucide-react";
 import { initClientSentry } from "@/lib/sentry";
 
 initClientSentry();
@@ -883,22 +885,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* ⁦PetTrek™⁩ - Premium Pet Transport Booking */}
+        {/* ⁦PetTrek™⁩ - FROZEN: Coming Soon */}
         <Route path="/pettrek/book">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <PetTrekBooking />
-            </Suspense>
-          )}
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
-        
-        {/* ⁦PetTrek™⁩ - Real-Time Trip Tracking */}
         <Route path="/pettrek/track/:tripId">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <PetTrekTracking />
-            </Suspense>
-          )}
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
         
         {/* Unified Provider Dashboard (Uber/MadPaws style) */}
@@ -912,86 +904,27 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* ⁦PetTrek™⁩ - Provider/Driver Dashboard */}
+        {/* ⁦PetTrek™⁩ - ALL FROZEN: Coming Soon */}
         <Route path="/pettrek/provider/dashboard">
-          {() => (
-            <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <PetTrekProviderDashboard />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
-        
-        {/* ⁦PetTrek™⁩ - Driver Dashboard (Uber-style for pet transport drivers) */}
         <Route path="/pettrek/driver/dashboard">
-          {() => (
-            <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <DriverDashboardPage />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
-        
-        {/* ⁦PetTrek™⁩ - Customer Dashboard (Book trips, track rides, receipts) */}
         <Route path="/pettrek/customer/dashboard">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <CustomerDashboardPage />
-              </Suspense>
-            </RequireAuth>
-          )}
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
-        
-        {/* ⁦PetTrek™⁩ - Booking Flow (5-step process: route, schedule, pets, payment, confirm) */}
-        <Route path="/pettrek/book">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <PetTrekBookingFlow />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
-        
-        {/* ⁦PetTrek™⁩ - Platform Overview (Marketing/Gateway) */}
         <Route path="/pettrek">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <PetTrekOverview />
-            </Suspense>
-          )}
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
-        
-        {/* ⁦PetTrek™⁩ - Browse/Explore Drivers */}
         <Route path="/pettrek/explore">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <PetTrek />
-            </Suspense>
-          )}
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
-        
-        {/* ⁦PetTrek™⁩ - Driver Detail Profile */}
         <Route path="/pettrek/drivers/:id">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <DriverDetail />
-            </Suspense>
-          )}
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
-        
-        {/* ⁦PetTrek™⁩ - Unified Hub (placeholder - routes to customer dashboard for now) */}
         <Route path="/pettrek/hub">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <PetTrekCustomerDashboard />
-              </Suspense>
-            </RequireAuth>
-          )}
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
         
         {/* ⁦The Sitter Suite™⁩ - Comprehensive Booking Flow (6-step process with Israeli VAT) */}

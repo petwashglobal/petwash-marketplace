@@ -14,6 +14,35 @@ import { calendarIntegrationService } from '../services/CalendarIntegrationServi
 
 const router = Router();
 
+const PETTREK_COMING_SOON = true;
+
+router.use((req, res, next) => {
+  if (PETTREK_COMING_SOON) {
+    if (req.path === '/status') {
+      return next();
+    }
+    return res.status(503).json({
+      error: 'coming_soon',
+      platform: 'PetTrek',
+      message: 'PetTrek™ is coming soon! We are preparing an amazing pet transport experience for you.',
+      messageHe: 'PetTrek™ בקרוב! אנחנו מכינים חווית הסעות חיות מחמד מדהימה בשבילך.',
+      available: false,
+    });
+  }
+  next();
+});
+
+router.get('/status', (_req, res) => {
+  res.json({
+    platform: 'PetTrek',
+    available: !PETTREK_COMING_SOON,
+    comingSoon: PETTREK_COMING_SOON,
+    message: PETTREK_COMING_SOON
+      ? 'PetTrek™ is coming soon!'
+      : 'PetTrek™ is live and accepting bookings',
+  });
+});
+
 // =================== CUSTOMER ENDPOINTS ===================
 
 // Get fare estimate

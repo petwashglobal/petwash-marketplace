@@ -60,8 +60,13 @@ router.post('/', async (req, res) => {
         break;
       
       case 'pet_taxi':
-        result = await searchDrivers(filters, searchId);
-        break;
+        return res.status(503).json({
+          error: 'coming_soon',
+          platform: 'PetTrek',
+          message: 'PetTrek™ pet taxi service is coming soon!',
+          providers: [],
+          total: 0,
+        });
       
       case 'training':
         result = await searchTrainers(filters, searchId);
