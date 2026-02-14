@@ -71,31 +71,27 @@ async function createOnboardingTasks(applicantId: number, serviceTypes: string[]
   const requiredDocs = getRequiredDocuments(serviceTypes);
   
   const tasks = [
-    // Stage 1: Application
-    { taskCode: 'SUBMIT_APPLICATION', taskName: 'Submit Application', taskNameHe: 'הגש מועמדות', stage: 'application_submitted', sortOrder: 1, isRequired: true },
+    { taskKey: 'SUBMIT_APPLICATION', taskName: 'Submit Application', taskNameHe: 'הגש מועמדות', stage: 'application_submitted', sortOrder: 1, isRequired: true },
     
-    // Stage 2: Documents
     ...requiredDocs.map((docType, idx) => ({
-      taskCode: `UPLOAD_${docType.toUpperCase()}`,
+      taskKey: `UPLOAD_${docType.toUpperCase()}`,
       taskName: `Upload ${docType.replace(/_/g, ' ')}`,
       taskNameHe: getHebrewDocName(docType),
       stage: 'documents_pending',
       sortOrder: idx + 1,
       isRequired: true,
-      requiredDocumentType: docType
     })),
     
-    // Stage 4: Background Check
-    { taskCode: 'CRIMINAL_CHECK', taskName: 'Criminal Background Check', taskNameHe: 'בדיקת רקע פלילי', stage: 'background_check_pending', sortOrder: 1, isRequired: true },
-    { taskCode: 'REFERENCE_CHECK', taskName: 'Reference Verification', taskNameHe: 'אימות המלצות', stage: 'background_check_pending', sortOrder: 2, isRequired: true },
+    { taskKey: 'CRIMINAL_CHECK', taskName: 'Criminal Background Check', taskNameHe: 'בדיקת רקע פלילי', stage: 'background_check_pending', sortOrder: 1, isRequired: true },
+    { taskKey: 'REFERENCE_CHECK', taskName: 'Reference Verification', taskNameHe: 'אימות המלצות', stage: 'background_check_pending', sortOrder: 2, isRequired: true },
   ];
   
   for (const task of tasks) {
     await db.insert(providerOnboardingTasks).values({
       applicantId,
       ...task,
-      status: task.taskCode === 'SUBMIT_APPLICATION' ? 'completed' : 'pending',
-      completedAt: task.taskCode === 'SUBMIT_APPLICATION' ? new Date() : null
+      status: task.taskKey === 'SUBMIT_APPLICATION' ? 'completed' : 'pending',
+      completedAt: task.taskKey === 'SUBMIT_APPLICATION' ? new Date() : null
     });
   }
 }

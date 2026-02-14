@@ -1779,11 +1779,11 @@ export const providerDocumentTypes = [
 // Provider Documents - Document uploads with verification
 export const providerDocuments = pgTable("provider_documents", {
   id: serial("id").primaryKey(),
-  applicantId: integer("applicant_id").references(() => providerApplicants.id).notNull(),
+  applicantId: integer("applicant_id").references(() => providerApplicants.id),
   
   documentType: varchar("document_type").notNull(),
   fileName: varchar("file_name").notNull(),
-  fileUrl: text("file_url"),
+  fileUrl: text("file_url").notNull(),
   fileSize: integer("file_size"),
   mimeType: varchar("mime_type"),
   
@@ -1846,39 +1846,25 @@ export const providerBackgroundChecks = pgTable("provider_background_checks", {
 // Onboarding Tasks Checklist
 export const providerOnboardingTasks = pgTable("provider_onboarding_tasks", {
   id: serial("id").primaryKey(),
-  applicantId: integer("applicant_id").references(() => providerApplicants.id).notNull(),
+  applicantId: integer("applicant_id").references(() => providerApplicants.id),
   
-  // Task Details
-  taskCode: varchar("task_code").notNull(), // unique code like 'UPLOAD_ID', 'COMPLETE_PROFILE'
+  taskKey: varchar("task_key").notNull(),
   taskName: varchar("task_name").notNull(),
-  taskNameHe: varchar("task_name_he"), // Hebrew translation
+  taskNameHe: varchar("task_name_he"),
   description: text("description"),
   descriptionHe: text("description_he"),
   
-  // Stage Association
-  stage: varchar("stage").notNull(), // Which stage this task belongs to
+  stage: varchar("stage").notNull(),
   sortOrder: integer("sort_order").default(0),
   
-  // Requirements
   isRequired: boolean("is_required").default(true),
-  requiredDocumentType: varchar("required_document_type"), // If task requires doc upload
   
-  // Status
-  status: varchar("status").notNull().default("pending"), // pending, in_progress, completed, skipped, blocked
+  status: varchar("status").default("pending"),
   completedAt: timestamp("completed_at"),
-  completedData: jsonb("completed_data"), // Any data collected
-  
-  // Validation
-  validationRule: text("validation_rule"), // JSON schema or rule definition
-  validationErrors: jsonb("validation_errors"),
-  
-  // Deadline
-  dueDate: timestamp("due_date"),
-  reminderSentAt: timestamp("reminder_sent_at"),
-  overdueNotifiedAt: timestamp("overdue_notified_at"),
+  verifiedBy: varchar("verified_by"),
+  notes: text("notes"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_onboard_tasks_applicant").on(table.applicantId),
   index("idx_onboard_tasks_stage").on(table.stage),
@@ -1888,9 +1874,8 @@ export const providerOnboardingTasks = pgTable("provider_onboarding_tasks", {
 // Stage Transition Audit Log
 export const providerStageTransitions = pgTable("provider_stage_transitions", {
   id: serial("id").primaryKey(),
-  applicantId: integer("applicant_id").references(() => providerApplicants.id).notNull(),
+  applicantId: integer("applicant_id").references(() => providerApplicants.id),
   
-  // Transition Details
   fromStage: varchar("from_stage"),
   toStage: varchar("to_stage").notNull(),
   transitionReason: text("transition_reason"),
