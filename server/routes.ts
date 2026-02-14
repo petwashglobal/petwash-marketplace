@@ -299,6 +299,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Phase 1: App Check Monitor Mode for admin routes
   app.use('/api/admin/', verifyAppCheckTokenOptional);
 
+  // 🔒 LATERAL MOVEMENT BARRIERS - Session hardening for admin + KYC routes
+  const { ipRiskScoring, adminRouteHardening, sessionAgeGuard } = await import('./middleware/session-hardening');
+  app.use('/api/admin/', ipRiskScoring());
+  app.use('/api/admin/', sessionAgeGuard(14400));
+  app.use('/api/admin/', adminRouteHardening());
+  app.use('/api/kyc/', ipRiskScoring());
+  app.use('/api/kyc/', sessionAgeGuard(14400));
+
   // ========================================================================
   // PUBLIC USER ROLE GUARD - Blocks public/pet_parent users from internal routes
   // Public users can ONLY access: loyalty, gift-cards, wallet, profile, auth, referral, public pages
@@ -1509,6 +1517,139 @@ self.addEventListener('notificationclick', (event) => {
     } catch (error) {
       logger.error('[Auth Me] Unexpected error', error);
       res.status(500).json({ ok: false, error: 'internal-error' });
+    }
+  });
+
+  // ========================================================================
+  // GET /api/session/whoami - Server-authoritative identity resolution
+  // Returns role, dashboards, MFA requirement, KYC status, session metadata
+  // Custom claims are the ONLY source of truth for role (not Firestore fields)
+  // ========================================================================
+  app.get('/api/session/whoami', async (req, res) => {
+    try {
+      const token = req.cookies?.pw_session;
+      const bearerToken = req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.split('Bearer ')[1]
+        : null;
+
+      if (!token && !bearerToken) {
+        return res.status(401).json({ authenticated: false, error: 'no-session' });
+      }
+
+      const { adminAuth: fbAdminAuth, db: firestoreDb } = await import('./lib/firebase-admin');
+      const admin = (await import('./lib/firebase-admin')).default;
+
+      let decoded: any;
+      let sessionAge = 0;
+      try {
+        if (token) {
+          decoded = await admin.auth().verifySessionCookie(token, true);
+        } else if (bearerToken) {
+          decoded = await admin.auth().verifyIdToken(bearerToken, true);
+        }
+        const authTime = decoded.auth_time ? decoded.auth_time * 1000 : Date.now();
+        sessionAge = Math.floor((Date.now() - authTime) / 1000);
+      } catch (error) {
+        return res.status(401).json({ authenticated: false, error: 'invalid-session' });
+      }
+
+      const userRecord = await fbAdminAuth.getUser(decoded.uid);
+      const claims = (userRecord.customClaims || {}) as Record<string, any>;
+
+      let role = claims.role || 'public';
+      const accountType = claims.accountType || 'pet_parent';
+
+      if (!claims.role) {
+        if (accountType === 'internal') role = 'staff';
+        else if (accountType === 'provider') role = 'provider';
+        else role = 'public';
+      }
+
+      const { isSuperAdmin: checkSuperAdmin } = await import('./middleware/rbac');
+      const userEmail = (decoded.email || '').toLowerCase();
+      const superAdmin = checkSuperAdmin(userEmail);
+
+      if (superAdmin) {
+        role = 'super_admin';
+      }
+
+      type DashboardType = 'member' | 'provider' | 'staff' | 'admin';
+      const dashboardsAllowed: DashboardType[] = [];
+      const ROLE_DASHBOARDS: Record<string, DashboardType[]> = {
+        public: ['member'],
+        pet_parent: ['member'],
+        provider: ['member', 'provider'],
+        staff: ['member', 'staff'],
+        admin: ['member', 'staff', 'admin'],
+        management: ['member', 'staff', 'admin'],
+        super_admin: ['member', 'provider', 'staff', 'admin'],
+      };
+      dashboardsAllowed.push(...(ROLE_DASHBOARDS[role] || ['member']));
+
+      const mfaRequired = ['admin', 'management', 'super_admin', 'staff'].includes(role)
+        || claims.kyc_admin === true;
+      const mfaVerified = claims.mfa_verified === true || false;
+
+      let kycStatus: 'not_started' | 'pending' | 'approved' | 'rejected' | 'manual_review' | 'not_required' = 'not_required';
+      if (role === 'provider' || accountType === 'provider') {
+        kycStatus = claims.kycStatus || 'not_started';
+      }
+
+      const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+
+      const MAX_SESSION_AGE_ADMIN = 14400;
+      const MAX_SESSION_AGE_USER = 432000;
+      const maxAge = mfaRequired ? MAX_SESSION_AGE_ADMIN : MAX_SESSION_AGE_USER;
+      const sessionExpired = sessionAge > maxAge;
+
+      if (sessionExpired && mfaRequired) {
+        return res.status(401).json({
+          authenticated: false,
+          error: 'session-expired',
+          message: 'Admin session expired. Please re-authenticate.',
+          maxSessionAge: maxAge,
+          currentSessionAge: sessionAge,
+        });
+      }
+
+      logger.info(`[Whoami] ${userEmail} role=${role} mfa=${mfaVerified} session=${sessionAge}s`);
+
+      res.json({
+        authenticated: true,
+        uid: decoded.uid,
+        email: decoded.email || '',
+        emailVerified: decoded.email_verified || false,
+        displayName: userRecord.displayName || '',
+        role,
+        accountType,
+        isSuperAdmin: superAdmin,
+        dashboardsAllowed,
+        mfaRequired,
+        mfaVerified,
+        kycStatus,
+        kycAdmin: claims.kyc_admin === true,
+        session: {
+          ageSeconds: sessionAge,
+          maxAgeSeconds: maxAge,
+          ip: ip.split('.').slice(0, 2).join('.') + '.*.*',
+          createdAt: decoded.auth_time ? new Date(decoded.auth_time * 1000).toISOString() : null,
+        },
+        claims: {
+          role: claims.role,
+          accountType: claims.accountType,
+          loyaltyMember: claims.loyaltyMember ?? false,
+          loyaltyTier: claims.loyaltyTier || 'bronze',
+          program: claims.program || null,
+          providerType: claims.providerType || null,
+          department: claims.department || null,
+          roleCode: claims.roleCode || null,
+          kyc_admin: claims.kyc_admin || false,
+        },
+      });
+    } catch (error) {
+      logger.error('[Whoami] Unexpected error', error);
+      res.status(500).json({ authenticated: false, error: 'internal-error' });
     }
   });
 

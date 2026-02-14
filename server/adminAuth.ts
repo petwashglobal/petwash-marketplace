@@ -27,57 +27,93 @@ export interface AdminSession {
   isActive: boolean;
 }
 
-// Admin authentication middleware (Firebase-based)
+const ADMIN_SESSION_MAX_AGE_SECONDS = 14400;
+
+async function resolveClaimsBasedAuth(req: Request, res: Response): Promise<{
+  decoded: any;
+  claims: Record<string, any>;
+  role: string;
+  isSuperAdminUser: boolean;
+  sessionAge: number;
+  ip: string;
+} | null> {
+  const { verifySessionCookie, SESSION_COOKIE_NAME } = await import('./lib/sessionCookies');
+  const sessionCookie = req.cookies?.[SESSION_COOKIE_NAME];
+
+  if (!sessionCookie) {
+    res.status(401).json({ message: "Admin authentication required" });
+    return null;
+  }
+
+  let decoded: any;
+  try {
+    decoded = await verifySessionCookie(sessionCookie, true);
+  } catch (error) {
+    res.status(401).json({ message: "Invalid or expired session" });
+    return null;
+  }
+
+  const authTime = decoded.auth_time ? decoded.auth_time * 1000 : Date.now();
+  const sessionAge = Math.floor((Date.now() - authTime) / 1000);
+
+  if (sessionAge > ADMIN_SESSION_MAX_AGE_SECONDS) {
+    logger.warn(`[Admin Auth] Session too old for admin access: ${sessionAge}s > ${ADMIN_SESSION_MAX_AGE_SECONDS}s`);
+    res.status(401).json({
+      message: "Admin session expired. Please re-authenticate.",
+      sessionExpired: true,
+      maxAge: ADMIN_SESSION_MAX_AGE_SECONDS,
+      currentAge: sessionAge,
+    });
+    return null;
+  }
+
+  const { adminAuth: fbAdminAuth } = await import('./lib/firebase-admin');
+  const userRecord = await fbAdminAuth.getUser(decoded.uid);
+  const claims = (userRecord.customClaims || {}) as Record<string, any>;
+
+  let role = claims.role || 'public';
+  if (!claims.role) {
+    if (claims.accountType === 'internal') role = 'staff';
+    else if (claims.accountType === 'provider') role = 'provider';
+    else role = 'public';
+  }
+
+  const userEmail = (decoded.email || '').toLowerCase();
+  const isSuperAdminUser = isSuperAdmin(userEmail);
+  if (isSuperAdminUser) role = 'super_admin';
+
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+
+  return { decoded, claims, role, isSuperAdminUser, sessionAge, ip };
+}
+
 export const requireAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { verifySessionCookie, SESSION_COOKIE_NAME } = await import('./lib/sessionCookies');
-    const sessionCookie = req.cookies?.[SESSION_COOKIE_NAME];
-    
-    if (!sessionCookie) {
-      return res.status(401).json({ message: "Admin authentication required" });
-    }
+    const auth = await resolveClaimsBasedAuth(req, res);
+    if (!auth) return;
 
-    // Verify session cookie with revocation check for admins
-    let decodedClaims;
-    try {
-      decodedClaims = await verifySessionCookie(sessionCookie, true);
-    } catch (error) {
-      return res.status(401).json({ message: "Invalid or expired session" });
-    }
+    const { decoded, claims, role, isSuperAdminUser, sessionAge, ip } = auth;
+    const userEmail = (decoded.email || '').toLowerCase();
 
-    // Check if user is admin in Firestore OR is a hardcoded super admin
-    const { db: firestoreDb } = await import('./lib/firebase-admin');
-    const userDoc = await firestoreDb.collection('users').doc(decodedClaims.uid).get();
-    const userData = userDoc.data();
-    const userEmail = decodedClaims.email?.toLowerCase() || '';
-    
-    // Allow access if user is in super admin list OR has admin role in Firestore
-    const isSuperAdminUser = isSuperAdmin(userEmail);
-    const hasAdminRole = userData?.role === 'admin' || userData?.role === 'super_admin';
-    
-    if (!isSuperAdminUser && !hasAdminRole) {
-      logger.warn(`[Admin Auth] Access denied for ${userEmail} - not super admin and role=${userData?.role}`);
+    const adminRoles = ['admin', 'management', 'super_admin', 'staff'];
+    const hasAdminClaim = isSuperAdminUser || adminRoles.includes(role) || adminRoles.includes(claims.role);
+
+    if (!hasAdminClaim) {
+      logger.warn(`[Admin Auth] Access denied for ${userEmail} - claims.role=${claims.role}, resolved=${role}`);
       return res.status(403).json({ message: "Admin access required" });
     }
-    
-    logger.info(`[Admin Auth] Access granted: ${userEmail} (superAdmin=${isSuperAdminUser}, role=${userData?.role || 'none'})`);
 
+    logger.info(`[Admin Auth] Access granted: ${userEmail} (superAdmin=${isSuperAdminUser}, role=${role}, session=${sessionAge}s)`);
 
-    // 🚨 OCTOPUS PROTOCOL: Admin Override Logging
     const endpoint = req.path;
     const method = req.method;
-    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
-    
-    logger.info(`🚨 HEAD OFFICE OVERRIDE by ${decodedClaims.uid} | ${method} ${endpoint} | IP: ${ip}`);
+    logger.info(`🚨 HEAD OFFICE OVERRIDE by ${decoded.uid} | ${method} ${endpoint} | IP: ${ip}`);
 
-    // For backwards compatibility, set session adminId
-    req.session.adminId = decodedClaims.uid;
-    
-    // Try to get admin user from storage
-    const admin = await storage.getAdminUser(decodedClaims.uid);
+    req.session.adminId = decoded.uid;
+
+    const admin = await storage.getAdminUser(decoded.uid);
     if (admin) {
       req.adminUser = admin;
-      logger.info(`   → Admin Details: ${admin.email} | Role: ${admin.role} | Regions: ${admin.regions?.join(', ') || 'ALL'}`);
     }
 
     next();
@@ -87,59 +123,32 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-// Authenticated role middleware - validates session and checks roles
 export const requireAuthenticatedRole = (allowedRoles: string[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { verifySessionCookie, SESSION_COOKIE_NAME } = await import('./lib/sessionCookies');
-      const sessionCookie = req.cookies?.[SESSION_COOKIE_NAME];
-      
-      if (!sessionCookie) {
-        return res.status(401).json({ message: "Admin authentication required" });
-      }
+      const auth = await resolveClaimsBasedAuth(req, res);
+      if (!auth) return;
 
-      // Verify session cookie with revocation check
-      let decodedClaims;
-      try {
-        decodedClaims = await verifySessionCookie(sessionCookie, true);
-      } catch (error) {
-        return res.status(401).json({ message: "Invalid or expired session" });
-      }
+      const { decoded, claims, role, isSuperAdminUser, sessionAge, ip } = auth;
+      const userEmail = (decoded.email || '').toLowerCase();
 
-      // Check if user has one of the allowed roles in Firestore OR is a super admin
-      const { db: firestoreDb } = await import('./lib/firebase-admin');
-      const userDoc = await firestoreDb.collection('users').doc(decodedClaims.uid).get();
-      const userData = userDoc.data();
-      const userEmail = decodedClaims.email?.toLowerCase() || '';
-      
-      // Super admins bypass role checks
-      const isSuperAdminUser = isSuperAdmin(userEmail);
-      const hasAllowedRole = userData?.role && allowedRoles.includes(userData.role);
-      
-      if (!isSuperAdminUser && !hasAllowedRole) {
-        logger.warn(`[Role Auth] Access denied for ${userEmail} - role=${userData?.role}, required=${allowedRoles.join(',')}`);
+      const hasAllowedRole = isSuperAdminUser
+        || allowedRoles.includes(role)
+        || (claims.role && allowedRoles.includes(claims.role));
+
+      if (!hasAllowedRole) {
+        logger.warn(`[Role Auth] Access denied for ${userEmail} - claims.role=${claims.role}, resolved=${role}, required=${allowedRoles.join(',')}`);
         return res.status(403).json({ message: "Insufficient permissions for this operation" });
       }
 
-      // 🚨 OCTOPUS PROTOCOL: Role-Based Override Logging
-      const endpoint = req.path;
-      const method = req.method;
-      const ip = req.ip || req.socket?.remoteAddress || 'unknown';
-      const role = userData.role;
-      
-      // Different emoji based on role level
-      const roleEmoji = role === 'super_admin' ? '👑' : role === 'regional_admin' ? '🏢' : '👤';
-      
-      logger.info(`${roleEmoji} ${role.toUpperCase()} ACCESS by ${decodedClaims.uid} | ${method} ${endpoint} | IP: ${ip}`);
+      const roleEmoji = role === 'super_admin' ? '👑' : role === 'admin' ? '🏢' : '👤';
+      logger.info(`${roleEmoji} ${role.toUpperCase()} ACCESS by ${decoded.uid} | ${req.method} ${req.path} | IP: ${ip} | session=${sessionAge}s`);
 
-      // Set session adminId for backwards compatibility
-      req.session.adminId = decodedClaims.uid;
-      
-      // Try to get admin user from storage
-      const admin = await storage.getAdminUser(decodedClaims.uid);
+      req.session.adminId = decoded.uid;
+
+      const admin = await storage.getAdminUser(decoded.uid);
       if (admin) {
         req.adminUser = admin;
-        logger.info(`   → Details: ${admin.email} | Allowed Roles: ${allowedRoles.join(', ')}`);
       }
 
       next();
