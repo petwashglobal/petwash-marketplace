@@ -366,9 +366,20 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           : t('signUp.redirectingToDashboard', language),
       });
 
-      // GET FRESH TOKEN BEFORE REDIRECT
       const finalIdToken = await user.getIdToken(true);
       setFirebaseToken(finalIdToken);
+
+      try {
+        await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ idToken: finalIdToken }),
+        });
+        logger.info("Session cookie refreshed with final token after signup");
+      } catch (refreshErr) {
+        logger.warn("Session cookie refresh failed (non-blocking)", refreshErr);
+      }
 
       // Show passkey prompt if supported, otherwise redirect
       if (isPasskeySupported()) {

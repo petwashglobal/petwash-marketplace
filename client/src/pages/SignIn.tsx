@@ -990,6 +990,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       const sessionData = await sessionResponse.json();
 
+      if (sessionData.customToken) {
+        logger.info('[PhoneAuth] Signing into Firebase with custom token');
+        await signInWithCustomToken(auth, sessionData.customToken);
+        await auth.currentUser?.getIdToken(true);
+        logger.info('[PhoneAuth] Firebase client auth state set successfully');
+      }
+
       if (sessionData.userId) {
         trustDevice(sessionData.userId, confirmationResult.phone);
         storeLastAuthMethod('social');
@@ -1018,7 +1025,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       setTimeout(() => {
         window.scrollTo(0, 0);
-        // Force a small delay to ensure cookie is set before navigation
         navigate("/dashboard");
       }, 1200);
     } catch (error: any) {
