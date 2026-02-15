@@ -3997,7 +3997,41 @@ html[style*="--a11y-font-scale"] body {
   font-size: 1.2rem;
 }
 
-/* High contrast */
+/* 🛡️ SECURITY & AUTHENTICATION UTILITIES */
+.auth-loading-overlay {
+  @apply fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-[9999];
+}
+
+.checkbox-wrapper {
+  @apply flex items-start space-x-3 space-x-reverse py-2;
+}
+
+.checkbox-wrapper label {
+  @apply text-sm leading-tight flex-1 pt-0.5 !important;
+}
+
+.checkbox-wrapper [role="checkbox"] {
+  @apply mt-1 shrink-0 !important;
+}
+
+/* Registration Form Layout Fixes */
+.registration-grid {
+  @apply grid gap-4 md:grid-cols-2;
+}
+
+.social-login-grid {
+  @apply grid gap-3 w-full max-w-sm mx-auto;
+}
+
+.social-button {
+  @apply relative w-full flex items-center justify-center py-3 px-4 border rounded-lg transition-all active:scale-[0.98] bg-white hover:bg-gray-50 text-black font-medium;
+}
+
+/* Fix for accessibility icon overlap */
+#accessibility-trigger, .accessibility-btn {
+  @apply mb-20 md:mb-6 !important;
+}
+
 .a11y-high-contrast body {
   filter: contrast(1.4);
 }

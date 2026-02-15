@@ -366,9 +366,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           : t('signUp.redirectingToDashboard', language),
       });
 
-      // Get Firebase token for passkey registration
-      const token = await user.getIdToken();
-      setFirebaseToken(token);
+      // GET FRESH TOKEN BEFORE REDIRECT
+      const finalIdToken = await user.getIdToken(true);
+      setFirebaseToken(finalIdToken);
 
       // Show passkey prompt if supported, otherwise redirect
       if (isPasskeySupported()) {
@@ -378,7 +378,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           logger.debug("Navigating to dashboard");
           window.scrollTo(0, 0);
           navigate("/dashboard");
-        }, 1500);
+        }, 1800);
       }
 
     } catch (error: any) {
@@ -629,8 +629,8 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               </Select>
             </div>
 
-            <div className="space-y-3 pt-4 border-t">
-              <div className="flex items-center space-x-2">
+            <div className="space-y-4 bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
+              <div className="checkbox-wrapper">
                 <Checkbox
                   id="loyaltyProgram"
                   name="loyaltyProgram"
@@ -638,12 +638,12 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, loyaltyProgram: !!checked }))}
                   data-testid="checkbox-loyaltyProgram"
                 />
-                <label htmlFor="loyaltyProgram" className="text-sm cursor-pointer">
+                <label htmlFor="loyaltyProgram">
                   {t('register.loyaltyClub', language)}
                 </label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="checkbox-wrapper">
                 <Checkbox
                   id="reminders"
                   name="reminders"
@@ -651,12 +651,12 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, reminders: !!checked }))}
                   data-testid="checkbox-reminders"
                 />
-                <label htmlFor="reminders" className="text-sm cursor-pointer">
+                <label htmlFor="reminders">
                   {t('register.washReminders', language)}
                 </label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="checkbox-wrapper">
                 <Checkbox
                   id="marketing"
                   name="marketing"
@@ -664,12 +664,12 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, marketing: !!checked }))}
                   data-testid="checkbox-marketing"
                 />
-                <label htmlFor="marketing" className="text-sm cursor-pointer">
+                <label htmlFor="marketing">
                   {t('register.marketingEmails', language)}
                 </label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="checkbox-wrapper">
                 <Checkbox
                   id="pushNotifications"
                   name="pushNotifications"
@@ -677,37 +677,35 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, pushNotifications: !!checked }))}
                   data-testid="checkbox-pushNotifications"
                 />
-                <label htmlFor="pushNotifications" className="text-sm cursor-pointer">
+                <label htmlFor="pushNotifications">
                   {t('register.pushNotifications', language)}
                 </label>
               </div>
 
-              <div className="pt-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="acceptedTerms"
-                    name="acceptedTerms"
-                    checked={formData.acceptedTerms}
-                    onCheckedChange={(checked) => {
-                      setFormData(prev => ({ ...prev, acceptedTerms: !!checked }));
-                      if (checked) setTermsError(false);
-                    }}
-                    required
-                    data-testid="checkbox-acceptedTerms"
-                  />
-                  <label htmlFor="acceptedTerms" className="text-sm cursor-pointer">
-                    {t('register.agreeTerms', language)} <span className="text-red-500">*</span>
-                  </label>
-                </div>
-                {termsError && (
-                  <div className="flex items-center gap-1 mt-2 text-red-600 text-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>
-                      {t('signUp.mustAcceptTerms', language)}
-                    </span>
-                  </div>
-                )}
+              <div className={`checkbox-wrapper p-3 rounded-lg transition-colors ${termsError ? 'bg-red-50 border border-red-200' : ''}`}>
+                <Checkbox
+                  id="acceptedTerms"
+                  name="acceptedTerms"
+                  checked={formData.acceptedTerms}
+                  onCheckedChange={(checked) => {
+                    setFormData(prev => ({ ...prev, acceptedTerms: !!checked }));
+                    if (checked) setTermsError(false);
+                  }}
+                  required
+                  data-testid="checkbox-acceptedTerms"
+                />
+                <label htmlFor="acceptedTerms">
+                  {t('register.agreeTerms', language)} <span className="text-red-500">*</span>
+                </label>
               </div>
+              {termsError && (
+                <div className="flex items-center gap-1 mt-2 text-red-600 text-sm px-3">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>
+                    {t('signUp.mustAcceptTerms', language)}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="pt-2">

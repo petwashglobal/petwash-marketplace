@@ -1018,8 +1018,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       setTimeout(() => {
         window.scrollTo(0, 0);
+        // Force a small delay to ensure cookie is set before navigation
         navigate("/dashboard");
-      }, 1000);
+      }, 1200);
     } catch (error: any) {
       logger.error('[PhoneAuth] Verification failed:', error);
 
@@ -1085,8 +1086,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       
       setTimeout(() => {
         window.scrollTo(0, 0);
+        // Force a small delay to ensure cookie is set before navigation
         navigate("/dashboard");
-      }, 1000);
+      }, 1200);
     } catch (error: any) {
       logger.error("Email/password sign-in error:", error);
       

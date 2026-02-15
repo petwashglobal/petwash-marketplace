@@ -24,10 +24,15 @@ export default function RoleProtectedRoute({ children, minRole, fallbackPath = '
   const [, setLocation] = useLocation();
 
   if (loading || whoamiLoading) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
-  if (!user) {
+  // Only redirect if we are SURE the user is not authenticated
+  if (!loading && !user && !whoamiLoading && !isAuthenticated) {
     setLocation('/signin');
     return null;
   }
@@ -45,8 +50,6 @@ export default function RoleProtectedRoute({ children, minRole, fallbackPath = '
       setLocation(fallbackPath);
       return null;
     }
-
-    return children;
   }
 
   return children;
