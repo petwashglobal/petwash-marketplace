@@ -10,17 +10,17 @@ interface PaymentMethodsProps {
 
 function PaymentLogos({ className = '' }: { className?: string }) {
   return (
-    <div className={`flex items-center justify-center gap-3 sm:gap-4 py-3 px-4 ${className}`} role="region" aria-label="Payments accepted">
+    <div className={`flex items-center justify-center gap-2 sm:gap-3 py-3 px-4 ${className}`} role="region" aria-label="Payments accepted">
       <img 
-        className="h-[40px] sm:h-[48px] md:h-[56px] lg:h-[64px] w-auto object-contain" 
-        src="/pay/payment-methods.jpg" 
-        alt="We accept Visa, Mastercard, American Express, Apple Pay, Google Pay" 
+        className="h-[22px] sm:h-[26px] md:h-[30px] lg:h-[34px] w-auto object-contain" 
+        src="/pay/diners.jpg" 
+        alt="Diners Club International" 
         loading="lazy" 
       />
       <img 
-        className="h-[40px] sm:h-[48px] md:h-[56px] lg:h-[64px] w-auto object-contain" 
-        src="/pay/diners.jpg" 
-        alt="Diners Club International" 
+        className="h-[36px] sm:h-[44px] md:h-[52px] lg:h-[58px] w-auto object-contain" 
+        src="/pay/payment-methods.jpg" 
+        alt="We accept Visa, Mastercard, American Express, Apple Pay, Google Pay" 
         loading="lazy" 
       />
     </div>
