@@ -22,6 +22,10 @@ declare global {
     grecaptcha: {
       ready: (callback: () => void) => void;
       execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      enterprise: {
+        ready: (callback: () => void) => void;
+        execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      };
       render?: (container: string | HTMLElement, options: any) => number;
       reset?: (widgetId?: number) => void;
     };
@@ -32,12 +36,12 @@ const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
 
 const loadReCaptchaScript = (): Promise<void> => {
   return new Promise((resolve, reject) => {
-    if (window.grecaptcha?.ready) {
+    if (window.grecaptcha?.enterprise?.ready) {
       resolve();
       return;
     }
 
-    const existingScript = document.querySelector('script[src*="recaptcha/api.js"]');
+    const existingScript = document.querySelector('script[src*="recaptcha/enterprise.js"]');
     if (existingScript) {
       existingScript.addEventListener('load', () => resolve());
       return;
@@ -49,12 +53,15 @@ const loadReCaptchaScript = (): Promise<void> => {
       return;
     }
 
+    const oldScript = document.querySelector('script[src*="recaptcha/api.js"]');
+    if (oldScript) oldScript.remove();
+
     const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+    script.src = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`;
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load reCAPTCHA script'));
+    script.onerror = () => reject(new Error('Failed to load reCAPTCHA Enterprise script'));
     document.head.appendChild(script);
   });
 };
@@ -69,12 +76,12 @@ export async function executeReCaptcha(action: string = 'submit'): Promise<strin
     await loadReCaptchaScript();
 
     return new Promise((resolve) => {
-      window.grecaptcha.ready(async () => {
+      window.grecaptcha.enterprise.ready(async () => {
         try {
-          const token = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action });
+          const token = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action });
           resolve(token);
         } catch (err) {
-          logger.error('[ReCaptcha] Execute error:', err);
+          logger.error('[ReCaptcha] Enterprise execute error:', err);
           resolve(null);
         }
       });
