@@ -134,12 +134,12 @@ export function Footer({ language }: FooterProps) {
               
               {/* Payment Logos - Official Full Color */}
               <div className="flex items-center justify-center gap-[14px] flex-wrap py-2.5 px-3">
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/apple-pay.svg" alt="Apple Pay" />
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/google-pay.svg" alt="Google Pay" />
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/visa.svg" alt="Visa" />
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/mastercard.svg" alt="Mastercard" />
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/amex.svg" alt="American Express" />
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/diners.svg" alt="Diners Club" />
+                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/apple-pay.png" alt="Apple Pay" />
+                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/google-pay.png" alt="Google Pay" />
+                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/visa.png" alt="Visa" />
+                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/mastercard.png" alt="Mastercard" />
+                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/amex.png" alt="American Express" />
+                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/diners.png" alt="Diners Club" />
               </div>
               
               {/* Nayax Powered Badge */}

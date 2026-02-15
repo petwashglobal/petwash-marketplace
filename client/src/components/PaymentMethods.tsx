@@ -9,12 +9,12 @@ interface PaymentMethodsProps {
 }
 
 const payLogos = [
-  { src: '/pay/apple-pay.svg', alt: 'Apple Pay' },
-  { src: '/pay/google-pay.svg', alt: 'Google Pay' },
-  { src: '/pay/visa.svg', alt: 'Visa' },
-  { src: '/pay/mastercard.svg', alt: 'Mastercard' },
-  { src: '/pay/amex.svg', alt: 'American Express' },
-  { src: '/pay/diners.svg', alt: 'Diners Club' },
+  { src: '/pay/apple-pay.png', alt: 'Apple Pay' },
+  { src: '/pay/google-pay.png', alt: 'Google Pay' },
+  { src: '/pay/visa.png', alt: 'Visa' },
+  { src: '/pay/mastercard.png', alt: 'Mastercard' },
+  { src: '/pay/amex.png', alt: 'American Express' },
+  { src: '/pay/diners.png', alt: 'Diners Club' },
 ];
 
 function PaymentLogos({ className = '' }: { className?: string }) {
