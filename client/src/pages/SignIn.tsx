@@ -633,14 +633,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         return;
       }
       
-      if (isIOSDevice) {
-        logger.info(`[Auth] iOS Safari detected, using redirect auth for ${provider}`);
-        await signInWithBestMethod(auth, authProvider, 'redirect');
-        return;
-      }
-      
       try {
-        logger.info(`[Auth] Using popup auth for ${provider}`);
+        logger.info(`[Auth] Using popup auth for ${provider} (works on desktop + iPad Safari)`);
         userCredential = await signInWithPopup(auth, authProvider);
       } catch (popupErr: any) {
         if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/cancelled-popup-request') {

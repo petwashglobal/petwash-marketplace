@@ -29,11 +29,11 @@ const getApiBaseUrl = (): string => {
       hostname.endsWith('.firebaseapp.com');
     
     if (isFirebaseHosting) {
-      // Use the Replit deployment URL for production
-      // Priority: VITE_PRODUCTION_API_URL env var > current dev domain
-      const productionApiUrl = import.meta.env.VITE_PRODUCTION_API_URL || 
-        'https://f46fb046-7dd0-4090-af9e-1be17d9de48e-00-15el1m8qkuf16.picard.replit.dev';
-      return productionApiUrl;
+      const prodUrl = import.meta.env.VITE_PRODUCTION_API_URL;
+      if (!prodUrl) {
+        console.error('[API Config] CRITICAL: VITE_PRODUCTION_API_URL not set for Firebase Hosting build. API calls will fail.');
+      }
+      return prodUrl || '';
     }
     
     // If on Replit preview (dev), use same origin
