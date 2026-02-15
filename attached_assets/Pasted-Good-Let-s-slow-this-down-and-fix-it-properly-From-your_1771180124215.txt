@@ -1,0 +1,148 @@
+Good. Let’s slow this down and fix it properly.
+
+From your screenshots I can see:
+
+• Google account chooser opens correctly
+• You select the account
+• Then it hangs and never returns to the app
+• reCAPTCHA also keeps spinning
+
+This is almost always a configuration mismatch, not Google itself.
+
+You are dealing with two separate issues:
+	1.	OAuth redirect not completing
+	2.	reCAPTCHA domain / key mismatch
+
+I’ll give you exact things to check.
+
+────────────────────────
+PART 1 — GOOGLE SIGN IN STUCK AFTER SELECTING ACCOUNT
+────────────────────────
+
+When Google opens and lets you choose an account, that means:
+
+✔ OAuth client ID is valid
+✔ Firebase project is connected
+✔ Google provider is enabled
+
+If it hangs after selecting account, usually one of these is wrong:
+
+A) Authorized domains missing
+Go to:
+
+Firebase Console → Authentication → Settings → Authorized domains
+
+You MUST see:
+	•	your production domain (petwash.co.il or whatever you use)
+	•	signinpetwash.firebaseapp.com
+	•	your custom subdomain if using one
+	•	localhost if testing
+
+If any is missing → add it.
+
+B) OAuth redirect URI mismatch
+Go to:
+
+Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs
+
+Open your Web Client ID.
+
+Under “Authorized redirect URIs” you MUST see:
+
+https://signinpetwash.firebaseapp.com/__/auth/handler
+
+If missing → add it exactly.
+
+Even 1 character wrong breaks redirect.
+
+C) Third-party cookies blocked (iPad issue)
+On iPad:
+
+Settings → Safari
+Turn OFF:
+• Prevent Cross-Site Tracking
+• Block All Cookies
+
+Google popup needs cookies to complete handshake.
+
+D) Replit webview issue
+If you are inside Replit iOS app, sometimes popups cannot return.
+
+Test this:
+Open Safari directly → go to your production domain → try sign in there.
+
+If it works in Safari but not in Replit app → it’s a webview restriction problem.
+
+────────────────────────
+PART 2 — RECAPTCHA NOT WORKING
+────────────────────────
+
+If reCAPTCHA spins forever, 99% it is:
+
+• wrong site key for the domain
+• domain not added in Google reCAPTCHA console
+• using v3 key with v2 widget
+• key is for http but site is https
+• environment variable not loaded
+
+Check this carefully:
+
+Go to:
+Google reCAPTCHA admin console
+
+Make sure the domain list includes:
+	•	petwash.co.il
+	•	signinpetwash.firebaseapp.com
+	•	your staging domain
+	•	localhost (if testing)
+
+If not → add.
+
+Also confirm:
+
+Are you using reCAPTCHA v2 checkbox?
+Or v3 invisible?
+
+The key must match the version used in code.
+
+If you give me which version you’re using, I’ll tell you exactly what to verify.
+
+────────────────────────
+MOST LIKELY ROOT CAUSE
+────────────────────────
+
+Because both Google login and reCAPTCHA are failing together, the most likely cause is:
+
+Domain mismatch.
+
+Meaning:
+
+You are testing on a domain not registered in:
+• Firebase authorized domains
+• OAuth redirect URIs
+• reCAPTCHA allowed domains
+
+When that happens, Google auth appears to work but cannot complete token exchange.
+
+────────────────────────
+FAST DEBUG TEST
+────────────────────────
+
+Try this immediately:
+	1.	Open Safari (not Replit app)
+	2.	Go to production domain directly
+	3.	Try login
+	4.	Open console (if possible) or see if redirect changes URL
+
+If it works there → webview problem.
+If it fails there → OAuth config problem.
+
+────────────────────────
+Now I need 3 things from you:
+	1.	What exact domain are you using when it fails?
+	2.	Are you inside Replit app or Safari?
+	3.	Which reCAPTCHA version is implemented (v2 checkbox, v2 invisible, v3)?
+
+Answer those 3 clearly and I’ll pinpoint it precisely.
+
+We’ll fix this clean.
