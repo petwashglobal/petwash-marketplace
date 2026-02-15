@@ -9,24 +9,26 @@ interface PaymentMethodsProps {
 }
 
 const payLogos = [
-  { src: '/pay/apple-pay.png', alt: 'Apple Pay' },
-  { src: '/pay/google-pay.png', alt: 'Google Pay' },
-  { src: '/pay/visa.png', alt: 'Visa' },
-  { src: '/pay/mastercard.png', alt: 'Mastercard' },
-  { src: '/pay/amex.png', alt: 'American Express' },
-  { src: '/pay/diners.png', alt: 'Diners Club' },
+  { src: '/pay/apple-pay.jpg', alt: 'Apple Pay' },
+  { src: '/pay/google-pay.jpg', alt: 'Google Pay' },
+  { src: '/pay/visa.jpg', alt: 'Visa' },
+  { src: '/pay/mastercard.jpg', alt: 'Mastercard' },
+  { src: '/pay/amex.jpg', alt: 'American Express' },
+  { src: '/pay/diners.jpg', alt: 'Diners Club' },
 ];
 
 function PaymentLogos({ className = '' }: { className?: string }) {
   return (
-    <div className={`flex items-center justify-center gap-[14px] flex-wrap py-2.5 px-3 ${className}`} role="region" aria-label="Payments accepted">
+    <div className={`grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4 py-3 px-4 max-w-2xl mx-auto ${className}`} role="region" aria-label="Payments accepted">
       {payLogos.map((logo) => (
-        <img
-          key={logo.alt}
-          className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain"
-          src={logo.src}
-          alt={logo.alt}
-        />
+        <div key={logo.alt} className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
+          <img
+            className="w-full h-full object-contain"
+            src={logo.src}
+            alt={logo.alt}
+            loading="lazy"
+          />
+        </div>
       ))}
     </div>
   );

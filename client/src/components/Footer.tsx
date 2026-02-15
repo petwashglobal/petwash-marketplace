@@ -132,14 +132,26 @@ export function Footer({ language }: FooterProps) {
                 <Sparkles className="w-4 h-4 text-amber-500" />
               </div>
               
-              {/* Payment Logos - Official Full Color */}
-              <div className="flex items-center justify-center gap-[14px] flex-wrap py-2.5 px-3">
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/apple-pay.png" alt="Apple Pay" />
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/google-pay.png" alt="Google Pay" />
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/visa.png" alt="Visa" />
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/mastercard.png" alt="Mastercard" />
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/amex.png" alt="American Express" />
-                <img className="h-[28px] sm:h-[32px] w-auto max-w-[140px] block object-contain" src="/pay/diners.png" alt="Diners Club" />
+              {/* Payment Logos - Official Full Color JPEG */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4 py-3 px-4 max-w-2xl mx-auto">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
+                  <img className="w-full h-full object-contain" src="/pay/apple-pay.jpg" alt="Apple Pay" loading="lazy" />
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
+                  <img className="w-full h-full object-contain" src="/pay/google-pay.jpg" alt="Google Pay" loading="lazy" />
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
+                  <img className="w-full h-full object-contain" src="/pay/visa.jpg" alt="Visa" loading="lazy" />
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
+                  <img className="w-full h-full object-contain" src="/pay/mastercard.jpg" alt="Mastercard" loading="lazy" />
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
+                  <img className="w-full h-full object-contain" src="/pay/amex.jpg" alt="American Express" loading="lazy" />
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
+                  <img className="w-full h-full object-contain" src="/pay/diners.jpg" alt="Diners Club" loading="lazy" />
+                </div>
               </div>
               
               {/* Nayax Powered Badge */}
