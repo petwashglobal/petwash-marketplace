@@ -601,22 +601,34 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const deviceInfo = getDeviceInfo();
       logger.info('[Auth] Device info:', deviceInfo);
       
-      const isEmbeddedWebview = /Replit-Bonsai|wv|WebView/i.test(navigator.userAgent);
+      const isReplitWebview = /Replit-Bonsai/i.test(navigator.userAgent);
+      const isGenericWebview = /wv|WebView/i.test(navigator.userAgent) && !isReplitWebview;
       const isIOSDevice = isIOS();
       
       let userCredential: import('firebase/auth').UserCredential | null = null;
       
-      if (isEmbeddedWebview || isIOSDevice) {
-        logger.info(`[Auth] iOS/webview detected, using redirect auth for ${provider}`);
+      if (isGenericWebview) {
+        logger.info(`[Auth] Generic webview detected, using redirect auth for ${provider}`);
+        await signInWithBestMethod(auth, authProvider, 'redirect');
+        return;
+      }
+      
+      if (isIOSDevice && !isReplitWebview) {
+        logger.info(`[Auth] iOS Safari detected, using redirect auth for ${provider}`);
         await signInWithBestMethod(auth, authProvider, 'redirect');
         return;
       }
       
       try {
+        logger.info(`[Auth] Using popup auth for ${provider}${isReplitWebview ? ' (Replit webview)' : ''}`);
         userCredential = await signInWithPopup(auth, authProvider);
       } catch (popupErr: any) {
-        if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user') {
+        if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/cancelled-popup-request') {
           logger.info(`[Auth] Popup blocked/closed for ${provider}, falling back to redirect`);
+          await signInWithBestMethod(auth, authProvider, 'redirect');
+          return;
+        } else if (popupErr.code === 'auth/operation-not-supported-in-this-environment') {
+          logger.info(`[Auth] Popup not supported, falling back to redirect for ${provider}`);
           await signInWithBestMethod(auth, authProvider, 'redirect');
           return;
         } else {
