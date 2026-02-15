@@ -605,6 +605,26 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const isGenericWebview = /wv|WebView/i.test(navigator.userAgent) && !isReplitWebview;
       const isIOSDevice = isIOS();
       
+      if (isReplitWebview) {
+        logger.info(`[Auth] Replit webview detected - social login not supported, showing browser prompt`);
+        const webviewMessages: Record<string, { title: string; desc: string }> = {
+          en: { title: 'Open in browser', desc: 'Social login requires a full browser. Tap "Open in browser" at the top right, or use phone number login below.' },
+          he: { title: 'פתחו בדפדפן', desc: 'התחברות עם רשתות חברתיות דורשת דפדפן מלא. לחצו על "Open in browser" בפינה הימנית העליונה, או השתמשו בהתחברות עם מספר טלפון.' },
+          ar: { title: 'افتح في المتصفح', desc: 'يتطلب تسجيل الدخول عبر الشبكات الاجتماعية متصفحًا كاملاً. انقر على "Open in browser" في الزاوية العلوية اليمنى، أو استخدم تسجيل الدخول برقم الهاتف.' },
+          es: { title: 'Abrir en navegador', desc: 'El inicio de sesión social requiere un navegador completo. Toque "Open in browser" en la esquina superior derecha, o use el inicio de sesión con número de teléfono.' },
+          fr: { title: 'Ouvrir dans le navigateur', desc: 'La connexion sociale nécessite un navigateur complet. Appuyez sur "Open in browser" en haut à droite, ou utilisez la connexion par téléphone.' },
+          ru: { title: 'Откройте в браузере', desc: 'Вход через соцсети требует полного браузера. Нажмите "Open in browser" в правом верхнем углу или используйте вход по номеру телефона.' },
+        };
+        const msg = webviewMessages[language] || webviewMessages.en;
+        toast({
+          title: msg.title,
+          description: msg.desc,
+          duration: 8000,
+        });
+        setSocialLoading(null);
+        return;
+      }
+
       let userCredential: import('firebase/auth').UserCredential | null = null;
       
       if (isGenericWebview) {
@@ -613,14 +633,14 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         return;
       }
       
-      if (isIOSDevice && !isReplitWebview) {
+      if (isIOSDevice) {
         logger.info(`[Auth] iOS Safari detected, using redirect auth for ${provider}`);
         await signInWithBestMethod(auth, authProvider, 'redirect');
         return;
       }
       
       try {
-        logger.info(`[Auth] Using popup auth for ${provider}${isReplitWebview ? ' (Replit webview)' : ''}`);
+        logger.info(`[Auth] Using popup auth for ${provider}`);
         userCredential = await signInWithPopup(auth, authProvider);
       } catch (popupErr: any) {
         if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/cancelled-popup-request') {
@@ -774,8 +794,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           ru: 'Этот домен не авторизован для входа через Google. Обратитесь в поддержку.',
         },
         'auth/network-request-failed': {
-          en: 'Network error. Please check your connection and try again.',
-          he: 'שגיאת רשת. בדקו את החיבור שלכם ונסו שוב.',
+          en: /Replit-Bonsai/i.test(navigator.userAgent)
+            ? 'Social login is not supported in the app preview. Tap "Open in browser" at the top right.'
+            : 'Network error. Please check your connection and try again.',
+          he: /Replit-Bonsai/i.test(navigator.userAgent)
+            ? 'התחברות חברתית אינה נתמכת בתצוגה המקדימה. לחצו על "Open in browser" בפינה הימנית העליונה.'
+            : 'שגיאת רשת. בדקו את החיבור שלכם ונסו שוב.',
           ar: 'خطأ في الشبكة. يرجى التحقق من اتصالك والمحاولة مرة أخرى.',
           es: 'Error de red. Verifique su conexión e inténtelo de nuevo.',
           fr: 'Erreur réseau. Vérifiez votre connexion et réessayez.',
