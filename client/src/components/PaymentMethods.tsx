@@ -8,28 +8,15 @@ interface PaymentMethodsProps {
   size?: string;
 }
 
-const payLogos = [
-  { src: '/pay/apple-pay.jpg', alt: 'Apple Pay' },
-  { src: '/pay/google-pay.jpg', alt: 'Google Pay' },
-  { src: '/pay/visa.jpg', alt: 'Visa' },
-  { src: '/pay/mastercard.jpg', alt: 'Mastercard' },
-  { src: '/pay/amex.jpg', alt: 'American Express' },
-  { src: '/pay/diners.jpg', alt: 'Diners Club' },
-];
-
 function PaymentLogos({ className = '' }: { className?: string }) {
   return (
-    <div className={`grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4 py-3 px-4 max-w-2xl mx-auto ${className}`} role="region" aria-label="Payments accepted">
-      {payLogos.map((logo) => (
-        <div key={logo.alt} className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
-          <img
-            className="w-full h-full object-contain"
-            src={logo.src}
-            alt={logo.alt}
-            loading="lazy"
-          />
-        </div>
-      ))}
+    <div className={`flex items-center justify-center py-3 px-4 ${className}`} role="region" aria-label="Payments accepted">
+      <img 
+        className="w-full max-w-[420px] sm:max-w-[500px] md:max-w-[560px] lg:max-w-[620px] h-auto object-contain" 
+        src="/pay/payment-methods.jpg" 
+        alt="We accept Visa, Mastercard, American Express, Apple Pay, Google Pay" 
+        loading="lazy" 
+      />
     </div>
   );
 }

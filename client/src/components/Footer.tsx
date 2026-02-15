@@ -132,26 +132,14 @@ export function Footer({ language }: FooterProps) {
                 <Sparkles className="w-4 h-4 text-amber-500" />
               </div>
               
-              {/* Payment Logos - Official Full Color JPEG */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4 py-3 px-4 max-w-2xl mx-auto">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
-                  <img className="w-full h-full object-contain" src="/pay/apple-pay.jpg" alt="Apple Pay" loading="lazy" />
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
-                  <img className="w-full h-full object-contain" src="/pay/google-pay.jpg" alt="Google Pay" loading="lazy" />
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
-                  <img className="w-full h-full object-contain" src="/pay/visa.jpg" alt="Visa" loading="lazy" />
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
-                  <img className="w-full h-full object-contain" src="/pay/mastercard.jpg" alt="Mastercard" loading="lazy" />
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
-                  <img className="w-full h-full object-contain" src="/pay/amex.jpg" alt="American Express" loading="lazy" />
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center justify-center aspect-[3/2]">
-                  <img className="w-full h-full object-contain" src="/pay/diners.jpg" alt="Diners Club" loading="lazy" />
-                </div>
+              {/* Payment Logos - Official Full Color */}
+              <div className="flex items-center justify-center py-3 px-4">
+                <img 
+                  className="w-full max-w-[420px] sm:max-w-[500px] md:max-w-[560px] lg:max-w-[620px] h-auto object-contain" 
+                  src="/pay/payment-methods.jpg" 
+                  alt="We accept Visa, Mastercard, American Express, Apple Pay, Google Pay" 
+                  loading="lazy" 
+                />
               </div>
               
               {/* Nayax Powered Badge */}
