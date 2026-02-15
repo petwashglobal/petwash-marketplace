@@ -12,18 +12,6 @@ const paymentSvgMap: Record<string, string> = {
   diners: '/assets/payments/diners-2025.svg',
 };
 
-const PaymentLogo = ({ type }: { type: string }) => {
-  const src = paymentSvgMap[type];
-  if (!src) return null;
-  return (
-    <img
-      src={src}
-      alt={type}
-      className="block w-full h-full object-contain"
-      loading="lazy"
-    />
-  );
-};
 
 interface FooterProps {
   language: Language;
@@ -153,21 +141,19 @@ export function Footer({ language }: FooterProps) {
                 <Sparkles className="w-4 h-4 text-amber-500" />
               </div>
               
-              {/* Payment Icons Grid - Full Width */}
-              <div className="grid grid-cols-6 gap-1.5 sm:gap-2 max-w-2xl mx-auto">
+              {/* Payment Icons Row - Clean Professional */}
+              <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap max-w-xl mx-auto" role="region" aria-label="Payments accepted">
                 {(['visa', 'mastercard', 'amex', 'applepay', 'googlepay', 'diners'] as const).map((type) => (
-                  <div
+                  <img
                     key={type}
-                    className="group overflow-hidden aspect-[1.6/1]
-                      rounded-md sm:rounded-lg
-                      shadow-[0_1px_4px_rgba(0,0,0,0.1)]
-                      hover:shadow-[0_4px_16px_rgba(0,0,0,0.15)]
-                      hover:scale-105
-                      transition-all duration-300 ease-out"
+                    src={paymentSvgMap[type]}
+                    alt={type}
+                    className="h-7 sm:h-8 md:h-9 w-auto object-contain"
+                    style={{ imageRendering: 'auto' }}
+                    loading="lazy"
+                    decoding="async"
                     data-testid={`payment-logo-${type}`}
-                  >
-                    <PaymentLogo type={type} />
-                  </div>
+                  />
                 ))}
               </div>
               
