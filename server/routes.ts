@@ -1450,8 +1450,12 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/auth/me-session', async (req, res) => {
     try {
       const token = req.cookies?.pw_session;
-      if (!token) {
-        logger.debug('[Auth Me] No session cookie found');
+      const bearerToken = req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.split('Bearer ')[1]
+        : null;
+
+      if (!token && !bearerToken) {
+        logger.debug('[Auth Me] No session cookie or bearer token found');
         return res.status(401).json({ ok: false, error: 'no-session' });
       }
 
@@ -1460,10 +1464,14 @@ self.addEventListener('notificationclick', (event) => {
       
       let decoded;
       try {
-        decoded = await admin.auth().verifySessionCookie(token, true);
-        logger.debug(`[Auth Me] Session verified for user: ${decoded.uid}`);
+        if (token) {
+          decoded = await admin.auth().verifySessionCookie(token, true);
+        } else if (bearerToken) {
+          decoded = await admin.auth().verifyIdToken(bearerToken, true);
+        }
+        logger.debug(`[Auth Me] Session verified for user: ${decoded?.uid}`);
       } catch (error) {
-        logger.warn('[Auth Me] Session cookie verification failed - expired or invalid (401)', { error: error instanceof Error ? error.message : 'unknown' });
+        logger.warn('[Auth Me] Token verification failed - expired or invalid (401)', { error: error instanceof Error ? error.message : 'unknown' });
         return res.status(401).json({ ok: false, error: 'invalid-session' });
       }
       
@@ -9103,7 +9111,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Customer & Social Features
   app.use('/api/social', apiLimiter, socialRoutes);
-  app.use('/api/messages', apiLimiter, messagesRoutes);
+  app.use('/api/messages', optionalFirebaseToken, apiLimiter, messagesRoutes);
   app.use('/api/concierge', apiLimiter, conciergeRoutes);
   
   // Global Services

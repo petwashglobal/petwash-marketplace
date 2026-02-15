@@ -2,6 +2,19 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAppCheckToken } from "./firebase";
 import { getApiUrl } from "./apiConfig";
 
+async function getFirebaseBearerToken(): Promise<string | null> {
+  try {
+    const { auth } = await import("./firebase");
+    const user = auth?.currentUser;
+    if (user) {
+      return await user.getIdToken();
+    }
+  } catch (error) {
+    console.warn('[QueryClient] Failed to get Firebase ID token', error);
+  }
+  return null;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -74,6 +87,13 @@ export async function apiRequest(
     headers["X-Firebase-AppCheck"] = appCheckToken;
   }
 
+  if (!headers["Authorization"]) {
+    const bearerToken = await getFirebaseBearerToken();
+    if (bearerToken) {
+      headers["Authorization"] = `Bearer ${bearerToken}`;
+    }
+  }
+
   const res = await fetch(getApiUrl(url), {
     method,
     headers,
@@ -91,8 +111,6 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    // CRITICAL FIX: Ensure getAppCheckToken failure doesn't break API calls
-    // If App Check is disabled or fails, we continue without the token (fail-open)
     let appCheckToken: string | null = null;
     try {
       appCheckToken = await getAppCheckToken();
@@ -103,6 +121,11 @@ export const getQueryFn: <T>(options: {
     const headers: Record<string, string> = {};
     if (appCheckToken) {
       headers["X-Firebase-AppCheck"] = appCheckToken;
+    }
+
+    const bearerToken = await getFirebaseBearerToken();
+    if (bearerToken) {
+      headers["Authorization"] = `Bearer ${bearerToken}`;
     }
 
     const res = await fetch(getApiUrl(queryKey[0] as string), {

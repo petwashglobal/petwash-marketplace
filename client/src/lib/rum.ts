@@ -181,12 +181,15 @@ export function trackPasskeyToDashboard(startTime: number) {
 // Store metrics to Firestore
 async function trackMetric(metrics: PerformanceMetrics) {
   try {
-    // Filter out undefined values (Firestore doesn't accept undefined)
+    const { auth } = await import('./firebase');
+    if (!auth.currentUser) {
+      return;
+    }
+
     const cleanMetrics: Record<string, any> = {
       timestamp: Timestamp.fromDate(metrics.timestamp),
     };
     
-    // Only add defined values
     Object.entries(metrics).forEach(([key, value]) => {
       if (key !== 'timestamp' && value !== undefined) {
         cleanMetrics[key] = value;
@@ -195,8 +198,6 @@ async function trackMetric(metrics: PerformanceMetrics) {
     
     await addDoc(collection(db, 'performance_metrics'), cleanMetrics);
   } catch (error) {
-    // Silently ignore Firestore permission errors (analytics are non-critical)
-    // Only log in development mode
     if (import.meta.env.DEV) {
       console.debug('[RUM] Metrics tracking skipped (Firestore permissions)');
     }

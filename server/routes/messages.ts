@@ -30,7 +30,7 @@ const router = Router();
  */
 router.get('/lookup-user', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -85,7 +85,7 @@ function createMessageHash(message: Partial<InsertUserMessage>): string {
  */
 router.get('/inbox', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -124,7 +124,7 @@ router.get('/inbox', async (req, res) => {
  */
 router.get('/:messageId', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -183,7 +183,7 @@ router.get('/:messageId', async (req, res) => {
  */
 router.post('/send', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -284,7 +284,7 @@ router.post('/send', async (req, res) => {
           subject: '📬 New Message in Your ⁦Pet Wash™⁩ Inbox',
           html: `
             <h2>You have a new message</h2>
-            <p><strong>From:</strong> ${req.user?.email || '⁦Pet Wash™⁩ Team'}</p>
+            <p><strong>From:</strong> ${req.firebaseUser?.email || '⁦Pet Wash™⁩ Team'}</p>
             <p><strong>Subject:</strong> ${validated.subject}</p>
             <p><em>Log in to your ⁦Pet Wash™⁩ account to read and reply.</em></p>
           `,
@@ -319,7 +319,7 @@ router.post('/send', async (req, res) => {
  */
 router.post('/:messageId/star', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -365,7 +365,7 @@ router.post('/:messageId/star', async (req, res) => {
  */
 router.delete('/:messageId', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -422,7 +422,7 @@ router.delete('/:messageId', async (req, res) => {
  */
 router.get('/unread/count', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }

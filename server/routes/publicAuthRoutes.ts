@@ -3,6 +3,32 @@ import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
 import { twilioSMSService } from "../services/TwilioSMSService";
 
+async function getFirebaseUserFromRequest(req: express.Request): Promise<{uid: string; email?: string; displayName?: string} | null> {
+  try {
+    const authHeader = req.headers.authorization;
+    const sessionCookie = req.cookies?.pw_session;
+    if (!authHeader?.startsWith('Bearer ') && !sessionCookie) return null;
+
+    const { auth: fbAdmin } = await import('../lib/firebase-admin');
+    let decoded: any;
+    if (authHeader?.startsWith('Bearer ')) {
+      decoded = await fbAdmin.verifyIdToken(authHeader.split('Bearer ')[1], true);
+    } else if (sessionCookie) {
+      decoded = await fbAdmin.verifySessionCookie(sessionCookie, true);
+    }
+    if (!decoded) return null;
+    const userRecord = await fbAdmin.getUser(decoded.uid);
+    return {
+      uid: decoded.uid,
+      email: decoded.email || userRecord.email,
+      displayName: userRecord.displayName || undefined,
+    };
+  } catch (err) {
+    logger.debug('[PublicAuth] Firebase token check failed:', err);
+    return null;
+  }
+}
+
 export const publicAuthRouter = express.Router();
 
 /**
@@ -30,26 +56,39 @@ publicAuthRouter.get("/api/simple-auth/me", async (req, res) => {
   try {
     const user = await getCurrentUser(req);
 
-    // No session / user not logged in → normal → HTTP 200
-    if (!user) {
+    if (user) {
       return sendSafeJSON(res, {
         ok: true,
-        authenticated: false,
-        user: null,
+        authenticated: true,
+        user,
       });
     }
 
-    // Valid session
+    const firebaseUser = await getFirebaseUserFromRequest(req);
+    if (firebaseUser) {
+      return sendSafeJSON(res, {
+        ok: true,
+        authenticated: true,
+        user: {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          firstName: firebaseUser.displayName?.split(' ')[0] || '',
+          lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+          authProvider: 'firebase',
+        },
+      });
+    }
+
     return sendSafeJSON(res, {
       ok: true,
-      authenticated: true,
-      user,
+      authenticated: false,
+      user: null,
     });
 
   } catch (err) {
     logger.error('[PublicAuth] Error checking auth status:', err);
     
-    // If this error indicates a bad token, return real 401
     if (String(err).includes("INVALID_TOKEN") || String(err).includes("Invalid session")) {
       return res.status(401).json({
         ok: false,
@@ -57,7 +96,6 @@ publicAuthRouter.get("/api/simple-auth/me", async (req, res) => {
       });
     }
 
-    // Other server error
     return res.status(500).json({
       ok: false,
       error: "Server error",
