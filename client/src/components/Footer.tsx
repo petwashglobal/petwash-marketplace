@@ -1,16 +1,7 @@
 import { t, type Language } from '@/lib/i18n';
 import { Link } from 'wouter';
 import { FaWhatsapp } from 'react-icons/fa';
-import { Mail, Shield, Award, Leaf, CheckCircle2, Lock, Sparkles } from 'lucide-react';
-
-const paymentSvgMap: Record<string, string> = {
-  visa: '/assets/payments/visa-2025.svg',
-  mastercard: '/assets/payments/mastercard-2025.svg',
-  amex: '/assets/payments/amex-2025.svg',
-  applepay: '/assets/payments/apple-pay-2025.svg',
-  googlepay: '/assets/payments/google-pay-2025.svg',
-  diners: '/assets/payments/diners-2025.svg',
-};
+import { Mail, Shield, Award, Leaf, CheckCircle2, Lock, Sparkles, CreditCard } from 'lucide-react';
 
 
 interface FooterProps {
@@ -141,20 +132,12 @@ export function Footer({ language }: FooterProps) {
                 <Sparkles className="w-4 h-4 text-amber-500" />
               </div>
               
-              {/* Payment Icons Row - Clean Professional */}
-              <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap max-w-xl mx-auto" role="region" aria-label="Payments accepted">
-                {(['visa', 'mastercard', 'amex', 'applepay', 'googlepay', 'diners'] as const).map((type) => (
-                  <img
-                    key={type}
-                    src={paymentSvgMap[type]}
-                    alt={type}
-                    className="h-7 sm:h-8 md:h-9 w-auto object-contain"
-                    style={{ imageRendering: 'auto' }}
-                    loading="lazy"
-                    decoding="async"
-                    data-testid={`payment-logo-${type}`}
-                  />
-                ))}
+              {/* Accepted Payments - Clean Text */}
+              <div className="flex items-center justify-center gap-2 flex-wrap" role="region" aria-label="Payments accepted">
+                <CreditCard className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-600 font-medium">
+                  Visa · Mastercard · Amex · Apple Pay · Google Pay · Diners
+                </span>
               </div>
               
               {/* Nayax Powered Badge */}

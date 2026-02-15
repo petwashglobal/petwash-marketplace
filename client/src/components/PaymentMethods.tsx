@@ -1,4 +1,4 @@
-import { Lock, Sparkles } from 'lucide-react';
+import { Lock, Sparkles, CreditCard } from 'lucide-react';
 import { type Language } from '@/lib/i18n';
 
 interface PaymentMethodsProps {
@@ -8,14 +8,7 @@ interface PaymentMethodsProps {
   size?: string;
 }
 
-const paymentLogos = [
-  { name: 'Visa', src: '/assets/payments/visa-2025.svg', alt: 'Visa' },
-  { name: 'Mastercard', src: '/assets/payments/mastercard-2025.svg', alt: 'Mastercard' },
-  { name: 'American Express', src: '/assets/payments/amex-2025.svg', alt: 'American Express' },
-  { name: 'Apple Pay', src: '/assets/payments/apple-pay-2025.svg', alt: 'Apple Pay' },
-  { name: 'Google Pay', src: '/assets/payments/google-pay-2025.svg', alt: 'Google Pay' },
-  { name: 'Diners Club', src: '/assets/payments/diners-2025.svg', alt: 'Diners Club' },
-];
+const paymentNames = ['Visa', 'Mastercard', 'Amex', 'Apple Pay', 'Google Pay', 'Diners'];
 
 export default function PaymentMethods({ 
   language = 'en', 
@@ -27,21 +20,10 @@ export default function PaymentMethods({
   if (compact) {
     return (
       <div className="flex items-center justify-center gap-2 flex-wrap" data-testid="payment-methods-compact" role="region" aria-label="Payments accepted">
-        {paymentLogos.map((item) => (
-          <div
-            key={item.name}
-            className="flex items-center justify-center w-14 h-9 bg-white rounded-lg border border-gray-200/60 shadow-sm overflow-hidden"
-            data-testid={`payment-logo-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
-          >
-            <img
-              src={item.src}
-              alt={item.alt}
-              className="block h-full w-full object-contain"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-        ))}
+        <CreditCard className="w-4 h-4 text-gray-500" />
+        <span className="text-sm text-gray-600 font-medium">
+          {paymentNames.join(' · ')}
+        </span>
       </div>
     );
   }
@@ -54,7 +36,7 @@ export default function PaymentMethods({
       aria-label="Payments accepted"
     >
       <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 mb-3">
             <Sparkles className="w-5 h-5 text-[#c6a664]" />
             <h3 className="text-lg font-semibold text-gray-900 tracking-tight">
@@ -64,34 +46,11 @@ export default function PaymentMethods({
           </div>
         </div>
         
-        <div 
-          className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-8"
-          data-testid="payment-icons-container"
-        >
-          {paymentLogos.map((item) => (
-            <div
-              key={item.name}
-              className="group relative flex items-center justify-center w-16 h-10 sm:w-20 sm:h-12 md:w-24 md:h-14 lg:w-28 lg:h-16
-                bg-gradient-to-br from-slate-50 via-white to-gray-100
-                rounded-lg sm:rounded-xl 
-                shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.9)]
-                border border-gray-200/60
-                hover:shadow-[0_8px_24px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_0_rgba(255,255,255,1)]
-                hover:border-amber-300/50
-                hover:scale-105
-                transition-all duration-300 ease-out
-                overflow-hidden"
-              data-testid={`payment-logo-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
-            >
-              <img
-                src={item.src}
-                alt={item.alt}
-                className="block h-full w-full object-contain p-1 group-hover:scale-105 transition-transform duration-300"
-                loading="lazy"
-                decoding="async"
-              />
-            </div>
-          ))}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          <CreditCard className="w-5 h-5 text-gray-500" />
+          <span className="text-base text-gray-700 font-medium tracking-wide">
+            {paymentNames.join(' · ')}
+          </span>
         </div>
         
         {showNayax && (
