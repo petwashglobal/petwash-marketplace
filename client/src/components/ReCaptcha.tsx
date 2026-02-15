@@ -108,10 +108,13 @@ export function SecurityCheckpoint({
 }: SecurityCheckpointProps) {
   const [status, setStatus] = useState<'idle' | 'verifying' | 'verified' | 'failed'>('idle');
   const [animating, setAnimating] = useState(false);
+  const busyRef = useRef(false);
+  const touchFiredRef = useRef(false);
   const isHebrew = language === 'he';
 
-  const handleClick = useCallback(async () => {
-    if (status === 'verified' || status === 'verifying') return;
+  const handleVerify = useCallback(async () => {
+    if (busyRef.current || status === 'verified') return;
+    busyRef.current = true;
     
     setStatus('verifying');
     setAnimating(true);
@@ -121,7 +124,6 @@ export function SecurityCheckpoint({
 
       if (token) {
         const serverResult = await verifyReCaptchaOnServer(token, action);
-        
         if (serverResult.success) {
           setStatus('verified');
           onVerified(token);
@@ -139,12 +141,21 @@ export function SecurityCheckpoint({
       onFailed?.();
     } finally {
       setAnimating(false);
+      busyRef.current = false;
     }
   }, [status, action, onVerified, onFailed]);
 
-  const handleRetry = useCallback(() => {
-    setStatus('idle');
-  }, []);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    touchFiredRef.current = true;
+    handleVerify();
+    setTimeout(() => { touchFiredRef.current = false; }, 400);
+  }, [handleVerify]);
+
+  const handleMouseClick = useCallback((e: React.MouseEvent) => {
+    if (touchFiredRef.current) return;
+    handleVerify();
+  }, [handleVerify]);
 
   return (
     <div className="w-full" data-testid="security-checkpoint">
@@ -156,7 +167,8 @@ export function SecurityCheckpoint({
           ${status === 'verified' ? 'border-green-200 bg-green-50' : ''}
           ${status === 'failed' ? 'border-red-200 bg-red-50' : ''}
         `}
-        onClick={status === 'failed' ? handleRetry : handleClick}
+        onTouchEnd={handleTouchEnd}
+        onClick={handleMouseClick}
         role="checkbox"
         aria-checked={status === 'verified'}
         aria-label={isHebrew ? 'אימות אבטחה - אני לא רובוט' : 'Security verification - I am not a robot'}
@@ -164,8 +176,7 @@ export function SecurityCheckpoint({
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            if (status === 'failed') handleRetry();
-            else handleClick();
+            handleVerify();
           }
         }}
         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
