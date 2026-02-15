@@ -133,11 +133,17 @@ export function Footer({ language }: FooterProps) {
               </div>
               
               {/* Payment Logos - Official Full Color */}
-              <div className="flex items-center justify-center py-3 px-4">
+              <div className="flex items-center justify-center gap-3 sm:gap-4 py-3 px-4">
                 <img 
-                  className="w-full max-w-[420px] sm:max-w-[500px] md:max-w-[560px] lg:max-w-[620px] h-auto object-contain" 
+                  className="h-[40px] sm:h-[48px] md:h-[56px] lg:h-[64px] w-auto object-contain" 
                   src="/pay/payment-methods.jpg" 
                   alt="We accept Visa, Mastercard, American Express, Apple Pay, Google Pay" 
+                  loading="lazy" 
+                />
+                <img 
+                  className="h-[40px] sm:h-[48px] md:h-[56px] lg:h-[64px] w-auto object-contain" 
+                  src="/pay/diners.jpg" 
+                  alt="Diners Club International" 
                   loading="lazy" 
                 />
               </div>
