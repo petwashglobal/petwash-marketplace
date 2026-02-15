@@ -1,0 +1,80 @@
+Perfect. Here is the clean, copy paste checklist you can send to your developers, plus the exact config to make Replit dev work without breaking production.
+	1.	Confirm the exact dev host
+
+	•	Open the app where it fails
+	•	Copy the full hostname, example:
+	•	f46fb046-xxxx.picard.replit.dev
+	•	We will register either:
+	•	the exact hostname (best), or
+	•	picard.replit.dev with a wildcard (only if Google allows it in that console)
+
+	2.	Firebase Auth - Authorized domains
+Firebase Console → Authentication → Settings → Authorized domains
+
+Add:
+	•	petwash.co.il (production)
+	•	signinpetwash.firebaseapp.com (required)
+	•	f46fb046-xxxx.picard.replit.dev (exact dev host)
+
+Important:
+	•	Firebase sometimes rejects wildcard domains. Use the exact host if wildcard is not accepted.
+
+	3.	Google OAuth - Authorized JavaScript origins
+Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client (Web)
+
+Add under Authorized JavaScript origins:
+	•	https://petwash.co.il
+	•	https://signinpetwash.firebaseapp.com
+	•	https://f46fb046-xxxx.picard.replit.dev
+
+	4.	Google OAuth - Authorized redirect URIs
+Same OAuth client, add or confirm:
+
+	•	https://signinpetwash.firebaseapp.com/__/auth/handler
+
+Make sure it is exactly:
+	•	handler (not handlers)
+	•	double underscore __
+	•	https
+
+	5.	reCAPTCHA v3 - allowed domains
+reCAPTCHA Admin Console → your reCAPTCHA v3 key → Domains
+
+Add:
+	•	petwash.co.il
+	•	f46fb046-xxxx.picard.replit.dev
+
+Notes:
+	•	reCAPTCHA usually does not accept wildcards.
+	•	If you change dev URLs often, you should create a stable dev domain.
+
+	6.	Fix the dev URL problem permanently
+Replit dev URLs change, so whitelisting becomes a recurring pain.
+
+Best solution:
+	•	Use a stable custom subdomain for dev, like:
+	•	dev.petwash.co.il
+	•	Point it to Replit via Cloudflare CNAME
+	•	Then whitelist only dev.petwash.co.il everywhere, once.
+
+	7.	In code - enforce correct reCAPTCHA site key per environment
+Make sure you have two keys:
+
+	•	Production v3 site key for petwash.co.il
+	•	Dev v3 site key for dev.petwash.co.il or the Replit domain
+
+Then set:
+	•	VITE_RECAPTCHA_SITE_KEY in each environment correctly
+
+	8.	Quick verification steps
+After changes, test in Safari:
+
+	•	Open dev URL in Safari
+	•	Run sign-in
+	•	Run any action that triggers grecaptcha.execute
+
+If both work in Safari but not inside Replit app:
+	•	It is webview limitations, and popup mode is required.
+	•	You already did the right change: try popup first, then redirect.
+
+If you want, paste here the exact dev hostname you are using right now, and I’ll write you the exact 3 whitelist entries for Firebase, OAuth, and reCAPTCHA as a single checklist line you can forward.
