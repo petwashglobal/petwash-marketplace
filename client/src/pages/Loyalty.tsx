@@ -301,11 +301,11 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                       <Diamond className="w-12 h-12" style={{ color: tier.labelColor }} />
                     </div>
 
-                    <div className="relative z-10 h-full flex flex-col justify-between">
+                    <div className="relative z-10 h-full flex flex-col justify-between" dir="ltr">
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="text-[10px] tracking-[0.22em] font-semibold" style={{ color: tier.labelColor, fontFamily: serif }}>
-                            PetWash&trade;
+                            PetWash™
                           </div>
                           <div className="text-[8px] tracking-[0.25em] uppercase mt-0.5 font-light" style={{ color: tier.labelColor, opacity: 0.6 }}>
                             PRIVILEGE CLUB
