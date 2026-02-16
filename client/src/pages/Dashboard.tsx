@@ -359,7 +359,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen relative" style={{ background: 'linear-gradient(180deg, #FBF9F4 0%, #F7F3EC 40%, #F4F0E8 100%)' }}>
+      <div className="min-h-screen relative bg-white">
         <div
           className="absolute inset-0 pointer-events-none flex items-center justify-center"
           style={{ opacity: 0.06 }}
