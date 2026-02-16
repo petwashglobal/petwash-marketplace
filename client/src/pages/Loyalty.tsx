@@ -20,6 +20,7 @@ import { t } from '@/lib/i18n';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { logger } from "@/lib/logger";
 import { useLocation, Link } from "wouter";
+import diamondLogo from "@assets/IMG_3257_1771244654511.png";
 
 const gold = '#C9A96E';
 
@@ -117,43 +118,65 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             </p>
           </motion.div>
 
-          {/* Hero Privilege Card — 3D perspective metallic */}
+          {/* Hero Privilege Card — 3D perspective with diamond logo */}
           <motion.div
             initial={{ opacity: 0, y: 40, rotateX: 8 }}
             animate={{ opacity: 1, y: 0, rotateX: 0 }}
             transition={{ delay: 0.3, duration: 0.9, ease: 'easeOut' }}
-            className="relative mx-auto max-w-sm sm:max-w-md mt-14 mb-12"
-            style={{ perspective: '1200px' }}
+            className="relative mx-auto mt-14 mb-12"
+            style={{ perspective: '1200px', maxWidth: '420px' }}
           >
             <div
               className="relative overflow-hidden"
               style={{
-                background: 'linear-gradient(155deg, #1a1a1a 0%, #0f0f0f 35%, #1a1a1a 65%, #252525 100%)',
-                borderRadius: '12px',
-                padding: '32px 28px 24px',
-                border: '1px solid rgba(255,255,255,0.06)',
-                boxShadow: '0 50px 100px rgba(0,0,0,0.18), 0 20px 40px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,255,255,0.03)',
-                transform: 'rotateY(-2deg) rotateX(3deg)',
+                background: 'linear-gradient(155deg, #1f1f1f 0%, #141414 25%, #0d0d0d 50%, #141414 75%, #1a1a1a 100%)',
+                borderRadius: '16px',
+                padding: '28px 24px 20px',
+                border: '1px solid rgba(201,169,110,0.12)',
+                boxShadow: '0 60px 120px rgba(0,0,0,0.25), 0 25px 50px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.04)',
+                transform: 'rotateY(-1.5deg) rotateX(2deg)',
                 transformStyle: 'preserve-3d',
-                aspectRatio: '1.6 / 1',
+                aspectRatio: '1.586 / 1',
               }}
             >
-              <div className="absolute inset-0" style={{ background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.04) 45%, transparent 55%)', pointerEvents: 'none' }} />
-              <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl" style={{ background: 'rgba(201,169,110,0.06)' }} />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(125deg, transparent 25%, rgba(255,255,255,0.03) 40%, rgba(255,255,255,0.05) 45%, transparent 55%)', pointerEvents: 'none' }} />
+              <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl" style={{ background: 'rgba(201,169,110,0.05)' }} />
+              <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full blur-3xl" style={{ background: 'rgba(201,169,110,0.03)' }} />
+
+              <img
+                src={diamondLogo}
+                alt=""
+                className="absolute pointer-events-none select-none"
+                style={{
+                  bottom: '12px',
+                  right: '16px',
+                  width: '130px',
+                  height: 'auto',
+                  opacity: 0.12,
+                  filter: 'brightness(1.3)',
+                }}
+              />
+
               <div className="relative z-10 h-full flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-[13px] tracking-[0.2em] font-medium text-white/60" style={{ fontFamily: serif }}>⁦PetWash™⁩</div>
-                    <div className="text-[11px] tracking-[0.25em] uppercase mt-1 font-light" style={{ color: gold }}>PRIVILEGE</div>
+                    <div className="text-[14px] tracking-[0.22em] font-medium text-white/70" style={{ fontFamily: serif }}>PetWash&trade;</div>
+                    <div className="text-[11px] tracking-[0.3em] uppercase mt-1.5 font-light" style={{ color: gold }}>PRIVILEGE CLUB</div>
                   </div>
-                  <div className="w-8 h-8 flex items-center justify-center" style={{ border: `1px solid ${gold}30`, borderRadius: '4px' }}>
-                    <Diamond className="w-4 h-4" style={{ color: `${gold}80` }} />
+                  <div
+                    className="w-9 h-9 flex items-center justify-center rounded-md"
+                    style={{
+                      border: `1px solid ${gold}35`,
+                      background: `linear-gradient(135deg, ${gold}08, transparent)`,
+                    }}
+                  >
+                    <Diamond className="w-4.5 h-4.5" style={{ color: gold }} />
                   </div>
                 </div>
                 <div>
-                  <div className="h-px mb-4" style={{ background: `linear-gradient(90deg, transparent, ${gold}25, transparent)` }} />
+                  <div className="h-px mb-4" style={{ background: `linear-gradient(90deg, transparent, ${gold}30, ${gold}20, transparent)` }} />
                   <div className="flex items-center justify-between">
-                    <div className="text-[9px] uppercase tracking-[0.15em] text-white/25" style={{ fontFamily: serif }}>Loyalty Member</div>
+                    <div className="text-[9px] uppercase tracking-[0.18em] text-white/30" style={{ fontFamily: serif }}>Loyalty Member</div>
                     <div className="text-[10px] font-mono tracking-widest text-white/20">PWP ••••</div>
                   </div>
                 </div>
@@ -200,64 +223,86 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             {t('privilege.membershipTiers', language)}
           </motion.h2>
 
-          <div className="flex flex-wrap justify-center gap-5 sm:gap-6">
-            {[...PRESTIGE_TIERS].reverse().map((tier, i) => (
-              <motion.div
-                key={tier.key}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.5 }}
-                className="text-center group"
-              >
-                <div
-                  className="relative overflow-hidden transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl cursor-default mx-auto"
-                  style={{
-                    background: tier.cardBg,
-                    borderRadius: '14px',
-                    border: `1px solid ${tier.borderColor}`,
-                    boxShadow: `0 16px 40px ${tier.shadowColor}, 0 4px 16px rgba(0,0,0,0.06)`,
-                    width: '180px',
-                    height: '115px',
-                    padding: '18px 16px 14px',
-                  }}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5 max-w-[960px] mx-auto">
+            {[...PRESTIGE_TIERS].reverse().map((tier, i) => {
+              const isDark = tier.key === 'privilege' || tier.key === 'blackReserve';
+              const isGold = tier.key === 'elite';
+              return (
+                <motion.div
+                  key={tier.key}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08, duration: 0.5 }}
+                  className="text-center group"
                 >
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.06) 48%, transparent 65%)' }} />
-                  <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl" style={{ background: tier.key === 'elite' ? 'rgba(201,169,110,0.08)' : tier.key === 'blackReserve' || tier.key === 'privilege' ? 'rgba(201,169,110,0.04)' : 'rgba(255,255,255,0.03)' }} />
-                  <div className="relative z-10 h-full flex flex-col justify-between">
-                    <div className="flex items-start justify-between">
-                      <div className="text-[9px] tracking-[0.18em] font-medium" style={{ color: tier.labelColor, opacity: 0.8, fontFamily: serif }}>
-                        PetWash&trade;
+                  <div
+                    className="relative overflow-hidden transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl cursor-default mx-auto"
+                    style={{
+                      background: tier.cardBg,
+                      borderRadius: '12px',
+                      border: `1px solid ${tier.borderColor}`,
+                      boxShadow: `0 16px 40px ${tier.shadowColor}, 0 4px 16px rgba(0,0,0,0.06)`,
+                      aspectRatio: '1.586 / 1',
+                      width: '100%',
+                      maxWidth: '180px',
+                      padding: '14px 12px 10px',
+                    }}
+                  >
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.06) 48%, transparent 65%)' }} />
+                    <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl" style={{ background: isGold ? 'rgba(201,169,110,0.1)' : isDark ? 'rgba(201,169,110,0.04)' : 'rgba(255,255,255,0.04)' }} />
+
+                    {(isDark || isGold) && (
+                      <img
+                        src={diamondLogo}
+                        alt=""
+                        className="absolute pointer-events-none select-none"
+                        style={{
+                          bottom: '4px',
+                          right: '6px',
+                          width: '55px',
+                          height: 'auto',
+                          opacity: isDark ? 0.06 : 0.08,
+                          filter: 'brightness(1.2)',
+                        }}
+                      />
+                    )}
+
+                    <div className="relative z-10 h-full flex flex-col justify-between">
+                      <div className="flex items-start justify-between">
+                        <div className="text-[7px] sm:text-[8px] tracking-[0.18em] font-medium" style={{ color: tier.labelColor, opacity: 0.8, fontFamily: serif }}>
+                          PetWash&trade;
+                        </div>
+                        <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded" style={{ border: `1px solid ${tier.borderColor}` }}>
+                          {tier.key === 'member' && <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'signature' && <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'elite' && <Crown className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: gold }} />}
+                          {tier.key === 'privilege' && <Diamond className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: gold }} />}
+                          {tier.key === 'blackReserve' && <Shield className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: gold }} />}
+                        </div>
                       </div>
-                      <div className="w-5 h-5 flex items-center justify-center rounded" style={{ border: `1px solid ${tier.borderColor}` }}>
-                        {tier.key === 'member' && <ChevronRight className="w-3 h-3" style={{ color: tier.labelColor }} />}
-                        {tier.key === 'signature' && <Star className="w-3 h-3" style={{ color: tier.labelColor }} />}
-                        {tier.key === 'elite' && <Crown className="w-3 h-3" style={{ color: gold }} />}
-                        {tier.key === 'privilege' && <Diamond className="w-3 h-3" style={{ color: gold }} />}
-                        {tier.key === 'blackReserve' && <Shield className="w-3 h-3" style={{ color: gold }} />}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="h-px mb-2 opacity-20" style={{ background: tier.key === 'member' || tier.key === 'signature' ? 'rgba(0,0,0,0.15)' : `linear-gradient(90deg, transparent, ${gold}, transparent)` }} />
-                      <div className="text-[10px] tracking-[0.15em] uppercase font-bold" style={{ color: tier.tierNameColor }}>
-                        {t(tier.nameKey, language)}
+                      <div>
+                        <div className="h-px mb-1.5 opacity-20" style={{ background: isDark || isGold ? `linear-gradient(90deg, transparent, ${gold}, transparent)` : 'rgba(0,0,0,0.12)' }} />
+                        <div className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase font-bold" style={{ color: tier.tierNameColor }}>
+                          {t(tier.nameKey, language)}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-4 space-y-1">
-                  <h3 className="text-[13px] font-semibold text-gray-900" style={{ fontFamily: serif }}>
-                    {t(tier.nameKey, language)}
-                  </h3>
-                  {tier.benefits.map((bKey, bi) => (
-                    <p key={bi} className="text-[10px] text-gray-400 leading-snug">
-                      {t(bKey, language)}
-                    </p>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
+                  <div className="mt-3 space-y-1">
+                    <h3 className="text-[12px] font-semibold text-gray-900" style={{ fontFamily: serif }}>
+                      {t(tier.nameKey, language)}
+                    </h3>
+                    {tier.benefits.map((bKey, bi) => (
+                      <p key={bi} className="text-[10px] text-gray-400 leading-snug">
+                        {t(bKey, language)}
+                      </p>
+                    ))}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
