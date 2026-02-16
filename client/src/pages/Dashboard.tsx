@@ -211,12 +211,12 @@ const dashText: Record<string, Record<string, string>> = {
     ru: 'Программа Лояльности',
   },
   giftCards: {
-    en: 'Gift Cards',
-    he: 'כרטיסי מתנה',
-    ar: 'بطاقات هدايا',
-    es: 'Tarjetas de Regalo',
-    fr: 'Cartes Cadeaux',
-    ru: 'Подарочные Карты',
+    en: 'e-Gift Digital Vouchers',
+    he: 'תווי שי דיגיטליים',
+    ar: 'قسائم رقمية',
+    es: 'Vales Regalo Digitales',
+    fr: 'Bons Cadeaux Numériques',
+    ru: 'Электронные Ваучеры',
   },
   packages: {
     en: 'Wash Packages',
@@ -390,16 +390,16 @@ export default function Dashboard() {
             </h1>
           </motion.div>
 
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
             <LuxuryCard delay={0.2}>
-              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
+              <div className="px-3 py-3 sm:px-4 sm:py-5 text-center">
+                <p className="text-[9px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
                   {tx('balance', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  <span className="text-sm" style={goldText}>&#8362;</span>{totalBalance}
+                <p className="text-lg sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <span className="text-xs sm:text-sm" style={goldText}>&#8362;</span>{totalBalance}
                 </p>
-                <p className="text-[9px] sm:text-[10px] text-gray-500 tracking-wide">{tx('currentBalance', language)}</p>
+                <p className="text-[8px] sm:text-[10px] text-gray-500 tracking-wide">{tx('currentBalance', language)}</p>
                 <div className="mt-2 pt-2 border-t" style={{ borderColor: 'rgba(201,169,78,0.15)' }}>
                   <p className="text-[9px] tracking-[0.1em] uppercase" style={goldText}>ILS</p>
                 </div>
@@ -407,14 +407,14 @@ export default function Dashboard() {
             </LuxuryCard>
 
             <LuxuryCard delay={0.25}>
-              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
+              <div className="px-3 py-3 sm:px-4 sm:py-5 text-center">
+                <p className="text-[9px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
                   {tx('points', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <p className="text-lg sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
                   {loyaltyPoints.toLocaleString()}
                 </p>
-                <p className="text-[9px] sm:text-[10px] text-gray-500 tracking-wide">{tx('availablePoints', language)}</p>
+                <p className="text-[8px] sm:text-[10px] text-gray-500 tracking-wide">{tx('availablePoints', language)}</p>
                 <div className="mt-2 pt-2 border-t" style={{ borderColor: 'rgba(201,169,78,0.15)' }}>
                   <p className="text-[9px] tracking-[0.1em] uppercase" style={goldText}>
                     {tierLabel} {tx('member', language)}
@@ -423,49 +423,49 @@ export default function Dashboard() {
               </div>
             </LuxuryCard>
 
-            <LuxuryCard delay={0.3}>
-              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
+            <LuxuryCard delay={0.3} className="col-span-2 sm:col-span-1">
+              <div className="px-3 py-3 sm:px-4 sm:py-5 text-center">
+                <p className="text-[9px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
                   {tx('savedCarers', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light text-gray-800" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <p className="text-lg sm:text-2xl font-light text-gray-800" style={{ fontFamily: "'Playfair Display', serif" }}>
                   0
                 </p>
               </div>
             </LuxuryCard>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-5">
             <LuxuryCard delay={0.35}>
-              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
+              <div className="px-3 py-3 sm:px-4 sm:py-5 text-center">
+                <p className="text-[9px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
                   {tx('lifetimeValue', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  <span className="text-sm" style={goldText}>&#8362;</span>{giftBalance}
+                <p className="text-lg sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <span className="text-xs sm:text-sm" style={goldText}>&#8362;</span>{giftBalance}
                 </p>
-                <p className="text-[9px] sm:text-[10px] text-gray-500 tracking-wide">{tx('totalSpending', language)}</p>
+                <p className="text-[8px] sm:text-[10px] text-gray-500 tracking-wide">{tx('totalSpending', language)}</p>
               </div>
             </LuxuryCard>
 
             <LuxuryCard delay={0.4}>
-              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
+              <div className="px-3 py-3 sm:px-4 sm:py-5 text-center">
+                <p className="text-[9px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
                   {tx('savedCards', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <p className="text-lg sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
                   0
                 </p>
-                <p className="text-[9px] sm:text-[10px] text-gray-500 tracking-wide">{tx('paymentMethods', language)}</p>
+                <p className="text-[8px] sm:text-[10px] text-gray-500 tracking-wide">{tx('paymentMethods', language)}</p>
               </div>
             </LuxuryCard>
 
-            <LuxuryCard delay={0.45}>
-              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
-                <p className="text-xl sm:text-2xl font-light text-gray-400 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <LuxuryCard delay={0.45} className="col-span-2 sm:col-span-1">
+              <div className="px-3 py-3 sm:px-4 sm:py-5 text-center">
+                <p className="text-lg sm:text-2xl font-light text-gray-400 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
                   0
                 </p>
-                <p className="text-[9px] sm:text-[10px] tracking-wide" style={goldText}>{tx('comingSoon', language)}</p>
+                <p className="text-[8px] sm:text-[10px] tracking-wide" style={goldText}>{tx('comingSoon', language)}</p>
               </div>
             </LuxuryCard>
           </div>
@@ -610,6 +610,33 @@ export default function Dashboard() {
                 </div>
               </div>
             </motion.div>
+
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.75 }}
+              onClick={() => setLocation('/gift-cards')}
+              className="relative rounded-xl overflow-hidden text-center group"
+              style={{
+                background: '#FFFFFF',
+                border: goldBorder,
+                boxShadow: cardShadow,
+              }}
+            >
+              <div
+                className="absolute top-0 left-0 w-[3px] h-full"
+                style={{ background: goldGradient }}
+              />
+              <div className="px-5 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                    {tx('giftCards', language)}
+                  </p>
+                  <p className="text-[10px] text-gray-500">e-Gift</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+              </div>
+            </motion.button>
           </div>
 
           <motion.div
