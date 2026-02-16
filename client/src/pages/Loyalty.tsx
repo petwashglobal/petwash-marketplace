@@ -475,64 +475,62 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-100"
+            className="bg-white rounded-xl shadow-sm border border-gray-100"
           >
-            <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
-              <thead>
-                <tr>
-                  <th className="text-start p-3 sm:p-4 text-xs uppercase tracking-wider text-gray-300 font-medium w-[30%] sm:w-auto" style={{ borderBottom: '1px solid #f0f0f0' }}></th>
-                  {PRESTIGE_TIERS.map((tier) => {
-                    const headerColors: Record<string, string> = {
-                      member: '#7B2D9E',
-                      signature: '#937225',
-                      elite: '#1B8A45',
-                      privilege: '#15407A',
-                      blackReserve: '#1a1a1a',
-                    };
-                    const c = headerColors[tier.key] || '#6b7280';
-                    return (
-                      <th
-                        key={tier.key}
-                        className="p-2 sm:p-4 text-center text-[9px] sm:text-[11px] uppercase tracking-wider font-semibold"
-                        style={{
-                          borderBottom: `2px solid ${c}`,
-                          color: c,
-                          fontFamily: serif,
-                        }}
-                      >
-                        {t(tier.nameKey, language)}
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARISON_ROWS.map((row, ri) => (
-                  <tr key={ri} className="bg-white">
-                    <td className="p-3 sm:p-4 text-xs sm:text-sm text-gray-600 font-medium" style={{ borderBottom: '1px solid #f5f5f5' }}>
-                      {t(row.key, language)}
-                    </td>
-                    {row.values.map((val, ci) => (
-                      <td
-                        key={ci}
-                        className="p-2 sm:p-4 text-center"
-                        style={{ borderBottom: '1px solid #f5f5f5' }}
-                      >
-                        {typeof val === 'boolean' ? (
-                          val ? (
-                            <Check className="w-4 h-4 mx-auto" style={{ color: gold }} />
-                          ) : (
-                            <span className="text-gray-200">—</span>
-                          )
-                        ) : (
-                          <span className="text-xs sm:text-sm font-bold" style={{ color: val === '-' ? '#d4d4d8' : gold }}>{val}</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+            {/* Header row */}
+            <div className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
+              <div className="p-2 sm:p-3" style={{ borderBottom: '1px solid #f0f0f0' }} />
+              {PRESTIGE_TIERS.map((tier) => {
+                const headerColors: Record<string, string> = {
+                  member: '#7B2D9E',
+                  signature: '#937225',
+                  elite: '#1B8A45',
+                  privilege: '#15407A',
+                  blackReserve: '#1a1a1a',
+                };
+                const c = headerColors[tier.key] || '#6b7280';
+                return (
+                  <div
+                    key={tier.key}
+                    className="p-1.5 sm:p-3 text-center text-[8px] sm:text-[11px] uppercase tracking-wider font-semibold flex items-center justify-center"
+                    style={{
+                      borderBottom: `2px solid ${c}`,
+                      color: c,
+                      fontFamily: serif,
+                      wordBreak: 'break-word',
+                      lineHeight: '1.2',
+                    }}
+                  >
+                    {t(tier.nameKey, language)}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Data rows */}
+            {COMPARISON_ROWS.map((row, ri) => (
+              <div key={ri} className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
+                <div className="p-2 sm:p-3 text-[11px] sm:text-sm text-gray-600 font-medium flex items-center" style={{ borderBottom: '1px solid #f5f5f5' }}>
+                  {t(row.key, language)}
+                </div>
+                {row.values.map((val, ci) => (
+                  <div
+                    key={ci}
+                    className="p-1.5 sm:p-3 flex items-center justify-center"
+                    style={{ borderBottom: '1px solid #f5f5f5' }}
+                  >
+                    {typeof val === 'boolean' ? (
+                      val ? (
+                        <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: gold }} />
+                      ) : (
+                        <span className="text-gray-200 text-xs">—</span>
+                      )
+                    ) : (
+                      <span className="text-[10px] sm:text-sm font-bold" style={{ color: val === '-' ? '#d4d4d8' : gold }}>{val}</span>
+                    )}
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            ))}
           </motion.div>
         </div>
       </section>
