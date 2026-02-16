@@ -120,16 +120,18 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   }, [magicLinkResendCountdown]);
   
-  // Handle post-redirect navigation
-  // Auth-guardian-2025.ts is the SOLE handler for getRedirectResult (runs on import in main.tsx).
-  // This effect only checks the sessionStorage flag that auth-guardian sets after processing.
   useEffect(() => {
     if (sessionStorage.getItem('pw_redirect_handled') === 'true') {
       sessionStorage.removeItem('pw_redirect_handled');
-      logger.info('[Auth] Redirect handled by auth-guardian, navigating to dashboard');
-      navigate('/dashboard');
+      logger.info('[Auth] Redirect sign-in completed, navigating to dashboard');
+      navigate(customRedirect || '/dashboard');
+      return;
     }
-  }, []);
+    if (user && !switchingAccount && !loading) {
+      logger.info('[Auth] User already signed in, redirecting');
+      navigate(customRedirect || '/dashboard');
+    }
+  }, [user, loading]);
 
   useEffect(() => {
     const handleOAuthCustomToken = async () => {

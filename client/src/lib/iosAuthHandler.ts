@@ -79,24 +79,12 @@ export async function signInWithBestMethod(
 }
 
 /**
- * Handle redirect result after user returns from OAuth provider
- * Should be called on app initialization
- * 
- * @param auth - Firebase Auth instance
- * @returns Promise<UserCredential | null>
+ * @deprecated — Redirect result is now handled exclusively by AuthProvider.tsx.
+ * Do NOT call this function. It exists only for backward compatibility.
  */
-export async function handleAuthRedirect(auth: Auth): Promise<UserCredential | null> {
-  try {
-    const result = await getRedirectResult(auth);
-    if (result) {
-      console.log('[Auth] Redirect sign-in successful');
-      return result;
-    }
-    return null;
-  } catch (error) {
-    console.error('[Auth] Redirect result error:', error);
-    throw error;
-  }
+export async function handleAuthRedirect(_auth: Auth): Promise<UserCredential | null> {
+  console.warn('[Auth] handleAuthRedirect is deprecated — AuthProvider handles redirect results. This call is a no-op.');
+  return null;
 }
 
 /**

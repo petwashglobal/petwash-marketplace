@@ -19,7 +19,6 @@ import {
   signInWithEmailAndPassword,
   signInWithRedirect,
   signInWithPopup,
-  getRedirectResult,
   GoogleAuthProvider,
   sendSignInLinkToEmail,
   setPersistence,
@@ -68,18 +67,13 @@ export async function loginWithGoogle() {
   }
 }
 
-// ---- 7) Handle redirect results once after page load ----
+/**
+ * @deprecated — Redirect result is now handled exclusively by AuthProvider.tsx.
+ * Do NOT call this function. It exists only for backward compatibility.
+ */
 export async function handleRedirectResult() {
-  try {
-    const res = await getRedirectResult(auth);
-    if (res) {
-      console.log('[Auth] ✅ Redirect result successful:', res.user.email);
-    }
-    return res ?? null;
-  } catch (e: any) {
-    console.error("[Auth] ❌ Redirect result error:", e?.code, e?.message);
-    throw e;
-  }
+  console.warn('[Auth] handleRedirectResult is deprecated — AuthProvider handles redirect results. This call is a no-op.');
+  return null;
 }
 
 // ---- 8) Email link sign-in (optional) ----

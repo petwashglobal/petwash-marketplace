@@ -16,9 +16,7 @@ import { auth, app } from '@/lib/firebase';
 import { 
   signInWithPopup, 
   signInWithRedirect, 
-  getRedirectResult,
   GoogleAuthProvider,
-  onAuthStateChanged
 } from 'firebase/auth';
 import { logger } from '@/lib/logger';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -257,10 +255,13 @@ export async function routeGuard(opts: {
 
 /**
  * Initialize Auth Guardian
+ * 
+ * IMPORTANT: Redirect result handling and onAuthStateChanged are managed by
+ * AuthProvider.tsx (the single source of truth for auth state).
+ * Auth Guardian only handles: config validation, telemetry, route guarding.
  */
 async function init(): Promise<void> {
   try {
-    // Validate Firebase config in production
     const opts = (app as any).options || {};
     const isProd = location.hostname.endsWith('.co.il') || location.hostname.endsWith('.com');
     
@@ -275,89 +276,6 @@ async function init(): Promise<void> {
         beacon('auth.config_mismatch', { actual: opts, expected: EXPECTED });
       }
     }
-    
-    // Handle post-redirect result (if any) - this is the SINGLE handler for redirect auth
-    // On iOS, Firebase uses redirect flow. The result MUST be consumed here because
-    // getRedirectResult can only be called once per redirect return.
-    try {
-      const redirectResult = await getRedirectResult(auth);
-      if (redirectResult && redirectResult.user) {
-        logger.info('[Auth Guardian] Redirect sign-in successful', { 
-          email: redirectResult.user.email,
-          uid: redirectResult.user.uid 
-        });
-        beacon('auth.redirect_result_ok', { uid: redirectResult.user.uid });
-        
-        // Create server session
-        try {
-          const idToken = await redirectResult.user.getIdToken();
-          await fetch(getApiUrl('/api/auth/session'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ idToken }),
-          });
-        } catch (sessionErr) {
-          logger.warn('[Auth Guardian] Session creation failed (non-blocking)', sessionErr);
-        }
-        
-        try {
-          const { getAdditionalUserInfo } = await import('firebase/auth');
-          const additionalInfo = getAdditionalUserInfo(redirectResult);
-          if (additionalInfo?.isNewUser) {
-            const idToken = await redirectResult.user.getIdToken();
-            fetch(getApiUrl('/api/loyalty/auto-enroll'), {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-              },
-              credentials: 'include',
-              body: JSON.stringify({
-                userId: redirectResult.user.uid,
-                email: redirectResult.user.email,
-                displayName: redirectResult.user.displayName,
-                provider: 'google',
-                role: 'pet_parent',
-              }),
-            }).catch(() => {});
-          }
-        } catch (loyaltyErr) {
-          logger.warn('[Auth Guardian] Loyalty check failed (non-blocking)', loyaltyErr);
-        }
-        
-        await refreshClaims();
-        
-        // Signal that redirect was handled (prevents SignIn.tsx from trying again)
-        sessionStorage.setItem('pw_redirect_handled', 'true');
-        
-        // Navigate to dashboard after short delay for state to propagate
-        setTimeout(() => {
-          const currentPath = location.pathname;
-          if (currentPath === '/signin' || currentPath === '/sign-in' || currentPath === '/signup' || currentPath === '/' || currentPath === '/become-provider') {
-            logger.info('[Auth Guardian] Redirecting to dashboard after successful auth redirect');
-            window.scrollTo(0, 0);
-            location.href = '/dashboard';
-          }
-        }, 500);
-      }
-    } catch (error: any) {
-      if (error?.code !== 'auth/popup-closed-by-user') {
-        const errorMsg = friendlyAuthError(String(error?.code || error?.message || error));
-        banner.show(errorMsg);
-        beacon('auth.redirect_result_error', { 
-          error: String(error?.code || error?.message || error) 
-        });
-        logger.error('[Auth Guardian] Redirect result error', error);
-      }
-    }
-    
-    // Auto-refresh claims on auth state changes
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        await refreshClaims();
-      }
-    });
     
     logger.info('[Auth Guardian] Initialized successfully');
     beacon('auth.guardian_initialized', { 

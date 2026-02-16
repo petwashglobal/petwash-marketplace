@@ -1,8 +1,18 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { auth } from "../lib/firebase";
-import { onAuthStateChanged, User, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  User,
+  signOut,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  indexedDBLocalPersistence,
+  getRedirectResult,
+} from "firebase/auth";
 import { trackLogout } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
+import { getApiUrl } from "@/lib/apiConfig";
 
 export type UserRole = 'public' | 'provider' | 'staff' | 'admin' | 'management' | 'super_admin';
 
@@ -66,11 +76,50 @@ const createDevUser = (): Partial<User> => ({
   toJSON: () => ({})
 });
 
+async function ensureServerSession(firebaseUser: User): Promise<void> {
+  try {
+    const idToken = await firebaseUser.getIdToken();
+    const response = await fetch(getApiUrl('/api/auth/session'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ idToken }),
+    });
+    if (response.ok) {
+      logger.info('[AuthProvider] Server session created', { uid: firebaseUser.uid });
+    } else {
+      logger.warn('[AuthProvider] Server session creation returned non-OK', { status: response.status });
+    }
+  } catch (err) {
+    logger.warn('[AuthProvider] Server session creation failed (non-blocking)', err);
+  }
+}
+
+async function setPersistenceWithFallback(): Promise<void> {
+  const strategies = [
+    { name: 'indexedDB', persistence: indexedDBLocalPersistence },
+    { name: 'localStorage', persistence: browserLocalPersistence },
+    { name: 'sessionStorage', persistence: browserSessionPersistence },
+  ];
+
+  for (const { name, persistence } of strategies) {
+    try {
+      await setPersistence(auth, persistence);
+      logger.info(`[AuthProvider] Persistence set: ${name}`);
+      return;
+    } catch (err) {
+      logger.warn(`[AuthProvider] Persistence ${name} failed, trying next`, err);
+    }
+  }
+  logger.error('[AuthProvider] All persistence strategies failed — auth may not persist across reloads');
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [claims, setClaims] = useState<UserClaims>(DEFAULT_CLAIMS);
   const [claimsLoading, setClaimsLoading] = useState(true);
+  const sessionCreatedForUid = useRef<string | null>(null);
   const [isDevMode, setIsDevMode] = useState(() => {
     if (!import.meta.env.DEV) return false;
     if (typeof window !== 'undefined') {
@@ -105,42 +154,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isDevMode) {
       setUser(createDevUser() as User);
       setLoading(false);
+      setClaimsLoading(false);
       return;
     }
 
-    // Set explicit Firebase persistence (local = persists even after browser closes)
-    setPersistence(auth, browserLocalPersistence).catch((error) => {
-      logger.error("Failed to set persistence:", error);
-    });
+    let unsubscribe: (() => void) | undefined;
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
+    (async () => {
+      await setPersistenceWithFallback();
 
-      if (firebaseUser) {
-        try {
-          const tokenResult = await firebaseUser.getIdTokenResult(true);
-          const c = tokenResult.claims;
-          setClaims({
-            role: (c.role as UserRole) || 'public',
-            accountType: c.accountType as string,
-            loyaltyTier: c.loyaltyTier as string,
-            loyaltyMember: c.loyaltyMember as boolean,
-            program: c.program as string,
-            authProvider: c.authProvider as string,
+      try {
+        const REDIRECT_TIMEOUT = 10_000;
+        const redirectResult = await Promise.race([
+          getRedirectResult(auth),
+          new Promise<null>((resolve) => setTimeout(() => {
+            logger.warn('[AuthProvider] getRedirectResult timed out after 10s');
+            resolve(null);
+          }, REDIRECT_TIMEOUT)),
+        ]);
+        if (redirectResult?.user) {
+          logger.info('[AuthProvider] Redirect sign-in completed', {
+            email: redirectResult.user.email,
+            uid: redirectResult.user.uid,
           });
-        } catch (err) {
-          logger.warn('Failed to fetch user claims', err);
-          setClaims(DEFAULT_CLAIMS);
+          await ensureServerSession(redirectResult.user);
+          sessionCreatedForUid.current = redirectResult.user.uid;
+          sessionStorage.setItem('pw_redirect_handled', 'true');
         }
-        setClaimsLoading(false);
-      } else {
-        setClaims(DEFAULT_CLAIMS);
-        setClaimsLoading(false);
+      } catch (err: any) {
+        if (err?.code !== 'auth/popup-closed-by-user') {
+          logger.error('[AuthProvider] Redirect result error', err);
+        }
       }
-    });
 
-    return () => unsubscribe();
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        setUser(firebaseUser);
+        setLoading(false);
+
+        if (firebaseUser) {
+          if (sessionCreatedForUid.current !== firebaseUser.uid) {
+            await ensureServerSession(firebaseUser);
+            sessionCreatedForUid.current = firebaseUser.uid;
+          }
+
+          try {
+            const tokenResult = await firebaseUser.getIdTokenResult(true);
+            const c = tokenResult.claims;
+            setClaims({
+              role: (c.role as UserRole) || 'public',
+              accountType: c.accountType as string,
+              loyaltyTier: c.loyaltyTier as string,
+              loyaltyMember: c.loyaltyMember as boolean,
+              program: c.program as string,
+              authProvider: c.authProvider as string,
+            });
+          } catch (err) {
+            logger.warn('Failed to fetch user claims', err);
+            setClaims(DEFAULT_CLAIMS);
+          }
+          setClaimsLoading(false);
+        } else {
+          sessionCreatedForUid.current = null;
+          setClaims(DEFAULT_CLAIMS);
+          setClaimsLoading(false);
+        }
+      });
+    })();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [isDevMode]);
 
   const logout = async () => {
@@ -162,6 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       await signOut(auth);
+      sessionCreatedForUid.current = null;
       
       localStorage.removeItem('petwash_lang');
       sessionStorage.clear();
