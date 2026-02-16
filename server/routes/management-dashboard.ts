@@ -104,7 +104,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
     );
     
     logger.info('[Management Dashboard] Metrics generated', {
-      user: req.user?.email,
+      user: req.firebaseUser?.email || req.user?.email,
       period,
       totalRevenue: metrics.overview.totalRevenue
     });

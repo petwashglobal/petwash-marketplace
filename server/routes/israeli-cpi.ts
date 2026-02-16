@@ -254,7 +254,7 @@ router.post('/add', requireAdmin, async (req: Request, res: Response) => {
     logger.info('[CPI API] New CPI index added', {
       month,
       indexValue,
-      adminId: req.user?.uid,
+      adminId: req.firebaseUser?.uid || req.user?.uid,
     });
 
     res.status(201).json({
@@ -319,7 +319,7 @@ router.post('/seed', requireAdmin, async (req: Request, res: Response) => {
     await IsraeliCPIService.seedInitialData();
 
     logger.info('[CPI API] CPI data seeded successfully', {
-      adminId: req.user?.uid,
+      adminId: req.firebaseUser?.uid || req.user?.uid,
     });
 
     res.json({

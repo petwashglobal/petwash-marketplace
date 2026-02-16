@@ -1022,9 +1022,21 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       if (sessionData.customToken) {
         logger.info('[PhoneAuth] Signing into Firebase with custom token');
-        await signInWithCustomToken(auth, sessionData.customToken);
-        await auth.currentUser?.getIdToken(true);
+        const userCredential = await signInWithCustomToken(auth, sessionData.customToken);
+        const idToken = await userCredential.user.getIdToken(true);
         logger.info('[PhoneAuth] Firebase client auth state set successfully');
+        
+        try {
+          await fetch(getApiUrl('/api/auth/session'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ idToken }),
+          });
+          logger.info('[PhoneAuth] Server session cookie set');
+        } catch (sessionErr) {
+          logger.debug('[PhoneAuth] Session cookie creation failed (non-blocking)', sessionErr);
+        }
       }
 
       if (sessionData.userId) {

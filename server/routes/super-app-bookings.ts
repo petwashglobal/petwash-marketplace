@@ -75,7 +75,7 @@ router.post(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -109,7 +109,7 @@ router.post(
     } catch (error: any) {
       logger.error('Booking creation failed', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId
       });
 
@@ -128,7 +128,7 @@ router.get(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -156,7 +156,7 @@ router.get(
     } catch (error: any) {
       logger.error('Failed to fetch user bookings', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId
       });
 
@@ -175,7 +175,7 @@ router.get(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -205,7 +205,7 @@ router.get(
     } catch (error: any) {
       logger.error('Failed to fetch booking', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId,
         bookingId: req.params.bookingId
       });
@@ -225,7 +225,7 @@ router.patch(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -319,7 +319,7 @@ router.patch(
     } catch (error: any) {
       logger.error('Booking status update failed', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId,
         bookingId: req.params.bookingId
       });
@@ -339,7 +339,7 @@ router.get(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -394,7 +394,7 @@ router.get(
     } catch (error: any) {
       logger.error('Failed to fetch provider bookings', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId
       });
 
@@ -496,7 +496,7 @@ router.post(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -559,7 +559,7 @@ router.post(
     } catch (error: any) {
       logger.error('Booking confirmation failed', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId,
         bookingId: req.params.bookingId
       });
@@ -579,7 +579,7 @@ router.post(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -652,7 +652,7 @@ router.post(
     } catch (error: any) {
       logger.error('Booking cancellation failed', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId,
         bookingId: req.params.bookingId
       });
@@ -676,7 +676,7 @@ router.post(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -815,7 +815,7 @@ router.post(
     } catch (error: any) {
       logger.error('Payment intent creation failed', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId,
         bookingId: req.params.bookingId
       });
@@ -835,7 +835,7 @@ router.get(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -877,7 +877,7 @@ router.get(
     } catch (error: any) {
       logger.error('Failed to fetch payment intents', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId,
         bookingId: req.params.bookingId
       });
@@ -897,7 +897,7 @@ router.post(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -952,7 +952,7 @@ router.post(
     } catch (error: any) {
       logger.error('Failed to complete booking', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId,
         bookingId: req.params.bookingId
       });
@@ -972,7 +972,7 @@ router.post(
   apiLimiter,
   async (req: any, res: any) => {
     try {
-      const userId = req.user?.uid;
+      const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -1048,7 +1048,7 @@ router.post(
     } catch (error: any) {
       logger.error('Failed to cancel booking', {
         error: error.message,
-        userId: req.user?.uid,
+        userId: req.firebaseUser?.uid || req.user?.uid,
         platformId: req.platformContext?.platformId,
         bookingId: req.params.bookingId
       });

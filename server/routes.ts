@@ -900,6 +900,30 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // POST /api/auth/signout - Clear server-side session cookie on logout
+  app.post('/api/auth/signout', async (req, res) => {
+    try {
+      const { clearSessionCookie } = await import('./lib/sessionCookies');
+      clearSessionCookie(res);
+      
+      const token = req.cookies?.pw_session;
+      if (token) {
+        try {
+          const decoded = await firebaseAdminModule.auth.verifySessionCookie(token);
+          await firebaseAdminModule.auth.revokeRefreshTokens(decoded.uid);
+          logger.info('[Auth] Session revoked for user:', decoded.uid);
+        } catch (revokeErr) {
+          logger.debug('[Auth] Token revocation skipped (token may already be expired)');
+        }
+      }
+      
+      res.json({ ok: true });
+    } catch (error) {
+      logger.error('[Auth] Signout error', error);
+      res.json({ ok: true });
+    }
+  });
+
   // GET /api/auth/health - Health check for mobile auth system
   app.get('/api/auth/health', (_req, res) => {
     res.json({ ok: true });
@@ -8600,7 +8624,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/auth/social', apiLimiter, socialOAuthRoutes);
 
   // Referral System - חבר מביא חבר (Friend Brings Friend)
-  app.use('/api/referral', apiLimiter, referralRoutes);
+  app.use('/api/referral', optionalFirebaseToken, apiLimiter, referralRoutes);
   logger.info('[Routes] ✅ Referral system routes registered');
 
   // Inbox routes (User + Franchise)
@@ -8638,7 +8662,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/control-panel', apiLimiter, controlPanelRoutes);
   
   // Israeli Contractor Compliance - Documents, Onboarding, Invoices
-  app.use('/api/contractor-documents', apiLimiter, contractorDocumentsRoutes);
+  app.use('/api/contractor-documents', optionalFirebaseToken, apiLimiter, contractorDocumentsRoutes);
   app.use('/api/contractor-onboarding', apiLimiter, contractorOnboardingRoutes);
   app.use('/api/contractor-invoices', apiLimiter, contractorInvoicesRoutes);
   // Israeli Subcontractor Agreement 2025 - FREE internal e-signature system (NO paid providers)
@@ -8698,7 +8722,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/enterprise/franchise', adminLimiter, enterpriseFranchiseRoutes);
   
   // Logistics & Fleet Management routes (Field Operations - Phase 2)
-  app.use('/api/logistics', apiLimiter, logisticsRoutes);
+  app.use('/api/logistics', optionalFirebaseToken, apiLimiter, logisticsRoutes);
   
   // Chat History routes (PostgreSQL-backed AI chat history - Nov 2025)
   const chatHistoryRoutes = await import('./routes/chat-history');
@@ -8711,7 +8735,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/k9000', adminLimiter, k9000SupplierRoutes);
   
   // K9000 Backend Dashboard (Admin control panel for station management)
-  app.use('/api/k9000', adminLimiter, k9000DashboardRoutes);
+  app.use('/api/k9000', optionalFirebaseToken, adminLimiter, k9000DashboardRoutes);
   
   // K9000 IoT Hardware Wash Activation (IP-secured, machine-to-server)
   app.use('/api/k9000', k9000IotRoutes);
@@ -8812,7 +8836,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/inventory', apiLimiter, inventoryRoutes);
 
   // 📊 Israeli CPI (Consumer Price Index) - מדד המחירים לצרכן - Israeli law compliance (rent, mortgages, wages indexation)
-  app.use('/api/israeli-cpi', israeliCPIRoutes);
+  app.use('/api/israeli-cpi', optionalFirebaseToken, israeliCPIRoutes);
 
   // 🔐 Biometric Certificate Verification - תעודת נכה, גימלאים, תעודת זהות, רשיון נהיגה (Document Upload + Face Matching)
   app.use('/api/biometric-certificates', uploadLimiter, biometricCertificatesRoutes);
@@ -8995,11 +9019,11 @@ self.addEventListener('notificationclick', (event) => {
   
   // UNIFIED BOOKING ENGINE 2025 - Reference implementation
   // Immutable transactions, event logging, admin audit trail
-  app.use('/api/unified-booking', apiLimiter, unifiedBookingRoutes);
+  app.use('/api/unified-booking', optionalFirebaseToken, apiLimiter, unifiedBookingRoutes);
   
   // SUPER-APP BOOKING ENGINE - Platform-scoped booking system for all 6 platforms
   // K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers, Shared Services
-  app.use('/api/platforms', superAppBookingsRoutes);
+  app.use('/api/platforms', optionalFirebaseToken, apiLimiter, superAppBookingsRoutes);
   
   // Job Offers - Uber/Airbnb-Style Job Dispatch System
   app.use('/api/job-offers', apiLimiter, jobOffersRoutes);

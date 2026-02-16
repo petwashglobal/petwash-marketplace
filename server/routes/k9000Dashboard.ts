@@ -239,7 +239,7 @@ router.post('/dashboard/stop', async (req, res) => {
     try {
       await db.insert(auditLedger).values({
         id: nanoid(),
-        userId: req.user?.uid || 'admin',
+        userId: req.firebaseUser?.uid || req.user?.uid || 'admin',
         action: 'k9000_emergency_stop',
         resourceType: 'station',
         resourceId: stationId,
@@ -321,7 +321,7 @@ router.post('/dashboard/start', async (req, res) => {
       stationId,
       washProgram,
       washProgramId,
-      userId: userId || req.user?.uid || 'admin',
+      userId: userId || req.firebaseUser?.uid || req.user?.uid || 'admin',
     });
     
     try {
@@ -331,7 +331,7 @@ router.post('/dashboard/start', async (req, res) => {
         stationId: station.stationId,
         washProgramId,
         sessionTimeoutSec: 600, // 10 minutes (standard K9000 cycle)
-        userId: userId || req.user?.uid || 'admin',
+        userId: userId || req.firebaseUser?.uid || req.user?.uid || 'admin',
         amount: washAmount,
       });
       
@@ -345,7 +345,7 @@ router.post('/dashboard/start', async (req, res) => {
         // Log to audit trail
         await db.insert(auditLedger).values({
           id: nanoid(),
-          userId: req.user?.uid || 'admin',
+          userId: req.firebaseUser?.uid || req.user?.uid || 'admin',
           action: 'k9000_remote_start',
           resourceType: 'station',
           resourceId: stationId,
@@ -523,7 +523,7 @@ router.post('/dashboard/apply-discount', async (req, res) => {
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       active: true,
       createdAt: new Date(),
-      createdBy: req.user?.uid || 'admin'
+      createdBy: req.firebaseUser?.uid || req.user?.uid || 'admin'
     };
     
     logger.info('[K9000 Dashboard] Discount applied to station', discountRecord);
@@ -531,7 +531,7 @@ router.post('/dashboard/apply-discount', async (req, res) => {
     // Log to audit trail
     await db.insert(auditLedger).values({
       id: nanoid(),
-      userId: req.user?.uid || 'admin',
+      userId: req.firebaseUser?.uid || req.user?.uid || 'admin',
       action: 'k9000_apply_discount',
       resourceType: 'station',
       resourceId: stationId,

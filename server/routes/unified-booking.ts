@@ -90,7 +90,7 @@ router.get('/services', (_req: Request, res: Response) => {
 router.post('/draft', requireAuth, async (req: Request, res: Response) => {
   try {
     const { serviceId, resourceId, resourceType, startTime, endTime, metadata } = req.body;
-    const userId = req.user?.uid || req.body.userId;
+    const userId = req.firebaseUser?.uid || req.user?.uid || req.body.userId;
 
     if (!serviceId || !resourceId || !userId || !startTime || !endTime) {
       return res.status(400).json({
@@ -151,7 +151,7 @@ router.post('/:bookingId/quote', requireAuth, async (req: Request, res: Response
       });
     }
 
-    if (booking.userId !== req.user?.uid) {
+    if (booking.userId !== (req.firebaseUser?.uid || req.user?.uid)) {
       return res.status(403).json({
         success: false,
         error: 'Not authorized to modify this booking'
@@ -188,7 +188,7 @@ router.post('/:bookingId/confirm', requireAuth, async (req: Request, res: Respon
   try {
     const { bookingId } = req.params;
     const { paymentProvider, paymentReference } = req.body;
-    const userId = req.user?.uid || '';
+    const userId = req.firebaseUser?.uid || req.user?.uid || '';
 
     const booking = await loadBookingFromDB(bookingId);
     if (!booking) {
@@ -234,8 +234,8 @@ router.post('/:bookingId/confirm', requireAuth, async (req: Request, res: Respon
 router.post('/:bookingId/start', requireAuth, async (req: Request, res: Response) => {
   try {
     const { bookingId } = req.params;
-    const startedBy = req.user?.uid || '';
-    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    const startedBy = req.firebaseUser?.uid || req.user?.uid || '';
+    const isAdmin = ((req.firebaseUser as any)?.role || req.user?.role) === 'admin' || ((req.firebaseUser as any)?.role || req.user?.role) === 'super_admin';
 
     const booking = await loadBookingFromDB(bookingId);
     if (!booking) {
@@ -287,8 +287,8 @@ router.post('/:bookingId/start', requireAuth, async (req: Request, res: Response
 router.post('/:bookingId/complete', requireAuth, async (req: Request, res: Response) => {
   try {
     const { bookingId } = req.params;
-    const completedBy = req.user?.uid || '';
-    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    const completedBy = req.firebaseUser?.uid || req.user?.uid || '';
+    const isAdmin = ((req.firebaseUser as any)?.role || req.user?.role) === 'admin' || ((req.firebaseUser as any)?.role || req.user?.role) === 'super_admin';
 
     const booking = await loadBookingFromDB(bookingId);
     if (!booking) {
@@ -339,8 +339,8 @@ router.post('/:bookingId/cancel', requireAuth, async (req: Request, res: Respons
   try {
     const { bookingId } = req.params;
     const { reason } = req.body;
-    const cancelledBy = req.user?.uid || '';
-    const role: Role = req.user?.role === 'admin' ? 'ADMIN' : 'USER';
+    const cancelledBy = req.firebaseUser?.uid || req.user?.uid || '';
+    const role: Role = ((req.firebaseUser as any)?.role || req.user?.role) === 'admin' ? 'ADMIN' : 'USER';
     const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
 
     const booking = await loadBookingFromDB(bookingId);
@@ -387,8 +387,8 @@ router.post('/:bookingId/refund', requireAuth, requireAdmin, async (req: Request
   try {
     const { bookingId } = req.params;
     const { refundAmount, reason, isPartial } = req.body;
-    const processedBy = req.user?.uid || '';
-    const role: Role = req.user?.role === 'super_admin' ? 'SUPER_ADMIN' : 'ADMIN';
+    const processedBy = req.firebaseUser?.uid || req.user?.uid || '';
+    const role: Role = ((req.firebaseUser as any)?.role || req.user?.role) === 'super_admin' ? 'SUPER_ADMIN' : 'ADMIN';
 
     if (!refundAmount || !reason) {
       return res.status(400).json({
@@ -436,7 +436,7 @@ router.post('/:bookingId/refund', requireAuth, requireAdmin, async (req: Request
 router.post('/admin/free-wash', requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { machineId, bay, startTime, minutes, reason } = req.body;
-    const adminId = req.user?.uid || '';
+    const adminId = req.firebaseUser?.uid || req.user?.uid || '';
 
     if (!machineId || !startTime || !minutes) {
       return res.status(400).json({
@@ -494,7 +494,7 @@ router.post('/flow', requireAuth, async (req: Request, res: Response) => {
       paymentReference,
       metadata
     } = req.body;
-    const userId = req.user?.uid || req.body.userId;
+    const userId = req.firebaseUser?.uid || req.user?.uid || req.body.userId;
 
     if (!serviceId || !resourceId || !userId || !startTime || !endTime || price === undefined) {
       return res.status(400).json({

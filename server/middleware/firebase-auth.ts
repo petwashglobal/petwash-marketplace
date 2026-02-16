@@ -10,6 +10,12 @@ declare global {
         email?: string;
         email_verified?: boolean;
       };
+      user?: {
+        uid?: string;
+        id?: string;
+        email?: string;
+        role?: string;
+      };
     }
   }
 }
@@ -31,6 +37,16 @@ async function extractFirebaseUser(req: Request): Promise<{ uid: string; email?:
   return null;
 }
 
+function bridgeFirebaseUser(req: Request) {
+  if (req.firebaseUser && !req.user) {
+    req.user = {
+      uid: req.firebaseUser.uid,
+      id: req.firebaseUser.uid,
+      email: req.firebaseUser.email,
+    };
+  }
+}
+
 export async function validateFirebaseToken(
   req: Request,
   res: Response,
@@ -42,6 +58,7 @@ export async function validateFirebaseToken(
       return res.status(401).json({ error: 'No authorization token provided' });
     }
     req.firebaseUser = user;
+    bridgeFirebaseUser(req);
     next();
   } catch (error) {
     logger.error('Firebase token validation failed', error);
@@ -58,6 +75,7 @@ export async function optionalFirebaseToken(
     const user = await extractFirebaseUser(req);
     if (user) {
       req.firebaseUser = user;
+      bridgeFirebaseUser(req);
     }
     next();
   } catch (error: any) {

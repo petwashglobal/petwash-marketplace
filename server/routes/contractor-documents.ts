@@ -85,7 +85,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
         metadata: {
           contractorId,
           documentType: type,
-          uploadedBy: req.user?.uid || "unknown",
+          uploadedBy: req.firebaseUser?.uid || req.user?.uid || "unknown",
           uploadedAt: new Date().toISOString(),
         },
       },
@@ -167,7 +167,7 @@ router.post("/:documentId/verify", async (req, res) => {
   try {
     const { documentId } = req.params;
     const { expiresAt, notes } = req.body;
-    const verifiedByUserId = req.user?.uid;
+    const verifiedByUserId = req.firebaseUser?.uid || req.user?.uid;
 
     if (!verifiedByUserId) {
       return res.status(401).json({ error: "Authentication required" });

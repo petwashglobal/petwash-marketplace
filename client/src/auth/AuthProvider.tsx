@@ -147,20 +147,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const userId = user?.uid;
       
-      // If in dev mode, just disable it
       if (isDevMode) {
         disableDevMode();
         return;
       }
       
-      // Sign out from Firebase
+      try {
+        await fetch('/api/auth/signout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch (e) {
+        logger.debug("Server signout call failed (non-blocking)", e);
+      }
+      
       await signOut(auth);
       
-      // Clear storage
       localStorage.removeItem('petwash_lang');
       sessionStorage.clear();
       
-      // Track logout event
       if (userId) {
         trackLogout(userId);
       }

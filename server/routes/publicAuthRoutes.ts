@@ -329,27 +329,13 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
       authMethod: 'phone'
     });
 
-    const sessionToken = Buffer.from(JSON.stringify({
-      uid: user.uid,
-      phone: formattedPhone,
-      authMethod: 'phone',
-      createdAt: Date.now()
-    })).toString('base64');
-
-    res.cookie('session', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
-
-    logger.info('[PhoneAuth] Session created for user:', user.uid);
+    logger.info('[PhoneAuth] Custom token created for user:', user.uid);
 
     return res.status(200).json({
       ok: true,
       userId: user.uid,
       customToken,
-      message: 'Session created successfully'
+      message: 'Phone verified. Use customToken with signInWithCustomToken, then POST /api/auth/session to set session cookie.'
     });
   } catch (err) {
     logger.error('[PublicAuth] Error creating phone session:', err);

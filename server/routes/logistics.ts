@@ -10,7 +10,7 @@ router.post('/tasks', async (req, res) => {
   try {
     const validatedData = insertLogisticsTaskSchema.parse(req.body);
     
-    const userId = req.user?.uid || req.user?.id;
+    const userId = req.firebaseUser?.uid || req.user?.uid || req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -234,7 +234,7 @@ router.patch('/vehicles/:id', async (req, res) => {
 
 router.get('/mobile/my-tasks', async (req, res) => {
   try {
-    const userId = req.user?.uid || req.user?.id;
+    const userId = req.firebaseUser?.uid || req.user?.uid || req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }

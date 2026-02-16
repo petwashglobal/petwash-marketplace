@@ -146,7 +146,7 @@ function canReceiveCredit(userId: string, amountILS: number): { allowed: boolean
  */
 router.get("/link", requireAuth, async (req: any, res) => {
   try {
-    const userId = req.user?.uid || req.userId;
+    const userId = req.firebaseUser?.uid || req.user?.uid || req.userId;
     
     if (!userId) {
       return res.status(401).json({ error: "UNAUTHORIZED" });
@@ -386,7 +386,7 @@ router.post("/complete", async (req, res) => {
  */
 router.get("/history", requireAuth, async (req: any, res) => {
   try {
-    const userId = req.user?.uid || req.userId;
+    const userId = req.firebaseUser?.uid || req.user?.uid || req.userId;
     
     if (!userId) {
       return res.status(401).json({ error: "UNAUTHORIZED" });
@@ -417,7 +417,7 @@ router.get("/history", requireAuth, async (req: any, res) => {
  */
 router.get("/credits", requireAuth, async (req: any, res) => {
   try {
-    const userId = req.user?.uid || req.userId;
+    const userId = req.firebaseUser?.uid || req.user?.uid || req.userId;
     
     if (!userId) {
       return res.status(401).json({ error: "UNAUTHORIZED" });

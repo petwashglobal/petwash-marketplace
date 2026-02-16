@@ -39,7 +39,7 @@ const router = Router();
  */
 router.get('/feed', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -101,7 +101,7 @@ router.get('/feed', async (req, res) => {
  */
 router.post('/posts', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -184,7 +184,7 @@ router.post('/posts', async (req, res) => {
  */
 router.post('/posts/:postId/like', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -244,7 +244,7 @@ router.post('/posts/:postId/like', async (req, res) => {
  */
 router.get('/posts/:postId/comments', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -276,7 +276,7 @@ router.get('/posts/:postId/comments', async (req, res) => {
  */
 router.post('/posts/:postId/comments', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -345,7 +345,7 @@ router.post('/posts/:postId/comments', async (req, res) => {
  */
 router.get('/friends', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -383,7 +383,7 @@ router.get('/friends', async (req, res) => {
  */
 router.get('/friend-requests', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -411,7 +411,7 @@ router.get('/friend-requests', async (req, res) => {
  */
 router.post('/friend-requests', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -468,7 +468,7 @@ router.post('/friend-requests', async (req, res) => {
  */
 router.post('/friend-requests/:requestId/accept', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -514,7 +514,7 @@ router.post('/friend-requests/:requestId/accept', async (req, res) => {
  */
 router.get('/conversations', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -571,7 +571,7 @@ router.get('/conversations', async (req, res) => {
  */
 router.get('/conversations/:conversationId/messages', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -615,7 +615,7 @@ router.get('/conversations/:conversationId/messages', async (req, res) => {
  */
 router.post('/messages', async (req, res) => {
   try {
-    const userId = req.user?.uid;
+    const userId = req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
