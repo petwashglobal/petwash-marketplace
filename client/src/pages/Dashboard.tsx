@@ -360,13 +360,6 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="min-h-screen relative bg-white">
-        <div
-          className="absolute inset-0 pointer-events-none flex items-center justify-center"
-          style={{ opacity: 0.06 }}
-        >
-          <img src={diamondLogo} alt="" className="w-[520px] max-w-[90vw] h-auto select-none" draggable={false} />
-        </div>
-
         <div className="relative z-10 w-full max-w-lg mx-auto px-4 sm:px-6 pt-6 pb-8">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
