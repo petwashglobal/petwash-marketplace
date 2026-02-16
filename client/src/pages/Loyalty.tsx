@@ -130,37 +130,46 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             <div
               className="relative overflow-hidden w-full"
               style={{
-                borderRadius: '18px',
+                borderRadius: 'clamp(12px, 3.5vw, 18px)',
                 border: '1px solid rgba(201,169,110,0.22)',
                 boxShadow: '0 60px 120px rgba(0,0,0,0.40), 0 25px 50px rgba(0,0,0,0.30)',
                 aspectRatio: '1.586 / 1',
               }}
             >
-              {/* Full-bleed logo image as card background */}
+              {/* Full-bleed logo image as card background — covers entire card */}
               <img
                 src={diamondLogoBlack}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-                style={{ borderRadius: '18px' }}
+                style={{ borderRadius: 'clamp(12px, 3.5vw, 18px)' }}
               />
 
-              <div className="relative z-10 h-full flex flex-col justify-between" dir="ltr" style={{ padding: '28px 28px 22px' }}>
-                {/* Top row */}
+              {/* Card content grid: 3 rows — header / spacer / footer */}
+              <div
+                className="relative z-10 h-full"
+                dir="ltr"
+                style={{
+                  display: 'grid',
+                  gridTemplateRows: 'auto 1fr auto',
+                  padding: 'clamp(16px, 5.5%, 28px) clamp(16px, 5.5%, 28px) clamp(14px, 4.5%, 22px)',
+                }}
+              >
+                {/* ROW 1: Top header — title + chip */}
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-[10px] sm:text-[11px] tracking-[0.3em] uppercase font-medium" style={{ color: gold, opacity: 0.85 }}>
+                    <div style={{ fontSize: 'clamp(8px, 2.2%, 11px)', color: gold, opacity: 0.85, letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 500 }}>
                       PRIVILEGE LOYALTY CARD
                     </div>
-                    <div className="text-[8px] tracking-[0.2em] uppercase mt-1 font-light" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                    <div style={{ fontSize: 'clamp(6px, 1.6%, 8px)', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.2em', textTransform: 'uppercase', marginTop: '2px', fontWeight: 300 }}>
                       PetWash™ Exclusive Member
                     </div>
                   </div>
-                  {/* Gold chip */}
+                  {/* Gold chip — scales with card */}
                   <div
                     className="rounded-md flex-shrink-0"
                     style={{
-                      width: '42px',
-                      height: '32px',
+                      width: 'clamp(32px, 8.5%, 42px)',
+                      height: 'clamp(24px, 6.5%, 32px)',
                       background: 'linear-gradient(145deg, #e8d5a8 0%, #d4b87a 25%, #c9a96e 50%, #b8963e 75%, #d4b87a 100%)',
                       border: '1px solid rgba(201,169,110,0.5)',
                       boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.4), inset 0 -1px 2px rgba(0,0,0,0.15), 0 3px 8px rgba(0,0,0,0.4)',
@@ -172,50 +181,65 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                   </div>
                 </div>
 
-                {/* Bottom section */}
+                {/* ROW 2: Spacer — logo image fills this naturally */}
+                <div />
+
+                {/* ROW 3: Bottom footer — card number, holder, valid thru */}
                 <div>
-                  {/* Card number */}
+                  {/* Card number — clean, no shadow */}
                   <div
-                    className="text-[16px] sm:text-[20px] font-light mb-3"
                     style={{
-                      color: 'rgba(255,255,255,0.80)',
+                      fontSize: 'clamp(14px, 3.9%, 20px)',
+                      color: 'rgba(255,255,255,0.85)',
                       fontFamily: 'ui-monospace, "SF Mono", Monaco, "Cascadia Mono", monospace',
                       letterSpacing: '0.22em',
-                      textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+                      fontWeight: 300,
+                      marginBottom: 'clamp(6px, 2%, 12px)',
                     }}
                   >
                     5678 9012 3456 7890
                   </div>
                   {/* Gold divider line */}
-                  <div className="mb-3" style={{
+                  <div style={{
                     height: '1px',
+                    marginBottom: 'clamp(6px, 2%, 12px)',
                     background: `linear-gradient(90deg, ${gold}40, ${gold}15, transparent)`,
                   }} />
                   <div className="flex items-end justify-between">
                     <div>
-                      <div className="text-[7px] sm:text-[8px] uppercase tracking-[0.18em] mb-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
+                      <div style={{ fontSize: 'clamp(5px, 1.5%, 8px)', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.18em', marginBottom: '2px' }}>
                         CARD HOLDER
                       </div>
                       <div
-                        className="text-[12px] sm:text-[14px] uppercase tracking-[0.14em] font-medium"
-                        style={{ color: 'rgba(255,255,255,0.80)', textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}
+                        style={{
+                          fontSize: 'clamp(10px, 2.8%, 14px)',
+                          color: 'rgba(255,255,255,0.85)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.14em',
+                          fontWeight: 500,
+                        }}
                       >
                         MRS. L. PAWSHINGTON
                       </div>
                     </div>
-                    <div className="text-end">
-                      <div className="text-[7px] sm:text-[8px] uppercase tracking-[0.14em] mb-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
+                    <div style={{ textAlign: 'end' }}>
+                      <div style={{ fontSize: 'clamp(5px, 1.5%, 8px)', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '2px' }}>
                         VALID THRU
                       </div>
                       <div
-                        className="text-[13px] sm:text-[15px] font-medium"
-                        style={{ color: 'rgba(255,255,255,0.80)', fontFamily: 'ui-monospace, monospace', letterSpacing: '0.15em' }}
+                        style={{
+                          fontSize: 'clamp(11px, 3%, 15px)',
+                          color: 'rgba(255,255,255,0.85)',
+                          fontFamily: 'ui-monospace, monospace',
+                          letterSpacing: '0.15em',
+                          fontWeight: 500,
+                        }}
                       >
                         12/28
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Diamond className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: gold, opacity: 0.6 }} />
+                    <div className="flex items-center">
+                      <Diamond style={{ width: 'clamp(14px, 3.5%, 20px)', height: 'clamp(14px, 3.5%, 20px)', color: gold, opacity: 0.6 }} />
                     </div>
                   </div>
                 </div>
