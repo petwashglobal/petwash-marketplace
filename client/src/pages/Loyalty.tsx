@@ -108,7 +108,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
     <div className="min-h-screen bg-white" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* SECTION 1 — HERO */}
-      <section className="relative pt-20 sm:pt-32 pb-16 sm:pb-24 overflow-hidden bg-white">
+      <section className="relative pt-16 sm:pt-24 pb-10 sm:pb-14 overflow-hidden bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="space-y-5">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light text-gray-900 leading-[1.15] tracking-tight" style={{ fontFamily: serif }}>
@@ -247,7 +247,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
       </section>
 
       {/* SECTION 2 — MEMBERSHIP TIERS */}
-      <section id="membership-tiers" className="py-16 sm:py-24 bg-white">
+      <section id="membership-tiers" className="py-12 sm:py-16 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.h2
             initial={{ opacity: 0 }}
@@ -371,7 +371,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
       </div>
 
       {/* SECTION 3 — WHY JOIN */}
-      <section className="py-20 sm:py-28">
+      <section className="py-12 sm:py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-16 space-y-4">
             <h2 className="text-2xl sm:text-4xl font-light text-gray-900" style={{ fontFamily: serif }}>
@@ -416,7 +416,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
       </div>
 
       {/* SECTION 4 — HOW IT WORKS */}
-      <section className="py-20 sm:py-28">
+      <section className="py-12 sm:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-14">
             <h2 className="text-2xl sm:text-4xl font-light text-gray-900" style={{ fontFamily: serif }}>
@@ -464,9 +464,9 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
       </div>
 
       {/* SECTION 5 — TIER COMPARISON TABLE */}
-      <section className="py-20 sm:py-28 bg-white">
+      <section className="py-12 sm:py-16 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-14">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-8">
             <h2 className="text-2xl sm:text-4xl font-light text-gray-900" style={{ fontFamily: serif }}>
               {t('privilege.tierCompareTitle', language)}
             </h2>
@@ -477,14 +477,14 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             viewport={{ once: true }}
             className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-100"
           >
-            <table className="w-full min-w-[700px]" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+            <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
               <thead>
                 <tr>
-                  <th className="text-start p-4 text-xs uppercase tracking-wider text-gray-300 font-medium" style={{ borderBottom: '1px solid #f0f0f0' }}></th>
+                  <th className="text-start p-3 sm:p-4 text-xs uppercase tracking-wider text-gray-300 font-medium w-[30%] sm:w-auto" style={{ borderBottom: '1px solid #f0f0f0' }}></th>
                   {PRESTIGE_TIERS.map((tier) => {
                     const headerColors: Record<string, string> = {
                       member: '#7B2D9E',
-                      signature: '#C62828',
+                      signature: '#937225',
                       elite: '#1B8A45',
                       privilege: '#15407A',
                       blackReserve: '#1a1a1a',
@@ -493,7 +493,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                     return (
                       <th
                         key={tier.key}
-                        className="p-4 text-center text-[11px] uppercase tracking-wider font-semibold"
+                        className="p-2 sm:p-4 text-center text-[9px] sm:text-[11px] uppercase tracking-wider font-semibold"
                         style={{
                           borderBottom: `2px solid ${c}`,
                           color: c,
@@ -509,13 +509,13 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
               <tbody>
                 {COMPARISON_ROWS.map((row, ri) => (
                   <tr key={ri} className="bg-white">
-                    <td className="p-4 text-sm text-gray-600 font-medium" style={{ borderBottom: '1px solid #f5f5f5' }}>
+                    <td className="p-3 sm:p-4 text-xs sm:text-sm text-gray-600 font-medium" style={{ borderBottom: '1px solid #f5f5f5' }}>
                       {t(row.key, language)}
                     </td>
                     {row.values.map((val, ci) => (
                       <td
                         key={ci}
-                        className="p-4 text-center"
+                        className="p-2 sm:p-4 text-center"
                         style={{ borderBottom: '1px solid #f5f5f5' }}
                       >
                         {typeof val === 'boolean' ? (
@@ -525,7 +525,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                             <span className="text-gray-200">—</span>
                           )
                         ) : (
-                          <span className="text-sm font-bold" style={{ color: val === '-' ? '#d4d4d8' : gold }}>{val}</span>
+                          <span className="text-xs sm:text-sm font-bold" style={{ color: val === '-' ? '#d4d4d8' : gold }}>{val}</span>
                         )}
                       </td>
                     ))}
@@ -538,7 +538,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
       </section>
 
       {/* SECTION 6 — EMOTIONAL STORYTELLING */}
-      <section className="py-24 sm:py-32">
+      <section className="py-12 sm:py-16">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="space-y-8">
             <div className="w-px h-10 mx-auto" style={{ background: `linear-gradient(to bottom, transparent, ${gold}60, transparent)` }} />
@@ -554,7 +554,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
       </section>
 
       {/* SECTION 7 — FINAL CTA */}
-      <section className="py-20 sm:py-28 bg-white">
+      <section className="py-12 sm:py-16 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="space-y-6">
             <h2 className="text-3xl sm:text-4xl font-light text-gray-900" style={{ fontFamily: serif }}>
