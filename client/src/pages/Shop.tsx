@@ -67,9 +67,10 @@ export default function Shop() {
           </div>
         </div>
 
-        {/* Product Grid - Preview Cards */}
-        <div className="luxury-grid-3 mb-12">
-          <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-2">
+        {/* Product Grid - Preview Cards (Disabled - Coming Soon) */}
+        <div className="luxury-grid-3 mb-12 opacity-50 pointer-events-none select-none">
+          <div className="luxury-glass-card luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-2 relative">
+            <div className="absolute top-3 right-3 px-2 py-0.5 text-[9px] tracking-wider uppercase font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200">Coming Soon</div>
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
               <Leaf className="w-8 h-8 text-white" />
             </div>
@@ -80,12 +81,13 @@ export default function Shop() {
             <div className="luxury-heading-lg luxury-text-gradient mb-4">
               $24.99
             </div>
-            <button className="luxury-btn-primary w-full" data-testid="button-add-shampoo">
-              Add to Cart
+            <button className="luxury-btn-primary w-full opacity-50 cursor-not-allowed" disabled data-testid="button-add-shampoo">
+              Coming Soon
             </button>
           </div>
 
-          <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-3">
+          <div className="luxury-glass-card luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-3 relative">
+            <div className="absolute top-3 right-3 px-2 py-0.5 text-[9px] tracking-wider uppercase font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200">Coming Soon</div>
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
               <Sparkles className="w-8 h-8 text-white" />
             </div>
@@ -96,12 +98,13 @@ export default function Shop() {
             <div className="luxury-heading-lg luxury-text-gradient mb-4">
               $34.99
             </div>
-            <button className="luxury-btn-primary w-full" data-testid="button-add-accessories">
-              Add to Cart
+            <button className="luxury-btn-primary w-full opacity-50 cursor-not-allowed" disabled data-testid="button-add-accessories">
+              Coming Soon
             </button>
           </div>
 
-          <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-4">
+          <div className="luxury-glass-card luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-4 relative">
+            <div className="absolute top-3 right-3 px-2 py-0.5 text-[9px] tracking-wider uppercase font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200">Coming Soon</div>
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
               <Package className="w-8 h-8 text-white" />
             </div>
@@ -112,8 +115,8 @@ export default function Shop() {
             <div className="luxury-heading-lg luxury-text-gradient mb-4">
               $89.99
             </div>
-            <button className="luxury-btn-primary w-full" data-testid="button-add-bundle">
-              Add to Cart
+            <button className="luxury-btn-primary w-full opacity-50 cursor-not-allowed" disabled data-testid="button-add-bundle">
+              Coming Soon
             </button>
           </div>
         </div>
@@ -122,7 +125,7 @@ export default function Shop() {
         <div className="luxury-glass-card luxury-shadow-xl p-12 text-center luxury-animate-scale-in luxury-delay-5">
           <div className="max-w-2xl mx-auto">
             <div className="luxury-badge luxury-badge-gold mb-6">
-              🚧 FROZEN - In Development
+              Coming Soon
             </div>
             <h2 className="luxury-heading-lg mb-6">
               Pet Wash Shop™ is Coming Soon
@@ -149,7 +152,7 @@ export default function Shop() {
         {/* Info */}
         <div className="mt-8 text-center luxury-animate-fade-in luxury-delay-6">
           <p className="luxury-text-small">
-            This platform is currently frozen. Active platforms: Stations, Sitter, Walker, Transport, Academy
+            Coming soon. Active platforms: Stations, Sitter Suite, Walk My Pet, PetTrek, Academy
           </p>
         </div>
       </div>

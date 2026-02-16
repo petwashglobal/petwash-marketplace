@@ -18,6 +18,39 @@ import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 const router = Router();
 
 // ============================================
+// PUBLIC FRANCHISE INQUIRY (no auth required)
+// ============================================
+router.post('/inquiry', async (req, res) => {
+  try {
+    const { fullName, email, phone, country, city, message } = req.body;
+    if (!fullName || !email || !phone) {
+      return res.status(400).json({ error: 'Name, email, and phone are required' });
+    }
+    const inquiryData = {
+      fullName,
+      email,
+      phone,
+      country: country || '',
+      city: city || '',
+      message: message || '',
+      submittedAt: new Date().toISOString(),
+      status: 'new',
+    };
+    try {
+      const inquiriesRef = firestore.collection('franchise_inquiries');
+      await inquiriesRef.add(inquiryData);
+    } catch (firestoreErr) {
+      logger.warn('Could not save franchise inquiry to Firestore, saving to logs', { inquiryData });
+    }
+    logger.info('Franchise inquiry received', { fullName, email, phone, country, city });
+    return res.json({ success: true, message: 'Inquiry submitted successfully' });
+  } catch (error) {
+    logger.error('Error processing franchise inquiry', { error });
+    return res.status(500).json({ error: 'Failed to process inquiry' });
+  }
+});
+
+// ============================================
 // FRANCHISE DASHBOARD ROUTES
 // ============================================
 

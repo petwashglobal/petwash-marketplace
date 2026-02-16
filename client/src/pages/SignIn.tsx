@@ -75,6 +75,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     password: "",
   });
   const [rememberDevice, setRememberDevice] = useState(false);
+  const customRedirect = new URLSearchParams(window.location.search).get('redirect') || '';
   const [passwordFailureCount, setPasswordFailureCount] = useState(0);
   const [magicLinkResendCountdown, setMagicLinkResendCountdown] = useState(0);
   const [showFallbackHint, setShowFallbackHint] = useState(false);
@@ -195,7 +196,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           description: t('signin.redirecting', language),
         });
         
-        const redirectPath = isNew ? '/onboarding' : '/dashboard';
+        const redirectPath = customRedirect || (isNew ? '/onboarding' : '/dashboard');
         setTimeout(() => {
           window.scrollTo(0, 0);
           navigate(redirectPath);
@@ -754,7 +755,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         description: t('signin.redirecting', language),
       });
 
-      const redirectPath = isNewUser ? '/onboarding' : '/dashboard';
+      const redirectPath = customRedirect || (isNewUser ? '/onboarding' : '/dashboard');
       setTimeout(() => {
         window.scrollTo(0, 0);
         navigate(redirectPath);

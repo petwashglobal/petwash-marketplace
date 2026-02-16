@@ -272,7 +272,7 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="min-h-screen bg-white">
-        <div className="max-w-4xl mx-auto px-5 sm:px-8 py-12 sm:py-16">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-12 sm:py-16">
           
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -281,7 +281,7 @@ export default function Dashboard() {
             className="mb-12 sm:mb-16"
           >
             <div className="flex items-center gap-3 mb-3">
-              <p className="text-[11px] tracking-[0.35em] uppercase text-gray-400">
+              <p className="text-[11px] tracking-[0.35em] uppercase text-gray-600">
                 {tx('welcomeBack', language)}
               </p>
               <span className="px-2.5 py-1 text-[9px] tracking-[0.2em] uppercase font-medium bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200/60">
@@ -303,45 +303,45 @@ export default function Dashboard() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16"
           >
-            <div className="bg-[#FAFAF9] p-6 sm:p-8">
-              <p className="text-[10px] tracking-[0.25em] uppercase text-gray-400 mb-3">{tx('loyalty', language)}</p>
-              <p className="text-2xl sm:text-3xl font-light text-black mb-1"
+            <div className="bg-[#F5F5F4] p-6 sm:p-8">
+              <p className="text-[11px] tracking-[0.2em] uppercase text-gray-600 font-medium mb-3">{tx('loyalty', language)}</p>
+              <p className="text-2xl sm:text-3xl font-light text-gray-900 mb-1"
                 style={{ fontFamily: "'Playfair Display', serif" }}>
                 {loyaltyPoints.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500">{tx('points', language)}</p>
-              <div className="mt-4 pt-3 border-t border-gray-100">
-                <p className="text-[10px] tracking-[0.2em] uppercase text-gray-400">
+              <p className="text-xs text-gray-600">{tx('points', language)}</p>
+              <div className="mt-4 pt-3 border-t border-gray-200">
+                <p className="text-[10px] tracking-[0.2em] uppercase text-gray-600 font-medium">
                   {tierLabel} {tx('member', language)}
                 </p>
               </div>
             </div>
 
-            <div className="bg-[#FAFAF9] p-6 sm:p-8">
-              <p className="text-[10px] tracking-[0.25em] uppercase text-gray-400 mb-3">{tx('wallet', language)}</p>
-              <p className="text-2xl sm:text-3xl font-light text-black mb-1"
+            <div className="bg-[#F5F5F4] p-6 sm:p-8">
+              <p className="text-[11px] tracking-[0.2em] uppercase text-gray-600 font-medium mb-3">{tx('wallet', language)}</p>
+              <p className="text-2xl sm:text-3xl font-light text-gray-900 mb-1"
                 style={{ fontFamily: "'Playfair Display', serif" }}>
                 {totalBalance}
               </p>
-              <p className="text-xs text-gray-500">ILS</p>
+              <p className="text-xs text-gray-600">ILS</p>
             </div>
 
-            <div className="bg-[#FAFAF9] p-6 sm:p-8">
-              <p className="text-[10px] tracking-[0.25em] uppercase text-gray-400 mb-3">{tx('washCredits', language)}</p>
-              <p className="text-2xl sm:text-3xl font-light text-black mb-1"
+            <div className="bg-[#F5F5F4] p-6 sm:p-8">
+              <p className="text-[11px] tracking-[0.2em] uppercase text-gray-600 font-medium mb-3">{tx('washCredits', language)}</p>
+              <p className="text-2xl sm:text-3xl font-light text-gray-900 mb-1"
                 style={{ fontFamily: "'Playfair Display', serif" }}>
                 {washCredits}
               </p>
-              <p className="text-xs text-gray-500">{tx('washCredits', language)}</p>
+              <p className="text-xs text-gray-600">{tx('washCredits', language)}</p>
             </div>
 
-            <div className="bg-[#FAFAF9] p-6 sm:p-8">
-              <p className="text-[10px] tracking-[0.25em] uppercase text-gray-400 mb-3">{tx('giftBalance', language)}</p>
-              <p className="text-2xl sm:text-3xl font-light text-black mb-1"
+            <div className="bg-[#F5F5F4] p-6 sm:p-8">
+              <p className="text-[11px] tracking-[0.2em] uppercase text-gray-600 font-medium mb-3">{tx('giftBalance', language)}</p>
+              <p className="text-2xl sm:text-3xl font-light text-gray-900 mb-1"
                 style={{ fontFamily: "'Playfair Display', serif" }}>
                 {giftBalance}
               </p>
-              <p className="text-xs text-gray-500">ILS</p>
+              <p className="text-xs text-gray-600">ILS</p>
             </div>
           </motion.div>
 
@@ -351,47 +351,47 @@ export default function Dashboard() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mb-12 sm:mb-16"
           >
-            <p className="text-[10px] tracking-[0.3em] uppercase text-gray-400 mb-6">⁦Pet Wash™⁩ Services</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[1px] bg-gray-100">
+            <p className="text-[11px] tracking-[0.3em] uppercase text-gray-600 font-medium mb-6">{language === 'he' ? 'שירותי' : 'Services'} ⁦Pet Wash™⁩</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[1px] bg-gray-200">
               <button
                 onClick={() => setLocation('/stations')}
                 className="bg-white p-6 sm:p-8 text-left hover:bg-[#FAFAF9] transition-colors group"
               >
-                <p className="text-sm sm:text-base text-black font-normal mb-1 group-hover:text-gray-700 transition-colors">
+                <p className="text-sm sm:text-base text-gray-900 font-medium mb-1 group-hover:text-gray-700 transition-colors">
                   {tx('bookWash', language)}
                 </p>
-                <p className="text-xs text-gray-400">{tx('findStation', language)}</p>
+                <p className="text-xs text-gray-500">{tx('findStation', language)}</p>
               </button>
               <button
                 onClick={() => setLocation('/sitter-suite')}
                 className="bg-white p-6 sm:p-8 text-left hover:bg-[#FAFAF9] transition-colors group"
               >
-                <p className="text-sm sm:text-base text-black font-normal mb-1 group-hover:text-gray-700 transition-colors">
+                <p className="text-sm sm:text-base text-gray-900 font-medium mb-1 group-hover:text-gray-700 transition-colors">
                   {tx('petSitting', language)}
                 </p>
-                <p className="text-xs text-gray-400">⁦The Sitter Suite™⁩</p>
+                <p className="text-xs text-gray-500">⁦The Sitter Suite™⁩</p>
               </button>
               <button
                 onClick={() => setLocation('/walk-my-pet')}
                 className="bg-white p-6 sm:p-8 text-left hover:bg-[#FAFAF9] transition-colors group"
               >
-                <p className="text-sm sm:text-base text-black font-normal mb-1 group-hover:text-gray-700 transition-colors">
+                <p className="text-sm sm:text-base text-gray-900 font-medium mb-1 group-hover:text-gray-700 transition-colors">
                   {tx('dogWalking', language)}
                 </p>
-                <p className="text-xs text-gray-400">⁦Walk My Pet™⁩</p>
+                <p className="text-xs text-gray-500">⁦Walk My Pet™⁩</p>
               </button>
               <div
-                className="bg-white p-6 sm:p-8 text-left opacity-60 cursor-default"
+                className="bg-white p-6 sm:p-8 text-left opacity-50 cursor-default"
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <p className="text-sm sm:text-base text-black font-normal">
+                  <p className="text-sm sm:text-base text-gray-900 font-medium">
                     {tx('petTransport', language)}
                   </p>
-                  <span className="px-1.5 py-0.5 text-[8px] tracking-[0.12em] uppercase font-semibold rounded-full bg-gray-100 text-gray-500 border border-gray-200">
-                    {language === 'he' ? 'בקרוב' : 'Soon'}
+                  <span className="px-2 py-0.5 text-[9px] tracking-[0.12em] uppercase font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    {language === 'he' ? 'בקרוב' : 'Coming Soon'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-400">⁦PetTrek™⁩</p>
+                <p className="text-xs text-gray-500">⁦PetTrek™⁩</p>
               </div>
             </div>
           </motion.div>
@@ -402,8 +402,8 @@ export default function Dashboard() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mb-12 sm:mb-16"
           >
-            <p className="text-[10px] tracking-[0.3em] uppercase text-gray-400 mb-6">{tx('myAccount', language)}</p>
-            <div className="space-y-[1px] bg-gray-100">
+            <p className="text-[11px] tracking-[0.3em] uppercase text-gray-600 font-medium mb-6">{tx('myAccount', language)}</p>
+            <div className="space-y-[1px] bg-gray-200">
               <Link href="/my-wallet">
                 <div className="bg-white p-5 sm:p-6 flex items-center justify-between hover:bg-[#FAFAF9] transition-colors cursor-pointer">
                   <p className="text-sm text-black">{tx('myWallet', language)}</p>
@@ -487,7 +487,7 @@ export default function Dashboard() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="border-t border-gray-100 pt-8"
           >
-            <p className="text-[10px] tracking-[0.2em] uppercase text-gray-300 text-center">
+            <p className="text-[10px] tracking-[0.2em] uppercase text-gray-500 text-center">
               ⁦Pet Wash™⁩ 2025 - 2026
             </p>
           </motion.div>

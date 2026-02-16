@@ -78,6 +78,14 @@ const applicationFormSchema = z.object({
 
 type ApplicationFormData = z.infer<typeof applicationFormSchema>;
 
+const platformOptions = [
+  { id: 'sitter_suite', icon: Home, label: 'The Sitter Suite™', labelHe: 'שמרטפות', desc: 'Pet sitting & hosting', descHe: 'שמירה ואירוח חיות מחמד' },
+  { id: 'walk_my_pet', icon: Dog, label: 'Walk My Pet™', labelHe: 'טיולי כלבים', desc: 'Dog walking services', descHe: 'שירותי טיולי כלבים' },
+  { id: 'wash_academy', icon: Sparkles, label: 'Pet Wash Academy™', labelHe: 'אקדמיית שטיפה', desc: 'Grooming & wash training', descHe: 'הכשרה בטיפוח ושטיפה' },
+  { id: 'pet_trek', icon: Car, label: 'PetTrek™', labelHe: 'הסעות חיות מחמד', desc: 'Pet transport services', descHe: 'שירותי הסעות חיות מחמד' },
+  { id: 'plush_lab', icon: Camera, label: 'The Plush Lab™', labelHe: 'סטודיו לחיות מחמד', desc: 'AI pet avatar creation', descHe: 'יצירת אווטאר חיות מחמד' },
+];
+
 const serviceTypeOptions = [
   { id: 'pet_sitting', icon: Home, label: 'Pet Sitting', labelHe: 'שמירה על חיות מחמד' },
   { id: 'dog_walking', icon: Dog, label: 'Dog Walking', labelHe: 'טיולי כלבים' },
@@ -120,6 +128,7 @@ export default function BecomeProvider() {
   const [, navigate] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -185,7 +194,7 @@ export default function BecomeProvider() {
   const submitMutation = useMutation({
     mutationFn: async (data: ApplicationFormData) => {
       const formData = new FormData();
-      formData.append('applicationData', JSON.stringify(data));
+      formData.append('applicationData', JSON.stringify({ ...data, platforms: selectedPlatforms }));
       if (profilePhoto) {
         formData.append('profilePhoto', profilePhoto);
       }
@@ -231,6 +240,15 @@ export default function BecomeProvider() {
   };
 
   const onSubmit = (data: ApplicationFormData) => {
+    if (selectedPlatforms.length === 0) {
+      toast({
+        title: isHebrew ? 'בחר פלטפורמה' : 'Select a Platform',
+        description: isHebrew ? 'אנא בחר לפחות פלטפורמה אחת בשלב 2' : 'Please select at least one platform in Step 2',
+        variant: 'destructive',
+      });
+      setCurrentStep(2);
+      return;
+    }
     submitMutation.mutate(data);
   };
 
@@ -295,7 +313,7 @@ export default function BecomeProvider() {
                   </div>
                 </div>
                 
-                <Link href="/login">
+                <Link href="/signin?redirect=/become-provider">
                   <Button 
                     className="w-full py-6 text-lg font-semibold rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300"
                     data-testid="button-login"
@@ -695,10 +713,69 @@ export default function BecomeProvider() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold text-white">
-                        {isHebrew ? 'שירותים שתרצה לספק' : 'Services You Want to Provide'}
+                        {isHebrew ? 'פלטפורמות ושירותים' : 'Platforms & Services'}
                       </h2>
-                      <p className="text-gray-400 text-sm">{isHebrew ? 'בחר את סוגי השירותים שלך' : 'Choose your service types'}</p>
+                      <p className="text-gray-400 text-sm">{isHebrew ? 'בחר את הפלטפורמות והשירותים שלך' : 'Choose your platforms and service types'}</p>
                     </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <Label className="block text-gray-300 font-medium">{isHebrew ? 'בחר פלטפורמות' : 'Choose Platforms'} *</Label>
+                      <div className="flex items-center gap-3">
+                        <span className="text-purple-300 text-xs font-medium px-2 py-1 rounded-full bg-purple-500/15 border border-purple-400/30">
+                          {isHebrew ? 'ניתן לבחור מספר פלטפורמות' : 'Select multiple'}
+                        </span>
+                        {selectedPlatforms.length > 0 && (
+                          <span className="text-emerald-300 text-xs font-bold px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30">
+                            {selectedPlatforms.length} {isHebrew ? 'נבחרו' : 'selected'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                      {platformOptions.map((platform) => {
+                        const isSelected = selectedPlatforms.includes(platform.id);
+                        return (
+                          <div
+                            key={platform.id}
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedPlatforms(selectedPlatforms.filter(p => p !== platform.id));
+                              } else {
+                                setSelectedPlatforms([...selectedPlatforms, platform.id]);
+                              }
+                            }}
+                            className={`relative p-5 rounded-2xl cursor-pointer transition-all duration-300 ${
+                              isSelected 
+                                ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-500/50 shadow-lg shadow-purple-500/10'
+                                : 'bg-slate-800/50 border border-slate-600 hover:border-purple-500/30'
+                            }`}
+                            data-testid={`platform-${platform.id}`}
+                          >
+                            <div className="absolute top-3 right-3 w-6 h-6 rounded-md flex items-center justify-center transition-all duration-300">
+                              {isSelected ? (
+                                <CheckCircle2 className="w-6 h-6 text-purple-400" />
+                              ) : (
+                                <div className="w-5 h-5 rounded border-2 border-slate-500" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mb-2">
+                              {platform.icon && <platform.icon className={`w-7 h-7 ${isSelected ? 'text-purple-400' : 'text-slate-400'}`} />}
+                              <span className={`font-semibold ${isSelected ? 'text-purple-300' : 'text-gray-300'}`}>
+                                {isHebrew ? platform.labelHe : platform.label}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {isHebrew ? platform.descHe : platform.desc}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {selectedPlatforms.length === 0 && (
+                      <p className="text-amber-400 text-sm mb-4">{isHebrew ? 'בחר לפחות פלטפורמה אחת' : 'Select at least one platform'}</p>
+                    )}
                   </div>
                   
                   <div>

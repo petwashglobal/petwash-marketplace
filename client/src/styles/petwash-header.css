@@ -464,7 +464,7 @@
 }
 
 .pw-pill-frozen {
-  background: #000000;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
   color: #FFFFFF;
   font-size: 0.625rem;
   font-weight: 700;
