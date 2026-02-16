@@ -118,66 +118,124 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             </p>
           </motion.div>
 
-          {/* Hero Privilege Card — 3D perspective with diamond logo */}
+          {/* Hero Privilege Card — Premium Credit Card Style */}
           <motion.div
-            initial={{ opacity: 0, y: 40, rotateX: 8 }}
-            animate={{ opacity: 1, y: 0, rotateX: 0 }}
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: 0.3, duration: 0.9, ease: 'easeOut' }}
             className="relative mx-auto mt-14 mb-12"
-            style={{ perspective: '1200px', maxWidth: '420px' }}
+            style={{ maxWidth: '440px' }}
           >
             <div
               className="relative overflow-hidden"
               style={{
-                background: 'linear-gradient(155deg, #1f1f1f 0%, #141414 25%, #0d0d0d 50%, #141414 75%, #1a1a1a 100%)',
+                background: 'linear-gradient(160deg, #2a2a2a 0%, #1a1a1a 20%, #111111 45%, #0a0a0a 70%, #050505 100%)',
                 borderRadius: '16px',
-                padding: '28px 24px 20px',
-                border: '1px solid rgba(201,169,110,0.12)',
-                boxShadow: '0 60px 120px rgba(0,0,0,0.25), 0 25px 50px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.04)',
-                transform: 'rotateY(-1.5deg) rotateX(2deg)',
-                transformStyle: 'preserve-3d',
+                padding: '24px 26px 20px',
+                border: '1px solid rgba(201,169,110,0.15)',
+                boxShadow: '0 50px 100px rgba(0,0,0,0.30), 0 20px 40px rgba(0,0,0,0.20), 0 0 0 1px rgba(255,255,255,0.03)',
                 aspectRatio: '1.586 / 1',
               }}
             >
-              <div className="absolute inset-0" style={{ background: 'linear-gradient(125deg, transparent 25%, rgba(255,255,255,0.03) 40%, rgba(255,255,255,0.05) 45%, transparent 55%)', pointerEvents: 'none' }} />
-              <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl" style={{ background: 'rgba(201,169,110,0.05)' }} />
-              <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full blur-3xl" style={{ background: 'rgba(201,169,110,0.03)' }} />
+              {/* Diagonal shine */}
+              <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(130deg, transparent 30%, rgba(255,255,255,0.04) 42%, rgba(255,255,255,0.07) 46%, transparent 55%)' }} />
 
+              {/* Diamond logo watermark */}
               <img
                 src={diamondLogo}
                 alt=""
                 className="absolute pointer-events-none select-none"
                 style={{
-                  bottom: '14px',
-                  right: '18px',
-                  width: '140px',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '180px',
                   height: 'auto',
-                  opacity: 0.22,
-                  filter: 'brightness(1.5) contrast(1.1)',
+                  opacity: 0.06,
+                  filter: 'brightness(1.8)',
                 }}
               />
 
-              <div className="relative z-10 h-full flex flex-col justify-between">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-[14px] tracking-[0.22em] font-medium text-white/70" style={{ fontFamily: serif }}>PetWash&trade;</div>
-                    <div className="text-[11px] tracking-[0.3em] uppercase mt-1.5 font-light" style={{ color: gold }}>PRIVILEGE CLUB</div>
+              <div className="relative z-10 h-full flex flex-col justify-between" dir="ltr">
+                {/* Top row: Diamond logo + PetWash brand */}
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <img
+                        src={diamondLogo}
+                        alt="PetWash™"
+                        className="pointer-events-none select-none"
+                        style={{
+                          width: '120px',
+                          height: 'auto',
+                          filter: 'brightness(1.3)',
+                          opacity: 0.9,
+                        }}
+                      />
+                    </div>
+                    {/* Chip */}
+                    <div
+                      className="rounded-md flex-shrink-0"
+                      style={{
+                        width: '36px',
+                        height: '28px',
+                        background: 'linear-gradient(145deg, #d4b896 0%, #c9a96e 30%, #b8963e 60%, #d4b896 100%)',
+                        border: '1px solid rgba(201,169,110,0.4)',
+                        boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.3), inset 0 -1px 2px rgba(0,0,0,0.15)',
+                      }}
+                    >
+                      <div className="w-full h-full rounded-md" style={{ background: 'linear-gradient(90deg, transparent 30%, rgba(0,0,0,0.06) 32%, rgba(0,0,0,0.06) 34%, transparent 36%, transparent 64%, rgba(0,0,0,0.06) 66%, rgba(0,0,0,0.06) 68%, transparent 70%)' }}>
+                        <div className="w-full h-full" style={{ background: 'linear-gradient(0deg, transparent 40%, rgba(0,0,0,0.06) 42%, rgba(0,0,0,0.06) 44%, transparent 46%, transparent 54%, rgba(0,0,0,0.06) 56%, rgba(0,0,0,0.06) 58%, transparent 60%)' }} />
+                      </div>
+                    </div>
                   </div>
-                  <div
-                    className="w-9 h-9 flex items-center justify-center rounded-md"
-                    style={{
-                      border: `1px solid ${gold}35`,
-                      background: `linear-gradient(135deg, ${gold}08, transparent)`,
-                    }}
-                  >
-                    <Diamond className="w-4.5 h-4.5" style={{ color: gold }} />
+                  <div className="mt-1">
+                    <div className="text-[10px] tracking-[0.3em] uppercase font-medium" style={{ color: gold }}>
+                      PRIVILEGE LOYALTY CARD
+                    </div>
                   </div>
                 </div>
+
+                {/* Card number */}
+                <div className="my-auto py-2">
+                  <div
+                    className="text-[18px] sm:text-[22px] font-light tracking-[0.18em]"
+                    style={{
+                      color: 'rgba(255,255,255,0.85)',
+                      fontFamily: 'ui-monospace, "SF Mono", Monaco, "Cascadia Mono", monospace',
+                      textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                    }}
+                  >
+                    5678 &nbsp;9012 &nbsp;3456 &nbsp;7890
+                  </div>
+                </div>
+
+                {/* Bottom row: Name + Valid Thru */}
                 <div>
-                  <div className="h-px mb-4" style={{ background: `linear-gradient(90deg, transparent, ${gold}30, ${gold}20, transparent)` }} />
-                  <div className="flex items-center justify-between">
-                    <div className="text-[9px] uppercase tracking-[0.18em] text-white/30" style={{ fontFamily: serif }}>Loyalty Member</div>
-                    <div className="text-[10px] font-mono tracking-widest text-white/20">PWP ••••</div>
+                  <div className="h-px mb-3" style={{ background: `linear-gradient(90deg, transparent, ${gold}25, transparent)` }} />
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <div className="text-[7px] uppercase tracking-[0.15em] mb-0.5" style={{ color: 'rgba(255,255,255,0.30)' }}>
+                        CARD HOLDER
+                      </div>
+                      <div
+                        className="text-[12px] sm:text-[13px] uppercase tracking-[0.12em] font-medium"
+                        style={{ color: 'rgba(255,255,255,0.80)', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}
+                      >
+                        MRS. L. PAWSHINGTON
+                      </div>
+                    </div>
+                    <div className="text-end">
+                      <div className="text-[7px] uppercase tracking-[0.12em] mb-0.5" style={{ color: 'rgba(255,255,255,0.30)' }}>
+                        VALID THRU
+                      </div>
+                      <div
+                        className="text-[13px] font-medium tracking-wider"
+                        style={{ color: 'rgba(255,255,255,0.80)', fontFamily: 'ui-monospace, monospace' }}
+                      >
+                        12/28
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
