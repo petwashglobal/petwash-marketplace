@@ -32,7 +32,27 @@ declare global {
   }
 }
 
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
+function sanitizeRecaptchaKey(raw: string): string {
+  if (!raw) return '';
+  const match = raw.match(/6L[A-Za-z0-9_-]{38,}/);
+  if (match) return match[0];
+  return raw.trim();
+}
+
+const RECAPTCHA_SITE_KEY = sanitizeRecaptchaKey(import.meta.env.VITE_RECAPTCHA_SITE_KEY || '');
+const RECAPTCHA_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`[ReCaptcha] ${label} timed out after ${ms}ms`));
+    }, ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
 
 const loadReCaptchaScript = (): Promise<void> => {
   return new Promise((resolve, reject) => {
@@ -41,9 +61,15 @@ const loadReCaptchaScript = (): Promise<void> => {
       return;
     }
 
-    const existingScript = document.querySelector('script[src*="recaptcha/enterprise.js"]');
+    const existingScript = document.querySelector('script[src*="recaptcha/enterprise.js"]') as HTMLScriptElement | null;
     if (existingScript) {
-      existingScript.addEventListener('load', () => resolve());
+      if (existingScript.dataset.loaded === 'true') {
+        resolve();
+        return;
+      }
+      const onLoad = () => { existingScript.dataset.loaded = 'true'; resolve(); };
+      existingScript.addEventListener('load', onLoad, { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('Failed to load reCAPTCHA script')), { once: true });
       return;
     }
 
@@ -60,7 +86,7 @@ const loadReCaptchaScript = (): Promise<void> => {
     script.src = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`;
     script.async = true;
     script.defer = true;
-    script.onload = () => resolve();
+    script.onload = () => { script.dataset.loaded = 'true'; resolve(); };
     script.onerror = () => reject(new Error('Failed to load reCAPTCHA Enterprise script'));
     document.head.appendChild(script);
   });
@@ -73,21 +99,31 @@ export async function executeReCaptcha(action: string = 'submit'): Promise<strin
       return null;
     }
 
-    await loadReCaptchaScript();
+    await withTimeout(loadReCaptchaScript(), RECAPTCHA_TIMEOUT_MS, 'script load');
 
-    return new Promise((resolve) => {
-      window.grecaptcha.enterprise.ready(async () => {
-        try {
-          const token = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action });
-          resolve(token);
-        } catch (err) {
-          logger.error('[ReCaptcha] Enterprise execute error:', err);
-          resolve(null);
-        }
-      });
-    });
+    if (!window.grecaptcha?.enterprise?.ready) {
+      logger.warn('[ReCaptcha] Enterprise API not available after script load');
+      return null;
+    }
+
+    const token = await withTimeout(
+      new Promise<string>((resolve, reject) => {
+        window.grecaptcha.enterprise.ready(async () => {
+          try {
+            const t = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action });
+            resolve(t);
+          } catch (err) {
+            reject(err);
+          }
+        });
+      }),
+      RECAPTCHA_TIMEOUT_MS,
+      'enterprise.execute'
+    );
+
+    return token;
   } catch (err) {
-    logger.error('[ReCaptcha] Load error:', err);
+    logger.error('[ReCaptcha] Error:', err);
     return null;
   }
 }

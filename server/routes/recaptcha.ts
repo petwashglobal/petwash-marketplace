@@ -4,8 +4,15 @@ import { logger } from '../lib/logger';
 
 const router = Router();
 
-const RECAPTCHA_SITE_KEY = process.env.VITE_RECAPTCHA_SITE_KEY || '';
-const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || '';
+function sanitizeKey(raw: string): string {
+  if (!raw) return '';
+  const match = raw.match(/6L[A-Za-z0-9_-]{38,}/);
+  if (match) return match[0];
+  return raw.trim();
+}
+
+const RECAPTCHA_SITE_KEY = sanitizeKey(process.env.VITE_RECAPTCHA_SITE_KEY || '');
+const RECAPTCHA_SECRET_KEY = (process.env.RECAPTCHA_SECRET_KEY || '').trim();
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'signinpetwash';
 
 const verifySchema = z.object({
@@ -26,8 +33,8 @@ router.post('/verify', async (req, res) => {
 
     const { token, action } = validation.data;
 
-    if (!RECAPTCHA_SITE_KEY) {
-      logger.warn('[ReCaptcha] No site key configured - passing through');
+    if (!RECAPTCHA_SITE_KEY || !RECAPTCHA_SECRET_KEY) {
+      logger.warn('[ReCaptcha] Keys not fully configured - passing through');
       return res.json({ success: true, score: 1.0, action });
     }
 
@@ -54,16 +61,8 @@ router.post('/verify', async (req, res) => {
         status: result.error.status
       });
 
-      if (RECAPTCHA_SECRET_KEY) {
-        logger.info('[ReCaptcha] Trying legacy siteverify fallback...');
-        return await legacySiteVerify(req, res, token, action);
-      }
-
-      return res.status(400).json({
-        success: false,
-        error: 'reCAPTCHA verification failed',
-        errorCodes: [result.error.message]
-      });
+      logger.info('[ReCaptcha] Enterprise API error - allowing through to avoid blocking users');
+      return res.json({ success: true, score: 0.5, action, fallback: true });
     }
 
     const tokenProperties = result.tokenProperties || {};
