@@ -359,12 +359,12 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen relative bg-white">
+      <div className="min-h-screen relative" style={{ background: 'linear-gradient(180deg, #FBF9F4 0%, #F7F3EC 40%, #F4F0E8 100%)' }}>
         <div
           className="absolute inset-0 pointer-events-none flex items-center justify-center"
-          style={{ opacity: 0.04 }}
+          style={{ opacity: 0.06 }}
         >
-          <img src={diamondLogo} alt="" className="w-[420px] max-w-[80vw] h-auto select-none" draggable={false} />
+          <img src={diamondLogo} alt="" className="w-[520px] max-w-[90vw] h-auto select-none" draggable={false} />
         </div>
 
         <div className="relative z-10 w-full max-w-lg mx-auto px-4 sm:px-6 pt-6 pb-8">
@@ -374,7 +374,7 @@ export default function Dashboard() {
             transition={{ duration: 0.6 }}
             className="text-center mb-6"
           >
-            <img src={diamondLogo} alt="PetWash™" className="w-36 sm:w-44 h-auto mx-auto mb-1" />
+            <img src={diamondLogo} alt="PetWash™" className="w-52 sm:w-60 h-auto mx-auto mb-3" />
             <p
               className="text-lg sm:text-xl tracking-[0.15em] font-light"
               style={{ ...goldText, fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}
@@ -528,7 +528,7 @@ export default function Dashboard() {
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
-                    Walk My Pet&trade;
+                    ⁦Walk My Pet™⁩
                   </p>
                   <p className="text-[10px] tracking-wide" style={goldText}>{tx('comingSoon', language)}</p>
                 </div>
@@ -558,7 +558,7 @@ export default function Dashboard() {
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
                     {tx('petSitting', language)}
                   </p>
-                  <p className="text-[10px] text-gray-500">The Sitter Suite&trade;</p>
+                  <p className="text-[10px] text-gray-500">⁦The Sitter Suite™⁩</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
               </div>
@@ -585,7 +585,7 @@ export default function Dashboard() {
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
                     {tx('dogWalking', language)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Walk My Pet&trade;</p>
+                  <p className="text-[10px] text-gray-500">⁦Walk My Pet™⁩</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
               </div>
@@ -613,7 +613,7 @@ export default function Dashboard() {
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
                     {tx('petTransport', language)}
                   </p>
-                  <p className="text-[10px] tracking-wide" style={goldText}>PetTrek&trade; &middot; {tx('comingSoon', language)}</p>
+                  <p className="text-[10px] tracking-wide" style={goldText}>⁦PetTrek™⁩ · {tx('comingSoon', language)}</p>
                 </div>
               </div>
             </motion.div>
@@ -702,7 +702,7 @@ export default function Dashboard() {
             className="text-center pb-2"
           >
             <p className="text-[9px] tracking-[0.2em] uppercase" style={{ color: 'rgba(184, 151, 47, 0.5)' }}>
-              Pet Wash&trade; 2025 - 2026
+              ⁦Pet Wash™⁩ 2025 - 2026
             </p>
           </motion.div>
         </div>
