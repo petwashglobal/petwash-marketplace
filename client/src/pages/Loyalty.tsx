@@ -21,6 +21,7 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { logger } from "@/lib/logger";
 import { useLocation, Link } from "wouter";
 import diamondLogo from "@assets/IMG_3257_1771244654511.png";
+import diamondLogoBlack from "@assets/IMG_3269_1771249415226.png";
 
 const gold = '#C9A96E';
 
@@ -137,18 +138,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                 aspectRatio: '1.586 / 1',
               }}
             >
-              {/* Subtle radial glow behind logo */}
-              <div className="absolute pointer-events-none" style={{
-                top: '30%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '280px',
-                height: '200px',
-                background: 'radial-gradient(ellipse, rgba(201,169,110,0.08) 0%, transparent 70%)',
-              }} />
-
-              {/* Diagonal shine */}
-              <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(130deg, transparent 25%, rgba(255,255,255,0.02) 38%, rgba(255,255,255,0.05) 42%, transparent 52%)' }} />
+              {/* No extra overlays needed — the black background logo image has its own glow and sparkle effects */}
 
               <div className="relative z-10 h-full flex flex-col justify-between" dir="ltr">
                 {/* Top row: Chip on right, small PRIVILEGE text on left */}
@@ -173,18 +163,16 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                   </div>
                 </div>
 
-                {/* CENTER: Large diamond PetWash logo — the star of the card */}
-                <div className="flex-1 flex items-center justify-center" style={{ marginTop: '-4px', marginBottom: '-2px' }}>
+                {/* CENTER: Black background diamond logo — the star of the card */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 5 }}>
                   <img
-                    src={diamondLogo}
+                    src={diamondLogoBlack}
                     alt="PetWash™"
                     className="pointer-events-none select-none"
                     style={{
-                      width: '240px',
+                      width: '75%',
                       height: 'auto',
-                      filter: 'brightness(1.25) contrast(1.05)',
-                      opacity: 1,
-                      dropShadow: '0 0 30px rgba(201,169,110,0.3)',
+                      objectFit: 'contain',
                     }}
                   />
                 </div>
