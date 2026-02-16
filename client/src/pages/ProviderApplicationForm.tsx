@@ -505,10 +505,29 @@ export default function ProviderApplicationForm() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
               console.error('[ProviderApplication] Form validation errors:', errors);
+              const stepFieldMap: [number, string[], string, string][] = [
+                [1, ['selectedPlatforms'], 'בחירת פלטפורמות (שלב 1)', 'Platform Selection (Step 1)'],
+                [3, ['firstName', 'lastName', 'email', 'phoneNumber', 'idNumber', 'streetAddress', 'city'], 'פרטים אישיים (שלב 3)', 'Personal Details (Step 3)'],
+                [4, ['aboutMe', 'whyJoinPetWash'], 'ניסיון ופרופיל (שלב 4)', 'Experience & Profile (Step 4)'],
+                [5, ['agreeToTerms', 'agreeToPrivacy', 'agreeToContractorStatus'], 'הסכמים משפטיים (שלב 5)', 'Legal Agreements (Step 5)'],
+              ];
+              const errorKeys = Object.keys(errors);
+              let errorStep = 5;
+              let stepLabel = '';
+              for (const [stepNum, fields, heLbl, enLbl] of stepFieldMap) {
+                if (fields.some(f => errorKeys.includes(f))) {
+                  errorStep = stepNum;
+                  stepLabel = isHebrew ? heLbl : enLbl;
+                  break;
+                }
+              }
+              setStep(errorStep);
               toast({
                 variant: 'destructive',
-                title: isHebrew ? 'שגיאה בטופס' : 'Form Error',
-                description: isHebrew ? 'אנא מלא את כל השדות הנדרשים' : 'Please fill in all required fields',
+                title: isHebrew ? 'שדות חסרים' : 'Missing Fields',
+                description: stepLabel 
+                  ? (isHebrew ? `אנא מלא את כל השדות הנדרשים ב${stepLabel}` : `Please fill in all required fields in ${stepLabel}`)
+                  : (isHebrew ? 'אנא מלא את כל השדות הנדרשים' : 'Please fill in all required fields'),
               });
             })}>
               
@@ -1278,7 +1297,7 @@ export default function ProviderApplicationForm() {
                   {step < 5 ? (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (step === 1 && selectedPlatforms.length === 0) {
                           toast({
                             variant: 'destructive',
@@ -1286,6 +1305,24 @@ export default function ProviderApplicationForm() {
                             description: isHebrew ? 'בחר לפחות פלטפורמה אחת' : 'Select at least one platform',
                           });
                           return;
+                        }
+                        const stepFields: Record<number, (keyof ApplicationForm)[]> = {
+                          1: ['selectedPlatforms'],
+                          2: [],
+                          3: ['firstName', 'lastName', 'email', 'phoneNumber', 'idNumber', 'streetAddress', 'city'],
+                          4: ['aboutMe', 'whyJoinPetWash'],
+                        };
+                        const fields = stepFields[step] || [];
+                        if (fields.length > 0) {
+                          const valid = await form.trigger(fields);
+                          if (!valid) {
+                            toast({
+                              variant: 'destructive',
+                              title: isHebrew ? 'שדות חסרים' : 'Missing Fields',
+                              description: isHebrew ? 'אנא מלא את כל השדות הנדרשים בשלב זה' : 'Please fill in all required fields in this step',
+                            });
+                            return;
+                          }
                         }
                         setStep(step + 1);
                       }}
