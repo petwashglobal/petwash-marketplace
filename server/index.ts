@@ -197,13 +197,14 @@ app.get('/health', (req, res) => {
 // --- CRITICAL: Block all non-health requests until initialization is complete ---
 // This prevents 404s during startup when routes aren't registered yet
 app.use((req, res, next) => {
-  // Always allow health checks through
   if (req.path === '/health') {
     return next();
   }
   
-  // In production, block requests until server is ready
   if (isProduction && !serverReady) {
+    if (req.path === '/' || req.method === 'HEAD') {
+      return res.status(200).send('<!DOCTYPE html><html><head><title>Pet Wash™</title></head><body><p>Starting up...</p></body></html>');
+    }
     return res.status(503).json({
       error: 'Service Unavailable',
       message: 'Server is starting up, please retry in a moment',
