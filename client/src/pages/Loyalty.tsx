@@ -130,24 +130,14 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             <div
               className="relative overflow-hidden w-full"
               style={{
-                background: 'radial-gradient(ellipse at 50% 35%, #1c1c1c 0%, #111111 30%, #080808 60%, #000000 100%)',
+                background: '#000000',
                 borderRadius: '18px',
                 padding: '28px 28px 22px',
                 border: '1px solid rgba(201,169,110,0.22)',
-                boxShadow: '0 60px 120px rgba(0,0,0,0.40), 0 25px 50px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.02), 0 0 100px rgba(201,169,110,0.08)',
+                boxShadow: '0 60px 120px rgba(0,0,0,0.40), 0 25px 50px rgba(0,0,0,0.30), 0 0 100px rgba(201,169,110,0.08)',
                 aspectRatio: '1.586 / 1',
               }}
             >
-              {/* Edge highlight */}
-              <div className="absolute inset-0 pointer-events-none" style={{
-                borderRadius: '18px',
-                background: 'linear-gradient(170deg, rgba(201,169,110,0.08) 0%, transparent 30%, transparent 70%, rgba(201,169,110,0.04) 100%)',
-              }} />
-
-              {/* Diagonal premium shine */}
-              <div className="absolute inset-0 pointer-events-none" style={{
-                background: 'linear-gradient(125deg, transparent 20%, rgba(255,255,255,0.015) 35%, rgba(255,255,255,0.04) 40%, rgba(255,255,255,0.015) 45%, transparent 55%)',
-              }} />
 
               <div className="relative z-10 h-full flex flex-col justify-between" dir="ltr">
                 {/* Top row */}
