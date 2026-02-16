@@ -29,11 +29,12 @@ const PRESTIGE_TIERS = [
     key: 'member',
     nameKey: 'privilege.tierMember',
     descKey: 'privilege.tierMemberDesc',
-    cardBg: 'linear-gradient(155deg, #f5f5f5 0%, #e8e8e8 30%, #d4d4d8 70%, #c0c0c0 100%)',
-    labelColor: '#71717a',
-    tierNameColor: '#52525b',
-    borderColor: 'rgba(0,0,0,0.06)',
-    shadowColor: 'rgba(0,0,0,0.06)',
+    cardBg: 'linear-gradient(155deg, #7B4DAA 0%, #6A3D99 25%, #5C2D91 55%, #4A1D80 80%, #3D1273 100%)',
+    labelColor: '#d4b8f0',
+    tierNameColor: '#f0e6ff',
+    borderColor: 'rgba(180,140,255,0.20)',
+    shadowColor: 'rgba(91,45,145,0.25)',
+    glowColor: 'rgba(123,77,170,0.15)',
     icon: '◇',
     benefits: ['privilege.tierMemberBenefit1', 'privilege.tierMemberBenefit2'],
   },
@@ -41,11 +42,12 @@ const PRESTIGE_TIERS = [
     key: 'signature',
     nameKey: 'privilege.tierSignature',
     descKey: 'privilege.tierSignatureDesc',
-    cardBg: 'linear-gradient(155deg, #d4d4d4 0%, #b8b8b8 30%, #909090 70%, #787878 100%)',
-    labelColor: '#e5e5e5',
-    tierNameColor: '#f0f0f0',
-    borderColor: 'rgba(255,255,255,0.12)',
-    shadowColor: 'rgba(0,0,0,0.10)',
+    cardBg: 'linear-gradient(155deg, #C62828 0%, #B71C1C 25%, #9B1B30 55%, #7F1428 80%, #6D0F20 100%)',
+    labelColor: '#ffb8b8',
+    tierNameColor: '#ffe8e8',
+    borderColor: 'rgba(255,100,100,0.18)',
+    shadowColor: 'rgba(198,40,40,0.25)',
+    glowColor: 'rgba(198,40,40,0.12)',
     icon: '♛',
     benefits: ['privilege.tierSignatureBenefit1', 'privilege.tierSignatureBenefit2'],
   },
@@ -53,11 +55,12 @@ const PRESTIGE_TIERS = [
     key: 'elite',
     nameKey: 'privilege.tierElite',
     descKey: 'privilege.tierEliteDesc',
-    cardBg: 'linear-gradient(155deg, #d4b87a 0%, #C9A96E 25%, #b8963e 60%, #9a7b2e 100%)',
-    labelColor: '#f5e6c8',
-    tierNameColor: '#fff8eb',
-    borderColor: 'rgba(255,255,255,0.15)',
-    shadowColor: 'rgba(180,140,60,0.15)',
+    cardBg: 'linear-gradient(155deg, #1B8A5A 0%, #15794E 25%, #0E6B40 55%, #085530 80%, #044425 100%)',
+    labelColor: '#a8f0cc',
+    tierNameColor: '#e0fff0',
+    borderColor: 'rgba(100,255,180,0.18)',
+    shadowColor: 'rgba(27,138,90,0.25)',
+    glowColor: 'rgba(27,138,90,0.12)',
     icon: '♕',
     benefits: ['privilege.tierEliteBenefit1', 'privilege.tierEliteBenefit2'],
   },
@@ -65,11 +68,12 @@ const PRESTIGE_TIERS = [
     key: 'privilege',
     nameKey: 'privilege.tierPrivilege',
     descKey: 'privilege.tierPrivilegeDesc',
-    cardBg: 'linear-gradient(155deg, #2a2a2a 0%, #1a1a1a 30%, #111111 70%, #0a0a0a 100%)',
-    labelColor: gold,
-    tierNameColor: '#ffffff',
-    borderColor: `${gold}25`,
-    shadowColor: 'rgba(0,0,0,0.20)',
+    cardBg: 'linear-gradient(155deg, #1A3A6B 0%, #14305E 25%, #0E2650 55%, #081C42 80%, #041438 100%)',
+    labelColor: '#8EC5FF',
+    tierNameColor: '#e0f0ff',
+    borderColor: 'rgba(100,170,255,0.18)',
+    shadowColor: 'rgba(26,58,107,0.30)',
+    glowColor: 'rgba(26,58,107,0.12)',
     icon: '◆',
     benefits: ['privilege.tierPrivilegeBenefit1', 'privilege.tierPrivilegeBenefit2'],
   },
@@ -77,11 +81,12 @@ const PRESTIGE_TIERS = [
     key: 'blackReserve',
     nameKey: 'privilege.tierBlackReserve',
     descKey: 'privilege.tierBlackReserveDesc',
-    cardBg: 'linear-gradient(155deg, #0f0f0f 0%, #080808 40%, #050505 70%, #0a0a0a 100%)',
+    cardBg: 'linear-gradient(155deg, #1a1a1a 0%, #0f0f0f 25%, #080808 55%, #050505 80%, #000000 100%)',
     labelColor: gold,
     tierNameColor: '#ffffff',
     borderColor: `${gold}30`,
-    shadowColor: 'rgba(0,0,0,0.25)',
+    shadowColor: 'rgba(0,0,0,0.35)',
+    glowColor: 'rgba(201,169,110,0.08)',
     icon: '⬥',
     isInviteOnly: true,
     benefits: ['privilege.tierBlackReserveBenefit1', 'privilege.tierBlackReserveBenefit2'],
@@ -211,8 +216,8 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
       </section>
 
       {/* SECTION 2 — MEMBERSHIP TIERS (Card Gallery) */}
-      <section id="membership-tiers" className="py-20 sm:py-28">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="membership-tiers" className="py-20 sm:py-28 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.h2
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -223,75 +228,100 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             {t('privilege.membershipTiers', language)}
           </motion.h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5 max-w-[960px] mx-auto">
+          <div
+            id="tier-scroll"
+            className="flex gap-4 sm:gap-5 overflow-x-auto pb-6 snap-x snap-mandatory justify-start lg:justify-center"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+          >
+            <style>{`#tier-scroll::-webkit-scrollbar { display: none; }`}</style>
             {[...PRESTIGE_TIERS].reverse().map((tier, i) => {
-              const isDark = tier.key === 'privilege' || tier.key === 'blackReserve';
-              const isGold = tier.key === 'elite';
+              const isBlack = tier.key === 'blackReserve';
               return (
                 <motion.div
                   key={tier.key}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.08, duration: 0.5 }}
-                  className="text-center group"
+                  transition={{ delay: i * 0.1, duration: 0.6, ease: 'easeOut' }}
+                  className="text-center group snap-center flex-shrink-0"
+                  style={{ width: '170px' }}
                 >
                   <div
-                    className="relative overflow-hidden transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl cursor-default mx-auto"
+                    className="relative overflow-hidden transition-all duration-500 group-hover:-translate-y-3 cursor-default mx-auto"
                     style={{
                       background: tier.cardBg,
-                      borderRadius: '12px',
+                      borderRadius: '14px',
                       border: `1px solid ${tier.borderColor}`,
-                      boxShadow: `0 16px 40px ${tier.shadowColor}, 0 4px 16px rgba(0,0,0,0.06)`,
-                      aspectRatio: '1.586 / 1',
-                      width: '100%',
-                      maxWidth: '180px',
-                      padding: '14px 12px 10px',
+                      boxShadow: `0 20px 50px ${tier.shadowColor}, 0 8px 20px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.08)`,
+                      width: '170px',
+                      height: '107px',
+                      padding: '14px 14px 10px',
                     }}
                   >
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.06) 48%, transparent 65%)' }} />
-                    <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl" style={{ background: isGold ? 'rgba(201,169,110,0.1)' : isDark ? 'rgba(201,169,110,0.04)' : 'rgba(255,255,255,0.04)' }} />
+                    <div
+                      className="absolute inset-0 opacity-50 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+                      style={{
+                        background: 'linear-gradient(125deg, transparent 20%, rgba(255,255,255,0.08) 40%, rgba(255,255,255,0.14) 48%, transparent 58%)',
+                      }}
+                    />
 
-                    {(isDark || isGold) && (
-                      <img
-                        src={diamondLogo}
-                        alt=""
-                        className="absolute pointer-events-none select-none"
-                        style={{
-                          bottom: '4px',
-                          right: '6px',
-                          width: '55px',
-                          height: 'auto',
-                          opacity: isDark ? 0.06 : 0.08,
-                          filter: 'brightness(1.2)',
-                        }}
-                      />
-                    )}
+                    <div
+                      className="absolute top-0 right-0 w-24 h-24 rounded-full blur-3xl pointer-events-none"
+                      style={{ background: tier.glowColor }}
+                    />
+
+                    <img
+                      src={diamondLogo}
+                      alt=""
+                      className="absolute pointer-events-none select-none"
+                      style={{
+                        bottom: '3px',
+                        right: '5px',
+                        width: '50px',
+                        height: 'auto',
+                        opacity: isBlack ? 0.08 : 0.06,
+                        filter: 'brightness(1.4)',
+                      }}
+                    />
 
                     <div className="relative z-10 h-full flex flex-col justify-between">
                       <div className="flex items-start justify-between">
-                        <div className="text-[7px] sm:text-[8px] tracking-[0.18em] font-medium" style={{ color: tier.labelColor, opacity: 0.8, fontFamily: serif }}>
+                        <div className="text-[7px] tracking-[0.2em] font-semibold" style={{ color: tier.labelColor, opacity: 0.8, fontFamily: serif }}>
                           PetWash&trade;
                         </div>
-                        <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded" style={{ border: `1px solid ${tier.borderColor}` }}>
-                          {tier.key === 'member' && <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: tier.labelColor }} />}
-                          {tier.key === 'signature' && <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: tier.labelColor }} />}
-                          {tier.key === 'elite' && <Crown className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: gold }} />}
-                          {tier.key === 'privilege' && <Diamond className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: gold }} />}
-                          {tier.key === 'blackReserve' && <Shield className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: gold }} />}
+                        <div
+                          className="w-[18px] h-[18px] flex items-center justify-center rounded-sm"
+                          style={{
+                            border: `1px solid ${tier.borderColor}`,
+                            background: 'rgba(255,255,255,0.06)',
+                          }}
+                        >
+                          {tier.key === 'member' && <ChevronRight className="w-2.5 h-2.5" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'signature' && <Star className="w-2.5 h-2.5" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'elite' && <Crown className="w-2.5 h-2.5" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'privilege' && <Diamond className="w-2.5 h-2.5" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'blackReserve' && <Shield className="w-2.5 h-2.5" style={{ color: gold }} />}
                         </div>
                       </div>
                       <div>
-                        <div className="h-px mb-1.5 opacity-20" style={{ background: isDark || isGold ? `linear-gradient(90deg, transparent, ${gold}, transparent)` : 'rgba(0,0,0,0.12)' }} />
-                        <div className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase font-bold" style={{ color: tier.tierNameColor }}>
+                        <div
+                          className="h-px mb-1.5"
+                          style={{
+                            background: `linear-gradient(90deg, transparent, ${tier.labelColor}40, transparent)`,
+                          }}
+                        />
+                        <div
+                          className="text-[9px] tracking-[0.18em] uppercase font-bold"
+                          style={{ color: tier.tierNameColor, textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}
+                        >
                           {t(tier.nameKey, language)}
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-3 space-y-1">
-                    <h3 className="text-[12px] font-semibold text-gray-900" style={{ fontFamily: serif }}>
+                  <div className="mt-3 space-y-0.5">
+                    <h3 className="text-[12px] font-semibold text-gray-800" style={{ fontFamily: serif }}>
                       {t(tier.nameKey, language)}
                     </h3>
                     {tier.benefits.map((bKey, bi) => (
@@ -423,19 +453,29 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
               <thead>
                 <tr>
                   <th className="text-start p-4 text-xs uppercase tracking-wider text-gray-300 font-medium" style={{ borderBottom: '1px solid #f0f0f0' }}></th>
-                  {PRESTIGE_TIERS.map((tier) => (
-                    <th
-                      key={tier.key}
-                      className="p-4 text-center text-[11px] uppercase tracking-wider font-semibold"
-                      style={{
-                        borderBottom: `2px solid ${tier.key === 'blackReserve' || tier.key === 'privilege' ? gold : '#e5e5e5'}`,
-                        color: tier.key === 'blackReserve' || tier.key === 'privilege' ? gold : '#6b7280',
-                        fontFamily: serif,
-                      }}
-                    >
-                      {t(tier.nameKey, language)}
-                    </th>
-                  ))}
+                  {PRESTIGE_TIERS.map((tier) => {
+                    const headerColors: Record<string, string> = {
+                      member: '#7B4DAA',
+                      signature: '#C62828',
+                      elite: '#1B8A5A',
+                      privilege: '#1A3A6B',
+                      blackReserve: '#1a1a1a',
+                    };
+                    const c = headerColors[tier.key] || '#6b7280';
+                    return (
+                      <th
+                        key={tier.key}
+                        className="p-4 text-center text-[11px] uppercase tracking-wider font-semibold"
+                        style={{
+                          borderBottom: `2px solid ${c}`,
+                          color: c,
+                          fontFamily: serif,
+                        }}
+                      >
+                        {t(tier.nameKey, language)}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
