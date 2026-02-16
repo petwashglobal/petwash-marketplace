@@ -157,10 +157,10 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                 {/* ROW 1: Top header — title + chip */}
                 <div className="flex items-start justify-between">
                   <div>
-                    <div style={{ fontSize: 'clamp(8px, 2.2%, 11px)', color: gold, opacity: 0.85, letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 500 }}>
+                    <div style={{ fontSize: 'clamp(8px, 2.2%, 11px)', color: gold, letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 600 }}>
                       PRIVILEGE LOYALTY CARD
                     </div>
-                    <div style={{ fontSize: 'clamp(6px, 1.6%, 8px)', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.2em', textTransform: 'uppercase', marginTop: '2px', fontWeight: 300 }}>
+                    <div style={{ fontSize: 'clamp(6px, 1.6%, 8px)', color: 'rgba(255,255,255,0.55)', letterSpacing: '0.2em', textTransform: 'uppercase', marginTop: '2px', fontWeight: 400 }}>
                       PetWash™ Exclusive Member
                     </div>
                   </div>
@@ -186,14 +186,13 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
 
                 {/* ROW 3: Bottom footer — card number, holder, valid thru */}
                 <div>
-                  {/* Card number — clean, no shadow */}
                   <div
                     style={{
                       fontSize: 'clamp(14px, 3.9%, 20px)',
-                      color: 'rgba(255,255,255,0.85)',
+                      color: '#ffffff',
                       fontFamily: 'ui-monospace, "SF Mono", Monaco, "Cascadia Mono", monospace',
                       letterSpacing: '0.22em',
-                      fontWeight: 300,
+                      fontWeight: 400,
                       marginBottom: 'clamp(6px, 2%, 12px)',
                     }}
                   >
@@ -207,13 +206,13 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                   }} />
                   <div className="flex items-end justify-between">
                     <div>
-                      <div style={{ fontSize: 'clamp(5px, 1.5%, 8px)', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.18em', marginBottom: '2px' }}>
+                      <div style={{ fontSize: 'clamp(5px, 1.5%, 8px)', color: 'rgba(255,255,255,0.50)', textTransform: 'uppercase', letterSpacing: '0.18em', marginBottom: '2px' }}>
                         CARD HOLDER
                       </div>
                       <div
                         style={{
                           fontSize: 'clamp(10px, 2.8%, 14px)',
-                          color: 'rgba(255,255,255,0.85)',
+                          color: '#ffffff',
                           textTransform: 'uppercase',
                           letterSpacing: '0.14em',
                           fontWeight: 500,
@@ -223,13 +222,13 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                       </div>
                     </div>
                     <div style={{ textAlign: 'end' }}>
-                      <div style={{ fontSize: 'clamp(5px, 1.5%, 8px)', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '2px' }}>
+                      <div style={{ fontSize: 'clamp(5px, 1.5%, 8px)', color: 'rgba(255,255,255,0.50)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '2px' }}>
                         VALID THRU
                       </div>
                       <div
                         style={{
                           fontSize: 'clamp(11px, 3%, 15px)',
-                          color: 'rgba(255,255,255,0.85)',
+                          color: '#ffffff',
                           fontFamily: 'ui-monospace, monospace',
                           letterSpacing: '0.15em',
                           fontWeight: 500,

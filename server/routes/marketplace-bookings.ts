@@ -870,15 +870,51 @@ router.get('/search/providers', async (req, res) => {
       };
     });
 
-    // Filter by city if specified (case-insensitive partial match for Hebrew/English)
+    const CITY_ALIASES: Record<string, string[]> = {
+      'tel aviv': ['תל אביב', 'tel-aviv', 'tlv', 'תל-אביב', 'תל אביב יפו', 'tel aviv-yafo', 'tel aviv yafo', 'tel aviv jaffa'],
+      'jerusalem': ['ירושלים', 'yerushalayim'],
+      'haifa': ['חיפה'],
+      'herzliya': ['הרצליה'],
+      'ramat gan': ['רמת גן', 'רמת-גן'],
+      'petah tikva': ['פתח תקווה', 'פתח-תקווה', 'petach tikva'],
+      'rishon lezion': ['ראשון לציון', 'rishon le zion', 'rishon'],
+      'netanya': ['נתניה'],
+      'beer sheva': ['באר שבע', 'beer-sheva', 'beersheva', 'באר-שבע'],
+      'ashdod': ['אשדוד'],
+      'holon': ['חולון'],
+      'bat yam': ['בת ים', 'בת-ים'],
+      'kfar saba': ['כפר סבא', 'כפר-סבא'],
+      'hod hasharon': ['הוד השרון', 'הוד-השרון'],
+      'rehovot': ['רחובות'],
+      'ashkelon': ['אשקלון'],
+      'raanana': ['רעננה', "ra'anana"],
+      'givatayim': ['גבעתיים', 'givataim'],
+      'modiin': ['מודיעין', "modi'in", 'modiin maccabim reut'],
+      'eilat': ['אילת'],
+      'nahariya': ['נהריה'],
+      'tiberias': ['טבריה'],
+    };
+
+    function normalizeCitySearch(searchTerm: string): string[] {
+      const lower = searchTerm.trim().toLowerCase();
+      const candidates = [lower];
+      for (const [canonical, aliases] of Object.entries(CITY_ALIASES)) {
+        if (canonical === lower || aliases.some(a => a === lower || lower.includes(a) || a.includes(lower))) {
+          candidates.push(canonical, ...aliases);
+        }
+      }
+      return [...new Set(candidates)];
+    }
+
     let filteredResults = results;
     if (cityStr && cityStr.trim().length > 0) {
-      const searchCity = cityStr.trim().toLowerCase();
+      const searchVariants = normalizeCitySearch(cityStr);
       filteredResults = results.filter(r => {
         if (!r.location) return false;
         const providerCity = r.location.toLowerCase();
-        // Match if provider city contains search term or search term contains provider city
-        return providerCity.includes(searchCity) || searchCity.includes(providerCity);
+        return searchVariants.some(variant =>
+          providerCity.includes(variant) || variant.includes(providerCity)
+        );
       });
     }
     
