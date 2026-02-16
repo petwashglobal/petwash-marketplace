@@ -42,12 +42,12 @@ const PRESTIGE_TIERS = [
     key: 'signature',
     nameKey: 'privilege.tierSignature',
     descKey: 'privilege.tierSignatureDesc',
-    cardBg: 'linear-gradient(145deg, #E53935 0%, #D32F2F 20%, #C62828 45%, #B71C1C 70%, #8E1318 100%)',
-    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.15) 35%, rgba(255,255,255,0.25) 42%, transparent 55%)',
-    labelColor: '#ffcdd2',
+    cardBg: 'linear-gradient(145deg, #C9A96E 0%, #B8963E 20%, #A6842F 45%, #937225 70%, #7D611C 100%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.18) 35%, rgba(255,255,255,0.28) 42%, transparent 55%)',
+    labelColor: '#FFF3D6',
     tierNameColor: '#ffffff',
-    borderColor: 'rgba(255,120,120,0.22)',
-    shadowMain: '0 25px 60px rgba(183,28,28,0.40), 0 10px 25px rgba(183,28,28,0.25)',
+    borderColor: 'rgba(230,200,130,0.25)',
+    shadowMain: '0 25px 60px rgba(147,114,37,0.40), 0 10px 25px rgba(147,114,37,0.25)',
     benefits: ['privilege.tierSignatureBenefit1', 'privilege.tierSignatureBenefit2'],
   },
   {
@@ -288,19 +288,18 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                       style={{ background: tier.shine }}
                     />
 
-                    <img
-                      src={diamondLogo}
-                      alt=""
-                      className="absolute pointer-events-none select-none"
+                    <div
+                      className="absolute pointer-events-none select-none flex items-center justify-center"
                       style={{
-                        bottom: '8px',
-                        right: '10px',
-                        width: '90px',
-                        height: 'auto',
-                        opacity: isBlack ? 0.10 : 0.08,
-                        filter: 'brightness(1.5)',
+                        bottom: '10px',
+                        right: '12px',
+                        width: '70px',
+                        height: '70px',
+                        opacity: isBlack ? 0.12 : 0.10,
                       }}
-                    />
+                    >
+                      <Diamond className="w-12 h-12" style={{ color: tier.labelColor }} />
+                    </div>
 
                     <div className="relative z-10 h-full flex flex-col justify-between">
                       <div className="flex items-start justify-between">
