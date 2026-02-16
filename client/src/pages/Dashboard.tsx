@@ -342,7 +342,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <Layout>
-        <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #FAFAFA 0%, #F5F5F5 100%)' }}>
+        <div className="min-h-screen flex items-center justify-center bg-white">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
             <img src={diamondLogo} alt="PetWash" className="w-28 h-auto mx-auto mb-4 opacity-60" />
             <p className="text-xs tracking-[0.3em] uppercase" style={goldText}>{tx('loading', language)}</p>
@@ -359,7 +359,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen relative" style={{ background: 'linear-gradient(180deg, #FAFAFA 0%, #F5F5F5 100%)' }}>
+      <div className="min-h-screen relative bg-white">
         <div
           className="absolute inset-0 pointer-events-none flex items-center justify-center"
           style={{ opacity: 0.04 }}
@@ -367,7 +367,7 @@ export default function Dashboard() {
           <img src={diamondLogo} alt="" className="w-[420px] max-w-[80vw] h-auto select-none" draggable={false} />
         </div>
 
-        <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-8">
+        <div className="relative z-10 w-full max-w-lg mx-auto px-4 sm:px-6 pt-6 pb-8">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -483,7 +483,7 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.5 }}
               onClick={() => setLocation('/stations')}
-              className="relative rounded-xl overflow-hidden text-left group"
+              className="relative rounded-xl overflow-hidden text-center group"
               style={{
                 background: '#FFFFFF',
                 border: goldBorder,
@@ -542,7 +542,7 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
               onClick={() => setLocation('/sitter-suite')}
-              className="relative rounded-xl overflow-hidden text-left group"
+              className="relative rounded-xl overflow-hidden text-center group"
               style={{
                 background: '#FFFFFF',
                 border: goldBorder,
@@ -569,7 +569,7 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.65 }}
               onClick={() => setLocation('/walk-my-pet')}
-              className="relative rounded-xl overflow-hidden text-left group"
+              className="relative rounded-xl overflow-hidden text-center group"
               style={{
                 background: '#FFFFFF',
                 border: goldBorder,
@@ -625,7 +625,7 @@ export default function Dashboard() {
             transition={{ duration: 0.5, delay: 0.75 }}
             className="mb-5"
           >
-            <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3" style={goldText}>
+            <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={goldText}>
               {tx('myAccount', language)}
             </p>
             <div

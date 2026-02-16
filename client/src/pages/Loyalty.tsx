@@ -103,11 +103,10 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
   const serif = 'Georgia, "Times New Roman", serif';
 
   return (
-    <div className="min-h-screen" dir={isRTL ? 'rtl' : 'ltr'} style={{ background: 'linear-gradient(180deg, #faf8f5 0%, #f5f0eb 30%, #faf8f5 60%, #ffffff 100%)' }}>
+    <div className="min-h-screen bg-white" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* SECTION 1 — HERO */}
-      <section className="relative pt-20 sm:pt-32 pb-16 sm:pb-24 overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(201,169,110,0.15), transparent 70%)' }} />
+      <section className="relative pt-20 sm:pt-32 pb-16 sm:pb-24 overflow-hidden bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="space-y-5">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light text-gray-900 leading-[1.15] tracking-tight" style={{ fontFamily: serif }}>
@@ -201,8 +200,8 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             {t('privilege.membershipTiers', language)}
           </motion.h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
-            {PRESTIGE_TIERS.map((tier, i) => (
+          <div className="flex flex-wrap justify-center gap-5 sm:gap-6">
+            {[...PRESTIGE_TIERS].reverse().map((tier, i) => (
               <motion.div
                 key={tier.key}
                 initial={{ opacity: 0, y: 24 }}
@@ -211,53 +210,51 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                 transition={{ delay: i * 0.08, duration: 0.5 }}
                 className="text-center group"
               >
-                {/* Mini Card */}
                 <div
-                  className="relative mx-auto overflow-hidden transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl cursor-default"
+                  className="relative overflow-hidden transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl cursor-default mx-auto"
                   style={{
                     background: tier.cardBg,
-                    borderRadius: '10px',
+                    borderRadius: '14px',
                     border: `1px solid ${tier.borderColor}`,
-                    boxShadow: `0 12px 32px ${tier.shadowColor}, 0 4px 12px rgba(0,0,0,0.04)`,
-                    aspectRatio: '1 / 1',
-                    maxWidth: '160px',
-                    padding: '16px 14px',
+                    boxShadow: `0 16px 40px ${tier.shadowColor}, 0 4px 16px rgba(0,0,0,0.06)`,
+                    width: '180px',
+                    height: '115px',
+                    padding: '18px 16px 14px',
                   }}
                 >
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ background: 'linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.08) 50%, transparent 65%)' }} />
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ background: 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.06) 48%, transparent 65%)' }} />
+                  <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl" style={{ background: tier.key === 'elite' ? 'rgba(201,169,110,0.08)' : tier.key === 'blackReserve' || tier.key === 'privilege' ? 'rgba(201,169,110,0.04)' : 'rgba(255,255,255,0.03)' }} />
                   <div className="relative z-10 h-full flex flex-col justify-between">
-                    <div className="text-start">
-                      <div className="text-[9px] sm:text-[10px] tracking-[0.15em] font-medium" style={{ color: tier.labelColor, opacity: 0.8, fontFamily: serif }}>
-                        ⁦PetWash™⁩
+                    <div className="flex items-start justify-between">
+                      <div className="text-[9px] tracking-[0.18em] font-medium" style={{ color: tier.labelColor, opacity: 0.8, fontFamily: serif }}>
+                        PetWash&trade;
+                      </div>
+                      <div className="w-5 h-5 flex items-center justify-center rounded" style={{ border: `1px solid ${tier.borderColor}` }}>
+                        {tier.key === 'member' && <ChevronRight className="w-3 h-3" style={{ color: tier.labelColor }} />}
+                        {tier.key === 'signature' && <Star className="w-3 h-3" style={{ color: tier.labelColor }} />}
+                        {tier.key === 'elite' && <Crown className="w-3 h-3" style={{ color: gold }} />}
+                        {tier.key === 'privilege' && <Diamond className="w-3 h-3" style={{ color: gold }} />}
+                        {tier.key === 'blackReserve' && <Shield className="w-3 h-3" style={{ color: gold }} />}
                       </div>
                     </div>
-                    <div className="text-start">
-                      <div className="text-[11px] sm:text-xs tracking-[0.12em] uppercase font-bold" style={{ color: tier.tierNameColor }}>
+                    <div>
+                      <div className="h-px mb-2 opacity-20" style={{ background: tier.key === 'member' || tier.key === 'signature' ? 'rgba(0,0,0,0.15)' : `linear-gradient(90deg, transparent, ${gold}, transparent)` }} />
+                      <div className="text-[10px] tracking-[0.15em] uppercase font-bold" style={{ color: tier.tierNameColor }}>
                         {t(tier.nameKey, language)}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Tier Name & Benefits below card */}
-                <div className="mt-4 space-y-1.5">
-                  <h3 className="text-sm font-semibold text-gray-900" style={{ fontFamily: serif }}>
+                <div className="mt-4 space-y-1">
+                  <h3 className="text-[13px] font-semibold text-gray-900" style={{ fontFamily: serif }}>
                     {t(tier.nameKey, language)}
                   </h3>
                   {tier.benefits.map((bKey, bi) => (
-                    <p key={bi} className="text-[11px] text-gray-400 leading-snug">
+                    <p key={bi} className="text-[10px] text-gray-400 leading-snug">
                       {t(bKey, language)}
                     </p>
                   ))}
-                </div>
-
-                {/* Tier icon */}
-                <div className="mt-3 flex justify-center">
-                  {tier.key === 'member' && <ChevronRight className="w-4 h-4 text-gray-300" />}
-                  {tier.key === 'signature' && <Star className="w-4 h-4 text-gray-400" />}
-                  {tier.key === 'elite' && <Crown className="w-4 h-4" style={{ color: gold }} />}
-                  {tier.key === 'privilege' && <Diamond className="w-4 h-4" style={{ color: gold }} />}
-                  {tier.key === 'blackReserve' && <Shield className="w-4 h-4 text-gray-800" />}
                 </div>
               </motion.div>
             ))}
@@ -364,7 +361,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
       </div>
 
       {/* SECTION 5 — TIER COMPARISON TABLE */}
-      <section className="py-20 sm:py-28" style={{ background: 'rgba(255,255,255,0.6)' }}>
+      <section className="py-20 sm:py-28 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-14">
             <h2 className="text-2xl sm:text-4xl font-light text-gray-900" style={{ fontFamily: serif }}>
@@ -398,7 +395,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
               </thead>
               <tbody>
                 {COMPARISON_ROWS.map((row, ri) => (
-                  <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                  <tr key={ri} className="bg-white">
                     <td className="p-4 text-sm text-gray-600 font-medium" style={{ borderBottom: '1px solid #f5f5f5' }}>
                       {t(row.key, language)}
                     </td>
@@ -444,7 +441,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
       </section>
 
       {/* SECTION 7 — FINAL CTA */}
-      <section className="py-20 sm:py-28" style={{ background: 'rgba(255,255,255,0.7)' }}>
+      <section className="py-20 sm:py-28 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="space-y-6">
             <h2 className="text-3xl sm:text-4xl font-light text-gray-900" style={{ fontFamily: serif }}>
@@ -465,7 +462,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
       </section>
 
       {/* FOOTER NOTE */}
-      <section className="border-t border-gray-100/50 py-8" style={{ background: 'rgba(255,255,255,0.5)' }}>
+      <section className="border-t border-gray-100/50 py-8 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center gap-2 text-xs text-gray-300">
             <Shield className="w-3.5 h-3.5" />
