@@ -130,16 +130,21 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             <div
               className="relative overflow-hidden w-full"
               style={{
-                background: '#000000',
                 borderRadius: '18px',
-                padding: '28px 28px 22px',
                 border: '1px solid rgba(201,169,110,0.22)',
-                boxShadow: '0 60px 120px rgba(0,0,0,0.40), 0 25px 50px rgba(0,0,0,0.30), 0 0 100px rgba(201,169,110,0.08)',
+                boxShadow: '0 60px 120px rgba(0,0,0,0.40), 0 25px 50px rgba(0,0,0,0.30)',
                 aspectRatio: '1.586 / 1',
               }}
             >
+              {/* Full-bleed logo image as card background */}
+              <img
+                src={diamondLogoBlack}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+                style={{ borderRadius: '18px' }}
+              />
 
-              <div className="relative z-10 h-full flex flex-col justify-between" dir="ltr">
+              <div className="relative z-10 h-full flex flex-col justify-between" dir="ltr" style={{ padding: '28px 28px 22px' }}>
                 {/* Top row */}
                 <div className="flex items-start justify-between">
                   <div>
@@ -167,23 +172,8 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                   </div>
                 </div>
 
-                {/* CENTER: Diamond logo */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 5 }}>
-                  <img
-                    src={diamondLogoBlack}
-                    alt="PetWash™"
-                    className="pointer-events-none select-none"
-                    style={{
-                      width: '65%',
-                      maxWidth: '300px',
-                      height: 'auto',
-                      objectFit: 'contain',
-                    }}
-                  />
-                </div>
-
                 {/* Bottom section */}
-                <div className="relative z-10">
+                <div>
                   {/* Card number */}
                   <div
                     className="text-[16px] sm:text-[20px] font-light mb-3"
