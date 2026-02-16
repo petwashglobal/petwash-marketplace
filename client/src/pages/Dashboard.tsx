@@ -6,7 +6,9 @@ import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { LogOut } from 'lucide-react';
+import { LogOut, ChevronRight } from 'lucide-react';
+import type { ReactNode } from 'react';
+import diamondLogo from '@assets/IMG_3257_1771242993173.png';
 
 interface WalletSummary {
   walletId: string;
@@ -40,6 +42,14 @@ const dashText: Record<string, Record<string, string>> = {
     fr: 'Bon retour',
     ru: 'С возвращением',
   },
+  privilege: {
+    en: 'Privilege',
+    he: 'פריבילגיה',
+    ar: 'امتياز',
+    es: 'Privilegio',
+    fr: 'Privilège',
+    ru: 'Привилегия',
+  },
   loyaltyMemberDashboard: {
     en: 'Loyalty Member',
     he: 'חבר מועדון נאמנות',
@@ -48,29 +58,21 @@ const dashText: Record<string, Record<string, string>> = {
     fr: 'Membre Fidélité',
     ru: 'Участник Программы Лояльности',
   },
-  yourPersonalSpace: {
-    en: 'Your Personal Space',
-    he: 'המרחב האישי שלך',
-    ar: 'مساحتك الشخصية',
-    es: 'Tu Espacio Personal',
-    fr: 'Votre Espace Personnel',
-    ru: 'Ваше Личное Пространство',
+  balance: {
+    en: 'Balance',
+    he: 'יתרת ארנק',
+    ar: 'الرصيد',
+    es: 'Saldo',
+    fr: 'Solde',
+    ru: 'Баланс',
   },
-  loyalty: {
-    en: 'Loyalty',
-    he: 'נאמנות',
-    ar: 'الولاء',
-    es: 'Lealtad',
-    fr: 'Fidélité',
-    ru: 'Лояльность',
-  },
-  member: {
-    en: 'Member',
-    he: 'חבר',
-    ar: 'عضو',
-    es: 'Miembro',
-    fr: 'Membre',
-    ru: 'Участник',
+  currentBalance: {
+    en: 'Current balance',
+    he: 'יתרה נוכחית',
+    ar: 'الرصيد الحالي',
+    es: 'Saldo actual',
+    fr: 'Solde actuel',
+    ru: 'Текущий баланс',
   },
   points: {
     en: 'Points',
@@ -80,13 +82,61 @@ const dashText: Record<string, Record<string, string>> = {
     fr: 'Points',
     ru: 'Баллы',
   },
-  wallet: {
-    en: 'Wallet Balance',
-    he: 'יתרת ארנק',
-    ar: 'رصيد المحفظة',
-    es: 'Saldo de Cartera',
-    fr: 'Solde du Portefeuille',
-    ru: 'Баланс Кошелька',
+  availablePoints: {
+    en: 'Available points',
+    he: 'נקודות זמינות',
+    ar: 'النقاط المتاحة',
+    es: 'Puntos disponibles',
+    fr: 'Points disponibles',
+    ru: 'Доступные баллы',
+  },
+  savedCarers: {
+    en: 'Saved Carers',
+    he: 'מטפלים שמורים',
+    ar: 'مقدمي الرعاية المحفوظين',
+    es: 'Cuidadores Guardados',
+    fr: 'Soignants Enregistrés',
+    ru: 'Сохранённые Опекуны',
+  },
+  lifetimeValue: {
+    en: 'Lifetime Value',
+    he: 'ערך מצטבר',
+    ar: 'القيمة الكلية',
+    es: 'Valor Acumulado',
+    fr: 'Valeur Cumulée',
+    ru: 'Общая Стоимость',
+  },
+  totalSpending: {
+    en: 'Total spending',
+    he: 'סה"כ הוצאות',
+    ar: 'إجمالي الإنفاق',
+    es: 'Gasto total',
+    fr: 'Dépenses totales',
+    ru: 'Общие расходы',
+  },
+  savedCards: {
+    en: 'Saved Cards',
+    he: 'כרטיסים שמורים',
+    ar: 'البطاقات المحفوظة',
+    es: 'Tarjetas Guardadas',
+    fr: 'Cartes Enregistrées',
+    ru: 'Сохранённые Карты',
+  },
+  paymentMethods: {
+    en: 'Payment methods',
+    he: 'אמצעי תשלום',
+    ar: 'طرق الدفع',
+    es: 'Métodos de pago',
+    fr: 'Méthodes de paiement',
+    ru: 'Способы оплаты',
+  },
+  comingSoon: {
+    en: 'Coming Soon',
+    he: 'בקרוב',
+    ar: 'قريباً',
+    es: 'Próximamente',
+    fr: 'Bientôt',
+    ru: 'Скоро',
   },
   washCredits: {
     en: 'Wash Credits',
@@ -96,14 +146,6 @@ const dashText: Record<string, Record<string, string>> = {
     fr: 'Crédits de Lavage',
     ru: 'Кредиты На Мойку',
   },
-  giftBalance: {
-    en: 'Gift Balance',
-    he: 'יתרת מתנות',
-    ar: 'رصيد الهدايا',
-    es: 'Saldo de Regalos',
-    fr: 'Solde Cadeaux',
-    ru: 'Баланс Подарков',
-  },
   bookWash: {
     en: 'Book a Wash',
     he: 'הזמן שטיפה',
@@ -112,30 +154,6 @@ const dashText: Record<string, Record<string, string>> = {
     fr: 'Réserver un Lavage',
     ru: 'Записаться на Мойку',
   },
-  viewLoyalty: {
-    en: 'View Loyalty Program',
-    he: 'צפה בתוכנית הנאמנות',
-    ar: 'عرض برنامج الولاء',
-    es: 'Ver Programa de Lealtad',
-    fr: 'Voir le Programme de Fidélité',
-    ru: 'Программа Лояльности',
-  },
-  myWallet: {
-    en: 'My Wallet',
-    he: 'הארנק שלי',
-    ar: 'محفظتي',
-    es: 'Mi Cartera',
-    fr: 'Mon Portefeuille',
-    ru: 'Мой Кошелёк',
-  },
-  giftCards: {
-    en: 'Gift Cards',
-    he: 'כרטיסי מתנה',
-    ar: 'بطاقات هدايا',
-    es: 'Tarjetas de Regalo',
-    fr: 'Cartes Cadeaux',
-    ru: 'Подарочные Карты',
-  },
   findStation: {
     en: 'Find a Station',
     he: 'מצא תחנה',
@@ -143,30 +161,6 @@ const dashText: Record<string, Record<string, string>> = {
     es: 'Encontrar Estación',
     fr: 'Trouver une Station',
     ru: 'Найти Станцию',
-  },
-  myAccount: {
-    en: 'My Account',
-    he: 'החשבון שלי',
-    ar: 'حسابي',
-    es: 'Mi Cuenta',
-    fr: 'Mon Compte',
-    ru: 'Мой Аккаунт',
-  },
-  inbox: {
-    en: 'Inbox',
-    he: 'תיבת דואר',
-    ar: 'البريد الوارد',
-    es: 'Bandeja de Entrada',
-    fr: 'Boîte de Réception',
-    ru: 'Входящие',
-  },
-  packages: {
-    en: 'Wash Packages',
-    he: 'חבילות שטיפה',
-    ar: 'باقات الغسيل',
-    es: 'Paquetes de Lavado',
-    fr: 'Forfaits de Lavage',
-    ru: 'Пакеты Мойки',
   },
   petSitting: {
     en: 'Pet Sitting',
@@ -192,6 +186,70 @@ const dashText: Record<string, Record<string, string>> = {
     fr: 'Transport d\'Animaux',
     ru: 'Перевозка Питомцев',
   },
+  myAccount: {
+    en: 'My Account',
+    he: 'החשבון שלי',
+    ar: 'حسابي',
+    es: 'Mi Cuenta',
+    fr: 'Mon Compte',
+    ru: 'Мой Аккаунт',
+  },
+  myWallet: {
+    en: 'My Wallet',
+    he: 'הארנק שלי',
+    ar: 'محفظتي',
+    es: 'Mi Cartera',
+    fr: 'Mon Portefeuille',
+    ru: 'Мой Кошелёк',
+  },
+  viewLoyalty: {
+    en: 'View Loyalty Program',
+    he: 'צפה בתוכנית הנאמנות',
+    ar: 'عرض برنامج الولاء',
+    es: 'Ver Programa de Lealtad',
+    fr: 'Voir le Programme de Fidélité',
+    ru: 'Программа Лояльности',
+  },
+  giftCards: {
+    en: 'Gift Cards',
+    he: 'כרטיסי מתנה',
+    ar: 'بطاقات هدايا',
+    es: 'Tarjetas de Regalo',
+    fr: 'Cartes Cadeaux',
+    ru: 'Подарочные Карты',
+  },
+  packages: {
+    en: 'Wash Packages',
+    he: 'חבילות שטיפה',
+    ar: 'باقات الغسيل',
+    es: 'Paquetes de Lavado',
+    fr: 'Forfaits de Lavage',
+    ru: 'Пакеты Мойки',
+  },
+  inbox: {
+    en: 'Inbox',
+    he: 'תיבת דואר',
+    ar: 'البريد الوارد',
+    es: 'Bandeja de Entrada',
+    fr: 'Boîte de Réception',
+    ru: 'Входящие',
+  },
+  securitySettings: {
+    en: 'Security & Face ID',
+    he: 'אבטחה ו-Face ID',
+    ar: 'الأمان وبصمة الوجه',
+    es: 'Seguridad y Face ID',
+    fr: 'Sécurité et Face ID',
+    ru: 'Безопасность и Face ID',
+  },
+  member: {
+    en: 'Member',
+    he: 'חבר',
+    ar: 'عضو',
+    es: 'Miembro',
+    fr: 'Membre',
+    ru: 'Участник',
+  },
   loading: {
     en: 'Loading...',
     he: 'טוען...',
@@ -208,18 +266,46 @@ const dashText: Record<string, Record<string, string>> = {
     fr: 'Déconnexion',
     ru: 'Выйти',
   },
-  securitySettings: {
-    en: 'Security & Face ID',
-    he: 'אבטחה ו-Face ID',
-    ar: 'الأمان وبصمة الوجه',
-    es: 'Seguridad y Face ID',
-    fr: 'Sécurité et Face ID',
-    ru: 'Безопасность и Face ID',
+  active: {
+    en: 'ACTIVE',
+    he: 'פעיל',
+    ar: 'نشط',
+    es: 'ACTIVO',
+    fr: 'ACTIF',
+    ru: 'АКТИВНЫЙ',
   },
 };
 
 function tx(key: string, lang: string): string {
   return dashText[key]?.[lang] || dashText[key]?.en || key;
+}
+
+const goldGradient = 'linear-gradient(135deg, #C9A94E 0%, #E5D5A0 40%, #C9A94E 60%, #A8893A 100%)';
+const goldText = { color: '#B8972F' };
+const goldBorder = '1px solid rgba(201, 169, 78, 0.3)';
+const cardBg = '#FFFFFF';
+const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0,0,0,0.03)';
+
+function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay }}
+      className={`relative rounded-xl overflow-hidden ${className}`}
+      style={{
+        background: cardBg,
+        border: goldBorder,
+        boxShadow: cardShadow,
+      }}
+    >
+      <div
+        className="absolute top-0 left-0 w-[3px] h-full rounded-l-xl"
+        style={{ background: goldGradient }}
+      />
+      {children}
+    </motion.div>
+  );
 }
 
 export default function Dashboard() {
@@ -251,14 +337,16 @@ export default function Dashboard() {
   const tierLabel = tierLabels[tierKey]?.[language] || tierLabels[tierKey]?.en || 'Bronze';
   const loyaltyPoints = wallet?.loyaltyPointsBalance || 0;
   const totalBalance = wallet ? formatCurrency(wallet.totalCreditsValueCents) : '0';
-  const washCredits = wallet?.washPackageCredits || 0;
   const giftBalance = wallet ? formatCurrency(wallet.egiftBalanceCents) : '0';
 
   if (loading) {
     return (
       <Layout>
-        <div className="min-h-screen bg-white flex items-center justify-center">
-          <p className="text-sm text-gray-400 tracking-widest uppercase">{tx('loading', language)}</p>
+        <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #FAFAFA 0%, #F5F5F5 100%)' }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+            <img src={diamondLogo} alt="PetWash" className="w-28 h-auto mx-auto mb-4 opacity-60" />
+            <p className="text-xs tracking-[0.3em] uppercase" style={goldText}>{tx('loading', language)}</p>
+          </motion.div>
         </div>
       </Layout>
     );
@@ -271,196 +359,317 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-12 sm:py-16">
-          
+      <div className="min-h-screen relative" style={{ background: 'linear-gradient(180deg, #FAFAFA 0%, #F5F5F5 100%)' }}>
+        <div
+          className="absolute inset-0 pointer-events-none flex items-center justify-center"
+          style={{ opacity: 0.04 }}
+        >
+          <img src={diamondLogo} alt="" className="w-[420px] max-w-[80vw] h-auto select-none" draggable={false} />
+        </div>
+
+        <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-8">
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="mb-12 sm:mb-16"
+            className="text-center mb-6"
           >
-            <div className="flex items-center gap-3 mb-3">
-              <p className="text-[11px] tracking-[0.35em] uppercase text-gray-600">
-                {tx('welcomeBack', language)}
-              </p>
-              <span className="px-2.5 py-1 text-[9px] tracking-[0.2em] uppercase font-medium bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200/60">
-                {tx('loyaltyMemberDashboard', language)}
-              </span>
-            </div>
-            <h1 
-              className="text-3xl sm:text-4xl lg:text-5xl text-black font-light mb-2"
-              style={{ fontFamily: "'Playfair Display', 'Didot', 'Bodoni MT', Georgia, serif", letterSpacing: '-0.02em' }}
+            <img src={diamondLogo} alt="PetWash™" className="w-36 sm:w-44 h-auto mx-auto mb-1" />
+            <p
+              className="text-lg sm:text-xl tracking-[0.15em] font-light"
+              style={{ ...goldText, fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}
             >
-              {userName || tx('yourPersonalSpace', language)}
-            </h1>
-            <div className="w-12 h-[1px] bg-black mt-5" />
+              {tx('privilege', language)}
+            </p>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="text-center mb-6"
           >
-            <div className="bg-[#F5F5F4] p-6 sm:p-8">
-              <p className="text-[11px] tracking-[0.2em] uppercase text-gray-600 font-medium mb-3">{tx('loyalty', language)}</p>
-              <p className="text-2xl sm:text-3xl font-light text-gray-900 mb-1"
-                style={{ fontFamily: "'Playfair Display', serif" }}>
-                {loyaltyPoints.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-600">{tx('points', language)}</p>
-              <div className="mt-4 pt-3 border-t border-gray-200">
-                <p className="text-[10px] tracking-[0.2em] uppercase text-gray-600 font-medium">
-                  {tierLabel} {tx('member', language)}
+            <h1
+              className="text-2xl sm:text-3xl text-gray-900 font-light"
+              style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.01em' }}
+            >
+              {userName || tx('privilege', language)}
+            </h1>
+          </motion.div>
+
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <LuxuryCard delay={0.2}>
+              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
+                <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
+                  {tx('balance', language)}
+                </p>
+                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <span className="text-sm" style={goldText}>&#8362;</span>{totalBalance}
+                </p>
+                <p className="text-[9px] sm:text-[10px] text-gray-500 tracking-wide">{tx('currentBalance', language)}</p>
+                <div className="mt-2 pt-2 border-t" style={{ borderColor: 'rgba(201,169,78,0.15)' }}>
+                  <p className="text-[9px] tracking-[0.1em] uppercase" style={goldText}>ILS</p>
+                </div>
+              </div>
+            </LuxuryCard>
+
+            <LuxuryCard delay={0.25}>
+              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
+                <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
+                  {tx('points', language)}
+                </p>
+                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  {loyaltyPoints.toLocaleString()}
+                </p>
+                <p className="text-[9px] sm:text-[10px] text-gray-500 tracking-wide">{tx('availablePoints', language)}</p>
+                <div className="mt-2 pt-2 border-t" style={{ borderColor: 'rgba(201,169,78,0.15)' }}>
+                  <p className="text-[9px] tracking-[0.1em] uppercase" style={goldText}>
+                    {tierLabel} {tx('member', language)}
+                  </p>
+                </div>
+              </div>
+            </LuxuryCard>
+
+            <LuxuryCard delay={0.3}>
+              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
+                <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
+                  {tx('savedCarers', language)}
+                </p>
+                <p className="text-xl sm:text-2xl font-light text-gray-800" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  0
                 </p>
               </div>
-            </div>
+            </LuxuryCard>
+          </div>
 
-            <div className="bg-[#F5F5F4] p-6 sm:p-8">
-              <p className="text-[11px] tracking-[0.2em] uppercase text-gray-600 font-medium mb-3">{tx('wallet', language)}</p>
-              <p className="text-2xl sm:text-3xl font-light text-gray-900 mb-1"
-                style={{ fontFamily: "'Playfair Display', serif" }}>
-                {totalBalance}
-              </p>
-              <p className="text-xs text-gray-600">ILS</p>
-            </div>
-
-            <div className="bg-[#F5F5F4] p-6 sm:p-8">
-              <p className="text-[11px] tracking-[0.2em] uppercase text-gray-600 font-medium mb-3">{tx('washCredits', language)}</p>
-              <p className="text-2xl sm:text-3xl font-light text-gray-900 mb-1"
-                style={{ fontFamily: "'Playfair Display', serif" }}>
-                {washCredits}
-              </p>
-              <p className="text-xs text-gray-600">{tx('washCredits', language)}</p>
-            </div>
-
-            <div className="bg-[#F5F5F4] p-6 sm:p-8">
-              <p className="text-[11px] tracking-[0.2em] uppercase text-gray-600 font-medium mb-3">{tx('giftBalance', language)}</p>
-              <p className="text-2xl sm:text-3xl font-light text-gray-900 mb-1"
-                style={{ fontFamily: "'Playfair Display', serif" }}>
-                {giftBalance}
-              </p>
-              <p className="text-xs text-gray-600">ILS</p>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mb-12 sm:mb-16"
-          >
-            <p className="text-[11px] tracking-[0.3em] uppercase text-gray-600 font-medium mb-6">{language === 'he' ? 'שירותי' : 'Services'} ⁦Pet Wash™⁩</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[1px] bg-gray-200">
-              <button
-                onClick={() => setLocation('/stations')}
-                className="bg-white p-6 sm:p-8 text-left hover:bg-[#FAFAF9] transition-colors group"
-              >
-                <p className="text-sm sm:text-base text-gray-900 font-medium mb-1 group-hover:text-gray-700 transition-colors">
-                  {tx('bookWash', language)}
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            <LuxuryCard delay={0.35}>
+              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
+                <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
+                  {tx('lifetimeValue', language)}
                 </p>
-                <p className="text-xs text-gray-500">{tx('findStation', language)}</p>
-              </button>
-              <button
-                onClick={() => setLocation('/sitter-suite')}
-                className="bg-white p-6 sm:p-8 text-left hover:bg-[#FAFAF9] transition-colors group"
-              >
-                <p className="text-sm sm:text-base text-gray-900 font-medium mb-1 group-hover:text-gray-700 transition-colors">
-                  {tx('petSitting', language)}
+                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <span className="text-sm" style={goldText}>&#8362;</span>{giftBalance}
                 </p>
-                <p className="text-xs text-gray-500">⁦The Sitter Suite™⁩</p>
-              </button>
-              <button
-                onClick={() => setLocation('/walk-my-pet')}
-                className="bg-white p-6 sm:p-8 text-left hover:bg-[#FAFAF9] transition-colors group"
-              >
-                <p className="text-sm sm:text-base text-gray-900 font-medium mb-1 group-hover:text-gray-700 transition-colors">
-                  {tx('dogWalking', language)}
+                <p className="text-[9px] sm:text-[10px] text-gray-500 tracking-wide">{tx('totalSpending', language)}</p>
+              </div>
+            </LuxuryCard>
+
+            <LuxuryCard delay={0.4}>
+              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
+                <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-medium mb-2" style={goldText}>
+                  {tx('savedCards', language)}
                 </p>
-                <p className="text-xs text-gray-500">⁦Walk My Pet™⁩</p>
-              </button>
+                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  0
+                </p>
+                <p className="text-[9px] sm:text-[10px] text-gray-500 tracking-wide">{tx('paymentMethods', language)}</p>
+              </div>
+            </LuxuryCard>
+
+            <LuxuryCard delay={0.45}>
+              <div className="px-3 py-4 sm:px-4 sm:py-5 text-center">
+                <p className="text-xl sm:text-2xl font-light text-gray-400 mb-0.5" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  0
+                </p>
+                <p className="text-[9px] sm:text-[10px] tracking-wide" style={goldText}>{tx('comingSoon', language)}</p>
+              </div>
+            </LuxuryCard>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              onClick={() => setLocation('/stations')}
+              className="relative rounded-xl overflow-hidden text-left group"
+              style={{
+                background: '#FFFFFF',
+                border: goldBorder,
+                boxShadow: cardShadow,
+              }}
+            >
               <div
-                className="bg-white p-6 sm:p-8 text-left opacity-50 cursor-default"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-sm sm:text-base text-gray-900 font-medium">
+                className="absolute top-0 left-0 w-[3px] h-full"
+                style={{ background: goldGradient }}
+              />
+              <div className="px-5 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                    PetWash Station
+                  </p>
+                  <p className="text-[10px] text-gray-500">{tx('findStation', language)}</p>
+                </div>
+                <span
+                  className="px-3 py-1 text-[9px] tracking-[0.15em] uppercase font-bold rounded-full text-white"
+                  style={{ background: 'linear-gradient(135deg, #8DB255 0%, #6B9F3B 100%)' }}
+                >
+                  {tx('active', language)}
+                </span>
+              </div>
+            </motion.button>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.55 }}
+              className="relative rounded-xl overflow-hidden opacity-60"
+              style={{
+                background: '#FFFFFF',
+                border: goldBorder,
+                boxShadow: cardShadow,
+              }}
+            >
+              <div
+                className="absolute top-0 left-0 w-[3px] h-full"
+                style={{ background: goldGradient }}
+              />
+              <div className="px-5 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                    Walk My Pet&trade;
+                  </p>
+                  <p className="text-[10px] tracking-wide" style={goldText}>{tx('comingSoon', language)}</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              onClick={() => setLocation('/sitter-suite')}
+              className="relative rounded-xl overflow-hidden text-left group"
+              style={{
+                background: '#FFFFFF',
+                border: goldBorder,
+                boxShadow: cardShadow,
+              }}
+            >
+              <div
+                className="absolute top-0 left-0 w-[3px] h-full"
+                style={{ background: goldGradient }}
+              />
+              <div className="px-5 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                    {tx('petSitting', language)}
+                  </p>
+                  <p className="text-[10px] text-gray-500">The Sitter Suite&trade;</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+              </div>
+            </motion.button>
+
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.65 }}
+              onClick={() => setLocation('/walk-my-pet')}
+              className="relative rounded-xl overflow-hidden text-left group"
+              style={{
+                background: '#FFFFFF',
+                border: goldBorder,
+                boxShadow: cardShadow,
+              }}
+            >
+              <div
+                className="absolute top-0 left-0 w-[3px] h-full"
+                style={{ background: goldGradient }}
+              />
+              <div className="px-5 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                    {tx('dogWalking', language)}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Walk My Pet&trade;</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+              </div>
+            </motion.button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.7 }}
+              className="relative rounded-xl overflow-hidden opacity-60"
+              style={{
+                background: '#FFFFFF',
+                border: goldBorder,
+                boxShadow: cardShadow,
+              }}
+            >
+              <div
+                className="absolute top-0 left-0 w-[3px] h-full"
+                style={{ background: goldGradient }}
+              />
+              <div className="px-5 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
                     {tx('petTransport', language)}
                   </p>
-                  <span className="px-2 py-0.5 text-[9px] tracking-[0.12em] uppercase font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                    {language === 'he' ? 'בקרוב' : 'Coming Soon'}
-                  </span>
+                  <p className="text-[10px] tracking-wide" style={goldText}>PetTrek&trade; &middot; {tx('comingSoon', language)}</p>
                 </div>
-                <p className="text-xs text-gray-500">⁦PetTrek™⁩</p>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mb-12 sm:mb-16"
+            transition={{ duration: 0.5, delay: 0.75 }}
+            className="mb-5"
           >
-            <p className="text-[11px] tracking-[0.3em] uppercase text-gray-600 font-medium mb-6">{tx('myAccount', language)}</p>
-            <div className="space-y-[1px] bg-gray-200">
-              <Link href="/my-wallet">
-                <div className="bg-white p-5 sm:p-6 flex items-center justify-between hover:bg-[#FAFAF9] transition-colors cursor-pointer">
-                  <p className="text-sm text-black">{tx('myWallet', language)}</p>
-                  <span className="text-xs text-gray-400">&rsaquo;</span>
-                </div>
-              </Link>
-              <Link href="/loyalty/dashboard">
-                <div className="bg-white p-5 sm:p-6 flex items-center justify-between hover:bg-[#FAFAF9] transition-colors cursor-pointer">
-                  <p className="text-sm text-black">{tx('viewLoyalty', language)}</p>
-                  <span className="text-xs text-gray-400">&rsaquo;</span>
-                </div>
-              </Link>
-              <Link href="/gift-cards">
-                <div className="bg-white p-5 sm:p-6 flex items-center justify-between hover:bg-[#FAFAF9] transition-colors cursor-pointer">
-                  <p className="text-sm text-black">{tx('giftCards', language)}</p>
-                  <span className="text-xs text-gray-400">&rsaquo;</span>
-                </div>
-              </Link>
-              <Link href="/packages">
-                <div className="bg-white p-5 sm:p-6 flex items-center justify-between hover:bg-[#FAFAF9] transition-colors cursor-pointer">
-                  <p className="text-sm text-black">{tx('packages', language)}</p>
-                  <span className="text-xs text-gray-400">&rsaquo;</span>
-                </div>
-              </Link>
-              <Link href="/personal-inbox">
-                <div className="bg-white p-5 sm:p-6 flex items-center justify-between hover:bg-[#FAFAF9] transition-colors cursor-pointer">
-                  <p className="text-sm text-black">
-                    {tx('inbox', language)}
-                    {unreadCount > 0 && (
-                      <span className="ml-3 text-[10px] tracking-wider uppercase text-gray-400">
-                        {unreadCount} new
-                      </span>
-                    )}
-                  </p>
-                  <span className="text-xs text-gray-400">&rsaquo;</span>
-                </div>
-              </Link>
-              <Link href="/my-account">
-                <div className="bg-white p-5 sm:p-6 flex items-center justify-between hover:bg-[#FAFAF9] transition-colors cursor-pointer">
-                  <p className="text-sm text-black">{tx('myAccount', language)}</p>
-                  <span className="text-xs text-gray-400">&rsaquo;</span>
-                </div>
-              </Link>
-              <Link href="/settings/security">
-                <div className="bg-white p-5 sm:p-6 flex items-center justify-between hover:bg-[#FAFAF9] transition-colors cursor-pointer">
-                  <p className="text-sm text-black">{tx('securitySettings', language)}</p>
-                  <span className="text-xs text-gray-400">&rsaquo;</span>
-                </div>
-              </Link>
+            <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3" style={goldText}>
+              {tx('myAccount', language)}
+            </p>
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{ border: goldBorder, boxShadow: cardShadow }}
+            >
+              {[
+                { label: tx('myWallet', language), href: '/my-wallet' },
+                { label: tx('viewLoyalty', language), href: '/loyalty/dashboard' },
+                { label: tx('giftCards', language), href: '/gift-cards' },
+                { label: tx('packages', language), href: '/packages' },
+                { label: tx('inbox', language), href: '/personal-inbox', badge: unreadCount },
+                { label: tx('myAccount', language), href: '/my-account' },
+                { label: tx('securitySettings', language), href: '/settings/security' },
+              ].map((item, idx) => (
+                <Link key={item.href} href={item.href}>
+                  <div
+                    className="px-5 py-3.5 flex items-center justify-between hover:bg-[#F9F9F9] transition-colors cursor-pointer"
+                    style={{
+                      background: '#FFFFFF',
+                      borderBottom: idx < 6 ? '1px solid rgba(201,169,78,0.12)' : 'none',
+                    }}
+                  >
+                    <p className="text-sm text-gray-800">
+                      {item.label}
+                      {item.badge && item.badge > 0 ? (
+                        <span className="ml-2 px-2 py-0.5 text-[9px] tracking-wider uppercase font-semibold rounded-full text-white"
+                          style={{ background: 'linear-gradient(135deg, #C9A94E, #A8893A)' }}>
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </p>
+                    <ChevronRight className="w-3.5 h-3.5" style={goldText} />
+                  </div>
+                </Link>
+              ))}
             </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.35 }}
-            className="mb-12 sm:mb-16"
+            transition={{ duration: 0.5, delay: 0.75 }}
+            className="mb-6"
           >
             <button
               onClick={async () => {
@@ -472,10 +681,15 @@ export default function Dashboard() {
                   window.location.assign('/');
                 }
               }}
-              className="w-full p-5 sm:p-6 border border-gray-200 flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
+              className="w-full rounded-xl px-5 py-3.5 flex items-center justify-center gap-2.5 transition-all hover:opacity-80"
+              style={{
+                background: '#FFFFFF',
+                border: goldBorder,
+                boxShadow: cardShadow,
+              }}
             >
-              <LogOut className="w-4 h-4 text-gray-500" />
-              <span className="text-sm tracking-[0.15em] uppercase text-gray-600">
+              <LogOut className="w-3.5 h-3.5" style={goldText} />
+              <span className="text-xs tracking-[0.2em] uppercase font-medium" style={goldText}>
                 {tx('signOut', language)}
               </span>
             </button>
@@ -484,11 +698,11 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="border-t border-gray-100 pt-8"
+            transition={{ duration: 0.6, delay: 0.8 }}
+            className="text-center pb-2"
           >
-            <p className="text-[10px] tracking-[0.2em] uppercase text-gray-500 text-center">
-              ⁦Pet Wash™⁩ 2025 - 2026
+            <p className="text-[9px] tracking-[0.2em] uppercase" style={{ color: 'rgba(184, 151, 47, 0.5)' }}>
+              Pet Wash&trade; 2025 - 2026
             </p>
           </motion.div>
         </div>
