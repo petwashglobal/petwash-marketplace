@@ -413,6 +413,7 @@ export function GooglePlacesAutocomplete({
           `}
           style={{
             color: darkMode ? '#ffffff' : '#1f2937',
+            WebkitTextFillColor: darkMode ? '#ffffff' : '#1f2937',
             fontSize: '16px',
             WebkitAppearance: 'none',
             WebkitTapHighlightColor: 'transparent',

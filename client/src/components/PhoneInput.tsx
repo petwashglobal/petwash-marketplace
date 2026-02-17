@@ -138,7 +138,7 @@ export function PhoneInput({ value, onChange, onBlur, language, error, defaultCo
     <div className="space-y-1">
       <div className="flex gap-2">
         <Select value={selectedCode} onValueChange={handleCodeChange}>
-          <SelectTrigger className="w-[140px]" data-testid="select-country-code">
+          <SelectTrigger className="w-[140px] bg-white !text-gray-900" data-testid="select-country-code">
             <SelectValue placeholder={defaultCountryCode} />
           </SelectTrigger>
           <SelectContent className="max-h-[300px]">
@@ -162,7 +162,7 @@ export function PhoneInput({ value, onChange, onBlur, language, error, defaultCo
           aria-describedby="phoneHelp"
           aria-invalid={!!error}
           data-testid="input-phone"
-          className={`flex-1 ${error ? 'border-red-500' : ''}`}
+          className={`flex-1 bg-white !text-gray-900 placeholder:text-gray-400 ${error ? 'border-red-500' : ''}`}
         />
       </div>
       {error && (

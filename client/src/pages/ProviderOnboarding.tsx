@@ -515,7 +515,7 @@ export default function ProviderOnboarding() {
                       id="firstName"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="luxury-glass-minimal"
+                      className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                       data-testid="input-first-name"
                     />
                   </div>
@@ -525,7 +525,7 @@ export default function ProviderOnboarding() {
                       id="lastName"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="luxury-glass-minimal"
+                      className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                       data-testid="input-last-name"
                     />
                   </div>
@@ -548,7 +548,7 @@ export default function ProviderOnboarding() {
                     value={idNumber}
                     onChange={(e) => setIdNumber(e.target.value)}
                     placeholder={t.idNumberPlaceholder}
-                    className="luxury-glass-minimal"
+                    className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                     data-testid="input-id-number"
                   />
                 </div>
@@ -568,14 +568,14 @@ export default function ProviderOnboarding() {
                       }}
                       placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city...'}
                       country={['il', 'us', 'gb', 'au', 'ca']}
-                      className="luxury-glass-minimal"
+                      inputClassName="bg-white !text-gray-900 border-2 border-gray-200 rounded-xl placeholder:text-gray-400 px-4 py-4 text-base min-h-[48px]"
                       types={['(cities)']}
                     />
                   </div>
                   <div>
                     <Label htmlFor="country">{t.country}</Label>
                     <Select value={country} onValueChange={setCountry}>
-                      <SelectTrigger className="w-full h-12 luxury-glass-minimal" data-testid="select-country">
+                      <SelectTrigger className="w-full h-12 bg-white !text-gray-900 border border-gray-200 rounded-xl" data-testid="select-country">
                         <SelectValue placeholder={isHebrew ? 'בחר מדינה' : 'Select country'} />
                       </SelectTrigger>
                       <SelectContent>
@@ -668,7 +668,7 @@ export default function ProviderOnboarding() {
                       type="file"
                       accept="image/*,application/pdf"
                       onChange={(e) => setGovernmentId(e.target.files?.[0] || null)}
-                      className="luxury-glass-minimal"
+                      className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                       data-testid="input-government-id"
                     />
                     {governmentId && (
@@ -696,7 +696,7 @@ export default function ProviderOnboarding() {
                               value={insurancePolicyNumber}
                               onChange={(e) => setInsurancePolicyNumber(e.target.value)}
                               placeholder={isHebrew ? 'לדוגמה: POL-123456' : 'e.g. POL-123456'}
-                              className="luxury-glass-minimal"
+                              className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                               data-testid="input-insurance-policy-number"
                             />
                           </div>
@@ -707,7 +707,7 @@ export default function ProviderOnboarding() {
                               value={insuranceProvider}
                               onChange={(e) => setInsuranceProvider(e.target.value)}
                               placeholder={isHebrew ? 'לדוגמה: כלל ביטוח' : 'e.g. Clal Insurance'}
-                              className="luxury-glass-minimal"
+                              className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                               data-testid="input-insurance-provider"
                             />
                           </div>
@@ -722,7 +722,7 @@ export default function ProviderOnboarding() {
                             minDate={new Date()}
                             language={language}
                             testId="input-insurance-expiry"
-                            className="luxury-glass-minimal"
+                            className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                           />
                         </div>
                         
@@ -733,7 +733,7 @@ export default function ProviderOnboarding() {
                             type="file"
                             accept="image/*,application/pdf"
                             onChange={(e) => setInsuranceCert(e.target.files?.[0] || null)}
-                            className="luxury-glass-minimal"
+                            className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                             data-testid="input-insurance"
                           />
                           {insuranceCert && (
@@ -760,7 +760,7 @@ export default function ProviderOnboarding() {
                               value={petFirstAidNumber}
                               onChange={(e) => setPetFirstAidNumber(e.target.value)}
                               placeholder={isHebrew ? 'לדוגמה: PFA-2024-12345' : 'e.g. PFA-2024-12345'}
-                              className="luxury-glass-minimal"
+                              className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                               data-testid="input-pet-first-aid-number"
                             />
                           </div>
@@ -773,7 +773,7 @@ export default function ProviderOnboarding() {
                               minDate={new Date()}
                               language={language}
                               testId="input-pet-first-aid-expiry"
-                              className="luxury-glass-minimal"
+                              className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                             />
                           </div>
                         </div>
@@ -785,7 +785,7 @@ export default function ProviderOnboarding() {
                             type="file"
                             accept="image/*,application/pdf"
                             onChange={(e) => setPetFirstAidCert(e.target.files?.[0] || null)}
-                            className="luxury-glass-minimal"
+                            className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                             data-testid="input-pet-first-aid-cert"
                           />
                           {petFirstAidCert && (
@@ -811,7 +811,7 @@ export default function ProviderOnboarding() {
                         type="file"
                         accept="image/*,application/pdf"
                         onChange={(e) => setBusinessLicense(e.target.files?.[0] || null)}
-                        className="luxury-glass-minimal"
+                        className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                         data-testid="input-business-license"
                       />
                       {businessLicense && (
@@ -998,7 +998,7 @@ export default function ProviderOnboarding() {
                             ? `כתובת ${index + 1}: לדוגמה - תל אביב, ישראל (2018-2023)`
                             : `Address ${index + 1}: e.g. Tel Aviv, Israel (2018-2023)`
                           }
-                          className="luxury-glass-minimal"
+                          className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                           data-testid={`input-address-${index}`}
                         />
                       </div>

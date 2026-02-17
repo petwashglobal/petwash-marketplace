@@ -150,6 +150,19 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
+  color: #1a202c;
+  -webkit-text-fill-color: #1a202c;
+}
+
+.luxury-glass-minimal::placeholder {
+  color: #9ca3af;
+  -webkit-text-fill-color: #9ca3af;
+}
+
+.dark .luxury-glass-minimal {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #1a202c !important;
+  -webkit-text-fill-color: #1a202c !important;
 }
 
 /* ===========================
