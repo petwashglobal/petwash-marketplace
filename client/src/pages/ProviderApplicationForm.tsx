@@ -4,7 +4,7 @@
  * Premium marketplace application form with:
  * - Multi-platform selection (like MadPaws but for 9 platforms)
  * - Provider-defined pricing wizard
- * - Luxury Gucci-inspired black/white aesthetic
+ * - Clean white/black high-contrast design
  * - Comprehensive legal acknowledgements
  * - Mobile-first responsive design
  */
@@ -13,7 +13,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useLocation, Link } from "wouter";
+import { Link } from "wouter";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,10 +22,10 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Loader2, CheckCircle2, Star, Shield, Heart, 
-  Car, Home, Dog, Scissors, GraduationCap, Building,
+  Car, Home, Dog, Scissors, GraduationCap,
   ArrowRight, ArrowLeft, Sparkles, Crown, Send,
-  Camera, Upload, User, X, Droplets, Sun, Search,
-  Check, DollarSign, Calendar, Info, MapPin
+  Camera, User, X, Sun,
+  Check, DollarSign, Info, MapPin
 } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
@@ -152,7 +152,6 @@ const WORLD_COUNTRIES = [
 ];
 
 export default function ProviderApplicationForm() {
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
@@ -351,14 +350,10 @@ export default function ProviderApplicationForm() {
     }
   };
 
-  // Success Screen - Luxury Dark Theme
   if (submitted) {
     return (
-      <div className={`min-h-screen relative overflow-hidden ${isHebrew ? 'rtl' : 'ltr'}`}>
-        {/* Luxury Dark Background */}
-        <div className="absolute inset-0 bg-white" />
-        
-        <div className="relative z-10 py-12 px-4">
+      <div className={`min-h-screen bg-white ${isHebrew ? 'rtl' : 'ltr'}`}>
+        <div className="py-12 px-4">
           <div className="max-w-2xl mx-auto">
             <div 
               className="rounded-3xl p-10 text-center bg-white border border-gray-200 shadow-lg"
@@ -380,7 +375,7 @@ export default function ProviderApplicationForm() {
                     {isHebrew ? 'מה הלאה?' : 'What\'s Next?'}
                   </span>
                 </div>
-                <ol className={`text-${isHebrew ? 'right' : 'left'} space-y-3 text-gray-700`}>
+                <ol className={`${isHebrew ? 'text-right' : 'text-left'} space-y-3 text-gray-700`}>
                   <li className="flex items-start gap-3">
                     <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
                     <span>{isHebrew ? 'השלם את אימות הזהות הביומטרי' : 'Complete biometric identity verification'}</span>
@@ -407,15 +402,9 @@ export default function ProviderApplicationForm() {
     );
   }
 
-  const totalSteps = 5;
-  const progress = (step / totalSteps) * 100;
-
   return (
-    <div className={`min-h-screen relative overflow-hidden ${isHebrew ? 'rtl' : 'ltr'}`}>
-      {/* Luxury Dark Background */}
-      <div className="absolute inset-0 bg-white" />
-      
-      <div className="relative z-10 py-8 px-4">
+    <div className={`min-h-screen bg-white ${isHebrew ? 'rtl' : 'ltr'}`}>
+      <div className="py-8 px-4">
         <div className="max-w-4xl mx-auto">
         
           {/* Header */}
@@ -481,7 +470,6 @@ export default function ProviderApplicationForm() {
             </p>
           </div>
 
-          {/* Luxury Glass Form Card */}
           <div 
             className="rounded-3xl p-6 md:p-10 bg-white border border-gray-200 shadow-sm"
           >
@@ -556,7 +544,7 @@ export default function ProviderApplicationForm() {
                           key={platform.id}
                           type="button"
                           onClick={() => handlePlatformToggle(platform.id)}
-                          className={`relative p-6 rounded-2xl border transition-all duration-300 text-${isHebrew ? 'right' : 'left'} ${
+                          className={`relative p-6 rounded-2xl border transition-all duration-300 ${isHebrew ? 'text-right' : 'text-left'} ${
                             isSelected 
                               ? `border-amber-500/50 bg-gradient-to-br ${platform.color} text-white shadow-xl shadow-amber-500/20 scale-[1.02]` 
                               : 'border-gray-200 bg-white hover:border-gray-400 hover:shadow-md'
@@ -661,7 +649,7 @@ export default function ProviderApplicationForm() {
                               </div>
                               <div className="flex items-center justify-between mt-2 text-sm">
                                 <span className="text-gray-600">{t.youEarn}:</span>
-                                <span className="font-bold text-emerald-400">
+                                <span className="font-bold text-emerald-600">
                                   {formatCurrency(providerEarnings)}
                                 </span>
                               </div>
@@ -977,7 +965,6 @@ export default function ProviderApplicationForm() {
                     </div>
                   </div>
 
-                  {/* Qualifications - Luxury Glass Card */}
                   <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
                     <h3 className="font-semibold text-black mb-2 flex items-center gap-2">
                       <Crown className="h-5 w-5 text-amber-400" />
@@ -1128,6 +1115,24 @@ export default function ProviderApplicationForm() {
                             {...field} 
                             rows={2}
                             className="bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl resize-none"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-red-600" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="referralSource"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-black font-medium">{t.referral}</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder={isHebrew ? 'גוגל, חבר, רשתות חברתיות...' : 'Google, friend, social media...'}
+                            className="h-12 bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                           />
                         </FormControl>
                         <FormMessage className="text-red-600" />
