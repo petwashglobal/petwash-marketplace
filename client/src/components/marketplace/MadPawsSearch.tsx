@@ -218,14 +218,14 @@ export interface SearchTheme {
 const THEMES: Record<string, SearchTheme> = {
   pink: {
     accent: 'pink',
-    buttonGradient: 'from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600',
-    buttonShadow: 'shadow-pink-500/25 hover:shadow-pink-500/30',
-    selectedBorder: 'border-pink-500',
-    selectedBg: 'bg-pink-50',
-    selectedText: 'text-pink-700',
-    iconColor: 'text-pink-500',
-    focusRing: 'focus:ring-pink-500',
-    focusBorder: 'focus:border-pink-500',
+    buttonGradient: 'from-fuchsia-500 to-pink-500 hover:from-fuchsia-600 hover:to-pink-600',
+    buttonShadow: 'shadow-fuchsia-500/30 hover:shadow-fuchsia-500/40',
+    selectedBorder: 'border-fuchsia-500',
+    selectedBg: 'bg-fuchsia-50',
+    selectedText: 'text-fuchsia-700',
+    iconColor: 'text-fuchsia-500',
+    focusRing: 'focus:ring-fuchsia-500',
+    focusBorder: 'focus:border-fuchsia-500',
   },
   emerald: {
     accent: 'emerald',
@@ -1093,14 +1093,14 @@ export function MadPawsSearch({
                       head_row: "flex",
                       head_cell: "text-gray-400 w-11 h-9 font-medium text-xs flex items-center justify-center",
                       row: "flex w-full mt-0",
-                      cell: "h-11 w-11 text-center text-sm p-0 relative focus-within:z-20 [&:has([aria-selected].day-range-end)]:rounded-r-full [&:has([aria-selected].day-range-start)]:rounded-l-full [&:has([aria-selected])]:bg-pink-50 first:[&:has([aria-selected])]:rounded-l-full last:[&:has([aria-selected])]:rounded-r-full",
+                      cell: `h-11 w-11 text-center text-sm p-0 relative focus-within:z-20 [&:has([aria-selected].day-range-end)]:rounded-r-full [&:has([aria-selected].day-range-start)]:rounded-l-full [&:has([aria-selected])]:${t.selectedBg} first:[&:has([aria-selected])]:rounded-l-full last:[&:has([aria-selected])]:rounded-r-full`,
                       day: "h-11 w-11 p-0 font-medium rounded-full text-gray-900 hover:bg-gray-100 transition-colors aria-selected:opacity-100 touch-manipulation cursor-pointer select-none",
-                      day_range_start: "day-range-start !bg-pink-500 !text-white !font-bold !rounded-full hover:!bg-pink-600",
-                      day_range_end: "day-range-end !bg-pink-500 !text-white !font-bold !rounded-full hover:!bg-pink-600",
-                      day_range_middle: "!bg-pink-50 !text-pink-700 aria-selected:!rounded-none",
-                      day_selected: "bg-pink-500 text-white font-bold hover:bg-pink-600 rounded-full",
+                      day_range_start: `day-range-start !${t.accent === 'emerald' ? 'bg-emerald-500' : 'bg-fuchsia-500'} !text-white !font-bold !rounded-full hover:!${t.accent === 'emerald' ? 'bg-emerald-600' : 'bg-fuchsia-600'}`,
+                      day_range_end: `day-range-end !${t.accent === 'emerald' ? 'bg-emerald-500' : 'bg-fuchsia-500'} !text-white !font-bold !rounded-full hover:!${t.accent === 'emerald' ? 'bg-emerald-600' : 'bg-fuchsia-600'}`,
+                      day_range_middle: `!${t.selectedBg} !${t.selectedText} aria-selected:!rounded-none`,
+                      day_selected: `${t.accent === 'emerald' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-fuchsia-500 hover:bg-fuchsia-600'} text-white font-bold rounded-full`,
                       day_today: "bg-gray-100 text-gray-900 font-bold",
-                      day_outside: "text-gray-300 opacity-50 aria-selected:bg-pink-50/50 aria-selected:text-pink-300",
+                      day_outside: `text-gray-300 opacity-50 aria-selected:${t.selectedBg}/50 aria-selected:${t.selectedText}`,
                       day_disabled: "text-gray-200 opacity-40 cursor-not-allowed line-through",
                       day_hidden: "invisible",
                     }}
@@ -1173,7 +1173,7 @@ export function MadPawsSearch({
 
             {advancedTab === 'services' && (
               <div className="space-y-4">
-                <div className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                <div className={`p-3 bg-gradient-to-r ${t.accent === 'emerald' ? 'from-emerald-50 to-teal-50 border-emerald-200' : 'from-fuchsia-50 to-pink-50 border-fuchsia-200'} rounded-xl border`}>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <Checkbox 
                       checked={requestMeetAndGreet} 
@@ -1181,10 +1181,10 @@ export function MadPawsSearch({
                       data-testid="checkbox-meet-greet" 
                     />
                     <div>
-                      <span className="text-sm font-medium text-purple-800 flex items-center gap-2">
+                      <span className={`text-sm font-medium ${t.accent === 'emerald' ? 'text-emerald-800' : 'text-fuchsia-800'} flex items-center gap-2`}>
                         🤝 {isHebrew ? 'בקש פגישת היכרות' : 'Request Meet & Greet'}
                       </span>
-                      <p className="text-xs text-purple-600">
+                      <p className={`text-xs ${t.accent === 'emerald' ? 'text-emerald-600' : 'text-fuchsia-600'}`}>
                         {isHebrew 
                           ? 'פגוש את השמרטף לפני ההזמנה לוודא התאמה'
                           : 'Meet the sitter before booking to ensure a good fit'
@@ -1574,7 +1574,7 @@ export function MadPawsSearch({
             <span>{isHebrew ? 'דירוג 4.9+ ממוצע' : '4.9+ average rating'}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Sparkles className="h-4 w-4 text-purple-500" />
+            <Sparkles className={`h-4 w-4 ${t.iconColor}`} />
             <span>{isHebrew ? 'ביטוח מלא כלול' : 'Full insurance included'}</span>
           </div>
         </div>
@@ -1628,7 +1628,7 @@ export function MadPawsProviderCard({
       className="group bg-white rounded-2xl shadow-md hover:shadow-xl border border-gray-100 overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1"
       data-testid={`card-provider-${id}`}
     >
-      <div className="aspect-[4/3] bg-gradient-to-br from-pink-100 to-purple-100 relative overflow-hidden">
+      <div className={`aspect-[4/3] bg-gradient-to-br ${theme === 'emerald' ? 'from-emerald-100 to-teal-100' : 'from-fuchsia-100 to-pink-100'} relative overflow-hidden`}>
         {photo ? (
           <img
             src={photo}
@@ -1722,8 +1722,8 @@ export function MadPawsEmptyState({ service }: { service: string }) {
 
   return (
     <div className="text-center py-16 px-4">
-      <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center">
-        <Search className="w-10 h-10 text-pink-400" />
+      <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+        <Search className="w-10 h-10 text-gray-400" />
       </div>
       <h3 className="text-2xl font-semibold text-gray-900 mb-2">
         {isHebrew ? 'לא נמצאו ספקים' : 'No providers found'}

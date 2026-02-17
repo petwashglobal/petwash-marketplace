@@ -206,10 +206,10 @@ export default function BrowseWalkers() {
     <Layout>
       <div className="min-h-screen bg-gray-50">
         <div className="relative bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 overflow-hidden">
-          <div className="absolute inset-0 opacity-40">
-            <div className="absolute top-10 left-10 w-72 h-72 bg-emerald-200 rounded-full blur-3xl"></div>
+          <div className="absolute inset-0 opacity-50">
+            <div className="absolute top-10 left-10 w-72 h-72 bg-emerald-200 rounded-full blur-3xl animate-pulse"></div>
             <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-200 rounded-full blur-3xl"></div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-green-200 rounded-full blur-3xl"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-green-200 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
           </div>
           
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8 sm:pt-16 sm:pb-12">
@@ -585,8 +585,8 @@ export default function BrowseWalkers() {
                 </p>
               </div>
               <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-pink-400/20 to-rose-400/20 flex items-center justify-center">
-                  <Smartphone className="h-7 w-7 text-pink-400" />
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-teal-400/20 flex items-center justify-center">
+                  <Smartphone className="h-7 w-7 text-emerald-400" />
                 </div>
                 <h4 className="font-semibold text-white mb-2">
                   {isHebrew ? 'אפליקציה חכמה' : 'Smart App'}
