@@ -23,6 +23,7 @@ const profileUpdateSchema = z.object({
   preferredLanguage: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
+  postalCode: z.string().optional(),
   email: z.string().email().optional(),
   photoURL: z.string().optional(),
   notificationPreferences: notificationPreferencesSchema,
@@ -90,6 +91,7 @@ router.get('/profile', async (req, res) => {
         phone: firebaseUser.phoneNumber || '',
         address: '',
         city: '',
+        postalCode: '',
         birthdate: '',
         photoURL: firebaseUser.photoURL || '',
         preferredLanguage: 'he',
@@ -105,6 +107,7 @@ router.get('/profile', async (req, res) => {
       phone: user.phone || '',
       address: user.address || '',
       city: user.city || '',
+      postalCode: user.postalCode || '',
       birthdate: user.dateOfBirth || '',
       photoURL: user.profileImageUrl || '',
       preferredLanguage: user.language || 'he',
@@ -144,7 +147,7 @@ router.patch('/profile', async (req, res) => {
       return res.status(400).json({ error: 'Invalid request body', details: parseResult.error.flatten() });
     }
 
-    const { displayName, phone, birthdate, preferredLanguage, address, city, notificationPreferences } = parseResult.data;
+    const { displayName, phone, birthdate, preferredLanguage, address, city, postalCode, notificationPreferences } = parseResult.data;
 
     const [existingUser] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
 
@@ -160,6 +163,7 @@ router.patch('/profile', async (req, res) => {
     if (preferredLanguage !== undefined) updateData.language = preferredLanguage;
     if (address !== undefined) updateData.address = address;
     if (city !== undefined) updateData.city = city;
+    if (postalCode !== undefined) updateData.postalCode = postalCode;
 
     if (Object.keys(updateData).length > 0) {
       if (existingUser) {
@@ -185,6 +189,7 @@ router.patch('/profile', async (req, res) => {
           language: preferredLanguage || 'he',
           address: address || '',
           city: city || '',
+          postalCode: postalCode || '',
         });
       }
     }

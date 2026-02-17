@@ -1,0 +1,301 @@
+================================================================================
+PETWASH 2026 ENTERPRISE REGISTRATION ARCHITECTURE
+================================================================================
+
+GOAL:
+------
+Build a stable, atomic, multilingual, address-aware, role-based registration
+system that works with:
+
+- Firebase Auth (Email / Google / Apple / Phone)
+- Google Places Autocomplete
+- PostgreSQL (Primary DB)
+- Firestore (Presence / lightweight real-time only)
+- Cloud Functions (Profile creation trigger)
+- Zero ghost accounts
+- Zero partial writes
+- Clean rollback logic
+- Structured logging
+- Production-safe validation
+
+================================================================================
+SECTION 1 — SINGLE SOURCE OF TRUTH DATA CONTRACT
+================================================================================
+
+All layers MUST follow this structure exactly.
+
+TypeScript Interface:
+
+export type UserRegistration = {
+  uid: string
+  role: "customer" | "provider" | "external"
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  language: "he" | "en"
+  address: {
+    formatted: string
+    street: string
+    city: string
+    postalCode: string
+    country: string
+    lat: number
+    lng: number
+  }
+  createdAt: string
+}
+
+Backend validates this structure.
+Database schema mirrors this structure.
+Frontend maps into this structure.
+
+NO FIELD DEVIATION ALLOWED.
+
+================================================================================
+SECTION 2 — DATABASE SCHEMA (POSTGRESQL)
+================================================================================
+
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  uid TEXT UNIQUE NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('customer','provider','external')),
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  language TEXT DEFAULT 'he',
+
+  formatted_address TEXT,
+  street TEXT,
+  city TEXT,
+  postal_code TEXT,
+  country TEXT,
+  latitude NUMERIC,
+  longitude NUMERIC,
+
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+Indexes:
+CREATE INDEX idx_users_uid ON users(uid);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_city ON users(city);
+
+================================================================================
+SECTION 3 — GOOGLE PLACES INTEGRATION (CORRECT 2026 METHOD)
+================================================================================
+
+DO NOT hardcode language in script URL.
+
+Correct script load:
+https://maps.googleapis.com/maps/api/js?key=API_KEY&libraries=places
+
+Let browser handle localization.
+
+Autocomplete setup:
+
+const autocomplete = new google.maps.places.Autocomplete(input, {
+  componentRestrictions: { country: "il" },
+  fields: ["address_components","geometry","formatted_address"]
+});
+
+Extract fields explicitly:
+
+function parseAddress(place) {
+  const components = place.address_components;
+
+  const find = (type) =>
+    components.find(c => c.types.includes(type))?.long_name || "";
+
+  return {
+    formatted: place.formatted_address,
+    street: find("route"),
+    city: find("locality"),
+    postalCode: find("postal_code"),
+    country: find("country"),
+    lat: place.geometry.location.lat(),
+    lng: place.geometry.location.lng()
+  };
+}
+
+NEVER store raw Google object.
+Store structured fields only.
+
+================================================================================
+SECTION 4 — ATOMIC REGISTRATION FLOW (CRITICAL)
+================================================================================
+
+Current broken model:
+1. Firebase create user
+2. Frontend sends data to backend
+3. If backend fails → ghost account
+
+Correct 2026 model:
+
+STEP 1:
+User registers via Firebase Auth.
+
+STEP 2:
+Cloud Function trigger executes:
+
+exports.onAuthCreate = functions.auth.user().onCreate(async (user) => {
+  try {
+    const payload = await getTempRegistrationData(user.uid)
+
+    validate(payload)
+
+    await db.insertUser({
+      uid: user.uid,
+      ...payload
+    })
+
+    await markUserProfileCreated(user.uid)
+
+  } catch (err) {
+    await admin.auth().deleteUser(user.uid)
+    logError(err)
+  }
+})
+
+Result:
+If DB insert fails → Firebase user deleted automatically.
+
+NO ghost accounts.
+NO partial state.
+
+================================================================================
+SECTION 5 — FRONTEND REGISTRATION LOGIC
+================================================================================
+
+1. Collect user data.
+2. Parse address via Google.
+3. Validate client-side.
+4. Store temporary registration payload in secure Firestore doc:
+   /pending_registrations/{uid}
+
+5. Create Firebase Auth user.
+6. Backend trigger finalizes creation.
+7. Redirect only after profileCreated = true.
+
+NEVER rely on frontend DB insert.
+
+================================================================================
+SECTION 6 — FIRESTORE RULES (LOCKED)
+================================================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /pending_registrations/{uid} {
+      allow create: if request.auth.uid == uid;
+      allow read: if request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if request.auth.uid == uid;
+      allow write: if false;
+    }
+  }
+}
+
+================================================================================
+SECTION 7 — ERROR HANDLING & LOGGING
+================================================================================
+
+Backend always returns:
+
+{
+  success: boolean,
+  error?: string,
+  code?: string
+}
+
+Log levels:
+- validation_error
+- db_insert_failure
+- auth_mismatch
+- google_parse_error
+- role_invalid
+
+All logs written to:
+- Cloud Logging
+- Error Monitoring dashboard
+
+================================================================================
+SECTION 8 — LANGUAGE HANDLING
+================================================================================
+
+Store language in DB.
+Use i18n context on frontend.
+Do NOT hardcode Google script language.
+Use document.documentElement.lang for UI sync.
+
+================================================================================
+SECTION 9 — PROVIDER REGISTRATION EXTENSION
+================================================================================
+
+Provider table:
+
+CREATE TABLE providers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_uid TEXT REFERENCES users(uid),
+  status TEXT DEFAULT 'pending',
+  rating NUMERIC DEFAULT 5.0,
+  acceptance_rate NUMERIC DEFAULT 1.0,
+  premium_badge BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+Provider creation only after user exists.
+Role-based logic enforced backend-side.
+
+================================================================================
+SECTION 10 — ROLLBACK SAFETY
+================================================================================
+
+If:
+- Address missing lat/lng
+- DB constraint violation
+- Role invalid
+- Language invalid
+- Postal column missing
+
+→ Delete Firebase user.
+→ Log failure.
+→ Return error.
+
+System remains clean.
+
+================================================================================
+SECTION 11 — SECURITY HARDENING
+================================================================================
+
+- Google API restricted to production domains
+- Firebase Auth authorized domains updated
+- reCAPTCHA v3 domain whitelist correct
+- MFA required for admin roles
+- Rate limiting on registration endpoint
+- IP anomaly logging
+- CORS restricted to production origin
+
+================================================================================
+SECTION 12 — FINAL PRINCIPLES
+================================================================================
+
+1. Backend owns truth.
+2. Database mirrors contract.
+3. Frontend maps into contract.
+4. Address parsed structurally.
+5. No UI-driven persistence.
+6. No ghost accounts.
+7. No partial writes.
+8. No hardcoded language.
+9. No hidden Firebase failures.
+10. Full atomic integrity.
+
+================================================================================
+END OF ARCHITECTURE
+================================================================================

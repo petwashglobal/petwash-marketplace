@@ -44,6 +44,7 @@ export const users = pgTable("users", {
   dateOfBirth: varchar("date_of_birth"),
   address: text("address"),
   city: varchar("city"),
+  postalCode: varchar("postal_code"),
   country: varchar("country").default("IL"),
   gender: varchar("gender"),
   language: varchar("language").default("en"),
