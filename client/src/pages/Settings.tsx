@@ -320,6 +320,9 @@ export default function Settings() {
   const [confirmEmail, setConfirmEmail] = useState("");
   const [confirmText, setConfirmText] = useState("");
   const [deletionStep, setDeletionStep] = useState<1 | 2>(1);
+  const [deletionReason, setDeletionReason] = useState("");
+  const [legalConsentChecked, setLegalConsentChecked] = useState(false);
+  const [deletionProcessing, setDeletionProcessing] = useState(false);
   const [trustedDevice, setTrustedDevice] = useState(getTrustedDeviceInfo());
 
   // Fetch user's passkey devices
@@ -487,11 +490,30 @@ export default function Settings() {
 
   // Handle account deletion with GDPR compliance
   const handleDeleteAccount = async () => {
-    if (!firebaseUser) return;
+    if (!firebaseUser || !legalConsentChecked) return;
 
+    setDeletionProcessing(true);
     try {
+      const deletionResponse = await fetch(getApiUrl('/api/account-deletion/request'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          reason: deletionReason || 'User requested account deletion',
+          consentCheckbox: true,
+          language: language === 'he' ? 'he' : 'en',
+        }),
+      });
+
+      const deletionResult = await deletionResponse.json();
+
+      if (!deletionResponse.ok) {
+        throw new Error(deletionResult.error || 'Failed to submit deletion request');
+      }
+
+      logger.info('[Account Deletion] Legal record created:', deletionResult.requestId);
+
       const token = await firebaseUser.getIdToken();
-      
       const response = await fetch(getApiUrl('/api/user/delete'), {
         method: 'POST',
         headers: {
@@ -500,16 +522,18 @@ export default function Settings() {
         },
         body: JSON.stringify({
           uid: firebaseUser.uid,
+          deletionRequestId: deletionResult.requestId,
         }),
       });
 
       if (response.ok) {
         toast({
           title: t('settings.accountDeleted', language),
-          description: t('settings.accountDeletedDesc', language),
+          description: language === 'he'
+            ? `בקשת המחיקה נרשמה (${deletionResult.requestId}). החשבון יימחק לצמיתות תוך 90 יום.`
+            : `Deletion request logged (${deletionResult.requestId}). Account will be permanently deleted within 90 days.`,
         });
 
-        // Sign out and redirect
         setTimeout(() => {
           navigate('/');
         }, 2000);
@@ -525,10 +549,13 @@ export default function Settings() {
         description: error.message || t('settings.failedDeleteAccount', language),
       });
     } finally {
+      setDeletionProcessing(false);
       setDeletingAccount(false);
       setDeletionStep(1);
       setConfirmEmail("");
       setConfirmText("");
+      setDeletionReason("");
+      setLegalConsentChecked(false);
     }
   };
 
@@ -931,6 +958,8 @@ export default function Settings() {
           setDeletionStep(1);
           setConfirmEmail("");
           setConfirmText("");
+          setDeletionReason("");
+          setLegalConsentChecked(false);
         }
       }}>
         <AlertDialogContent className="max-w-2xl !bg-[#12121a] !border-red-500/20 rounded-2xl">
@@ -1034,7 +1063,22 @@ export default function Settings() {
                   </p>
                 </div>
 
-                <div className="pt-4">
+                <div className="pt-2">
+                  <Label htmlFor="deletion-reason" className="luxury-dark-heading-sm text-white mb-2 block">
+                    {language === 'he' ? 'סיבת המחיקה (אופציונלי)' : 'Reason for deletion (optional)'}
+                  </Label>
+                  <Input
+                    id="deletion-reason"
+                    type="text"
+                    value={deletionReason}
+                    onChange={(e) => setDeletionReason(e.target.value)}
+                    placeholder={language === 'he' ? 'ספר/י לנו למה...' : 'Tell us why...'}
+                    className="h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.15)] focus:border-[rgba(232,230,240,0.3)] text-white placeholder:text-[rgba(149,144,168,0.4)]"
+                    data-testid="input-deletion-reason"
+                  />
+                </div>
+
+                <div className="pt-2">
                   <Label htmlFor="confirm-text" className="luxury-dark-heading-sm text-red-400">
                     {t('settings.typeTextExactly', language)}
                   </Label>
@@ -1051,6 +1095,23 @@ export default function Settings() {
                     data-testid="input-confirm-delete-text"
                   />
                 </div>
+
+                <div className="luxury-dark-surface rounded-xl p-5 border border-amber-500/20">
+                  <label className="flex items-start gap-3 cursor-pointer" data-testid="label-legal-consent">
+                    <input
+                      type="checkbox"
+                      checked={legalConsentChecked}
+                      onChange={(e) => setLegalConsentChecked(e.target.checked)}
+                      className="mt-1 w-5 h-5 rounded border-amber-500/40 accent-red-500"
+                      data-testid="checkbox-legal-consent"
+                    />
+                    <span className="luxury-dark-text-small text-amber-200/80 leading-relaxed">
+                      {language === 'he'
+                        ? 'אני מאשר/ת בזאת כי אני מבקש/ת למחוק את חשבוני לצמיתות. אני מבין/ה שפעולה זו אינה ניתנת לביטול ושכל הנתונים האישיים שלי יימחקו בהתאם לחוק הגנת הפרטיות הישראלי 2025. Pet Wash™ תשמור רישומים חוקיים של בקשה זו למשך 90 יום.'
+                        : 'I hereby confirm that I am requesting permanent deletion of my account. I understand this action is irreversible and all my personal data will be deleted in accordance with the Israeli Privacy Protection Law 2025. Pet Wash™ will retain legal records of this request for 90 days.'}
+                    </span>
+                  </label>
+                </div>
               </AlertDialogDescription>
 
               <AlertDialogFooter className="flex-col sm:flex-row gap-3">
@@ -1058,6 +1119,8 @@ export default function Settings() {
                   onClick={() => {
                     setDeletionStep(1);
                     setConfirmText("");
+                    setLegalConsentChecked(false);
+                    setDeletionReason("");
                   }}
                   className="bg-transparent border border-[rgba(232,230,240,0.1)] text-white hover:bg-[rgba(232,230,240,0.05)]"
                   data-testid="button-back-step1"
@@ -1066,12 +1129,18 @@ export default function Settings() {
                 </AlertDialogCancel>
                 <button
                   onClick={handleDeleteAccount}
-                  disabled={confirmText !== 'DELETE MY ACCOUNT'}
+                  disabled={confirmText !== 'DELETE MY ACCOUNT' || !legalConsentChecked || deletionProcessing}
                   className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 disabled:opacity-50 text-white font-bold flex items-center gap-2"
                   data-testid="button-confirm-final-delete"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  {t('settings.deletePermanently', language)}
+                  {deletionProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  {deletionProcessing
+                    ? (language === 'he' ? 'מעבד...' : 'Processing...')
+                    : t('settings.deletePermanently', language)}
                 </button>
               </AlertDialogFooter>
             </>

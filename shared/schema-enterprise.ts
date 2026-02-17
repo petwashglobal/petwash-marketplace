@@ -1989,3 +1989,70 @@ export const providerApplicationFormSchema = z.object({
   marketingConsent: z.boolean().optional(),
   dataRetentionAcknowledged: z.boolean().refine(val => val === true, "You must acknowledge the data retention policy"),
 });
+
+export const accountDeletionRequests = pgTable("account_deletion_requests", {
+  id: serial("id").primaryKey(),
+  requestId: varchar("request_id", { length: 64 }).unique().notNull(),
+  userId: integer("user_id").notNull(),
+  userEmail: varchar("user_email", { length: 255 }).notNull(),
+  userFullName: varchar("user_full_name", { length: 255 }).notNull(),
+  userPhone: varchar("user_phone", { length: 50 }),
+  userCountry: varchar("user_country", { length: 10 }),
+  userLoyaltyTier: varchar("user_loyalty_tier", { length: 50 }),
+  userRegisteredAt: timestamp("user_registered_at"),
+  reason: text("reason"),
+  consentText: text("consent_text").notNull(),
+  consentLanguage: varchar("consent_language", { length: 10 }).notNull().default('he'),
+  consentCheckbox: boolean("consent_checkbox").notNull().default(false),
+  consentTimestamp: timestamp("consent_timestamp").notNull(),
+  ipAddress: varchar("ip_address", { length: 64 }),
+  userAgent: text("user_agent"),
+  deviceFingerprint: varchar("device_fingerprint", { length: 128 }),
+  status: varchar("status", { length: 30 }).notNull().default('pending'),
+  softDeleteCompletedAt: timestamp("soft_delete_completed_at"),
+  hardDeleteScheduledAt: timestamp("hard_delete_scheduled_at"),
+  hardDeleteCompletedAt: timestamp("hard_delete_completed_at"),
+  dataExportUrl: varchar("data_export_url", { length: 512 }),
+  dataExportGeneratedAt: timestamp("data_export_generated_at"),
+  legalBasis: varchar("legal_basis", { length: 100 }).notNull().default('user_request'),
+  complianceLaw: varchar("compliance_law", { length: 100 }).notNull().default('Israeli Privacy Protection Law 2025'),
+  retentionPeriodDays: integer("retention_period_days").notNull().default(90),
+  contentHash: varchar("content_hash", { length: 128 }),
+  processedBy: varchar("processed_by", { length: 100 }),
+  processedAt: timestamp("processed_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const accountDeletionAuditLog = pgTable("account_deletion_audit_log", {
+  id: serial("id").primaryKey(),
+  requestId: varchar("request_id", { length: 64 }).notNull(),
+  userId: integer("user_id").notNull(),
+  action: varchar("action", { length: 100 }).notNull(),
+  details: jsonb("details"),
+  dataCategory: varchar("data_category", { length: 100 }),
+  recordsAffected: integer("records_affected").default(0),
+  performedBy: varchar("performed_by", { length: 100 }).notNull(),
+  ipAddress: varchar("ip_address", { length: 64 }),
+  contentHash: varchar("content_hash", { length: 128 }),
+  previousHash: varchar("previous_hash", { length: 128 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAccountDeletionRequestSchema = createInsertSchema(accountDeletionRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AccountDeletionRequest = typeof accountDeletionRequests.$inferSelect;
+export type InsertAccountDeletionRequest = z.infer<typeof insertAccountDeletionRequestSchema>;
+
+export const insertAccountDeletionAuditLogSchema = createInsertSchema(accountDeletionAuditLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AccountDeletionAuditLog = typeof accountDeletionAuditLog.$inferSelect;
+export type InsertAccountDeletionAuditLog = z.infer<typeof insertAccountDeletionAuditLogSchema>;

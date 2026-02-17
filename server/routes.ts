@@ -72,6 +72,7 @@ import escrowRoutes from "./routes/escrow";
 import bookingsRoutes from "./routes/bookings";
 import superAppBookingsRoutes from "./routes/super-app-bookings";
 import privacySettingsRoutes from "./routes/privacy-settings";
+import accountDeletionRoutes from "./routes/account-deletion";
 import jobOffersRoutes from "./routes/job-offers";
 import providersRoutes from "./routes/providers";
 import marketplaceRoutes from "./routes/marketplace";
@@ -8783,6 +8784,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // Privacy Settings - User privacy controls (OPT-IN tracking, GDPR compliance)
   app.use('/api/privacy', apiLimiter, privacySettingsRoutes);
+
+  // Account Deletion - GDPR/Israeli Privacy Law 2025 compliant account deletion with legal audit trail
+  app.use('/api/account-deletion', apiLimiter, accountDeletionRoutes);
 
   // Compliance Control Tower - Authority documents, provider licenses, dispute resolution
   app.use('/api/compliance', adminLimiter, complianceRoutes);
