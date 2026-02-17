@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
+import { z } from "zod";
 import { 
   israeliExpenses, 
   israeliVatDeclarations,
@@ -15,7 +16,7 @@ import {
   insertIsraeliNationalInsuranceDeclarationSchema,
   insertIsraeliMonthlyFinancialPackageSchema
 } from "@shared/schema";
-import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lt, lte, desc, sql } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 import { logger } from "../lib/logger";
@@ -823,6 +824,190 @@ router.post("/email/send-sample-vat", async (req: Request, res: Response) => {
   } catch (error) {
     logger.error("[Email] Error sending sample VAT:", error);
     res.status(500).json({ error: "Failed to send sample VAT" });
+  }
+});
+
+// POST /api/accounting/email/send-loyalty-enrollment - Send Prestige Loyalty enrollment confirmation
+router.post("/email/send-loyalty-enrollment", async (req: Request, res: Response) => {
+  try {
+    const loyaltyEmailSchema = z.object({
+      email: z.string().email(),
+      firstName: z.string().min(1),
+      tier: z.enum(['bronze', 'silver', 'gold', 'platinum', 'diamond']).optional().default('bronze'),
+      points: z.number().int().min(0).optional().default(100),
+      language: z.enum(['he', 'en']).optional().default('he'),
+    });
+    const data = loyaltyEmailSchema.parse(req.body);
+    const { sendLoyaltyEnrollmentConfirmation } = await import('../email/luxury-email-service');
+    const sent = await sendLoyaltyEnrollmentConfirmation(
+      data.email,
+      data.firstName,
+      data.tier,
+      data.points,
+      data.language
+    );
+    logger.info('[Email] Loyalty enrollment confirmation sent', { email: data.email, firstName: data.firstName, tier: data.tier });
+    res.json({ success: sent, message: sent ? "Loyalty enrollment email sent" : "Email sending failed (check SendGrid config)" });
+  } catch (error: any) {
+    if (error?.name === 'ZodError') {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    logger.error("[Email] Error sending loyalty enrollment:", error);
+    res.status(500).json({ error: "Failed to send loyalty enrollment email" });
+  }
+});
+
+// POST /api/accounting/email/send-egift-purchase - Send E-Gift purchase confirmation to buyer
+router.post("/email/send-egift-purchase", async (req: Request, res: Response) => {
+  try {
+    const egiftEmailSchema = z.object({
+      buyerEmail: z.string().email(),
+      buyerName: z.string().min(1),
+      recipientName: z.string().min(1),
+      giftValue: z.number().min(50).max(10000).optional().default(200),
+      personalMessage: z.string().max(500).optional(),
+      language: z.enum(['he', 'en']).optional().default('he'),
+      seasonalTheme: z.enum(['general', 'black_friday', 'valentines', 'christmas', 'hannukah', 'purim']).optional().default('general'),
+    });
+    const data = egiftEmailSchema.parse(req.body);
+    const { generateEGiftPurchaseConfirmation } = await import('../email/templates/egift-purchase-confirmation-2026');
+    const { sendLuxuryEmail } = await import('../email/luxury-email-service');
+    const crypto = await import('crypto');
+    const voucherId = `PWV-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
+    const transactionHash = crypto.createHash('sha256').update(`${voucherId}|${Date.now()}`).digest('hex');
+    const { subject, html } = generateEGiftPurchaseConfirmation({
+      buyerName: data.buyerName,
+      buyerEmail: data.buyerEmail,
+      recipientName: data.recipientName,
+      giftValue: data.giftValue,
+      currency: 'ILS',
+      voucherId,
+      transactionHash,
+      personalMessage: data.personalMessage,
+      deliveryMethod: 'email',
+      seasonalTheme: data.seasonalTheme,
+      language: data.language,
+    });
+    const sent = await sendLuxuryEmail({ to: data.buyerEmail, subject, html });
+    logger.info('[Email] E-Gift purchase confirmation sent', { buyerEmail: data.buyerEmail, buyerName: data.buyerName, recipientName: data.recipientName, giftValue: data.giftValue });
+    res.json({ success: sent, message: sent ? "E-Gift purchase confirmation email sent" : "Email sending failed (check SendGrid config)", voucherId });
+  } catch (error: any) {
+    if (error?.name === 'ZodError') {
+      return res.status(400).json({ error: "Validation failed", details: error.errors });
+    }
+    logger.error("[Email] Error sending e-gift purchase confirmation:", error);
+    res.status(500).json({ error: "Failed to send e-gift purchase confirmation email" });
+  }
+});
+
+// GET /api/accounting/financial-overview - Comprehensive financial overview with transactions, cash flow, income, costs
+router.get("/financial-overview", async (req: Request, res: Response) => {
+  try {
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
+    const month = parseInt(req.query.month as string) || 0;
+
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year + 1, 0, 1);
+    const monthStart = month > 0 ? new Date(year, month - 1, 1) : yearStart;
+    const monthEnd = month > 0 ? new Date(year, month, 1) : yearEnd;
+
+    const [recentTransactions, monthlyRevenue, monthlyExpenses, ytdSummary, expensesByCategory] = await Promise.all([
+      db.select().from(transactionRecords)
+        .where(and(
+          gte(transactionRecords.timestamp, monthStart),
+          lt(transactionRecords.timestamp, monthEnd)
+        ))
+        .orderBy(desc(transactionRecords.timestamp))
+        .limit(100),
+
+      db.select({
+        month: sql<number>`EXTRACT(MONTH FROM ${transactionRecords.timestamp})`,
+        revenue: sql<number>`COALESCE(SUM(CAST(${transactionRecords.totalAmount} AS NUMERIC)), 0)`,
+        vat: sql<number>`COALESCE(SUM(CAST(${transactionRecords.vatAmount} AS NUMERIC)), 0)`,
+        fees: sql<number>`COALESCE(SUM(CAST(${transactionRecords.processingFee} AS NUMERIC)), 0)`,
+        count: sql<number>`COUNT(*)`,
+      }).from(transactionRecords)
+        .where(gte(transactionRecords.timestamp, yearStart))
+        .groupBy(sql`EXTRACT(MONTH FROM ${transactionRecords.timestamp})`)
+        .orderBy(sql`EXTRACT(MONTH FROM ${transactionRecords.timestamp})`),
+
+      db.select({
+        month: sql<number>`EXTRACT(MONTH FROM ${israeliExpenses.createdAt})`,
+        total: sql<number>`COALESCE(SUM(CAST(${israeliExpenses.totalAmount} AS NUMERIC)), 0)`,
+        count: sql<number>`COUNT(*)`,
+      }).from(israeliExpenses)
+        .where(and(
+          gte(israeliExpenses.createdAt, yearStart),
+          eq(israeliExpenses.status, 'approved')
+        ))
+        .groupBy(sql`EXTRACT(MONTH FROM ${israeliExpenses.createdAt})`)
+        .orderBy(sql`EXTRACT(MONTH FROM ${israeliExpenses.createdAt})`),
+
+      db.select({
+        totalRevenue: sql<number>`COALESCE(SUM(CAST(${transactionRecords.totalAmount} AS NUMERIC)), 0)`,
+        totalVat: sql<number>`COALESCE(SUM(CAST(${transactionRecords.vatAmount} AS NUMERIC)), 0)`,
+        totalFees: sql<number>`COALESCE(SUM(CAST(${transactionRecords.processingFee} AS NUMERIC)), 0)`,
+        txCount: sql<number>`COUNT(*)`,
+      }).from(transactionRecords)
+        .where(gte(transactionRecords.timestamp, yearStart)),
+
+      db.select({
+        category: israeliExpenses.category,
+        total: sql<number>`COALESCE(SUM(CAST(${israeliExpenses.totalAmount} AS NUMERIC)), 0)`,
+        count: sql<number>`COUNT(*)`,
+      }).from(israeliExpenses)
+        .where(and(
+          gte(israeliExpenses.createdAt, yearStart),
+          eq(israeliExpenses.status, 'approved')
+        ))
+        .groupBy(israeliExpenses.category),
+    ]);
+
+    const totalExpenses = expensesByCategory.reduce((sum, c) => sum + Number(c.total || 0), 0);
+    const totalRevenue = Number(ytdSummary[0]?.totalRevenue || 0);
+    const totalVat = Number(ytdSummary[0]?.totalVat || 0);
+    const totalFees = Number(ytdSummary[0]?.totalFees || 0);
+    const netIncome = totalRevenue - totalVat - totalFees - totalExpenses;
+
+    const cashFlow = Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const rev = monthlyRevenue.find(r => Number(r.month) === m);
+      const exp = monthlyExpenses.find(e => Number(e.month) === m);
+      const income = Number(rev?.revenue || 0);
+      const costs = Number(exp?.total || 0) + Number(rev?.fees || 0);
+      return {
+        month: m,
+        monthName: new Date(year, i).toLocaleString('en-US', { month: 'short' }),
+        income,
+        costs,
+        net: income - costs,
+        transactionCount: Number(rev?.count || 0),
+      };
+    });
+
+    res.json({
+      year,
+      transactions: recentTransactions,
+      cashFlow,
+      income: {
+        totalRevenue,
+        totalVat,
+        totalFees,
+        netIncome,
+        transactionCount: Number(ytdSummary[0]?.txCount || 0),
+      },
+      runningCosts: {
+        totalExpenses,
+        byCategory: expensesByCategory.map(c => ({
+          category: c.category,
+          total: Number(c.total),
+          count: Number(c.count),
+        })),
+      },
+    });
+  } catch (error) {
+    logger.error("[Accounting API] Error fetching financial overview", error);
+    res.status(500).json({ error: "Failed to fetch financial overview" });
   }
 });
 
