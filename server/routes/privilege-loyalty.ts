@@ -98,7 +98,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       SELECT id FROM privilege_members WHERE email = ${email.trim().toLowerCase()} LIMIT 1
     `);
     if (existingCheck.rows && existingCheck.rows.length > 0) {
-      return res.status(409).json({ error: 'This email is already registered in PetWash Privilege' });
+      return res.status(409).json({ error: 'This email is already registered in PetWash Privilege', errorCode: 'ALREADY_REGISTERED' });
     }
 
     let idDocumentUrl: string | null = null;
@@ -202,9 +202,9 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
     } catch { errMsg = String(error); }
     logger.error(`[Privilege] Registration failed: ${errMsg}`, { traceId: req.body?.traceId });
     if (errMsg?.includes('duplicate key') || errMsg?.includes('unique constraint')) {
-      return res.status(409).json({ error: 'This email is already registered in PetWash Privilege' });
+      return res.status(409).json({ error: 'This email is already registered in PetWash Privilege', errorCode: 'ALREADY_REGISTERED' });
     }
-    res.status(500).json({ error: 'Registration failed. Please try again.' });
+    res.status(500).json({ error: 'Registration failed. Please try again.', errorCode: 'REGISTRATION_FAILED' });
   }
 });
 

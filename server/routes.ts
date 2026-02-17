@@ -9736,47 +9736,12 @@ self.addEventListener('notificationclick', (event) => {
       }
       
       if (!firstName || !lastName || !email) {
-        return res.status(400).json({ success: false, error: 'First name, last name, and email required' });
+        return res.status(400).json({ success: false, error: 'First name, last name, and email required', errorCode: 'MISSING_FIELDS' });
       }
       
       const now = new Date().toISOString();
       
-      await db.collection('users').doc(uid).collection('profile').doc('data').set({
-        uid,
-        accountType: 'customer',
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        name: `${firstName.trim()} ${lastName.trim()}`,
-        email: email.trim(),
-        phone: phone?.trim() || '',
-        dob: dob || '',
-        country: country || 'Israel',
-        lang: language || 'he',
-        loyaltyProgram: loyaltyProgram ?? true,
-        reminders: reminders ?? true,
-        marketing: marketing ?? true,
-        pushNotifications: pushNotifications ?? true,
-        acceptedTerms: acceptedTerms ?? true,
-        consentTimestamp: consentTimestamp || now,
-        loyaltyTier: "New Member",
-        washes: 0,
-        giftCardCredits: 0,
-        totalSpent: 0,
-        seniorDiscount: false,
-        disabilityDiscount: false,
-        discounts: {
-          senior: false,
-          disability: false,
-          loyalty: 0,
-          custom: []
-        },
-        verified: false,
-        createdAt: now,
-        updatedAt: now
-      });
-      
-      logger.info(`[DualSave] Firestore profile created for ${uid}`);
-      
+      // ===== PHASE 1: PostgreSQL write (MUST succeed - this is the source of truth) =====
       const { authService } = await import('./services/AuthService');
       await authService.createUser({
         id: uid,
@@ -9790,8 +9755,51 @@ self.addEventListener('notificationclick', (event) => {
         marketingConsent: marketing ?? true,
       });
       
-      logger.info(`[DualSave] ✅ PostgreSQL user created for ${uid}`);
+      logger.info(`[Phase1] ✅ PostgreSQL user created for ${uid}`, { traceId });
+
+      // ===== PHASE 2: Best-effort side effects (failures do NOT block registration) =====
       
+      // Firestore profile (best-effort - user can still log in without it)
+      try {
+        await db.collection('users').doc(uid).collection('profile').doc('data').set({
+          uid,
+          accountType: 'customer',
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          name: `${firstName.trim()} ${lastName.trim()}`,
+          email: email.trim(),
+          phone: phone?.trim() || '',
+          dob: dob || '',
+          country: country || 'Israel',
+          lang: language || 'he',
+          loyaltyProgram: loyaltyProgram ?? true,
+          reminders: reminders ?? true,
+          marketing: marketing ?? true,
+          pushNotifications: pushNotifications ?? true,
+          acceptedTerms: acceptedTerms ?? true,
+          consentTimestamp: consentTimestamp || now,
+          loyaltyTier: "New Member",
+          washes: 0,
+          giftCardCredits: 0,
+          totalSpent: 0,
+          seniorDiscount: false,
+          disabilityDiscount: false,
+          discounts: {
+            senior: false,
+            disability: false,
+            loyalty: 0,
+            custom: []
+          },
+          verified: false,
+          createdAt: now,
+          updatedAt: now
+        });
+        logger.info(`[Phase2] ✅ Firestore profile created for ${uid}`, { traceId });
+      } catch (firestoreErr: any) {
+        logger.error(`[Phase2] Firestore profile write failed for ${uid} (non-blocking)`, { traceId, error: firestoreErr.message });
+      }
+      
+      // Welcome email (best-effort)
       try {
         const { sendLuxuryEmail } = await import('./email/luxury-email-service');
         const { generateCustomerWelcomeEmail } = await import('./email/templates/welcome-customer-signup-2026');
@@ -9806,16 +9814,17 @@ self.addEventListener('notificationclick', (event) => {
           to: email.trim(),
           subject: welcomeEmail.subject,
           html: welcomeEmail.html,
-        }).catch(err => logger.error('[CreateProfile] Welcome email failed', err));
-      } catch (emailErr) {
-        logger.error('[CreateProfile] Email generation error', emailErr);
+        }).catch(err => logger.error('[Phase2] Welcome email send failed', { traceId, error: err.message }));
+      } catch (emailErr: any) {
+        logger.error('[Phase2] Email generation error (non-blocking)', { traceId, error: emailErr.message });
       }
       
       res.json({ success: true, uid });
       
     } catch (error: any) {
-      logger.error('Create profile error', { traceId: req.body?.traceId, error: error.message });
-      res.status(500).json({ success: false, error: error.message });
+      logger.error('Create profile error', { traceId: req.body?.traceId, error: error.message, code: error.code });
+      const errorCode = error.code === '23505' ? 'USER_EXISTS' : 'REGISTRATION_FAILED';
+      res.status(500).json({ success: false, error: error.message, errorCode });
     }
   });
 

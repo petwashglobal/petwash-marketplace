@@ -305,8 +305,8 @@ router.post('/apply', upload.fields([
     } catch { declarations = {}; }
 
     if (!firstName || !lastName || !phoneNumber || !city || !providerType) {
-      logger.warn('[Provider Onboarding] Missing required fields', { firstName: !!firstName, lastName: !!lastName, phoneNumber: !!phoneNumber, city: !!city, providerType: !!providerType });
-      return res.status(400).json({ error: 'Missing required fields: firstName, lastName, phoneNumber, city, and providerType are required' });
+      logger.warn('[Provider Onboarding] Missing required fields', { traceId, firstName: !!firstName, lastName: !!lastName, phoneNumber: !!phoneNumber, city: !!city, providerType: !!providerType });
+      return res.status(400).json({ error: 'Missing required fields: firstName, lastName, phoneNumber, city, and providerType are required', errorCode: 'MISSING_FIELDS' });
     }
 
     // AUTO-APPROVAL FLOW: No invite code required
@@ -342,8 +342,9 @@ router.post('/apply', upload.fields([
       .limit(1);
 
     if (existingApp.length > 0) {
-      return res.status(400).json({ 
-        error: 'You already have a pending application' 
+      return res.status(409).json({ 
+        error: 'You already have a pending application',
+        errorCode: 'APPLICATION_EXISTS'
       });
     }
 
