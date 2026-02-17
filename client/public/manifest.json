@@ -40,6 +40,30 @@
   "categories": ["lifestyle", "business", "utilities"],
   "shortcuts": [
     {
+      "name": "My Wallet",
+      "short_name": "Wallet",
+      "description": "View credits, wash packages, and redeem at stations",
+      "url": "/my-wallet",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Redeem at Station",
+      "short_name": "Redeem",
+      "description": "Scan QR code to redeem at K9000 station",
+      "url": "/wallet/redeem",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
       "name": "Loyalty Card",
       "short_name": "Loyalty",
       "description": "View loyalty points, tier status, and rewards",
