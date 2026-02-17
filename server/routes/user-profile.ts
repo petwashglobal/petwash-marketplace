@@ -103,8 +103,8 @@ router.get('/profile', async (req, res) => {
       displayName,
       email: user.email || '',
       phone: user.phone || '',
-      address: '',
-      city: '',
+      address: user.address || '',
+      city: user.city || '',
       birthdate: user.dateOfBirth || '',
       photoURL: user.profileImageUrl || '',
       preferredLanguage: user.language || 'he',
@@ -144,7 +144,7 @@ router.patch('/profile', async (req, res) => {
       return res.status(400).json({ error: 'Invalid request body', details: parseResult.error.flatten() });
     }
 
-    const { displayName, phone, birthdate, preferredLanguage, notificationPreferences } = parseResult.data;
+    const { displayName, phone, birthdate, preferredLanguage, address, city, notificationPreferences } = parseResult.data;
 
     const [existingUser] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
 
@@ -158,6 +158,8 @@ router.patch('/profile', async (req, res) => {
     if (phone !== undefined) updateData.phone = phone;
     if (birthdate !== undefined) updateData.dateOfBirth = birthdate;
     if (preferredLanguage !== undefined) updateData.language = preferredLanguage;
+    if (address !== undefined) updateData.address = address;
+    if (city !== undefined) updateData.city = city;
 
     if (Object.keys(updateData).length > 0) {
       if (existingUser) {
@@ -181,6 +183,8 @@ router.patch('/profile', async (req, res) => {
           dateOfBirth: birthdate || '',
           profileImageUrl: firebaseUser.photoURL || '',
           language: preferredLanguage || 'he',
+          address: address || '',
+          city: city || '',
         });
       }
     }
