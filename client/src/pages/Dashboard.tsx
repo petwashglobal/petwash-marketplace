@@ -367,12 +367,12 @@ export default function Dashboard() {
             transition={{ duration: 0.6 }}
             className="text-center mb-2"
           >
-            <div className="relative w-48 sm:w-56 md:w-64 h-auto mx-auto mb-1 flex items-center justify-center bg-white">
+            <div className="relative w-56 sm:w-64 md:w-72 lg:w-80 h-auto mx-auto mb-2 flex items-center justify-center">
               <img
                 src={diamondLogo}
                 alt="PetWash™"
                 className="w-full h-auto"
-                style={{ mixBlendMode: 'multiply', filter: 'contrast(1.1) brightness(1.05)' }}
+                style={{ mixBlendMode: 'multiply', filter: 'contrast(1.15) brightness(1.1) saturate(1.1)' }}
               />
             </div>
             <p
