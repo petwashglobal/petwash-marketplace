@@ -365,9 +365,9 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-4"
+            className="text-center mb-2"
           >
-            <div className="relative w-64 sm:w-72 md:w-80 h-auto mx-auto mb-2 bg-white rounded-2xl flex items-center justify-center overflow-hidden">
+            <div className="relative w-48 sm:w-56 md:w-64 h-auto mx-auto mb-1 flex items-center justify-center">
               <img
                 src={diamondLogo}
                 alt="PetWash™"
