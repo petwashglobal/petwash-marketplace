@@ -365,23 +365,22 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-6"
+            className="text-center mb-4"
           >
-            <img src={diamondLogo} alt="PetWash™" className="w-52 sm:w-60 h-auto mx-auto mb-3" />
+            <div className="relative w-64 sm:w-72 md:w-80 h-auto mx-auto mb-2 bg-white rounded-2xl flex items-center justify-center overflow-hidden">
+              <img
+                src={diamondLogo}
+                alt="PetWash™"
+                className="w-full h-auto"
+                style={{ mixBlendMode: 'multiply' }}
+              />
+            </div>
             <p
-              className="text-lg sm:text-xl tracking-[0.15em] font-light"
+              className="text-lg sm:text-xl tracking-[0.15em] font-light mb-1"
               style={{ ...goldText, fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}
             >
               {tx('privilege', language)}
             </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-            className="text-center mb-6"
-          >
             <h1
               className="text-2xl sm:text-3xl text-gray-900 font-light"
               style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.01em' }}
