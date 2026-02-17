@@ -55,6 +55,18 @@ interface AutoFixResult {
   timestamp: Date;
 }
 
+interface TechUpdateReport {
+  timestamp: Date;
+  category: 'browser' | 'mobile_os' | 'framework' | 'security' | 'firmware' | 'dependency';
+  component: string;
+  currentVersion: string;
+  latestVersion: string;
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
+  summary: string;
+  actionRequired: string;
+  affectedPlatforms: string[];
+}
+
 class GeminiWatchdogService {
   private genAI: GoogleGenAI | null = null;
   private isRunning = false;
@@ -62,6 +74,9 @@ class GeminiWatchdogService {
   private userStruggles: Map<string, UserStruggle> = new Map();
   private BUFFER_SIZE = 100; // Analyze logs in batches of 100
   private CHECK_INTERVAL = 30000; // Check every 30 seconds
+  private techUpdateReports: TechUpdateReport[] = [];
+  private lastTechScanTime: Date | null = null;
+  private TECH_UPDATE_INTERVAL = 6 * 60 * 60 * 1000; // Check every 6 hours
 
   constructor() {
     if (GEMINI_API_KEY) {
@@ -116,8 +131,9 @@ class GeminiWatchdogService {
     this.startCheckoutMonitoring();
     this.startRegistrationMonitoring();
     this.startAutoFixEngine();
+    this.startTechUpdateMonitoring();
 
-    logger.info('[Gemini Watchdog] ✅ All monitoring systems active');
+    logger.info('[Gemini Watchdog] ✅ All monitoring systems active (including tech update scanner)');
   }
 
   /**
@@ -713,6 +729,154 @@ Respond in JSON:
   }
 
   /**
+   * Technology & Update Monitoring - Gemini AI scans for firmware, software, browser, and mobile updates
+   */
+  private startTechUpdateMonitoring() {
+    this.runTechUpdateScan();
+    setInterval(() => this.runTechUpdateScan(), this.TECH_UPDATE_INTERVAL);
+    logger.info('[Gemini Watchdog] 📡 Tech update monitoring started (every 6h)');
+  }
+
+  private async runTechUpdateScan() {
+    if (!this.genAI) return;
+
+    try {
+      const now = new Date();
+      this.lastTechScanTime = now;
+
+      const stackInfo = {
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        frameworks: {
+          react: '18.x',
+          vite: '5.x',
+          express: '4.x',
+          drizzle: 'latest',
+          typescript: '5.x',
+          tailwindcss: '3.x',
+          firebase: '12.x',
+          tanstackQuery: 'v5',
+        },
+        targetBrowsers: ['Chrome 120+', 'Safari 17+', 'Firefox 121+', 'Edge 120+', 'Samsung Internet 24+'],
+        targetMobile: ['iOS 17+', 'iPadOS 17+', 'Android 14+'],
+        securityDeps: ['reCAPTCHA Enterprise', 'Firebase App Check', 'WebAuthn Level 2', 'Passkeys'],
+        paymentGateway: 'Nayax Israel',
+        cloudPlatform: 'Google Cloud / Firebase Hosting',
+        iotHardware: 'K9000 wash stations',
+      };
+
+      const prompt = `You are a technology update advisor for the Pet Wash™ enterprise platform.
+Current date: ${now.toISOString().split('T')[0]}
+
+Platform tech stack:
+${JSON.stringify(stackInfo, null, 2)}
+
+Analyze and report on:
+1. **Browser Updates**: Any recent Chrome, Safari, Firefox, Edge releases that affect web APIs, WebAuthn, Passkeys, or PWA features our platform uses
+2. **Mobile OS Updates**: iOS, iPadOS, Android updates affecting Safari WebKit, Chrome mobile, push notifications, biometrics, or Apple/Google Wallet
+3. **Framework Updates**: React, Vite, Express, TypeScript, Firebase SDK, Drizzle ORM - any new versions with security patches or breaking changes
+4. **Security Updates**: reCAPTCHA changes, WebAuthn spec updates, TLS/SSL changes, OAuth/OIDC updates
+5. **Node.js Updates**: Security patches, LTS changes, V8 engine updates
+6. **Payment/IoT Firmware**: Any known updates affecting payment terminals or IoT device firmware
+
+For each update found, classify severity:
+- critical: Security vulnerability or breaking change requiring immediate action
+- high: Important update needed within 2 weeks
+- medium: Recommended update within 1 month
+- low: Nice-to-have improvement
+- info: Awareness only
+
+Respond in valid JSON:
+{
+  "scanDate": "${now.toISOString()}",
+  "updates": [
+    {
+      "category": "browser|mobile_os|framework|security|firmware|dependency",
+      "component": "name of component",
+      "currentVersion": "what we have",
+      "latestVersion": "what is available",
+      "severity": "critical|high|medium|low|info",
+      "summary": "brief description",
+      "actionRequired": "what to do",
+      "affectedPlatforms": ["web", "ios", "android", "server"]
+    }
+  ],
+  "overallRisk": "low|medium|high|critical",
+  "recommendation": "summary recommendation"
+}`;
+
+      const responseText = await this.generateContent(prompt);
+
+      let cleanJson = responseText.trim();
+      if (cleanJson.startsWith('```json')) cleanJson = cleanJson.slice(7);
+      if (cleanJson.startsWith('```')) cleanJson = cleanJson.slice(3);
+      if (cleanJson.endsWith('```')) cleanJson = cleanJson.slice(0, -3);
+      cleanJson = cleanJson.trim();
+
+      const analysis = JSON.parse(cleanJson);
+      const updates: TechUpdateReport[] = (analysis.updates || []).map((u: any) => ({
+        timestamp: now,
+        category: u.category,
+        component: u.component,
+        currentVersion: u.currentVersion || 'unknown',
+        latestVersion: u.latestVersion || 'unknown',
+        severity: u.severity,
+        summary: u.summary,
+        actionRequired: u.actionRequired,
+        affectedPlatforms: u.affectedPlatforms || [],
+      }));
+
+      this.techUpdateReports = updates;
+
+      const criticalCount = updates.filter((u: TechUpdateReport) => u.severity === 'critical').length;
+      const highCount = updates.filter((u: TechUpdateReport) => u.severity === 'high').length;
+
+      logger.info(`[Gemini Watchdog] 📡 Tech update scan complete: ${updates.length} updates found (${criticalCount} critical, ${highCount} high)`);
+      if (analysis.recommendation) {
+        logger.info(`[Gemini Watchdog] 💡 Recommendation: ${analysis.recommendation}`);
+      }
+
+      if (criticalCount > 0) {
+        for (const critical of updates.filter((u: TechUpdateReport) => u.severity === 'critical')) {
+          await db.insert(watchdogIssues).values({
+            severity: 'critical',
+            category: 'tech_update',
+            affectedService: critical.component,
+            description: `[Tech Update] ${critical.component}: ${critical.summary}`,
+            suggestedFix: critical.actionRequired,
+            detectedAt: now,
+            status: 'open',
+            metadata: { category: critical.category, currentVersion: critical.currentVersion, latestVersion: critical.latestVersion, affectedPlatforms: critical.affectedPlatforms }
+          });
+        }
+      }
+
+    } catch (error: any) {
+      logger.warn('[Gemini Watchdog] Tech update scan error:', error?.message || String(error));
+    }
+  }
+
+  async getTechUpdates() {
+    return {
+      lastScan: this.lastTechScanTime,
+      nextScan: this.lastTechScanTime ? new Date(this.lastTechScanTime.getTime() + this.TECH_UPDATE_INTERVAL) : null,
+      scanIntervalHours: this.TECH_UPDATE_INTERVAL / (60 * 60 * 1000),
+      totalUpdates: this.techUpdateReports.length,
+      critical: this.techUpdateReports.filter(u => u.severity === 'critical'),
+      high: this.techUpdateReports.filter(u => u.severity === 'high'),
+      medium: this.techUpdateReports.filter(u => u.severity === 'medium'),
+      low: this.techUpdateReports.filter(u => u.severity === 'low'),
+      info: this.techUpdateReports.filter(u => u.severity === 'info'),
+    };
+  }
+
+  async forceTechScan() {
+    await this.runTechUpdateScan();
+    return this.getTechUpdates();
+  }
+
+  /**
    * Get watchdog status report
    */
   async getStatus() {
@@ -734,7 +898,13 @@ Respond in JSON:
       openIssues: Number(issuesCount?.count || 0),
       activeStruggles: Number(strugglesCount?.count || 0),
       successfulAutoFixes: Number(autoFixesCount?.count || 0),
-      logBufferSize: this.logBuffer.length
+      logBufferSize: this.logBuffer.length,
+      techUpdates: {
+        lastScan: this.lastTechScanTime,
+        totalUpdates: this.techUpdateReports.length,
+        criticalUpdates: this.techUpdateReports.filter(u => u.severity === 'critical').length,
+        highUpdates: this.techUpdateReports.filter(u => u.severity === 'high').length,
+      }
     };
   }
 }

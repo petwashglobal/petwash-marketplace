@@ -308,4 +308,31 @@ router.patch('/struggles/:id/resolve', async (req, res) => {
   }
 });
 
+/**
+ * Get tech update reports - firmware, software, browser, mobile updates
+ */
+router.get('/tech-updates', async (req, res) => {
+  try {
+    const updates = await GeminiWatchdogService.getTechUpdates();
+    res.json({ success: true, ...updates });
+  } catch (error: any) {
+    logger.error('[Gemini Watchdog API] Failed to get tech updates', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Force a tech update scan now
+ */
+router.post('/tech-updates/scan', async (req, res) => {
+  try {
+    logger.info('[Gemini Watchdog API] Manual tech update scan triggered');
+    const updates = await GeminiWatchdogService.forceTechScan();
+    res.json({ success: true, message: 'Tech update scan completed', ...updates });
+  } catch (error: any) {
+    logger.error('[Gemini Watchdog API] Failed to run tech scan', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
