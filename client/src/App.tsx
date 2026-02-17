@@ -2200,8 +2200,7 @@ console.log("Build: 1769350182889");
             </SimpleAuthProvider>
           </AuthProvider>
           
-          {/* PWA Install Prompt for iOS/Android */}
-          <PWAInstallPrompt />
+          {/* PWA Install Prompt disabled by user preference */}
           
           {/* GDPR-compliant cookie consent system */}
           <CookieConsent 
