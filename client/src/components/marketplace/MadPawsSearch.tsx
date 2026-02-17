@@ -541,12 +541,7 @@ function GooglePlacesLocationInput({
         value={value}
         onChange={(e) => {
           const newValue = e.target.value;
-          if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-          }
-          debounceTimerRef.current = setTimeout(() => {
-            onChange(newValue);
-          }, 300);
+          onChange(newValue);
           if (!autocompleteWorking || !scriptLoaded) {
             setShowCitySuggestions(true);
           }
@@ -673,7 +668,7 @@ export function MadPawsSearch({
   const isHebrew = language === 'he';
   const t = THEMES[theme] || THEMES.pink;
 
-  const [location, setLocation] = useState(initialLocation);
+  const [location, setLocation] = useState(initialLocation || '');
   const [searchLat, setSearchLat] = useState<number | null>(initialLat ?? null);
   const [searchLng, setSearchLng] = useState<number | null>(initialLng ?? null);
   const [selectedService, setSelectedService] = useState<ServiceType>(
@@ -727,15 +722,21 @@ export function MadPawsSearch({
   const selectedPetTypeData = PET_TYPES.find(p => p.id === petType);
 
   const handleSearch = () => {
+    const locationInput = document.querySelector('[data-testid="input-search-location"]') as HTMLInputElement;
+    const actualLocation = locationInput?.value || location;
+    if (actualLocation && actualLocation !== location) {
+      setLocation(actualLocation);
+    }
+    
     const route = getRouteForService(selectedService);
-    let targetPath = `${route}?location=${encodeURIComponent(location)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString() || ''}&end=${endDate?.toISOString() || ''}`;
+    let targetPath = `${route}?location=${encodeURIComponent(actualLocation)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString() || ''}&end=${endDate?.toISOString() || ''}`;
     if (searchLat !== null && searchLng !== null) {
       targetPath += `&lat=${searchLat}&lng=${searchLng}`;
     }
     
     if (onSearch) {
       onSearch({
-        location,
+        location: actualLocation,
         lat: searchLat,
         lng: searchLng,
         service: selectedService,
