@@ -42,6 +42,8 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   phone: varchar("phone"),
   dateOfBirth: varchar("date_of_birth"),
+  address: text("address"),
+  city: varchar("city"),
   country: varchar("country").default("IL"),
   gender: varchar("gender"),
   language: varchar("language").default("en"),
