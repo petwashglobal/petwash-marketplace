@@ -50,10 +50,9 @@ export default function InventoryManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
 
-  // Fetch inventory data
-  const { data: inventoryData, isLoading } = useQuery<{ items: InventoryItem[] }>({
-    queryKey: ['/api/k9000/inventory', { search: searchQuery, status: statusFilter !== 'all' ? statusFilter : undefined, city: cityFilter !== 'all' ? cityFilter : undefined }],
-    refetchInterval: 60000, // Refresh every minute
+  const { data: rawInventoryData, isLoading } = useQuery<{ items: InventoryItem[] }>({
+    queryKey: ['/api/k9000/inventory'],
+    refetchInterval: 60000,
   });
 
   // Fetch inventory summary
@@ -173,8 +172,17 @@ export default function InventoryManagement() {
     });
   };
 
-  const items = inventoryData?.items || [];
-  const cities = Array.from(new Set(items.map(item => item.city)));
+  const allItems = rawInventoryData?.items || [];
+  const cities = Array.from(new Set(allItems.map(item => item.city)));
+  const items = allItems.filter((item: InventoryItem) => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!item.stationName?.toLowerCase().includes(q) && !item.itemType?.toLowerCase().includes(q) && !item.city?.toLowerCase().includes(q)) return false;
+    }
+    if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+    if (cityFilter !== 'all' && item.city !== cityFilter) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen luxury-bg-mesh p-4 md:p-8">

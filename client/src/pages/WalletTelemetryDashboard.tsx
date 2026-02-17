@@ -52,7 +52,13 @@ export default function WalletTelemetryDashboard() {
 
   const { data: stats, isLoading, refetch } = useQuery<{ stats: TelemetryStats }>({
     queryKey: ['/api/wallet/telemetry/stats', timeRange],
-    enabled: true
+    queryFn: async () => {
+      const res = await fetch(getApiUrl(`/api/wallet/telemetry/stats?range=${timeRange}`), {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch telemetry stats');
+      return res.json();
+    },
   });
 
   const handleCleanup = async () => {

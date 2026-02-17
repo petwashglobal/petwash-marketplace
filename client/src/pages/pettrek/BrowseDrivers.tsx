@@ -225,7 +225,18 @@ export default function BrowseDrivers() {
     },
   });
 
-  const drivers = (data?.drivers && data.drivers.length > 0) ? data.drivers : DEMO_DRIVERS;
+  const allDrivers = (data?.drivers && data.drivers.length > 0) ? data.drivers : DEMO_DRIVERS;
+  const drivers = allDrivers.filter((d: Driver) => {
+    if (filters.location) {
+      const q = filters.location.toLowerCase();
+      if (!d.serviceArea?.toLowerCase().includes(q) && !d.name?.toLowerCase().includes(q)) return false;
+    }
+    if (filters.vehicleType && d.vehicleType !== filters.vehicleType) return false;
+    if (filters.minRating > 0 && d.averageRating < filters.minRating) return false;
+    if (filters.availableNow && !d.currentlyAvailable) return false;
+    if (d.pricePerKm < filters.priceRange[0] || d.pricePerKm > filters.priceRange[1]) return false;
+    return true;
+  });
   const featuredDrivers = drivers.filter(d => d.featured).slice(0, 4);
   const regularDrivers = drivers.filter(d => !d.featured);
   

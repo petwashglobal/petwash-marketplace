@@ -67,9 +67,8 @@ export default function SparePartsManagement() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedTab, setSelectedTab] = useState<'catalog' | 'orders'>('catalog');
 
-  // Fetch spare parts catalog
-  const { data: partsData, isLoading: partsLoading } = useQuery<{ parts: SparePart[] }>({
-    queryKey: ['/api/k9000/spare-parts', { search: searchQuery, status: statusFilter !== 'all' ? statusFilter : undefined, category: categoryFilter !== 'all' ? categoryFilter : undefined }],
+  const { data: rawPartsData, isLoading: partsLoading } = useQuery<{ parts: SparePart[] }>({
+    queryKey: ['/api/k9000/spare-parts'],
     refetchInterval: 60000,
   });
 
@@ -192,9 +191,18 @@ export default function SparePartsManagement() {
     }).format(amount);
   };
 
-  const parts = partsData?.parts || [];
+  const allParts = rawPartsData?.parts || [];
   const orders = ordersData?.orders || [];
-  const categories = Array.from(new Set(parts.map(part => part.category)));
+  const categories = Array.from(new Set(allParts.map(part => part.category)));
+  const parts = allParts.filter((part: SparePart) => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!part.name?.toLowerCase().includes(q) && !part.partNumber?.toLowerCase().includes(q) && !part.category?.toLowerCase().includes(q)) return false;
+    }
+    if (statusFilter !== 'all' && part.status !== statusFilter) return false;
+    if (categoryFilter !== 'all' && part.category !== categoryFilter) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen luxury-bg-mesh p-4 md:p-8">

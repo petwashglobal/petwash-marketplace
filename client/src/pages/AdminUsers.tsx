@@ -81,12 +81,23 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
-  // Fetch users data
   const { data: usersData, isLoading } = useQuery({
-    queryKey: ['/api/admin/users', roleFilter, statusFilter, searchQuery],
+    queryKey: ['/api/admin/users'],
   });
 
-  const users = (usersData as any)?.users || [];
+  const allUsers = (usersData as any)?.users || [];
+  const users = allUsers.filter((user: User) => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(q);
+      const matchEmail = (user.email || '').toLowerCase().includes(q);
+      const matchPhone = (user.phone || '').toLowerCase().includes(q);
+      if (!matchName && !matchEmail && !matchPhone) return false;
+    }
+    if (roleFilter !== 'all' && !user.roles?.includes(roleFilter)) return false;
+    if (statusFilter !== 'all' && user.status !== statusFilter) return false;
+    return true;
+  });
   const stats = (usersData as any)?.stats || {
     total: 0,
     active: 0,

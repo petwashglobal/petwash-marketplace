@@ -32,11 +32,12 @@ export default function FranchiseInbox() {
   const [category, setCategory] = useState<string>('all');
 
   const { data: messagesData, isLoading } = useQuery<{ messages: FranchiseMessage[] }>({
-    queryKey: ['/api/franchise/inbox', franchiseId, category],
+    queryKey: ['/api/franchise/inbox'],
     enabled: !!franchiseId,
   });
 
-  const messages = messagesData?.messages || [];
+  const allMessages = messagesData?.messages || [];
+  const messages = category === 'all' ? allMessages : allMessages.filter(m => m.category === category);
 
   const acknowledgeMutation = useMutation({
     mutationFn: async (messageId: string) => {

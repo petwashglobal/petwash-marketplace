@@ -98,11 +98,22 @@ export default function AdminStations() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const { toast } = useToast();
 
-  // Fetch stations list
-  const { data: stationsData, isLoading: stationsLoading } = useQuery<{ stations: Station[] }>({
-    queryKey: ['/api/admin/stations', { search: searchQuery, status: statusFilter !== "all" ? statusFilter : undefined, city: cityFilter !== "all" ? cityFilter : undefined }],
+  const { data: rawStationsData, isLoading: stationsLoading } = useQuery<{ stations: Station[] }>({
+    queryKey: ['/api/admin/stations'],
     enabled: selectedTab === "list",
   });
+
+  const stationsData = rawStationsData ? {
+    stations: (rawStationsData.stations || []).filter((s: Station) => {
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        if (!s.name?.toLowerCase().includes(q) && !s.serialNumber?.toLowerCase().includes(q) && !s.address?.line1?.toLowerCase().includes(q)) return false;
+      }
+      if (statusFilter !== "all" && s.status !== statusFilter) return false;
+      if (cityFilter !== "all" && s.address?.city !== cityFilter) return false;
+      return true;
+    })
+  } : undefined;
 
   // Fetch alerts
   const { data: alertsData, isLoading: alertsLoading } = useQuery<{
@@ -184,7 +195,7 @@ export default function AdminStations() {
     );
   };
 
-  const uniqueCities = Array.from(new Set((stationsData?.stations || []).map(s => s.address.city))).sort();
+  const uniqueCities = Array.from(new Set((rawStationsData?.stations || []).map(s => s.address.city))).sort();
 
   return (
     <div className="min-h-screen luxury-bg-mesh">

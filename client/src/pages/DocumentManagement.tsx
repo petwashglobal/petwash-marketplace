@@ -92,12 +92,11 @@ export default function DocumentManagement() {
   
   const categories = categoriesData?.categories ?? [];
 
-  // Fetch documents with filters
   const { data: documentsData, isLoading: documentsLoading } = useQuery<{
     documents: Array<{ document: Document; category: Category }>;
     total: number;
   }>({
-    queryKey: ['/api/documents', categoryFilter, typeFilter],
+    queryKey: ['/api/documents'],
   });
 
   // Fetch access log for selected document
@@ -108,17 +107,20 @@ export default function DocumentManagement() {
 
   const documents = documentsData?.documents || [];
   
-  // Filter documents by search query
   const filteredDocuments = documents.filter((item) => {
     const doc = item.document;
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      doc.title.toLowerCase().includes(searchLower) ||
-      doc.titleHe?.toLowerCase().includes(searchLower) ||
-      doc.fileName.toLowerCase().includes(searchLower) ||
-      doc.documentNumber.toLowerCase().includes(searchLower) ||
-      doc.documentType.toLowerCase().includes(searchLower)
-    );
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = doc.title.toLowerCase().includes(searchLower) ||
+        doc.titleHe?.toLowerCase().includes(searchLower) ||
+        doc.fileName.toLowerCase().includes(searchLower) ||
+        doc.documentNumber.toLowerCase().includes(searchLower) ||
+        doc.documentType.toLowerCase().includes(searchLower);
+      if (!matchesSearch) return false;
+    }
+    if (categoryFilter !== 'all' && item.category?.id?.toString() !== categoryFilter && item.category?.slug !== categoryFilter) return false;
+    if (typeFilter !== 'all' && doc.documentType !== typeFilter) return false;
+    return true;
   });
 
   const formatFileSize = (bytes: number): string => {

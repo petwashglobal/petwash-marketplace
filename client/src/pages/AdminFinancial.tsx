@@ -35,10 +35,20 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
 
   const { data: vatDeclarations } = useQuery({
     queryKey: ['/api/accounting/vat/declarations', selectedYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/accounting/vat/declarations?year=${selectedYear}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch VAT declarations');
+      return res.json();
+    },
   });
 
   const { data: expenses } = useQuery({
     queryKey: ['/api/accounting/expenses', selectedYear, selectedMonth],
+    queryFn: async () => {
+      const res = await fetch(`/api/accounting/expenses?year=${selectedYear}&month=${selectedMonth}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch expenses');
+      return res.json();
+    },
   });
 
   const generateReport = async (type: string) => {

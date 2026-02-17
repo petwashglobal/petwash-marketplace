@@ -51,9 +51,8 @@ export default function K9000Documents() {
     queryKey: ['/api/documents/categories'],
   });
 
-  // Fetch documents list
-  const { data: documentsData, isLoading } = useQuery<{ documents: Document[] }>({
-    queryKey: ['/api/documents', { search: searchQuery, category: categoryFilter !== 'all' ? categoryFilter : undefined }],
+  const { data: rawDocumentsData, isLoading } = useQuery<{ documents: Document[] }>({
+    queryKey: ['/api/documents'],
     refetchInterval: 30000,
   });
 
@@ -164,7 +163,15 @@ export default function K9000Documents() {
     }
   };
 
-  const documents = documentsData?.documents || [];
+  const allDocuments = rawDocumentsData?.documents || [];
+  const documents = allDocuments.filter((doc: Document) => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!doc.fileName?.toLowerCase().includes(q) && !doc.title?.toLowerCase().includes(q)) return false;
+    }
+    if (categoryFilter !== 'all' && doc.category !== categoryFilter) return false;
+    return true;
+  });
   const categories = categoriesData?.categories || [];
 
   return (
