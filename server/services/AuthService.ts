@@ -1,5 +1,6 @@
 import { db } from '../db';
 import { users } from '@shared/schema';
+import { loyaltyProfiles, pointsTransactions } from '../../shared/schema-loyalty';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { redis } from './redis';
@@ -113,6 +114,8 @@ export class AuthService {
 
       await this.invalidateUserCache(user.id);
 
+      await this.ensureLoyaltyProfile(user.id);
+
       return user;
     } catch (error: any) {
       if (error?.code === '23505') {
@@ -121,6 +124,57 @@ export class AuthService {
       }
       logger.error('[AuthService] Failed to create user:', error);
       throw error;
+    }
+  }
+
+  async ensureLoyaltyProfile(userId: string): Promise<void> {
+    try {
+      const [existing] = await db.select()
+        .from(loyaltyProfiles)
+        .where(eq(loyaltyProfiles.userId, userId))
+        .limit(1);
+
+      if (existing) {
+        return;
+      }
+
+      const welcomePoints = 100;
+
+      await db.insert(loyaltyProfiles).values({
+        userId,
+        tier: 'bronze',
+        tierSince: new Date(),
+        tierProgress: 0,
+        tierThreshold: 1000,
+        points: welcomePoints,
+        lifetimePoints: welcomePoints,
+        xp: 0,
+        level: 1,
+        totalWashes: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        averageWashInterval: 21,
+        isVip: false,
+        conciergeAccess: false,
+        prioritySupport: false,
+      });
+
+      await db.insert(pointsTransactions).values({
+        userId,
+        type: 'earned',
+        amount: welcomePoints,
+        balance: welcomePoints,
+        source: 'signup',
+        description: 'Welcome bonus - server-side auto-enrollment',
+      });
+
+      logger.info('[AuthService] ✅ Loyalty profile auto-created for new user', { userId, welcomePoints });
+    } catch (error: any) {
+      if (error?.code === '23505') {
+        logger.info('[AuthService] Loyalty profile already exists (concurrent creation)', { userId });
+        return;
+      }
+      logger.error('[AuthService] Failed to auto-create loyalty profile (non-blocking)', { userId, error });
     }
   }
 
@@ -135,6 +189,7 @@ export class AuthService {
     try {
       const existing = await this.getUserById(firebaseUid);
       if (existing) {
+        await this.ensureLoyaltyProfile(existing.id);
         return { user: existing, isNewUser: false };
       }
 
