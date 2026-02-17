@@ -7,6 +7,9 @@ import { providerIntakeQueue } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { createHash } from 'crypto';
+import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
+import { logProviderApplication } from '../services/googleSheetsIntegration';
 
 const router = Router();
 
@@ -341,19 +344,69 @@ router.post('/submit', async (req, res) => {
       })
       .returning();
     
+    const contentHash = createHash('sha256').update(JSON.stringify({
+      intakeId,
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phoneNumber: data.phoneNumber,
+      providerType: data.providerType,
+      selectedPlatforms: data.selectedPlatforms,
+      city: data.city,
+      submittedAt: new Date().toISOString()
+    })).digest('hex');
+    
     logger.info('[Provider Intake] Application accepted:', { 
       intakeId, 
       email: data.email, 
       providerType: data.providerType,
       selectedPlatforms: data.selectedPlatforms,
-      platformCount: data.selectedPlatforms?.length || 0
+      platformCount: data.selectedPlatforms?.length || 0,
+      contentHash: contentHash.substring(0, 16) + '...'
     });
+    
+    try {
+      const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+      await sendProviderEnrollmentConfirmation(
+        data.email.toLowerCase(),
+        data.firstName,
+        data.lastName,
+        data.selectedPlatforms || [data.providerType],
+        record.id,
+        language
+      );
+      logger.info('[Provider Intake] Confirmation email sent', { email: data.email, intakeId });
+    } catch (emailError) {
+      logger.error('[Provider Intake] Failed to send confirmation email (non-blocking)', { emailError, intakeId });
+    }
+    
+    try {
+      await logProviderApplication({
+        applicationId: intakeId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phoneNumber,
+        providerType: data.providerType,
+        city: data.city,
+        country: 'Israel',
+        selfiePhotoUrl: '',
+        governmentIdUrl: '',
+        biometricStatus: 'pending',
+        biometricScore: '0',
+        applicationStatus: 'Accepted - Pending Verification',
+      });
+      logger.info('[Provider Intake] Logged to Google Sheets', { intakeId });
+    } catch (sheetsError) {
+      logger.error('[Provider Intake] Failed to log to Google Sheets (non-blocking)', { sheetsError, intakeId });
+    }
     
     res.json({
       success: true,
       message: 'Application accepted! Please complete identity verification to start.',
       intakeId,
-      status: 'accepted'
+      status: 'accepted',
+      contentHash: contentHash.substring(0, 16)
     });
   } catch (error: any) {
     if (error.name === 'ZodError') {
