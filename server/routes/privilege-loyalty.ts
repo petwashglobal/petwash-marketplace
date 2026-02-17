@@ -30,8 +30,10 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       pets, idType, idNumber,
       referralSource, referralCode,
       marketingConsent, smsConsent, termsConsent,
-      language, captchaToken
+      language, captchaToken, traceId
     } = req.body;
+
+    logger.info('[Privilege Register] Processing', { traceId, email });
 
     if (!firstName || !lastName || !email || !phone || !dob || !termsConsent) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -198,7 +200,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
     try {
       errMsg = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error, Object.getOwnPropertyNames(error)));
     } catch { errMsg = String(error); }
-    logger.error(`[Privilege] Registration failed: ${errMsg}`);
+    logger.error(`[Privilege] Registration failed: ${errMsg}`, { traceId: req.body?.traceId });
     if (errMsg?.includes('duplicate key') || errMsg?.includes('unique constraint')) {
       return res.status(409).json({ error: 'This email is already registered in PetWash Privilege' });
     }

@@ -208,6 +208,8 @@ export default function ProviderOnboarding() {
   };
 
   const handleSubmit = async () => {
+    const traceId = 'PROV-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
+    console.log('[Provider Onboarding Trace]', { traceId, timestamp: new Date().toISOString() });
     if (!user) {
       toast({
         variant: 'destructive',
@@ -291,8 +293,10 @@ export default function ProviderOnboarding() {
       if (drivingLicenseExpiry) formData.append('drivingLicenseExpiry', drivingLicenseExpiry);
       
       if (businessLicense) formData.append('businessLicense', businessLicense);
+      formData.append('traceId', traceId);
 
       console.log('[ProviderOnboarding] Submitting application with fields:', {
+        traceId,
         firstName, lastName, phoneNumber: '***', idNumber: idNumber ? 'present' : 'empty',
         city, country, providerType: providerTypes[0], providerTypes,
         hasSelfie: !!selfiePhoto, hasGovId: !!governmentId,
@@ -308,7 +312,7 @@ export default function ProviderOnboarding() {
       });
 
       const data = await response.json();
-      console.log('[ProviderOnboarding] Response:', { status: response.status, ok: response.ok, data });
+      console.log('[ProviderOnboarding] Response:', { traceId, status: response.status, ok: response.ok, data });
 
       if (response.ok) {
         setApplicationSubmitted(true);
@@ -318,7 +322,7 @@ export default function ProviderOnboarding() {
           description: t.successMessage
         });
       } else {
-        console.error('[ProviderOnboarding] Submit failed:', { status: response.status, error: data.error });
+        console.error('[ProviderOnboarding] Submit failed:', { traceId, status: response.status, error: data.error });
         toast({
           variant: 'destructive',
           title: t.error,
@@ -326,7 +330,7 @@ export default function ProviderOnboarding() {
         });
       }
     } catch (error: any) {
-      console.error('[ProviderOnboarding] Submit exception:', error?.message || error);
+      console.error('[ProviderOnboarding] Submit exception:', { traceId, error: error?.message || error });
       toast({
         variant: 'destructive',
         title: t.error,

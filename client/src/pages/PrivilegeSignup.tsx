@@ -184,6 +184,8 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
 
   const handleSubmit = async () => {
     if (!validateStep(5)) return;
+    const traceId = 'PRIV-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
+    console.log('[Privilege Registration Trace]', { traceId, timestamp: new Date().toISOString() });
     setLoading(true);
     try {
       const formData = new FormData();
@@ -207,6 +209,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       formData.append('termsConsent', String(termsConsent));
       formData.append('language', language);
       if (captchaToken) formData.append('captchaToken', captchaToken);
+      formData.append('traceId', traceId);
 
       const response = await fetch(getApiUrl('/api/privilege/register'), { method: 'POST', body: formData });
       if (!response.ok) {
@@ -216,6 +219,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
+      console.error('[Privilege Registration Trace] Failed', { traceId, error: error?.message });
       toast({ variant: 'destructive', title: 'Error', description: error.message || 'Something went wrong' });
     } finally {
       setLoading(false);

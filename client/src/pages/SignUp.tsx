@@ -158,6 +158,8 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const traceId = 'REG-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
+    console.log('[Registration Trace]', { traceId, method: 'email', timestamp: new Date().toISOString() });
     logger.debug("Form submit triggered");
     logger.debug("Form data", { 
       email: formData.email, 
@@ -277,7 +279,8 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           pushNotifications: formData.pushNotifications,
           acceptedTerms: formData.acceptedTerms,
           consentTimestamp,
-          captchaToken
+          captchaToken,
+          traceId
         })
       });
       
@@ -393,7 +396,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       }
 
     } catch (error: any) {
-      logger.error("Signup error", { code: error?.code, message: error?.message });
+      logger.error("Signup error", { traceId, code: error?.code, message: error?.message });
       
       // Firebase error messages - internationalized for all languages
       let errorMessage: string;

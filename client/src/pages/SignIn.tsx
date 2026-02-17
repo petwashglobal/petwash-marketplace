@@ -584,6 +584,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   };
 
   const performOAuthLogin = async (provider: SocialProvider) => {
+    const traceId = 'AUTH-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
+    console.log('[Auth Trace]', { traceId, method: provider, device: getDeviceInfo().device, browser: getDeviceInfo().browser, timestamp: new Date().toISOString() });
+    sessionStorage.setItem('pw_auth_trace', traceId);
     try {
       setSocialLoading(provider);
       
@@ -636,22 +639,24 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         return;
       }
       
-      if (isIOSDevice) {
-        logger.info(`[Auth] iOS device detected, using redirect auth for ${provider} (popups unreliable on iOS Safari)`);
-        await signInWithBestMethod(auth, authProvider, 'redirect');
-        return;
-      }
-      
       try {
-        logger.info(`[Auth] Using popup auth for ${provider} (desktop browser)`);
+        if (isIOSDevice) {
+          logger.info(`[Auth] iOS device detected, trying popup first for ${provider} (2026 best practice)`);
+        } else {
+          logger.info(`[Auth] Using popup auth for ${provider} (desktop browser)`);
+        }
         userCredential = await signInWithPopup(auth, authProvider);
       } catch (popupErr: any) {
-        if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/cancelled-popup-request') {
-          logger.info(`[Auth] Popup blocked/closed for ${provider}, falling back to redirect`);
-          await signInWithBestMethod(auth, authProvider, 'redirect');
-          return;
-        } else if (popupErr.code === 'auth/operation-not-supported-in-this-environment') {
-          logger.info(`[Auth] Popup not supported, falling back to redirect for ${provider}`);
+        const fallbackCodes = [
+          'auth/popup-blocked',
+          'auth/popup-closed-by-user',
+          'auth/cancelled-popup-request',
+          'auth/operation-not-supported-in-this-environment',
+          'auth/internal-error',
+        ];
+        if (fallbackCodes.includes(popupErr.code)) {
+          logger.info(`[Auth] Popup failed (${popupErr.code}) for ${provider}, falling back to redirect`, { traceId });
+          sessionStorage.setItem('pw_auth_pending_redirect', 'true');
           await signInWithBestMethod(auth, authProvider, 'redirect');
           return;
         } else {
@@ -683,7 +688,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ idToken, traceId }),
       });
 
       if (!sessionResponse.ok) {
@@ -769,6 +774,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         navigate(redirectPath);
       }, 1000);
     } catch (error: any) {
+      logger.error('[Auth Trace] Failed', { traceId, error: error?.code || error?.message });
       logger.error("Social login error:", error);
       
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {

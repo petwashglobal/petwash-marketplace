@@ -9705,8 +9705,11 @@ self.addEventListener('notificationclick', (event) => {
         pushNotifications,
         acceptedTerms,
         consentTimestamp,
-        captchaToken
+        captchaToken,
+        traceId
       } = req.body;
+
+      logger.info('[CreateProfile] Processing', { traceId, uid, email });
 
       if (captchaToken) {
         const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
@@ -9811,7 +9814,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, uid });
       
     } catch (error: any) {
-      logger.error('Create profile error', error);
+      logger.error('Create profile error', { traceId: req.body?.traceId, error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
   });

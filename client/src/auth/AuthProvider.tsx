@@ -164,14 +164,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await setPersistenceWithFallback();
 
       try {
-        const REDIRECT_TIMEOUT = 10_000;
+        const pendingRedirect = sessionStorage.getItem('pw_auth_pending_redirect') === 'true';
+        const REDIRECT_TIMEOUT = pendingRedirect ? 15_000 : 10_000;
+        
+        if (pendingRedirect) {
+          logger.info('[AuthProvider] Pending redirect detected, waiting up to 15s for result');
+        }
+        
         const redirectResult = await Promise.race([
           getRedirectResult(auth),
           new Promise<null>((resolve) => setTimeout(() => {
-            logger.warn('[AuthProvider] getRedirectResult timed out after 10s');
+            logger.warn(`[AuthProvider] getRedirectResult timed out after ${REDIRECT_TIMEOUT / 1000}s`);
             resolve(null);
           }, REDIRECT_TIMEOUT)),
         ]);
+        
+        sessionStorage.removeItem('pw_auth_pending_redirect');
+        
         if (redirectResult?.user) {
           logger.info('[AuthProvider] Redirect sign-in completed', {
             email: redirectResult.user.email,
@@ -180,10 +189,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await ensureServerSession(redirectResult.user);
           sessionCreatedForUid.current = redirectResult.user.uid;
           sessionStorage.setItem('pw_redirect_handled', 'true');
+        } else if (pendingRedirect) {
+          logger.warn('[AuthProvider] Pending redirect returned no user - auth may have failed');
         }
       } catch (err: any) {
+        sessionStorage.removeItem('pw_auth_pending_redirect');
         if (err?.code !== 'auth/popup-closed-by-user') {
-          logger.error('[AuthProvider] Redirect result error', err);
+          logger.error('[AuthProvider] Redirect result error', { code: err?.code, message: err?.message });
         }
       }
 

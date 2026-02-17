@@ -275,6 +275,7 @@ router.post('/apply', upload.fields([
       drivingLicenseNumber,
       drivingLicenseClass,
       drivingLicenseExpiry,
+      traceId,
     } = req.body;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -562,6 +563,7 @@ router.post('/apply', upload.fields([
     }
 
     logger.info(`[Provider Onboarding] Application ${autoApproved ? 'AUTO-APPROVED' : 'submitted'}: ${applicationId} by ${authenticatedUser.uid}`, {
+      traceId,
       biometricStatus,
       autoApproved,
       providerId
@@ -614,6 +616,7 @@ router.post('/apply', upload.fields([
     });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Application submission error', {
+      traceId: req.body?.traceId,
       message: error.message,
       code: error.code,
       detail: error.detail,
