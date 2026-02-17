@@ -164,7 +164,7 @@ export function WashPackages({ language }: WashPackagesProps) {
   return (
     <section 
       id="packages"
-      className="py-20 sm:py-28 lg:py-32 relative overflow-hidden"
+      className="py-12 sm:py-20 lg:py-28 relative overflow-hidden"
       style={{ background: '#FFFFFF' }}
     >
       <div className="absolute inset-0 opacity-[0.02]" style={{
@@ -327,8 +327,8 @@ export function WashPackages({ language }: WashPackagesProps) {
         </div>
 
         <div className="mt-8 sm:mt-10 flex flex-col items-center gap-2">
-          <div className="flex items-center gap-2">
-            <Lock className="w-3 h-3 text-[#c9a96e]" strokeWidth={1.5} />
+          <div className="flex items-center gap-2 text-center">
+            <Lock className="w-3 h-3 text-[#c9a96e] shrink-0" strokeWidth={1.5} />
             <span className="text-[9px] sm:text-[10px] tracking-[0.12em] uppercase text-[#999] font-medium">
               {language === 'he' ? 'אמצעי תשלום מאובטחים' : 'Secure Payment Methods'}
             </span>

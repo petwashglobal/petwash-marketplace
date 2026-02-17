@@ -360,7 +360,7 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="min-h-screen relative bg-white">
-        <div className="relative z-10 w-full max-w-lg mx-auto px-4 sm:px-6 pt-6 pb-8">
+        <div className="relative z-10 w-full max-w-lg md:max-w-xl lg:max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-8">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}

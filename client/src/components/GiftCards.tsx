@@ -43,7 +43,7 @@ export function GiftCards({ language }: GiftCardsProps) {
   return (
     <section 
       id="gift-cards"
-      className="py-20 sm:py-28 lg:py-32 relative overflow-hidden"
+      className="py-12 sm:py-20 lg:py-28 relative overflow-hidden"
       style={{ background: '#FAFAF8' }}
     >
       <div className="absolute inset-0 opacity-[0.015]" style={{

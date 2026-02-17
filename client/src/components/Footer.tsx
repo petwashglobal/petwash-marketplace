@@ -13,7 +13,7 @@ export function Footer({ language }: FooterProps) {
     <footer className="footer bg-white border-t border-gray-200 py-12 px-4" role="contentinfo">
       <div className="max-w-6xl mx-auto">
         {/* Main Footer Content */}
-        <div className="grid md:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mb-8">
           
           {/* Company Information */}
           <div className="text-center md:text-left">
@@ -86,7 +86,7 @@ export function Footer({ language }: FooterProps) {
           </div>
 
           {/* Contact Links */}
-          <div className="text-center md:text-right">
+          <div className="text-center md:text-right sm:col-span-2 md:col-span-1">
             <h4 className="font-bold text-black mb-4">
               {t('footer.contact', language)}
             </h4>
