@@ -1002,11 +1002,28 @@ router.get('/search/providers', async (req, res) => {
       });
     }
 
-    // Sort results
-    const sortByStr = (sortBy as string) || 'distance';
+    const sortByStr = (sortBy as string) || 'bestMatch';
+    
+    const computeMatchScore = (provider: typeof filteredResults[0]) => {
+      let score = 0;
+      const rating = provider.rating || 0;
+      score += (rating / 5) * 40;
+      const reviews = Math.min(provider.reviewCount, 100);
+      score += (reviews / 100) * 20;
+      if (provider.distanceKm !== null) {
+        const distScore = Math.max(0, 1 - (provider.distanceKm / 50));
+        score += distScore * 30;
+      }
+      if (provider.bio && provider.bio.length > 50) score += 5;
+      if (provider.profilePhotoUrl) score += 5;
+      return score;
+    };
+
     filteredResults.sort((a, b) => {
+      if (sortByStr === 'bestMatch') {
+        return computeMatchScore(b) - computeMatchScore(a);
+      }
       if (sortByStr === 'distance' || sortByStr === 'proximity') {
-        // Closest first, providers without coords go last
         const distA = a.distanceKm ?? 9999;
         const distB = b.distanceKm ?? 9999;
         if (distA !== distB) return distA - distB;
@@ -1023,11 +1040,7 @@ router.get('/search/providers', async (req, res) => {
       if (sortByStr === 'reviews') {
         return b.reviewCount - a.reviewCount;
       }
-      // Default: distance if available, else rating
-      const distA = a.distanceKm ?? 9999;
-      const distB = b.distanceKm ?? 9999;
-      if (distA !== distB) return distA - distB;
-      return (b.rating || 0) - (a.rating || 0);
+      return computeMatchScore(b) - computeMatchScore(a);
     });
     
     // Apply pagination

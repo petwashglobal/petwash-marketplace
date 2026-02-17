@@ -319,6 +319,8 @@ function GooglePlacesLocationInput({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -429,27 +431,66 @@ function GooglePlacesLocationInput({
   }, []);
 
   useEffect(() => {
+    if (scriptLoaded && window.google?.maps?.places) {
+      sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
+    }
+  }, [scriptLoaded]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!scriptLoaded || !inputRef.current || autocompleteRef.current) return;
 
     try {
+      sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
+      const israelBounds = new google.maps.LatLngBounds(
+        { lat: 29.5, lng: 34.2 },
+        { lat: 33.3, lng: 35.9 }
+      );
+      
       autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
         types: ['geocode'],
         componentRestrictions: { country: 'il' },
+        bounds: israelBounds,
         fields: ['address_components', 'formatted_address', 'geometry', 'name'],
+        sessionToken: sessionTokenRef.current,
       });
 
       autocompleteRef.current.addListener('place_changed', () => {
         const place = autocompleteRef.current?.getPlace();
         if (!place) return;
         
+        let streetNumber = '';
+        let route = '';
         let cityName = '';
         let neighborhood = '';
+        let postalCode = '';
+        let country = '';
+        
         place.address_components?.forEach((component) => {
+          if (component.types.includes('street_number')) {
+            streetNumber = component.long_name;
+          }
+          if (component.types.includes('route')) {
+            route = component.long_name;
+          }
           if (component.types.includes('locality')) {
             cityName = component.long_name;
           }
           if (component.types.includes('sublocality') || component.types.includes('neighborhood')) {
             neighborhood = component.long_name;
+          }
+          if (component.types.includes('postal_code')) {
+            postalCode = component.long_name;
+          }
+          if (component.types.includes('country')) {
+            country = component.long_name;
           }
         });
         
@@ -464,6 +505,12 @@ function GooglePlacesLocationInput({
             place.geometry.location.lng()
           );
         }
+        
+        sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
+        if (autocompleteRef.current) {
+          autocompleteRef.current.setOptions({ sessionToken: sessionTokenRef.current });
+        }
+        
         setShowCitySuggestions(false);
       });
       
@@ -493,7 +540,13 @@ function GooglePlacesLocationInput({
         placeholder={placeholder}
         value={value}
         onChange={(e) => {
-          onChange(e.target.value);
+          const newValue = e.target.value;
+          if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+          }
+          debounceTimerRef.current = setTimeout(() => {
+            onChange(newValue);
+          }, 300);
           if (!autocompleteWorking || !scriptLoaded) {
             setShowCitySuggestions(true);
           }
@@ -1543,6 +1596,7 @@ interface ProviderCardProps {
   distance?: string;
   verified: boolean;
   specialties?: string[];
+  bio?: string;
   theme?: 'pink' | 'emerald' | 'blue' | 'purple' | 'amber';
   onClick: () => void;
 }
@@ -1560,6 +1614,7 @@ export function MadPawsProviderCard({
   distance,
   verified,
   specialties = [],
+  bio,
   theme = 'pink',
   onClick,
 }: ProviderCardProps) {
@@ -1615,10 +1670,14 @@ export function MadPawsProviderCard({
           {name}
         </h3>
 
-        <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-3">
-          <MapPin className="h-4 w-4" />
-          <span>{location}</span>
+        <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-2">
+          <MapPin className="h-4 w-4 shrink-0" />
+          <span className="truncate">{location}</span>
         </div>
+
+        {bio && (
+          <p className="text-xs text-gray-500 mb-2 line-clamp-2 leading-relaxed">{bio}</p>
+        )}
 
         {specialties.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-3">

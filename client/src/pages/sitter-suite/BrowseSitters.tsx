@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { Star, MapPin, Shield, Heart, Sparkles, ArrowRight, CheckCircle, Camera, Users, Wallet, Briefcase } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Star, MapPin, Shield, Heart, Sparkles, ArrowRight, CheckCircle, Camera, Users, Wallet, Briefcase, SlidersHorizontal, X, ArrowUpDown, ChevronDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLocation } from "wouter";
 import { useSEO, pageSEO } from "@/lib/seo";
 import { useLanguage } from "@/lib/languageStore";
@@ -96,6 +98,18 @@ export default function BrowseSitters() {
   };
   
   const [searchParams, setSearchParams] = useState<SearchParams | null>(getInitialSearchParams);
+  const [sortBy, setSortBy] = useState<string>('bestMatch');
+  const [maxPrice, setMaxPrice] = useState<number>(500);
+  const [minRating, setMinRating] = useState<number>(0);
+  const [activeFilters, setActiveFilters] = useState(0);
+
+  const updateFilterCount = (price: number, rating: number, sort: string) => {
+    let count = 0;
+    if (price < 500) count++;
+    if (rating > 0) count++;
+    if (sort !== 'bestMatch') count++;
+    setActiveFilters(count);
+  };
 
   // Build query string for API
   const buildQueryString = () => {
@@ -104,7 +118,9 @@ export default function BrowseSitters() {
     if (searchParams?.location) params.set('city', searchParams.location);
     if (searchParams?.lat !== null && searchParams?.lat !== undefined) params.set('lat', String(searchParams.lat));
     if (searchParams?.lng !== null && searchParams?.lng !== undefined) params.set('lng', String(searchParams.lng));
-    params.set('sortBy', 'distance');
+    params.set('sortBy', sortBy);
+    if (maxPrice < 500) params.set('maxPrice', String(maxPrice));
+    if (minRating > 0) params.set('minRating', String(minRating));
     if (searchParams?.service) params.set('serviceType', searchParams.service);
     if (searchParams?.startDate) params.set('startDate', format(searchParams.startDate, 'yyyy-MM-dd'));
     if (searchParams?.endDate) params.set('endDate', format(searchParams.endDate, 'yyyy-MM-dd'));
@@ -113,7 +129,7 @@ export default function BrowseSitters() {
   };
 
   const { data, isLoading, refetch } = useQuery<SearchResponse>({
-    queryKey: ["/api/marketplace-bookings/search/providers", searchParams],
+    queryKey: ["/api/marketplace-bookings/search/providers", searchParams?.location, searchParams?.lat, searchParams?.lng, searchParams?.service, sortBy, maxPrice, minRating],
     queryFn: async () => {
       try {
         const queryString = buildQueryString();
@@ -181,7 +197,7 @@ export default function BrowseSitters() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
             <div className="flex-1">
               <h2 className="text-2xl font-semibold text-gray-900">
                 {isHebrew ? 'שמרטפים זמינים' : 'Available Sitters'}
@@ -202,6 +218,137 @@ export default function BrowseSitters() {
                 {isHebrew ? 'תצוגת מפה' : 'Map View'}
               </Button>
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-full gap-1.5 h-9 text-sm">
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  {sortBy === 'bestMatch' ? (isHebrew ? 'התאמה מיטבית' : 'Best Match') :
+                   sortBy === 'distance' ? (isHebrew ? 'מרחק' : 'Distance') :
+                   sortBy === 'price' ? (isHebrew ? 'מחיר' : 'Price') :
+                   sortBy === 'rating' ? (isHebrew ? 'דירוג' : 'Rating') :
+                   (isHebrew ? 'ביקורות' : 'Reviews')}
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-1" align="start">
+                {[
+                  { id: 'bestMatch', label: isHebrew ? 'התאמה מיטבית' : 'Best Match', labelDesc: isHebrew ? 'מרחק + דירוג' : 'Distance + Rating' },
+                  { id: 'distance', label: isHebrew ? 'הקרוב ביותר' : 'Nearest First', labelDesc: '' },
+                  { id: 'price', label: isHebrew ? 'מחיר נמוך' : 'Lowest Price', labelDesc: '' },
+                  { id: 'rating', label: isHebrew ? 'דירוג גבוה' : 'Highest Rated', labelDesc: '' },
+                  { id: 'reviews', label: isHebrew ? 'הכי נבדק' : 'Most Reviewed', labelDesc: '' },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      setSortBy(option.id);
+                      updateFilterCount(maxPrice, minRating, option.id);
+                    }}
+                    className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-colors ${
+                      sortBy === option.id
+                        ? 'bg-pink-50 text-pink-700 font-medium'
+                        : 'hover:bg-gray-50 text-gray-700'
+                    }`}
+                  >
+                    {option.label}
+                    {option.labelDesc && (
+                      <span className="block text-xs text-gray-400">{option.labelDesc}</span>
+                    )}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={`rounded-full gap-1.5 h-9 text-sm ${maxPrice < 500 ? 'border-pink-300 bg-pink-50 text-pink-700' : ''}`}>
+                  ₪ {isHebrew ? 'מחיר' : 'Price'}
+                  {maxPrice < 500 && <span className="font-semibold">{isHebrew ? `עד ₪${maxPrice}` : `≤₪${maxPrice}`}</span>}
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-4" align="start">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">
+                      {isHebrew ? 'מחיר מקסימלי ללילה' : 'Max price per night'}
+                    </span>
+                    <span className="text-lg font-bold text-pink-600">₪{maxPrice}</span>
+                  </div>
+                  <Slider
+                    value={[maxPrice]}
+                    onValueChange={(val) => {
+                      setMaxPrice(val[0]);
+                      updateFilterCount(val[0], minRating, sortBy);
+                    }}
+                    min={30}
+                    max={500}
+                    step={10}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400">
+                    <span>₪30</span>
+                    <span>₪500+</span>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={`rounded-full gap-1.5 h-9 text-sm ${minRating > 0 ? 'border-pink-300 bg-pink-50 text-pink-700' : ''}`}>
+                  <Star className="h-3.5 w-3.5" />
+                  {minRating > 0 
+                    ? `${minRating}+ ${isHebrew ? 'כוכבים' : 'stars'}`
+                    : (isHebrew ? 'דירוג' : 'Rating')
+                  }
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="start">
+                {[
+                  { value: 0, label: isHebrew ? 'הכל' : 'Any Rating' },
+                  { value: 4.5, label: '4.5+ ⭐' },
+                  { value: 4.0, label: '4.0+ ⭐' },
+                  { value: 3.5, label: '3.5+ ⭐' },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setMinRating(option.value);
+                      updateFilterCount(maxPrice, option.value, sortBy);
+                    }}
+                    className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-colors ${
+                      minRating === option.value
+                        ? 'bg-pink-50 text-pink-700 font-medium'
+                        : 'hover:bg-gray-50 text-gray-700'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+
+            {activeFilters > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="rounded-full gap-1 h-9 text-xs text-gray-500 hover:text-gray-700"
+                onClick={() => {
+                  setSortBy('bestMatch');
+                  setMaxPrice(500);
+                  setMinRating(0);
+                  setActiveFilters(0);
+                }}
+              >
+                <X className="h-3 w-3" />
+                {isHebrew ? 'נקה פילטרים' : 'Clear filters'}
+              </Button>
+            )}
           </div>
 
           {isLoading ? (
@@ -314,7 +461,8 @@ export default function BrowseSitters() {
                     distance={provider.distanceKm !== null ? `${provider.distanceKm} ${isHebrew ? 'ק״מ' : 'km'}` : undefined}
                     verified={true}
                     theme="pink"
-                    specialties={provider.acceptedPetTypes?.slice(0, 2).map(t => t === 'dog' ? (isHebrew ? 'כלבים' : 'Dogs') : t === 'cat' ? (isHebrew ? 'חתולים' : 'Cats') : t) || []}
+                    bio={provider.bio || undefined}
+                    specialties={provider.acceptedPetTypes?.slice(0, 2).map(pt => pt === 'dog' ? (isHebrew ? 'כלבים' : 'Dogs') : pt === 'cat' ? (isHebrew ? 'חתולים' : 'Cats') : pt) || []}
                     onClick={() => setLocation(`/sitter-suite/sitters/${provider.id}`)}
                   />
                 );
