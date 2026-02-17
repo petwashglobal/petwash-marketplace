@@ -356,39 +356,31 @@ export default function ProviderApplicationForm() {
     return (
       <div className={`min-h-screen relative overflow-hidden ${isHebrew ? 'rtl' : 'ltr'}`}>
         {/* Luxury Dark Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900" />
-        <div className="absolute inset-0 opacity-40" style={{
-          backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(52, 211, 153, 0.25) 0%, transparent 50%), radial-gradient(circle at 70% 70%, rgba(16, 185, 129, 0.2) 0%, transparent 50%)'
-        }} />
+        <div className="absolute inset-0 bg-white" />
         
         <div className="relative z-10 py-12 px-4">
           <div className="max-w-2xl mx-auto">
             <div 
-              className="rounded-3xl p-10 text-center backdrop-blur-xl"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)'
-              }}
+              className="rounded-3xl p-10 text-center bg-white border border-gray-200 shadow-lg"
             >
               <div className="mx-auto w-24 h-24 bg-gradient-to-br from-emerald-400 to-green-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-emerald-500/30">
                 <CheckCircle2 className="h-14 w-14 text-white" />
               </div>
-              <h2 className="text-3xl font-bold text-white mb-4">
+              <h2 className="text-3xl font-bold text-black mb-4">
                 {t.successTitle}
               </h2>
-              <p className="text-lg text-gray-300 mb-8">
+              <p className="text-lg text-gray-700 mb-8">
                 {t.successMessage}
               </p>
               
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-white/10">
+              <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-200">
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <Crown className="h-6 w-6 text-amber-400" />
-                  <span className="font-semibold text-lg text-white">
+                  <span className="font-semibold text-lg text-black">
                     {isHebrew ? 'מה הלאה?' : 'What\'s Next?'}
                   </span>
                 </div>
-                <ol className={`text-${isHebrew ? 'right' : 'left'} space-y-3 text-gray-300`}>
+                <ol className={`text-${isHebrew ? 'right' : 'left'} space-y-3 text-gray-700`}>
                   <li className="flex items-start gap-3">
                     <span className="bg-gradient-to-br from-amber-400 to-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
                     <span>{isHebrew ? 'השלם את אימות הזהות הביומטרי' : 'Complete biometric identity verification'}</span>
@@ -421,17 +413,14 @@ export default function ProviderApplicationForm() {
   return (
     <div className={`min-h-screen relative overflow-hidden ${isHebrew ? 'rtl' : 'ltr'}`}>
       {/* Luxury Dark Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
-      <div className="absolute inset-0 opacity-30" style={{
-        backgroundImage: 'radial-gradient(circle at 20% 30%, rgba(198, 166, 100, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(245, 158, 11, 0.15) 0%, transparent 50%)'
-      }} />
+      <div className="absolute inset-0 bg-white" />
       
       <div className="relative z-10 py-8 px-4">
         <div className="max-w-4xl mx-auto">
         
           {/* Header */}
           <div className="text-center mb-10">
-            <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6">
+            <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-black transition-colors mb-6">
               <ArrowLeft className={`h-4 w-4 ${isHebrew ? 'rotate-180' : ''}`} />
               {isHebrew ? 'חזרה' : 'Back'}
             </Link>
@@ -439,18 +428,18 @@ export default function ProviderApplicationForm() {
             {/* Luxury Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 mb-6">
               <Sparkles className="w-4 h-4 text-amber-400" />
-              <span className="text-amber-300 text-sm font-medium">
+              <span className="text-amber-600 text-sm font-medium">
                 {isHebrew ? 'הצטרף לצוות המובחר' : 'Join Our Elite Team'}
               </span>
             </div>
             
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-black mb-4">
               {isHebrew ? 'הפוך לספק ' : 'Become a '}
               <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
                 ⁦Pet Wash™⁩
               </span>
             </h1>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-700 max-w-2xl mx-auto">
               {t.subtitle}
             </p>
           </div>
@@ -467,7 +456,7 @@ export default function ProviderApplicationForm() {
                           ? 'bg-gradient-to-br from-emerald-400 to-green-600 shadow-lg shadow-emerald-500/30'
                           : step === s 
                             ? 'bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-500/30'
-                            : 'bg-slate-700/50 border border-slate-600 text-slate-400'
+                            : 'bg-gray-100 border border-gray-300 text-gray-500'
                       }`}
                     >
                       {step > s ? <Check className="h-6 w-6 text-white" /> : <span className={step === s ? 'text-white' : ''}>{s}</span>}
@@ -479,7 +468,7 @@ export default function ProviderApplicationForm() {
                     <div className={`w-8 sm:w-16 lg:w-24 h-0.5 mx-2 sm:mx-4 transition-all duration-300 ${
                       step > s 
                         ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' 
-                        : 'bg-slate-700'
+                        : 'bg-gray-300'
                     }`} />
                   )}
                 </div>
@@ -487,19 +476,14 @@ export default function ProviderApplicationForm() {
             </div>
             
             {/* Progress Text */}
-            <p className="text-center text-amber-400 mt-6 font-medium">
+            <p className="text-center text-amber-600 mt-6 font-medium">
               {isHebrew ? `שלב ${step} מתוך 5` : `Step ${step} of 5`}
             </p>
           </div>
 
           {/* Luxury Glass Form Card */}
           <div 
-            className="rounded-3xl p-6 md:p-10 backdrop-blur-xl"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)'
-            }}
+            className="rounded-3xl p-6 md:p-10 bg-white border border-gray-200 shadow-sm"
           >
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
@@ -539,24 +523,24 @@ export default function ProviderApplicationForm() {
                       <Home className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-black">
                         {t.step1Title}
                       </h2>
-                      <p className="text-gray-400 text-sm">{t.step1Desc}</p>
+                      <p className="text-gray-600 text-sm">{t.step1Desc}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between mb-2">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/15 border border-blue-400/30">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200">
                       <Sparkles className="h-4 w-4 text-blue-400" />
-                      <span className="text-blue-300 text-sm font-medium">
+                      <span className="text-blue-700 text-sm font-medium">
                         {isHebrew ? 'ניתן לבחור מספר שירותים!' : 'You can select multiple services!'}
                       </span>
                     </div>
                     {selectedPlatforms.length > 0 && (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/30">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
                         <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                        <span className="text-emerald-300 text-sm font-bold">
+                        <span className="text-emerald-700 text-sm font-bold">
                           {selectedPlatforms.length} {isHebrew ? 'נבחרו' : 'selected'}
                         </span>
                       </div>
@@ -575,29 +559,29 @@ export default function ProviderApplicationForm() {
                           className={`relative p-6 rounded-2xl border transition-all duration-300 text-${isHebrew ? 'right' : 'left'} ${
                             isSelected 
                               ? `border-amber-500/50 bg-gradient-to-br ${platform.color} text-white shadow-xl shadow-amber-500/20 scale-[1.02]` 
-                              : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10 hover:shadow-lg backdrop-blur-sm'
+                              : 'border-gray-200 bg-white hover:border-gray-400 hover:shadow-md'
                           }`}
                           data-testid={`platform-${platform.id}`}
                         >
                           <div className={`absolute top-3 ${isHebrew ? 'left-3' : 'right-3'} w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300 ${
                             isSelected 
                               ? 'bg-white/30' 
-                              : 'bg-white/10 border border-white/20'
+                              : 'bg-gray-100 border border-gray-300'
                           }`}>
                             {isSelected ? (
                               <Check className="h-5 w-5 text-white" />
                             ) : (
-                              <div className="w-4 h-4 rounded border-2 border-white/30" />
+                              <div className="w-4 h-4 rounded border-2 border-gray-400" />
                             )}
                           </div>
-                          <Icon className={`h-10 w-10 mb-3 ${isSelected ? 'text-white' : 'text-gray-300'}`} />
-                          <h3 className={`font-bold text-lg ${isSelected ? 'text-white' : 'text-white'}`}>
+                          <Icon className={`h-10 w-10 mb-3 ${isSelected ? 'text-white' : 'text-gray-600'}`} />
+                          <h3 className={`font-bold text-lg ${isSelected ? 'text-white' : 'text-black'}`}>
                             {isHebrew ? platform.nameHe : platform.nameEn}
                           </h3>
-                          <p className={`text-sm mt-1 ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
+                          <p className={`text-sm mt-1 ${isSelected ? 'text-white/80' : 'text-gray-600'}`}>
                             {isHebrew ? platform.descHe : platform.descEn}
                           </p>
-                          <div className={`mt-3 text-sm ${isSelected ? 'text-white/90' : 'text-amber-400'}`}>
+                          <div className={`mt-3 text-sm ${isSelected ? 'text-white/90' : 'text-amber-600'}`}>
                             {t.suggested}: {formatCurrency(platform.suggestedRate)} {getPriceLabel(platform.priceType)}
                           </div>
                         </button>
@@ -606,7 +590,7 @@ export default function ProviderApplicationForm() {
                   </div>
 
                   {selectedPlatforms.length === 0 && (
-                    <p className="text-center text-amber-400 text-sm">
+                    <p className="text-center text-amber-600 text-sm">
                       {isHebrew ? 'בחר לפחות פלטפורמה אחת להמשך' : 'Select at least one platform to continue'}
                     </p>
                   )}
@@ -621,16 +605,16 @@ export default function ProviderApplicationForm() {
                       <DollarSign className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-black">
                         {t.step2Title}
                       </h2>
-                      <p className="text-gray-400 text-sm">{t.step2Desc}</p>
+                      <p className="text-gray-600 text-sm">{t.step2Desc}</p>
                     </div>
                   </div>
                   
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 mb-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 mb-4">
                     <Info className="h-4 w-4 text-amber-400" />
-                    <span className="text-amber-300 text-sm">{t.commission}</span>
+                    <span className="text-amber-700 text-sm">{t.commission}</span>
                   </div>
 
                   <div className="space-y-6">
@@ -644,17 +628,17 @@ export default function ProviderApplicationForm() {
                       return (
                         <div 
                           key={platformId}
-                          className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
+                          className="bg-gray-50 rounded-2xl p-6 border border-gray-200"
                         >
                           <div className="flex items-center gap-3 mb-6">
                             <div className={`p-3 rounded-xl bg-gradient-to-br ${platform.color} shadow-lg`}>
                               <Icon className="h-6 w-6 text-white" />
                             </div>
                             <div>
-                              <h3 className="font-bold text-white">
+                              <h3 className="font-bold text-black">
                                 {isHebrew ? platform.nameHe : platform.nameEn}
                               </h3>
-                              <p className="text-sm text-gray-400">
+                              <p className="text-sm text-gray-600">
                                 {isHebrew ? platform.descHe : platform.descEn}
                               </p>
                             </div>
@@ -662,21 +646,21 @@ export default function ProviderApplicationForm() {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                              <label className="block text-sm font-medium text-black mb-2">
                                 {t.baseRate} ({getPriceLabel(platform.priceType)})
                               </label>
                               <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₪</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">₪</span>
                                 <input
                                   type="number"
                                   value={currentPricing.baseRate / 100}
                                   onChange={(e) => updatePricing(platformId, 'baseRate', Math.round(parseFloat(e.target.value) * 100))}
-                                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-white/10 bg-slate-800/50 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20"
+                                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 bg-white text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20"
                                   min={0}
                                 />
                               </div>
                               <div className="flex items-center justify-between mt-2 text-sm">
-                                <span className="text-gray-500">{t.youEarn}:</span>
+                                <span className="text-gray-600">{t.youEarn}:</span>
                                 <span className="font-bold text-emerald-400">
                                   {formatCurrency(providerEarnings)}
                                 </span>
@@ -684,16 +668,16 @@ export default function ProviderApplicationForm() {
                             </div>
 
                             <div>
-                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                              <label className="block text-sm font-medium text-black mb-2">
                                 {t.additionalPet}
                               </label>
                               <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₪</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">₪</span>
                                 <input
                                   type="number"
                                   value={currentPricing.additionalPet / 100}
                                   onChange={(e) => updatePricing(platformId, 'additionalPet', Math.round(parseFloat(e.target.value) * 100))}
-                                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-white/10 bg-slate-800/50 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20"
+                                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 bg-white text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20"
                                   min={0}
                                 />
                               </div>
@@ -714,10 +698,10 @@ export default function ProviderApplicationForm() {
                       <User className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-black">
                         {t.step3Title}
                       </h2>
-                      <p className="text-gray-400 text-sm">{isHebrew ? 'ספר לנו קצת על עצמך' : 'Tell us a bit about yourself'}</p>
+                      <p className="text-gray-600 text-sm">{isHebrew ? 'ספר לנו קצת על עצמך' : 'Tell us a bit about yourself'}</p>
                     </div>
                   </div>
 
@@ -727,15 +711,15 @@ export default function ProviderApplicationForm() {
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300 font-medium">{t.firstName} *</FormLabel>
+                          <FormLabel className="text-black font-medium">{t.firstName} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
-                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                              className="h-12 bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                               data-testid="input-firstName"
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage className="text-red-600" />
                         </FormItem>
                       )}
                     />
@@ -745,15 +729,15 @@ export default function ProviderApplicationForm() {
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300 font-medium">{t.lastName} *</FormLabel>
+                          <FormLabel className="text-black font-medium">{t.lastName} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
-                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                              className="h-12 bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                               data-testid="input-lastName"
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage className="text-red-600" />
                         </FormItem>
                       )}
                     />
@@ -763,16 +747,16 @@ export default function ProviderApplicationForm() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300 font-medium">{t.email} *</FormLabel>
+                          <FormLabel className="text-black font-medium">{t.email} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               type="email"
-                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                              className="h-12 bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                               data-testid="input-email"
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage className="text-red-600" />
                         </FormItem>
                       )}
                     />
@@ -782,7 +766,7 @@ export default function ProviderApplicationForm() {
                       name="phoneNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300 font-medium">{t.phone} *</FormLabel>
+                          <FormLabel className="text-black font-medium">{t.phone} *</FormLabel>
                           <FormControl>
                             <PhoneInput
                               value={field.value}
@@ -791,7 +775,7 @@ export default function ProviderApplicationForm() {
                               defaultCountryCode="+972"
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage className="text-red-600" />
                         </FormItem>
                       )}
                     />
@@ -801,16 +785,16 @@ export default function ProviderApplicationForm() {
                       name="idNumber"
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel className="text-gray-300 font-medium">{t.idNumber} *</FormLabel>
+                          <FormLabel className="text-black font-medium">{t.idNumber} *</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               placeholder={t.idNumberPlaceholder}
-                              className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                              className="h-12 bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                               data-testid="input-id-number"
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage className="text-red-600" />
                         </FormItem>
                       )}
                     />
@@ -819,9 +803,9 @@ export default function ProviderApplicationForm() {
                     <div className="md:col-span-2 space-y-4">
                       <div className="flex items-center gap-2 mb-2">
                         <MapPin className="w-5 h-5 text-amber-400" />
-                        <span className="text-gray-300 font-medium">{t.addressSection} *</span>
+                        <span className="text-black font-medium">{t.addressSection} *</span>
                       </div>
-                      <p className="text-sm text-gray-500 mb-3">{t.addressHint}</p>
+                      <p className="text-sm text-gray-600 mb-3">{t.addressHint}</p>
                       
                       {/* Street Address with Google Places Autocomplete */}
                       <FormField
@@ -860,9 +844,9 @@ export default function ProviderApplicationForm() {
                                 placeholder={isHebrew ? 'הקלד כתובת מלאה...' : 'Start typing your full address...'}
                                 required
                                 country={['il']}
-                                darkMode={true}
+                                darkMode={false}
                                 error={form.formState.errors.streetAddress?.message}
-                                className="[&_label]:text-gray-300 [&_label]:font-medium"
+                                className="[&_label]:text-black [&_label]:font-medium"
                               />
                             </FormControl>
                           </FormItem>
@@ -876,16 +860,16 @@ export default function ProviderApplicationForm() {
                           name="city"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-gray-300 font-medium">{t.city} *</FormLabel>
+                              <FormLabel className="text-black font-medium">{t.city} *</FormLabel>
                               <FormControl>
                                 <Input 
                                   {...field} 
-                                  className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                                  className="h-12 bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                                   placeholder={isHebrew ? 'עיר' : 'City'}
                                   data-testid="input-city"
                                 />
                               </FormControl>
-                              <FormMessage className="text-red-400" />
+                              <FormMessage className="text-red-600" />
                             </FormItem>
                           )}
                         />
@@ -895,16 +879,16 @@ export default function ProviderApplicationForm() {
                           name="postalCode"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-gray-300 font-medium">{t.postalCode}</FormLabel>
+                              <FormLabel className="text-black font-medium">{t.postalCode}</FormLabel>
                               <FormControl>
                                 <Input 
                                   {...field} 
-                                  className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                                  className="h-12 bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                                   placeholder={isHebrew ? 'מיקוד' : 'Postal Code'}
                                   data-testid="input-postal-code"
                                 />
                               </FormControl>
-                              <FormMessage className="text-red-400" />
+                              <FormMessage className="text-red-600" />
                             </FormItem>
                           )}
                         />
@@ -914,10 +898,10 @@ export default function ProviderApplicationForm() {
                           name="country"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-gray-300 font-medium">{t.country}</FormLabel>
+                              <FormLabel className="text-black font-medium">{t.country}</FormLabel>
                               <FormControl>
                                 <Select value={field.value} onValueChange={field.onChange}>
-                                  <SelectTrigger className="h-12 bg-slate-800/50 border-slate-600 text-white focus:border-amber-500 focus:ring-amber-500/20 rounded-xl" data-testid="select-country">
+                                  <SelectTrigger className="h-12 bg-white border-gray-300 text-black focus:border-amber-500 focus:ring-amber-500/20 rounded-xl" data-testid="select-country">
                                     <SelectValue placeholder={isHebrew ? 'בחר מדינה' : 'Select country'} />
                                   </SelectTrigger>
                                   <SelectContent className="max-h-[300px]">
@@ -927,7 +911,7 @@ export default function ProviderApplicationForm() {
                                   </SelectContent>
                                 </Select>
                               </FormControl>
-                              <FormMessage className="text-red-400" />
+                              <FormMessage className="text-red-600" />
                             </FormItem>
                           )}
                         />
@@ -937,7 +921,7 @@ export default function ProviderApplicationForm() {
 
                   {/* Profile Photo - Luxury Style */}
                   <div className="pt-4">
-                    <label className="block text-sm font-medium text-gray-300 mb-3">
+                    <label className="block text-sm font-medium text-black mb-3">
                       {t.profilePhoto}
                     </label>
                     <div className="flex items-center gap-4">
@@ -957,8 +941,8 @@ export default function ProviderApplicationForm() {
                           </button>
                         </div>
                       ) : (
-                        <div className="w-24 h-24 rounded-2xl bg-slate-800/50 flex items-center justify-center border-2 border-dashed border-slate-600">
-                          <User className="h-10 w-10 text-slate-500" />
+                        <div className="w-24 h-24 rounded-2xl bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300">
+                          <User className="h-10 w-10 text-gray-400" />
                         </div>
                       )}
                       <label className="cursor-pointer">
@@ -968,7 +952,7 @@ export default function ProviderApplicationForm() {
                           onChange={handleProfilePhotoChange}
                           className="hidden"
                         />
-                        <span className="inline-flex items-center gap-2 px-5 py-3 bg-white/5 border border-white/10 text-gray-300 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all duration-300">
+                        <span className="inline-flex items-center gap-2 px-5 py-3 bg-gray-100 border border-gray-300 text-black rounded-xl hover:bg-gray-200 hover:border-gray-400 transition-all duration-300">
                           <Camera className="h-4 w-4 text-amber-400" />
                           {profilePhoto ? (isHebrew ? 'שנה תמונה' : 'Change') : t.uploadPhoto}
                         </span>
@@ -986,20 +970,20 @@ export default function ProviderApplicationForm() {
                       <Star className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-black">
                         {t.step4Title}
                       </h2>
-                      <p className="text-gray-400 text-sm">{isHebrew ? 'ספר על הניסיון שלך' : 'Share your experience'}</p>
+                      <p className="text-gray-600 text-sm">{isHebrew ? 'ספר על הניסיון שלך' : 'Share your experience'}</p>
                     </div>
                   </div>
 
                   {/* Qualifications - Luxury Glass Card */}
-                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                    <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
+                  <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                    <h3 className="font-semibold text-black mb-2 flex items-center gap-2">
                       <Crown className="h-5 w-5 text-amber-400" />
                       {isHebrew ? 'הכשרות והסמכות' : 'Qualifications & Certifications'}
                     </h3>
-                    <p className="text-gray-400 text-sm mb-4">
+                    <p className="text-gray-600 text-sm mb-4">
                       {isHebrew 
                         ? 'סמן את הפריטים שמתאימים לך. כל אלה הם אופציונליים אבל יגדילו את הנראות של הפרופיל שלך.'
                         : 'Check any that apply to you. All are optional but will boost your profile visibility.'}
@@ -1009,15 +993,15 @@ export default function ProviderApplicationForm() {
                         control={form.control}
                         name="hasOwnTransport"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                          <FormItem className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200 hover:border-gray-300 transition-colors">
                             <FormControl>
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5 border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                                className="h-5 w-5 border-gray-400 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                               />
                             </FormControl>
-                            <FormLabel className="!mt-0 text-gray-300 cursor-pointer">
+                            <FormLabel className="!mt-0 text-black cursor-pointer">
                               <div className="flex items-center gap-2">
                                 <Car className="h-4 w-4 text-blue-400" />
                                 {t.hasTransport}
@@ -1031,15 +1015,15 @@ export default function ProviderApplicationForm() {
                         control={form.control}
                         name="hasPetFirstAid"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                          <FormItem className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200 hover:border-gray-300 transition-colors">
                             <FormControl>
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5 border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                                className="h-5 w-5 border-gray-400 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                               />
                             </FormControl>
-                            <FormLabel className="!mt-0 text-gray-300 cursor-pointer">
+                            <FormLabel className="!mt-0 text-black cursor-pointer">
                               <div className="flex items-center gap-2">
                                 <Heart className="h-4 w-4 text-pink-400" />
                                 {t.hasFirstAid}
@@ -1053,15 +1037,15 @@ export default function ProviderApplicationForm() {
                         control={form.control}
                         name="hasInsurance"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                          <FormItem className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200 hover:border-gray-300 transition-colors">
                             <FormControl>
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5 border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                                className="h-5 w-5 border-gray-400 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                               />
                             </FormControl>
-                            <FormLabel className="!mt-0 text-gray-300 cursor-pointer">
+                            <FormLabel className="!mt-0 text-black cursor-pointer">
                               <div className="flex items-center gap-2">
                                 <Shield className="h-4 w-4 text-emerald-400" />
                                 {t.hasInsurance}
@@ -1078,17 +1062,17 @@ export default function ProviderApplicationForm() {
                     name="yearsExperience"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-300 font-medium">{t.experience}</FormLabel>
+                        <FormLabel className="text-black font-medium">{t.experience}</FormLabel>
                         <FormControl>
                           <Input 
                             {...field} 
                             type="number"
                             min={0}
                             max={50}
-                            className="h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                            className="h-12 bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                           />
                         </FormControl>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage className="text-red-600" />
                       </FormItem>
                     )}
                   />
@@ -1098,17 +1082,17 @@ export default function ProviderApplicationForm() {
                     name="aboutMe"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-300 font-medium">{t.aboutMe} *</FormLabel>
+                        <FormLabel className="text-black font-medium">{t.aboutMe} *</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
                             rows={4}
                             placeholder={t.aboutMeHint}
-                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl resize-none"
+                            className="bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl resize-none"
                             data-testid="textarea-aboutMe"
                           />
                         </FormControl>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage className="text-red-600" />
                       </FormItem>
                     )}
                   />
@@ -1118,17 +1102,17 @@ export default function ProviderApplicationForm() {
                     name="whyJoinPetWash"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-300 font-medium">{t.whyJoin} *</FormLabel>
+                        <FormLabel className="text-black font-medium">{t.whyJoin} *</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
                             rows={3}
                             placeholder={t.whyJoinHint}
-                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl resize-none"
+                            className="bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl resize-none"
                             data-testid="textarea-whyJoin"
                           />
                         </FormControl>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage className="text-red-600" />
                       </FormItem>
                     )}
                   />
@@ -1138,15 +1122,15 @@ export default function ProviderApplicationForm() {
                     name="availabilityNotes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-300 font-medium">{t.availability}</FormLabel>
+                        <FormLabel className="text-black font-medium">{t.availability}</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
                             rows={2}
-                            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl resize-none"
+                            className="bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl resize-none"
                           />
                         </FormControl>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage className="text-red-600" />
                       </FormItem>
                     )}
                   />
@@ -1161,10 +1145,10 @@ export default function ProviderApplicationForm() {
                       <Shield className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-black">
                         {t.step5Title}
                       </h2>
-                      <p className="text-gray-400 text-sm">
+                      <p className="text-gray-600 text-sm">
                         {isHebrew ? 'אנא קרא ואשר את ההסכמים הבאים' : 'Please read and accept the following agreements'}
                       </p>
                     </div>
@@ -1172,7 +1156,7 @@ export default function ProviderApplicationForm() {
 
                   <div className="space-y-4">
                     {/* Terms of Service */}
-                    <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                    <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
                       <FormField
                         control={form.control}
                         name="agreeToTerms"
@@ -1182,28 +1166,28 @@ export default function ProviderApplicationForm() {
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5 mt-1 border-slate-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                className="h-5 w-5 mt-1 border-gray-400 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                                 data-testid="checkbox-terms"
                               />
                             </FormControl>
                             <div className="flex-1">
-                              <FormLabel className="!mt-0 text-white font-medium cursor-pointer">
+                              <FormLabel className="!mt-0 text-black font-medium cursor-pointer">
                                 {t.terms} *
                               </FormLabel>
-                              <p className="text-sm text-gray-400 mt-1">
-                                <Link href="/legal/terms" className="text-amber-400 hover:text-amber-300 hover:underline">
+                              <p className="text-sm text-gray-600 mt-1">
+                                <Link href="/legal/terms" className="text-amber-600 hover:text-amber-500 hover:underline">
                                   {isHebrew ? 'צפה בתנאי השימוש המלאים' : 'View full Terms of Service'}
                                 </Link>
                               </p>
                             </div>
-                            <FormMessage className="text-red-400" />
+                            <FormMessage className="text-red-600" />
                           </FormItem>
                         )}
                       />
                     </div>
 
                     {/* Privacy Policy */}
-                    <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                    <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
                       <FormField
                         control={form.control}
                         name="agreeToPrivacy"
@@ -1213,28 +1197,28 @@ export default function ProviderApplicationForm() {
                               <Checkbox 
                                 checked={field.value} 
                                 onCheckedChange={field.onChange}
-                                className="h-5 w-5 mt-1 border-slate-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                className="h-5 w-5 mt-1 border-gray-400 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                                 data-testid="checkbox-privacy"
                               />
                             </FormControl>
                             <div className="flex-1">
-                              <FormLabel className="!mt-0 text-white font-medium cursor-pointer">
+                              <FormLabel className="!mt-0 text-black font-medium cursor-pointer">
                                 {t.privacy} *
                               </FormLabel>
-                              <p className="text-sm text-gray-400 mt-1">
-                                <Link href="/legal/privacy" className="text-amber-400 hover:text-amber-300 hover:underline">
+                              <p className="text-sm text-gray-600 mt-1">
+                                <Link href="/legal/privacy" className="text-amber-600 hover:text-amber-500 hover:underline">
                                   {isHebrew ? 'צפה במדיניות הפרטיות המלאה' : 'View full Privacy Policy'}
                                 </Link>
                               </p>
                             </div>
-                            <FormMessage className="text-red-400" />
+                            <FormMessage className="text-red-600" />
                           </FormItem>
                         )}
                       />
                     </div>
 
                     {/* Independent Contractor Status */}
-                    <div className="bg-amber-500/10 backdrop-blur-sm rounded-2xl p-6 border border-amber-500/30">
+                    <div className="bg-amber-50 rounded-2xl p-6 border border-amber-200">
                       <FormField
                         control={form.control}
                         name="agreeToContractorStatus"
@@ -1249,16 +1233,16 @@ export default function ProviderApplicationForm() {
                               />
                             </FormControl>
                             <div className="flex-1">
-                              <FormLabel className="!mt-0 text-amber-200 font-medium cursor-pointer">
+                              <FormLabel className="!mt-0 text-amber-800 font-medium cursor-pointer">
                                 {t.contractor} *
                               </FormLabel>
-                              <p className="text-sm text-amber-300/80 mt-1">
+                              <p className="text-sm text-amber-700 mt-1">
                                 {isHebrew 
                                   ? 'כספק שירותים עצמאי, אתה אחראי על המיסים, הביטוח והרישיונות שלך.'
                                   : 'As an independent service provider, you are responsible for your own taxes, insurance, and licenses.'}
                               </p>
                             </div>
-                            <FormMessage className="text-red-400" />
+                            <FormMessage className="text-red-600" />
                           </FormItem>
                         )}
                       />
@@ -1266,7 +1250,7 @@ export default function ProviderApplicationForm() {
                   </div>
 
                   {/* Disclaimer */}
-                  <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 text-sm text-gray-400 border border-white/5">
+                  <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 border border-gray-200">
                     <p>
                       {isHebrew 
                         ? '⁦Pet Wash™⁩ משמש כפלטפורמת תיווך בין בעלי חיות מחמד לספקי שירות עצמאיים. ⁦Pet Wash™⁩ אינה מעסיקה את הספקים ואינה אחראית ישירות לשירותים הניתנים.'
@@ -1277,12 +1261,12 @@ export default function ProviderApplicationForm() {
               )}
 
               {/* Luxury Navigation Buttons */}
-              <div className="flex items-center justify-between mt-10 pt-6 border-t border-white/10">
+              <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-200">
                 {step > 1 && (
                   <button
                     type="button"
                     onClick={() => { setStep(step - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    className="flex items-center gap-2 px-6 py-3 text-gray-400 hover:text-white transition-colors rounded-xl hover:bg-white/5"
+                    className="flex items-center gap-2 px-6 py-3 text-gray-600 hover:text-black transition-colors rounded-xl hover:bg-gray-100"
                   >
                     <ArrowLeft className={`h-5 w-5 ${isHebrew ? 'rotate-180' : ''}`} />
                     {t.back}
@@ -1376,16 +1360,16 @@ export default function ProviderApplicationForm() {
 
         {/* Luxury Trust Badges */}
         <div className="mt-10 text-center">
-          <div className="inline-flex items-center justify-center gap-8 px-6 py-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
-            <div className="flex items-center gap-2 text-gray-300">
+          <div className="inline-flex items-center justify-center gap-8 px-6 py-4 rounded-2xl bg-gray-50 border border-gray-200">
+            <div className="flex items-center gap-2 text-black">
               <Shield className="h-5 w-5 text-emerald-400" />
               <span className="text-sm font-medium">{isHebrew ? 'מאובטח' : 'Secure'}</span>
             </div>
-            <div className="flex items-center gap-2 text-gray-300">
+            <div className="flex items-center gap-2 text-black">
               <Star className="h-5 w-5 text-amber-400" />
               <span className="text-sm font-medium">{isHebrew ? 'מאומת' : 'Verified'}</span>
             </div>
-            <div className="flex items-center gap-2 text-gray-300">
+            <div className="flex items-center gap-2 text-black">
               <Heart className="h-5 w-5 text-pink-400" />
               <span className="text-sm font-medium">{isHebrew ? 'אמין' : 'Trusted'}</span>
             </div>
