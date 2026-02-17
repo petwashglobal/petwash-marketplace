@@ -121,7 +121,6 @@ export default function BrowseSitters() {
     params.set('sortBy', sortBy);
     if (maxPrice < 500) params.set('maxPrice', String(maxPrice));
     if (minRating > 0) params.set('minRating', String(minRating));
-    if (searchParams?.service) params.set('serviceType', searchParams.service);
     if (searchParams?.startDate) params.set('startDate', format(searchParams.startDate, 'yyyy-MM-dd'));
     if (searchParams?.endDate) params.set('endDate', format(searchParams.endDate, 'yyyy-MM-dd'));
     if (searchParams?.petType) params.set('petTypes', searchParams.petType);
