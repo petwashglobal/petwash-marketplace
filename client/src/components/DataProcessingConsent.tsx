@@ -251,7 +251,7 @@ export function DataProcessingConsent({
           </div>
 
           {!agreed && hasRead && (
-            <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+            <div className="flex items-start gap-2 p-3 bg-white rounded-lg border border-yellow-100">
               <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-yellow-800">{t.mustAgree}</p>
             </div>

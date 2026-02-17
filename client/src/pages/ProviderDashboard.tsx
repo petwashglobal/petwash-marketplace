@@ -828,7 +828,7 @@ export default function ProviderDashboard() {
                                   "text-[11px] px-2 py-0.5 font-medium border",
                                   profile.verificationStatus === 'approved'
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : 'bg-white text-amber-700 border-amber-200'
                                 )} style={{ borderRadius: '2px' }}>
                                   {profile.verificationStatus === 'approved' ? '\u05DE\u05D0\u05D5\u05DE\u05EA' : '\u05D1\u05D1\u05D3\u05D9\u05E7\u05D4'}
                                 </span>

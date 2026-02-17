@@ -202,7 +202,7 @@ export function OwnerInstructionsForm({ value, onChange, className = "" }: Owner
             />
           </div>
 
-          <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <div className="flex items-start gap-2 p-3 bg-white rounded-lg border border-amber-200">
             <Checkbox
               id="shareWithProvider"
               checked={value.shareWithProvider}

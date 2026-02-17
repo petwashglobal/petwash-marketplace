@@ -44,7 +44,7 @@ export default function TermsConditions() {
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
                 {isHebrew ? '2. תפקיד הפלטפורמה - פלטפורמת מקשרת בלבד' : '2. Platform Role - Connector Platform Only'}
               </h2>
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-r-4 border-yellow-500 p-6 rounded-lg">
+              <div className="bg-white dark:bg-yellow-900/20 border-r-4 border-yellow-500 p-6 rounded-lg">
                 <p className="font-bold mb-2">{isHebrew ? '⚠️ חשוב: Pet Wash היא פלטפורמת מקשרת' : '⚠️ IMPORTANT: Pet Wash is a Connector Platform'}</p>
                 <ul className="list-disc list-inside space-y-2 mr-6">
                   <li>{isHebrew ? 'אנו מקשרים בין בעלי חיות מחמד לשמרטפים עצמאיים (כמו cars.com.au או Airbnb)' : 'We connect pet owners with independent sitters (like cars.com.au or Airbnb)'}</li>
@@ -153,7 +153,7 @@ export default function TermsConditions() {
                   <p className="font-bold mb-2">{isHebrew ? '✅ גמיש:' : '✅ Flexible:'}</p>
                   <p>{isHebrew ? 'החזר מלא עד 24 שעות לפני תחילת השירות' : 'Full refund up to 24 hours before service start'}</p>
                 </div>
-                <div className="border-r-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+                <div className="border-r-4 border-yellow-500 bg-white dark:bg-yellow-900/20 p-4 rounded-lg">
                   <p className="font-bold mb-2">{isHebrew ? '⚠️ מתון:' : '⚠️ Moderate:'}</p>
                   <p>{isHebrew ? 'החזר מלא עד 5 ימים לפני, 50% החזר עד 48 שעות לפני' : 'Full refund up to 5 days before, 50% refund up to 48 hours before'}</p>
                 </div>

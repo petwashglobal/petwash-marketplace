@@ -116,7 +116,7 @@ export default function PerformanceMonitoring() {
                     Target: &lt;100ms
                   </div>
                 </div>
-                <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                <div className="text-center p-4 bg-white dark:bg-orange-900/20 rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {database.slowQueries}
                   </div>

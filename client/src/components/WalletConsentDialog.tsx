@@ -184,7 +184,7 @@ export function WalletConsentDialog({
           </div>
 
           {/* Platform Note */}
-          <div className="bg-amber-50 dark:bg-amber-950 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+          <div className="bg-white dark:bg-amber-950 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
             <p className="text-sm">{t.platformNote}</p>
           </div>
 

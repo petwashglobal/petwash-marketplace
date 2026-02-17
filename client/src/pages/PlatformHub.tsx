@@ -455,7 +455,7 @@ export default function PlatformHub() {
         </section>
 
         {/* Search Widget - Minimal */}
-        <section className="bg-[#fafafa] py-20 border-t border-gray-100">
+        <section className="bg-white py-20 border-t border-gray-100">
           <div className="max-w-3xl mx-auto px-6">
             
             <div className="text-center mb-12">
@@ -533,7 +533,7 @@ export default function PlatformHub() {
         </section>
 
         {/* How It Works - Editorial Style */}
-        <section className="bg-[#fafafa] py-24 border-t border-gray-100">
+        <section className="bg-white py-24 border-t border-gray-100">
           <div className="max-w-6xl mx-auto px-6">
             
             <div className="text-center mb-20">
@@ -617,7 +617,7 @@ export default function PlatformHub() {
         </section>
 
         {/* FAQ Section */}
-        <section className="bg-[#fafafa] py-24 border-t border-gray-100">
+        <section className="bg-white py-24 border-t border-gray-100">
           <div className="max-w-3xl mx-auto px-6">
             
             <div className="text-center mb-16">

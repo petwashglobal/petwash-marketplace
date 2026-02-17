@@ -344,7 +344,7 @@ export function ReCaptcha({
   return (
     <div className="recaptcha-wrapper w-full">
       <div className="flex items-center justify-center gap-2 py-2">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-50 dark:bg-neutral-800/50">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-neutral-800/50">
           {isVerified ? (
             <>
               <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />

@@ -27,7 +27,7 @@ export function PasskeyEnforcementBanner({
       className={`mb-6 ${
         required
           ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
-          : 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950'
+          : 'border-yellow-200 bg-white dark:border-yellow-800 dark:bg-yellow-950'
       }`}
       data-testid="passkey-enforcement-banner"
     >

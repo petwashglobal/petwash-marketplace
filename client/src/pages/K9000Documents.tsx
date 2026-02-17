@@ -157,7 +157,7 @@ export default function K9000Documents() {
       case 'k9000_manual':
         return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'k9000_contract':
-        return 'bg-orange-50 text-orange-700 border-orange-200';
+        return 'bg-white text-orange-700 border-orange-200';
       default:
         return 'bg-gray-50 text-gray-700 border-gray-200';
     }

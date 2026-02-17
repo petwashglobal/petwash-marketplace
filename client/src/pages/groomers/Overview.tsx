@@ -61,7 +61,7 @@ export default function GroomersOverview() {
       title: "Help & Support",
       description: "Get assistance with grooming services",
       link: "/groomers/help",
-      color: "bg-orange-50 dark:bg-orange-950"
+      color: "bg-white dark:bg-orange-950"
     }
   ];
 

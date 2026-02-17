@@ -178,7 +178,7 @@ export function PremiumGoogleOAuthConsent({ language, userEmail, onContinue, onC
           </div>
 
           {/* Trust Warning Section - Google Style */}
-          <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-4">
+          <div className="bg-white rounded-lg border border-yellow-200 p-4">
             <h3 className="text-base font-medium text-gray-900 mb-2">
               {t.makeSure}
             </h3>

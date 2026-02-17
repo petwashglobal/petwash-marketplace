@@ -182,10 +182,10 @@ export function KYCUpload({ language }: KYCUploadProps) {
 
   const getStatusColor = () => {
     switch (kycStatus) {
-      case 'pending': return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+      case 'pending': return 'bg-white border-yellow-200 text-yellow-800';
       case 'approved': return 'bg-green-50 border-green-200 text-green-800';
       case 'rejected': return 'bg-red-50 border-red-200 text-red-800';
-      case 'expired': return 'bg-orange-50 border-orange-200 text-orange-800';
+      case 'expired': return 'bg-white border-orange-200 text-orange-800';
       default: return 'bg-blue-50 border-blue-200 text-blue-800';
     }
   };

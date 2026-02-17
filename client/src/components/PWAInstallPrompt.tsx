@@ -271,7 +271,7 @@ export default function PWAInstallPrompt() {
 
   const renderIOSChromeMessage = () => (
     <div className="px-6 py-5 bg-white" style={{ animation: 'fadeUp 0.5s ease-out 0.8s both' }}>
-      <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 mb-4">
+      <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 mb-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
             <Globe className="w-5 h-5 text-amber-600" />

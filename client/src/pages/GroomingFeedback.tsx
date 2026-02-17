@@ -156,7 +156,7 @@ export default function GroomingFeedback() {
             <Button
               onClick={() => { setSubmitted(false); form.reset(); }}
               variant="outline"
-              className="border-amber-300 hover:bg-amber-50 dark:border-amber-700 dark:hover:bg-amber-900/20"
+              className="border-amber-300 hover:bg-gray-50 dark:border-amber-700 dark:hover:bg-amber-900/20"
             >
               {t("groomingFeedback.submitAnother")}
             </Button>

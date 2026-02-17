@@ -441,7 +441,7 @@ export default function GeminiWatchdogDashboard() {
                           {struggle.userId}
                         </p>
                         {struggle.likelyCause && (
-                          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3 mt-2">
+                          <div className="bg-white dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3 mt-2">
                             <p className="text-xs font-semibold text-yellow-900 dark:text-yellow-300 mb-1">
                               {isHebrew ? "סיבה אפשרית:" : "Likely Cause:"}
                             </p>

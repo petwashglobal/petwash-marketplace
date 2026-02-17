@@ -556,7 +556,7 @@ export default function WalkBookingFlow() {
             </div>
             
             {weatherConsentAccepted && (
-              <div className="luxury-glass-card p-3 max-w-sm mx-auto mb-6 border border-amber-200 bg-amber-50/50">
+              <div className="luxury-glass-card p-3 max-w-sm mx-auto mb-6 border border-amber-200 bg-white">
                 <p className="luxury-text-small text-amber-800 flex items-center justify-center gap-2">
                   <Shield className="h-4 w-4" />
                   הסכמה לתנאי מזג אוויר נרשמה

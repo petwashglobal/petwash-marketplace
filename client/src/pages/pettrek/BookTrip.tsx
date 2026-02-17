@@ -557,7 +557,7 @@ export default function BookTrip() {
                     </div>
 
                     {fareEstimate.breakdown.isPeakTime && (
-                      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
+                      <div className="bg-white border border-orange-200 rounded-xl p-4 flex items-start gap-3">
                         <Zap className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
                         <div>
                           <p className="text-sm font-medium text-orange-800">

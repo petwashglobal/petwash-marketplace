@@ -567,7 +567,7 @@ export default function WalkerDashboard() {
                     </div>
 
                     {request.specialInstructions && (
-                      <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
+                      <div className="bg-white dark:bg-yellow-900/20 p-3 rounded-lg">
                         <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
                           {isHebrew ? '📝 הוראות מיוחדות:' : '📝 Special Instructions:'}
                         </p>
@@ -813,7 +813,7 @@ export default function WalkerDashboard() {
                         <span className="luxury-heading-md text-green-700 dark:text-green-400">{formatCurrency(earnings.basePay)}</span>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-yellow-900/20 rounded-lg">
                         <div>
                           <p className="font-semibold text-yellow-900 dark:text-yellow-200">{isHebrew ? '🎁 טיפים' : '🎁 Tips'}</p>
                           <p className="luxury-text-small">{isHebrew ? 'טיפים מלקוחות' : 'Tips from customers'}</p>

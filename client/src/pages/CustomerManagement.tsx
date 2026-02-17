@@ -717,7 +717,7 @@ export default function CustomerManagement() {
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Communications
                 </TabsTrigger>
-                <TabsTrigger value="pets" className="data-[state=active]:bg-orange-50">
+                <TabsTrigger value="pets" className="data-[state=active]:bg-white">
                   <PawPrint className="w-4 h-4 mr-2" />
                   Pet Information
                 </TabsTrigger>
@@ -1277,7 +1277,7 @@ export default function CustomerManagement() {
                       )}
 
                       {selectedCustomer.loyaltyTier !== 'new' && (
-                        <div className="flex items-center space-x-4 p-3 bg-yellow-50 rounded-lg">
+                        <div className="flex items-center space-x-4 p-3 bg-white rounded-lg">
                           <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                           <div>
                             <div className="font-medium">Loyalty Tier Upgraded</div>

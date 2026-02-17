@@ -170,7 +170,7 @@ export default function StaffOnboarding() {
           <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Pending Expenses</CardTitle>
-              <div className="p-2 luxury-glass-minimal rounded-xl bg-amber-50">
+              <div className="p-2 luxury-glass-minimal rounded-xl bg-white">
                 <DollarSign className="h-4 w-4 text-amber-600" />
               </div>
             </CardHeader>
@@ -184,7 +184,7 @@ export default function StaffOnboarding() {
           <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Unpaid Orders</CardTitle>
-              <div className="p-2 luxury-glass-minimal rounded-xl bg-yellow-50">
+              <div className="p-2 luxury-glass-minimal rounded-xl bg-white">
                 <Clock className="h-4 w-4 text-yellow-600" />
               </div>
             </CardHeader>

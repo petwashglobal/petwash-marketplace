@@ -193,7 +193,7 @@ export default function ConnectedDevices() {
 
           {/* Security Status */}
           {devices && devices.some(d => d.fraudFlags.length > 0) && (
-            <Card className="mb-6 border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+            <Card className="mb-6 border-yellow-500 bg-white dark:bg-yellow-950">
               <CardContent className="pt-6">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />

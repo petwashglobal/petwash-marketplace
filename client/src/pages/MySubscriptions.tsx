@@ -274,7 +274,7 @@ export default function MySubscriptions() {
                 </div>
 
                 {subscription.status === "paused" && subscription.pauseReason && (
-                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
+                  <div className="bg-white dark:bg-yellow-900/20 p-3 rounded-lg">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">
                       <strong>Paused:</strong> {subscription.pauseReason}
                     </p>

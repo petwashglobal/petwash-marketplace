@@ -318,7 +318,7 @@ export function BiometricConsentDialog({
           </div>
 
           {/* GDPR Compliance */}
-          <div className="bg-amber-50 dark:bg-amber-950 p-5 rounded-lg border border-amber-200 dark:border-amber-800">
+          <div className="bg-white dark:bg-amber-950 p-5 rounded-lg border border-amber-200 dark:border-amber-800">
             <h3 className="font-bold text-base mb-3 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-600" />
               {passkeyContent.gdprNote}

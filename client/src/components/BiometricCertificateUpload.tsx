@@ -214,7 +214,7 @@ export function BiometricCertificateUpload() {
         return 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800';
       case 'manual_review':
       case 'pending':
-        return 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800';
+        return 'bg-white dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800';
       default:
         return '';
     }

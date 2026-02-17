@@ -633,7 +633,7 @@ export default function MyAccount() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white py-8 px-4" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white py-8 px-4" dir={isHebrew ? 'rtl' : 'ltr'}>
         <div className="max-w-4xl mx-auto space-y-8">
           
           <div className="text-center mb-8">
@@ -808,7 +808,7 @@ export default function MyAccount() {
           </div>
 
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="w-full bg-stone-50 border border-gray-100 rounded-2xl p-1 grid grid-cols-4">
+            <TabsList className="w-full bg-white border border-gray-100 rounded-2xl p-1 grid grid-cols-4">
               <TabsTrigger 
                 value="profile" 
                 className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
@@ -841,7 +841,7 @@ export default function MyAccount() {
 
             <TabsContent value="profile" className="mt-6 space-y-6">
               {verificationStatus && !verificationStatus.isFullyVerified && (
-                <div className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
+                <div className="bg-white rounded-2xl border border-amber-200 p-6">
                   <div className="flex items-start gap-4">
                     <div className="p-2 rounded-full bg-amber-100">
                       <Shield className="w-5 h-5 text-amber-700" />
@@ -1089,7 +1089,7 @@ export default function MyAccount() {
                     </Button>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
+                  <div className="p-4 rounded-xl bg-white border border-stone-200">
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="w-5 h-5 text-stone-700 flex-shrink-0 mt-0.5" />
                       <div>
@@ -1141,7 +1141,7 @@ export default function MyAccount() {
                     </Button>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
+                  <div className="p-4 rounded-xl bg-white border border-stone-200">
                     <div className="flex items-start gap-3">
                       <Shield className="w-5 h-5 text-stone-700 flex-shrink-0 mt-0.5" />
                       <div>
@@ -1240,7 +1240,7 @@ export default function MyAccount() {
                     { key: 'birthdayOffersEnabled', label: isHebrew ? 'הטבות יום הולדת' : 'Birthday Offers', desc: isHebrew ? 'קופון מיוחד ליום ההולדת של החיה' : 'Special coupon for pet birthdays', icon: Sparkles },
                     { key: 'loyaltyUpdatesEnabled', label: isHebrew ? 'עדכוני נאמנות' : 'Loyalty Updates', desc: isHebrew ? 'עדכונים על נקודות ודרגות' : 'Points & tier notifications', icon: Crown },
                   ].map((item) => (
-                    <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-stone-50 transition-colors">
+                    <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-4">
                         <item.icon className="w-5 h-5 text-gray-400" />
                         <div>
@@ -1275,7 +1275,7 @@ export default function MyAccount() {
                 <div className="space-y-4">
                   <a 
                     href="/settings/security"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-stone-50 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
                       <Shield className="w-5 h-5 text-gray-400" />
@@ -1289,7 +1289,7 @@ export default function MyAccount() {
 
                   <a 
                     href="/settings"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-stone-50 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
                       <Settings className="w-5 h-5 text-gray-400" />
@@ -1303,7 +1303,7 @@ export default function MyAccount() {
 
                   <a 
                     href="/my-devices"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-stone-50 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
                       <CreditCard className="w-5 h-5 text-gray-400" />
@@ -1318,7 +1318,7 @@ export default function MyAccount() {
                   <button
                     onClick={() => exportDataMutation.mutate()}
                     disabled={exportDataMutation.isPending}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-stone-50 transition-colors cursor-pointer group w-full"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group w-full"
                   >
                     <div className="flex items-center gap-4">
                       <Download className="w-5 h-5 text-gray-400" />
@@ -1337,7 +1337,7 @@ export default function MyAccount() {
               </div>
 
               {/* E-Gift Policy Notice */}
-              <div className="bg-amber-50 rounded-3xl border border-amber-100 p-6">
+              <div className="bg-white rounded-3xl border border-amber-100 p-6">
                 <div className="flex items-start gap-4">
                   <Ban className="w-5 h-5 text-amber-800 flex-shrink-0 mt-0.5" />
                   <div>
@@ -1737,7 +1737,7 @@ export default function MyAccount() {
                         />
                       </div>
 
-                      <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                      <div className="p-4 rounded-xl bg-white border border-amber-200">
                         <div className="flex items-start gap-3">
                           <Shield className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
                           <p className="text-gray-500 text-sm">
@@ -1866,7 +1866,7 @@ export default function MyAccount() {
                         </div>
                       )}
 
-                      <div className="p-4 rounded-xl bg-stone-50 border border-stone-200">
+                      <div className="p-4 rounded-xl bg-white border border-stone-200">
                         <div className="flex items-start gap-3">
                           <Shield className="w-5 h-5 text-stone-700 flex-shrink-0 mt-0.5" />
                           <p className="text-gray-500 text-sm">

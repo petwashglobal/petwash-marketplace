@@ -305,12 +305,12 @@ export default function K9000Redeem() {
                     <label
                       className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                         selectedOption === 'loyalty'
-                          ? 'border-amber-500 bg-amber-50'
+                          ? 'border-amber-500 bg-white'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <RadioGroupItem value="loyalty" />
-                      <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
                         <Star className="w-5 h-5 text-amber-500" />
                       </div>
                       <div className="flex-1">

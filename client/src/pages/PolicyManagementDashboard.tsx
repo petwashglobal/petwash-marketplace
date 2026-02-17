@@ -328,7 +328,7 @@ export default function PolicyManagementDashboard() {
 
           {/* Expiring Certifications Alert */}
           {expiringCount > 0 && (
-            <Alert className="mb-6 border-amber-300 bg-amber-50" data-testid="alert-expiring-certs">
+            <Alert className="mb-6 border-amber-300 bg-white" data-testid="alert-expiring-certs">
               <Clock className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-800">
                 <span className="font-semibold">{expiringCount} certification(s)</span> expiring in the next 30 days. Review and renew to maintain compliance.

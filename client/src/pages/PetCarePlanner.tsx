@@ -445,7 +445,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                       {washReminder && (
                         <div className={`mb-4 rounded-lg p-4 border-2 ${
                           washReminder.type === 'overdue' ? 'bg-red-50 border-red-300' :
-                          washReminder.type === 'due-soon' ? 'bg-yellow-50 border-yellow-300' :
+                          washReminder.type === 'due-soon' ? 'bg-white border-yellow-300' :
                           'bg-blue-50 border-blue-300'
                         }`}>
                           <p className="text-sm font-semibold flex items-center gap-2">

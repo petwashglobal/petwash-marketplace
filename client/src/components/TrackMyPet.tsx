@@ -347,7 +347,7 @@ export default function TrackMyPet() {
 
             {/* Bathroom Markers (Wag-style) */}
             {walk.bathroomMarkers && walk.bathroomMarkers.length > 0 && (
-              <div className="bg-amber-50/80 dark:bg-amber-950/40 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+              <div className="bg-white dark:bg-amber-950/40 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-base">{isHebrew ? '🐾 סמני שירותים' : '🐾 Bathroom Breaks'}</span>
                 </div>

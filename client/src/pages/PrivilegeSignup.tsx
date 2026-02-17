@@ -261,7 +261,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
-      <div className="min-h-screen bg-[#fafafa]" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* HERO - Clean white with floating privilege card */}
         <section className="relative overflow-hidden bg-white pt-16 sm:pt-24 pb-20 sm:pb-28">
@@ -388,7 +388,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
         </section>
 
         {/* TIMELINE - Activity feed */}
-        <section className="py-16 bg-[#fafafa]">
+        <section className="py-16 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid md:grid-cols-2 gap-12 items-start">
               <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="space-y-5">
@@ -446,7 +446,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
         </section>
 
         {/* 7-STAR TIER SYSTEM */}
-        <section className="py-16 bg-[#fafafa]">
+        <section className="py-16 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-10">
               <p className="text-sm uppercase tracking-[0.2em] font-medium text-gray-400 mb-3">{t('privilege.tierPreviewTitle', language)}</p>
@@ -528,7 +528,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
         </section>
 
         {/* FUTURE ROADMAP */}
-        <section className="py-16 bg-[#fafafa]">
+        <section className="py-16 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-10">
               <p className="text-sm uppercase tracking-[0.2em] font-medium text-gray-400 mb-3">{t('privilege.futureTitle', language)}</p>

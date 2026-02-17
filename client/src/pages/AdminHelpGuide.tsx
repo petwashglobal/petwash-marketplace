@@ -166,7 +166,7 @@ export default function AdminHelpGuide({ language, onLanguageChange }: AdminHelp
               </CardContent>
             </Card>
             
-            <Card className="bg-amber-50 border-amber-200 hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="bg-white border-amber-200 hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <a href="#troubleshooting-guide" className="block">
                   <h3 className="font-semibold text-amber-900 mb-1">🔧 Troubleshooting</h3>

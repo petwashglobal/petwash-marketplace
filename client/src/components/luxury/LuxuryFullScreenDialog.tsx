@@ -117,7 +117,7 @@ export function LuxuryFullScreenDialog({
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
-                      className="flex items-center gap-2 mb-4 px-4 py-2 bg-amber-50 rounded-full"
+                      className="flex items-center gap-2 mb-4 px-4 py-2 bg-white rounded-full"
                     >
                       <Sparkles className="w-4 h-4 text-amber-600" />
                       <span className="text-sm font-medium text-amber-700">

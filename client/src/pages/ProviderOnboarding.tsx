@@ -1014,7 +1014,7 @@ export default function ProviderOnboarding() {
                   </div>
 
                   {/* Legal Notice - Israeli Law Compliance */}
-                  <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="mt-4 p-3 bg-white dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
                     <p className="text-xs text-amber-800 dark:text-amber-300">
                       {isHebrew 
                         ? '⚖️ הערה משפטית: בהתאם לחוק הגנת הפרטיות בישראל, איננו מבקשים מידע על עבר פלילי באופן ישיר. במקום זאת, אנו מסתמכים על הצהרות עצמיות ואימות מסמכים ידני. לפי סעיף 2 לחוק המרשם הפלילי, אין לדרוש גילוי מידע על הרשעות שנמחקו.'

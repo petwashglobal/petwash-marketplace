@@ -561,7 +561,7 @@ function PetProfileCard({ name, type, breed, age, isHebrew }: any) {
 function MessagePreview({ message, isHebrew }: any) {
   return (
     <div 
-      className={`flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl cursor-pointer transition-all ${!message.isRead ? 'bg-amber-50 dark:bg-amber-900/20' : ''}`}
+      className={`flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl cursor-pointer transition-all ${!message.isRead ? 'bg-white dark:bg-amber-900/20' : ''}`}
       data-testid={`message-${message.id}`}
     >
       <div className="h-12 w-12 rounded-full luxury-gradient-gold flex items-center justify-center text-white font-bold luxury-shadow-md">

@@ -415,7 +415,7 @@ export default function UnifiedEntityManagement() {
                         <p className="font-medium text-sm">{incident.title}</p>
                         <p className="text-xs text-muted-foreground">Priority: {incident.priority}</p>
                       </div>
-                      <Badge variant="outline" className={incident.severity === 'critical' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700'}>
+                      <Badge variant="outline" className={incident.severity === 'critical' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-yellow-700'}>
                         {incident.status}
                       </Badge>
                     </div>
@@ -488,7 +488,7 @@ export default function UnifiedEntityManagement() {
                         <p className="font-medium text-sm">{item.itemName}</p>
                         <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
                       </div>
-                      <Badge variant="outline" className={parseInt(item.quantityOnHand || 0) < parseInt(item.reorderPoint || 0) ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-green-50 text-green-700 border-green-200'}>
+                      <Badge variant="outline" className={parseInt(item.quantityOnHand || 0) < parseInt(item.reorderPoint || 0) ? 'bg-white text-yellow-700 border-yellow-200' : 'bg-green-50 text-green-700 border-green-200'}>
                         {item.quantityOnHand} units
                       </Badge>
                     </div>
@@ -527,7 +527,7 @@ export default function UnifiedEntityManagement() {
                         <p className="font-medium text-sm">{ap.vendorName}</p>
                         <p className="text-xs text-muted-foreground">₪{parseFloat(ap.totalAmount || 0).toLocaleString()}</p>
                       </div>
-                      <Badge variant="outline" className={ap.paymentStatus === 'paid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}>
+                      <Badge variant="outline" className={ap.paymentStatus === 'paid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white text-yellow-700 border-yellow-200'}>
                         {ap.paymentStatus}
                       </Badge>
                     </div>
@@ -561,7 +561,7 @@ export default function UnifiedEntityManagement() {
                         <p className="font-medium text-sm">{ar.customerName}</p>
                         <p className="text-xs text-muted-foreground">₪{parseFloat(ar.totalAmount || 0).toLocaleString()}</p>
                       </div>
-                      <Badge variant="outline" className={ar.paymentStatus === 'paid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}>
+                      <Badge variant="outline" className={ar.paymentStatus === 'paid' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white text-yellow-700 border-yellow-200'}>
                         {ar.paymentStatus}
                       </Badge>
                     </div>

@@ -1394,7 +1394,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               onClick={() => handleSocialLogin('google')}
               disabled={!!socialLoading}
               variant="outline"
-              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-800 rounded-none tracking-wider uppercase transition-all"
+              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-gray-50 text-neutral-800 rounded-none tracking-wider uppercase transition-all"
               data-testid="button-gmail-signin"
             >
               {socialLoading === 'google' ? (
@@ -1502,7 +1502,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 onClick={() => setPinMode(true)}
                 variant="outline"
-                className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 rounded-none tracking-wider uppercase transition-all"
+                className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-gray-50 text-neutral-700 rounded-none tracking-wider uppercase transition-all"
                 data-testid="button-pin-signin"
               >
                 <KeyRound className="w-4 h-4 mr-3 text-neutral-500" />
@@ -1513,7 +1513,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             <Button
               onClick={() => setPhoneMode(true)}
               variant="outline"
-              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 rounded-none tracking-wider uppercase transition-all"
+              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-gray-50 text-neutral-700 rounded-none tracking-wider uppercase transition-all"
               data-testid="button-phone-signin"
             >
               <Phone className="w-4 h-4 mr-3 text-neutral-500" />
@@ -1575,7 +1575,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 />
               </div>
               
-              <div className="bg-neutral-50 border border-neutral-200 p-6">
+              <div className="bg-white border border-neutral-200 p-6">
                 <h3 className="text-center text-sm font-medium mb-4 text-neutral-800 uppercase tracking-wider">
                   {language === 'he' ? 'הזן קוד PIN' : 'Enter your PIN'}
                 </h3>
@@ -1598,7 +1598,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setPinError("");
                 }}
                 variant="ghost"
-                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-none transition-all tracking-wider uppercase"
+                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-gray-50 rounded-none transition-all tracking-wider uppercase"
                 data-testid="button-back-from-pin"
               >
                 <ArrowLeft className="w-3.5 h-3.5 mr-2" />
@@ -1614,7 +1614,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               transition={{ delay: 0.2, duration: 0.4 }}
               className="space-y-5"
             >
-              <div className="bg-neutral-50 border border-neutral-200 p-6 space-y-4">
+              <div className="bg-white border border-neutral-200 p-6 space-y-4">
                 <h3 className="text-center text-sm font-medium text-neutral-800 uppercase tracking-wider">
                   {language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}
                 </h3>
@@ -1722,7 +1722,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   }
                 }}
                 variant="ghost"
-                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-none transition-all tracking-wider uppercase"
+                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-gray-50 rounded-none transition-all tracking-wider uppercase"
                 data-testid="button-back-from-phone"
               >
                 <ArrowLeft className="w-3.5 h-3.5 mr-2" />
@@ -1863,7 +1863,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setMagicLinkSent(false);
                 }}
                 variant="ghost"
-                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-none tracking-wider uppercase transition-all"
+                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-gray-50 rounded-none tracking-wider uppercase transition-all"
                 data-testid="button-back-to-password"
               >
                 {t('signin.backToPassword', language)}
@@ -1914,7 +1914,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setPasswordResetSent(false);
                 }}
                 variant="ghost"
-                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-none tracking-wider uppercase transition-all"
+                className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-gray-50 rounded-none tracking-wider uppercase transition-all"
                 data-testid="button-back-to-signin"
               >
                 {t('signin.backToSignIn', language)}

@@ -265,7 +265,7 @@ const THEMES: Record<string, SearchTheme> = {
     buttonGradient: 'from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600',
     buttonShadow: 'shadow-amber-500/25 hover:shadow-amber-500/30',
     selectedBorder: 'border-amber-500',
-    selectedBg: 'bg-amber-50',
+    selectedBg: 'bg-white',
     selectedText: 'text-amber-700',
     iconColor: 'text-amber-500',
     focusRing: 'focus:ring-amber-500',
@@ -1368,7 +1368,7 @@ export function MadPawsSearch({
 
             {advancedTab === 'behavior' && (
               <div className="space-y-4">
-                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                <div className="p-3 bg-white rounded-xl border border-amber-200">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <Checkbox checked={hasSeparationAnxiety} onCheckedChange={(checked) => setHasSeparationAnxiety(checked as boolean)} data-testid="checkbox-separation-anxiety" />
                     <div>

@@ -258,7 +258,7 @@ export function ReceiptCameraUpload({ onDataExtracted, language = 'en' }: Receip
 
       {/* Error Display */}
       {error && (
-        <Alert className="bg-yellow-50 dark:bg-yellow-950 border-2 border-yellow-500">
+        <Alert className="bg-white dark:bg-yellow-950 border-2 border-yellow-500">
           <XCircle className="w-5 h-5 text-yellow-600" />
           <AlertDescription>
             <p className="font-bold text-yellow-800 dark:text-yellow-200">

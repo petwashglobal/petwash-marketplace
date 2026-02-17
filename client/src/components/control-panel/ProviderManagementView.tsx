@@ -514,7 +514,7 @@ export default function ProviderManagementView() {
               </div>
 
               {expiringChecks.length > 0 && (
-                <div className="border border-orange-200 rounded-lg p-4 bg-orange-50/50">
+                <div className="border border-orange-200 rounded-lg p-4 bg-white">
                   <h4 className="font-medium text-orange-800 mb-3 flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4" />
                     תעודות שעומדות לפוג ({expiringChecks.length})

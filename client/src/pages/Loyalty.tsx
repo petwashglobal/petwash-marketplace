@@ -660,7 +660,7 @@ export default function Loyalty() {
   if (authLoading || (firebaseUser && loading)) {
     return (
       <Layout language={language} onLanguageChange={setLanguage}>
-        <div className="min-h-screen flex items-center justify-center bg-[#fafafa]">
+        <div className="min-h-screen flex items-center justify-center bg-white">
           <motion.div 
             className="text-center"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -722,7 +722,7 @@ export default function Loyalty() {
 
   return (
     <Layout language={language} onLanguageChange={setLanguage}>
-      <div className="min-h-screen bg-[#fafafa]" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="min-h-screen bg-white" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* HERO WELCOME - Bright white with subtle pattern */}
         <section className="relative bg-white pt-12 sm:pt-16 pb-16 sm:pb-24 overflow-hidden">
@@ -854,7 +854,7 @@ export default function Loyalty() {
         </section>
 
         {/* YOUR EXCLUSIVE BENEFITS */}
-        <section className="bg-[#fafafa] py-14 border-t border-gray-100">
+        <section className="bg-white py-14 border-t border-gray-100">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-8">
               <p className="text-[11px] uppercase tracking-[0.2em] font-medium text-gray-400 mb-2">⁦PetWash™⁩ Privilege</p>
@@ -983,7 +983,7 @@ export default function Loyalty() {
                         className={`flex items-center justify-between p-4 transition-colors ${isCurrent ? 'shadow-sm' : ''}`}
                         style={{
                           borderRadius: '2px',
-                          background: isCurrent ? 'white' : '#fafafa',
+                          background: isCurrent ? 'white' : '#FFFFFF',
                           border: isCurrent ? `2px solid ${tierColors[tier].accent}` : '1px solid #f0f0f0',
                         }}
                       >

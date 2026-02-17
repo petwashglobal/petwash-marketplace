@@ -215,7 +215,7 @@ export default function MyWallet() {
             <Card className="luxury-glass-card">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
                     <Star className="w-4 h-4 text-amber-500" />
                   </div>
                   <span className="text-xs text-gray-500">

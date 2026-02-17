@@ -175,7 +175,7 @@ export function EmergencyWalkBooking() {
               />
             </div>
 
-            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
+            <div className="bg-white border-2 border-yellow-300 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
                 <div className="text-sm text-yellow-800">
@@ -256,7 +256,7 @@ export function EmergencyWalkBooking() {
             </GlassCard>
 
             {bookingResult.surgePricing.isSurge && (
-              <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-4">
+              <div className="bg-white border-2 border-orange-300 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <TrendingUp className="h-5 w-5 text-orange-600 mt-0.5" />
                   <div className="flex-1">

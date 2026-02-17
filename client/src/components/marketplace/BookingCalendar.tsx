@@ -158,7 +158,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
           )}
 
           {error && !useDemoData && (
-            <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/20">
+            <Card className="border-amber-200 bg-white dark:bg-amber-900/20">
               <CardContent className="p-4">
                 <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
                   ⏳ Loading availability... This provider may not have slots configured yet.
@@ -196,7 +196,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
           )}
 
           {!isLoading && !error && !useDemoData && slotsForSelectedDate.length === 0 && (
-            <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
+            <Card className="border-yellow-200 bg-white dark:bg-yellow-900/20">
               <CardContent className="p-4">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
                   No available slots for this date. Please select another day.

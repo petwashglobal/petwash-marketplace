@@ -107,7 +107,7 @@ export default function OwnerDashboard() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { bg: string; text: string; border: string; icon: any }> = {
-      pending: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: Clock },
+      pending: { bg: 'bg-white', text: 'text-amber-700', border: 'border-amber-200', icon: Clock },
       confirmed: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: CheckCircle2 },
       completed: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', icon: CheckCircle2 },
       cancelled: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: XCircle },
@@ -535,7 +535,7 @@ export default function OwnerDashboard() {
                       <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
                         payment.status === 'completed' ? 'bg-emerald-50' :
                         payment.status === 'refunded' ? 'bg-red-50' :
-                        'bg-amber-50'
+                        'bg-white'
                       }`}>
                         <DollarSign className={`w-5 h-5 ${
                           payment.status === 'completed' ? 'text-emerald-500' :
@@ -553,7 +553,7 @@ export default function OwnerDashboard() {
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${
                         payment.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                         payment.status === 'refunded' ? 'bg-red-50 text-red-700 border border-red-200' :
-                        'bg-amber-50 text-amber-700 border border-amber-200'
+                        'bg-white text-amber-700 border border-amber-200'
                       }`}>
                         {payment.status}
                       </span>

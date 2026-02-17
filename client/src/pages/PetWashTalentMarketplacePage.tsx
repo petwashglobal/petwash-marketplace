@@ -84,7 +84,7 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     fullName: "Paw Finder Community",
     tagLine: "Community heroes for lost and found pets.",
     accent: "border-amber-400 text-amber-500",
-    chipColor: "bg-amber-50 text-amber-600",
+    chipColor: "bg-white text-amber-600",
     description:
       "Moderators and community leads who run local zones and help reunite pets with their families.",
   },
@@ -104,7 +104,7 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     fullName: "Enterprise Partners",
     tagLine: "Franchise and white label leaders.",
     accent: "border-orange-400 text-orange-500",
-    chipColor: "bg-orange-50 text-orange-600",
+    chipColor: "bg-white text-orange-600",
     description:
       "Franchise owners and enterprise partners who operate ⁦Pet Wash™⁩ at city scale with full data and analytics.",
   },

@@ -434,7 +434,7 @@ export default function HRAdminDashboard() {
                                   variant="outline"
                                   className={
                                     riskLevel === 'high' ? 'border-red-300 text-red-600 bg-red-50' :
-                                    riskLevel === 'medium' ? 'border-amber-300 text-amber-600 bg-amber-50' :
+                                    riskLevel === 'medium' ? 'border-amber-300 text-amber-600 bg-white' :
                                     'border-green-300 text-green-600 bg-green-50'
                                   }
                                 >

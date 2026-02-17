@@ -64,7 +64,7 @@ export default function K9000Overview() {
       title: t('k9000.help'),
       description: t('k9000.helpDesc'),
       link: "/k9000/hub",
-      color: "bg-orange-50 dark:bg-orange-950"
+      color: "bg-white dark:bg-orange-950"
     }
   ];
 

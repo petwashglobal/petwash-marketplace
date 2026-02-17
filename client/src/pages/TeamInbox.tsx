@@ -577,7 +577,7 @@ export default function TeamInbox() {
                         if (!pinnedMsg) return null;
                         
                         return (
-                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4" data-testid="pinned-message-banner">
+                          <div className="bg-white border border-amber-200 rounded-lg p-4 mb-4" data-testid="pinned-message-banner">
                             <div className="flex items-start gap-3">
                               <Pin className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
                               <div className="flex-1 min-w-0">

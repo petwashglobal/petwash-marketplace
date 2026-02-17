@@ -416,7 +416,7 @@ export default function FranchiseManagementDashboard() {
                             <span className="text-muted-foreground block mb-1">Status</span>
                             <Badge className={
                               payment.paymentStatus === 'paid' ? 'bg-green-50 text-green-700 border-green-200' : 
-                              payment.paymentStatus === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              payment.paymentStatus === 'pending' ? 'bg-white text-amber-700 border-amber-200' :
                               'bg-red-50 text-red-700 border-red-200'
                             }>
                               {payment.paymentStatus || 'pending'}

@@ -675,7 +675,7 @@ export default function ProviderReview() {
                         </div>
                         
                         {/* Legal Note */}
-                        <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 text-xs text-amber-800 dark:text-amber-300">
+                        <div className="p-2 bg-white dark:bg-amber-900/20 rounded border border-amber-200 text-xs text-amber-800 dark:text-amber-300">
                           {isHebrew 
                             ? '⚖️ הערה: בהתאם לחוק הישראלי, כל מקרה נבדק לגופו. החלטות מבוססות על מסמכים והצהרות, לא על מידע פלילי ישיר.'
                             : '⚖️ Note: Per Israeli law, each case is reviewed on its own merit. Decisions are based on documents and declarations, not direct criminal records.'}

@@ -189,7 +189,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Technology Section - Compact with Luxury Background */}
         <section 
           ref={techRef}
-          className={`py-8 px-4 sm:py-12 sm:px-6 lg:px-8 bg-gradient-to-br from-[#fdfbf7] via-white to-[#faf8f5] relative overflow-hidden transition-all duration-1000 ${
+          className={`py-8 px-4 sm:py-12 sm:px-6 lg:px-8 bg-white relative overflow-hidden transition-all duration-1000 ${
             techRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
           }`}
         >
@@ -269,7 +269,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         <section 
           ref={organicRef}
           className="py-6 px-4 sm:py-10 sm:px-6 lg:px-8 relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #fdfbf7 0%, #faf8f5 50%, #f8f6f1 100%)' }}
+          style={{ background: '#FFFFFF' }}
         >
           {/* Luxury corner ornaments */}
           <div className="absolute top-4 left-4 w-16 h-16 border-t border-l border-[#c6a664]/20" />

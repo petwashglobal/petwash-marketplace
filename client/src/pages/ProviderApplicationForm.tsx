@@ -600,7 +600,7 @@ export default function ProviderApplicationForm() {
                     </div>
                   </div>
                   
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 mb-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-amber-200 mb-4">
                     <Info className="h-4 w-4 text-amber-400" />
                     <span className="text-amber-700 text-sm">{t.commission}</span>
                   </div>
@@ -1223,7 +1223,7 @@ export default function ProviderApplicationForm() {
                     </div>
 
                     {/* Independent Contractor Status */}
-                    <div className="bg-amber-50 rounded-2xl p-6 border border-amber-200">
+                    <div className="bg-white rounded-2xl p-6 border border-amber-200">
                       <FormField
                         control={form.control}
                         name="agreeToContractorStatus"

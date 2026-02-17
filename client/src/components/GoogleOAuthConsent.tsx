@@ -177,7 +177,7 @@ export function GoogleOAuthConsent({ language, userEmail, onContinue, onCancel }
           </div>
 
           {/* Trust Section */}
-          <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-100">
+          <div className="bg-white rounded-lg p-4 border border-yellow-100">
             <div className="flex items-start gap-2">
               <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
               <div>

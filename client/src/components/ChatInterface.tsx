@@ -266,7 +266,7 @@ export function ConversationList({
               key={conv.id}
               onClick={() => onSelectConversation(conv.id)}
               className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                selectedConversationId === conv.id ? "bg-amber-50" : ""
+                selectedConversationId === conv.id ? "bg-white" : ""
               }`}
               data-testid={`conversation-${conv.id}`}
             >

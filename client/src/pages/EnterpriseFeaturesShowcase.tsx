@@ -291,7 +291,7 @@ export default function EnterpriseFeaturesShowcase() {
                           </div>
                         </div>
                       ) : forecastLoading ? null : (
-                        <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                        <Card className="bg-white dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
                           <CardContent className="p-4 text-center">
                             <AlertTriangle className="w-6 h-6 text-amber-600 mx-auto mb-2" />
                             <p className="text-sm text-amber-700 dark:text-amber-300">
@@ -316,7 +316,7 @@ export default function EnterpriseFeaturesShowcase() {
                       </CardContent>
                     </Card>
                   ) : !weatherLoading ? (
-                    <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                    <Card className="bg-white dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
                       <CardContent className="p-4 text-center">
                         <AlertTriangle className="w-6 h-6 text-amber-600 mx-auto mb-2" />
                         <p className="text-sm text-amber-700 dark:text-amber-300">
@@ -437,7 +437,7 @@ export default function EnterpriseFeaturesShowcase() {
                       </CardContent>
                     </Card>
                   ) : !aqiLoading ? (
-                    <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+                    <Card className="bg-white dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
                       <CardContent className="p-4 text-center">
                         <AlertTriangle className="w-6 h-6 text-amber-600 mx-auto mb-2" />
                         <p className="text-sm text-amber-700 dark:text-amber-300 font-medium">

@@ -163,7 +163,7 @@ export default function Disclaimer() {
                 <li><strong>{isHebrew ? 'התאמה ביומטרית:' : 'Biometric Match:'}</strong> {isHebrew ? 'המערכת משתמשת ב-Google Vision API כדי להשוות פנים' : 'System uses Google Vision API to match faces'}</li>
               </ul>
               
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-r-4 border-yellow-500 p-6 rounded-lg mt-4">
+              <div className="bg-white dark:bg-yellow-900/20 border-r-4 border-yellow-500 p-6 rounded-lg mt-4">
                 <p className="font-bold mb-2">{isHebrew ? '⚠️ כתב ויתור לאימות:' : '⚠️ Verification Disclaimer:'}</p>
                 <p className="leading-relaxed">
                   {isHebrew ? (

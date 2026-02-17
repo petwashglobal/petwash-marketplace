@@ -111,7 +111,7 @@ const departmentInfo = {
   maintenance: { 
     icon: Wrench, 
     color: 'text-orange-600',
-    bgColor: 'bg-orange-50',
+    bgColor: 'bg-white',
     label: { en: 'Maintenance', he: 'תחזוקה' },
     description: { en: 'Technical maintenance', he: 'תחזוקה טכנית' }
   },

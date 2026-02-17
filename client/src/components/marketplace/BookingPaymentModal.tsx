@@ -250,7 +250,7 @@ export function BookingPaymentModal({
               </div>
 
               {/* Escrow Note */}
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="bg-white border border-amber-200 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <Shield className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-amber-800">

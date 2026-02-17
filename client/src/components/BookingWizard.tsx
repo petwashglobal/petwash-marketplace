@@ -403,7 +403,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                     size="icon"
                     onClick={() => updatePetCount(key, 1)}
                     disabled={filters.pets[key] >= 5}
-                    className="h-10 w-10 rounded-full border-2 border-amber-300 hover:bg-amber-50"
+                    className="h-10 w-10 rounded-full border-2 border-amber-300 hover:bg-gray-50"
                     data-testid={`button-increase-${key}`}
                   >
                     <Plus className="h-4 w-4" />
