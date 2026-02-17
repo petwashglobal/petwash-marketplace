@@ -40,7 +40,7 @@ export default function Privacy() {
           <Card className="luxury-glass-panel luxury-shadow-md">
             <CardHeader className="bg-gradient-to-br from-white/95 to-purple-50/30 border-b border-purple-100">
               <CardTitle className="luxury-heading-md text-center">
-                {language === 'en' ? 'Privacy Policy – Pet Wash Ltd' : 'מדיניות פרטיות – פט ווש בע"מ'}
+                {language === 'en' ? 'Privacy Policy – ⁦Pet Wash™⁩ Ltd' : 'מדיניות פרטיות – ⁦Pet Wash™⁩ בע"מ'}
               </CardTitle>
               <p className="text-gray-600 text-center">
                 {language === 'en' ? 'Company Number: 517145033' : 'מספר חברה: 517145033'}
@@ -53,7 +53,7 @@ export default function Privacy() {
               {language === 'en' ? (
                 <>
                   <p className="mb-6">
-                    Pet Wash Ltd ("we", "us", "our") is committed to protecting your personal information. This Privacy Policy explains how we collect, use, and protect data when you use our website or mobile application.
+                    ⁦Pet Wash™⁩ Ltd ("we", "us", "our") is committed to protecting your personal information. This Privacy Policy explains how we collect, use, and protect data when you use our website or mobile application.
                   </p>
 
                   <section className="mb-8">

@@ -74,7 +74,7 @@ export default function MenuDesigns() {
               Hamburger Menu Design Options
             </h1>
             <p className="luxury-text-body">
-              Choose the perfect menu style for ⁦Pet Wash™️⁩
+              Choose the perfect menu style for ⁦Pet Wash™⁩
             </p>
           </div>
 
@@ -118,7 +118,7 @@ export default function MenuDesigns() {
                   
                   {/* Center - Logo */}
                   <div className="text-center">
-                    <h1 className="text-3xl font-bold text-black">⁦Pet Wash™️⁩</h1>
+                    <h1 className="text-3xl font-bold text-black">⁦Pet Wash™⁩</h1>
                   </div>
                   
                   {/* Right - Menu & Language */}

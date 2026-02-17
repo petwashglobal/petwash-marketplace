@@ -200,7 +200,7 @@ export function generateLocalBusinessSchema() {
     '@type': 'LocalBusiness',
     '@id': 'https://petwash.co.il/#organization',
     name: '⁦Pet Wash™⁩',
-    alternateName: 'Pet Wash Israel',
+    alternateName: 'Pet Wash™ Israel',
     description: 'Premium organic pet washing service in Israel with K9000 smart stations',
     url: 'https://petwash.co.il',
     logo: 'https://petwash.co.il/brand/petwash-logo-official.png',

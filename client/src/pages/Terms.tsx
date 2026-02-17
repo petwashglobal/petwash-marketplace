@@ -726,7 +726,7 @@ export default function Terms() {
                         אם אינך מסכים לתנאים אלו, אנא אל תשתמש בשירותינו.
                       </p>
                       <p className="luxury-text-body">
-                        תנאים אלו מהווים הסכם משפטי מחייב בינך לבין פט ווש בע"מ (מספר חברה: 517145033), 
+                        תנאים אלו מהווים הסכם משפטי מחייב בינך לבין ⁦Pet Wash™⁩ בע"מ (מספר חברה: 517145033), 
                         חברה ישראלית הרשומה על פי חוקי מדינת ישראל.
                       </p>
                     </div>
@@ -872,7 +872,7 @@ export default function Terms() {
                         </p>
                         <p className="luxury-text-small">
                           <strong>לא יגבה תשלום</strong> אם: (1) השירות פגום או לא תואם, 
-                          (2) השירות לא נמסר במועד המתוכנן, (3) הפרת חוזה מצד פט ווש בע"מ, 
+                          (2) השירות לא נמסר במועד המתוכנן, (3) הפרת חוזה מצד ⁦Pet Wash™⁩ בע"מ, 
                           (4) קיבלת מידע מטעה.
                         </p>
                       </div>
@@ -923,7 +923,7 @@ export default function Terms() {
                     <SectionIcon icon={ShieldCheck} />
                     <h2 className="luxury-heading-md mb-6">6. אחריות והבטחת שירות</h2>
                     <div className="space-y-4">
-                      <p className="luxury-text-body">פט ווש בע"מ מתחייבת ש:</p>
+                      <p className="luxury-text-body">⁦Pet Wash™⁩ בע"מ מתחייבת ש:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold mt-1">•</span>
@@ -984,7 +984,7 @@ export default function Terms() {
                       <div className="luxury-glass-panel p-6 border-r-4 border-yellow-500 mt-4">
                         <p className="luxury-heading-sm mb-3">תקופת תוקף מורחבת</p>
                         <p className="luxury-text-small">
-                          פט ווש מציעה מרצונה תקופת תוקף של 5 שנים כדי להבטיח ערך הוגן ללקוחות. 
+                          ⁦Pet Wash™⁩ מציעה מרצונה תקופת תוקף של 5 שנים כדי להבטיח ערך הוגן ללקוחות. 
                           שוברים שנרכשו לפני שינוי מדיניות זה שומרים על תאריך התפוגה המקורי שלהם או 5 שנים מהרכישה, לפי המאוחר.
                         </p>
                       </div>
@@ -1097,7 +1097,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">11. הגבלת אחריות</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        במידה המרבית המותרת על פי החוק הישראלי, פט ווש בע"מ לא תהיה אחראית ל:
+                        במידה המרבית המותרת על פי החוק הישראלי, ⁦Pet Wash™⁩ בע"מ לא תהיה אחראית ל:
                       </p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
@@ -1132,7 +1132,7 @@ export default function Terms() {
                     <div className="space-y-4">
                       <p className="luxury-text-body">
                         כל התוכן באתר, באפליקציה ובחומרים שלנו (כולל לוגו ⁦Pet Wash™⁩, סימנים מסחריים, טקסט, גרפיקה, 
-                        תמונות, תוכנה) הם רכושה של פט ווש בע"מ ומוגנים על ידי חוקי קניין רוחני ישראליים ובינלאומיים.
+                        תמונות, תוכנה) הם רכושה של ⁦Pet Wash™⁩ בע"מ ומוגנים על ידי חוקי קניין רוחני ישראליים ובינלאומיים.
                       </p>
                     </div>
                   </section>
@@ -1192,7 +1192,7 @@ export default function Terms() {
                     <SectionIcon icon={Mail} />
                     <h2 className="luxury-heading-md mb-6">15. פרטי יצירת קשר</h2>
                     <div className="luxury-glass-panel p-8">
-                      <p className="luxury-heading-sm mb-6">פט ווש בע"מ</p>
+                      <p className="luxury-heading-sm mb-6">⁦Pet Wash™⁩ בע"מ</p>
                       <div className="space-y-3">
                         <p className="luxury-text-body"><strong>מספר חברה:</strong> 517145033</p>
                         <p className="luxury-text-body">

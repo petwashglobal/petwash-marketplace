@@ -92,7 +92,7 @@ export default function SecurityStatus() {
           </div>
 
           <h1 className="luxury-heading-xl mb-3">
-            PetWash Shield™
+            ⁦Pet Wash™⁩ Shield
           </h1>
           <p className="luxury-text-body mb-2">
             Enterprise Security Status
@@ -153,7 +153,7 @@ export default function SecurityStatus() {
               Security Features
             </CardTitle>
             <CardDescription>
-              Active protection systems for PetWash Ltd
+              Active protection systems for ⁦Pet Wash™⁩ Ltd
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -191,7 +191,7 @@ export default function SecurityStatus() {
         </Card>
 
         <div className="text-center mt-8 luxury-text-small">
-          <p>PetWash Ltd (517145033) • Enterprise-Grade Security • ISO 27001 Compliant</p>
+          <p>⁦Pet Wash™⁩ Ltd (517145033) • Enterprise-Grade Security • ISO 27001 Compliant</p>
         </div>
       </div>
     </div>

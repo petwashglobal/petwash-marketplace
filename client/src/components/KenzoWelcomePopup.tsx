@@ -33,9 +33,9 @@ export function KenzoWelcomePopup({ language }: KenzoWelcomePopupProps) {
     he: {
       greeting: "שלום וזנב מתנופף! 🐾",
       intro: "אני Kenzo",
-      subtitle: "הגולדן רטריבר הלבן והשגריר הרשמי של ⁦Pet Wash™️⁩",
-      welcome: "ברוכים הבאים למשפחת Pet Wash! אני כל כך שמח שהצטרפתם אלינו! 🤗",
-      message: "כאן ב-⁦Pet Wash™️⁩, אנחנו לא רק שוטפים - אנחנו מטפלים בכלבים האהובים שלכם עם אהבה, טיפול אורגני פרימיום ותשומת לב אישית. כל כלב הוא חלק מהמשפחה שלנו!",
+      subtitle: "הגולדן רטריבר הלבן והשגריר הרשמי של ⁦Pet Wash™⁩",
+      welcome: "ברוכים הבאים למשפחת ⁦Pet Wash™⁩! אני כל כך שמח שהצטרפתם אלינו! 🤗",
+      message: "כאן ב-⁦Pet Wash™⁩, אנחנו לא רק שוטפים - אנחנו מטפלים בכלבים האהובים שלכם עם אהבה, טיפול אורגני פרימיום ותשומת לב אישית. כל כלב הוא חלק מהמשפחה שלנו!",
       promise: "אני מבטיח שכל ביקור יהיה מלא באהבה, משחק ומגע הספא הכי טוב! 💖",
       cta: "בואו נתחיל את ההרפתקה!",
       close: "תודה, Kenzo! 🐕"
@@ -43,9 +43,9 @@ export function KenzoWelcomePopup({ language }: KenzoWelcomePopupProps) {
     en: {
       greeting: "Hello & Wagging Tail! 🐾",
       intro: "I'm Kenzo",
-      subtitle: "The White Golden Retriever & Official ⁦Pet Wash™️⁩ Ambassador",
-      welcome: "Welcome to the Pet Wash family! I'm SO excited you're here! 🤗",
-      message: "Here at ⁦Pet Wash™️⁩, we don't just wash - we care for your beloved dogs with love, premium organic care, and personal attention. Every pup is part of our family!",
+      subtitle: "The White Golden Retriever & Official ⁦Pet Wash™⁩ Ambassador",
+      welcome: "Welcome to the ⁦Pet Wash™⁩ family! I'm SO excited you're here! 🤗",
+      message: "Here at ⁦Pet Wash™⁩, we don't just wash - we care for your beloved dogs with love, premium organic care, and personal attention. Every pup is part of our family!",
       promise: "I promise every visit will be full of love, play, and the best spa treatment! 💖",
       cta: "Let's Start the Adventure!",
       close: "Thanks, Kenzo! 🐕"

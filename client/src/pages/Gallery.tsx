@@ -7,67 +7,67 @@ import { X, Play } from 'lucide-react';
 const galleryImages = [
   {
     src: '/gallery/C4EFE9DA-C7A6-4252-AB3F-7ED77BAC1A9B_1761100129902.png',
-    alt: 'PetWash Station Signage',
+    alt: 'Pet Wash™ Station Signage',
     category: 'branding',
     featured: true
   },
   {
     src: '/gallery/D8595123-1F98-4FC8-BE89-7D609439F334_1761100129902.png',
-    alt: 'PetWash Logo',
+    alt: 'Pet Wash™ Logo',
     category: 'branding',
     featured: false
   },
   {
     src: '/gallery/IMG_8664_1761100129901.jpeg',
-    alt: 'Pet Wash Station',
+    alt: 'Pet Wash™ Station',
     category: 'station',
     featured: true
   },
   {
     src: '/gallery/IMG_8665_1761100129901.jpeg',
-    alt: 'Pet Wash Station Interior',
+    alt: 'Pet Wash™ Station Interior',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8666_1761100129901.jpeg',
-    alt: 'Pet Wash Equipment',
+    alt: 'Pet Wash™ Equipment',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8667_1761100129901.jpeg',
-    alt: 'Pet Wash Station Setup',
+    alt: 'Pet Wash™ Station Setup',
     category: 'station',
     featured: true
   },
   {
     src: '/gallery/IMG_8668_1761100129901.jpeg',
-    alt: 'Pet Wash Station Details',
+    alt: 'Pet Wash™ Station Details',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8435_1761100129902.jpeg',
-    alt: 'Pet Wash Station',
+    alt: 'Pet Wash™ Station',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_9080_1761100129901.jpeg',
-    alt: 'Pet Wash Station',
+    alt: 'Pet Wash™ Station',
     category: 'station',
     featured: true
   },
   {
     src: '/gallery/35f36f7e-65cb-4c8c-8b8e-0207879dcc16_1761100129902.jpeg',
-    alt: 'Pet Wash Station',
+    alt: 'Pet Wash™ Station',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8935_1761100227728.jpeg',
-    alt: 'Pet Wash Station',
+    alt: 'Pet Wash™ Station',
     category: 'station',
     featured: false
   }

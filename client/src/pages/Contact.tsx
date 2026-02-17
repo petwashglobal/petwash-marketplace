@@ -232,7 +232,7 @@ export default function Contact({ language }: ContactProps) {
                       {currentLanguage === 'en' ? 'Company' : 'חברה'}
                     </h3>
                     <p className="luxury-text-small">
-                      {currentLanguage === 'en' ? 'Pet Wash Ltd' : 'פט ווש בע"מ'}<br />
+                      {currentLanguage === 'en' ? '⁦Pet Wash™⁩ Ltd' : '⁦Pet Wash™⁩ בע"מ'}<br />
                       {currentLanguage === 'en' ? 'Company Number: 517145033' : 'מספר חברה: 517145033'}
                     </p>
                   </div>
@@ -379,7 +379,7 @@ export default function Contact({ language }: ContactProps) {
               <p className="luxury-text-body">
                 {currentLanguage === 'en' 
                   ? 'Navigate to ⁦Pet Wash™⁩ using your preferred map service' 
-                  : 'נווט לפט ווש™ באמצעות שירות המפות המועדף עליך'}
+                  : 'נווט ל-⁦Pet Wash™⁩ באמצעות שירות המפות המועדף עליך'}
               </p>
             </div>
             

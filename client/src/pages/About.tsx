@@ -307,7 +307,7 @@ export default function About({ language }: AboutProps) {
                     <Building2 className="h-5 w-5 text-purple-600" />
                   </div>
                   <span className="luxury-text-body font-medium">
-                    {currentLanguage === 'en' ? 'Pet Wash Ltd (517145033)' : 'פט ווש בע"מ (517145033)'}
+                    {currentLanguage === 'en' ? '⁦Pet Wash™⁩ Ltd (517145033)' : '⁦Pet Wash™⁩ בע"מ (517145033)'}
                   </span>
                 </div>
               </div>

@@ -489,7 +489,7 @@ export default function Dashboard() {
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
-                    PetWash Station
+                    ⁦Pet Wash™⁩ Station
                   </p>
                   <p className="text-[10px] text-gray-500">{tx('findStation', language)}</p>
                 </div>

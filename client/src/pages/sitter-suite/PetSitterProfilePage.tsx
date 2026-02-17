@@ -176,7 +176,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-xs font-semibold text-black">
                 PW
               </span>
-              <span>Official PetWash verified host</span>
+              <span>Official ⁦Pet Wash™⁩ verified host</span>
             </div>
           </div>
 
@@ -258,7 +258,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
             {/* Why guests trust this sitter */}
             <section>
               <h2 className="text-base font-semibold tracking-tight text-slate-50">
-                Why PetWash guests book this sitter
+                Why ⁦Pet Wash™⁩ guests book this sitter
               </h2>
               <div className="mt-3 grid gap-3 text-sm text-slate-200 sm:grid-cols-2">
                 {highlightBullets.map((item, index) => (
@@ -500,7 +500,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                   </div>
                 </div>
                 <div className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">
-                  7-star host · PetWash verified
+                  7-star host · ⁦Pet Wash™⁩ verified
                 </div>
               </div>
 
@@ -582,7 +582,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
 
               <p className="mt-2 text-center text-[11px] text-slate-400">
                 No commitment yet. Your request is only confirmed when
-                the sitter accepts in the PetWash app.
+                the sitter accepts in the ⁦Pet Wash™⁩ app.
               </p>
 
               {/* Price breakdown placeholder */}
@@ -592,7 +592,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                   <span>{nightlyPriceFrom}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>PetWash platform & protection fee</span>
+                  <span>⁦Pet Wash™⁩ platform & protection fee</span>
                   <span>Calculated at booking</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-50">
@@ -614,7 +614,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                   </span>
                 </div>
                 <p className="leading-relaxed">
-                  All bookings through PetWash include secure payments,
+                  All bookings through ⁦Pet Wash™⁩ include secure payments,
                   verified sitter profiles and support if something does not
                   go to plan.
                 </p>

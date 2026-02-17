@@ -50,7 +50,7 @@ export default function Accessibility() {
               <h2 className="luxury-heading-md">Our Commitment to Accessibility</h2>
             </div>
             <p className="luxury-text-body">
-              ⁦Pet Wash™️⁩ is committed to ensuring digital accessibility for people with disabilities. 
+              ⁦Pet Wash™⁩ is committed to ensuring digital accessibility for people with disabilities. 
               We are continually improving the user experience for everyone and applying the relevant 
               accessibility standards to ensure we provide equal access to all of our users.
             </p>
@@ -213,7 +213,7 @@ export default function Accessibility() {
               <h2 className="luxury-heading-md">Feedback and Contact</h2>
             </div>
             <p className="luxury-text-body mb-6">
-              We welcome your feedback on the accessibility of ⁦Pet Wash™️⁩. 
+              We welcome your feedback on the accessibility of ⁦Pet Wash™⁩. 
               Please let us know if you encounter accessibility barriers:
             </p>
             <div className="space-y-4 mb-6">
@@ -235,7 +235,7 @@ export default function Accessibility() {
                 <MapPin className="w-5 h-5 text-purple-600" />
                 <span className="luxury-text-body">Mail:</span>
                 <span className="luxury-text-body font-semibold">
-                  Pet Wash Ltd, Accessibility Department
+                  ⁦Pet Wash™⁩ Ltd, Accessibility Department
                 </span>
               </div>
             </div>
@@ -253,7 +253,7 @@ export default function Accessibility() {
               <h2 className="luxury-heading-md">Technical Specifications</h2>
             </div>
             <p className="luxury-text-body mb-4">
-              Accessibility of ⁦Pet Wash™️⁩ relies on the following technologies to work 
+              Accessibility of ⁦Pet Wash™⁩ relies on the following technologies to work 
               with the particular combination of web browser and any assistive technologies 
               or plugins installed on your computer:
             </p>

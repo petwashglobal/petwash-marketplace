@@ -71,12 +71,12 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
   {
     id: "hub",
     shortName: "Wash Hub",
-    fullName: "Pet Wash Hub Operators",
+    fullName: "⁦Pet Wash™⁩ Hub Operators",
     tagLine: "Operators of premium organic wash hubs.",
     accent: "border-sky-400 text-sky-500",
     chipColor: "bg-sky-50 text-sky-600",
     description:
-      "Local hub operators who run PetWash stations with strict hygiene, maintenance and guest service standards.",
+      "Local hub operators who run ⁦Pet Wash™⁩ stations with strict hygiene, maintenance and guest service standards.",
   },
   {
     id: "lostFound",
@@ -106,7 +106,7 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     accent: "border-orange-400 text-orange-500",
     chipColor: "bg-orange-50 text-orange-600",
     description:
-      "Franchise owners and enterprise partners who operate PetWash at city scale with full data and analytics.",
+      "Franchise owners and enterprise partners who operate ⁦Pet Wash™⁩ at city scale with full data and analytics.",
   },
 ];
 
@@ -228,7 +228,7 @@ const PROFILES: ContractorProfile[] = [
   {
     id: "hub1",
     platformId: "hub",
-    name: "PetWash Hub - Ramat Gan Park",
+    name: "⁦Pet Wash™⁩ Hub - Ramat Gan Park",
     title: "Outdoor wash hub with dual K9000 bays",
     mainService: "Organic shampoos, shade, lockers and integrated loyalty.",
     location: "Ramat Gan National Park, Israel",
@@ -243,7 +243,7 @@ const PROFILES: ContractorProfile[] = [
   {
     id: "hub2",
     platformId: "hub",
-    name: "PetWash Hub - Inner City",
+    name: "⁦Pet Wash™⁩ Hub - Inner City",
     title: "High traffic city hub",
     mainService: "Fast in and out washes with digital receipts for busy owners.",
     location: "Melbourne CBD, Australia",
@@ -294,7 +294,7 @@ const PROFILES: ContractorProfile[] = [
     platformId: "hardware",
     name: "K9000 Service Israel",
     title: "Certified K9000 field technicians",
-    mainService: "Install, calibrate and maintain PetWash K9000 machines.",
+    mainService: "Install, calibrate and maintain ⁦Pet Wash™⁩ K9000 machines.",
     location: "Nationwide, Israel",
     rating: 4.9,
     reviews: 34,
@@ -324,7 +324,7 @@ const PROFILES: ContractorProfile[] = [
   {
     id: "ent1",
     platformId: "enterprise",
-    name: "PetWash Tel Aviv Franchise",
+    name: "⁦Pet Wash™⁩ Tel Aviv Franchise",
     title: "City franchise partner",
     mainService: "Runs multiple hubs and transport fleets under one license.",
     location: "Tel Aviv, Israel",
@@ -339,9 +339,9 @@ const PROFILES: ContractorProfile[] = [
   {
     id: "ent2",
     platformId: "enterprise",
-    name: "GCC PetWash Group",
+    name: "GCC ⁦Pet Wash™⁩ Group",
     title: "Regional master franchise",
-    mainService: "Expands PetWash hubs across several countries in the region.",
+    mainService: "Expands ⁦Pet Wash™⁩ hubs across several countries in the region.",
     location: "GCC region",
     rating: 5,
     reviews: 9,
@@ -475,14 +475,14 @@ const PetWashTalentMarketplacePage: FC = () => {
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-              PetWash Luxury Network
+              ⁦Pet Wash™⁩ Luxury Network
             </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Book trusted PetWash partners
+              Book trusted ⁦Pet Wash™⁩ partners
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-600">
               ⁦Pet Wash™⁩ Luxury Marketplace, designed for 2026. All profiles
-              are connected to the same PetWash account and Octopus Global
+              are connected to the same ⁦Pet Wash™⁩ account and Octopus Global
               Brain. Clear ratings, clear prices, one login.
             </p>
           </div>
@@ -582,7 +582,7 @@ const PetWashTalentMarketplacePage: FC = () => {
         {/* Bottom note */}
         <section className="mt-10 text-center text-[11px] text-slate-500">
           All profiles are examples for visual layout only. In production this
-          page will pull live contractors from the PetWash backend and show
+          page will pull live contractors from the ⁦Pet Wash™⁩ backend and show
           real prices and availability in each city.
         </section>
       </main>
