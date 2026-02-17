@@ -11,6 +11,7 @@ import { ConsentManager } from "@/components/ConsentManager";
 import { getConsentPreferences, applyConsentPreferences } from "@/lib/consent";
 import { LuxuryPlatformShowcase } from "@/components/LuxuryPlatformShowcase";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
 import { SimpleAuthProvider } from "@/hooks/useSimpleAuth";
 import RequireAuth from "@/auth/RequireAuth";
@@ -2196,6 +2197,9 @@ console.log("Build: 1769350182889");
               <NotificationPermissionPrompt />
             </SimpleAuthProvider>
           </AuthProvider>
+          
+          {/* PWA Install Prompt for iOS/Android */}
+          <PWAInstallPrompt />
           
           {/* GDPR-compliant cookie consent system */}
           <CookieConsent 

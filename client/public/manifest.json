@@ -40,10 +40,22 @@
   "categories": ["lifestyle", "business", "utilities"],
   "shortcuts": [
     {
+      "name": "Loyalty Card",
+      "short_name": "Loyalty",
+      "description": "View loyalty points, tier status, and rewards",
+      "url": "/loyalty",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
       "name": "Book Service",
       "short_name": "Book",
-      "description": "Book pet washing service",
-      "url": "/",
+      "description": "Book pet care services",
+      "url": "/booking",
       "icons": [
         {
           "src": "/brand/petwash-logo-official.png",
@@ -54,7 +66,7 @@
     {
       "name": "My Dashboard",
       "short_name": "Dashboard",
-      "description": "View your bookings",
+      "description": "View your bookings and account",
       "url": "/dashboard",
       "icons": [
         {
@@ -64,8 +76,20 @@
       ]
     },
     {
+      "name": "Provider Hub",
+      "short_name": "Provider",
+      "description": "Provider dashboard for staff and sitters",
+      "url": "/provider-dashboard",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
       "name": "AI Chat",
-      "short_name": "Chat",
+      "short_name": "Kenzo",
       "description": "Chat with Kenzo AI assistant",
       "url": "/ai-chat",
       "icons": [
@@ -76,10 +100,10 @@
       ]
     },
     {
-      "name": "Loyalty Card",
-      "short_name": "Loyalty",
-      "description": "View loyalty points and rewards",
-      "url": "/loyalty",
+      "name": "Find Sitter",
+      "short_name": "Sitters",
+      "description": "Browse pet sitters nearby",
+      "url": "/sitter-suite/browse",
       "icons": [
         {
           "src": "/brand/petwash-logo-official.png",

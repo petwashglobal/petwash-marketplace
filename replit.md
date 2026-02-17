@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is an enterprise platform for the luxury pet care industry, offering a global, scalable ecosystem for services such as IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. It centralizes authentication, payments, AI services, compliance, and franchise management, incorporating a 7-Star Loyalty System and robust security. The platform's ambition is to become the leading global provider of luxury pet care, with an initial focus on the Israeli market.
+Pet Wash™ is an enterprise platform designed for the luxury pet care industry. It offers a global, scalable ecosystem for various services including IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. The platform centralizes critical functionalities such as authentication, payments, AI services, compliance, and franchise management, underpinned by a 7-Star Loyalty System and robust security. Its primary ambition is to become the leading global provider of luxury pet care, initially focusing on the Israeli market.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -105,6 +105,9 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Multi-Platform Marketplace View**: Unified marketplace page (`src/modules/platforms/PetWashTalentMarketplacePage.tsx`) showing contractors across all 7 platforms with color-coded branding, responsive grid layout, and demo profiles.
 - **MadPaws-Style Provider Search**: API at `/api/marketplace-bookings/search/providers` with real-time availability filtering, profile enrichment, and pagination. Frontend at `/sitter-suite/browse` displays provider cards with Hebrew names, bios, locations, and pricing.
 - **Octopus Global Brain Engine**: Unified backend booking/financial engine at `/api/octopus/v1/*`. All financial writes flow through Octopus Brain. Features: unified booking creation with 15% flat platform fee, atomic wallet debit/credit with race-safe conditional updates, immutable financial ledger, invoice stub generation, provider search with KYC enforcement, idempotency protection on bookings and wallet ops, multi-platform separation.
+- **Financial Reconciliation Service**: Links escrow → payout → VAT → receipt with unified reconciliationId. Monthly cross-check reports, invoice sequence verification, B2B threshold compliance, blockchain-style report chaining with SHA-256 hashes.
+- **Data Retention Service**: GDPR/Israeli Privacy Law 2025 automated purge engine with defined retention policies and legal hold management.
+- **iOS PWA**: Progressive Web App with service worker, manifest.json with role-based shortcuts, iOS Safari install prompt, Android beforeinstallprompt native prompt.
 
 ### File Storage & Admin Access
 - **Document Storage**: Google Cloud Storage bucket `petwash-secure-documents`.

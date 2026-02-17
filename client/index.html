@@ -298,29 +298,25 @@
     }
     </script>
 
-    <!-- Kill zombie service workers and clear stale caches -->
+    <!-- PWA Service Worker Registration -->
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (var i = 0; i < registrations.length; i++) {
-            registrations[i].unregister().then(function() {
-              console.log('[SW-Kill] Unregistered zombie service worker');
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').then(function(reg) {
+            console.log('[PWA] Service worker registered (scope: ' + reg.scope + ')');
+            reg.addEventListener('updatefound', function() {
+              var newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', function() {
+                  if (newWorker.state === 'activated') {
+                    console.log('[PWA] New service worker activated');
+                  }
+                });
+              }
             });
-          }
-        });
-        navigator.serviceWorker.register('/sw-kill.js').then(function(reg) {
-          console.log('[SW-Kill] Kill switch deployed');
-        }).catch(function() {});
-        if (navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-        }
-      }
-      if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (var i = 0; i < names.length; i++) {
-            caches.delete(names[i]);
-            console.log('[Cache-Kill] Deleted cache: ' + names[i]);
-          }
+          }).catch(function(err) {
+            console.log('[PWA] Service worker registration failed:', err);
+          });
         });
       }
     </script>

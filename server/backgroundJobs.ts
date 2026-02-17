@@ -15,6 +15,8 @@ import { WalletTelemetryService } from './services/WalletTelemetryService';
 import { GeminiUpdateAdvisor } from './services/GeminiUpdateAdvisor';
 import { startAutoVoidCron } from './cron/auto-void-expired-payments';
 import ProviderPayoutService from './services/ProviderPayoutService';
+import DataRetentionService from './services/DataRetentionService';
+import FinancialReconciliationService from './services/FinancialReconciliationService';
 
 export class BackgroundJobProcessor {
   private static jobLocks = new Map<string, boolean>(); // Per-task locking
@@ -149,6 +151,53 @@ export class BackgroundJobProcessor {
     // Weekly data integrity check on Sunday at midnight Israel time
     cron.schedule('0 0 * * 0', async () => {
       await this.runDataIntegrityCheck();
+    }, {
+      timezone: 'Asia/Jerusalem'
+    });
+
+    // Data retention purge - Daily at 2 AM Israel time
+    // GDPR/Israeli Privacy Law 2025: Purge expired sessions, verification codes, biometric data
+    cron.schedule('0 2 * * *', async () => {
+      if (await this.acquireLock('dataRetentionPurge')) {
+        try {
+          const summary = await DataRetentionService.runRetentionPurge();
+          logger.info('[BackgroundJobs] Data retention purge completed', {
+            totalPurged: summary.totalPurged,
+            categories: summary.categories.length,
+          });
+          await recordCronExecution('dataRetentionPurge', true, { summary });
+        } catch (error) {
+          logger.error('[BackgroundJobs] Data retention purge failed', { error });
+          await recordCronExecution('dataRetentionPurge', false, { error });
+        } finally {
+          this.releaseLock('dataRetentionPurge');
+        }
+      }
+    }, {
+      timezone: 'Asia/Jerusalem'
+    });
+
+    // Financial reconciliation report - Monthly on 2nd at 6 AM Israel time
+    // Cross-checks escrow, payouts, VAT, and receipts for discrepancies
+    cron.schedule('0 6 2 * *', async () => {
+      if (await this.acquireLock('financialReconciliation')) {
+        try {
+          const now = new Date();
+          const lastMonth = now.getMonth() === 0 ? 12 : now.getMonth();
+          const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+          const report = await FinancialReconciliationService.generateMonthlyReport(lastMonth, year);
+          logger.info('[BackgroundJobs] Financial reconciliation completed', {
+            period: report.period,
+            discrepancies: report.discrepancies?.length || 0,
+          });
+          await recordCronExecution('financialReconciliation', true, { period: report.period });
+        } catch (error) {
+          logger.error('[BackgroundJobs] Financial reconciliation failed', { error });
+          await recordCronExecution('financialReconciliation', false, { error });
+        } finally {
+          this.releaseLock('financialReconciliation');
+        }
+      }
     }, {
       timezone: 'Asia/Jerusalem'
     });
