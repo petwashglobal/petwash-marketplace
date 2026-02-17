@@ -6827,6 +6827,15 @@ export const jobOffers = pgTable("job_offers", {
     reason?: string;
   }>>(),
   
+  // Payment Authorization
+  paymentIntentId: varchar("payment_intent_id"),
+
+  // Dispatch Wave Tracking (Adaptive Radius)
+  dispatchWave: integer("dispatch_wave").default(0),
+  dispatchRadiusKm: integer("dispatch_radius_km"),
+  offerExpiresAt: timestamp("offer_expires_at"),
+  offeredOperatorIds: jsonb("offered_operator_ids").$type<string[]>(),
+
   // Additional Metadata
   petIds: jsonb("pet_ids").$type<string[]>(),
   specialInstructions: text("special_instructions"),
@@ -6853,6 +6862,17 @@ export const operatorPresence = pgTable("operator_presence", {
   currentLocation: jsonb("current_location").$type<{ latitude: number; longitude: number; accuracy: number }>(),
   geohash: varchar("geohash", { length: 20 }),
   
+  // Smart Ranking Fields (Phase 1 Dispatch 2026)
+  ratingAvg: decimal("rating_avg", { precision: 3, scale: 2 }).default("5.00"),
+  acceptanceRate: decimal("acceptance_rate", { precision: 5, scale: 2 }).default("100.00"),
+  completedJobs30d: integer("completed_jobs_30d").default(0),
+  premiumBadge: boolean("premium_badge").default(false),
+  subscriptionActive: boolean("subscription_active").default(false),
+  cooldownUntil: timestamp("cooldown_until"),
+  recentRejects: integer("recent_rejects").default(0),
+  recentIgnores: integer("recent_ignores").default(0),
+  serviceTypes: jsonb("service_types").$type<string[]>(),
+
   // Session Management
   lastActiveAt: timestamp("last_active_at").defaultNow(),
   lastLocationUpdateAt: timestamp("last_location_update_at"),
