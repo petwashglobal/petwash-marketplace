@@ -205,27 +205,27 @@ export default function BrowseWalkers() {
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50">
-        <div className="relative bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 overflow-hidden">
-          <div className="absolute inset-0 opacity-50">
-            <div className="absolute top-10 left-10 w-72 h-72 bg-emerald-200 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-200 rounded-full blur-3xl"></div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-green-200 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="relative bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 overflow-hidden">
+          <div className="absolute inset-0 opacity-40">
+            <div className="absolute top-10 left-10 w-72 h-72 bg-emerald-300 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-300 rounded-full blur-3xl"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-green-300 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
           </div>
           
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8 sm:pt-16 sm:pb-12">
             <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm mb-4" data-testid="badge-premium">
-                <Sparkles className="h-4 w-4 text-emerald-500" />
-                <span className="text-sm font-medium text-gray-700">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full shadow-sm mb-4" data-testid="badge-premium">
+                <Sparkles className="h-4 w-4 text-amber-200" />
+                <span className="text-sm font-medium text-white">
                   {isHebrew ? 'טיולי כלבים מקצועיים' : 'Professional Dog Walking'}
                 </span>
               </div>
               
-              <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-light text-gray-900 mb-4" style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif Hebrew', serif" }} data-testid="heading-main">
+              <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-light text-white mb-4 drop-shadow-lg" style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif Hebrew', serif" }} data-testid="heading-main">
                 ⁦Walk My Pet™⁩
               </h1>
               
-              <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto font-light" style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif Hebrew', serif" }}>
+              <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto font-light drop-shadow" style={{ fontFamily: "'Cormorant Garamond', 'Noto Serif Hebrew', serif" }}>
                 {isHebrew 
                   ? 'מצאו מטייל מקצועי עם מעקב GPS בזמן אמת'
                   : 'Find a professional walker with real-time GPS tracking'
