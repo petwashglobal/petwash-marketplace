@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Check, Sparkles, Crown, Leaf, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Check, Sparkles, Crown, Leaf, ShieldCheck, ArrowRight, Lock } from 'lucide-react';
 import { ExpressCheckoutModal } from '@/components/ExpressCheckoutModal';
 import { CustomerSignupModal } from '@/components/CustomerSignupModal';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -324,6 +324,25 @@ export function WashPackages({ language }: WashPackagesProps) {
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-8 sm:mt-10 flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Lock className="w-3 h-3 text-[#c9a96e]" strokeWidth={1.5} />
+            <span className="text-[9px] sm:text-[10px] tracking-[0.12em] uppercase text-[#999] font-medium">
+              {language === 'he' ? 'אמצעי תשלום מאובטחים' : 'Secure Payment Methods'}
+            </span>
+          </div>
+          <div className="flex items-center justify-center gap-2 sm:gap-3 py-1">
+            <img className="h-[20px] sm:h-[24px] w-auto object-contain" src="/pay/payment-methods.jpg" alt="Visa, Mastercard, American Express, Apple Pay, Google Pay" loading="lazy" />
+            <img className="h-[14px] sm:h-[16px] w-auto object-contain" src="/pay/diners.jpg" alt="Diners Club" loading="lazy" />
+          </div>
+          <div className="flex items-center gap-2 px-4 py-1 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-full">
+            <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+            <span className="text-[8px] sm:text-[9px] font-bold text-white">
+              Powered by <span className="bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">Nayax</span> Israel
+            </span>
+          </div>
         </div>
 
         <div className="mt-16 sm:mt-24">

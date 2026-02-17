@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, ShieldCheck, Heart, Star, PartyPopper, Sparkles, Globe } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, ShieldCheck, Heart, Star, PartyPopper, Sparkles, Globe, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -1197,6 +1197,25 @@ export default function EGift() {
                 occasion={selectedOccasion || undefined}
               />
             ))}
+          </div>
+
+          <div className="mt-8 sm:mt-10 flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Lock className="w-3 h-3 text-[#c9a96e]" strokeWidth={1.5} />
+              <span className="text-[9px] sm:text-[10px] tracking-[0.12em] uppercase text-[#999] font-medium">
+                {lang === 'he' ? 'אמצעי תשלום מאובטחים' : 'Secure Payment Methods'}
+              </span>
+            </div>
+            <div className="flex items-center justify-center gap-2 sm:gap-3 py-1">
+              <img className="h-[20px] sm:h-[24px] w-auto object-contain" src="/pay/payment-methods.jpg" alt="Visa, Mastercard, American Express, Apple Pay, Google Pay" loading="lazy" />
+              <img className="h-[14px] sm:h-[16px] w-auto object-contain" src="/pay/diners.jpg" alt="Diners Club" loading="lazy" />
+            </div>
+            <div className="flex items-center gap-2 px-4 py-1 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-full">
+              <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+              <span className="text-[8px] sm:text-[9px] font-bold text-white">
+                Powered by <span className="bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">Nayax</span> Israel
+              </span>
+            </div>
           </div>
 
           <div className="mt-6 sm:mt-8 max-w-md mx-auto">
