@@ -36,17 +36,17 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
     logger.info('[Privilege Register] Processing', { traceId, email });
 
     if (!firstName || !lastName || !email || !phone || !dob || !termsConsent) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields', errorCode: 'MISSING_FIELDS' });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Invalid email address' });
+      return res.status(400).json({ error: 'Invalid email address', errorCode: 'INVALID_EMAIL' });
     }
 
     const phoneRegex = /^\+?[1-9]\d{1,14}$/;
     if (!phoneRegex.test(phone.replace(/[\s\-()]/g, ''))) {
-      return res.status(400).json({ error: 'Invalid phone number' });
+      return res.status(400).json({ error: 'Invalid phone number', errorCode: 'INVALID_PHONE' });
     }
 
     // Backward compatibility: rename old table if it exists, otherwise create new one

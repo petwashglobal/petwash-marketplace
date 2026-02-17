@@ -629,7 +629,8 @@ router.post('/apply', upload.fields([
       : error.code === '23503'
       ? 'Invalid reference - please check your invite code'
       : error.message || 'Failed to submit application';
-    res.status(500).json({ error: clientMessage });
+    const errorCode = error.code === '23505' ? 'APPLICATION_EXISTS' : error.code === '23503' ? 'INVALID_REFERENCE' : 'APPLICATION_FAILED';
+    res.status(error.code === '23505' ? 409 : 500).json({ error: clientMessage, errorCode });
   }
 });
 
