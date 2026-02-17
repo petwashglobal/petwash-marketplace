@@ -677,7 +677,17 @@ router.get('/provider/:providerId/rate-card', async (req, res) => {
   }
 });
 
-// MadPaws-style provider search with availability filtering
+function haversineDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// MadPaws-style provider search with proximity sorting
 router.get('/search/providers', async (req, res) => {
   try {
     const {
@@ -686,7 +696,12 @@ router.get('/search/providers', async (req, res) => {
       startDate,
       endDate,
       city,
+      lat,
+      lng,
+      radius = 50,
       minRating = 0,
+      maxPrice,
+      sortBy = 'distance',
       page = 1,
       limit = 20
     } = req.query;
@@ -735,9 +750,25 @@ router.get('/search/providers', async (req, res) => {
       }
     }
 
+    const searchLat = lat ? parseFloat(lat as string) : null;
+    const searchLng = lng ? parseFloat(lng as string) : null;
+    const searchRadius = Number(radius) || 50;
+
     // Enrich with profile data based on platform
     const providerIds = availableRateCards.map(rc => rc.providerId);
-    let profileMap = new Map<string, { displayName: string; bio: string | null; profilePhotoUrl: string | null; city: string | null; rating: number | null; reviewCount: number }>();
+    interface ProfileData {
+      displayName: string;
+      bio: string | null;
+      profilePhotoUrl: string | null;
+      city: string | null;
+      postalCode: string | null;
+      streetAddress: string | null;
+      latitude: number | null;
+      longitude: number | null;
+      rating: number | null;
+      reviewCount: number;
+    }
+    let profileMap = new Map<string, ProfileData>();
     
     if (providerIds.length > 0) {
       const normalizedPlatform = platformStr?.toLowerCase();
@@ -752,6 +783,10 @@ router.get('/search/providers', async (req, res) => {
             bio: sitterProfiles.bio,
             profilePhotoUrl: sitterProfiles.profilePictureUrl,
             city: sitterProfiles.city,
+            postalCode: sitterProfiles.postalCode,
+            streetAddress: sitterProfiles.streetAddress,
+            latitude: sitterProfiles.latitude,
+            longitude: sitterProfiles.longitude,
             rating: sitterProfiles.rating,
             totalBookings: sitterProfiles.totalBookings,
           })
@@ -764,6 +799,10 @@ router.get('/search/providers', async (req, res) => {
               bio: p.bio,
               profilePhotoUrl: p.profilePhotoUrl,
               city: p.city,
+              postalCode: p.postalCode || null,
+              streetAddress: p.streetAddress || null,
+              latitude: p.latitude ? parseFloat(p.latitude) : null,
+              longitude: p.longitude ? parseFloat(p.longitude) : null,
               rating: p.rating ? parseFloat(p.rating) : null,
               reviewCount: p.totalBookings || 0,
             });
@@ -790,11 +829,15 @@ router.get('/search/providers', async (req, res) => {
           .where(sql`(${walkerProfiles.userId} IN (${sql.join(idParams, sql`, `)}) OR ${walkerProfiles.walkerId} IN (${sql.join(idParams, sql`, `)}))`);
           
           profiles.forEach(p => {
-            const profileData = {
+            const profileData: ProfileData = {
               displayName: `${p.firstName} ${p.lastName || ''}`.trim(),
               bio: p.bio,
               profilePhotoUrl: p.profilePhotoUrl,
               city: p.city,
+              postalCode: null,
+              streetAddress: null,
+              latitude: null,
+              longitude: null,
               rating: p.rating ? parseFloat(p.rating) : null,
               reviewCount: p.totalWalks || 0,
             };
@@ -826,6 +869,10 @@ router.get('/search/providers', async (req, res) => {
                 bio: null,
                 profilePhotoUrl: u.profileImageUrl,
                 city: null,
+                postalCode: null,
+                streetAddress: null,
+                latitude: null,
+                longitude: null,
                 rating: null,
                 reviewCount: 0,
               });
@@ -837,17 +884,27 @@ router.get('/search/providers', async (req, res) => {
       }
     }
 
-    // Format response using actual rate card values enriched with profile data
+    // Format response with distance calculation
     const results = availableRateCards.map(provider => {
       const profile = profileMap.get(provider.providerId);
+      
+      let distanceKm: number | null = null;
+      if (searchLat !== null && searchLng !== null && profile?.latitude && profile?.longitude) {
+        distanceKm = haversineDistanceKm(searchLat, searchLng, profile.latitude, profile.longitude);
+        distanceKm = Math.round(distanceKm * 10) / 10;
+      }
+
       return {
         id: provider.providerId,
         platform: provider.platform,
         serviceType: provider.serviceType,
-        displayName: profile?.displayName || profile?.businessName || profile?.firstName || formatProviderName(provider.providerId),
+        displayName: profile?.displayName || formatProviderName(provider.providerId),
         bio: profile?.bio || null,
         profilePhotoUrl: profile?.profilePhotoUrl || null,
         location: profile?.city || null,
+        suburb: profile?.streetAddress ? profile.streetAddress.split(',')[0]?.trim() : null,
+        postalCode: profile?.postalCode || null,
+        distanceKm,
         rating: profile?.rating || null,
         reviewCount: profile?.reviewCount || 0,
         pricing: {
@@ -907,7 +964,18 @@ router.get('/search/providers', async (req, res) => {
     }
 
     let filteredResults = results;
-    if (cityStr && cityStr.trim().length > 0) {
+
+    // If lat/lng provided, filter by radius and sort by distance (closest first)
+    if (searchLat !== null && searchLng !== null) {
+      filteredResults = results.filter(r => {
+        if (r.distanceKm === null) {
+          // Keep providers without coordinates but rank them last
+          return true;
+        }
+        return r.distanceKm <= searchRadius;
+      });
+    } else if (cityStr && cityStr.trim().length > 0) {
+      // Fallback: text-based city matching when no coordinates
       const searchVariants = normalizeCitySearch(cityStr);
       filteredResults = results.filter(r => {
         if (!r.location) return false;
@@ -918,13 +986,52 @@ router.get('/search/providers', async (req, res) => {
       });
     }
     
-    // Filter by minimum rating if specified
+    // Filter by minimum rating
     if (Number(minRating) > 0) {
       filteredResults = filteredResults.filter(r => (r.rating || 0) >= Number(minRating));
     }
+
+    // Filter by max price
+    if (maxPrice) {
+      const maxPriceNum = Number(maxPrice);
+      filteredResults = filteredResults.filter(r => {
+        const nightPrice = r.pricing.perNight ? parseFloat(r.pricing.perNight) : null;
+        const hourPrice = r.pricing.perHour ? parseFloat(r.pricing.perHour) : null;
+        const lowestPrice = nightPrice || hourPrice || 0;
+        return lowestPrice <= maxPriceNum;
+      });
+    }
+
+    // Sort results
+    const sortByStr = (sortBy as string) || 'distance';
+    filteredResults.sort((a, b) => {
+      if (sortByStr === 'distance' || sortByStr === 'proximity') {
+        // Closest first, providers without coords go last
+        const distA = a.distanceKm ?? 9999;
+        const distB = b.distanceKm ?? 9999;
+        if (distA !== distB) return distA - distB;
+        return (b.rating || 0) - (a.rating || 0);
+      }
+      if (sortByStr === 'rating') {
+        return (b.rating || 0) - (a.rating || 0);
+      }
+      if (sortByStr === 'price') {
+        const priceA = parseFloat(a.pricing.perNight || a.pricing.perHour || '9999');
+        const priceB = parseFloat(b.pricing.perNight || b.pricing.perHour || '9999');
+        return priceA - priceB;
+      }
+      if (sortByStr === 'reviews') {
+        return b.reviewCount - a.reviewCount;
+      }
+      // Default: distance if available, else rating
+      const distA = a.distanceKm ?? 9999;
+      const distB = b.distanceKm ?? 9999;
+      if (distA !== distB) return distA - distB;
+      return (b.rating || 0) - (a.rating || 0);
+    });
     
-    // Apply pagination limit
-    const paginatedResults = filteredResults.slice(0, Number(limit));
+    // Apply pagination
+    const paginatedResults = filteredResults.slice(offset, offset + Number(limit));
 
     res.json({
       success: true,
@@ -933,9 +1040,10 @@ router.get('/search/providers', async (req, res) => {
         page: Number(page),
         limit: Number(limit),
         total: filteredResults.length,
-        hasMore: filteredResults.length > Number(limit)
+        hasMore: filteredResults.length > offset + Number(limit)
       },
-      filters: { platform, serviceType, startDate, endDate, city, minRating }
+      searchLocation: searchLat !== null && searchLng !== null ? { lat: searchLat, lng: searchLng } : null,
+      filters: { platform, serviceType, startDate, endDate, city, lat, lng, radius: searchRadius, minRating, maxPrice, sortBy: sortByStr }
     });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Provider search error', { error: error?.message || String(error) });

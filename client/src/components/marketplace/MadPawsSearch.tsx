@@ -305,12 +305,14 @@ const ISRAELI_CITIES = [
 function GooglePlacesLocationInput({
   value,
   onChange,
+  onCoordsChange,
   placeholder,
   focusRing,
   focusBorder,
 }: {
   value: string;
   onChange: (value: string) => void;
+  onCoordsChange?: (lat: number | null, lng: number | null) => void;
   placeholder: string;
   focusRing: string;
   focusBorder: string;
@@ -336,6 +338,7 @@ function GooglePlacesLocationInput({
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+          onCoordsChange?.(latitude, longitude);
           const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
           
           if (apiKey && scriptLoaded && window.google?.maps) {
@@ -346,17 +349,21 @@ function GooglePlacesLocationInput({
             
             if (response.results[0]) {
               let cityName = '';
+              let neighborhood = '';
               for (const component of response.results[0].address_components) {
                 if (component.types.includes('locality')) {
                   cityName = component.long_name;
-                  break;
+                }
+                if (component.types.includes('sublocality') || component.types.includes('neighborhood')) {
+                  neighborhood = component.long_name;
                 }
                 if (component.types.includes('administrative_area_level_1') && !cityName) {
                   cityName = component.long_name;
                 }
               }
-              if (cityName) {
-                onChange(cityName);
+              const displayName = neighborhood ? `${neighborhood}, ${cityName}` : cityName;
+              if (displayName) {
+                onChange(displayName);
               } else {
                 onChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
               }
@@ -426,7 +433,7 @@ function GooglePlacesLocationInput({
 
     try {
       autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
-        types: ['(cities)'],
+        types: ['geocode'],
         componentRestrictions: { country: 'il' },
         fields: ['address_components', 'formatted_address', 'geometry', 'name'],
       });
@@ -435,14 +442,28 @@ function GooglePlacesLocationInput({
         const place = autocompleteRef.current?.getPlace();
         if (!place) return;
         
-        let cityName = place.name || '';
+        let cityName = '';
+        let neighborhood = '';
         place.address_components?.forEach((component) => {
           if (component.types.includes('locality')) {
             cityName = component.long_name;
           }
+          if (component.types.includes('sublocality') || component.types.includes('neighborhood')) {
+            neighborhood = component.long_name;
+          }
         });
         
-        onChange(cityName);
+        const displayName = neighborhood && cityName 
+          ? `${neighborhood}, ${cityName}` 
+          : cityName || place.name || '';
+        onChange(displayName);
+
+        if (place.geometry?.location) {
+          onCoordsChange?.(
+            place.geometry.location.lat(),
+            place.geometry.location.lng()
+          );
+        }
         setShowCitySuggestions(false);
       });
       
@@ -542,6 +563,8 @@ interface MadPawsSearchProps {
   platform?: 'sitter-suite' | 'walk-my-pet' | 'pettrek' | 'academy' | 'all';
   theme?: 'pink' | 'emerald' | 'blue' | 'purple' | 'amber';
   initialLocation?: string;
+  initialLat?: number | null;
+  initialLng?: number | null;
   initialPetType?: PetType | string;
   initialStartDate?: Date;
   initialEndDate?: Date;
@@ -549,6 +572,8 @@ interface MadPawsSearchProps {
 
 export interface SearchParams {
   location: string;
+  lat: number | null;
+  lng: number | null;
   service: ServiceType;
   petType: PetType;
   petCount: number;
@@ -584,6 +609,8 @@ export function MadPawsSearch({
   platform = 'all', 
   theme = 'pink',
   initialLocation = '',
+  initialLat,
+  initialLng,
   initialPetType,
   initialStartDate,
   initialEndDate
@@ -594,6 +621,8 @@ export function MadPawsSearch({
   const t = THEMES[theme] || THEMES.pink;
 
   const [location, setLocation] = useState(initialLocation);
+  const [searchLat, setSearchLat] = useState<number | null>(initialLat ?? null);
+  const [searchLng, setSearchLng] = useState<number | null>(initialLng ?? null);
   const [selectedService, setSelectedService] = useState<ServiceType>(
     platform === 'walk-my-pet' ? 'dog-walking' : 
     platform === 'pettrek' ? 'pet-taxi' : 
@@ -646,11 +675,16 @@ export function MadPawsSearch({
 
   const handleSearch = () => {
     const route = getRouteForService(selectedService);
-    const targetPath = `${route}?location=${encodeURIComponent(location)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString() || ''}&end=${endDate?.toISOString() || ''}`;
+    let targetPath = `${route}?location=${encodeURIComponent(location)}&pet=${petType}&count=${petCount}&start=${startDate?.toISOString() || ''}&end=${endDate?.toISOString() || ''}`;
+    if (searchLat !== null && searchLng !== null) {
+      targetPath += `&lat=${searchLat}&lng=${searchLng}`;
+    }
     
     if (onSearch) {
       onSearch({
         location,
+        lat: searchLat,
+        lng: searchLng,
         service: selectedService,
         petType,
         petCount,
@@ -734,8 +768,18 @@ export function MadPawsSearch({
             </label>
             <GooglePlacesLocationInput
               value={location}
-              onChange={setLocation}
-              placeholder={isHebrew ? 'הזן עיר או כתובת' : 'Enter city or address'}
+              onChange={(val) => {
+                setLocation(val);
+                if (!val) {
+                  setSearchLat(null);
+                  setSearchLng(null);
+                }
+              }}
+              onCoordsChange={(lat, lng) => {
+                setSearchLat(lat);
+                setSearchLng(lng);
+              }}
+              placeholder={isHebrew ? 'הזן כתובת, שכונה או עיר' : 'Enter address, suburb or city'}
               focusRing={t.focusRing}
               focusBorder={t.focusBorder}
             />

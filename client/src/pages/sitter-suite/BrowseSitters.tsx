@@ -20,6 +20,9 @@ interface Provider {
   bio: string;
   profilePhotoUrl: string;
   location: string;
+  suburb: string | null;
+  postalCode: string | null;
+  distanceKm: number | null;
   rating: number | null;
   reviewCount: number;
   pricing: {
@@ -60,6 +63,8 @@ export default function BrowseSitters() {
     const pet = urlParams.get('pet');
     const start = urlParams.get('start');
     const end = urlParams.get('end');
+    const latParam = urlParams.get('lat');
+    const lngParam = urlParams.get('lng');
     
     if (!location && !pet && !start && !end) return null;
     
@@ -75,19 +80,19 @@ export default function BrowseSitters() {
       if (!isNaN(parsedEnd.getTime())) endDate = parsedEnd;
     }
     
-    // Validate dates - end must be after start
     if (startDate && endDate && endDate < startDate) {
-      // Swap dates if end is before start
       [startDate, endDate] = [endDate, startDate];
     }
     
     return {
       location: location || '',
+      lat: latParam ? parseFloat(latParam) : null,
+      lng: lngParam ? parseFloat(lngParam) : null,
       petType: pet || undefined,
       startDate,
       endDate,
       service: undefined
-    };
+    } as SearchParams;
   };
   
   const [searchParams, setSearchParams] = useState<SearchParams | null>(getInitialSearchParams);
@@ -97,6 +102,9 @@ export default function BrowseSitters() {
     const params = new URLSearchParams();
     params.set('platform', 'sitter_suite');
     if (searchParams?.location) params.set('city', searchParams.location);
+    if (searchParams?.lat !== null && searchParams?.lat !== undefined) params.set('lat', String(searchParams.lat));
+    if (searchParams?.lng !== null && searchParams?.lng !== undefined) params.set('lng', String(searchParams.lng));
+    params.set('sortBy', 'distance');
     if (searchParams?.service) params.set('serviceType', searchParams.service);
     if (searchParams?.startDate) params.set('startDate', format(searchParams.startDate, 'yyyy-MM-dd'));
     if (searchParams?.endDate) params.set('endDate', format(searchParams.endDate, 'yyyy-MM-dd'));
@@ -162,6 +170,8 @@ export default function BrowseSitters() {
                 platform="sitter-suite"
                 theme="pink"
                 initialLocation={searchParams?.location}
+                initialLat={searchParams?.lat}
+                initialLng={searchParams?.lng}
                 initialPetType={searchParams?.petType}
                 initialStartDate={searchParams?.startDate}
                 initialEndDate={searchParams?.endDate}
@@ -292,12 +302,16 @@ export default function BrowseSitters() {
                     id={provider.id}
                     name={provider.displayName || 'Provider'}
                     photo={provider.profilePhotoUrl}
-                    location={provider.location || ''}
+                    location={provider.distanceKm !== null 
+                      ? `${provider.suburb || provider.location || ''} (${provider.distanceKm} ${isHebrew ? 'ק״מ' : 'km'})`
+                      : provider.location || ''
+                    }
                     rating={provider.rating || 0}
                     reviewCount={provider.reviewCount}
                     price={pricePerNight}
                     priceUnit="night"
                     priceUnitHe="לילה"
+                    distance={provider.distanceKm !== null ? `${provider.distanceKm} ${isHebrew ? 'ק״מ' : 'km'}` : undefined}
                     verified={true}
                     theme="pink"
                     specialties={provider.acceptedPetTypes?.slice(0, 2).map(t => t === 'dog' ? (isHebrew ? 'כלבים' : 'Dogs') : t === 'cat' ? (isHebrew ? 'חתולים' : 'Cats') : t) || []}

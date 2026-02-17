@@ -126,18 +126,28 @@ export default function BrowseWalkers() {
     let endDate: Date | undefined;
     if (start) { const d = new Date(start); if (!isNaN(d.getTime())) startDate = d; }
     if (end) { const d = new Date(end); if (!isNaN(d.getTime())) endDate = d; }
-    return { location: location || '', petType: pet || undefined, startDate, endDate, service: undefined };
+    const latParam = urlParams.get('lat');
+    const lngParam = urlParams.get('lng');
+    return { 
+      location: location || '', 
+      lat: latParam ? parseFloat(latParam) : null,
+      lng: lngParam ? parseFloat(lngParam) : null,
+      petType: pet || undefined, startDate, endDate, service: undefined 
+    } as SearchParams;
   };
   
   const [searchParams, setSearchParams] = useState<SearchParams | null>(getInitialSearchParams);
 
   const { data, isLoading } = useQuery<{ providers: any[]; pagination: any }>({
-    queryKey: ['/api/marketplace-bookings/search/providers', 'walk_my_pet', searchParams?.location],
+    queryKey: ['/api/marketplace-bookings/search/providers', 'walk_my_pet', searchParams?.location, searchParams?.lat, searchParams?.lng],
     queryFn: async () => {
       try {
         const params = new URLSearchParams();
         params.set('platform', 'walk_my_pet');
         if (searchParams?.location) params.set('city', searchParams.location);
+        if (searchParams?.lat !== null && searchParams?.lat !== undefined) params.set('lat', String(searchParams.lat));
+        if (searchParams?.lng !== null && searchParams?.lng !== undefined) params.set('lng', String(searchParams.lng));
+        params.set('sortBy', 'distance');
         if (searchParams?.petType) params.set('petTypes', searchParams.petType);
         const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?${params.toString()}`));
         if (!response.ok) return { providers: [], pagination: { page: 1, limit: 20, total: 0, hasMore: false } };
@@ -206,6 +216,8 @@ export default function BrowseWalkers() {
                 platform="walk-my-pet"
                 theme="emerald"
                 initialLocation={searchParams?.location}
+                initialLat={searchParams?.lat}
+                initialLng={searchParams?.lng}
                 initialPetType={searchParams?.petType}
                 initialStartDate={searchParams?.startDate}
                 initialEndDate={searchParams?.endDate}
