@@ -10,6 +10,7 @@ const router = Router();
 router.get('/sitemap.xml', (req, res) => {
   const baseUrl = process.env.BASE_URL || 'https://petwash.co.il';
   
+  const languages = ['he', 'en', 'ar', 'ru', 'fr', 'es'];
   const pages = [
     { url: '/', changefreq: 'daily', priority: '1.0' },
     { url: '/about', changefreq: 'monthly', priority: '0.8' },
@@ -22,6 +23,14 @@ router.get('/sitemap.xml', (req, res) => {
     { url: '/gallery', changefreq: 'weekly', priority: '0.6' },
     { url: '/subscriptions', changefreq: 'weekly', priority: '0.7' },
     { url: '/pet-care-planner', changefreq: 'weekly', priority: '0.6' },
+    { url: '/sitter-suite', changefreq: 'weekly', priority: '0.8' },
+    { url: '/sitter-suite/browse', changefreq: 'daily', priority: '0.8' },
+    { url: '/walk-my-pet', changefreq: 'weekly', priority: '0.8' },
+    { url: '/pettrek', changefreq: 'weekly', priority: '0.7' },
+    { url: '/plush-lab', changefreq: 'weekly', priority: '0.7' },
+    { url: '/k9000', changefreq: 'weekly', priority: '0.8' },
+    { url: '/groomers', changefreq: 'weekly', priority: '0.7' },
+    { url: '/booking', changefreq: 'weekly', priority: '0.8' },
     { url: '/signin', changefreq: 'monthly', priority: '0.5' },
     { url: '/signup', changefreq: 'monthly', priority: '0.5' },
     { url: '/privacy', changefreq: 'monthly', priority: '0.4' },
@@ -36,8 +45,7 @@ ${pages.map(page => `  <url>
     <loc>${baseUrl}${page.url}</loc>
     <changefreq>${page.changefreq}</changefreq>
     <priority>${page.priority}</priority>
-    <xhtml:link rel="alternate" hreflang="he" href="${baseUrl}${page.url}?lang=he"/>
-    <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}${page.url}?lang=en"/>
+${languages.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}" href="${baseUrl}${page.url}?lang=${lang}"/>`).join('\n')}
     <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}${page.url}"/>
   </url>`).join('\n')}
 </urlset>`;

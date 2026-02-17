@@ -5,6 +5,9 @@
  */
 
 import { logger } from '../lib/logger';
+import { db } from '../db';
+import { sitterProfiles } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 interface Location {
   latitude: number;
@@ -72,68 +75,57 @@ export class SitterProximitySearch {
         serviceType,
       });
 
-      // In production: Query database with PostGIS or similar
-      // For now: Mock data showing the algorithm
-      const mockSitters = [
-        {
-          id: 1,
-          fullName: "Sarah Cohen",
-          city: "Tel Aviv",
-          bio: "Experienced dog walker with 5+ years caring for pets",
-          rating: 4.8,
-          totalReviews: 127,
-          pricePerDayCents: 15000, // 150 ILS
-          latitude: 32.0853,
-          longitude: 34.7818,
-          profilePhotoUrl: null,
-          specializations: ["dogs", "cats"],
-          verificationStatus: "active",
-        },
-        {
-          id: 2,
-          fullName: "David Levi",
-          city: "Ramat Gan",
-          bio: "Pet lover specializing in exotic animals",
-          rating: 4.9,
-          totalReviews: 89,
-          pricePerDayCents: 18000, // 180 ILS
-          latitude: 32.0668,
-          longitude: 34.8244,
-          profilePhotoUrl: null,
-          specializations: ["exotic", "birds", "rabbits"],
-          verificationStatus: "active",
-        },
-      ];
+      // Query active/verified sitters from database
+      const activeSitters = await db
+        .select()
+        .from(sitterProfiles)
+        .where(eq(sitterProfiles.verificationStatus, 'active'));
+
+      logger.info('[Proximity Search] Retrieved sitters from database', {
+        totalCount: activeSitters.length,
+      });
 
       // Calculate distances and filter by radius
-      const sittersWithDistance = mockSitters
-        .filter(sitter => sitter.verificationStatus === "active") // Only active sitters
+      const sittersWithDistance = activeSitters
         .map(sitter => {
+          // Skip sitters without lat/lng coordinates
+          if (!sitter.latitude || !sitter.longitude) {
+            return null;
+          }
+
           const distance = this.calculateDistance(
             userLocation.latitude,
             userLocation.longitude,
-            sitter.latitude,
-            sitter.longitude
+            Number(sitter.latitude),
+            Number(sitter.longitude)
           );
 
           return {
             id: sitter.id,
-            fullName: sitter.fullName,
+            fullName: `${sitter.firstName} ${sitter.lastName}`,
             city: sitter.city,
-            bio: sitter.bio,
-            rating: sitter.rating,
-            totalReviews: sitter.totalReviews,
+            bio: sitter.bio || '',
+            rating: Number(sitter.rating) || 0,
+            totalReviews: sitter.totalBookings, // Use totalBookings as totalReviews proxy
             pricePerDay: sitter.pricePerDayCents / 100,
             distanceKm: distance,
-            profilePhotoUrl: sitter.profilePhotoUrl,
-            services: sitter.specializations,
+            profilePhotoUrl: sitter.profilePictureUrl,
+            services: sitter.specializations || [],
           };
         })
+        .filter((sitter): sitter is SitterSearchResult => sitter !== null) // Type guard to filter out nulls
         .filter(sitter => sitter.distanceKm <= radiusKm) // Within radius
+        .filter(sitter => {
+          // Optional: filter by service type if provided
+          if (!serviceType) return true;
+          return sitter.services.includes(serviceType);
+        })
         .sort((a, b) => a.distanceKm - b.distanceKm); // Sort by nearest first
 
       logger.info('[Proximity Search] Found sitters', {
         count: sittersWithDistance.length,
+        radiusKm,
+        serviceType,
       });
 
       return sittersWithDistance;
@@ -145,6 +137,7 @@ export class SitterProximitySearch {
 
   /**
    * Check if user is verified loyalty member (required for booking)
+   * 7-star loyalty system: bronze, silver, gold, platinum, diamond, emerald, royal
    */
   async isEligibleToBook(userId: string, loyaltyTier: string | null): Promise<boolean> {
     // Loyalty member verification
@@ -153,8 +146,8 @@ export class SitterProximitySearch {
       return false;
     }
 
-    // All loyalty tiers can book (bronze, silver, gold, platinum, diamond)
-    const validTiers = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
+    // All loyalty tiers can book (7-star system: bronze, silver, gold, platinum, diamond, emerald, royal)
+    const validTiers = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'emerald', 'royal'];
     const isValid = validTiers.includes(loyaltyTier.toLowerCase());
 
     if (!isValid) {

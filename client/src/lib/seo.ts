@@ -138,6 +138,21 @@ export function useSEO(config?: Partial<SEOConfig>) {
       element.setAttribute('content', content);
     };
     
+    // Helper function to add or update link tag
+    const setLink = (rel: string, href: string, type?: string) => {
+      let element = document.querySelector(`link[rel="${rel}"][href="${href}"]`) as HTMLLinkElement;
+      
+      if (!element) {
+        element = document.createElement('link');
+        element.setAttribute('rel', rel);
+        element.setAttribute('href', href);
+        if (type) {
+          element.setAttribute('type', type);
+        }
+        document.head.appendChild(element);
+      }
+    };
+    
     // Standard meta tags
     if (seoConfig.description) {
       setMeta('description', seoConfig.description);
@@ -188,6 +203,14 @@ export function useSEO(config?: Partial<SEOConfig>) {
       canonical.setAttribute('href', seoConfig.canonical);
     }
     
+    // Speed/Performance meta tags (2026 best practices)
+    // DNS prefetch for critical domains
+    setLink('dns-prefetch', '//petwash.co.il');
+    setLink('dns-prefetch', '//fonts.googleapis.com');
+    setLink('dns-prefetch', '//fonts.gstatic.com');
+    setLink('dns-prefetch', '//www.google-analytics.com');
+    setLink('dns-prefetch', '//www.googletagmanager.com');
+    
   }, [config]);
 }
 
@@ -205,7 +228,7 @@ export function generateLocalBusinessSchema() {
     url: 'https://petwash.co.il',
     logo: 'https://petwash.co.il/brand/petwash-logo-official.png',
     image: 'https://petwash.co.il/IMG_7114_1751624638881.jpeg',
-    telephone: '+972-XX-XXX-XXXX',
+    telephone: '+972-3-XXX-XXXX',
     email: 'Support@PetWash.co.il',
     address: {
       '@type': 'PostalAddress',
@@ -302,29 +325,129 @@ export function injectStructuredData(schema: object) {
 }
 
 /**
- * Generate hreflang links for bilingual pages
+ * Generate FAQ structured data for Pet Wash
+ */
+export function generateFAQSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'What makes ⁦Pet Wash™⁩ organic pet care different?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: '⁦Pet Wash™⁩ uses 100% organic, biodegradable products free from harsh chemicals. Our commitment to premium organic pet care ensures your pet\'s coat stays healthy, shiny, and chemical-free. All products are vet-approved and hypoallergenic for sensitive skin.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How do the K9000 smart washing stations work?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: '⁦K9000™⁩ IoT pet wash stations are self-service 24/7 kiosks equipped with organic products, climate control, and AI-powered monitoring. Simply book via our app, choose your service level, make contactless payment, and enjoy real-time status updates. Stations automatically dispense organic shampoo and warm water at pet-safe temperatures.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What is the ⁦Pet Wash™⁩ loyalty program?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Our 7-tier luxury loyalty program (Bronze→Silver→Gold→Platinum→Diamond→Elite→Royal) rewards you with points on every wash. Members earn exclusive benefits including up to 50% discounts at Royal tier, priority booking, free grooming add-ons, exclusive partner offers, and birthday bonuses. Join today and start earning rewards instantly.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What are the pricing options at ⁦Pet Wash™⁩?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Pricing starts from ₪45 for a basic wash at K9000 stations, with premium full-service grooming packages available. Our transparent pricing includes no hidden fees. Loyalty members receive tiered discounts, and we offer package deals for 3, 5, and 10 washes. Gift cards and e-vouchers are available with instant digital delivery.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How do I book a pet wash at ⁦Pet Wash™⁩?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Booking is easy through our mobile app or website. Select your preferred K9000 station or groomer, choose your service date and time, select your pet\'s details, and complete payment. Our AI-powered system provides real-time availability and weather-based recommendations. Cancel or reschedule up to 2 hours before your appointment with no penalty.',
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * Generate BreadcrumbList structured data
+ */
+export function generateBreadcrumbSchema(items: Array<{ name: string; url: string }>) {
+  const breadcrumbs = [
+    {
+      '@type': 'ListItem',
+      position: 1,
+      name: '⁦Pet Wash™⁩',
+      item: 'https://petwash.co.il',
+    },
+    ...items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 2,
+      name: item.name,
+      item: item.url,
+    })),
+  ];
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: breadcrumbs,
+  };
+}
+
+/**
+ * Generate Website schema with search box sitelinks
+ */
+export function generateWebsiteSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': 'https://petwash.co.il/#website',
+    url: 'https://petwash.co.il',
+    name: '⁦Pet Wash™⁩',
+    description: 'Israel\'s leading premium organic pet washing service with AI-powered booking and smart K9000 stations.',
+    inLanguage: ['he', 'en', 'ar', 'ru', 'fr', 'es'],
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: 'https://petwash.co.il/search?q={search_term_string}',
+      },
+      'query-input': 'required name=search_term_string',
+    },
+    isPartOf: {
+      '@id': 'https://petwash.co.il/#organization',
+    },
+  };
+}
+
+/**
+ * Generate hreflang links for multilingual pages (supports 6 languages)
  */
 export function generateHreflangLinks(pagePath: string) {
   const baseUrl = 'https://petwash.co.il';
+  const languages = ['he', 'en', 'ar', 'ru', 'fr', 'es'];
   
   // Remove existing hreflang links
   document.querySelectorAll('link[rel="alternate"][hreflang]').forEach(link => link.remove());
   
-  // Hebrew version
-  const heLink = document.createElement('link');
-  heLink.rel = 'alternate';
-  heLink.hreflang = 'he';
-  heLink.href = `${baseUrl}${pagePath}?lang=he`;
-  document.head.appendChild(heLink);
+  // Create hreflang links for all supported languages
+  languages.forEach((lang) => {
+    const link = document.createElement('link');
+    link.rel = 'alternate';
+    link.hreflang = lang;
+    link.href = `${baseUrl}${pagePath}?lang=${lang}`;
+    document.head.appendChild(link);
+  });
   
-  // English version
-  const enLink = document.createElement('link');
-  enLink.rel = 'alternate';
-  enLink.hreflang = 'en';
-  enLink.href = `${baseUrl}${pagePath}?lang=en`;
-  document.head.appendChild(enLink);
-  
-  // x-default (Hebrew as primary)
+  // x-default (Hebrew as primary for Israeli audience)
   const defaultLink = document.createElement('link');
   defaultLink.rel = 'alternate';
   defaultLink.hreflang = 'x-default';

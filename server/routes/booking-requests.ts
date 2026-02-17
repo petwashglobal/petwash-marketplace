@@ -32,6 +32,8 @@ import EscrowService from '../services/EscrowService';
 import { createEarningRecord } from '../services/payoutLedger';
 import NotificationService from '../services/NotificationService';
 import { logBookingEvent, type BookingEventPayload } from '../services/bookingEventLogger';
+import { twilioSMSService } from '../services/TwilioSMSService';
+import { EmailService } from '../emailService';
 
 function buildEventPayload(booking: any): BookingEventPayload {
   return {
@@ -756,6 +758,71 @@ router.post('/:requestId/confirm', async (req, res) => {
     } catch (notifError: any) {
       logger.warn('[BookingRequests] Notification failed', { error: notifError.message });
     }
+
+    // ENTERPRISE: Send SMS confirmation to owner's phone
+    const { ownerPhone, ownerEmail } = req.body;
+    const phoneRegex = /^\+?[1-9]\d{6,14}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const validPhone = ownerPhone && phoneRegex.test(ownerPhone.replace(/[\s-]/g, ''));
+    const validEmail = ownerEmail && emailRegex.test(ownerEmail);
+    if (validPhone) {
+      try {
+        const smsBody = `Pet Wash™ Booking Confirmed!\n\nBooking: ${requestId}\nService: ${booking.serviceType}\nDates: ${booking.startDate ? new Date(booking.startDate).toLocaleDateString('en-AU') : 'N/A'} - ${booking.endDate ? new Date(booking.endDate).toLocaleDateString('en-AU') : 'N/A'}\nTotal: ₪${(booking.totalCents / 100).toFixed(2)}\nStatus: Completed & Confirmed\nPayout ETA: 72 hours\n\nThank you for choosing Pet Wash™!`;
+        await twilioSMSService.sendSMS(ownerPhone, smsBody);
+        logger.info('[BookingRequests] Confirmation SMS sent', { requestId, phone: ownerPhone.slice(0, 6) + '****' });
+      } catch (smsErr: any) {
+        logger.warn('[BookingRequests] SMS send failed', { error: smsErr.message });
+      }
+    }
+
+    // ENTERPRISE: Send email receipt to owner
+    const recipientEmail = validEmail ? ownerEmail : (req.user?.email || req.firebaseUser?.email);
+    if (recipientEmail) {
+      try {
+        const receiptHtml = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 32px; text-align: center;">
+              <h1 style="color: #ffffff; font-size: 24px; margin: 0;">Pet Wash™</h1>
+              <p style="color: #94a3b8; font-size: 14px; margin: 8px 0 0;">Booking Receipt</p>
+            </div>
+            <div style="padding: 32px;">
+              <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 24px;">
+                <p style="color: #16a34a; font-weight: 600; font-size: 18px; margin: 0;">✅ Booking Confirmed</p>
+                <p style="color: #4ade80; font-size: 13px; margin: 4px 0 0;">Both parties confirmed</p>
+              </div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Booking ID</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${requestId}</td></tr>
+                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Service</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${booking.serviceType}</td></tr>
+                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Start Date</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${booking.startDate ? new Date(booking.startDate).toLocaleDateString('en-AU') : 'N/A'}</td></tr>
+                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">End Date</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${booking.endDate ? new Date(booking.endDate).toLocaleDateString('en-AU') : 'N/A'}</td></tr>
+                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Pets</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${booking.petCount}</td></tr>
+                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Subtotal</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">₪${(booking.subtotalCents / 100).toFixed(2)}</td></tr>
+                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Service Fee (15%)</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">₪${(booking.serviceFeeCents / 100).toFixed(2)}</td></tr>
+                <tr><td style="padding: 10px 0; color: #1a1a2e; font-weight: 700; font-size: 16px;">Total</td><td style="padding: 10px 0; text-align: right; font-weight: 700; font-size: 16px; color: #1a1a2e;">₪${(booking.totalCents / 100).toFixed(2)}</td></tr>
+              </table>
+              ${rating ? `<div style="margin-top: 20px; padding: 12px; background: #fef9c3; border-radius: 8px; text-align: center;"><p style="margin: 0; color: #854d0e;">⭐ You rated this service ${rating}/5</p></div>` : ''}
+              <div style="margin-top: 24px; padding: 16px; background: #eff6ff; border-radius: 12px;">
+                <p style="color: #1e40af; font-weight: 600; margin: 0 0 4px;">💰 Provider Payout</p>
+                <p style="color: #3b82f6; margin: 0; font-size: 13px;">₪${(booking.subtotalCents / 100).toFixed(2)} will be transferred to the provider within 72 hours.</p>
+              </div>
+            </div>
+            <div style="background: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="color: #9ca3af; font-size: 12px; margin: 0;">Pet Wash™ Ltd | support@petwash.co.il</p>
+              <p style="color: #9ca3af; font-size: 11px; margin: 4px 0 0;">This is an automated receipt. Please keep for your records.</p>
+            </div>
+          </div>`;
+
+        await EmailService.send({
+          to: recipientEmail,
+          subject: `Pet Wash™ Booking Receipt - ${requestId}`,
+          html: receiptHtml,
+          from: 'noreply@petwash.co.il',
+        });
+        logger.info('[BookingRequests] Receipt email sent', { requestId, email: recipientEmail });
+      } catch (emailErr: any) {
+        logger.warn('[BookingRequests] Email receipt failed', { error: emailErr.message });
+      }
+    }
     
     const statusHistory = (booking.statusHistory as any[]) || [];
     const finalStatus = rating ? 'reviewed' : 'completed';
@@ -798,6 +865,8 @@ router.post('/:requestId/confirm', async (req, res) => {
       success: true,
       status: finalStatus,
       payoutETA: '72 hours',
+      smsSent: !!ownerPhone,
+      emailSent: !!recipientEmail,
       message: 'Thank you! Payment has been released to the provider and will be transferred within 72 hours.',
     });
   } catch (error: any) {

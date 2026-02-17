@@ -93,7 +93,7 @@ export function KenzoWelcomePopup({ language }: KenzoWelcomePopupProps) {
                 <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-2xl ring-4 ring-yellow-400/50">
                   <img 
                     src="/brand/kenzo-avatar.jpeg" 
-                    alt="Kenzo - Pet Wash Ambassador" 
+                    alt="Kenzo - Pet Wash™ Ambassador" 
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect fill="%23F59E0B" width="128" height="128"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="64">🐕</text></svg>';

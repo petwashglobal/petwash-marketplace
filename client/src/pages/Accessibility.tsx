@@ -12,7 +12,7 @@ export default function Accessibility() {
               <AccessibilityIcon className="w-10 h-10 text-white" />
             </div>
             <h1 className="luxury-heading-xl mb-4">Accessibility Declaration</h1>
-            <p className="luxury-text-body mb-4">Pet Wash Ltd - Company Number: 517145033</p>
+            <p className="luxury-text-body mb-4">⁦Pet Wash™⁩ Ltd - Company Number: 517145033</p>
             <span className="luxury-badge luxury-badge-gold">
               <CheckCircle2 className="w-4 h-4" />
               Last Updated: December 2024
@@ -304,7 +304,7 @@ export default function Accessibility() {
               <h2 className="luxury-heading-md">Assessment Approach</h2>
             </div>
             <p className="luxury-text-body mb-4">
-              Pet Wash Ltd assessed the accessibility of this website through:
+              ⁦Pet Wash™⁩ Ltd assessed the accessibility of this website through:
             </p>
             <ul className="space-y-3">
               <li className="flex items-start gap-3 luxury-text-body">

@@ -262,6 +262,7 @@ const Hub = lazy(() => import("@/pages/Hub"));
 const Stations = lazy(() => import("@/pages/Stations"));
 const Shop = lazy(() => import("@/pages/Shop"));
 const BookingUnified = lazy(() => import("@/pages/BookingUnified"));
+const BookingConfirmation = lazy(() => import("@/pages/BookingConfirmation"));
 const StationMap = lazy(() => import("@/pages/StationMap"));
 const Story = lazy(() => import("@/pages/Story"));
 const Media = lazy(() => import("@/pages/Media"));
@@ -520,6 +521,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/booking">
           {() => <BookingUnified />}
+        </Route>
+        <Route path="/booking/confirmation/:requestId">
+          {() => <BookingConfirmation />}
         </Route>
         <Route path="/map">
           {() => <StationMap />}
