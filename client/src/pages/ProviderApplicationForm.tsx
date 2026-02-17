@@ -274,9 +274,8 @@ export default function ProviderApplicationForm() {
       ? selectedPlatforms.filter(p => p !== platformId)
       : [...selectedPlatforms, platformId];
     setSelectedPlatforms(newPlatforms);
-    form.setValue('selectedPlatforms', newPlatforms);
+    form.setValue('selectedPlatforms', newPlatforms, { shouldValidate: true, shouldDirty: true });
     
-    // Initialize pricing for new platform
     if (!pricing[platformId]) {
       const platform = PLATFORMS.find(p => p.id === platformId);
       if (platform) {
@@ -522,6 +521,7 @@ export default function ProviderApplicationForm() {
                 }
               }
               setStep(errorStep);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
               toast({
                 variant: 'destructive',
                 title: isHebrew ? 'שדות חסרים' : 'Missing Fields',
@@ -1281,7 +1281,7 @@ export default function ProviderApplicationForm() {
                 {step > 1 && (
                   <button
                     type="button"
-                    onClick={() => setStep(step - 1)}
+                    onClick={() => { setStep(step - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                     className="flex items-center gap-2 px-6 py-3 text-gray-400 hover:text-white transition-colors rounded-xl hover:bg-white/5"
                   >
                     <ArrowLeft className={`h-5 w-5 ${isHebrew ? 'rotate-180' : ''}`} />
@@ -1302,6 +1302,9 @@ export default function ProviderApplicationForm() {
                           });
                           return;
                         }
+                        if (step === 1) {
+                          form.setValue('selectedPlatforms', selectedPlatforms, { shouldValidate: true, shouldDirty: true });
+                        }
                         const stepFields: Record<number, (keyof ApplicationForm)[]> = {
                           1: ['selectedPlatforms'],
                           2: [],
@@ -1312,15 +1315,32 @@ export default function ProviderApplicationForm() {
                         if (fields.length > 0) {
                           const valid = await form.trigger(fields);
                           if (!valid) {
+                            const errorFields = Object.keys(form.formState.errors);
+                            const fieldNames = errorFields.map(f => {
+                              const labels: Record<string, string> = {
+                                firstName: isHebrew ? 'שם פרטי' : 'First Name',
+                                lastName: isHebrew ? 'שם משפחה' : 'Last Name',
+                                email: isHebrew ? 'אימייל' : 'Email',
+                                phoneNumber: isHebrew ? 'טלפון' : 'Phone',
+                                idNumber: isHebrew ? 'תעודת זהות' : 'ID Number',
+                                streetAddress: isHebrew ? 'כתובת' : 'Address',
+                                city: isHebrew ? 'עיר' : 'City',
+                                aboutMe: isHebrew ? 'על עצמך' : 'About Me',
+                                whyJoinPetWash: isHebrew ? 'למה Pet Wash' : 'Why Pet Wash',
+                                selectedPlatforms: isHebrew ? 'בחירת פלטפורמות' : 'Platform Selection',
+                              };
+                              return labels[f] || f;
+                            }).join(', ');
                             toast({
                               variant: 'destructive',
                               title: isHebrew ? 'שדות חסרים' : 'Missing Fields',
-                              description: isHebrew ? 'אנא מלא את כל השדות הנדרשים בשלב זה' : 'Please fill in all required fields in this step',
+                              description: fieldNames || (isHebrew ? 'אנא מלא את כל השדות הנדרשים בשלב זה' : 'Please fill in all required fields in this step'),
                             });
                             return;
                           }
                         }
                         setStep(step + 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                       className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl font-semibold shadow-xl shadow-amber-500/25 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]"
                       data-testid="button-next"

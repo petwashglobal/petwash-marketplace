@@ -280,7 +280,11 @@ const submitApplicationSchema = z.object({
   lastName: z.string().min(2, 'Last name is required'),
   email: z.string().email('Valid email required'),
   phoneNumber: z.string().min(9, 'Valid phone number required'),
+  idNumber: z.string().optional(),
+  streetAddress: z.string().optional(),
   city: z.string().min(2, 'City is required'),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
   providerType: z.string().min(1, 'Provider type is required'),
   selectedPlatforms: z.array(z.string()).optional().default([]),
   intendedPricing: z.record(z.object({
