@@ -884,8 +884,13 @@ router.get('/search/providers', async (req, res) => {
       }
     }
 
-    // Format response with distance calculation
-    const results = availableRateCards.map(provider => {
+    // Format response with distance calculation and deduplicate by provider ID
+    const seenProviderIds = new Set<string>();
+    const results: any[] = [];
+    for (const provider of availableRateCards) {
+      if (seenProviderIds.has(provider.providerId)) continue;
+      seenProviderIds.add(provider.providerId);
+
       const profile = profileMap.get(provider.providerId);
       
       let distanceKm: number | null = null;
@@ -894,7 +899,7 @@ router.get('/search/providers', async (req, res) => {
         distanceKm = Math.round(distanceKm * 10) / 10;
       }
 
-      return {
+      results.push({
         id: provider.providerId,
         platform: provider.platform,
         serviceType: provider.serviceType,
@@ -924,8 +929,8 @@ router.get('/search/providers', async (req, res) => {
               : ['premium_shampoo', 'blow_dry'],
         instantBooking: provider.minBookingHours === 0,
         cancellationPolicy: 'flexible',
-      };
-    });
+      });
+    }
 
     const CITY_ALIASES: Record<string, string[]> = {
       'tel aviv': ['תל אביב', 'tel-aviv', 'tlv', 'תל-אביב', 'תל אביב יפו', 'tel aviv-yafo', 'tel aviv yafo', 'tel aviv jaffa'],
