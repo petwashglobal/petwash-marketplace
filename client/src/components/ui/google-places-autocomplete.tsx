@@ -21,7 +21,6 @@ interface GooglePlacesAutocompleteProps {
   postalCodePlaceholder?: string;
   types?: string[];
   darkMode?: boolean;
-  language?: string;
 }
 
 export interface PlaceDetails {
@@ -39,33 +38,13 @@ export interface PlaceDetails {
 }
 
 let googleMapsLoadPromise: Promise<void> | null = null;
-let googleMapsLoadedLanguage: string | null = null;
 
-function getDocumentLanguage(): string {
-  const htmlLang = document.documentElement.lang;
-  if (htmlLang) return htmlLang.substring(0, 2);
-  const stored = localStorage.getItem('pw_lang') || localStorage.getItem('language');
-  if (stored) return stored;
-  return 'iw';
-}
-
-function loadGoogleMapsScript(lang?: string): Promise<void> {
-  const requestedLang = lang || getDocumentLanguage();
-  const mapsLang = requestedLang === 'he' ? 'iw' : requestedLang;
-
+function loadGoogleMapsScript(): Promise<void> {
   if (window.google && window.google.maps && window.google.maps.places) {
-    if (googleMapsLoadedLanguage && googleMapsLoadedLanguage !== mapsLang) {
-      const oldScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
-      if (oldScript) oldScript.remove();
-      delete (window as any).google;
-      googleMapsLoadPromise = null;
-      googleMapsLoadedLanguage = null;
-    } else {
-      return Promise.resolve();
-    }
+    return Promise.resolve();
   }
 
-  if (googleMapsLoadPromise && googleMapsLoadedLanguage === mapsLang) {
+  if (googleMapsLoadPromise) {
     return googleMapsLoadPromise;
   }
 
@@ -94,7 +73,6 @@ function loadGoogleMapsScript(lang?: string): Promise<void> {
     if (existingScript) {
       const check = () => {
         if (window.google && window.google.maps && window.google.maps.places) {
-          googleMapsLoadedLanguage = mapsLang;
           resolve();
         } else {
           setTimeout(check, 100);
@@ -105,13 +83,12 @@ function loadGoogleMapsScript(lang?: string): Promise<void> {
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=${mapsLang}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
       const check = () => {
         if (window.google && window.google.maps && window.google.maps.places) {
-          googleMapsLoadedLanguage = mapsLang;
           resolve();
         } else {
           setTimeout(check, 50);
@@ -220,7 +197,6 @@ export function GooglePlacesAutocomplete({
   postalCodePlaceholder,
   types,
   darkMode = false,
-  language,
 }: GooglePlacesAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -233,10 +209,10 @@ export function GooglePlacesAutocomplete({
 
   useEffect(() => {
     injectPacStyles();
-    loadGoogleMapsScript(language)
+    loadGoogleMapsScript()
       .then(() => setIsReady(true))
       .catch(() => {});
-  }, [language]);
+  }, []);
 
   const emitUpdatedDetails = useCallback((base: PlaceDetails, apt: string, zip: string) => {
     const updated: PlaceDetails = {

@@ -102,8 +102,12 @@ interface UserProfile {
   email: string;
   phone: string;
   address: string;
+  street: string;
   city: string;
   postalCode: string;
+  country: string;
+  latitude: number | null;
+  longitude: number | null;
   birthdate: string;
   photoURL: string;
   preferredLanguage: string;
@@ -999,16 +1003,24 @@ export default function MyAccount() {
                           setEditedProfile({ 
                             ...editedProfile, 
                             address: value,
+                            street: details?.street || editedProfile.street,
                             city: details?.city || editedProfile.city,
-                            postalCode: details?.postalCode || editedProfile.postalCode
+                            postalCode: details?.postalCode || editedProfile.postalCode,
+                            country: details?.country || editedProfile.country,
+                            latitude: details?.lat ?? editedProfile.latitude,
+                            longitude: details?.lng ?? editedProfile.longitude,
                           });
                         }}
                         onPlaceSelected={(place) => {
                           setEditedProfile({ 
                             ...editedProfile, 
                             address: place.formattedAddress,
+                            street: place.street || editedProfile.street,
                             city: place.city || editedProfile.city,
-                            postalCode: place.postalCode || editedProfile.postalCode
+                            postalCode: place.postalCode || editedProfile.postalCode,
+                            country: place.country || editedProfile.country,
+                            latitude: place.lat ?? editedProfile.latitude,
+                            longitude: place.lng ?? editedProfile.longitude,
                           });
                         }}
                         placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
@@ -1018,7 +1030,6 @@ export default function MyAccount() {
                         postalCodeLabel={isHebrew ? 'מיקוד' : 'Postal Code'}
                         apartmentPlaceholder={isHebrew ? 'לדוגמה: דירה 4, קומה 2' : 'e.g. Apt 4, Floor 2'}
                         postalCodePlaceholder={isHebrew ? 'לדוגמה: 6100000' : 'e.g. 6100000'}
-                        language={language}
                       />
                     ) : (
                       <p className="text-gray-900 text-lg">{profile.address || '-'}</p>
@@ -1181,16 +1192,24 @@ export default function MyAccount() {
                         setEditedProfile((prev: any) => ({ 
                           ...prev, 
                           address: value,
+                          street: details?.street || prev?.street,
                           city: details?.city || prev?.city,
-                          postalCode: details?.postalCode || prev?.postalCode
+                          postalCode: details?.postalCode || prev?.postalCode,
+                          country: details?.country || prev?.country,
+                          latitude: details?.lat ?? prev?.latitude,
+                          longitude: details?.lng ?? prev?.longitude,
                         }));
                       }}
                       onPlaceSelected={(place) => {
                         setEditedProfile((prev: any) => ({ 
                           ...prev, 
                           address: place.formattedAddress,
+                          street: place.street || prev?.street,
                           city: place.city || prev?.city,
-                          postalCode: place.postalCode || prev?.postalCode
+                          postalCode: place.postalCode || prev?.postalCode,
+                          country: place.country || prev?.country,
+                          latitude: place.lat ?? prev?.latitude,
+                          longitude: place.lng ?? prev?.longitude,
                         }));
                       }}
                       placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
@@ -1200,7 +1219,6 @@ export default function MyAccount() {
                       postalCodeLabel={isHebrew ? 'מיקוד' : 'Postal Code'}
                       apartmentPlaceholder={isHebrew ? 'לדוגמה: דירה 4, קומה 2' : 'e.g. Apt 4, Floor 2'}
                       postalCodePlaceholder={isHebrew ? 'לדוגמה: 6100000' : 'e.g. 6100000'}
-                      language={language}
                     />
                   </div>
                   <div>
