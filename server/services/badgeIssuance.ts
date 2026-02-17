@@ -119,7 +119,7 @@ export async function issueBadge(params: IssueBadgeParams) {
 
     return badge;
   } catch (error) {
-    logger.error('[BadgeIssuance] Error issuing badge', { error });
+    logger.error('[BadgeIssuance] Error issuing badge', error);
     throw error;
   }
 }
@@ -225,7 +225,7 @@ export async function checkAndAwardMilestoneBadges(contractorId: string): Promis
     if (error instanceof Error && error.message.includes('already exists')) {
       logger.debug('[BadgeIssuance] Skipping duplicate badge', { contractorId });
     } else {
-      logger.error('[BadgeIssuance] Error checking milestone badges', { contractorId, error });
+      logger.error('[BadgeIssuance] Error checking milestone badges', error, { contractorId });
     }
   }
 }
@@ -270,7 +270,7 @@ export async function issueCertificationBadge(
       issuedBy,
     });
   } catch (error) {
-    logger.error('[BadgeIssuance] Error issuing certification badge', { error });
+    logger.error('[BadgeIssuance] Error issuing certification badge', error);
     throw error;
   }
 }
@@ -290,7 +290,7 @@ export async function revokeBadge(badgeId: string, reason: string): Promise<void
 
     logger.info('[BadgeIssuance] Badge revoked', { badgeId, reason });
   } catch (error) {
-    logger.error('[BadgeIssuance] Error revoking badge', { badgeId, error });
+    logger.error('[BadgeIssuance] Error revoking badge', error, { badgeId });
     throw error;
   }
 }
@@ -327,7 +327,7 @@ export async function deactivateExpiredCertifications(): Promise<void> {
       count: deactivatedCount,
     });
   } catch (error) {
-    logger.error('[BadgeIssuance] Error deactivating expired certifications', { error });
+    logger.error('[BadgeIssuance] Error deactivating expired certifications', error);
     throw error;
   }
 }
@@ -349,7 +349,7 @@ export async function getContractorBadges(contractorId: string) {
 
     return badges;
   } catch (error) {
-    logger.error('[BadgeIssuance] Error fetching contractor badges', { contractorId, error });
+    logger.error('[BadgeIssuance] Error fetching contractor badges', error, { contractorId });
     throw error;
   }
 }

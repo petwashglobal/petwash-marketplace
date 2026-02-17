@@ -50,7 +50,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         message: 'Application submitted successfully! Check your email for next steps.',
       });
     } catch (error: any) {
-      logger.error('[API] Failed to create application', { error });
+      logger.error('[API] Failed to create application', error);
       res.status(400).json({
         success: false,
         error: error.message || 'Failed to submit application',
@@ -93,7 +93,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         application,
       });
     } catch (error: any) {
-      logger.error('[API] Failed to get application', { error });
+      logger.error('[API] Failed to get application', error);
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve application',
@@ -139,7 +139,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         status,
       });
     } catch (error: any) {
-      logger.error('[API] Failed to get onboarding status', { error });
+      logger.error('[API] Failed to get onboarding status', error);
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve onboarding status',
@@ -198,7 +198,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         message: 'Document uploaded successfully',
       });
     } catch (error: any) {
-      logger.error('[API] Failed to upload document', { error });
+      logger.error('[API] Failed to upload document', error);
       res.status(500).json({
         success: false,
         error: 'Failed to upload document',
@@ -259,7 +259,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
           : '❌ Biometric verification failed - photos do not match',
       });
     } catch (error: any) {
-      logger.error('[API] Biometric verification failed', { error });
+      logger.error('[API] Biometric verification failed', error);
       res.status(500).json({
         success: false,
         error: 'Biometric verification failed',
@@ -306,7 +306,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         message: 'E-signature documents sent to your email',
       });
     } catch (error: any) {
-      logger.error('[API] Failed to send e-signature documents', { error });
+      logger.error('[API] Failed to send e-signature documents', error);
       res.status(500).json({
         success: false,
         error: 'Failed to send e-signature documents',
@@ -339,7 +339,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         applications,
       });
     } catch (error: any) {
-      logger.error('[API] Failed to list applications', { error });
+      logger.error('[API] Failed to list applications', error);
       res.status(500).json({
         success: false,
         error: 'Failed to list applications',
@@ -363,7 +363,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         message: 'Application approved successfully',
       });
     } catch (error: any) {
-      logger.error('[API] Failed to approve application', { error });
+      logger.error('[API] Failed to approve application', error);
       res.status(500).json({
         success: false,
         error: 'Failed to approve application',
@@ -394,7 +394,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         message: 'Application rejected',
       });
     } catch (error: any) {
-      logger.error('[API] Failed to reject application', { error });
+      logger.error('[API] Failed to reject application', error);
       res.status(500).json({
         success: false,
         error: 'Failed to reject application',
@@ -467,7 +467,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
           : 'Expense submitted successfully',
       });
     } catch (error: any) {
-      logger.error('[API] Failed to submit expense', { error });
+      logger.error('[API] Failed to submit expense', error);
       res.status(400).json({
         success: false,
         error: error.message || 'Failed to submit expense',
@@ -504,7 +504,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         expenses,
       });
     } catch (error: any) {
-      logger.error('[API] Failed to list expenses', { error });
+      logger.error('[API] Failed to list expenses', error);
       res.status(500).json({
         success: false,
         error: 'Failed to list expenses',
@@ -537,7 +537,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         message: 'Expense approved successfully',
       });
     } catch (error: any) {
-      logger.error('[API] Failed to approve expense', { error });
+      logger.error('[API] Failed to approve expense', error);
       res.status(500).json({
         success: false,
         error: 'Failed to approve expense',
@@ -570,7 +570,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         message: 'Expense rejected',
       });
     } catch (error: any) {
-      logger.error('[API] Failed to reject expense', { error });
+      logger.error('[API] Failed to reject expense', error);
       res.status(500).json({
         success: false,
         error: 'Failed to reject expense',
@@ -615,7 +615,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         message: 'Logbook entry recorded',
       });
     } catch (error: any) {
-      logger.error('[API] Failed to submit logbook entry', { error });
+      logger.error('[API] Failed to submit logbook entry', error);
       res.status(400).json({
         success: false,
         error: error.message || 'Failed to submit logbook entry',
@@ -648,7 +648,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         logbook: entries,
       });
     } catch (error: any) {
-      logger.error('[API] Failed to list logbook entries', { error });
+      logger.error('[API] Failed to list logbook entries', error);
       res.status(500).json({
         success: false,
         error: 'Failed to list logbook entries',
@@ -686,7 +686,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         paymentRequired: true,
       });
     } catch (error: any) {
-      logger.error('[API] Failed to create franchise order', { error });
+      logger.error('[API] Failed to create franchise order', error);
       res.status(400).json({
         success: false,
         error: error.message || 'Failed to create order',
@@ -726,7 +726,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         message: '✅ Payment confirmed - order is now being processed',
       });
     } catch (error: any) {
-      logger.error('[API] Failed to confirm payment', { error });
+      logger.error('[API] Failed to confirm payment', error);
       res.status(500).json({
         success: false,
         error: 'Failed to confirm payment',
@@ -763,7 +763,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         orders,
       });
     } catch (error: any) {
-      logger.error('[API] Failed to list franchise orders', { error });
+      logger.error('[API] Failed to list franchise orders', error);
       res.status(500).json({
         success: false,
         error: 'Failed to list orders',

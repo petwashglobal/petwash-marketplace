@@ -634,7 +634,7 @@ export class NayaxSparkService {
         };
       } else {
         const errorText = await response.text();
-        logger.error('[Nayax] Failed to create loyalty card', { error: errorText });
+        logger.error('[Nayax] Failed to create loyalty card', errorText);
         
         return {
           success: false,

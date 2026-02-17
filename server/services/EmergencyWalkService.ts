@@ -202,7 +202,7 @@ export class EmergencyWalkService {
       };
 
     } catch (error) {
-      logger.error('[Emergency Walk] Request failed', { error });
+      logger.error('[Emergency Walk] Request failed', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

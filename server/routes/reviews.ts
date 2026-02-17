@@ -337,7 +337,7 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
     // Update trust score asynchronously (for contractor being reviewed)
     if (reviewType === 'owner_to_contractor') {
       triggerTrustScoreUpdate(subjectId, 'review_submitted').catch(err => {
-        logger.error('[Trust Score] Failed to update', { contractorId: subjectId, error: err });
+        logger.error('[Trust Score] Failed to update', err, { contractorId: subjectId });
       });
     }
 
@@ -630,7 +630,7 @@ async function updateContractorTrustScore(
     });
 
   } catch (error) {
-    logger.error('[Trust Score] Update error', { contractorId, error });
+    logger.error('[Trust Score] Update error', error, { contractorId });
     throw error;
   }
 }

@@ -45,7 +45,7 @@ router.post('/inquiry', async (req, res) => {
     logger.info('Franchise inquiry received', { fullName, email, phone, country, city });
     return res.json({ success: true, message: 'Inquiry submitted successfully' });
   } catch (error) {
-    logger.error('Error processing franchise inquiry', { error });
+    logger.error('Error processing franchise inquiry', error);
     return res.status(500).json({ error: 'Failed to process inquiry' });
   }
 });

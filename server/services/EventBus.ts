@@ -156,7 +156,7 @@ export class EventBus {
         triggers: event.triggers?.length || 0
       });
     } catch (error) {
-      logger.error('[Event Bus] Failed to publish event', { error, event });
+      logger.error('[Event Bus] Failed to publish event', error, { event });
       throw error;
     }
   }
@@ -214,7 +214,7 @@ export class EventBus {
           }
         });
       } catch (error) {
-        logger.error(`[Event Bus] Failed to execute trigger: ${trigger}`, { error, event });
+        logger.error(`[Event Bus] Failed to execute trigger: ${trigger}`, error, { event });
       }
     }
   }

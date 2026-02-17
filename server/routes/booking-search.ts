@@ -375,7 +375,7 @@ async function searchGroomers(filters: BookingSearchFilters, searchId: string): 
 
     return { providers, total, filters, searchId };
   } catch (error) {
-    logger.error('[BookingSearch] Groomer search error', { error });
+    logger.error('[BookingSearch] Groomer search error', error);
     return { providers: [], total: 0, filters, searchId };
   }
 }
@@ -428,7 +428,7 @@ async function searchDrivers(filters: BookingSearchFilters, searchId: string): P
 
     return { providers, total, filters, searchId };
   } catch (error) {
-    logger.error('[BookingSearch] Driver search error', { error });
+    logger.error('[BookingSearch] Driver search error', error);
     return { providers: [], total: 0, filters, searchId };
   }
 }
@@ -493,7 +493,7 @@ async function searchTrainers(filters: BookingSearchFilters, searchId: string): 
 
     return { providers, total, filters, searchId };
   } catch (error) {
-    logger.error('[BookingSearch] Trainer search error', { error });
+    logger.error('[BookingSearch] Trainer search error', error);
     return { providers: [], total: 0, filters, searchId };
   }
 }
@@ -552,7 +552,7 @@ async function searchK9000Stations(filters: BookingSearchFilters, searchId: stri
 
     return { providers, total, filters, searchId };
   } catch (error) {
-    logger.error('[BookingSearch] K9000 search error', { error });
+    logger.error('[BookingSearch] K9000 search error', error);
     return { providers: [], total: 0, filters, searchId };
   }
 }

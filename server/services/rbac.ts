@@ -41,7 +41,7 @@ export async function getUserRoleLevel(userId: string): Promise<number> {
 
     return assignments[0].accessLevel || 0;
   } catch (error) {
-    logger.error('[RBAC] Failed to get user role level', { userId, error });
+    logger.error('[RBAC] Failed to get user role level', error, { userId });
     return 0;
   }
 }
@@ -72,7 +72,7 @@ export async function getUserRole(userId: string) {
 
     return assignments[0] || null;
   } catch (error) {
-    logger.error('[RBAC] Failed to get user role', { userId, error });
+    logger.error('[RBAC] Failed to get user role', error, { userId });
     return null;
   }
 }
@@ -91,7 +91,7 @@ export async function userHasPermission(
     const permissions = role.permissions as string[];
     return permissions.includes(permission);
   } catch (error) {
-    logger.error('[RBAC] Failed to check permission', { userId, permission, error });
+    logger.error('[RBAC] Failed to check permission', error, { userId, permission });
     return false;
   }
 }

@@ -66,7 +66,7 @@ router.get('/positions', async (req: Request, res: Response) => {
     
     res.json(positions);
   } catch (error) {
-    logger.error('[Careers] Failed to fetch positions', { error });
+    logger.error('[Careers] Failed to fetch positions', error);
     res.status(500).json({ error: 'Failed to fetch career positions' });
   }
 });
@@ -99,7 +99,7 @@ router.get('/positions/:identifier', async (req: Request, res: Response) => {
     
     res.json(position);
   } catch (error) {
-    logger.error('[Careers] Failed to fetch position', { error });
+    logger.error('[Careers] Failed to fetch position', error);
     res.status(500).json({ error: 'Failed to fetch position details' });
   }
 });
@@ -167,7 +167,7 @@ router.get('/my-applications', async (req: Request, res: Response) => {
     
     res.json(applicationsWithDocs);
   } catch (error) {
-    logger.error('[Careers] Failed to fetch user applications', { error });
+    logger.error('[Careers] Failed to fetch user applications', error);
     res.status(500).json({ error: 'Failed to fetch applications' });
   }
 });
@@ -224,7 +224,7 @@ router.get('/my-applications/:applicationId', async (req: Request, res: Response
       steps,
     });
   } catch (error) {
-    logger.error('[Careers] Failed to fetch application details', { error });
+    logger.error('[Careers] Failed to fetch application details', error);
     res.status(500).json({ error: 'Failed to fetch application details' });
   }
 });
@@ -526,7 +526,7 @@ router.post('/apply', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[Careers] Application submission failed', { error, correlationId });
+    logger.error('[Careers] Application submission failed', error, { correlationId });
     res.status(500).json({ error: 'Failed to submit application. Please try again.' });
   }
 });
@@ -598,7 +598,7 @@ router.post('/applications/:applicationId/documents', upload.single('document'),
     });
     
   } catch (error) {
-    logger.error('[Careers] Document upload failed', { error, correlationId });
+    logger.error('[Careers] Document upload failed', error, { correlationId });
     res.status(500).json({ error: 'Failed to upload document' });
   }
 });
@@ -688,7 +688,7 @@ router.post('/start-application', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[Careers] Failed to start application', { error, correlationId });
+    logger.error('[Careers] Failed to start application', error, { correlationId });
     res.status(500).json({ error: 'Failed to start application' });
   }
 });
@@ -807,7 +807,7 @@ router.post('/applications/:applicationId/autosave', async (req: Request, res: R
     });
     
   } catch (error) {
-    logger.error('[Careers] Autosave failed', { error, correlationId });
+    logger.error('[Careers] Autosave failed', error, { correlationId });
     res.status(500).json({ error: 'Failed to save progress' });
   }
 });
@@ -847,7 +847,7 @@ router.get('/applications/:applicationId/progress', async (req: Request, res: Re
     });
     
   } catch (error) {
-    logger.error('[Careers] Failed to get progress', { error });
+    logger.error('[Careers] Failed to get progress', error);
     res.status(500).json({ error: 'Failed to get progress' });
   }
 });
@@ -915,7 +915,7 @@ router.get('/applications/:applicationId/status', async (req: Request, res: Resp
     });
     
   } catch (error) {
-    logger.error('[Careers] Status check failed', { error });
+    logger.error('[Careers] Status check failed', error);
     res.status(500).json({ error: 'Failed to check application status' });
   }
 });
@@ -954,7 +954,7 @@ router.post('/admin/positions', async (req: Request, res: Response) => {
     res.status(201).json(position);
     
   } catch (error) {
-    logger.error('[Careers Admin] Failed to create position', { error });
+    logger.error('[Careers Admin] Failed to create position', error);
     res.status(500).json({ error: 'Failed to create position' });
   }
 });
@@ -1086,7 +1086,7 @@ router.post('/admin/seed-positions', async (req: Request, res: Response) => {
     res.json({ success: true, message: 'Demo positions seeded successfully', count: demoPositions.length });
     
   } catch (error) {
-    logger.error('[Careers Admin] Failed to seed positions', { error });
+    logger.error('[Careers Admin] Failed to seed positions', error);
     res.status(500).json({ error: 'Failed to seed positions' });
   }
 });
@@ -1117,7 +1117,7 @@ router.get('/admin/positions', async (req: Request, res: Response) => {
     
     res.json(positions);
   } catch (error) {
-    logger.error('[Jobs Admin] Failed to fetch positions', { error });
+    logger.error('[Jobs Admin] Failed to fetch positions', error);
     res.status(500).json({ error: 'Failed to fetch positions' });
   }
 });
@@ -1159,7 +1159,7 @@ router.post('/admin/positions', async (req: Request, res: Response) => {
     res.status(201).json(newPosition);
     
   } catch (error) {
-    logger.error('[Jobs Admin] Failed to create position', { error });
+    logger.error('[Jobs Admin] Failed to create position', error);
     res.status(500).json({ error: 'Failed to create position' });
   }
 });
@@ -1208,7 +1208,7 @@ router.patch('/admin/positions/:id', async (req: Request, res: Response) => {
     res.json(updated);
     
   } catch (error) {
-    logger.error('[Jobs Admin] Failed to update position', { error });
+    logger.error('[Jobs Admin] Failed to update position', error);
     res.status(500).json({ error: 'Failed to update position' });
   }
 });
@@ -1238,7 +1238,7 @@ router.delete('/admin/positions/:id', async (req: Request, res: Response) => {
     res.json({ success: true, message: 'Position archived' });
     
   } catch (error) {
-    logger.error('[Jobs Admin] Failed to archive position', { error });
+    logger.error('[Jobs Admin] Failed to archive position', error);
     res.status(500).json({ error: 'Failed to archive position' });
   }
 });
@@ -1496,7 +1496,7 @@ router.post('/admin/applications/:id/shortlist', async (req: Request, res: Respo
     });
     
   } catch (error) {
-    logger.error('[Shortlist] Failed to process application', { error });
+    logger.error('[Shortlist] Failed to process application', error);
     res.status(500).json({ error: 'Failed to process shortlisting' });
   }
 });
@@ -1561,7 +1561,7 @@ router.post('/admin/applications/bulk-shortlist', async (req: Request, res: Resp
         
       } catch (err) {
         results.errors++;
-        logger.error('[Bulk Shortlist] Error processing application', { appId: app.id, error: err });
+        logger.error('[Bulk Shortlist] Error processing application', err, { appId: app.id });
       }
     }
     
@@ -1573,7 +1573,7 @@ router.post('/admin/applications/bulk-shortlist', async (req: Request, res: Resp
     });
     
   } catch (error) {
-    logger.error('[Bulk Shortlist] Failed', { error });
+    logger.error('[Bulk Shortlist] Failed', error);
     res.status(500).json({ error: 'Failed to run bulk shortlisting' });
   }
 });
@@ -1657,7 +1657,7 @@ router.get('/admin/applications', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[HR Admin] Failed to fetch applications', { error });
+    logger.error('[HR Admin] Failed to fetch applications', error);
     res.status(500).json({ error: 'Failed to fetch applications' });
   }
 });
@@ -1713,7 +1713,7 @@ router.get('/admin/applications/:id', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[HR Admin] Failed to fetch application details', { error });
+    logger.error('[HR Admin] Failed to fetch application details', error);
     res.status(500).json({ error: 'Failed to fetch application details' });
   }
 });
@@ -1762,7 +1762,7 @@ router.patch('/admin/applications/:id/status', async (req: Request, res: Respons
     res.json(updated);
     
   } catch (error) {
-    logger.error('[HR Admin] Failed to update application status', { error });
+    logger.error('[HR Admin] Failed to update application status', error);
     res.status(500).json({ error: 'Failed to update status' });
   }
 });
@@ -1823,7 +1823,7 @@ router.get('/admin/stats', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[HR Admin] Failed to fetch stats', { error });
+    logger.error('[HR Admin] Failed to fetch stats', error);
     res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 });

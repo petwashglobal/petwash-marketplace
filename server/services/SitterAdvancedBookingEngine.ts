@@ -109,7 +109,7 @@ export class SitterAdvancedBookingEngine {
       };
 
     } catch (error) {
-      logger.error('[Booking Engine] Error checking availability', { error, sitterId });
+      logger.error('[Booking Engine] Error checking availability', error, { sitterId });
       return {
         available: false,
         message: "Error checking availability.",
@@ -230,7 +230,7 @@ export class SitterAdvancedBookingEngine {
       };
 
     } catch (error) {
-      logger.error('[Escrow] Payment processing failed', { error, bookingId });
+      logger.error('[Escrow] Payment processing failed', error, { bookingId });
       return {
         success: false,
         message: "Payment processing failed.",
@@ -271,7 +271,7 @@ export class SitterAdvancedBookingEngine {
       return true;
 
     } catch (error) {
-      logger.error('[Escrow] Failed to release payment', { error, bookingId });
+      logger.error('[Escrow] Failed to release payment', error, { bookingId });
       return false;
     }
   }

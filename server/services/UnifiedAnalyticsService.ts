@@ -48,7 +48,7 @@ export class UnifiedAnalyticsService {
       logger.info('[Analytics] Total revenue calculated', { startDate, endDate, revenue: totalRevenue });
       return totalRevenue;
     } catch (error) {
-      logger.error('[Analytics] Failed to calculate total revenue', { error });
+      logger.error('[Analytics] Failed to calculate total revenue', error);
       throw error;
     }
   }
@@ -68,7 +68,7 @@ export class UnifiedAnalyticsService {
       logger.info('[Analytics] Revenue by platform', { breakdown });
       return breakdown;
     } catch (error) {
-      logger.error('[Analytics] Failed to get revenue breakdown', { error });
+      logger.error('[Analytics] Failed to get revenue breakdown', error);
       throw error;
     }
   }
@@ -116,7 +116,7 @@ export class UnifiedAnalyticsService {
       logger.info('[Analytics] Platform metrics', { platform, metrics });
       return metrics;
     } catch (error) {
-      logger.error('[Analytics] Failed to get platform metrics', { error, platform });
+      logger.error('[Analytics] Failed to get platform metrics', error, { platform });
       throw error;
     }
   }
@@ -139,7 +139,7 @@ export class UnifiedAnalyticsService {
       logger.info('[Analytics] User activity', { userId, platforms: activity.platforms.length });
       return activity;
     } catch (error) {
-      logger.error('[Analytics] Failed to get user activity', { error, userId });
+      logger.error('[Analytics] Failed to get user activity', error, { userId });
       throw error;
     }
   }
@@ -152,7 +152,7 @@ export class UnifiedAnalyticsService {
       // TODO: Query users active on 2+ platforms
       return [];
     } catch (error) {
-      logger.error('[Analytics] Failed to get multi-platform users', { error });
+      logger.error('[Analytics] Failed to get multi-platform users', error);
       throw error;
     }
   }
@@ -175,7 +175,7 @@ export class UnifiedAnalyticsService {
       logger.info('[Analytics] Franchise metrics', { franchiseId });
       return metrics;
     } catch (error) {
-      logger.error('[Analytics] Failed to get franchise metrics', { error, franchiseId });
+      logger.error('[Analytics] Failed to get franchise metrics', error, { franchiseId });
       throw error;
     }
   }
@@ -195,7 +195,7 @@ export class UnifiedAnalyticsService {
       logger.info('[Analytics] Conversion funnel', { platform, funnel });
       return funnel;
     } catch (error) {
-      logger.error('[Analytics] Failed to get conversion funnel', { error, platform });
+      logger.error('[Analytics] Failed to get conversion funnel', error, { platform });
       throw error;
     }
   }
@@ -217,7 +217,7 @@ export class UnifiedAnalyticsService {
       logger.info('[Analytics] Platform health', { health });
       return health;
     } catch (error) {
-      logger.error('[Analytics] Failed to get platform health', { error });
+      logger.error('[Analytics] Failed to get platform health', error);
       throw error;
     }
   }
@@ -238,7 +238,7 @@ export class UnifiedAnalyticsService {
       logger.info('[Analytics] Insights generated', { count: insights.length, timeframe });
       return insights;
     } catch (error) {
-      logger.error('[Analytics] Failed to generate insights', { error });
+      logger.error('[Analytics] Failed to generate insights', error);
       throw error;
     }
   }
@@ -265,7 +265,7 @@ export class UnifiedAnalyticsService {
 
       logger.info('[Analytics] Daily metrics recorded', { platform, date });
     } catch (error) {
-      logger.error('[Analytics] Failed to record daily metrics', { error, platform });
+      logger.error('[Analytics] Failed to record daily metrics', error, { platform });
       throw error;
     }
   }
@@ -277,7 +277,7 @@ export class UnifiedAnalyticsService {
     try {
       return await analyticsRepository.getGrowthMetrics(platform, days);
     } catch (error) {
-      logger.error('[Analytics] Failed to get growth metrics', { error, platform });
+      logger.error('[Analytics] Failed to get growth metrics', error, { platform });
       throw error;
     }
   }

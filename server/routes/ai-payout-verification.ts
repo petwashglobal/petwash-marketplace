@@ -49,7 +49,7 @@ router.post("/verify/:payoutId", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[AI Verification] Verification failed", { error });
+    logger.error("[AI Verification] Verification failed", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Verification failed",
@@ -91,7 +91,7 @@ router.get("/status/:payoutId", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[AI Verification] Status check failed", { error });
+    logger.error("[AI Verification] Status check failed", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Status check failed",
@@ -119,7 +119,7 @@ router.post("/batch", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[AI Verification] Batch verification failed", { error });
+    logger.error("[AI Verification] Batch verification failed", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Batch verification failed",
@@ -161,7 +161,7 @@ router.get("/pending", async (req, res) => {
       })),
     });
   } catch (error) {
-    logger.error("[AI Verification] Failed to get pending payouts", { error });
+    logger.error("[AI Verification] Failed to get pending payouts", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Failed to get pending payouts",
@@ -204,7 +204,7 @@ router.get("/flagged", async (req, res) => {
       })),
     });
   } catch (error) {
-    logger.error("[AI Verification] Failed to get flagged payouts", { error });
+    logger.error("[AI Verification] Failed to get flagged payouts", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Failed to get flagged payouts",
@@ -270,7 +270,7 @@ router.post("/override/:payoutId", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[AI Verification] Override failed", { error });
+    logger.error("[AI Verification] Override failed", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Override failed",
@@ -321,7 +321,7 @@ router.get("/stats", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[AI Verification] Stats query failed", { error });
+    logger.error("[AI Verification] Stats query failed", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Stats query failed",

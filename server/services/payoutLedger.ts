@@ -133,7 +133,7 @@ export async function createEarningRecord(params: CreateEarningParams) {
 
     return earning;
   } catch (error) {
-    logger.error('[PayoutLedger] Error creating earning record', { error });
+    logger.error('[PayoutLedger] Error creating earning record', error);
     throw error;
   }
 }
@@ -170,7 +170,7 @@ export async function calculateSitterEarnings(
       hourCount,
     });
   } catch (error) {
-    logger.error('[PayoutLedger] Error calculating sitter earnings', { error });
+    logger.error('[PayoutLedger] Error calculating sitter earnings', error);
     throw error;
   }
 }
@@ -209,7 +209,7 @@ export async function calculateWalkerEarnings(
       walkDistanceKm,
     });
   } catch (error) {
-    logger.error('[PayoutLedger] Error calculating walker earnings', { error });
+    logger.error('[PayoutLedger] Error calculating walker earnings', error);
     throw error;
   }
 }
@@ -246,7 +246,7 @@ export async function calculateDriverEarnings(
       tollCharges,
     });
   } catch (error) {
-    logger.error('[PayoutLedger] Error calculating driver earnings', { error });
+    logger.error('[PayoutLedger] Error calculating driver earnings', error);
     throw error;
   }
 }
@@ -293,7 +293,7 @@ export async function releaseEscrow(earningId: string) {
 
     return true;
   } catch (error) {
-    logger.error('[PayoutLedger] Error releasing escrow', { earningId, error });
+    logger.error('[PayoutLedger] Error releasing escrow', error, { earningId });
     throw error;
   }
 }
@@ -359,7 +359,7 @@ export async function processPayout(
 
     return true;
   } catch (error) {
-    logger.error('[PayoutLedger] Error processing payout', { earningId, error });
+    logger.error('[PayoutLedger] Error processing payout', error, { earningId });
     throw error;
   }
 }
@@ -399,7 +399,7 @@ export async function autoReleaseExpiredEscrows() {
 
     return released;
   } catch (error) {
-    logger.error('[PayoutLedger] Error in auto-release job', { error });
+    logger.error('[PayoutLedger] Error in auto-release job', error);
     throw error;
   }
 }

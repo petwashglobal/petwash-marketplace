@@ -180,7 +180,7 @@ async function searchWalkers(filters: MarketplaceSearchFilters): Promise<{
 
     return { providers, total };
   } catch (error) {
-    logger.error('[Marketplace] Walker search error', { error });
+    logger.error('[Marketplace] Walker search error', error);
     throw error;
   }
 }
@@ -251,7 +251,7 @@ async function searchSitters(filters: MarketplaceSearchFilters): Promise<{
 
     return { providers, total };
   } catch (error) {
-    logger.error('[Marketplace] Sitter search error', { error });
+    logger.error('[Marketplace] Sitter search error', error);
     throw error;
   }
 }
@@ -303,7 +303,7 @@ async function searchDrivers(filters: MarketplaceSearchFilters): Promise<{
 
     return { providers, total };
   } catch (error) {
-    logger.error('[Marketplace] Driver search error', { error });
+    logger.error('[Marketplace] Driver search error', error);
     return { providers: [], total: 0 };
   }
 }
@@ -369,7 +369,7 @@ async function searchGroomers(filters: MarketplaceSearchFilters): Promise<{
 
     return { providers, total };
   } catch (error) {
-    logger.error('[Marketplace] Groomer search error', { error });
+    logger.error('[Marketplace] Groomer search error', error);
     return { providers: [], total: 0 };
   }
 }

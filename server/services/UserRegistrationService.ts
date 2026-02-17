@@ -117,7 +117,7 @@ export class UserRegistrationService {
 
       return result.id;
     } catch (error) {
-      logger.error('[UserRegistration] Failed to record registration', { error, userId: data.userId });
+      logger.error('[UserRegistration] Failed to record registration', error, { userId: data.userId });
       throw error;
     }
   }

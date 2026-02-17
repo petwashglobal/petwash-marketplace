@@ -25,7 +25,7 @@ export const graceful = (server: Server) => {
   
   // Handle uncaught errors
   process.on("uncaughtException", (error) => {
-    logger.error({ error }, "uncaught exception");
+    logger.error("uncaught exception", error);
     shutdown("uncaughtException")();
   });
   

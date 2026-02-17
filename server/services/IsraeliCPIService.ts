@@ -44,7 +44,7 @@ class IsraeliCPIService {
 
       return latest || null;
     } catch (error) {
-      logger.error('[CPI Service] Failed to get latest CPI', { error });
+      logger.error('[CPI Service] Failed to get latest CPI', error);
       return null;
     }
   }
@@ -64,7 +64,7 @@ class IsraeliCPIService {
 
       return cpi || null;
     } catch (error) {
-      logger.error('[CPI Service] Failed to get CPI for month', { month, error });
+      logger.error('[CPI Service] Failed to get CPI for month', error, { month });
       return null;
     }
   }
@@ -132,12 +132,10 @@ class IsraeliCPIService {
         currentMonth: currentCPI.month,
       };
     } catch (error) {
-      logger.error('[CPI Service] Failed to calculate indexed amount', { 
+      logger.error('[CPI Service] Failed to calculate indexed amount', error, { 
         originalAmount, 
         baseMonth, 
-        currentMonth, 
-        error 
-      });
+        currentMonth });
       throw error;
     }
   }
@@ -185,11 +183,9 @@ class IsraeliCPIService {
 
       return newEntry;
     } catch (error) {
-      logger.error('[CPI Service] Failed to add CPI index', { 
+      logger.error('[CPI Service] Failed to add CPI index', error, { 
         month, 
-        indexValue, 
-        error 
-      });
+        indexValue });
       throw error;
     }
   }
@@ -209,7 +205,7 @@ class IsraeliCPIService {
 
       return history;
     } catch (error) {
-      logger.error('[CPI Service] Failed to get CPI history', { error });
+      logger.error('[CPI Service] Failed to get CPI history', error);
       return [];
     }
   }
@@ -267,7 +263,7 @@ class IsraeliCPIService {
         latestValue: initialData[initialData.length - 1].indexValue,
       });
     } catch (error) {
-      logger.error('[CPI Service] Failed to seed initial CPI data', { error });
+      logger.error('[CPI Service] Failed to seed initial CPI data', error);
       throw error;
     }
   }
@@ -313,7 +309,7 @@ class IsraeliCPIService {
 
       return latest.month === currentMonth || latest.month === prevMonthStr;
     } catch (error) {
-      logger.error('[CPI Service] Failed to check if CPI data is current', { error });
+      logger.error('[CPI Service] Failed to check if CPI data is current', error);
       return false;
     }
   }

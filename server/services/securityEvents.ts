@@ -46,7 +46,7 @@ export async function logSecurityEvent(opts: SecurityEventOptions): Promise<void
 
     logger.info('[Security Event]', { uid, type, ip });
   } catch (error) {
-    logger.error('[Security Events] Failed to log event', { uid, type, error });
+    logger.error('[Security Events] Failed to log event', error, { uid, type });
   }
 }
 
@@ -70,7 +70,7 @@ export async function getUserSecurityEvents(
       ...doc.data(),
     }));
   } catch (error) {
-    logger.error('[Security Events] Failed to get user events', { uid, error });
+    logger.error('[Security Events] Failed to get user events', error, { uid });
     return [];
   }
 }
@@ -95,7 +95,7 @@ export async function countFailedAttempts(
 
     return snapshot.size;
   } catch (error) {
-    logger.error('[Security Events] Failed to count failed attempts', { uid, error });
+    logger.error('[Security Events] Failed to count failed attempts', error, { uid });
     return 0;
   }
 }

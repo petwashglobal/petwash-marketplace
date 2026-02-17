@@ -195,7 +195,7 @@ async function collectAllUserData(userId: string, email: string | null) {
 
     return userData;
   } catch (error) {
-    logger.error('Failed to collect user data', { userId, error });
+    logger.error('Failed to collect user data', error, { userId });
     throw error;
   }
 }
@@ -255,7 +255,7 @@ router.get('/export', requireAuth, async (req: Request, res: Response) => {
     res.json(userData);
 
   } catch (error) {
-    logger.error('[Data Rights] Export failed', { error });
+    logger.error('[Data Rights] Export failed', error);
     res.status(500).json({ error: 'Failed to export data' });
   }
 });
@@ -370,7 +370,7 @@ router.patch('/correct', requireAuth, async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    logger.error('[Data Rights] Correction failed', { error });
+    logger.error('[Data Rights] Correction failed', error);
     res.status(500).json({ error: 'Failed to correct data' });
   }
 });
@@ -515,10 +515,8 @@ router.delete('/delete', requireAuth, async (req: Request, res: Response) => {
       });
 
     } catch (emailError) {
-      logger.error('[Data Rights] Failed to send deletion confirmation email', { 
-        userId, 
-        error: emailError 
-      });
+      logger.error('[Data Rights] Failed to send deletion confirmation email', emailError, { 
+        userId });
       // Don't fail the request if email fails
     }
 
@@ -540,7 +538,7 @@ router.delete('/delete', requireAuth, async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    logger.error('[Data Rights] Deletion request failed', { error });
+    logger.error('[Data Rights] Deletion request failed', error);
     res.status(500).json({ error: 'Failed to process deletion request' });
   }
 });
@@ -663,7 +661,7 @@ router.post('/restrict', requireAuth, async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    logger.error('[Data Rights] Restriction request failed', { error });
+    logger.error('[Data Rights] Restriction request failed', error);
     res.status(500).json({ error: 'Failed to apply processing restriction' });
   }
 });
@@ -752,7 +750,7 @@ router.post('/cancel-deletion', requireAuth, async (req: Request, res: Response)
     });
 
   } catch (error) {
-    logger.error('[Data Rights] Cancellation failed', { error });
+    logger.error('[Data Rights] Cancellation failed', error);
     res.status(500).json({ error: 'Failed to cancel deletion request' });
   }
 });

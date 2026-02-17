@@ -115,7 +115,7 @@ export class UserDeviceService {
       // Return: iv:authTag:encrypted
       return `${iv.toString('hex')}:${authTag}:${encrypted}`;
     } catch (error) {
-      logger.error('[UserDeviceService] Failed to encrypt WiFi SSID', { error });
+      logger.error('[UserDeviceService] Failed to encrypt WiFi SSID', error);
       throw error;
     }
   }
@@ -157,7 +157,7 @@ export class UserDeviceService {
       
       return decrypted;
     } catch (error) {
-      logger.error('[UserDeviceService] Failed to decrypt WiFi SSID', { error });
+      logger.error('[UserDeviceService] Failed to decrypt WiFi SSID', error);
       throw error;
     }
   }
@@ -545,7 +545,7 @@ export class UserDeviceService {
       
       return true;
     } catch (error) {
-      logger.error('[UserDeviceService] Failed to revoke device', { error, deviceId, userId });
+      logger.error('[UserDeviceService] Failed to revoke device', error, { deviceId, userId });
       return false;
     }
   }
@@ -591,7 +591,7 @@ export class UserDeviceService {
       
       return true;
     } catch (error) {
-      logger.error('[UserDeviceService] Failed to update device label', { error, deviceId });
+      logger.error('[UserDeviceService] Failed to update device label', error, { deviceId });
       return false;
     }
   }
@@ -608,7 +608,7 @@ export class UserDeviceService {
         ...event,
       });
     } catch (error) {
-      logger.error('[UserDeviceService] Failed to record device event', { error, event });
+      logger.error('[UserDeviceService] Failed to record device event', error, { event });
     }
   }
   
@@ -675,7 +675,7 @@ export class UserDeviceService {
       
       return !!device;
     } catch (error) {
-      logger.error('[UserDeviceService] Failed to mark device as current', { error, deviceId });
+      logger.error('[UserDeviceService] Failed to mark device as current', error, { deviceId });
       return false;
     }
   }

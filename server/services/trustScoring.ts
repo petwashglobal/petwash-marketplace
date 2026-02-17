@@ -131,7 +131,7 @@ async function calculateVettingScore(contractorId: string): Promise<{
 
     return { score, breakdown };
   } catch (error) {
-    logger.error('[TrustScoring] Error calculating vetting score', { contractorId, error });
+    logger.error('[TrustScoring] Error calculating vetting score', error, { contractorId });
     return {
       score: 0,
       breakdown: {
@@ -197,7 +197,7 @@ async function calculateReviewScore(contractorId: string): Promise<{
       },
     };
   } catch (error) {
-    logger.error('[TrustScoring] Error calculating review score', { contractorId, error });
+    logger.error('[TrustScoring] Error calculating review score', error, { contractorId });
     return {
       score: 85,
       breakdown: {
@@ -268,7 +268,7 @@ async function calculateViolationScore(contractorId: string): Promise<{
       },
     };
   } catch (error) {
-    logger.error('[TrustScoring] Error calculating violation score', { contractorId, error });
+    logger.error('[TrustScoring] Error calculating violation score', error, { contractorId });
     return {
       score: 100,
       breakdown: {
@@ -328,7 +328,7 @@ export async function calculateTrustScores(
 
     return result;
   } catch (error) {
-    logger.error('[TrustScoring] Error calculating trust scores', { contractorId, error });
+    logger.error('[TrustScoring] Error calculating trust scores', error, { contractorId });
     throw error;
   }
 }

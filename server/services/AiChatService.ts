@@ -20,7 +20,7 @@ try {
     logger.warn('[AiChatService] GOOGLE_SERVICE_ACCOUNT_JSON is not set.');
   }
 } catch (error) {
-  logger.error('[AiChatService] Failed to parse Google credentials JSON', { error });
+  logger.error('[AiChatService] Failed to parse Google credentials JSON', error);
 }
 
 // Initialize Dialogflow CX Client

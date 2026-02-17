@@ -115,7 +115,7 @@ class AdminProviderReviewService {
 
       return result[0];
     } catch (error) {
-      logger.error('[AdminReview] Error creating application', { error });
+      logger.error('[AdminReview] Error creating application', error);
       throw error;
     }
   }
@@ -159,7 +159,7 @@ class AdminProviderReviewService {
         readyForApproval: checklistComplete && app.status !== 'approved' && app.status !== 'rejected',
       };
     } catch (error) {
-      logger.error('[AdminReview] Error getting application', { error });
+      logger.error('[AdminReview] Error getting application', error);
       throw error;
     }
   }
@@ -199,7 +199,7 @@ class AdminProviderReviewService {
         )
         .limit(limit);
     } catch (error) {
-      logger.error('[AdminReview] Error getting queue', { error });
+      logger.error('[AdminReview] Error getting queue', error);
       throw error;
     }
   }
@@ -243,7 +243,7 @@ class AdminProviderReviewService {
 
       return stats;
     } catch (error) {
-      logger.error('[AdminReview] Error getting statistics', { error });
+      logger.error('[AdminReview] Error getting statistics', error);
       throw error;
     }
   }
@@ -274,7 +274,7 @@ class AdminProviderReviewService {
         messageEn: 'Application assigned to reviewer',
       };
     } catch (error) {
-      logger.error('[AdminReview] Error assigning application', { error });
+      logger.error('[AdminReview] Error assigning application', error);
       throw error;
     }
   }
@@ -314,7 +314,7 @@ class AdminProviderReviewService {
         checklist: review!.checklist,
       };
     } catch (error) {
-      logger.error('[AdminReview] Error updating checklist', { error });
+      logger.error('[AdminReview] Error updating checklist', error);
       throw error;
     }
   }
@@ -379,7 +379,7 @@ class AdminProviderReviewService {
         messageEn: 'Application approved! Provider can start working 🎉',
       };
     } catch (error) {
-      logger.error('[AdminReview] Error approving application', { error });
+      logger.error('[AdminReview] Error approving application', error);
       throw error;
     }
   }
@@ -427,7 +427,7 @@ class AdminProviderReviewService {
         messageEn: 'Application rejected. Provider will be notified.',
       };
     } catch (error) {
-      logger.error('[AdminReview] Error rejecting application', { error });
+      logger.error('[AdminReview] Error rejecting application', error);
       throw error;
     }
   }
@@ -463,7 +463,7 @@ class AdminProviderReviewService {
         messageEn: 'Application put on hold',
       };
     } catch (error) {
-      logger.error('[AdminReview] Error putting on hold', { error });
+      logger.error('[AdminReview] Error putting on hold', error);
       throw error;
     }
   }
@@ -487,7 +487,7 @@ class AdminProviderReviewService {
 
       return application.length > 0;
     } catch (error) {
-      logger.error('[AdminReview] Error checking approval status', { error });
+      logger.error('[AdminReview] Error checking approval status', error);
       return false;
     }
   }
@@ -509,7 +509,7 @@ class AdminProviderReviewService {
         .orderBy(desc(providerApprovalQueue.approvedAt))
         .limit(limit);
     } catch (error) {
-      logger.error('[AdminReview] Error getting approved providers', { error });
+      logger.error('[AdminReview] Error getting approved providers', error);
       throw error;
     }
   }

@@ -49,7 +49,7 @@ export class UnifiedWalletService {
       logger.info('[Unified Wallet] Retrieved balance', { userId, balance: balance.balance });
       return balance;
     } catch (error) {
-      logger.error('[Unified Wallet] Failed to get balance', { error, userId });
+      logger.error('[Unified Wallet] Failed to get balance', error, { userId });
       throw error;
     }
   }
@@ -99,7 +99,7 @@ export class UnifiedWalletService {
         timestamp: result.transaction.createdAt.toISOString()
       };
     } catch (error) {
-      logger.error('[Unified Wallet] Failed to add funds', { error, userId, amount });
+      logger.error('[Unified Wallet] Failed to add funds', error, { userId, amount });
       throw error;
     }
   }
@@ -149,7 +149,7 @@ export class UnifiedWalletService {
         timestamp: result.transaction.createdAt.toISOString()
       };
     } catch (error) {
-      logger.error('[Unified Wallet] Failed to deduct funds', { error, userId, amount });
+      logger.error('[Unified Wallet] Failed to deduct funds', error, { userId, amount });
       throw error;
     }
   }
@@ -165,7 +165,7 @@ export class UnifiedWalletService {
       logger.info('[Unified Wallet] Transfer completed', { fromUserId, toUserId, amount, platform });
       return { debit, credit };
     } catch (error) {
-      logger.error('[Unified Wallet] Transfer failed', { error, fromUserId, toUserId, amount });
+      logger.error('[Unified Wallet] Transfer failed', error, { fromUserId, toUserId, amount });
       throw error;
     }
   }
@@ -188,7 +188,7 @@ export class UnifiedWalletService {
         timestamp: tx.createdAt.toISOString()
       }));
     } catch (error) {
-      logger.error('[Unified Wallet] Failed to get transactions', { error, userId });
+      logger.error('[Unified Wallet] Failed to get transactions', error, { userId });
       throw error;
     }
   }
@@ -208,7 +208,7 @@ export class UnifiedWalletService {
 
       return spending;
     } catch (error) {
-      logger.error('[Unified Wallet] Failed to get platform spending', { error, userId });
+      logger.error('[Unified Wallet] Failed to get platform spending', error, { userId });
       throw error;
     }
   }
@@ -235,7 +235,7 @@ export class UnifiedWalletService {
 
       logger.info('[Unified Wallet] Loyalty points awarded', { userId, points, reason, newTotal: newPoints });
     } catch (error) {
-      logger.error('[Unified Wallet] Failed to award loyalty points', { error, userId });
+      logger.error('[Unified Wallet] Failed to award loyalty points', error, { userId });
       throw error;
     }
   }

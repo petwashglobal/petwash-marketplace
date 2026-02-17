@@ -92,7 +92,7 @@ router.post("/profile", async (req, res) => {
       message: "Contractor profile created successfully",
     });
   } catch (error) {
-    logger.error("[Contractor Onboarding] Profile creation failed", { error });
+    logger.error("[Contractor Onboarding] Profile creation failed", error);
     res.status(500).json({
       error: "Failed to create contractor profile",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -144,7 +144,7 @@ router.post("/accept-terms", async (req, res) => {
       message: "Terms accepted successfully",
     });
   } catch (error) {
-    logger.error("[Contractor Onboarding] Accept terms failed", { error });
+    logger.error("[Contractor Onboarding] Accept terms failed", error);
     res.status(500).json({
       error: "Failed to accept terms",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -196,9 +196,7 @@ router.post("/tax-profile", async (req, res) => {
       message: "Tax profile submitted for verification",
     });
   } catch (error) {
-    logger.error("[Contractor Onboarding] Tax profile submission failed", {
-      error,
-    });
+    logger.error("[Contractor Onboarding] Tax profile submission failed", error, {  });
     res.status(500).json({
       error: "Failed to submit tax profile",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -246,9 +244,7 @@ router.post("/insurance", async (req, res) => {
       message: "Insurance information saved successfully",
     });
   } catch (error) {
-    logger.error("[Contractor Onboarding] Insurance submission failed", {
-      error,
-    });
+    logger.error("[Contractor Onboarding] Insurance submission failed", error, {  });
     res.status(500).json({
       error: "Failed to save insurance information",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -298,9 +294,7 @@ router.post("/background-check", async (req, res) => {
       message: "Background check information saved successfully",
     });
   } catch (error) {
-    logger.error("[Contractor Onboarding] Background check submission failed", {
-      error,
-    });
+    logger.error("[Contractor Onboarding] Background check submission failed", error, {  });
     res.status(500).json({
       error: "Failed to save background check information",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -352,9 +346,7 @@ router.post("/bank-details", async (req, res) => {
       message: "Bank details saved successfully",
     });
   } catch (error) {
-    logger.error("[Contractor Onboarding] Bank details submission failed", {
-      error,
-    });
+    logger.error("[Contractor Onboarding] Bank details submission failed", error, {  });
     res.status(500).json({
       error: "Failed to save bank details",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -404,9 +396,7 @@ router.post("/service-area", async (req, res) => {
       message: "Service area saved successfully",
     });
   } catch (error) {
-    logger.error("[Contractor Onboarding] Service area submission failed", {
-      error,
-    });
+    logger.error("[Contractor Onboarding] Service area submission failed", error, {  });
     res.status(500).json({
       error: "Failed to save service area",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -470,9 +460,7 @@ router.post("/capability", async (req, res) => {
       message: "Service capability enabled. Pending admin approval.",
     });
   } catch (error) {
-    logger.error("[Contractor Onboarding] Capability creation failed", {
-      error,
-    });
+    logger.error("[Contractor Onboarding] Capability creation failed", error, {  });
     res.status(500).json({
       error: "Failed to enable capability",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -574,7 +562,7 @@ router.get("/status/:contractorId", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[Contractor Onboarding] Status check failed", { error });
+    logger.error("[Contractor Onboarding] Status check failed", error);
     res.status(500).json({
       error: "Failed to check onboarding status",
       details: error instanceof Error ? error.message : "Unknown error",

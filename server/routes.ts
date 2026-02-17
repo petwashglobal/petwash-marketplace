@@ -800,16 +800,18 @@ self.addEventListener('notificationclick', (event) => {
   // POST /api/auth/session - Exchange ID token for session cookie (iOS-compatible)
   app.post('/api/auth/session', async (req, res) => {
     try {
+      const traceId = req.body?.traceId;
       logger.debug('[Session] Creating session cookie', { 
         hasIdToken: !!req.body?.idToken,
         expiresInMs: req.body?.expiresInMs,
+        traceId,
         userAgent: req.headers['user-agent']?.substring(0, 50)
       });
       const { idToken, expiresInMs = 432000000 } = req.body;
       
       if (!idToken) {
-        logger.warn('[Session] Missing ID token in request - client error (400)');
-        return res.status(400).json({ error: 'ID token required' });
+        logger.warn('[Session] Missing ID token in request - client error (400)', { traceId });
+        return res.status(400).json({ error: 'ID token required', errorCode: 'MISSING_TOKEN' });
       }
 
       logger.debug('[Session] Verifying ID token and creating session cookie');
@@ -887,6 +889,7 @@ self.addEventListener('notificationclick', (event) => {
       })();
       
       logger.info('[Session] ✅ Session cookie created successfully', {
+        traceId,
         cookie: 'pw_session',
         domain: '.petwash.co.il',
         maxAge: 432000000,
@@ -895,9 +898,10 @@ self.addEventListener('notificationclick', (event) => {
         sameSite: 'none'
       });
       res.json({ ok: true, cookie: 'pw_session', expiresInMs: 432000000 });
-    } catch (error) {
-      logger.error('[Session] Session cookie creation error', error);
-      res.status(500).json({ ok: false, error: 'Failed to create session' });
+    } catch (error: any) {
+      logger.error('[Session] Session cookie creation error', error, { traceId: req.body?.traceId });
+      const errorCode = error.code === 'auth/id-token-expired' ? 'TOKEN_EXPIRED' : 'SESSION_FAILED';
+      res.status(500).json({ ok: false, error: 'Failed to create session', errorCode });
     }
   });
 
@@ -1268,7 +1272,7 @@ self.addEventListener('notificationclick', (event) => {
   //     const translation = await translationService.translateText(text, targetLanguage);
   //     res.json({ ok: true, translation });
   //   } catch (error) {
-  //     logger.error('[Translation API] Translation request failed', { error });
+  //     logger.error('[Translation API] Translation request failed', error);
   //     res.status(500).json({ ok: false, error: 'Translation failed' });
   //   }
   // });
@@ -2712,7 +2716,7 @@ self.addEventListener('notificationclick', (event) => {
 
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
-        logger.error('[TikTok OAuth] Token exchange failed', { status: tokenResponse.status, error: errorText });
+        logger.error('[TikTok OAuth] Token exchange failed', errorText, { status: tokenResponse.status });
         return res.redirect('/signin?oauthError=exchange_failed');
       }
 
@@ -2736,7 +2740,7 @@ self.addEventListener('notificationclick', (event) => {
 
       if (!userInfoResponse.ok) {
         const errorText = await userInfoResponse.text();
-        logger.error('[TikTok OAuth] User info fetch failed', { status: userInfoResponse.status, error: errorText });
+        logger.error('[TikTok OAuth] User info fetch failed', errorText, { status: userInfoResponse.status });
         return res.redirect('/signin?oauthError=userinfo_failed');
       }
 
@@ -3088,7 +3092,7 @@ self.addEventListener('notificationclick', (event) => {
       logger.info(`[${correlationId}] Gift card retrieved`, { route: '/api/gift-cards/:id', id, ipHash });
       res.json(safeData);
     } catch (error) {
-      logger.error(`[${correlationId}] Error fetching gift card`, { error, route: '/api/gift-cards/:id', ipHash });
+      logger.error(`[${correlationId}] Error fetching gift card`, error, { route: '/api/gift-cards/:id', ipHash });
       res.status(500).json({ message: "Failed to fetch gift card" });
     }
   });
@@ -3120,7 +3124,7 @@ self.addEventListener('notificationclick', (event) => {
 
       res.json(result);
     } catch (error) {
-      logger.error(`[${correlationId}] Error fetching gift cards`, { error, route: '/api/gift-cards', uid, ipHash });
+      logger.error(`[${correlationId}] Error fetching gift cards`, error, { route: '/api/gift-cards', uid, ipHash });
       res.status(500).json({ message: "Failed to fetch gift cards" });
     }
   });
@@ -4967,7 +4971,7 @@ self.addEventListener('notificationclick', (event) => {
         ...(data.returnPlainForTest && process.env.NODE_ENV !== 'production' ? { code: result.codePlain } : {})
       });
     } catch (error) {
-      logger.error('Voucher purchase failed', { correlationId, error });
+      logger.error('Voucher purchase failed', error, { correlationId });
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Invalid request', details: error.errors });
       }
@@ -5022,7 +5026,7 @@ self.addEventListener('notificationclick', (event) => {
         expiresAt: result.voucher!.expiresAt
       });
     } catch (error) {
-      logger.error('Voucher claim error', { correlationId, error });
+      logger.error('Voucher claim error', error, { correlationId });
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Invalid request', details: error.errors });
       }
@@ -5073,7 +5077,7 @@ self.addEventListener('notificationclick', (event) => {
         status: result.status
       });
     } catch (error) {
-      logger.error('Voucher redemption error', { correlationId, error });
+      logger.error('Voucher redemption error', error, { correlationId });
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Invalid request', details: error.errors });
       }
@@ -5374,7 +5378,7 @@ self.addEventListener('notificationclick', (event) => {
       
       res.json({ received: true });
     } catch (error) {
-      logger.error('Nayax webhook error', { correlationId, error });
+      logger.error('Nayax webhook error', error, { correlationId });
       res.status(500).json({ error: 'Webhook processing failed' });
     }
   });
@@ -9682,13 +9686,19 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith('Bearer ')) {
-        return res.status(401).json({ success: false, error: 'Authorization required' });
+        return res.status(401).json({ success: false, error: 'Authorization required', errorCode: 'AUTH_REQUIRED' });
       }
       
       const token = authHeader.split('Bearer ')[1];
-      const { adminAuth, db } = await import('./lib/firebase-admin');
+      const fbAuth = firebaseAdminModule.auth || firebaseAdminModule.adminAuth;
       
-      const decoded = await adminAuth.verifyIdToken(token);
+      let decoded;
+      try {
+        decoded = await fbAuth.verifyIdToken(token);
+      } catch (authErr: any) {
+        logger.error('[CreateProfile] Token verification failed', authErr, { code: authErr?.code, traceId: req.body?.traceId });
+        return res.status(401).json({ success: false, error: 'Invalid or expired token', errorCode: 'INVALID_TOKEN' });
+      }
       const uid = decoded.uid;
       
       const {
@@ -9761,7 +9771,7 @@ self.addEventListener('notificationclick', (event) => {
       
       // Firestore profile (best-effort - user can still log in without it)
       try {
-        await db.collection('users').doc(uid).collection('profile').doc('data').set({
+        await firestoreDb.collection('users').doc(uid).collection('profile').doc('data').set({
           uid,
           accountType: 'customer',
           firstName: firstName.trim(),
@@ -9796,7 +9806,7 @@ self.addEventListener('notificationclick', (event) => {
         });
         logger.info(`[Phase2] ✅ Firestore profile created for ${uid}`, { traceId });
       } catch (firestoreErr: any) {
-        logger.error(`[Phase2] Firestore profile write failed for ${uid} (non-blocking)`, { traceId, error: firestoreErr.message });
+        logger.error(`[Phase2] Firestore profile write failed for ${uid} (non-blocking)`, firestoreErr, { traceId });
       }
       
       // Welcome email (best-effort)
@@ -9822,7 +9832,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, uid });
       
     } catch (error: any) {
-      logger.error('Create profile error', { traceId: req.body?.traceId, error: error.message, code: error.code });
+      logger.error('Create profile error', error, { traceId: req.body?.traceId });
       const errorCode = error.code === '23505' ? 'USER_EXISTS' : 'REGISTRATION_FAILED';
       res.status(500).json({ success: false, error: error.message, errorCode });
     }

@@ -63,7 +63,7 @@ export class StaffOnboardingService {
       return application;
 
     } catch (error) {
-      logger.error('[Onboarding] Failed to create application', { error });
+      logger.error('[Onboarding] Failed to create application', error);
       throw new Error('Failed to create staff application');
     }
   }
@@ -94,7 +94,7 @@ export class StaffOnboardingService {
       logger.info('[Onboarding] ✅ Document uploaded', { applicationId, documentType });
 
     } catch (error) {
-      logger.error('[Onboarding] Failed to upload document', { error });
+      logger.error('[Onboarding] Failed to upload document', error);
       throw error;
     }
   }
@@ -142,7 +142,7 @@ export class StaffOnboardingService {
       };
 
     } catch (error) {
-      logger.error('[Onboarding] Biometric verification failed', { error });
+      logger.error('[Onboarding] Biometric verification failed', error);
       throw error;
     }
   }
@@ -210,7 +210,7 @@ export class StaffOnboardingService {
       });
 
     } catch (error) {
-      logger.error('[Onboarding] Failed to send e-signature documents', { error });
+      logger.error('[Onboarding] Failed to send e-signature documents', error);
       throw error;
     }
   }
@@ -313,7 +313,7 @@ export class StaffOnboardingService {
       };
 
     } catch (error) {
-      logger.error('[Onboarding] Failed to get status', { error });
+      logger.error('[Onboarding] Failed to get status', error);
       throw error;
     }
   }
@@ -335,7 +335,7 @@ export class StaffOnboardingService {
       logger.info('[Onboarding] ✅ Application approved', { applicationId, reviewedBy });
 
     } catch (error) {
-      logger.error('[Onboarding] Failed to approve application', { error });
+      logger.error('[Onboarding] Failed to approve application', error);
       throw error;
     }
   }
@@ -361,7 +361,7 @@ export class StaffOnboardingService {
       logger.info('[Onboarding] Application rejected', { applicationId, reviewedBy, reason });
 
     } catch (error) {
-      logger.error('[Onboarding] Failed to reject application', { error });
+      logger.error('[Onboarding] Failed to reject application', error);
       throw error;
     }
   }

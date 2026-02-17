@@ -103,7 +103,7 @@ export class ReceiptFraudDetectionService {
       return result;
 
     } catch (error) {
-      logger.error('[ReceiptFraud] Analysis failed', { error, imageUrl, employeeId });
+      logger.error('[ReceiptFraud] Analysis failed', error, { imageUrl, employeeId });
       throw new Error('Receipt fraud analysis failed');
     }
   }
@@ -142,7 +142,7 @@ export class ReceiptFraudDetectionService {
       return receipt;
 
     } catch (error) {
-      logger.error('[ReceiptFraud] OCR extraction failed', { error });
+      logger.error('[ReceiptFraud] OCR extraction failed', error);
       throw error;
     }
   }
@@ -220,7 +220,7 @@ Respond in JSON format:
       return analysis;
 
     } catch (error) {
-      logger.error('[ReceiptFraud] Gemini analysis failed', { error });
+      logger.error('[ReceiptFraud] Gemini analysis failed', error);
       return {
         confidence: 50,
         summary: 'AI analysis unavailable - manual review required',
@@ -359,7 +359,7 @@ Respond in JSON format:
 
       return existing.length > 0;
     } catch (error) {
-      logger.error('[ReceiptFraud] Duplicate check failed', { error });
+      logger.error('[ReceiptFraud] Duplicate check failed', error);
       return false;
     }
   }

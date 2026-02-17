@@ -182,7 +182,7 @@ router.get('/dashboard/stations', async (req, res) => {
     });
     
   } catch (error) {
-    logger.error('[K9000 Dashboard] Error fetching stations status', { error });
+    logger.error('[K9000 Dashboard] Error fetching stations status', error);
     res.status(500).json({ success: false, error: 'Failed to fetch stations status' });
   }
 });
@@ -231,7 +231,7 @@ router.post('/dashboard/stop', async (req, res) => {
         failures.push(`Hardware stop failed: ${stopResult.message_en}`);
       }
     } catch (error) {
-      logger.error('[K9000 Dashboard] Failed to send hardware stop command', { error, stationId });
+      logger.error('[K9000 Dashboard] Failed to send hardware stop command', error, { stationId });
       failures.push('Hardware stop command failed');
     }
     
@@ -249,7 +249,7 @@ router.post('/dashboard/stop', async (req, res) => {
         timestamp: new Date()
       });
     } catch (error) {
-      logger.error('[K9000 Dashboard] Failed to log emergency stop to audit trail', { error, stationId });
+      logger.error('[K9000 Dashboard] Failed to log emergency stop to audit trail', error, { stationId });
       // Critical failure - still report to admin
     }
     
@@ -263,7 +263,7 @@ router.post('/dashboard/stop', async (req, res) => {
           language: 'he',
         });
       } catch (error) {
-        logger.error('[K9000 Dashboard] Failed to send WhatsApp alert', { error, stationId });
+        logger.error('[K9000 Dashboard] Failed to send WhatsApp alert', error, { stationId });
         failures.push('WhatsApp alert failed');
       }
     }
@@ -281,7 +281,7 @@ router.post('/dashboard/stop', async (req, res) => {
     });
     
   } catch (error) {
-    logger.error('[K9000 Dashboard] Error stopping machine', { error });
+    logger.error('[K9000 Dashboard] Error stopping machine', error);
     res.status(500).json({ success: false, error: 'Failed to stop machine' });
   }
 });
@@ -386,7 +386,7 @@ router.post('/dashboard/start', async (req, res) => {
       }
       
     } catch (error: any) {
-      logger.error('[K9000 Dashboard] Remote activation error', { error, stationId });
+      logger.error('[K9000 Dashboard] Remote activation error', error, { stationId });
       res.status(500).json({
         success: false,
         error: 'Failed to activate wash cycle',
@@ -396,7 +396,7 @@ router.post('/dashboard/start', async (req, res) => {
     }
     
   } catch (error) {
-    logger.error('[K9000 Dashboard] Error starting wash', { error });
+    logger.error('[K9000 Dashboard] Error starting wash', error);
     res.status(500).json({ success: false, error: 'Failed to start wash' });
   }
 });
@@ -487,7 +487,7 @@ router.get('/dashboard/salt-report', async (req, res) => {
     });
     
   } catch (error) {
-    logger.error('[K9000 Dashboard] Error generating salt report', { error });
+    logger.error('[K9000 Dashboard] Error generating salt report', error);
     res.status(500).json({ success: false, error: 'Failed to generate salt report' });
   }
 });
@@ -549,7 +549,7 @@ router.post('/dashboard/apply-discount', async (req, res) => {
     });
     
   } catch (error) {
-    logger.error('[K9000 Dashboard] Error applying discount', { error });
+    logger.error('[K9000 Dashboard] Error applying discount', error);
     res.status(500).json({ success: false, error: 'Failed to apply discount' });
   }
 });
@@ -648,7 +648,7 @@ router.get('/dashboard/stats', async (req, res) => {
     });
     
   } catch (error) {
-    logger.error('[K9000 Dashboard] Error fetching statistics', { error });
+    logger.error('[K9000 Dashboard] Error fetching statistics', error);
     res.status(500).json({ success: false, error: 'Failed to fetch statistics' });
   }
 });
@@ -696,7 +696,7 @@ router.post('/dashboard/send-maintenance-alert', async (req, res) => {
         smsDelivered = true;
         logger.info('[K9000 Dashboard] SMS alert sent successfully', { stationId, alertType });
       } catch (error) {
-        logger.error('[K9000 Dashboard] Failed to send SMS alert', { error, stationId, alertType });
+        logger.error('[K9000 Dashboard] Failed to send SMS alert', error, { stationId, alertType });
         failures.push('SMS delivery failed');
       }
     } else {
@@ -712,7 +712,7 @@ router.post('/dashboard/send-maintenance-alert', async (req, res) => {
     //     data: { stationId, alertType, severity }
     //   });
     // } catch (error) {
-    //   logger.error('[K9000 Dashboard] Failed to send push notification', { error });
+    //   logger.error('[K9000 Dashboard] Failed to send push notification', error);
     //   failures.push('Push notification failed');
     // }
     
@@ -734,7 +734,7 @@ router.post('/dashboard/send-maintenance-alert', async (req, res) => {
         timestamp: new Date()
       });
     } catch (error) {
-      logger.error('[K9000 Dashboard] Failed to log alert to audit trail', { error, stationId });
+      logger.error('[K9000 Dashboard] Failed to log alert to audit trail', error, { stationId });
     }
     
     // Return status
@@ -751,7 +751,7 @@ router.post('/dashboard/send-maintenance-alert', async (req, res) => {
     });
     
   } catch (error) {
-    logger.error('[K9000 Dashboard] Error sending maintenance alert', { error });
+    logger.error('[K9000 Dashboard] Error sending maintenance alert', error);
     res.status(500).json({ success: false, error: 'Failed to send alert' });
   }
 });
@@ -830,7 +830,7 @@ router.get('/dashboard/station/:stationId', async (req, res) => {
     });
     
   } catch (error) {
-    logger.error('[K9000 Dashboard] Error fetching station details', { error });
+    logger.error('[K9000 Dashboard] Error fetching station details', error);
     res.status(500).json({ success: false, error: 'Failed to fetch station details' });
   }
 });

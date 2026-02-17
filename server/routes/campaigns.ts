@@ -328,7 +328,7 @@ router.post('/send', async (req: Request, res: Response) => {
           } catch (emailError: any) {
             results.emailsFailed++;
             results.errors.push(`Email error for ${recipient.email}: ${emailError.message}`);
-            logger.error(`[Campaign ${correlationId}] Email error`, { email: recipient.email, error: emailError });
+            logger.error(`[Campaign ${correlationId}] Email error`, emailError, { email: recipient.email });
           }
         }
         
@@ -368,15 +368,13 @@ router.post('/send', async (req: Request, res: Response) => {
           } catch (smsError: any) {
             results.smsFailed++;
             results.errors.push(`SMS error for ${recipient.phone}: ${smsError.message}`);
-            logger.error(`[Campaign ${correlationId}] SMS error`, { phone: recipient.phone, error: smsError });
+            logger.error(`[Campaign ${correlationId}] SMS error`, smsError, { phone: recipient.phone });
           }
         }
         
       } catch (recipientError: any) {
-        logger.error(`[Campaign ${correlationId}] Error processing recipient`, {
-          recipient: recipient.email,
-          error: recipientError
-        });
+        logger.error(`[Campaign ${correlationId}] Error processing recipient`, recipientError, {
+          recipient: recipient.email });
         results.errors.push(`Recipient ${recipient.email}: ${recipientError.message}`);
       }
     }

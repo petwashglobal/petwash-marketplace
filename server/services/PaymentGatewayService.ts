@@ -108,7 +108,7 @@ export class PaymentGatewayService {
           };
       }
     } catch (error) {
-      logger.error('[PaymentGateway] Web payment error', { error });
+      logger.error('[PaymentGateway] Web payment error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Payment failed',
@@ -185,7 +185,7 @@ export class PaymentGatewayService {
         };
       }
     } catch (error) {
-      logger.error('[PaymentGateway] Terminal payment error', { error });
+      logger.error('[PaymentGateway] Terminal payment error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Terminal payment failed',
@@ -214,7 +214,7 @@ export class PaymentGatewayService {
         transactionId: `QR_${nanoid(16)}`,
       };
     } catch (error) {
-      logger.error('[PaymentGateway] QR redemption error', { error });
+      logger.error('[PaymentGateway] QR redemption error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'QR redemption failed',
@@ -272,7 +272,7 @@ export class PaymentGatewayService {
           return { processed: true }; // Still return success to prevent retries
       }
     } catch (error) {
-      logger.error('[PaymentGateway] Webhook processing error', { error });
+      logger.error('[PaymentGateway] Webhook processing error', error);
       return {
         processed: false,
         error: error instanceof Error ? error.message : 'Webhook failed',
@@ -323,7 +323,7 @@ export class PaymentGatewayService {
       await this.onPaymentSucceeded(paymentIntent);
 
     } catch (error) {
-      logger.error('[PaymentGateway] Marketplace payment success handler error', { error });
+      logger.error('[PaymentGateway] Marketplace payment success handler error', error);
       throw error;
     }
   }
@@ -367,7 +367,7 @@ export class PaymentGatewayService {
       });
 
     } catch (error) {
-      logger.error('[PaymentGateway] Marketplace payment failed handler error', { error });
+      logger.error('[PaymentGateway] Marketplace payment failed handler error', error);
       throw error;
     }
   }
@@ -425,7 +425,7 @@ export class PaymentGatewayService {
       // TODO: Implement notification service integration
 
     } catch (error) {
-      logger.error('[PaymentGateway] Post-payment actions error', { error });
+      logger.error('[PaymentGateway] Post-payment actions error', error);
       // Don't throw - payment succeeded, these are secondary actions
     }
   }
@@ -470,7 +470,7 @@ export class PaymentGatewayService {
       });
 
     } catch (error) {
-      logger.error('[PaymentGateway] Error creating escrow payout', { error });
+      logger.error('[PaymentGateway] Error creating escrow payout', error);
       throw error;
     }
   }

@@ -18,7 +18,7 @@ router.get('/analytics/funnel', async (req: Request, res: Response) => {
     
     res.json(metrics);
   } catch (error) {
-    logger.error('[Analytics] Failed to get funnel metrics', { error });
+    logger.error('[Analytics] Failed to get funnel metrics', error);
     res.status(500).json({ error: 'Failed to get funnel metrics' });
   }
 });
@@ -34,7 +34,7 @@ router.post('/analytics/funnel/track', async (req: Request, res: Response) => {
     
     res.json({ success: true });
   } catch (error) {
-    logger.error('[Analytics] Failed to track funnel event', { error });
+    logger.error('[Analytics] Failed to track funnel event', error);
     res.status(500).json({ error: 'Failed to track event' });
   }
 });
@@ -55,7 +55,7 @@ router.post('/analytics/event', async (req: Request, res: Response) => {
     
     res.json({ success: true });
   } catch (error) {
-    logger.error('[Analytics] Failed to track custom event', { error });
+    logger.error('[Analytics] Failed to track custom event', error);
     res.status(500).json({ error: 'Failed to track event' });
   }
 });

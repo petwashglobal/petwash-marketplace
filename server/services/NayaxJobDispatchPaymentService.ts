@@ -168,7 +168,7 @@ export class NayaxJobDispatchPaymentService {
         };
       }
     } catch (error) {
-      logger.error('[Nayax Job Dispatch] Authorization error', { error });
+      logger.error('[Nayax Job Dispatch] Authorization error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -274,7 +274,7 @@ export class NayaxJobDispatchPaymentService {
         };
       }
     } catch (error) {
-      logger.error('[Nayax Job Dispatch] Capture error', { error });
+      logger.error('[Nayax Job Dispatch] Capture error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -353,7 +353,7 @@ export class NayaxJobDispatchPaymentService {
         };
       }
     } catch (error) {
-      logger.error('[Nayax Job Dispatch] Void error', { error });
+      logger.error('[Nayax Job Dispatch] Void error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -410,7 +410,7 @@ export class NayaxJobDispatchPaymentService {
 
       return { voidedCount, errors };
     } catch (error) {
-      logger.error('[Nayax Job Dispatch] Auto-void sweep error', { error });
+      logger.error('[Nayax Job Dispatch] Auto-void sweep error', error);
       return { voidedCount: 0, errors: [] };
     }
   }
@@ -455,7 +455,7 @@ export class NayaxJobDispatchPaymentService {
       const result: NayaxAuthorizeResponse = await response.json();
       return result;
     } catch (error) {
-      logger.error('[Nayax Job Dispatch] Authorize API call failed', { error });
+      logger.error('[Nayax Job Dispatch] Authorize API call failed', error);
       return {
         Status: 'FAILED',
         Message: error instanceof Error ? error.message : 'Unknown error',
@@ -499,7 +499,7 @@ export class NayaxJobDispatchPaymentService {
       const result: NayaxCaptureResponse = await response.json();
       return result;
     } catch (error) {
-      logger.error('[Nayax Job Dispatch] Capture API call failed', { error });
+      logger.error('[Nayax Job Dispatch] Capture API call failed', error);
       return {
         Status: 'FAILED',
         Message: error instanceof Error ? error.message : 'Unknown error',
@@ -543,7 +543,7 @@ export class NayaxJobDispatchPaymentService {
       const result: NayaxVoidResponse = await response.json();
       return result;
     } catch (error) {
-      logger.error('[Nayax Job Dispatch] Void API call failed', { error });
+      logger.error('[Nayax Job Dispatch] Void API call failed', error);
       return {
         Status: 'FAILED',
         Message: error instanceof Error ? error.message : 'Unknown error',

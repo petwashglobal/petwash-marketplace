@@ -30,7 +30,7 @@ export async function sendSecurityAlert(subject: string, html: string): Promise<
 
     logger.info('[Alerts] Security alert sent', { subject });
   } catch (error) {
-    logger.error('[Alerts] Failed to send security alert', { subject, error });
+    logger.error('[Alerts] Failed to send security alert', error, { subject });
   }
 }
 
@@ -143,7 +143,7 @@ export async function alertNewDeviceIfUnusual(
       await sendSecurityAlert(subject, html);
     }
   } catch (error) {
-    logger.error('[Alerts] Failed to check for unusual location', { uid, ip, error });
+    logger.error('[Alerts] Failed to check for unusual location', error, { uid, ip });
   }
 }
 

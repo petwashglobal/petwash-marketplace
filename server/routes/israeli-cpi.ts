@@ -38,7 +38,7 @@ router.get('/latest', async (req: Request, res: Response) => {
       publishedAt: latestCPI.publishedAt,
     });
   } catch (error) {
-    logger.error('[CPI API] Failed to get latest CPI', { error });
+    logger.error('[CPI API] Failed to get latest CPI', error);
     res.status(500).json({ error: 'Failed to retrieve CPI data' });
   }
 });
@@ -79,7 +79,7 @@ router.get('/month/:month', async (req: Request, res: Response) => {
       publishedAt: cpi.publishedAt,
     });
   } catch (error) {
-    logger.error('[CPI API] Failed to get CPI for month', { month: req.params.month, error });
+    logger.error('[CPI API] Failed to get CPI for month', error, { month: req.params.month });
     res.status(500).json({ error: 'Failed to retrieve CPI data' });
   }
 });
@@ -115,7 +115,7 @@ router.get('/history', async (req: Request, res: Response) => {
       })),
     });
   } catch (error) {
-    logger.error('[CPI API] Failed to get CPI history', { error });
+    logger.error('[CPI API] Failed to get CPI history', error);
     res.status(500).json({ error: 'Failed to retrieve CPI history' });
   }
 });
@@ -162,10 +162,8 @@ router.post('/calculate', async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (error: any) {
-    logger.error('[CPI API] Failed to calculate indexed amount', { 
-      body: req.body, 
-      error 
-    });
+    logger.error('[CPI API] Failed to calculate indexed amount', error, { 
+      body: req.body });
     res.status(500).json({ 
       error: error.message || 'Failed to calculate indexed amount',
       errorHe: 'נכשל בחישוב סכום מוצמד'
@@ -208,10 +206,8 @@ router.post('/calculate-rent', requireAuth, async (req: Request, res: Response) 
 
     res.json(result);
   } catch (error: any) {
-    logger.error('[CPI API] Failed to calculate rent adjustment', { 
-      body: req.body, 
-      error 
-    });
+    logger.error('[CPI API] Failed to calculate rent adjustment', error, { 
+      body: req.body });
     res.status(500).json({ 
       error: error.message || 'Failed to calculate rent adjustment',
       errorHe: 'נכשל בחישוב התאמת שכר דירה'
@@ -268,10 +264,8 @@ router.post('/add', requireAdmin, async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    logger.error('[CPI API] Failed to add CPI index', { 
-      body: req.body, 
-      error 
-    });
+    logger.error('[CPI API] Failed to add CPI index', error, { 
+      body: req.body });
     res.status(500).json({ 
       error: error.message || 'Failed to add CPI index',
       errorHe: 'נכשל בהוספת מדד'
@@ -303,7 +297,7 @@ router.get('/status', requireAdmin, async (req: Request, res: Response) => {
         : 'נתוני המדד זקוקים לעדכון (מתפרסם ב-15 לחודש)',
     });
   } catch (error) {
-    logger.error('[CPI API] Failed to check CPI status', { error });
+    logger.error('[CPI API] Failed to check CPI status', error);
     res.status(500).json({ error: 'Failed to check CPI status' });
   }
 });
@@ -328,7 +322,7 @@ router.post('/seed', requireAdmin, async (req: Request, res: Response) => {
       messageHe: 'נתוני המדד נוספו בהצלחה',
     });
   } catch (error: any) {
-    logger.error('[CPI API] Failed to seed CPI data', { error });
+    logger.error('[CPI API] Failed to seed CPI data', error);
     res.status(500).json({ 
       error: error.message || 'Failed to seed CPI data',
       errorHe: 'נכשל בהוספת נתוני המדד'

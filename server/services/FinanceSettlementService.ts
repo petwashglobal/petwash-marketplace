@@ -134,7 +134,7 @@ export class FinanceSettlementService {
       return newSettlement;
 
     } catch (error) {
-      logger.error(`[FinanceSettlement] Failed to generate settlement`, { error });
+      logger.error(`[FinanceSettlement] Failed to generate settlement`, error);
       throw error;
     }
   }
@@ -223,7 +223,7 @@ export class FinanceSettlementService {
       };
 
     } catch (error) {
-      logger.error(`[FinanceSettlement] Revenue calculation failed`, { error });
+      logger.error(`[FinanceSettlement] Revenue calculation failed`, error);
       throw error;
     }
   }
@@ -259,7 +259,7 @@ export class FinanceSettlementService {
       return updatedSettlement;
 
     } catch (error) {
-      logger.error(`[FinanceSettlement] Approval failed`, { error });
+      logger.error(`[FinanceSettlement] Approval failed`, error);
       throw error;
     }
   }
@@ -295,7 +295,7 @@ export class FinanceSettlementService {
       return updatedSettlement;
 
     } catch (error) {
-      logger.error(`[FinanceSettlement] Payment marking failed`, { error });
+      logger.error(`[FinanceSettlement] Payment marking failed`, error);
       throw error;
     }
   }
@@ -362,7 +362,7 @@ export class FinanceSettlementService {
       return csv;
 
     } catch (error) {
-      logger.error(`[FinanceSettlement] CSV export failed`, { error });
+      logger.error(`[FinanceSettlement] CSV export failed`, error);
       throw error;
     }
   }
@@ -423,7 +423,7 @@ export class FinanceSettlementService {
       };
 
     } catch (error) {
-      logger.error(`[FinanceSettlement] Dashboard retrieval failed`, { error });
+      logger.error(`[FinanceSettlement] Dashboard retrieval failed`, error);
       throw error;
     }
   }

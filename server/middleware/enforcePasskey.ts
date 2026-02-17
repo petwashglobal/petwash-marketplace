@@ -61,7 +61,7 @@ export async function enforcePasskeyForLevel8(
       level,
     });
   } catch (error) {
-    logger.error('[Passkey Enforcement] Middleware error', { error });
+    logger.error('[Passkey Enforcement] Middleware error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
@@ -96,7 +96,7 @@ export async function encouragePasskeyForLevel5(
 
     next();
   } catch (error) {
-    logger.error('[Passkey Encouragement] Middleware error', { error });
+    logger.error('[Passkey Encouragement] Middleware error', error);
     next(); // Non-blocking, continue even on error
   }
 }

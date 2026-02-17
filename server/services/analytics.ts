@@ -129,7 +129,7 @@ async function getRevenueForRange(
     
     return total;
   } catch (error) {
-    logger.error('[Analytics] Error calculating revenue', { error, stationId });
+    logger.error('[Analytics] Error calculating revenue', error, { stationId });
     return 0;
   }
 }
@@ -161,7 +161,7 @@ async function getTransactionCountForRange(
     const snapshot = await query.get();
     return snapshot.size;
   } catch (error) {
-    logger.error('[Analytics] Error counting transactions', { error, status, stationId });
+    logger.error('[Analytics] Error counting transactions', error, { status, stationId });
     return 0;
   }
 }

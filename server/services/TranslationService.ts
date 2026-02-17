@@ -170,7 +170,7 @@ export class TranslationService {
         }
       }
     } catch (error) {
-      logger.error('[Translation] Failed to clear cache', { error });
+      logger.error('[Translation] Failed to clear cache', error);
     }
   }
 }

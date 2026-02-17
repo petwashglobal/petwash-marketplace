@@ -35,7 +35,7 @@ try {
     logger.warn('[K9000] GCS credentials not found - backups disabled');
   }
 } catch (error) {
-  logger.error('[K9000] Failed to initialize Google Cloud Storage', { error });
+  logger.error('[K9000] Failed to initialize Google Cloud Storage', error);
 }
 
 export interface K9000TransactionRequest {

@@ -140,7 +140,7 @@ export class HebcalClient {
       return { isHoliday: false };
 
     } catch (error) {
-      logger.error('[Hebcal] Error checking holidays', { error });
+      logger.error('[Hebcal] Error checking holidays', error);
       return { isHoliday: false };
     }
   }
@@ -289,7 +289,7 @@ Create a similar, short, original greeting:`;
     return greetingText;
 
   } catch (error) {
-    logger.error('[PersonalizedGreeting] Error generating greeting', { error });
+    logger.error('[PersonalizedGreeting] Error generating greeting', error);
     
     // Fallback greetings
     if (userData.preferredLanguage === 'he') {

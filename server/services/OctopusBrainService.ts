@@ -260,24 +260,36 @@ class OctopusBrainService {
       });
       
       const responseTime = Date.now() - startTime;
-      const isHealthy = response.status < 500;
+      
+      let isComingSoon = false;
+      if (response.status === 503) {
+        try {
+          const body = await response.clone().json();
+          if (body?.error === 'coming_soon') {
+            isComingSoon = true;
+          }
+        } catch {}
+      }
+      
+      const isHealthy = response.status < 500 || isComingSoon;
       
       const currentHealth = this.platformHealth.get(platform.id)!;
       
       const updatedHealth: PlatformHealth = {
         platformId: platform.id,
-        status: isHealthy ? (responseTime > 2000 ? 'degraded' : 'healthy') : 'critical',
+        status: isComingSoon ? 'healthy' : (isHealthy ? (responseTime > 2000 ? 'degraded' : 'healthy') : 'critical'),
         lastCheck: new Date(),
         responseTimeMs: responseTime,
         uptime24h: isHealthy ? currentHealth.uptime24h : Math.max(0, currentHealth.uptime24h - 0.5),
         activeUsers: currentHealth.activeUsers,
         errorRate: isHealthy ? Math.max(0, currentHealth.errorRate - 0.1) : Math.min(100, currentHealth.errorRate + 1),
-        certificationStamp: currentHealth.certificationStamp
+        certificationStamp: currentHealth.certificationStamp,
+        geminiAnalysis: isComingSoon ? 'Platform in coming-soon mode (planned)' : currentHealth.geminiAnalysis
       };
       
       this.platformHealth.set(platform.id, updatedHealth);
       
-      if (updatedHealth.status !== 'healthy' && currentHealth.status === 'healthy') {
+      if (updatedHealth.status !== 'healthy' && currentHealth.status === 'healthy' && !isComingSoon) {
         this.createAlert(platform.id, 'warning', `${platform.name} health degraded (${responseTime}ms response time)`);
       }
       

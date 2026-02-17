@@ -100,7 +100,7 @@ router.post("/create", requireAuth, async (req, res) => {
       });
     }
   } catch (error) {
-    logger.error("[JobOffers API] Error creating job offer", { error });
+    logger.error("[JobOffers API] Error creating job offer", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -132,7 +132,7 @@ router.post("/:id/accept", requireAuth, async (req, res) => {
       });
     }
   } catch (error) {
-    logger.error("[JobOffers API] Error accepting job offer", { error });
+    logger.error("[JobOffers API] Error accepting job offer", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -163,7 +163,7 @@ router.post("/:id/reject", requireAuth, async (req, res) => {
       });
     }
   } catch (error) {
-    logger.error("[JobOffers API] Error rejecting job offer", { error });
+    logger.error("[JobOffers API] Error rejecting job offer", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -193,7 +193,7 @@ router.get("/:id/dispatch-status", requireAuth, async (req, res) => {
       dispatch: status,
     });
   } catch (error) {
-    logger.error("[JobOffers API] Error getting dispatch status", { error });
+    logger.error("[JobOffers API] Error getting dispatch status", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -225,7 +225,7 @@ router.get("/operator/:operatorId", requireAuth, async (req, res) => {
       count: offers.length,
     });
   } catch (error) {
-    logger.error("[JobOffers API] Error getting operator job offers", { error });
+    logger.error("[JobOffers API] Error getting operator job offers", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -248,7 +248,7 @@ router.post("/operator/presence", requireAuth, async (req, res) => {
       message: "Operator presence updated",
     });
   } catch (error) {
-    logger.error("[JobOffers API] Error updating operator presence", { error });
+    logger.error("[JobOffers API] Error updating operator presence", error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

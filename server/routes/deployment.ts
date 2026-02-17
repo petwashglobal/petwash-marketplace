@@ -33,7 +33,7 @@ router.post('/deployment/canary/check', async (req: Request, res: Response) => {
     
     res.json(health);
   } catch (error) {
-    logger.error('[Canary] Health check failed', { error });
+    logger.error('[Canary] Health check failed', error);
     res.status(500).json({ error: 'Failed to run canary checks' });
   }
 });
@@ -57,7 +57,7 @@ router.post('/deployment/canary/monitor', async (req: Request, res: Response) =>
       durationMs,
     });
   } catch (error) {
-    logger.error('[Canary] Monitoring failed', { error });
+    logger.error('[Canary] Monitoring failed', error);
     res.status(500).json({ error: 'Failed to monitor canary deployment' });
   }
 });
@@ -88,7 +88,7 @@ router.post('/deployment/release', async (req: Request, res: Response) => {
     
     res.json(release);
   } catch (error) {
-    logger.error('[Sentry] Release creation failed', { error });
+    logger.error('[Sentry] Release creation failed', error);
     res.status(500).json({ error: 'Failed to create Sentry release' });
   }
 });
@@ -112,7 +112,7 @@ router.post('/deployment/rollback', async (req: Request, res: Response) => {
       instructions: 'Use Replit deployment history to rollback to previous version',
     });
   } catch (error) {
-    logger.error('[Deployment] Rollback failed', { error });
+    logger.error('[Deployment] Rollback failed', error);
     res.status(500).json({ error: 'Failed to trigger rollback' });
   }
 });

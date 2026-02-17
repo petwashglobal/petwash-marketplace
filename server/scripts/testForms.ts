@@ -61,7 +61,7 @@ async function testSignupForm() {
       status: 'FAIL',
       message: error.message
     });
-    logger.error('[TEST] Signup form test failed', { error });
+    logger.error('[TEST] Signup form test failed', error);
   }
 }
 
@@ -90,7 +90,7 @@ async function testLoyaltyForm() {
       status: 'FAIL',
       message: error.message
     });
-    logger.error('[TEST] Loyalty form test failed', { error });
+    logger.error('[TEST] Loyalty form test failed', error);
   }
 }
 
@@ -127,7 +127,7 @@ async function testConsentForm() {
       status: 'FAIL',
       message: error.message
     });
-    logger.error('[TEST] Consent form test failed', { error });
+    logger.error('[TEST] Consent form test failed', error);
   }
 }
 
@@ -157,7 +157,7 @@ async function testImageUpload() {
       status: 'FAIL',
       message: error.message
     });
-    logger.error('[TEST] Image upload test failed', { error });
+    logger.error('[TEST] Image upload test failed', error);
   }
 }
 

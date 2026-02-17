@@ -164,7 +164,7 @@ router.get("/link", requireAuth, async (req: any, res) => {
       stats,
     });
   } catch (error) {
-    logger.error("[Referral] Failed to get referral link", { error });
+    logger.error("[Referral] Failed to get referral link", error);
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
@@ -215,7 +215,7 @@ router.post("/register-click", async (req, res) => {
     
     res.json({ success: true, referralId });
   } catch (error) {
-    logger.error("[Referral] Failed to register click", { error });
+    logger.error("[Referral] Failed to register click", error);
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
@@ -284,7 +284,7 @@ router.post("/link-signup", async (req, res) => {
     
     res.json({ success: true, referralId: referral.id, status: "WAITING_FIRST_PAYMENT" });
   } catch (error) {
-    logger.error("[Referral] Failed to link signup", { error });
+    logger.error("[Referral] Failed to link signup", error);
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
@@ -375,7 +375,7 @@ router.post("/complete", async (req, res) => {
       newLevel: referrerStats.levelId,
     });
   } catch (error) {
-    logger.error("[Referral] Failed to complete referral", { error });
+    logger.error("[Referral] Failed to complete referral", error);
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
@@ -406,7 +406,7 @@ router.get("/history", requireAuth, async (req: any, res) => {
       total: userReferrals.length,
     });
   } catch (error) {
-    logger.error("[Referral] Failed to get history", { error });
+    logger.error("[Referral] Failed to get history", error);
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
@@ -432,7 +432,7 @@ router.get("/credits", requireAuth, async (req: any, res) => {
       remainingCapILS: REFERRAL_CONFIG.lifetimeCapILS - credits.totalEarnedILS,
     });
   } catch (error) {
-    logger.error("[Referral] Failed to get credits", { error });
+    logger.error("[Referral] Failed to get credits", error);
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
@@ -477,7 +477,7 @@ router.get("/admin/overview", async (req, res) => {
         : 0,
     });
   } catch (error) {
-    logger.error("[Referral] Failed to get admin overview", { error });
+    logger.error("[Referral] Failed to get admin overview", error);
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });

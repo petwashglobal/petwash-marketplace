@@ -1,3 +1,7 @@
+if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
+  delete process.env.GEMINI_API_KEY;
+}
+
 import path from "node:path";
 import express from "express";
 import helmet from "helmet";

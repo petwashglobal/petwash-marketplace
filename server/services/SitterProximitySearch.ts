@@ -130,7 +130,7 @@ export class SitterProximitySearch {
 
       return sittersWithDistance;
     } catch (error) {
-      logger.error('[Proximity Search] Search failed', { error });
+      logger.error('[Proximity Search] Search failed', error);
       return [];
     }
   }

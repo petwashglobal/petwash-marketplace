@@ -439,7 +439,7 @@ class ProviderTrainingService {
         completedCount: completedModules.length,
       };
     } catch (error) {
-      logger.error('[ProviderTraining] Error getting progress', { providerId, error });
+      logger.error('[ProviderTraining] Error getting progress', error, { providerId });
       throw error;
     }
   }
@@ -496,7 +496,7 @@ class ProviderTrainingService {
       logger.info('[ProviderTraining] Module completed', { providerId, moduleId });
       return true;
     } catch (error) {
-      logger.error('[ProviderTraining] Error marking module complete', { error });
+      logger.error('[ProviderTraining] Error marking module complete', error);
       throw error;
     }
   }
@@ -583,7 +583,7 @@ class ProviderTrainingService {
         incorrectQuestions,
       };
     } catch (error) {
-      logger.error('[ProviderTraining] Error submitting quiz', { error });
+      logger.error('[ProviderTraining] Error submitting quiz', error);
       throw error;
     }
   }
@@ -668,7 +668,7 @@ class ProviderTrainingService {
         expiresAt,
       };
     } catch (error) {
-      logger.error('[ProviderTraining] Error generating certificate', { error });
+      logger.error('[ProviderTraining] Error generating certificate', error);
       throw error;
     }
   }
@@ -717,7 +717,7 @@ class ProviderTrainingService {
         },
       };
     } catch (error) {
-      logger.error('[ProviderTraining] Error verifying certificate', { error });
+      logger.error('[ProviderTraining] Error verifying certificate', error);
       throw error;
     }
   }

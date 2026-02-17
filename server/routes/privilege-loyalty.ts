@@ -125,7 +125,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
         idDocumentUrl = `gs://${bucket.name}/${fileName}`;
         logger.info('[Privilege] ID document uploaded', { fileName, size: req.file.size });
       } catch (uploadErr) {
-        logger.error('[Privilege] ID document upload failed', { error: uploadErr });
+        logger.error('[Privilege] ID document upload failed', uploadErr);
       }
     }
 
@@ -220,7 +220,7 @@ router.get('/check/:email', async (req: Request, res: Response) => {
     }
     res.json({ exists: false });
   } catch (error) {
-    res.status(500).json({ error: 'Check failed' });
+    res.status(500).json({ error: 'Check failed', errorCode: 'CHECK_FAILED' });
   }
 });
 

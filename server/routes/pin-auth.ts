@@ -83,7 +83,7 @@ async function logPinEvent(params: {
       lockoutDuration: params.lockoutDuration || null,
     });
   } catch (error) {
-    logger.error('[PIN Auth] Failed to log event', { error, action: params.action });
+    logger.error('[PIN Auth] Failed to log event', error, { action: params.action });
   }
 }
 

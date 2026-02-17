@@ -98,7 +98,7 @@ function verifyWalletPassToken(token: string): string | null {
     
     return voucherId;
   } catch (error) {
-    logger.error('[Wallet Token] Verification error', { error });
+    logger.error('[Wallet Token] Verification error', error);
     return null;
   }
 }
@@ -277,7 +277,7 @@ async function sendGiftCardToRecipient(
       await EmailService.sendEmail(recipientEmail, emailSubject, emailHtml);
       logger.info('[E-Gift] Email sent to recipient', { recipientEmail, voucherId: voucher.id });
     } catch (error) {
-      logger.error('[E-Gift] Failed to send email to recipient', { error, recipientEmail });
+      logger.error('[E-Gift] Failed to send email to recipient', error, { recipientEmail });
     }
   }
 
@@ -315,7 +315,7 @@ petwash.co.il
       await GoogleMessagingService.sendWhatsAppMessage(recipientPhone, whatsappMessage);
       logger.info('[E-Gift] WhatsApp sent to recipient', { recipientPhone, voucherId: voucher.id });
     } catch (error) {
-      logger.error('[E-Gift] Failed to send WhatsApp to recipient', { error, recipientPhone });
+      logger.error('[E-Gift] Failed to send WhatsApp to recipient', error, { recipientPhone });
     }
   }
 }
@@ -354,7 +354,7 @@ async function sendPurchaseConfirmationToBuyer(
     await EmailService.sendEmail(senderEmail, emailSubject, emailHtml);
     logger.info('[E-Gift] Luxury purchase confirmation sent to buyer', { senderEmail, voucherId, theme: options?.seasonalTheme });
   } catch (error) {
-    logger.error('[E-Gift] Failed to send confirmation to buyer', { error, senderEmail });
+    logger.error('[E-Gift] Failed to send confirmation to buyer', error, { senderEmail });
   }
 }
 
@@ -589,7 +589,7 @@ router.post('/redeem', paymentLimiter, async (req, res) => {
           confirmationHtml
         );
       } catch (error) {
-        logger.error('[E-Gift] Failed to send redemption confirmation', { error });
+        logger.error('[E-Gift] Failed to send redemption confirmation', error);
       }
     }
     

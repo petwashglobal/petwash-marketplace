@@ -224,7 +224,7 @@ export class GeminiMatchingService {
       };
 
     } catch (error) {
-      logger.error('[GeminiMatching] Search failed', { error });
+      logger.error('[GeminiMatching] Search failed', error);
       return {
         success: false,
         matches: [],
@@ -334,7 +334,7 @@ If unclear, respond with: pet_sitting`;
       );
 
     } catch (error) {
-      logger.error('[GeminiMatching] AI search failed', { error });
+      logger.error('[GeminiMatching] AI search failed', error);
       return this.findMatchingProviders(
         clientLocation,
         { serviceType: 'pet_sitting', preferredLanguage }

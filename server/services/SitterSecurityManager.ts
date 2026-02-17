@@ -78,7 +78,7 @@ export class SitterSecurityManager {
       };
       
     } catch (error) {
-      logger.error('[Sitter Vetting] Error during vetting process', { userId, error });
+      logger.error('[Sitter Vetting] Error during vetting process', error, { userId });
       return {
         approved: false,
         message: "Vetting process failed due to technical error.",

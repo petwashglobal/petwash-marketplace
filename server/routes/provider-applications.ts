@@ -355,7 +355,7 @@ router.post('/', upload.single('profilePhoto'), async (req: Request, res: Respon
     });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Submit error', { error });
+    logger.error('[ProviderApplication] Submit error', error);
     res.status(500).json({ error: 'Failed to submit application' });
   }
 });
@@ -432,7 +432,7 @@ router.get('/my', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Get my application error', { error });
+    logger.error('[ProviderApplication] Get my application error', error);
     res.status(500).json({ error: 'Failed to fetch application' });
   }
 });
@@ -554,7 +554,7 @@ router.post('/withdraw', async (req: Request, res: Response) => {
     res.json({ success: true, message: 'Application withdrawn' });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Withdraw error', { error });
+    logger.error('[ProviderApplication] Withdraw error', error);
     res.status(500).json({ error: 'Failed to withdraw application' });
   }
 });
@@ -621,7 +621,7 @@ router.get('/admin/list', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Admin list error', { error });
+    logger.error('[ProviderApplication] Admin list error', error);
     res.status(500).json({ error: 'Failed to fetch applications' });
   }
 });
@@ -714,7 +714,7 @@ router.get('/admin/:id', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Admin get error', { error });
+    logger.error('[ProviderApplication] Admin get error', error);
     res.status(500).json({ error: 'Failed to fetch application' });
   }
 });
@@ -848,7 +848,7 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Approve error', { error });
+    logger.error('[ProviderApplication] Approve error', error);
     res.status(500).json({ error: 'Failed to approve application' });
   }
 });
@@ -915,7 +915,7 @@ router.post('/admin/:id/reject', async (req: Request, res: Response) => {
     res.json({ success: true, message: 'Application rejected' });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Reject error', { error });
+    logger.error('[ProviderApplication] Reject error', error);
     res.status(500).json({ error: 'Failed to reject application' });
   }
 });
@@ -994,7 +994,7 @@ router.post('/admin/:id/advance-stage', async (req: Request, res: Response) => {
     res.json({ success: true, message: `Application moved to ${nextStage}`, newStage: nextStage });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Advance stage error', { error });
+    logger.error('[ProviderApplication] Advance stage error', error);
     res.status(500).json({ error: 'Failed to advance stage' });
   }
 });

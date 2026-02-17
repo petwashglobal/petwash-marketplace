@@ -219,7 +219,7 @@ Analyze this weather data and provide SMART, ACTIONABLE advice in ${targetLangua
           : this.getBasicRecommendations(weather, lang)
       };
     } catch (error) {
-      logger.error('[SmartWeatherAdvisor] Failed to parse Gemini response', { error });
+      logger.error('[SmartWeatherAdvisor] Failed to parse Gemini response', error);
       return this.getFallbackAdvice(weather, lang);
     }
   }

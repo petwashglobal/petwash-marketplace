@@ -180,7 +180,7 @@ async function sendGiftCardToRecipient(params: {
     await EmailService.sendEmail(recipientEmail, emailSubject, emailHtml);
     logger.info('[E-Gift] Email sent to recipient', { recipientEmail, voucherId: voucher.id });
   } catch (error) {
-    logger.error('[E-Gift] Failed to send email to recipient', { error, recipientEmail });
+    logger.error('[E-Gift] Failed to send email to recipient', error, { recipientEmail });
     throw error; // Re-throw to notify caller
   }
 }
@@ -209,6 +209,6 @@ async function sendPurchaseConfirmationToBuyer(params: {
     await EmailService.sendEmail(params.senderEmail, emailSubject, emailHtml);
     logger.info('[E-Gift] Luxury purchase confirmation sent to buyer', { senderEmail: params.senderEmail, voucherId: params.voucherId });
   } catch (error) {
-    logger.error('[E-Gift] Failed to send confirmation to buyer', { error, senderEmail: params.senderEmail });
+    logger.error('[E-Gift] Failed to send confirmation to buyer', error, { senderEmail: params.senderEmail });
   }
 }

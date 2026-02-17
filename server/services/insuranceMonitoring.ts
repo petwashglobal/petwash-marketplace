@@ -90,7 +90,7 @@ export async function checkInsuranceExpirations(): Promise<InsuranceAlert[]> {
 
     return alerts;
   } catch (error) {
-    logger.error('[InsuranceMonitoring] Error checking expirations', { error });
+    logger.error('[InsuranceMonitoring] Error checking expirations', error);
     throw error;
   }
 }
@@ -165,7 +165,7 @@ export async function sendInsuranceAlerts(alerts: InsuranceAlert[]): Promise<voi
       });
     }
   } catch (error) {
-    logger.error('[InsuranceMonitoring] Error sending alerts', { error });
+    logger.error('[InsuranceMonitoring] Error sending alerts', error);
     throw error;
   }
 }
@@ -215,7 +215,7 @@ export async function suspendExpiredContractors(): Promise<string[]> {
 
     return suspended;
   } catch (error) {
-    logger.error('[InsuranceMonitoring] Error suspending expired contractors', { error });
+    logger.error('[InsuranceMonitoring] Error suspending expired contractors', error);
     throw error;
   }
 }
@@ -276,7 +276,7 @@ export async function runDailyInsuranceMonitoring(): Promise<void> {
       contractorsSuspended: suspended.length,
     });
   } catch (error) {
-    logger.error('[InsuranceMonitoring] Error in daily insurance monitoring job', { error });
+    logger.error('[InsuranceMonitoring] Error in daily insurance monitoring job', error);
     throw error;
   }
 }

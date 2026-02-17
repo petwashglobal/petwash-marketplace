@@ -278,7 +278,7 @@ router.post("/import/csv", async (req: Request, res: Response) => {
       } catch (err) {
         failedCount++;
         errors.push({ transaction: txn, error: String(err) });
-        logger.error("[Bank Import] Transaction import failed", { txn, error: err });
+        logger.error("[Bank Import] Transaction import failed", err, { txn });
       }
     }
     

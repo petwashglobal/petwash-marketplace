@@ -167,7 +167,7 @@ export class BackgroundJobProcessor {
           });
           await recordCronExecution('dataRetentionPurge', true, { summary });
         } catch (error) {
-          logger.error('[BackgroundJobs] Data retention purge failed', { error });
+          logger.error('[BackgroundJobs] Data retention purge failed', error);
           await recordCronExecution('dataRetentionPurge', false, { error });
         } finally {
           this.releaseLock('dataRetentionPurge');
@@ -192,7 +192,7 @@ export class BackgroundJobProcessor {
           });
           await recordCronExecution('financialReconciliation', true, { period: report.period });
         } catch (error) {
-          logger.error('[BackgroundJobs] Financial reconciliation failed', { error });
+          logger.error('[BackgroundJobs] Financial reconciliation failed', error);
           await recordCronExecution('financialReconciliation', false, { error });
         } finally {
           this.releaseLock('financialReconciliation');
@@ -833,7 +833,7 @@ export class BackgroundJobProcessor {
         });
       }
     } catch (error) {
-      logger.error('[BackgroundJobs] Auto-release escrow job error', { error });
+      logger.error('[BackgroundJobs] Auto-release escrow job error', error);
       await recordCronExecution('autoReleaseEscrows', 'failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });

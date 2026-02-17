@@ -25,7 +25,7 @@ router.get("/tasks", requireAdmin, async (req, res) => {
     const tasks = await storage.getOpsTasks(filters);
     res.json(tasks);
   } catch (error) {
-    logger.error("[Operations API] Error fetching tasks", { error });
+    logger.error("[Operations API] Error fetching tasks", error);
     res.status(500).json({ error: "Failed to fetch tasks" });
   }
 });
@@ -36,7 +36,7 @@ router.get("/tasks/overdue", requireAdmin, async (req, res) => {
     const tasks = await storage.getOverdueOpsTasks();
     res.json(tasks);
   } catch (error) {
-    logger.error("[Operations API] Error fetching overdue tasks", { error });
+    logger.error("[Operations API] Error fetching overdue tasks", error);
     res.status(500).json({ error: "Failed to fetch overdue tasks" });
   }
 });
@@ -48,7 +48,7 @@ router.get("/tasks/status/:status", requireAdmin, async (req, res) => {
     const tasks = await storage.getTasksByStatus(status);
     res.json(tasks);
   } catch (error) {
-    logger.error("[Operations API] Error fetching tasks by status", { error });
+    logger.error("[Operations API] Error fetching tasks by status", error);
     res.status(500).json({ error: "Failed to fetch tasks by status" });
   }
 });
@@ -60,7 +60,7 @@ router.get("/tasks/priority/:priority", requireAdmin, async (req, res) => {
     const tasks = await storage.getTasksByPriority(priority);
     res.json(tasks);
   } catch (error) {
-    logger.error("[Operations API] Error fetching tasks by priority", { error });
+    logger.error("[Operations API] Error fetching tasks by priority", error);
     res.status(500).json({ error: "Failed to fetch tasks by priority" });
   }
 });
@@ -77,7 +77,7 @@ router.get("/tasks/:id", requireAdmin, async (req, res) => {
     
     res.json(task);
   } catch (error) {
-    logger.error("[Operations API] Error fetching task", { error });
+    logger.error("[Operations API] Error fetching task", error);
     res.status(500).json({ error: "Failed to fetch task" });
   }
 });
@@ -91,7 +91,7 @@ router.post("/tasks", requireAdmin, async (req, res) => {
     logger.info("[Operations API] Task created", { taskId: task.id, taskType: task.category });
     res.status(201).json(task);
   } catch (error) {
-    logger.error("[Operations API] Error creating task", { error });
+    logger.error("[Operations API] Error creating task", error);
     res.status(400).json({ error: "Failed to create task" });
   }
 });
@@ -105,7 +105,7 @@ router.patch("/tasks/:id", requireAdmin, async (req, res) => {
     logger.info("[Operations API] Task updated", { taskId: id });
     res.json(task);
   } catch (error) {
-    logger.error("[Operations API] Error updating task", { error });
+    logger.error("[Operations API] Error updating task", error);
     
     if (error instanceof Error && error.message === "Task not found") {
       return res.status(404).json({ error: "Task not found" });
@@ -126,7 +126,7 @@ router.post("/tasks/:id/complete", requireAdmin, async (req, res) => {
     logger.info("[Operations API] Task completed", { taskId: id, completedBy });
     res.json(task);
   } catch (error) {
-    logger.error("[Operations API] Error completing task", { error });
+    logger.error("[Operations API] Error completing task", error);
     
     if (error instanceof Error && error.message === "Task not found") {
       return res.status(404).json({ error: "Task not found" });
@@ -156,7 +156,7 @@ router.get("/incidents", requireAdmin, async (req, res) => {
     const incidents = await storage.getIncidents(filters);
     res.json(incidents);
   } catch (error) {
-    logger.error("[Operations API] Error fetching incidents", { error });
+    logger.error("[Operations API] Error fetching incidents", error);
     res.status(500).json({ error: "Failed to fetch incidents" });
   }
 });
@@ -167,7 +167,7 @@ router.get("/incidents/sla-breaches", requireAdmin, async (req, res) => {
     const incidents = await storage.getSlaBreachIncidents();
     res.json(incidents);
   } catch (error) {
-    logger.error("[Operations API] Error fetching SLA breach incidents", { error });
+    logger.error("[Operations API] Error fetching SLA breach incidents", error);
     res.status(500).json({ error: "Failed to fetch SLA breach incidents" });
   }
 });
@@ -179,7 +179,7 @@ router.get("/incidents/severity/:severity", requireAdmin, async (req, res) => {
     const incidents = await storage.getIncidentsBySeverity(severity);
     res.json(incidents);
   } catch (error) {
-    logger.error("[Operations API] Error fetching incidents by severity", { error });
+    logger.error("[Operations API] Error fetching incidents by severity", error);
     res.status(500).json({ error: "Failed to fetch incidents by severity" });
   }
 });
@@ -196,7 +196,7 @@ router.get("/incidents/:id", requireAdmin, async (req, res) => {
     
     res.json(incident);
   } catch (error) {
-    logger.error("[Operations API] Error fetching incident", { error });
+    logger.error("[Operations API] Error fetching incident", error);
     res.status(500).json({ error: "Failed to fetch incident" });
   }
 });
@@ -210,7 +210,7 @@ router.post("/incidents", requireAdmin, async (req, res) => {
     logger.info("[Operations API] Incident created", { incidentId: incident.id, severity: incident.severity });
     res.status(201).json(incident);
   } catch (error) {
-    logger.error("[Operations API] Error creating incident", { error });
+    logger.error("[Operations API] Error creating incident", error);
     res.status(400).json({ error: "Failed to create incident" });
   }
 });
@@ -224,7 +224,7 @@ router.patch("/incidents/:id", requireAdmin, async (req, res) => {
     logger.info("[Operations API] Incident updated", { incidentId: id });
     res.json(incident);
   } catch (error) {
-    logger.error("[Operations API] Error updating incident", { error });
+    logger.error("[Operations API] Error updating incident", error);
     
     if (error instanceof Error && error.message === "Incident not found") {
       return res.status(404).json({ error: "Incident not found" });
@@ -245,7 +245,7 @@ router.post("/incidents/:id/resolve", requireAdmin, async (req, res) => {
     logger.info("[Operations API] Incident resolved", { incidentId: id, resolvedBy });
     res.json(incident);
   } catch (error) {
-    logger.error("[Operations API] Error resolving incident", { error });
+    logger.error("[Operations API] Error resolving incident", error);
     
     if (error instanceof Error && error.message === "Incident not found") {
       return res.status(404).json({ error: "Incident not found" });
@@ -266,7 +266,7 @@ router.post("/incidents/:id/close", requireAdmin, async (req, res) => {
     logger.info("[Operations API] Incident closed", { incidentId: id, closedBy });
     res.json(incident);
   } catch (error) {
-    logger.error("[Operations API] Error closing incident", { error });
+    logger.error("[Operations API] Error closing incident", error);
     
     if (error instanceof Error && error.message === "Incident not found") {
       return res.status(404).json({ error: "Incident not found" });
@@ -287,7 +287,7 @@ router.post("/incidents/:id/escalate", requireAdmin, async (req, res) => {
     logger.info("[Operations API] Incident escalated", { incidentId: id, escalatedBy });
     res.json(incident);
   } catch (error) {
-    logger.error("[Operations API] Error escalating incident", { error });
+    logger.error("[Operations API] Error escalating incident", error);
     
     if (error instanceof Error && error.message === "Incident not found") {
       return res.status(404).json({ error: "Incident not found" });
@@ -315,7 +315,7 @@ router.get("/sla", requireAdmin, async (req, res) => {
     const trackings = await storage.getSlaTrackings(filters);
     res.json(trackings);
   } catch (error) {
-    logger.error("[Operations API] Error fetching SLA trackings", { error });
+    logger.error("[Operations API] Error fetching SLA trackings", error);
     res.status(500).json({ error: "Failed to fetch SLA trackings" });
   }
 });
@@ -327,7 +327,7 @@ router.get("/sla/breaches", requireAdmin, async (req, res) => {
     const breaches = await storage.getSlaBreaches(entityType);
     res.json(breaches);
   } catch (error) {
-    logger.error("[Operations API] Error fetching SLA breaches", { error });
+    logger.error("[Operations API] Error fetching SLA breaches", error);
     res.status(500).json({ error: "Failed to fetch SLA breaches" });
   }
 });
@@ -339,7 +339,7 @@ router.get("/sla/metrics", requireAdmin, async (req, res) => {
     const metrics = await storage.getSlaMetrics(entityType);
     res.json(metrics);
   } catch (error) {
-    logger.error("[Operations API] Error fetching SLA metrics", { error });
+    logger.error("[Operations API] Error fetching SLA metrics", error);
     res.status(500).json({ error: "Failed to fetch SLA metrics" });
   }
 });
@@ -356,7 +356,7 @@ router.get("/sla/:id", requireAdmin, async (req, res) => {
     
     res.json(tracking);
   } catch (error) {
-    logger.error("[Operations API] Error fetching SLA tracking", { error });
+    logger.error("[Operations API] Error fetching SLA tracking", error);
     res.status(500).json({ error: "Failed to fetch SLA tracking" });
   }
 });
@@ -370,7 +370,7 @@ router.post("/sla", requireAdmin, async (req, res) => {
     logger.info("[Operations API] SLA tracking created", { id: tracking.id, entityType: tracking.entityType });
     res.status(201).json(tracking);
   } catch (error) {
-    logger.error("[Operations API] Error creating SLA tracking", { error });
+    logger.error("[Operations API] Error creating SLA tracking", error);
     res.status(400).json({ error: "Failed to create SLA tracking" });
   }
 });
@@ -384,7 +384,7 @@ router.patch("/sla/:id", requireAdmin, async (req, res) => {
     logger.info("[Operations API] SLA tracking updated", { id });
     res.json(tracking);
   } catch (error) {
-    logger.error("[Operations API] Error updating SLA tracking", { error });
+    logger.error("[Operations API] Error updating SLA tracking", error);
     
     if (error instanceof Error && error.message === "SLA tracking not found") {
       return res.status(404).json({ error: "SLA tracking not found" });

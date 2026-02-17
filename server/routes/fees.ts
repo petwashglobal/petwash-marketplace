@@ -28,7 +28,7 @@ router.get('/rates', (req, res) => {
       },
     });
   } catch (error) {
-    logger.error('[Fees API] Error getting rates', { error });
+    logger.error('[Fees API] Error getting rates', error);
     res.status(500).json({ success: false, error: 'Failed to get fee rates' });
   }
 });
@@ -59,7 +59,7 @@ router.post('/calculate', (req, res) => {
       },
     });
   } catch (error) {
-    logger.error('[Fees API] Error calculating fees', { error });
+    logger.error('[Fees API] Error calculating fees', error);
     res.status(500).json({ success: false, error: 'Failed to calculate fees' });
   }
 });
@@ -76,7 +76,7 @@ router.get('/provider-explanation', (req, res) => {
       explanation,
     });
   } catch (error) {
-    logger.error('[Fees API] Error getting provider explanation', { error });
+    logger.error('[Fees API] Error getting provider explanation', error);
     res.status(500).json({ success: false, error: 'Failed to get explanation' });
   }
 });

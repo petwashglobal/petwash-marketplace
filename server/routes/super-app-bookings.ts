@@ -788,8 +788,7 @@ router.post(
 
       // Handle service errors
       if (!result.success) {
-        logger.error('Payment intent creation failed', {
-          error: result.error,
+        logger.error('Payment intent creation failed', result.error, {
           bookingId,
           userId,
         });

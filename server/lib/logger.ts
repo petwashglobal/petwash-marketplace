@@ -67,14 +67,18 @@ class ServerLogger {
 
   error(message: string, error?: Error | any, context?: LogContext) {
     if (this.shouldLog('error')) {
-      const errorContext = {
-        ...context,
-        ...(error instanceof Error ? {
-          errorName: error.name,
-          errorMessage: error.message,
+      let errorFields: Record<string, any> = {};
+      if (error && typeof error === 'object' && (error instanceof Error || error.message || error.stack)) {
+        errorFields = {
+          errorName: error.name || error.constructor?.name || 'Error',
+          errorMessage: typeof error.message === 'string' ? error.message : String(error.message ?? error),
+          errorCode: error.code,
           errorStack: process.env.APP_ENV !== 'production' ? error.stack : undefined
-        } : { error: String(error) })
-      };
+        };
+      } else if (error !== undefined && error !== null) {
+        errorFields = { error: typeof error === 'string' ? error : JSON.stringify(error) };
+      }
+      const errorContext = { ...context, ...errorFields };
       console.error(this.formatLog('error', message, errorContext));
     }
   }

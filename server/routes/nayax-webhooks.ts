@@ -130,7 +130,7 @@ function validateNayaxSignature(
     
     next();
   } catch (error) {
-    logger.error('[NayaxWebhook] Signature validation error', { error });
+    logger.error('[NayaxWebhook] Signature validation error', error);
     return res.status(500).json({ error: 'Signature validation failed' });
   }
 }
@@ -214,8 +214,7 @@ router.post(
           transactionId: payload.transactionId,
         });
       } else {
-        logger.error('[NayaxWebhook] Processing failed', {
-          error: result.error,
+        logger.error('[NayaxWebhook] Processing failed', result.error, {
           transactionId: payload.transactionId,
         });
         
@@ -226,7 +225,7 @@ router.post(
         });
       }
     } catch (error) {
-      logger.error('[NayaxWebhook] Unexpected error', { error });
+      logger.error('[NayaxWebhook] Unexpected error', error);
       
       // Return 500 to trigger Nayax retry
       res.status(500).json({
@@ -269,7 +268,7 @@ router.post(
         settlementId,
       });
     } catch (error) {
-      logger.error('[NayaxWebhook] Settlement error', { error });
+      logger.error('[NayaxWebhook] Settlement error', error);
       res.status(500).json({ error: 'Settlement processing failed' });
     }
   }
@@ -310,7 +309,7 @@ router.post(
         refundId,
       });
     } catch (error) {
-      logger.error('[NayaxWebhook] Refund error', { error });
+      logger.error('[NayaxWebhook] Refund error', error);
       res.status(500).json({ error: 'Refund processing failed' });
     }
   }

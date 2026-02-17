@@ -95,7 +95,7 @@ export class UnifiedMessagingHub {
 
       return true;
     } catch (error) {
-      logger.error('[Messaging Hub] Failed to send message', { error, message });
+      logger.error('[Messaging Hub] Failed to send message', error, { message });
       throw error;
     }
   }
@@ -119,7 +119,7 @@ export class UnifiedMessagingHub {
       // TODO: Integrate with WhatsApp Business API
       logger.info('[WhatsApp] Message sent', { userId: message.userId, content: content.substring(0, 50) });
     } catch (error) {
-      logger.error('[WhatsApp] Failed to send', { error });
+      logger.error('[WhatsApp] Failed to send', error);
       throw error;
     }
   }
@@ -132,7 +132,7 @@ export class UnifiedMessagingHub {
       // TODO: Integrate with SendGrid/SES
       logger.info('[Email] Message sent', { userId: message.userId, subject });
     } catch (error) {
-      logger.error('[Email] Failed to send', { error });
+      logger.error('[Email] Failed to send', error);
       throw error;
     }
   }
@@ -146,7 +146,7 @@ export class UnifiedMessagingHub {
       // NOTE: Using Google services only - NO Twilio
       logger.info('[SMS] Message sent', { userId: message.userId });
     } catch (error) {
-      logger.error('[SMS] Failed to send', { error });
+      logger.error('[SMS] Failed to send', error);
       throw error;
     }
   }
@@ -159,7 +159,7 @@ export class UnifiedMessagingHub {
       // TODO: Integrate with Firebase Cloud Messaging
       logger.info('[Push] Notification sent', { userId: message.userId });
     } catch (error) {
-      logger.error('[Push] Failed to send', { error });
+      logger.error('[Push] Failed to send', error);
       throw error;
     }
   }
@@ -185,7 +185,7 @@ export class UnifiedMessagingHub {
         }
       });
     } catch (error) {
-      logger.error('[In-App] Failed to send', { error });
+      logger.error('[In-App] Failed to send', error);
       throw error;
     }
   }
@@ -211,7 +211,7 @@ export class UnifiedMessagingHub {
         platforms: preferences.platformPreferences as any
       };
     } catch (error) {
-      logger.error('[Messaging Hub] Failed to get preferences', { error, userId });
+      logger.error('[Messaging Hub] Failed to get preferences', error, { userId });
       throw error;
     }
   }
@@ -224,7 +224,7 @@ export class UnifiedMessagingHub {
       await notificationRepository.updatePreferences(userId, updates as any);
       logger.info('[Messaging Hub] Preferences updated', { userId });
     } catch (error) {
-      logger.error('[Messaging Hub] Failed to update preferences', { error, userId });
+      logger.error('[Messaging Hub] Failed to update preferences', error, { userId });
       throw error;
     }
   }
@@ -253,7 +253,7 @@ export class UnifiedMessagingHub {
     try {
       return await notificationRepository.getHistory(userId, limit, offset);
     } catch (error) {
-      logger.error('[Messaging Hub] Failed to get history', { error, userId });
+      logger.error('[Messaging Hub] Failed to get history', error, { userId });
       throw error;
     }
   }
@@ -265,7 +265,7 @@ export class UnifiedMessagingHub {
     try {
       return await notificationRepository.getUnreadCount(userId);
     } catch (error) {
-      logger.error('[Messaging Hub] Failed to get unread count', { error, userId });
+      logger.error('[Messaging Hub] Failed to get unread count', error, { userId });
       throw error;
     }
   }
@@ -278,7 +278,7 @@ export class UnifiedMessagingHub {
       await notificationRepository.markRead(notificationId);
       logger.info('[Messaging Hub] Notification marked as read', { notificationId });
     } catch (error) {
-      logger.error('[Messaging Hub] Failed to mark as read', { error, notificationId });
+      logger.error('[Messaging Hub] Failed to mark as read', error, { notificationId });
       throw error;
     }
   }

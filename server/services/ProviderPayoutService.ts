@@ -42,7 +42,7 @@ export class ProviderPayoutService {
 
       return expired;
     } catch (error) {
-      logger.error('[ProviderPayout] Error finding expired escrows', { error });
+      logger.error('[ProviderPayout] Error finding expired escrows', error);
       throw error;
     }
   }
@@ -197,7 +197,7 @@ export class ProviderPayoutService {
         };
       }
     } catch (error) {
-      logger.error('[ProviderPayout] Error releasing escrow', { error, payoutId });
+      logger.error('[ProviderPayout] Error releasing escrow', error, { payoutId });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to release escrow',
@@ -283,7 +283,7 @@ export class ProviderPayoutService {
       */
 
     } catch (error) {
-      logger.error('[ProviderPayout] Bank transfer error', { error });
+      logger.error('[ProviderPayout] Bank transfer error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Bank transfer failed',
@@ -330,7 +330,7 @@ export class ProviderPayoutService {
         errors,
       };
     } catch (error) {
-      logger.error('[ProviderPayout] Auto-release job error', { error });
+      logger.error('[ProviderPayout] Auto-release job error', error);
       throw error;
     }
   }
@@ -348,7 +348,7 @@ export class ProviderPayoutService {
 
       return payouts;
     } catch (error) {
-      logger.error('[ProviderPayout] Error fetching provider payouts', { error });
+      logger.error('[ProviderPayout] Error fetching provider payouts', error);
       throw error;
     }
   }
@@ -365,7 +365,7 @@ export class ProviderPayoutService {
 
       return payout || null;
     } catch (error) {
-      logger.error('[ProviderPayout] Error fetching payout', { error });
+      logger.error('[ProviderPayout] Error fetching payout', error);
       throw error;
     }
   }
@@ -417,7 +417,7 @@ export class ProviderPayoutService {
         success: true,
       };
     } catch (error) {
-      logger.error('[ProviderPayout] Error cancelling escrow', { error });
+      logger.error('[ProviderPayout] Error cancelling escrow', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to cancel escrow',

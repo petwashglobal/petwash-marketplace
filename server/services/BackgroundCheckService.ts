@@ -46,7 +46,7 @@ export class BackgroundCheckService {
         return await this.initiateMockCheck(applicantId, checkType);
       }
     } catch (error) {
-      logger.error('[BackgroundCheck] Failed to initiate check', { error, applicantId, checkType });
+      logger.error('[BackgroundCheck] Failed to initiate check', error, { applicantId, checkType });
       return { success: false, error: 'Failed to initiate background check' };
     }
   }
@@ -83,7 +83,7 @@ export class BackgroundCheckService {
         await this.completeMockCheck(check.id, 'clear');
         logger.info('[BackgroundCheck] Mock check completed', { checkId: check.id });
       } catch (error) {
-        logger.error('[BackgroundCheck] Failed to complete mock check', { error, checkId: check.id });
+        logger.error('[BackgroundCheck] Failed to complete mock check', error, { checkId: check.id });
       }
     }, 5000);
 

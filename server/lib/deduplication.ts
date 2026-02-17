@@ -78,7 +78,7 @@ export async function checkUserDuplication(
 
     return { isDuplicate: false };
   } catch (error) {
-    logger.error('Deduplication check failed', { error });
+    logger.error('Deduplication check failed', error);
     // Fail open - allow registration on error
     return { isDuplicate: false };
   }

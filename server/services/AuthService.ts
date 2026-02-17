@@ -174,7 +174,7 @@ export class AuthService {
         logger.info('[AuthService] Loyalty profile already exists (concurrent creation)', { userId });
         return;
       }
-      logger.error('[AuthService] Failed to auto-create loyalty profile (non-blocking)', { userId, error });
+      logger.error('[AuthService] Failed to auto-create loyalty profile (non-blocking)', error, { userId });
     }
   }
 

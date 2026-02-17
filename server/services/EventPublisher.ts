@@ -3,15 +3,15 @@ import { db } from '../db';
 import { domainEvents } from '@shared/schema';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
-import { EventBus } from './EventBus';
+import { eventBus } from './EventBus';
 import { eq } from 'drizzle-orm';
 
 export class EventPublisher {
   private static instance: EventPublisher;
-  private eventBus: EventBus;
+  private eventBus: typeof eventBus;
 
   private constructor() {
-    this.eventBus = new EventBus();
+    this.eventBus = eventBus;
   }
 
   public static getInstance(): EventPublisher {

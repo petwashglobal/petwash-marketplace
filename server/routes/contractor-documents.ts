@@ -123,7 +123,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       message: "Document uploaded successfully",
     });
   } catch (error) {
-    logger.error("[Contractor Documents] Upload failed", { error });
+    logger.error("[Contractor Documents] Upload failed", error);
     res.status(500).json({
       error: "Failed to upload document",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -151,7 +151,7 @@ router.get("/:contractorId", async (req, res) => {
       count: documents.length,
     });
   } catch (error) {
-    logger.error("[Contractor Documents] Failed to fetch documents", { error });
+    logger.error("[Contractor Documents] Failed to fetch documents", error);
     res.status(500).json({
       error: "Failed to fetch documents",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -201,7 +201,7 @@ router.post("/:documentId/verify", async (req, res) => {
       message: "Document verified successfully",
     });
   } catch (error) {
-    logger.error("[Contractor Documents] Verification failed", { error });
+    logger.error("[Contractor Documents] Verification failed", error);
     res.status(500).json({
       error: "Failed to verify document",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -260,7 +260,7 @@ router.delete("/:documentId", async (req, res) => {
       message: "Document deleted successfully",
     });
   } catch (error) {
-    logger.error("[Contractor Documents] Deletion failed", { error });
+    logger.error("[Contractor Documents] Deletion failed", error);
     res.status(500).json({
       error: "Failed to delete document",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -293,9 +293,7 @@ router.get("/type/:contractorId/:type", async (req, res) => {
       count: documents.length,
     });
   } catch (error) {
-    logger.error("[Contractor Documents] Failed to fetch document by type", {
-      error,
-    });
+    logger.error("[Contractor Documents] Failed to fetch document by type", error, {  });
     res.status(500).json({
       error: "Failed to fetch documents",
       details: error instanceof Error ? error.message : "Unknown error",

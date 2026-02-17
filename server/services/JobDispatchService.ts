@@ -213,7 +213,7 @@ export class JobDispatchService {
         paymentIntentId: authResult.paymentIntentId,
       };
     } catch (error) {
-      logger.error("[JobDispatch] Error creating job offer", { error });
+      logger.error("[JobDispatch] Error creating job offer", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
@@ -336,7 +336,7 @@ export class JobDispatchService {
           });
           logger.info("[JobDispatch] Offer sent", { operatorId: operator.operatorId, wave: waveNumber, score: operator.score });
         } catch (err) {
-          logger.error("[JobDispatch] Failed to notify operator", { operatorId: operator.operatorId, error: err });
+          logger.error("[JobDispatch] Failed to notify operator", err, { operatorId: operator.operatorId });
         }
       })
     );
@@ -350,7 +350,7 @@ export class JobDispatchService {
           await this.runDispatchWave(jobOfferId, waveNumber + 1, originalParams);
         }
       } catch (err) {
-        logger.error("[JobDispatch] Wave timeout check failed", { jobOfferId, error: err });
+        logger.error("[JobDispatch] Wave timeout check failed", err, { jobOfferId });
       }
     }, plan.nextAfterSec * 1000);
   }
@@ -429,7 +429,7 @@ export class JobDispatchService {
       candidates.sort((a, b) => b.score - a.score);
       return candidates.slice(0, params.maxOperators);
     } catch (error) {
-      logger.error("[JobDispatch] Error finding operators", { error });
+      logger.error("[JobDispatch] Error finding operators", error);
       return [];
     }
   }
@@ -541,12 +541,12 @@ export class JobDispatchService {
           },
         });
       } catch (notifErr) {
-        logger.error("[JobDispatch] Failed to notify customer", { error: notifErr });
+        logger.error("[JobDispatch] Failed to notify customer", notifErr);
       }
 
       return { success: true, jobOffer: updatedOffer };
     } catch (error) {
-      logger.error("[JobDispatch] Error accepting job offer", { error });
+      logger.error("[JobDispatch] Error accepting job offer", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
@@ -593,7 +593,7 @@ export class JobDispatchService {
 
       return { success: true };
     } catch (error) {
-      logger.error("[JobDispatch] Error rejecting job offer", { error });
+      logger.error("[JobDispatch] Error rejecting job offer", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
@@ -643,7 +643,7 @@ export class JobDispatchService {
           .where(eq(operatorPresence.operatorId, operatorId));
       }
     } catch (error) {
-      logger.error("[JobDispatch] Error updating operator stats", { operatorId, action, error });
+      logger.error("[JobDispatch] Error updating operator stats", error, { operatorId, action });
     }
   }
 
@@ -664,7 +664,7 @@ export class JobDispatchService {
 
       return offers;
     } catch (error) {
-      logger.error("[JobDispatch] Error getting operator job offers", { error });
+      logger.error("[JobDispatch] Error getting operator job offers", error);
       return [];
     }
   }
@@ -702,7 +702,7 @@ export class JobDispatchService {
 
       logger.info("[JobDispatch] Operator presence updated", { operatorId, status, platform });
     } catch (error) {
-      logger.error("[JobDispatch] Error updating operator presence", { error });
+      logger.error("[JobDispatch] Error updating operator presence", error);
     }
   }
 
@@ -726,7 +726,7 @@ export class JobDispatchService {
         acceptedAt: offer.acceptedAt,
       };
     } catch (error) {
-      logger.error("[JobDispatch] Error getting dispatch status", { error });
+      logger.error("[JobDispatch] Error getting dispatch status", error);
       return null;
     }
   }

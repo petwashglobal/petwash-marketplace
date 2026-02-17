@@ -572,10 +572,8 @@ class BookingLifecycleService {
           amountCents: escrow.netProviderAmountCents 
         });
       } catch (error) {
-        logger.error('[BookingLifecycle] Escrow release failed', { 
-          escrowId: escrow.escrowId, 
-          error 
-        });
+        logger.error('[BookingLifecycle] Escrow release failed', error, { 
+          escrowId: escrow.escrowId });
       }
     }
 

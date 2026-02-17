@@ -22,7 +22,7 @@ export async function hasAnyPasskeyForUser(userId: string): Promise<boolean> {
 
     return !snapshot.empty;
   } catch (error) {
-    logger.error('[Devices] Failed to check if user has passkey', { userId, error });
+    logger.error('[Devices] Failed to check if user has passkey', error, { userId });
     return false;
   }
 }
@@ -41,7 +41,7 @@ export async function countUserPasskeys(userId: string): Promise<number> {
 
     return snapshot.size;
   } catch (error) {
-    logger.error('[Devices] Failed to count user passkeys', { userId, error });
+    logger.error('[Devices] Failed to count user passkeys', error, { userId });
     return 0;
   }
 }

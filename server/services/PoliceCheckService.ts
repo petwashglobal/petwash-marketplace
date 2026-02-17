@@ -164,7 +164,7 @@ class PoliceCheckService {
         messageEn: 'Police clearance uploaded successfully! It will be reviewed within 24-48 hours.',
       };
     } catch (error) {
-      logger.error('[PoliceCheck] Error submitting check', { error });
+      logger.error('[PoliceCheck] Error submitting check', error);
       throw error;
     }
   }
@@ -384,7 +384,7 @@ class PoliceCheckService {
         daysUntilExpiry,
       };
     } catch (error) {
-      logger.error('[PoliceCheck] Error getting status', { error });
+      logger.error('[PoliceCheck] Error getting status', error);
       throw error;
     }
   }
@@ -455,7 +455,7 @@ class PoliceCheckService {
         messageEn: 'Police check approved and security badge issued!',
       };
     } catch (error) {
-      logger.error('[PoliceCheck] Error approving check', { error });
+      logger.error('[PoliceCheck] Error approving check', error);
       throw error;
     }
   }
@@ -507,7 +507,7 @@ class PoliceCheckService {
         messageEn: 'Check rejected. Provider will be notified.',
       };
     } catch (error) {
-      logger.error('[PoliceCheck] Error rejecting check', { error });
+      logger.error('[PoliceCheck] Error rejecting check', error);
       throw error;
     }
   }
@@ -526,7 +526,7 @@ class PoliceCheckService {
         .orderBy(desc(providerPoliceChecks.createdAt))
         .limit(limit);
     } catch (error) {
-      logger.error('[PoliceCheck] Error getting pending checks', { error });
+      logger.error('[PoliceCheck] Error getting pending checks', error);
       throw error;
     }
   }
@@ -550,7 +550,7 @@ class PoliceCheckService {
         )
         .orderBy(providerPoliceChecks.expiresAt);
     } catch (error) {
-      logger.error('[PoliceCheck] Error getting expiring checks', { error });
+      logger.error('[PoliceCheck] Error getting expiring checks', error);
       throw error;
     }
   }
@@ -583,7 +583,7 @@ class PoliceCheckService {
 
       return result.length;
     } catch (error) {
-      logger.error('[PoliceCheck] Error marking expired checks', { error });
+      logger.error('[PoliceCheck] Error marking expired checks', error);
       throw error;
     }
   }
@@ -612,7 +612,7 @@ class PoliceCheckService {
         badgeType: 'police_clearance_verified',
       };
     } catch (error) {
-      logger.error('[PoliceCheck] Error verifying badge', { error });
+      logger.error('[PoliceCheck] Error verifying badge', error);
       return {
         valid: false,
         reasonHe: 'שגיאה באימות התג',

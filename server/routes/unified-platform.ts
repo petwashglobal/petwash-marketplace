@@ -34,7 +34,7 @@ router.get('/services/health', async (req, res) => {
     const health = await apiGateway.getServiceHealth();
     res.json({ health });
   } catch (error) {
-    logger.error('[Unified Platform] Failed to get service health', { error });
+    logger.error('[Unified Platform] Failed to get service health', error);
     res.status(500).json({ error: 'Failed to get service health' });
   }
 });
@@ -50,7 +50,7 @@ router.get('/wallet/balance', requireAuth, async (req: any, res) => {
     const balance = await unifiedWallet.getBalance(userId);
     res.json(balance);
   } catch (error) {
-    logger.error('[Wallet API] Failed to get balance', { error });
+    logger.error('[Wallet API] Failed to get balance', error);
     res.status(500).json({ error: 'Failed to get balance' });
   }
 });
@@ -65,7 +65,7 @@ router.get('/wallet/transactions', requireAuth, async (req: any, res) => {
     const transactions = await unifiedWallet.getTransactions(userId, limit);
     res.json({ transactions });
   } catch (error) {
-    logger.error('[Wallet API] Failed to get transactions', { error });
+    logger.error('[Wallet API] Failed to get transactions', error);
     res.status(500).json({ error: 'Failed to get transactions' });
   }
 });
@@ -79,7 +79,7 @@ router.get('/wallet/spending/by-platform', requireAuth, async (req: any, res) =>
     const spending = await unifiedWallet.getPlatformSpending(userId);
     res.json({ spending });
   } catch (error) {
-    logger.error('[Wallet API] Failed to get platform spending', { error });
+    logger.error('[Wallet API] Failed to get platform spending', error);
     res.status(500).json({ error: 'Failed to get platform spending' });
   }
 });
@@ -95,7 +95,7 @@ router.get('/notifications/preferences', requireAuth, async (req: any, res) => {
     const preferences = await messagingHub.getPreferences(userId);
     res.json(preferences);
   } catch (error) {
-    logger.error('[Messaging API] Failed to get preferences', { error });
+    logger.error('[Messaging API] Failed to get preferences', error);
     res.status(500).json({ error: 'Failed to get preferences' });
   }
 });
@@ -109,7 +109,7 @@ router.put('/notifications/preferences', requireAuth, async (req: any, res) => {
     await messagingHub.updatePreferences(userId, req.body);
     res.json({ success: true });
   } catch (error) {
-    logger.error('[Messaging API] Failed to update preferences', { error });
+    logger.error('[Messaging API] Failed to update preferences', error);
     res.status(500).json({ error: 'Failed to update preferences' });
   }
 });
@@ -124,7 +124,7 @@ router.get('/notifications/history', requireAuth, async (req: any, res) => {
     const history = await messagingHub.getHistory(userId, limit);
     res.json({ history });
   } catch (error) {
-    logger.error('[Messaging API] Failed to get history', { error });
+    logger.error('[Messaging API] Failed to get history', error);
     res.status(500).json({ error: 'Failed to get history' });
   }
 });
@@ -140,7 +140,7 @@ router.get('/analytics/my-activity', requireAuth, async (req: any, res) => {
     const activity = await analytics.getUserActivity(userId);
     res.json(activity);
   } catch (error) {
-    logger.error('[Analytics API] Failed to get user activity', { error });
+    logger.error('[Analytics API] Failed to get user activity', error);
     res.status(500).json({ error: 'Failed to get user activity' });
   }
 });
@@ -162,7 +162,7 @@ router.get('/analytics/revenue/by-platform', requireAuth, async (req: any, res) 
     const breakdown = await analytics.getRevenueByPlatform(startDate, endDate);
     res.json({ breakdown });
   } catch (error) {
-    logger.error('[Analytics API] Failed to get revenue breakdown', { error });
+    logger.error('[Analytics API] Failed to get revenue breakdown', error);
     res.status(500).json({ error: 'Failed to get revenue breakdown' });
   }
 });
@@ -175,7 +175,7 @@ router.get('/analytics/health', async (req, res) => {
     const health = await analytics.getPlatformHealth();
     res.json({ health });
   } catch (error) {
-    logger.error('[Analytics API] Failed to get platform health', { error });
+    logger.error('[Analytics API] Failed to get platform health', error);
     res.status(500).json({ error: 'Failed to get platform health' });
   }
 });
@@ -195,7 +195,7 @@ router.get('/analytics/insights', requireAuth, async (req: any, res) => {
     const insights = await analytics.generateInsights(timeframe);
     res.json({ insights });
   } catch (error) {
-    logger.error('[Analytics API] Failed to generate insights', { error });
+    logger.error('[Analytics API] Failed to generate insights', error);
     res.status(500).json({ error: 'Failed to generate insights' });
   }
 });
@@ -217,7 +217,7 @@ router.get('/events/recent', requireAuth, async (req: any, res) => {
     const events = eventBus.getHistory(limit);
     res.json({ events });
   } catch (error) {
-    logger.error('[Events API] Failed to get recent events', { error });
+    logger.error('[Events API] Failed to get recent events', error);
     res.status(500).json({ error: 'Failed to get recent events' });
   }
 });
@@ -232,7 +232,7 @@ router.get('/events/my-events', requireAuth, async (req: any, res) => {
     const events = eventBus.getUserEvents(userId, limit);
     res.json({ events });
   } catch (error) {
-    logger.error('[Events API] Failed to get user events', { error });
+    logger.error('[Events API] Failed to get user events', error);
     res.status(500).json({ error: 'Failed to get user events' });
   }
 });
@@ -248,7 +248,7 @@ router.get('/cdp/profile', requireAuth, async (req: any, res) => {
     const profile = await cdp.getCustomer360(userId);
     res.json(profile);
   } catch (error) {
-    logger.error('[CDP API] Failed to get customer profile', { error });
+    logger.error('[CDP API] Failed to get customer profile', error);
     res.status(500).json({ error: 'Failed to get customer profile' });
   }
 });
@@ -263,7 +263,7 @@ router.get('/cdp/journey', requireAuth, async (req: any, res) => {
     const journey = await cdp.getCustomerJourney(userId, limit);
     res.json({ journey });
   } catch (error) {
-    logger.error('[CDP API] Failed to get customer journey', { error });
+    logger.error('[CDP API] Failed to get customer journey', error);
     res.status(500).json({ error: 'Failed to get customer journey' });
   }
 });
@@ -284,7 +284,7 @@ router.post('/cdp/track', requireAuth, async (req: any, res) => {
     });
     res.json({ success: true });
   } catch (error) {
-    logger.error('[CDP API] Failed to track activity', { error });
+    logger.error('[CDP API] Failed to track activity', error);
     res.status(500).json({ error: 'Failed to track activity' });
   }
 });
@@ -298,7 +298,7 @@ router.post('/cdp/refresh', requireAuth, async (req: any, res) => {
     await cdp.refreshProfile(userId);
     res.json({ success: true });
   } catch (error) {
-    logger.error('[CDP API] Failed to refresh profile', { error });
+    logger.error('[CDP API] Failed to refresh profile', error);
     res.status(500).json({ error: 'Failed to refresh profile' });
   }
 });
@@ -319,7 +319,7 @@ router.get('/marketing/campaigns', requireAuth, async (req: any, res) => {
     const campaigns = await programmatic.getAllCampaigns();
     res.json({ campaigns });
   } catch (error) {
-    logger.error('[Marketing API] Failed to get campaigns', { error });
+    logger.error('[Marketing API] Failed to get campaigns', error);
     res.status(500).json({ error: 'Failed to get campaigns' });
   }
 });
@@ -338,7 +338,7 @@ router.post('/marketing/campaigns', requireAuth, async (req: any, res) => {
     const campaign = await programmatic.createCampaign(req.body);
     res.json(campaign);
   } catch (error) {
-    logger.error('[Marketing API] Failed to create campaign', { error });
+    logger.error('[Marketing API] Failed to create campaign', error);
     res.status(500).json({ error: 'Failed to create campaign' });
   }
 });
@@ -357,7 +357,7 @@ router.post('/marketing/campaigns/:id/launch', requireAuth, async (req: any, res
     await programmatic.launchCampaign(req.params.id);
     res.json({ success: true });
   } catch (error) {
-    logger.error('[Marketing API] Failed to launch campaign', { error });
+    logger.error('[Marketing API] Failed to launch campaign', error);
     res.status(500).json({ error: 'Failed to launch campaign' });
   }
 });
@@ -376,7 +376,7 @@ router.get('/marketing/campaigns/:id/performance', requireAuth, async (req: any,
     const performance = await programmatic.getCampaignPerformance(req.params.id);
     res.json(performance);
   } catch (error) {
-    logger.error('[Marketing API] Failed to get campaign performance', { error });
+    logger.error('[Marketing API] Failed to get campaign performance', error);
     res.status(500).json({ error: 'Failed to get campaign performance' });
   }
 });
@@ -396,7 +396,7 @@ router.post('/wallet/add-funds', requireAuth, async (req: any, res) => {
     const transaction = await unifiedWallet.addFunds(userId, amount, platform || 'system', description || 'Funds added');
     res.json(transaction);
   } catch (error) {
-    logger.error('[Wallet API] Failed to add funds', { error });
+    logger.error('[Wallet API] Failed to add funds', error);
     res.status(500).json({ error: 'Failed to add funds' });
   }
 });
@@ -416,7 +416,7 @@ router.post('/wallet/deduct-funds', requireAuth, async (req: any, res) => {
     const transaction = await unifiedWallet.deductFunds(userId, amount, platform || 'system', description || 'Funds deducted', referenceId);
     res.json(transaction);
   } catch (error: any) {
-    logger.error('[Wallet API] Failed to deduct funds', { error });
+    logger.error('[Wallet API] Failed to deduct funds', error);
     if (error.message === 'Insufficient balance') {
       res.status(400).json({ error: 'Insufficient balance' });
     } else {
@@ -434,7 +434,7 @@ router.get('/notifications/unread-count', requireAuth, async (req: any, res) => 
     const count = await messagingHub.getUnreadCount(userId);
     res.json({ count });
   } catch (error) {
-    logger.error('[Messaging API] Failed to get unread count', { error });
+    logger.error('[Messaging API] Failed to get unread count', error);
     res.status(500).json({ error: 'Failed to get unread count' });
   }
 });
@@ -447,7 +447,7 @@ router.post('/notifications/:id/mark-read', requireAuth, async (req: any, res) =
     await messagingHub.markAsRead(req.params.id);
     res.json({ success: true });
   } catch (error) {
-    logger.error('[Messaging API] Failed to mark as read', { error });
+    logger.error('[Messaging API] Failed to mark as read', error);
     res.status(500).json({ error: 'Failed to mark as read' });
   }
 });

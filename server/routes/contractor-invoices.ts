@@ -51,7 +51,7 @@ router.get("/:commissionId/generate", async (req, res) => {
 
     res.send(pdfBuffer);
   } catch (error) {
-    logger.error("[Contractor Invoices] Generation failed", { error });
+    logger.error("[Contractor Invoices] Generation failed", error);
     res.status(500).json({
       error: "Failed to generate invoice",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -97,7 +97,7 @@ router.get("/:commissionId/preview", async (req, res) => {
 
     res.send(pdfBuffer);
   } catch (error) {
-    logger.error("[Contractor Invoices] Preview failed", { error });
+    logger.error("[Contractor Invoices] Preview failed", error);
     res.status(500).json({
       error: "Failed to preview invoice",
       details: error instanceof Error ? error.message : "Unknown error",

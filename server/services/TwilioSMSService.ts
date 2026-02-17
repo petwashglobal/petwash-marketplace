@@ -50,7 +50,7 @@ class TwilioSMSService {
         this.isConfigured = true;
         logger.info('[TwilioSMS] ✅ Initialized successfully');
       } catch (error) {
-        logger.error('[TwilioSMS] Failed to initialize', { error });
+        logger.error('[TwilioSMS] Failed to initialize', error);
         this.isConfigured = false;
       }
     } else {

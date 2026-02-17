@@ -94,7 +94,7 @@ export class ProgrammaticMarketingService {
       logger.info('[Programmatic] Campaign created', { campaignId: newCampaign.id, name: newCampaign.name });
       return newCampaign;
     } catch (error) {
-      logger.error('[Programmatic] Failed to create campaign', { error });
+      logger.error('[Programmatic] Failed to create campaign', error);
       throw error;
     }
   }
@@ -133,7 +133,7 @@ export class ProgrammaticMarketingService {
           
           if (success) sent++;
         } catch (err) {
-          logger.error('[Programmatic] Failed to send to user', { userId, error: err });
+          logger.error('[Programmatic] Failed to send to user', err, { userId });
         }
       }
 
@@ -148,7 +148,7 @@ export class ProgrammaticMarketingService {
 
       logger.info('[Programmatic] Campaign launched', { campaignId, targetUsers: users.length, sent });
     } catch (error) {
-      logger.error('[Programmatic] Failed to launch campaign', { error, campaignId });
+      logger.error('[Programmatic] Failed to launch campaign', error, { campaignId });
       throw error;
     }
   }
@@ -183,7 +183,7 @@ export class ProgrammaticMarketingService {
       });
       return automation;
     } catch (error) {
-      logger.error('[Programmatic] Failed to create automation', { error });
+      logger.error('[Programmatic] Failed to create automation', error);
       throw error;
     }
   }
@@ -227,7 +227,7 @@ export class ProgrammaticMarketingService {
 
       logger.info('[Programmatic] Automation executed', { automationId: automation.id });
     } catch (error) {
-      logger.error('[Programmatic] Automation execution failed', { error, automationId: automation.id });
+      logger.error('[Programmatic] Automation execution failed', error, { automationId: automation.id });
     }
   }
 
@@ -324,7 +324,7 @@ export class ProgrammaticMarketingService {
       logger.info('[Programmatic] A/B test created', { campaignAId: a.id, campaignBId: b.id });
       return { campaignAId: a.id, campaignBId: b.id };
     } catch (error) {
-      logger.error('[Programmatic] Failed to create A/B test', { error });
+      logger.error('[Programmatic] Failed to create A/B test', error);
       throw error;
     }
   }
@@ -349,7 +349,7 @@ export class ProgrammaticMarketingService {
         revenue: parseFloat(campaigns[0].revenue)
       };
     } catch (error) {
-      logger.error('[Programmatic] Failed to get campaign performance', { error, campaignId });
+      logger.error('[Programmatic] Failed to get campaign performance', error, { campaignId });
       throw error;
     }
   }
@@ -382,7 +382,7 @@ export class ProgrammaticMarketingService {
         }
       }));
     } catch (error) {
-      logger.error('[Programmatic] Failed to get campaigns', { error });
+      logger.error('[Programmatic] Failed to get campaigns', error);
       throw error;
     }
   }

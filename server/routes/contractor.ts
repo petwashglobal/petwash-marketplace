@@ -103,7 +103,7 @@ router.get('/:contractorId/trust-score', requireAuth, async (req: any, res) => {
       isAdmin,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching trust score', { error });
+    logger.error('[Contractor] Error fetching trust score', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -128,7 +128,7 @@ router.post('/:contractorId/update-trust-score', requireAdmin, async (req: any, 
       updatedBy: req.user.uid,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error updating trust score', { error });
+    logger.error('[Contractor] Error updating trust score', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -223,7 +223,7 @@ router.get('/:contractorId/earnings', requireAuth, async (req: any, res) => {
       earningsCount: earnings.length,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching earnings', { error });
+    logger.error('[Contractor] Error fetching earnings', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -296,7 +296,7 @@ router.get('/:contractorId/tax-summary', requireAuth, async (req: any, res) => {
       earningsCount: earnings.length,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching tax summary', { error });
+    logger.error('[Contractor] Error fetching tax summary', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -351,7 +351,7 @@ router.get('/:contractorId/violations', requireAuth, async (req: any, res) => {
       count: violations.length,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching violations', { error });
+    logger.error('[Contractor] Error fetching violations', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -398,7 +398,7 @@ router.get('/:contractorId/badges', async (req: any, res) => {
       count: validBadges.length,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching badges', { error });
+    logger.error('[Contractor] Error fetching badges', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -505,7 +505,7 @@ router.get('/:contractorId/dashboard', requireAuth, async (req: any, res) => {
 
     logger.info('[Contractor] Dashboard data fetched', { contractorId });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching dashboard', { error });
+    logger.error('[Contractor] Error fetching dashboard', error);
     res.status(500).json({ error: error.message });
   }
 });

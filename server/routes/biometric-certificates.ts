@@ -57,7 +57,7 @@ async function scheduleFileCleanup(
       });
 
     } catch (error) {
-      logger.error('[BiometricCertificates] Cleanup failed', { userId, error });
+      logger.error('[BiometricCertificates] Cleanup failed', error, { userId });
     }
   }, deleteAfter);
 

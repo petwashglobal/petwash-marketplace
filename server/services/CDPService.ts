@@ -79,7 +79,7 @@ export class CDPService {
       logger.info('[CDP] Retrieved customer 360 profile', { userId, platformsUsed: profile.platformsUsed.length });
       return profile;
     } catch (error) {
-      logger.error('[CDP] Failed to get customer 360', { error, userId });
+      logger.error('[CDP] Failed to get customer 360', error, { userId });
       throw error;
     }
   }
@@ -122,7 +122,7 @@ export class CDPService {
         action: activity.action 
       });
     } catch (error) {
-      logger.error('[CDP] Failed to track activity', { error, activity });
+      logger.error('[CDP] Failed to track activity', error, { activity });
       throw error;
     }
   }
@@ -153,7 +153,7 @@ export class CDPService {
 
       logger.info('[CDP] Profile updated', { userId, updates: Object.keys(dbUpdates) });
     } catch (error) {
-      logger.error('[CDP] Failed to update profile', { error, userId });
+      logger.error('[CDP] Failed to update profile', error, { userId });
       throw error;
     }
   }
@@ -173,7 +173,7 @@ export class CDPService {
       logger.info('[CDP] Churn probability calculated', { userId, probability });
       return probability;
     } catch (error) {
-      logger.error('[CDP] Failed to calculate churn', { error, userId });
+      logger.error('[CDP] Failed to calculate churn', error, { userId });
       throw error;
     }
   }
@@ -196,7 +196,7 @@ export class CDPService {
       logger.info('[CDP] LTV calculated', { userId, ltv: predictedLtv });
       return predictedLtv;
     } catch (error) {
-      logger.error('[CDP] Failed to calculate LTV', { error, userId });
+      logger.error('[CDP] Failed to calculate LTV', error, { userId });
       throw error;
     }
   }
@@ -220,7 +220,7 @@ export class CDPService {
       });
       return result;
     } catch (error) {
-      logger.error('[CDP] Failed to segment users', { error });
+      logger.error('[CDP] Failed to segment users', error);
       throw error;
     }
   }
@@ -238,7 +238,7 @@ export class CDPService {
       const users = await cdpRepository.getUsersBySegment(segment.id);
       return users.map(u => u.userId);
     } catch (error) {
-      logger.error('[CDP] Failed to get users by segment', { error, segmentName });
+      logger.error('[CDP] Failed to get users by segment', error, { segmentName });
       throw error;
     }
   }
@@ -257,7 +257,7 @@ export class CDPService {
       logger.info('[CDP] Retrieved multi-platform users', { count: multiPlatformUsers.length });
       return multiPlatformUsers;
     } catch (error) {
-      logger.error('[CDP] Failed to get multi-platform users', { error });
+      logger.error('[CDP] Failed to get multi-platform users', error);
       throw error;
     }
   }
@@ -278,7 +278,7 @@ export class CDPService {
         metadata: a.metadata
       }));
     } catch (error) {
-      logger.error('[CDP] Failed to get customer journey', { error, userId });
+      logger.error('[CDP] Failed to get customer journey', error, { userId });
       throw error;
     }
   }
@@ -314,7 +314,7 @@ export class CDPService {
 
       logger.info('[CDP] Profile refreshed', { userId });
     } catch (error) {
-      logger.error('[CDP] Failed to refresh profile', { error, userId });
+      logger.error('[CDP] Failed to refresh profile', error, { userId });
       throw error;
     }
   }

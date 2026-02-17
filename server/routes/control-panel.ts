@@ -83,7 +83,7 @@ router.get("/metrics", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[Control Panel] Failed to fetch metrics", { error });
+    logger.error("[Control Panel] Failed to fetch metrics", error);
     res.status(500).json({
       error: "Failed to fetch metrics",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -120,7 +120,7 @@ router.get("/events/recent", async (req, res) => {
       count: events.length,
     });
   } catch (error) {
-    logger.error("[Control Panel] Failed to fetch recent events", { error });
+    logger.error("[Control Panel] Failed to fetch recent events", error);
     res.status(500).json({
       error: "Failed to fetch recent events",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -149,7 +149,7 @@ router.get("/platforms", async (req, res) => {
       count: allPlatforms.length,
     });
   } catch (error) {
-    logger.error("[Control Panel] Failed to fetch platforms", { error });
+    logger.error("[Control Panel] Failed to fetch platforms", error);
     res.status(500).json({
       error: "Failed to fetch platforms",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -187,9 +187,7 @@ router.get("/departments/overview", async (req, res) => {
       count: allDepartments.length,
     });
   } catch (error) {
-    logger.error("[Control Panel] Failed to fetch department overview", {
-      error,
-    });
+    logger.error("[Control Panel] Failed to fetch department overview", error, {  });
     res.status(500).json({
       error: "Failed to fetch department overview",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -276,7 +274,7 @@ router.get("/providers/stats", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[Control Panel] Failed to fetch provider stats", { error });
+    logger.error("[Control Panel] Failed to fetch provider stats", error);
     res.status(500).json({
       error: "Failed to fetch provider stats",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -311,7 +309,7 @@ router.get("/providers/queue", async (req, res) => {
 
     res.json({ queue });
   } catch (error) {
-    logger.error("[Control Panel] Failed to fetch provider queue", { error });
+    logger.error("[Control Panel] Failed to fetch provider queue", error);
     res.status(500).json({
       error: "Failed to fetch provider queue",
       details: error instanceof Error ? error.message : "Unknown error",
@@ -353,7 +351,7 @@ router.get("/providers/police-checks", async (req, res) => {
 
     res.json({ checks: formattedChecks });
   } catch (error) {
-    logger.error("[Control Panel] Failed to fetch police checks", { error });
+    logger.error("[Control Panel] Failed to fetch police checks", error);
     res.status(500).json({
       error: "Failed to fetch police checks",
       details: error instanceof Error ? error.message : "Unknown error",

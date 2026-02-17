@@ -329,7 +329,7 @@ export class AIPayoutVerificationService {
       };
 
     } catch (error) {
-      logger.error('[AIPayoutVerification] Photo verification error', { error });
+      logger.error('[AIPayoutVerification] Photo verification error', error);
       return {
         passed: true,
         score: 60,
@@ -400,7 +400,7 @@ export class AIPayoutVerificationService {
       };
 
     } catch (error) {
-      logger.error('[AIPayoutVerification] Location verification error', { error });
+      logger.error('[AIPayoutVerification] Location verification error', error);
       return {
         passed: true,
         score: 65,
@@ -464,7 +464,7 @@ export class AIPayoutVerificationService {
       };
 
     } catch (error) {
-      logger.error('[AIPayoutVerification] Timestamp verification error', { error });
+      logger.error('[AIPayoutVerification] Timestamp verification error', error);
       return {
         passed: true,
         score: 70,
@@ -529,7 +529,7 @@ export class AIPayoutVerificationService {
       };
 
     } catch (error) {
-      logger.error('[AIPayoutVerification] Pattern analysis error', { error });
+      logger.error('[AIPayoutVerification] Pattern analysis error', error);
       return {
         passed: true,
         score: 75,
@@ -588,7 +588,7 @@ export class AIPayoutVerificationService {
       };
 
     } catch (error) {
-      logger.error('[AIPayoutVerification] Quality assessment error', { error });
+      logger.error('[AIPayoutVerification] Quality assessment error', error);
       return {
         passed: true,
         score: 70,
@@ -646,7 +646,7 @@ Keep response under 150 words.`;
       return responseText.trim();
 
     } catch (error) {
-      logger.error('[AIPayoutVerification] Gemini analysis failed', { error });
+      logger.error('[AIPayoutVerification] Gemini analysis failed', error);
       return 'AI analysis unavailable. Manual review recommended based on rule-based checks.';
     }
   }
@@ -703,7 +703,7 @@ Keep response under 150 words.`;
         occurredAt: new Date(),
       });
     } catch (error) {
-      logger.error('[AIPayoutVerification] Failed to log event', { error });
+      logger.error('[AIPayoutVerification] Failed to log event', error);
     }
   }
 
@@ -781,7 +781,7 @@ Keep response under 150 words.`;
       return { verified, failed, flagged };
 
     } catch (error) {
-      logger.error('[AIPayoutVerification] Batch verification failed', { error });
+      logger.error('[AIPayoutVerification] Batch verification failed', error);
       throw error;
     }
   }

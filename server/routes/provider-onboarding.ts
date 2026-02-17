@@ -65,7 +65,7 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+      return res.status(401).json({ error: 'Unauthorized - No token provided', errorCode: 'AUTH_REQUIRED' });
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -73,7 +73,7 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
     const userEmail = decodedToken.email?.toLowerCase();
     
     if (!userEmail) {
-      return res.status(401).json({ error: 'Unauthorized - Email not found in token' });
+      return res.status(401).json({ error: 'Unauthorized - Email not found in token', errorCode: 'MISSING_EMAIL' });
     }
     
     // Check super admin list first (CEO, Directors)
@@ -117,10 +117,10 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
     }
     
     logger.warn(`[Provider Onboarding] Admin access denied for: ${userEmail}`);
-    return res.status(403).json({ error: 'Forbidden - Admin access required' });
-  } catch (error) {
-    logger.error('Admin auth error', error);
-    return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    return res.status(403).json({ error: 'Forbidden - Admin access required', errorCode: 'ADMIN_REQUIRED' });
+  } catch (error: any) {
+    logger.error('Admin auth error', error, { code: error?.code });
+    return res.status(401).json({ error: 'Unauthorized - Invalid token', errorCode: 'INVALID_TOKEN' });
   }
 }
 
@@ -133,7 +133,7 @@ router.post('/admin/invite-codes/generate', requireAdmin, async (req: Request, r
     const { adminUid } = req.body; // From middleware
 
     if (!providerType || !['walker', 'sitter', 'station_operator'].includes(providerType)) {
-      return res.status(400).json({ error: 'Invalid provider type' });
+      return res.status(400).json({ error: 'Invalid provider type', errorCode: 'INVALID_PROVIDER_TYPE' });
     }
 
     // Generate unique invite code (e.g., WALKER-A8F3H9K2)
@@ -164,7 +164,7 @@ router.post('/admin/invite-codes/generate', requireAdmin, async (req: Request, r
     });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Generate invite code error', error);
-    res.status(500).json({ error: error.message || 'Failed to generate invite code' });
+    res.status(500).json({ error: error.message || 'Failed to generate invite code', errorCode: 'INVITE_CODE_FAILED' });
   }
 });
 
@@ -174,7 +174,7 @@ router.post('/validate-invite-code', async (req: Request, res: Response) => {
     const { inviteCode } = req.body;
 
     if (!inviteCode) {
-      return res.status(400).json({ error: 'Invite code required' });
+      return res.status(400).json({ error: 'Invite code required', errorCode: 'MISSING_INVITE_CODE' });
     }
 
     const [code] = await db
@@ -186,7 +186,8 @@ router.post('/validate-invite-code', async (req: Request, res: Response) => {
     if (!code) {
       return res.status(404).json({ 
         valid: false, 
-        error: 'Invalid invite code' 
+        error: 'Invalid invite code',
+        errorCode: 'INVALID_INVITE_CODE'
       });
     }
 
@@ -194,7 +195,8 @@ router.post('/validate-invite-code', async (req: Request, res: Response) => {
     if (!code.isActive) {
       return res.status(400).json({ 
         valid: false, 
-        error: 'This invite code is no longer active' 
+        error: 'This invite code is no longer active',
+        errorCode: 'INVITE_CODE_INACTIVE'
       });
     }
 
@@ -202,7 +204,8 @@ router.post('/validate-invite-code', async (req: Request, res: Response) => {
     if (code.expiresAt && new Date(code.expiresAt) < new Date()) {
       return res.status(400).json({ 
         valid: false, 
-        error: 'This invite code has expired' 
+        error: 'This invite code has expired',
+        errorCode: 'INVITE_CODE_EXPIRED'
       });
     }
 
@@ -210,7 +213,8 @@ router.post('/validate-invite-code', async (req: Request, res: Response) => {
     if (code.maxUses && code.currentUses >= code.maxUses) {
       return res.status(400).json({ 
         valid: false, 
-        error: 'This invite code has reached its maximum uses' 
+        error: 'This invite code has reached its maximum uses',
+        errorCode: 'INVITE_CODE_EXHAUSTED'
       });
     }
 
@@ -221,8 +225,8 @@ router.post('/validate-invite-code', async (req: Request, res: Response) => {
       campaignName: code.campaignName
     });
   } catch (error: any) {
-    logger.error('[Provider Onboarding] Validate invite code error', error);
-    res.status(500).json({ error: error.message || 'Failed to validate invite code' });
+    logger.error('[Provider Onboarding] Validate invite code error', { error: error.message });
+    res.status(500).json({ error: error.message || 'Failed to validate invite code', errorCode: 'VALIDATION_FAILED' });
   }
 });
 
@@ -241,7 +245,7 @@ router.post('/apply', upload.fields([
     // SECURITY: Verify Firebase authentication
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized - Authentication required' });
+      return res.status(401).json({ error: 'Unauthorized - Authentication required', errorCode: 'AUTH_REQUIRED' });
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -249,9 +253,9 @@ router.post('/apply', upload.fields([
     
     try {
       authenticatedUser = await auth.verifyIdToken(token);
-    } catch (authError) {
-      logger.error('[Provider Onboarding] Auth error', authError);
-      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    } catch (authError: any) {
+      logger.error('[Provider Onboarding] Auth error', authError, { code: authError?.code, traceId: req.body?.traceId });
+      return res.status(401).json({ error: 'Unauthorized - Invalid token', errorCode: 'INVALID_TOKEN' });
     }
 
     const {
@@ -639,11 +643,16 @@ router.get('/application/status', async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized', errorCode: 'AUTH_REQUIRED' });
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await auth.verifyIdToken(token);
+    let decodedToken;
+    try {
+      decodedToken = await auth.verifyIdToken(token);
+    } catch (authErr: any) {
+      return res.status(401).json({ error: 'Invalid token', errorCode: 'INVALID_TOKEN' });
+    }
 
     const applications = await db
       .select()
@@ -654,8 +663,8 @@ router.get('/application/status', async (req: Request, res: Response) => {
 
     res.json({ applications });
   } catch (error: any) {
-    logger.error('[Provider Onboarding] Get application status error', error);
-    res.status(500).json({ error: error.message });
+    logger.error('[Provider Onboarding] Get application status error', { error: error.message });
+    res.status(500).json({ error: error.message, errorCode: 'STATUS_CHECK_FAILED' });
   }
 });
 
@@ -687,7 +696,7 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
     const { adminUid } = req.body; // From middleware
 
     if (!applicationId) {
-      return res.status(400).json({ error: 'Application ID required' });
+      return res.status(400).json({ error: 'Application ID required', errorCode: 'MISSING_APPLICATION_ID' });
     }
 
     const [application] = await db
@@ -697,11 +706,11 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       .limit(1);
 
     if (!application) {
-      return res.status(404).json({ error: 'Application not found' });
+      return res.status(404).json({ error: 'Application not found', errorCode: 'APPLICATION_NOT_FOUND' });
     }
 
     if (application.status !== 'pending') {
-      return res.status(400).json({ error: 'Application already processed' });
+      return res.status(400).json({ error: 'Application already processed', errorCode: 'APPLICATION_ALREADY_PROCESSED' });
     }
 
     // Generate provider ID based on type
@@ -747,8 +756,8 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       providerId
     });
   } catch (error: any) {
-    logger.error('[Provider Onboarding] Approve application error', error);
-    res.status(500).json({ error: error.message });
+    logger.error('[Provider Onboarding] Approve application error', { error: error.message });
+    res.status(500).json({ error: error.message, errorCode: 'APPROVAL_FAILED' });
   }
 });
 
@@ -759,7 +768,7 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
     const { adminUid } = req.body; // From middleware
 
     if (!applicationId || !rejectionReason) {
-      return res.status(400).json({ error: 'Application ID and rejection reason required' });
+      return res.status(400).json({ error: 'Application ID and rejection reason required', errorCode: 'MISSING_FIELDS' });
     }
 
     await db
@@ -780,8 +789,8 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
       message: 'Application rejected'
     });
   } catch (error: any) {
-    logger.error('[Provider Onboarding] Reject application error', error);
-    res.status(500).json({ error: error.message });
+    logger.error('[Provider Onboarding] Reject application error', { error: error.message });
+    res.status(500).json({ error: error.message, errorCode: 'REJECTION_FAILED' });
   }
 });
 

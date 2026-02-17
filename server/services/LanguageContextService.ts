@@ -131,7 +131,7 @@ export class LanguageContextService {
 
       return null;
     } catch (error) {
-      logger.error(`[LanguageContext] Failed to fetch user language`, { error, userId });
+      logger.error(`[LanguageContext] Failed to fetch user language`, error, { userId });
       return null;
     }
   }
@@ -152,7 +152,7 @@ export class LanguageContextService {
       logger.info(`[LanguageContext] ✅ Saved user language preference`, { userId, language });
       return true;
     } catch (error) {
-      logger.error(`[LanguageContext] Failed to save user language`, { error, userId, language });
+      logger.error(`[LanguageContext] Failed to save user language`, error, { userId, language });
       return false;
     }
   }
