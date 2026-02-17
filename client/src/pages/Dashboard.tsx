@@ -282,7 +282,7 @@ function tx(key: string, lang: string): string {
 
 const goldGradient = 'linear-gradient(135deg, #C9A94E 0%, #E5D5A0 40%, #C9A94E 60%, #A8893A 100%)';
 const goldText = { color: '#B8972F' };
-const goldBorder = '1px solid rgba(201, 169, 78, 0.3)';
+const goldBorder = '1px solid rgba(229, 231, 235, 1)';
 const cardBg = '#FFFFFF';
 const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0,0,0,0.03)';
 
@@ -399,7 +399,7 @@ export default function Dashboard() {
                   <span className="text-xs sm:text-sm" style={goldText}>&#8362;</span>{totalBalance}
                 </p>
                 <p className="text-[8px] sm:text-[10px] text-gray-500 tracking-wide">{tx('currentBalance', language)}</p>
-                <div className="mt-2 pt-2 border-t" style={{ borderColor: 'rgba(201,169,78,0.15)' }}>
+                <div className="mt-2 pt-2 border-t border-gray-100">
                   <p className="text-[9px] tracking-[0.1em] uppercase" style={goldText}>ILS</p>
                 </div>
               </div>
@@ -414,7 +414,7 @@ export default function Dashboard() {
                   {loyaltyPoints.toLocaleString()}
                 </p>
                 <p className="text-[8px] sm:text-[10px] text-gray-500 tracking-wide">{tx('availablePoints', language)}</p>
-                <div className="mt-2 pt-2 border-t" style={{ borderColor: 'rgba(201,169,78,0.15)' }}>
+                <div className="mt-2 pt-2 border-t border-gray-100">
                   <p className="text-[9px] tracking-[0.1em] uppercase" style={goldText}>
                     {tierLabel} {tx('member', language)}
                   </p>
@@ -665,7 +665,7 @@ export default function Dashboard() {
                     className="px-5 py-3.5 flex items-center justify-between hover:bg-[#F9F9F9] transition-colors cursor-pointer"
                     style={{
                       background: '#FFFFFF',
-                      borderBottom: idx < 6 ? '1px solid rgba(201,169,78,0.12)' : 'none',
+                      borderBottom: idx < 6 ? '1px solid rgba(229,231,235,1)' : 'none',
                     }}
                   >
                     <p className="text-sm text-gray-800">
