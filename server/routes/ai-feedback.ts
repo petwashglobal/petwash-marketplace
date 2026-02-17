@@ -5,6 +5,7 @@ import { Router } from 'express';
 import { EmployeeAIFeedbackService } from '../services/EmployeeAIFeedbackService';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
+import { db as firestore } from '../lib/firebase-admin';
 
 const router = Router();
 
@@ -77,8 +78,6 @@ router.get('/insights', requireAuth, async (req, res) => {
 router.get('/history', requireAuth, async (req, res) => {
   try {
     const employeeUid = req.user!.uid;
-    const { db: firestore } = require('../lib/firebase-admin');
-
     const feedbackSnapshot = await firestore
       .collection('ai_feedback_events')
       .where('employeeUid', '==', employeeUid)

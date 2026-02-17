@@ -4,7 +4,7 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { sendClubWelcomeEmail } from '../email/luxury-email-service';
 import multer from 'multer';
-import admin from 'firebase-admin';
+import admin from '../lib/firebase-admin';
 import crypto from 'crypto';
 
 const router = Router();

@@ -19,7 +19,7 @@
  * Israeli VAT Rate: 18% | Platform Commission: 15% | Currency: ILS
  */
 
-import admin from 'firebase-admin';
+import admin from '../lib/firebase-admin';
 import { db } from '../db';
 import { contractorEarnings, electronicInvoices, digitalReceipts } from '@shared/schema';
 import { logger } from '../lib/logger';

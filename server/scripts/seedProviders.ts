@@ -3,17 +3,7 @@
  * Run with: npx tsx server/scripts/seedProviders.ts
  */
 
-import admin from "firebase-admin";
-
-// Initialize Firebase Admin
-if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || "{}");
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
-
-const db = admin.firestore();
+import { db } from "../lib/firebase-admin";
 
 // Sample sitter profiles
 const sampleSitters = [

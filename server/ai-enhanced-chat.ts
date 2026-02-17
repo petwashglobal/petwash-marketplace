@@ -283,7 +283,8 @@ function getOfflineFallbackAnswer(message: string, language: 'he' | 'en' | 'ar' 
 export async function getIntelligentSuggestions(language: 'he' | 'en' | 'ar' | 'es' | 'fr' | 'ru'): Promise<string[]> {
   try {
     // Get top 5 most asked questions with high satisfaction
-    const topQuestionsSnapshot = await require('./lib/firebase-admin').db
+    const { db: firestoreDb } = await import('./lib/firebase-admin');
+    const topQuestionsSnapshot = await firestoreDb
       .collection('ai_faq_learning')
       .where('language', '==', language)
       .where('avgSatisfaction', '>', 0.7)

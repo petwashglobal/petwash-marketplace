@@ -2,6 +2,7 @@ import express from "express";
 import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
 import { twilioSMSService } from "../services/TwilioSMSService";
+import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
 
 async function getFirebaseUserFromRequest(req: express.Request): Promise<{uid: string; email?: string; displayName?: string} | null> {
   try {
@@ -127,10 +128,7 @@ publicAuthRouter.get("/api/consent", async (req, res) => {
     }
 
     // Authenticated → fetch consent from Firestore
-    const { getFirestore } = await import('firebase-admin/firestore');
-    const firestore = getFirestore();
-    
-    const snapshot = await firestore
+    const snapshot = await firestoreDb
       .collection('consent_records')
       .where('userId', '==', userId)
       .orderBy('timestamp', 'desc')
@@ -290,8 +288,7 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
 
     const formattedPhone = tokenValidation.phone;
 
-    const { getAuth } = await import('firebase-admin/auth');
-    const adminAuth = getAuth();
+    const adminAuth = fbAdminAuth;
 
     let user;
     try {

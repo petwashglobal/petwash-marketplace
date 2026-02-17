@@ -10,7 +10,7 @@
  */
 
 import { db } from '../db';
-import admin from 'firebase-admin';
+import admin from '../lib/firebase-admin';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import memoizee from 'memoizee';

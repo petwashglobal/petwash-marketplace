@@ -9,7 +9,7 @@
  * - Activity logging for fraud detection
  */
 
-import admin from 'firebase-admin';
+import admin from '../lib/firebase-admin';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';

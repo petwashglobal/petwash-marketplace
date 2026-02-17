@@ -9,8 +9,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { db as firestore } from '../lib/firebase-admin';
-import admin from 'firebase-admin';
+import admin, { db as firestore } from '../lib/firebase-admin';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { pushNotificationSchema } from '@shared/firestore-fcm';

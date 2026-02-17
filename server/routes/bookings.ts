@@ -1,5 +1,5 @@
 import express from "express";
-import admin from "firebase-admin";
+import { db } from "../lib/firebase-admin";
 import { requireAuth } from "../customAuth";
 import VATCalculatorService from "../services/VATCalculatorService";
 import EscrowService from "../services/EscrowService";
@@ -7,7 +7,6 @@ import NotificationService from "../services/NotificationService";
 import ChatService from "../services/ChatService";
 
 const router = express.Router();
-const db = admin.firestore();
 
 interface BookingRequest {
   platform: "sitter-suite" | "walk-my-pet" | "pettrek";

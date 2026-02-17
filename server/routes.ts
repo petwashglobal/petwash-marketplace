@@ -377,8 +377,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
 
     try {
-      const { adminAuth: fbAdminAuth } = await import('./lib/firebase-admin');
-      const userRecord = await fbAdminAuth.getUser(req.firebaseUser.uid);
+      const userRecord = await firebaseAdminModule.auth.getUser(req.firebaseUser.uid);
       const claims = (userRecord.customClaims || {}) as Record<string, any>;
 
       let role = claims.role;
@@ -386,7 +385,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (!role) {
         role = claims.accountType === 'internal' ? 'staff' : claims.accountType === 'provider' ? 'provider' : 'public';
         try {
-          await fbAdminAuth.setCustomUserClaims(req.firebaseUser.uid, {
+          await firebaseAdminModule.auth.setCustomUserClaims(req.firebaseUser.uid, {
             ...claims,
             role,
             loyaltyMember: claims.loyaltyMember ?? true,
@@ -820,8 +819,7 @@ self.addEventListener('notificationclick', (event) => {
       
       (async () => {
         try {
-          const { adminAuth, db: firestoreDb } = await import('./lib/firebase-admin');
-          const decoded = await adminAuth.verifyIdToken(idToken);
+          const decoded = await firebaseAdminModule.auth.verifyIdToken(idToken);
           const { authService } = await import('./services/AuthService');
           
           let firstName: string | undefined;
@@ -1121,9 +1119,7 @@ self.addEventListener('notificationclick', (event) => {
       };
       
       // Save to Firestore for audit trail
-      const { getFirestore } = await import('firebase-admin/firestore');
-      const firestore = getFirestore();
-      await firestore.collection('consent_records').add(consentRecord);
+      await firestoreDb.collection('consent_records').add(consentRecord);
       
       logger.info('[Consent] Saved user consent preferences', {
         userId: userId || 'anonymous',
@@ -1173,9 +1169,7 @@ self.addEventListener('notificationclick', (event) => {
       };
       
       // Save to Firestore for audit trail (REQUIRED by GDPR Article 9)
-      const { getFirestore } = await import('firebase-admin/firestore');
-      const firestore = getFirestore();
-      await firestore.collection('biometric_consent').add(consentRecord);
+      await firestoreDb.collection('biometric_consent').add(consentRecord);
       
       logger.info('[Biometric Consent] Saved biometric authentication consent', {
         userId: userId || 'anonymous',
@@ -1216,9 +1210,7 @@ self.addEventListener('notificationclick', (event) => {
       };
       
       // Save to Firestore for audit trail (REQUIRED by Apple/Google policies)
-      const { getFirestore } = await import('firebase-admin/firestore');
-      const firestore = getFirestore();
-      await firestore.collection('wallet_consent').add(consentRecord);
+      await firestoreDb.collection('wallet_consent').add(consentRecord);
       
       logger.info('[Wallet Consent] Saved wallet pass consent', {
         userId: userId || 'anonymous',
@@ -1488,15 +1480,12 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ ok: false, error: 'no-session' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const { db } = await import('./lib/firebase-admin');
-      
       let decoded;
       try {
         if (token) {
-          decoded = await admin.auth().verifySessionCookie(token, true);
+          decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
         } else if (bearerToken) {
-          decoded = await admin.auth().verifyIdToken(bearerToken, true);
+          decoded = await firebaseAdmin.auth().verifyIdToken(bearerToken, true);
         }
         logger.debug(`[Auth Me] Session verified for user: ${decoded?.uid}`);
       } catch (error) {
@@ -1505,7 +1494,7 @@ self.addEventListener('notificationclick', (event) => {
       }
       
       // Check for employee profile at employees/{uid}
-      const employeeDoc = await db.collection('employees').doc(decoded.uid).get();
+      const employeeDoc = await firestoreDb.collection('employees').doc(decoded.uid).get();
       const employeeData = employeeDoc.exists ? employeeDoc.data() : null;
       
       // If employee exists and is active, return employee user
@@ -1573,16 +1562,13 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ authenticated: false, error: 'no-session' });
       }
 
-      const { adminAuth: fbAdminAuth, db: firestoreDb } = await import('./lib/firebase-admin');
-      const admin = (await import('./lib/firebase-admin')).default;
-
       let decoded: any;
       let sessionAge = 0;
       try {
         if (token) {
-          decoded = await admin.auth().verifySessionCookie(token, true);
+          decoded = await firebaseAdminModule.auth.verifySessionCookie(token, true);
         } else if (bearerToken) {
-          decoded = await admin.auth().verifyIdToken(bearerToken, true);
+          decoded = await firebaseAdminModule.auth.verifyIdToken(bearerToken, true);
         }
         const authTime = decoded.auth_time ? decoded.auth_time * 1000 : Date.now();
         sessionAge = Math.floor((Date.now() - authTime) / 1000);
@@ -1590,7 +1576,7 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ authenticated: false, error: 'invalid-session' });
       }
 
-      const userRecord = await fbAdminAuth.getUser(decoded.uid);
+      const userRecord = await firebaseAdminModule.auth.getUser(decoded.uid);
       const claims = (userRecord.customClaims || {}) as Record<string, any>;
 
       let role = claims.role || 'public';
@@ -1698,8 +1684,7 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const decoded = await admin.auth().verifySessionCookie(token, true);
+      const decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
 
       const { getUserRole, getUserRoleLevel } = await import('./services/rbac');
       const role = await getUserRole(decoded.uid);
@@ -1730,19 +1715,16 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const { db } = await import('./lib/firebase-admin');
-      
       let decoded;
       try {
-        decoded = await admin.auth().verifySessionCookie(token, true);
+        decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
       } catch (error) {
         logger.error('[Profile GET] Session verification failed', error);
         return res.status(401).json({ error: 'Invalid session' });
       }
 
       // Fetch profile from Firestore using Admin SDK (bypasses security rules)
-      const profileRef = db.collection('users').doc(decoded.uid).collection('profile').doc('data');
+      const profileRef = firestoreDb.collection('users').doc(decoded.uid).collection('profile').doc('data');
       const profileSnap = await profileRef.get();
 
       if (!profileSnap.exists) {
@@ -1780,12 +1762,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const { db } = await import('./lib/firebase-admin');
-      
       let decoded;
       try {
-        decoded = await admin.auth().verifySessionCookie(token, true);
+        decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
       } catch (error) {
         logger.error('[Profile PUT] Session verification failed', error);
         return res.status(401).json({ error: 'Invalid session' });
@@ -1887,19 +1866,16 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const { db } = await import('./lib/firebase-admin');
-      
       let decoded;
       try {
-        decoded = await admin.auth().verifySessionCookie(token, true);
+        decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
       } catch (error) {
         logger.error('[Greeting] Session verification failed', error);
         return res.status(401).json({ error: 'Invalid session' });
       }
 
       // Fetch user profile from Firestore
-      const profileRef = db.collection('users').doc(decoded.uid).collection('profile').doc('data');
+      const profileRef = firestoreDb.collection('users').doc(decoded.uid).collection('profile').doc('data');
       const profileSnap = await profileRef.get();
 
       const profileData = profileSnap.exists ? profileSnap.data() : {};
@@ -1952,7 +1928,6 @@ self.addEventListener('notificationclick', (event) => {
   // POST /api/user/delete - Delete user account (GDPR compliance)
   app.post('/api/user/delete', async (req, res) => {
     try {
-      const admin = (await import('./lib/firebase-admin')).default;
       const token = req.headers.authorization?.split('Bearer ')[1];
       
       if (!token) {
@@ -1960,7 +1935,7 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       // Verify Firebase ID token
-      const decoded = await admin.auth().verifyIdToken(token);
+      const decoded = await firebaseAdmin.auth().verifyIdToken(token);
       const { uid } = req.body;
 
       // Security check: user can only delete their own account
@@ -1996,8 +1971,7 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const decoded = await admin.auth().verifySessionCookie(token, true);
+      const decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
       const uid = decoded.uid;
 
       // Validate and extract allowed fields
@@ -2058,11 +2032,10 @@ self.addEventListener('notificationclick', (event) => {
       updates.updatedAt = new Date();
 
       // Update Firestore users/{uid}/profile/data
-      const { db } = await import('./lib/firebase-admin');
-      await db.collection('users').doc(uid).collection('profile').doc('data').set(updates, { merge: true });
+      await firestoreDb.collection('users').doc(uid).collection('profile').doc('data').set(updates, { merge: true });
 
       // Fetch updated profile
-      const updatedDoc = await db.collection('users').doc(uid).collection('profile').doc('data').get();
+      const updatedDoc = await firestoreDb.collection('users').doc(uid).collection('profile').doc('data').get();
       const profile = updatedDoc.data() || {};
 
       logger.info('[Profile Update] User profile updated', { uid, fields: Object.keys(updates) });
@@ -2126,12 +2099,10 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const decoded = await admin.auth().verifySessionCookie(token, true);
+      const decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
       
       // Check if admin or customer
-      const { db } = await import('./lib/firebase-admin');
-      const employeeDoc = await db.collection('employees').doc(decoded.uid).get();
+      const employeeDoc = await firestoreDb.collection('employees').doc(decoded.uid).get();
       const isAdmin = employeeDoc.exists;
 
       const {
@@ -2173,14 +2144,12 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const decoded = await admin.auth().verifySessionCookie(token, true);
+      const decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
       uid = decoded.uid;
       email = decoded.email || '';
 
       // Check if admin or customer
-      const { db } = await import('./lib/firebase-admin');
-      const employeeDoc = await db.collection('employees').doc(decoded.uid).get();
+      const employeeDoc = await firestoreDb.collection('employees').doc(decoded.uid).get();
       const isAdmin = employeeDoc.exists;
 
       const { verifyAndStoreRegistration } = await import('./webauthn/service');
@@ -2292,15 +2261,14 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       // Create Firebase custom token for client to exchange
-      const admin = (await import('./lib/firebase-admin')).default;
-      const customToken = await admin.auth().createCustomToken(uid);
+      const customToken = await firebaseAdmin.auth().createCustomToken(uid);
       
       // Create session cookie directly (bypassing the need for client to exchange token)
       const { setSessionCookie } = await import('./lib/sessionCookies');
       
       // For passkey auth, we create session cookie directly using custom token
       // Note: createSessionCookie() expects an ID token, so we use the custom claims workaround
-      const sessionCookie = await admin.auth().createSessionCookie(customToken, { expiresIn: 432000000 });
+      const sessionCookie = await firebaseAdmin.auth().createSessionCookie(customToken, { expiresIn: 432000000 });
       setSessionCookie(res, sessionCookie);
 
       // Get city for location-based alerts
@@ -2358,11 +2326,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const decoded = await admin.auth().verifySessionCookie(token, true);
+      const decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
 
-      const { db } = await import('./lib/firebase-admin');
-      const employeeDoc = await db.collection('employees').doc(decoded.uid).get();
+      const employeeDoc = await firestoreDb.collection('employees').doc(decoded.uid).get();
       const isAdmin = employeeDoc.exists;
 
       const { getUserCredentials } = await import('./webauthn/service');
@@ -2407,11 +2373,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const decoded = await admin.auth().verifySessionCookie(token, true);
+      const decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
 
-      const { db } = await import('./lib/firebase-admin');
-      const employeeDoc = await db.collection('employees').doc(decoded.uid).get();
+      const employeeDoc = await firestoreDb.collection('employees').doc(decoded.uid).get();
       const isAdmin = employeeDoc.exists;
 
       const { newName } = req.body;
@@ -2425,7 +2389,7 @@ self.addEventListener('notificationclick', (event) => {
 
       // Get old name for logging
       const collectionPath = isAdmin ? 'employees' : 'users';
-      const credDoc = await db
+      const credDoc = await firestoreDb
         .collection(collectionPath)
         .doc(decoded.uid)
         .collection('webauthnCredentials')
@@ -2472,11 +2436,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const decoded = await admin.auth().verifySessionCookie(token, true);
+      const decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
 
-      const { db } = await import('./lib/firebase-admin');
-      const employeeDoc = await db.collection('employees').doc(decoded.uid).get();
+      const employeeDoc = await firestoreDb.collection('employees').doc(decoded.uid).get();
       const isAdmin = employeeDoc.exists;
 
       const { icon } = req.body;
@@ -2506,16 +2468,14 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const admin = (await import('./lib/firebase-admin')).default;
-      const decoded = await admin.auth().verifySessionCookie(token, true);
+      const decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
 
-      const { db } = await import('./lib/firebase-admin');
-      const employeeDoc = await db.collection('employees').doc(decoded.uid).get();
+      const employeeDoc = await firestoreDb.collection('employees').doc(decoded.uid).get();
       const isAdmin = employeeDoc.exists;
 
       // Check if this is the last device
       const collectionPath = isAdmin ? 'employees' : 'users';
-      const credentialsSnapshot = await db
+      const credentialsSnapshot = await firestoreDb
         .collection(collectionPath)
         .doc(decoded.uid)
         .collection('webauthnCredentials')
@@ -2530,7 +2490,7 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       // Get device info for logging
-      const credDoc = await db
+      const credDoc = await firestoreDb
         .collection(collectionPath)
         .doc(decoded.uid)
         .collection('webauthnCredentials')

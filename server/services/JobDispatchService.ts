@@ -20,7 +20,7 @@
  * Real-time updates via Firestore listeners for instant UX
  */
 
-import admin from "firebase-admin";
+import admin from "../lib/firebase-admin";
 import { db } from "../db";
 import { jobOffers, operatorPresence } from "@shared/schema";
 import { eq, and, sql, ne, gt, isNull, or } from "drizzle-orm";

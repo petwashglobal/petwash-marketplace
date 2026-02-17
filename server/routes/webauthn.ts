@@ -9,7 +9,7 @@
  */
 
 import express from "express";
-import admin from "firebase-admin";
+import admin from "../lib/firebase-admin";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,

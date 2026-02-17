@@ -14,7 +14,7 @@
  * Dual-save: Records to both Firestore (real-time) and PostgreSQL (legal compliance)
  */
 
-import admin from "firebase-admin";
+import admin from "../lib/firebase-admin";
 import { db } from '../db';
 import { digitalReceipts } from '@shared/schema';
 import { logger } from '../lib/logger';

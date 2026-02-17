@@ -11,7 +11,7 @@
  */
 
 import { db } from '../db';
-import admin from 'firebase-admin';
+import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { createHash } from 'crypto';
 import { eq, and, lt, desc } from 'drizzle-orm';

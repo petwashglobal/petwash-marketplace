@@ -266,8 +266,8 @@ export class EmployeeAIFeedbackService {
     }
 
     // Send notification via Firebase Cloud Messaging
-    const admin = require('firebase-admin');
-    await admin.messaging().send({
+    const firebaseAdmin = (await import('../lib/firebase-admin')).default;
+    await firebaseAdmin.messaging().send({
       token: fcmToken,
       notification: {
         title: feedback.title,

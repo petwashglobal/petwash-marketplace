@@ -1,7 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { auth, db as firestore } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import jwt from 'jsonwebtoken';
 
@@ -72,8 +71,7 @@ router.post('/google', async (req: Request, res: Response) => {
     }
 
     // 4. PET WASH USER MANAGEMENT (Firebase + Firestore)
-    const auth = getAuth();
-    const firestore = getFirestore();
+    
 
     // Check if user exists in Firebase
     let firebaseUser;

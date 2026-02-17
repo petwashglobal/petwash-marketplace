@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { logger } from '../lib/logger';
+import { db as firestore } from '../lib/firebase-admin';
 
 const router = Router();
 
@@ -105,8 +106,6 @@ router.get('/business/reviews', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { getFirestore } = await import('firebase-admin/firestore');
-    const firestore = getFirestore();
     const userDoc = await firestore.collection('users').doc(firebaseUser.uid).get();
     const userData = userDoc.data();
 
@@ -137,8 +136,6 @@ router.post('/business/reviews/:reviewId/reply', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { getFirestore } = await import('firebase-admin/firestore');
-    const firestore = getFirestore();
     const userDoc = await firestore.collection('users').doc(firebaseUser.uid).get();
     const userData = userDoc.data();
 
@@ -179,8 +176,6 @@ router.post('/business/reviews/auto-respond', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { getFirestore } = await import('firebase-admin/firestore');
-    const firestore = getFirestore();
     const userDoc = await firestore.collection('users').doc(firebaseUser.uid).get();
     const userData = userDoc.data();
 
@@ -215,8 +210,6 @@ router.get('/business/stats', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { getFirestore } = await import('firebase-admin/firestore');
-    const firestore = getFirestore();
     const userDoc = await firestore.collection('users').doc(firebaseUser.uid).get();
     const userData = userDoc.data();
 

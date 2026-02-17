@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { users, walletAccounts } from '@shared/schema';
 import { eq } from 'drizzle-orm';
-import admin from 'firebase-admin';
+import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 

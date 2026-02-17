@@ -12,7 +12,7 @@
 import express from 'express';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
-import admin from 'firebase-admin';
+import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 
 const router = express.Router();

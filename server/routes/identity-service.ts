@@ -11,7 +11,7 @@
  */
 
 import express from "express";
-import admin from "firebase-admin";
+import admin, { db } from "../lib/firebase-admin";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { requireAuth } from "../customAuth";
@@ -19,7 +19,6 @@ import { logger } from "../lib/logger";
 import * as Sentry from "@sentry/node";
 
 const router = express.Router();
-const db = admin.firestore();
 
 // JWT Configuration - Use stable secrets
 // In development: use deterministic secret based on project

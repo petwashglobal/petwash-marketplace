@@ -45,28 +45,8 @@
  * ```
  */
 
-import admin from 'firebase-admin';
+import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
-
-// Ensure Firebase Admin is initialized
-if (!admin.apps.length) {
-  try {
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!serviceAccount) {
-      throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable not set');
-    }
-    
-    admin.initializeApp({
-      credential: admin.credential.cert(JSON.parse(serviceAccount)),
-    });
-    
-    logger.info('[FCM] Firebase Admin SDK initialized for push notifications');
-  } catch (error) {
-    logger.error('[FCM] Failed to initialize Firebase Admin SDK', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-}
 
 /**
  * Notification priority levels

@@ -6,13 +6,12 @@
  */
 
 import { Router } from 'express';
-import { db as firestore } from '../lib/firebase-admin';
+import admin, { db as firestore } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { requireAuth } from '../customAuth';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
-import admin from 'firebase-admin';
 
 const router = Router();
 

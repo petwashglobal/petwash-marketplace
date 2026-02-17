@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { db } from '../db';
+import { auth as fbAuth } from '../lib/firebase-admin';
 import { 
   userMessages, 
   messageAttachments,
@@ -41,11 +42,8 @@ router.get('/lookup-user', async (req, res) => {
     }
 
     // Use Firebase Admin to lookup user by email
-    const { getAuth } = await import('firebase-admin/auth');
-    const auth = getAuth();
-    
     try {
-      const userRecord = await auth.getUserByEmail(email);
+      const userRecord = await fbAuth.getUserByEmail(email);
       
       return res.json({
         uid: userRecord.uid,
@@ -274,9 +272,7 @@ router.post('/send', async (req, res) => {
 
     // Send email notification to recipient
     try {
-      const { getAuth } = await import('firebase-admin/auth');
-      const auth = getAuth();
-      const recipientUser = await auth.getUser(validated.recipientId).catch(() => null);
+      const recipientUser = await fbAuth.getUser(validated.recipientId).catch(() => null);
       
       if (recipientUser?.email) {
         await EmailService.send({

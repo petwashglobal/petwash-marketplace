@@ -4,7 +4,7 @@
  * Nayax-powered secure escrow with dispute resolution
  */
 
-import admin from "firebase-admin";
+import admin from "../lib/firebase-admin";
 import NotificationService from "./NotificationService";
 
 export interface CreditPaymentBreakdown {

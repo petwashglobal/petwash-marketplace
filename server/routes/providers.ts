@@ -1,9 +1,8 @@
 import express from "express";
-import admin from "firebase-admin";
+import { db } from "../lib/firebase-admin";
 import { requireAuth } from "../customAuth";
 
 const router = express.Router();
-const db = admin.firestore();
 
 // Get all sitters (Sitter Suite)
 router.get("/sitters", async (req, res) => {
