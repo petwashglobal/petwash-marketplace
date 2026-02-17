@@ -833,30 +833,25 @@ export default function ProviderApplicationForm() {
                               <GooglePlacesAutocomplete
                                 value={field.value}
                                 onChange={(value, details) => {
-                                  // Set street address from formatted address or the street
                                   const streetValue = details?.street 
                                     ? `${details.street}${details.streetNumber ? ' ' + details.streetNumber : ''}`
                                     : value;
                                   field.onChange(streetValue);
                                 }}
                                 onPlaceSelected={(place: PlaceDetails) => {
-                                  // Auto-fill all address fields from Google Places
                                   const streetValue = place.street 
                                     ? `${place.street}${place.streetNumber ? ' ' + place.streetNumber : ''}`
                                     : place.formattedAddress;
                                   field.onChange(streetValue);
                                   
-                                  // Auto-fill city
                                   if (place.city) {
                                     form.setValue('city', place.city);
                                   }
                                   
-                                  // Auto-fill postal code
                                   if (place.postalCode) {
                                     form.setValue('postalCode', place.postalCode);
                                   }
                                   
-                                  // Auto-fill country
                                   if (place.country) {
                                     form.setValue('country', place.country);
                                   }
@@ -865,8 +860,9 @@ export default function ProviderApplicationForm() {
                                 placeholder={isHebrew ? 'הקלד כתובת מלאה...' : 'Start typing your full address...'}
                                 required
                                 country={['il']}
+                                darkMode={true}
                                 error={form.formState.errors.streetAddress?.message}
-                                className="[&_label]:text-gray-300 [&_label]:font-medium [&_input]:h-12 [&_input]:bg-slate-800/50 [&_input]:border-slate-600 [&_input]:text-white [&_input]:placeholder:text-slate-500 [&_input]:focus:border-amber-500 [&_input]:focus:ring-amber-500/20 [&_input]:rounded-xl"
+                                className="[&_label]:text-gray-300 [&_label]:font-medium"
                               />
                             </FormControl>
                           </FormItem>

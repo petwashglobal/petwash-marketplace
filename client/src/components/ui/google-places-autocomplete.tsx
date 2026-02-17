@@ -13,12 +13,14 @@ interface GooglePlacesAutocompleteProps {
   required?: boolean;
   country?: string[];
   className?: string;
+  inputClassName?: string;
   showExtraFields?: boolean;
   apartmentLabel?: string;
   postalCodeLabel?: string;
   apartmentPlaceholder?: string;
   postalCodePlaceholder?: string;
   types?: string[];
+  darkMode?: boolean;
 }
 
 export interface PlaceDetails {
@@ -187,12 +189,14 @@ export function GooglePlacesAutocomplete({
   required = false,
   country = ['il'],
   className = '',
+  inputClassName,
   showExtraFields = false,
   apartmentLabel,
   postalCodeLabel,
   apartmentPlaceholder,
   postalCodePlaceholder,
   types,
+  darkMode = false,
 }: GooglePlacesAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -396,19 +400,19 @@ export function GooglePlacesAutocomplete({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className={`
+          className={inputClassName || `
             px-4 py-4 sm:py-5 text-base
             min-h-[48px] sm:min-h-[52px]
             rounded-xl
             border-2
             focus:ring-2 focus:ring-blue-500
             transition-all
-            text-gray-900 placeholder:text-gray-500
+            ${darkMode ? 'text-white placeholder:text-slate-500 bg-slate-800/50 border-slate-600 caret-white' : 'text-gray-900 placeholder:text-gray-500'}
             touch-manipulation
-            ${error ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'}
+            ${error ? 'border-red-500 focus:border-red-500' : darkMode ? 'focus:border-amber-500 focus:ring-amber-500/20' : 'border-gray-300 focus:border-blue-500'}
           `}
           style={{
-            color: '#1f2937',
+            color: darkMode ? '#ffffff' : '#1f2937',
             fontSize: '16px',
             WebkitAppearance: 'none',
             WebkitTapHighlightColor: 'transparent',
