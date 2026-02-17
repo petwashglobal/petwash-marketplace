@@ -299,10 +299,6 @@ function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNo
         boxShadow: cardShadow,
       }}
     >
-      <div
-        className="absolute top-0 left-0 w-[3px] h-full rounded-l-xl"
-        style={{ background: goldGradient }}
-      />
       {children}
     </motion.div>
   );
@@ -482,10 +478,7 @@ export default function Dashboard() {
                 boxShadow: cardShadow,
               }}
             >
-              <div
-                className="absolute top-0 left-0 w-[3px] h-full"
-                style={{ background: goldGradient }}
-              />
+
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
@@ -513,10 +506,7 @@ export default function Dashboard() {
                 boxShadow: cardShadow,
               }}
             >
-              <div
-                className="absolute top-0 left-0 w-[3px] h-full"
-                style={{ background: goldGradient }}
-              />
+
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
@@ -541,10 +531,7 @@ export default function Dashboard() {
                 boxShadow: cardShadow,
               }}
             >
-              <div
-                className="absolute top-0 left-0 w-[3px] h-full"
-                style={{ background: goldGradient }}
-              />
+
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
@@ -568,10 +555,7 @@ export default function Dashboard() {
                 boxShadow: cardShadow,
               }}
             >
-              <div
-                className="absolute top-0 left-0 w-[3px] h-full"
-                style={{ background: goldGradient }}
-              />
+
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
@@ -596,10 +580,7 @@ export default function Dashboard() {
                 boxShadow: cardShadow,
               }}
             >
-              <div
-                className="absolute top-0 left-0 w-[3px] h-full"
-                style={{ background: goldGradient }}
-              />
+
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
@@ -622,10 +603,7 @@ export default function Dashboard() {
                 boxShadow: cardShadow,
               }}
             >
-              <div
-                className="absolute top-0 left-0 w-[3px] h-full"
-                style={{ background: goldGradient }}
-              />
+
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
