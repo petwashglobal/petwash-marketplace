@@ -235,17 +235,47 @@ export default function ProviderOnboarding() {
       formData.append('firstName', firstName);
       formData.append('lastName', lastName);
       formData.append('phoneNumber', phoneNumber);
+      formData.append('idNumber', idNumber);
       formData.append('city', city);
       formData.append('country', country);
+      formData.append('providerType', providerTypes[0]);
       formData.append('providerTypes', JSON.stringify(providerTypes));
       formData.append('selfiePhoto', selfiePhoto);
       formData.append('governmentId', governmentId);
       
-      // Background check data (2026 spec)
       formData.append('residentialHistory', JSON.stringify(residentialHistory.filter(addr => addr.trim())));
       formData.append('backgroundCheckConsent', backgroundCheckConsent.toString());
+
+      const declarations: Record<string, boolean> = {
+        declarationAccurateInfo,
+        declarationAcceptTerms,
+      };
+      if (providerTypes.includes('driver')) {
+        Object.assign(declarations, {
+          declarationValidLicense,
+          declarationNoSuspension,
+          declarationUnderPointsLimit,
+          declarationNoDrugsAlcohol,
+          declarationValidVehicleInsurance,
+          declarationVehicleInspection,
+        });
+      }
+      if (providerTypes.includes('trainer')) {
+        Object.assign(declarations, {
+          declarationTrainingCertification,
+          declarationAccreditedCourses,
+          declarationLiabilityInsurance,
+        });
+      }
+      if (providerTypes.includes('walker') || providerTypes.includes('sitter')) {
+        Object.assign(declarations, {
+          declarationPhysicallyFit,
+          declarationAnimalExperience,
+          declarationFirstAidTraining,
+        });
+      }
+      formData.append('declarations', JSON.stringify(declarations));
       
-      // Role-specific certifications (2026 spec)
       if (insuranceCert) formData.append('insuranceCert', insuranceCert);
       if (insurancePolicyNumber) formData.append('insurancePolicyNumber', insurancePolicyNumber);
       if (insuranceProvider) formData.append('insuranceProvider', insuranceProvider);
@@ -262,6 +292,13 @@ export default function ProviderOnboarding() {
       
       if (businessLicense) formData.append('businessLicense', businessLicense);
 
+      console.log('[ProviderOnboarding] Submitting application with fields:', {
+        firstName, lastName, phoneNumber: '***', idNumber: idNumber ? 'present' : 'empty',
+        city, country, providerType: providerTypes[0], providerTypes,
+        hasSelfie: !!selfiePhoto, hasGovId: !!governmentId,
+        backgroundCheckConsent, residentialHistoryCount: residentialHistory.filter(a => a.trim()).length,
+      });
+
       const response = await fetch(getApiUrl('/api/provider-onboarding/apply'), {
         method: 'POST',
         headers: {
@@ -271,6 +308,7 @@ export default function ProviderOnboarding() {
       });
 
       const data = await response.json();
+      console.log('[ProviderOnboarding] Response:', { status: response.status, ok: response.ok, data });
 
       if (response.ok) {
         setApplicationSubmitted(true);
@@ -280,13 +318,15 @@ export default function ProviderOnboarding() {
           description: t.successMessage
         });
       } else {
+        console.error('[ProviderOnboarding] Submit failed:', { status: response.status, error: data.error });
         toast({
           variant: 'destructive',
           title: t.error,
           description: data.error || (isHebrew ? 'שגיאה בשליחת בקשה' : 'Error submitting application')
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[ProviderOnboarding] Submit exception:', error?.message || error);
       toast({
         variant: 'destructive',
         title: t.error,

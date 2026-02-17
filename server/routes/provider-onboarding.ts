@@ -259,10 +259,22 @@ router.post('/apply', upload.fields([
       firstName,
       lastName,
       phoneNumber,
+      idNumber,
       city,
       country,
       providerType: rawProviderType,
       providerTypes: rawProviderTypes,
+      residentialHistory: rawResidentialHistory,
+      backgroundCheckConsent: rawBackgroundCheckConsent,
+      declarations: rawDeclarations,
+      insurancePolicyNumber,
+      insuranceProvider: insuranceProviderName,
+      insuranceExpiry,
+      petFirstAidNumber,
+      petFirstAidExpiry,
+      drivingLicenseNumber,
+      drivingLicenseClass,
+      drivingLicenseExpiry,
     } = req.body;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -278,6 +290,18 @@ router.post('/apply', upload.fields([
         providerType = rawProviderTypes;
       }
     }
+
+    let residentialHistory: string[] = [];
+    try {
+      residentialHistory = rawResidentialHistory ? (typeof rawResidentialHistory === 'string' ? JSON.parse(rawResidentialHistory) : rawResidentialHistory) : [];
+    } catch { residentialHistory = []; }
+
+    const backgroundCheckConsent = rawBackgroundCheckConsent === 'true' || rawBackgroundCheckConsent === true;
+
+    let declarations: Record<string, boolean> = {};
+    try {
+      declarations = rawDeclarations ? (typeof rawDeclarations === 'string' ? JSON.parse(rawDeclarations) : rawDeclarations) : {};
+    } catch { declarations = {}; }
 
     if (!firstName || !lastName || !phoneNumber || !city || !providerType) {
       logger.warn('[Provider Onboarding] Missing required fields', { firstName: !!firstName, lastName: !!lastName, phoneNumber: !!phoneNumber, city: !!city, providerType: !!providerType });
@@ -401,6 +425,30 @@ router.post('/apply', upload.fields([
       businessLicenseUrl = licenseFileName;
     }
 
+    // Upload pet first aid certificate (optional)
+    let petFirstAidCertUrl = '';
+    if (files.petFirstAidCert && files.petFirstAidCert[0]) {
+      const certFile = files.petFirstAidCert[0];
+      const certFileName = `providers/${authenticatedUser.uid}/docs/pet_first_aid_${Date.now()}.${certFile.mimetype.split('/')[1]}`;
+      const certUpload = bucket.file(certFileName);
+      await certUpload.save(certFile.buffer, {
+        metadata: { contentType: certFile.mimetype },
+      });
+      petFirstAidCertUrl = certFileName;
+    }
+
+    // Upload driving license (optional - PetTrek drivers)
+    let drivingRecordUrl = '';
+    if (files.drivingLicenseFile && files.drivingLicenseFile[0]) {
+      const dlFile = files.drivingLicenseFile[0];
+      const dlFileName = `providers/${authenticatedUser.uid}/docs/driving_license_${Date.now()}.${dlFile.mimetype.split('/')[1]}`;
+      const dlUpload = bucket.file(dlFileName);
+      await dlUpload.save(dlFile.buffer, {
+        metadata: { contentType: dlFile.mimetype },
+      });
+      drivingRecordUrl = dlFileName;
+    }
+
     // Perform biometric verification if both photos provided
     let biometricStatus = 'pending';
     let biometricMatchScore = 0;
@@ -460,7 +508,7 @@ router.post('/apply', upload.fields([
       providerId = `${providerPrefix}-${randomId}`;
     }
 
-    // Create application
+    // Create application - DB write FIRST (must succeed before any async side effects)
     const [application] = await db.insert(providerApplications).values({
       applicationId,
       userId: authenticatedUser.uid,
@@ -478,8 +526,20 @@ router.post('/apply', upload.fields([
       biometricStatus,
       biometricFailureReason: biometricFailureReason || null,
       biometricVerifiedAt: biometricStatus === 'verified' ? new Date() : null,
+      residentialHistory: residentialHistory.length > 0 ? JSON.stringify(residentialHistory) : null,
+      criminalCheckConsent: backgroundCheckConsent,
+      criminalCheckConsentDate: backgroundCheckConsent ? new Date() : null,
+      petFirstAidCertUrl: petFirstAidCertUrl || null,
+      petFirstAidProvider: petFirstAidNumber || null,
+      petFirstAidExpiresAt: petFirstAidExpiry ? new Date(petFirstAidExpiry) : null,
+      drivingRecordUrl: drivingRecordUrl || null,
+      drivingRecordNotes: drivingLicenseNumber ? JSON.stringify({ licenseNumber: drivingLicenseNumber, licenseClass: drivingLicenseClass, expiryDate: drivingLicenseExpiry }) : null,
       insuranceCertUrl: insuranceCertUrl || null,
+      insurancePolicyNumber: insurancePolicyNumber || null,
+      insuranceProvider: insuranceProviderName || null,
+      insuranceExpiresAt: insuranceExpiry ? new Date(insuranceExpiry) : null,
       businessLicenseUrl: businessLicenseUrl || null,
+      internalNotes: Object.keys(declarations).length > 0 ? JSON.stringify({ declarations, idNumber: idNumber || null, providerTypes: (() => { try { return rawProviderTypes ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes) : [providerType]; } catch { return [providerType]; } })() }) : null,
       status: applicationStatus,
       ...(autoApproved ? {
         reviewedAt: new Date(),
@@ -553,8 +613,19 @@ router.post('/apply', upload.fields([
         : 'Application submitted. Your documents are being reviewed - we will get back to you shortly.'
     });
   } catch (error: any) {
-    logger.error('[Provider Onboarding] Application submission error', error);
-    res.status(500).json({ error: error.message || 'Failed to submit application' });
+    logger.error('[Provider Onboarding] Application submission error', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint,
+      stack: error.stack?.substring(0, 500),
+    });
+    const clientMessage = error.code === '23505' 
+      ? 'An application with these details already exists'
+      : error.code === '23503'
+      ? 'Invalid reference - please check your invite code'
+      : error.message || 'Failed to submit application';
+    res.status(500).json({ error: clientMessage });
   }
 });
 
