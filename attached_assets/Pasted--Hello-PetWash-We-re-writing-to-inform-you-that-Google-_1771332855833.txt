@@ -1,0 +1,42 @@
+
+ 
+Hello 🐾 PetWash™,
+
+We’re writing to inform you that Google Cloud is transitioning reCAPTCHA Account Defender to an automatic model to simplify its deployment across your projects. To ensure you continue to receive labels without interruption, updates to your integration may be required.
+
+We’ve provided a summary of the timeline and the steps you need to take to prepare your environment for this change.
+
+What you need to know
+
+Key changes:
+
+Automatic enablement: Account defense will no longer require manual activation. It will be enabled by default across all projects, and manual controls will be removed from the Google Cloud Console starting February 17, 2026. Account defense is part of reCAPTCHA and the enablement changes do not introduce new costs.
+Requirement for labels: The reCAPTCHA API will now generate labels automatically, provided a valid accountId is included in the assessment requests.
+Timeline and Impact:
+
+February 17, 2026: Manual toggles will be removed from the Cloud Console as the feature becomes active by default.
+May 18, 2026 (Integration deadline):
+Existing users: If your API calls do not include the accountId field by this date, you will stop receiving Account Defender labels until the field is added.
+New users: If you already provide an accountId, you will automatically begin seeing new labels in your API responses.
+What you need to do
+
+Action required:
+
+If you use the Account defense verdict, to ensure uninterrupted protection and continue receiving high-quality risk signals, please make sure to update your application by May 18, 2026.
+
+Update API calls: Modify your createAssessment API calls to include the accountId field. This is essential for the model to analyze user behavior and provide security verdicts.
+Verify application readiness: Ensure your application logic is prepared to parse and process the additional fields included in the Account Defender API response.
+For detailed implementation instructions, please refer to our documentation on Detecting and preventing account-related fraudulent activities on websites.
+
+Impacted customers/accounts:
+
+Your affected projects are listed below:
+
+signinpetwash
+We’re here to help
+
+We understand that this change will require some planning and we’re here to support you through this transition. If you have any questions or require assistance, please contact Google Cloud Support.
+
+Thanks for choosing Google reCAPTCHA.
+
+– The Google Cloud Team
